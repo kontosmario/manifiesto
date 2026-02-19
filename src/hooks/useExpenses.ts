@@ -39,6 +39,19 @@ export const familyPeriodTotalQueryKey = (
   endIso?: string,
 ) => ['expenses-period-total', familyId, startIso, endIso] as const
 
+export const familyMonthlySpentQueryKey = (familyId?: string, monthsBack = 6) =>
+  ['expenses-monthly-spent', familyId, monthsBack] as const
+
+interface ExpenseMonthRow {
+  price: number | string
+  created_at: string
+}
+
+export interface FamilyMonthlySpent {
+  monthStartIso: string
+  totalSpent: number
+}
+
 export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
     queryKey: expensesQueryKey(familyId, categoryId),
@@ -135,6 +148,69 @@ export function useFamilyPeriodTotal(familyId?: string, startIso?: string, endIs
   })
 }
 
+export function useFamilyMonthlySpent(familyId?: string, monthsBack = 6) {
+  return useQuery<FamilyMonthlySpent[]>({
+    queryKey: familyMonthlySpentQueryKey(familyId, monthsBack),
+    enabled: Boolean(familyId) && monthsBack > 0,
+    queryFn: async () => {
+      if (!familyId || monthsBack <= 0) {
+        return []
+      }
+
+      const now = new Date()
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      const firstMonthStart = new Date(
+        currentMonthStart.getFullYear(),
+        currentMonthStart.getMonth() - (monthsBack - 1),
+        1,
+      )
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('price, created_at')
+        .eq('family_id', familyId)
+        .gte('created_at', firstMonthStart.toISOString())
+        .lt('created_at', nextMonthStart.toISOString())
+
+      if (error) {
+        throw error
+      }
+
+      const totalsByMonth = new Map<string, number>()
+
+      ;((data as ExpenseMonthRow[] | null) ?? []).forEach((row) => {
+        const createdAtDate = new Date(row.created_at)
+        if (Number.isNaN(createdAtDate.getTime())) {
+          return
+        }
+
+        const monthStart = new Date(createdAtDate.getFullYear(), createdAtDate.getMonth(), 1)
+        const monthKey = monthStart.toISOString()
+        const previous = totalsByMonth.get(monthKey) ?? 0
+        totalsByMonth.set(monthKey, previous + Number(row.price ?? 0))
+      })
+
+      const monthlySeries: FamilyMonthlySpent[] = []
+      for (let offset = 0; offset < monthsBack; offset += 1) {
+        const monthStart = new Date(
+          currentMonthStart.getFullYear(),
+          currentMonthStart.getMonth() - offset,
+          1,
+        )
+        const monthStartIso = monthStart.toISOString()
+
+        monthlySeries.push({
+          monthStartIso,
+          totalSpent: totalsByMonth.get(monthStartIso) ?? 0,
+        })
+      }
+
+      return monthlySeries
+    },
+  })
+}
+
 interface CreateExpenseInput {
   categoryId: string
   description: string
@@ -176,6 +252,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-monthly-spent', familyId] }),
       ])
     },
   })
@@ -223,6 +300,7 @@ export function useUpdateExpense(familyId?: string) {
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-monthly-spent', familyId] }),
       ])
     },
   })
@@ -252,6 +330,36 @@ export function useDeleteExpense(familyId?: string) {
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-monthly-spent', familyId] }),
+      ])
+    },
+  })
+}
+
+export function useClearFamilyExpenses(familyId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!familyId) {
+        throw new Error('No hay familia activa para limpiar los gastos.')
+      }
+
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('family_id', familyId)
+
+      if (error) {
+        throw error
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
+        queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-monthly-spent', familyId] }),
       ])
     },
   })

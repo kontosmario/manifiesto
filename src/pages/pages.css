@@ -939,6 +939,175 @@
   --border-color: rgba(74, 120, 147, 0.2);
 }
 
+.monthly-history-shell {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.monthly-history-note {
+  margin: 0;
+  color: #4a6071;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.monthly-history-empty {
+  margin: 2px 0 0;
+  color: #4f6373;
+  font-size: 0.92rem;
+}
+
+.monthly-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.monthly-history-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.monthly-history-summary-card {
+  border: 1px solid rgba(73, 116, 142, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 9px 10px;
+}
+
+.monthly-history-summary-label {
+  display: block;
+  color: #4b6172;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.monthly-history-summary-value {
+  margin-top: 4px;
+  display: block;
+  color: #1f4255;
+  font-size: 1.08rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthly-history-summary-value.is-saved {
+  color: #1f7248;
+}
+
+.monthly-history-summary-value.is-spent {
+  color: #8f3636;
+}
+
+.monthly-history-card {
+  border: 1px solid rgba(75, 118, 146, 0.26);
+  border-radius: 14px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.76) 0%,
+    rgba(240, 247, 252, 0.72) 100%
+  );
+  padding: 10px;
+}
+
+.monthly-history-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.monthly-history-month {
+  margin: 0;
+  color: #17384b;
+  font-size: 0.96rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.monthly-history-balance-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.monthly-history-balance-chip.is-positive {
+  color: #1f6b47;
+  background: rgba(34, 136, 95, 0.14);
+  border-color: rgba(34, 136, 95, 0.26);
+}
+
+.monthly-history-balance-chip.is-negative {
+  color: #9e2d2d;
+  background: rgba(186, 62, 62, 0.14);
+  border-color: rgba(186, 62, 62, 0.28);
+}
+
+.monthly-history-grid {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.monthly-history-metric {
+  border: 1px solid rgba(73, 116, 142, 0.18);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.56);
+  padding: 7px 8px;
+}
+
+.monthly-history-label {
+  display: block;
+  color: #496073;
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.monthly-history-value {
+  margin-top: 4px;
+  display: block;
+  font-size: 1.02rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: #1c3b4d;
+}
+
+.monthly-history-value.is-spent {
+  color: #8f3636;
+}
+
+.monthly-history-value.is-spent-soft {
+  color: #9a5d2e;
+}
+
+.monthly-history-value.is-saved,
+.monthly-history-value.is-positive {
+  color: #1f7248;
+}
+
+.monthly-history-value.is-negative {
+  color: #9e2d2d;
+}
+
+.monthly-history-reset-button {
+  margin-top: 4px;
+  --border-radius: 12px;
+  --box-shadow: none;
+}
+
 .card-subtitle {
   margin: 8px 0 0;
   color: #4a5568;
@@ -1200,6 +1369,16 @@
 .empty-message {
   margin: 0;
   padding: 8px 0;
+}
+
+@media (min-width: 480px) {
+  .monthly-history-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .monthly-history-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 640px) {

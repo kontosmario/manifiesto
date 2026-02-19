@@ -31,6 +31,7 @@ import {
   pencilOutline,
   removeCircle,
   shieldCheckmarkOutline,
+  statsChartOutline,
   trendingUpOutline,
   trashOutline,
   walletOutline,
@@ -45,9 +46,11 @@ import {
   type Category,
 } from '../hooks/useCategories'
 import {
+  useClearFamilyExpenses,
   useCreateExpense,
   useDeleteExpense,
   useExpenses,
+  useFamilyMonthlySpent,
   useFamilyPeriodTotal,
   useFamilyTotal,
   useUpdateExpense,
@@ -104,6 +107,11 @@ const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
   month: 'short',
 })
 
+const monthYearFormatter = new Intl.DateTimeFormat('es-AR', {
+  month: 'long',
+  year: 'numeric',
+})
+
 type MoneyCurrency = 'ARS' | 'USD'
 type FinanceEditorMetric = 'income' | 'savings'
 
@@ -116,6 +124,21 @@ interface PayCycle {
 
 function normalizeToStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function capitalizeText(value: string): string {
+  if (!value) {
+    return value
+  }
+
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
 }
 
 function moveToNextBusinessDay(date: Date): Date {
@@ -134,7 +157,11 @@ function buildPayDate(year: number, month: number, paymentDay: number): Date {
   return moveToNextBusinessDay(new Date(year, month, normalizedPaymentDay))
 }
 
-function getCurrentPayCycle(referenceDate: Date, paymentDay: number): PayCycle {
+function getCurrentPayCycle(
+  referenceDate: Date,
+  paymentDay: number,
+  freezeUntilSalaryConfirmation = false,
+): PayCycle {
   const today = normalizeToStartOfDay(referenceDate)
   const currentMonthPayDate = buildPayDate(
     today.getFullYear(),
@@ -143,10 +170,15 @@ function getCurrentPayCycle(referenceDate: Date, paymentDay: number): PayCycle {
   )
 
   const cycleStart =
-    today >= currentMonthPayDate
+    freezeUntilSalaryConfirmation && today >= currentMonthPayDate
+      ? buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
+      : today >= currentMonthPayDate
+        ? currentMonthPayDate
+        : buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
+  const cycleEnd =
+    freezeUntilSalaryConfirmation && today >= currentMonthPayDate
       ? currentMonthPayDate
-      : buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
-  const cycleEnd = buildPayDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, paymentDay)
+      : buildPayDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, paymentDay)
 
   const cycleDays = Math.max(
     1,
@@ -371,17 +403,42 @@ export default function AppPage() {
   const familyFinanceQuery = useFamilyFinance(familyId)
   const salaryPaymentDay =
     familyFinanceQuery.data?.salary_payment_day ?? DEFAULT_SALARY_PAYMENT_DAY
-  const payCycle = getCurrentPayCycle(new Date(), salaryPaymentDay)
+  const todayDate = normalizeToStartOfDay(new Date())
+  const currentMonthPayDate = buildPayDate(
+    todayDate.getFullYear(),
+    todayDate.getMonth(),
+    salaryPaymentDay,
+  )
+  const lastSalaryConfirmedAt = familyFinanceQuery.data?.last_salary_confirmed_at ?? null
+  const lastSalaryConfirmedDate = useMemo(() => {
+    if (!lastSalaryConfirmedAt) {
+      return null
+    }
+
+    const parsedDate = new Date(lastSalaryConfirmedAt)
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null
+    }
+
+    return normalizeToStartOfDay(parsedDate)
+  }, [lastSalaryConfirmedAt])
+  const isSalaryPendingConfirmation =
+    !familyFinanceQuery.isLoading &&
+    todayDate >= currentMonthPayDate &&
+    (!lastSalaryConfirmedDate || lastSalaryConfirmedDate < currentMonthPayDate)
+  const payCycle = getCurrentPayCycle(todayDate, salaryPaymentDay, isSalaryPendingConfirmation)
   const familyPeriodTotalQuery = useFamilyPeriodTotal(
     familyId,
     payCycle.start.toISOString(),
     payCycle.end.toISOString(),
   )
+  const monthlyHistoryQuery = useFamilyMonthlySpent(familyId, 6)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
 
   const createExpenseMutation = useCreateExpense(familyId, userId)
   const updateExpenseMutation = useUpdateExpense(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
+  const clearFamilyExpensesMutation = useClearFamilyExpenses(familyId)
 
   const createCategoryMutation = useCreateCategory(familyId)
   const renameCategoryMutation = useRenameCategory(familyId)
@@ -412,6 +469,11 @@ export default function AppPage() {
   const [isUsdRateInputFocused, setUsdRateInputFocused] = useState(false)
   const [isSalaryDayModalOpen, setSalaryDayModalOpen] = useState(false)
   const [salaryDayInput, setSalaryDayInput] = useState('')
+  const [isMonthlyHistoryModalOpen, setMonthlyHistoryModalOpen] = useState(false)
+  const [dismissedSalaryPromptDate, setDismissedSalaryPromptDate] = useState<string | null>(
+    null,
+  )
+  const [isManualSalaryConfirmationOpen, setManualSalaryConfirmationOpen] = useState(false)
   const [familyMenuEvent, setFamilyMenuEvent] = useState<Event | undefined>()
   const [expenseMenuEvent, setExpenseMenuEvent] = useState<Event | undefined>()
   const [expenseMenuTarget, setExpenseMenuTarget] = useState<Expense | null>(null)
@@ -434,6 +496,41 @@ export default function AppPage() {
   const savingsSpentPercent =
     savingsGoal > 0 ? Math.round((savingsSpent / savingsGoal) * 100) : 0
   const totalAvailable = cycleBalanceBeforeSavings + savingsSpent
+  const monthlyHistory = useMemo(() => {
+    const rows = monthlyHistoryQuery.data ?? []
+
+    return rows.map((row) => {
+      const spent = row.totalSpent
+      const goalSpent = Math.min(savingsGoal, Math.max(0, spent - (monthlyIncome - savingsGoal)))
+      const saved = Math.max(0, monthlyIncome - spent)
+      const endBalance = monthlyIncome - savingsGoal - spent + goalSpent
+      const monthLabel = capitalizeText(monthYearFormatter.format(new Date(row.monthStartIso)))
+
+      return {
+        ...row,
+        spent,
+        saved,
+        goalSpent,
+        endBalance,
+        monthLabel,
+      }
+    })
+  }, [monthlyHistoryQuery.data, monthlyIncome, savingsGoal])
+  const monthlyHistoryTotals = useMemo(() => {
+    return monthlyHistory.reduce(
+      (accumulator, row) => {
+        accumulator.totalSpent += row.spent
+        accumulator.totalSaved += row.saved
+        accumulator.totalGoalSpent += row.goalSpent
+        return accumulator
+      },
+      {
+        totalSpent: 0,
+        totalSaved: 0,
+        totalGoalSpent: 0,
+      },
+    )
+  }, [monthlyHistory])
   const weeklyAvailable = payCycle.weeks > 0 ? totalAvailable / payCycle.weeks : totalAvailable
   const weeklyShare =
     totalAvailable > 0 && weeklyAvailable > 0
@@ -495,19 +592,31 @@ export default function AppPage() {
 
     return selected
   }, [monthlyIncome, savingsGoal, totalAvailable, weeklyShare])
-  const todayDate = normalizeToStartOfDay(new Date())
-  const daysUntilNextPay = Math.max(
-    0,
-    Math.round((payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)),
+  const dayDiffToPayDate = Math.round(
+    (payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24),
   )
-  const payCycleProgress = Math.min(
-    1,
-    Math.max(0, 1 - daysUntilNextPay / Math.max(1, payCycle.days)),
-  )
-  const payCountdownHue = Math.round(6 + payCycleProgress * 126)
-  const payCountdownTone = `hsl(${payCountdownHue} 70% 42%)`
-  const payCountdownSurface = `hsl(${payCountdownHue} 84% 94%)`
-  const payCountdownFillWidth = `${Math.max(8, Math.round(payCycleProgress * 100))}%`
+  const daysUntilNextPay = isSalaryPendingConfirmation
+    ? Math.max(0, -dayDiffToPayDate)
+    : Math.max(0, dayDiffToPayDate)
+  const payCycleProgress = isSalaryPendingConfirmation
+    ? 1
+    : Math.min(1, Math.max(0, 1 - daysUntilNextPay / Math.max(1, payCycle.days)))
+  const payCountdownHue = isSalaryPendingConfirmation ? 4 : Math.round(6 + payCycleProgress * 126)
+  const payCountdownTone = isSalaryPendingConfirmation
+    ? 'hsl(4 72% 42%)'
+    : `hsl(${payCountdownHue} 70% 42%)`
+  const payCountdownSurface = isSalaryPendingConfirmation
+    ? 'hsl(4 88% 94%)'
+    : `hsl(${payCountdownHue} 84% 94%)`
+  const payCountdownFillWidth = isSalaryPendingConfirmation
+    ? '100%'
+    : `${Math.max(8, Math.round(payCycleProgress * 100))}%`
+  const payCountdownLabel = isSalaryPendingConfirmation
+    ? 'Cobro pendiente'
+    : 'Cuenta regresiva sueldo'
+  const payCountdownDaysLabel = `${daysUntilNextPay} ${daysUntilNextPay === 1 ? 'día' : 'días'}${
+    isSalaryPendingConfirmation ? ' de atraso' : ''
+  }`
 
   const newPriceDisplay = formatPriceInputValue(newPrice, isNewPriceFocused)
   const editingPriceDisplay = formatPriceInputValue(editingPrice, isEditingPriceFocused)
@@ -521,6 +630,13 @@ export default function AppPage() {
     payCycle.end,
   )}`
   const nextPayDateLabel = shortDateFormatter.format(payCycle.end)
+  const payCountdownMeta = isSalaryPendingConfirmation
+    ? `Fecha de cobro: ${nextPayDateLabel} · Confirmalo en el menú.`
+    : `Próximo cobro: ${nextPayDateLabel} · Ciclo: ${cycleRangeLabel}`
+  const todayPromptKey = formatLocalDateKey(todayDate)
+  const isSalaryConfirmationAlertOpen =
+    isManualSalaryConfirmationOpen ||
+    (isSalaryPendingConfirmation && dismissedSalaryPromptDate !== todayPromptKey)
   const payTimelineStyles = {
     '--pay-countdown-tone': payCountdownTone,
     '--pay-countdown-surface': payCountdownSurface,
@@ -779,6 +895,7 @@ export default function AppPage() {
         savingsGoal: nextSavingsGoal,
         usdExchangeRate,
         salaryPaymentDay,
+        lastSalaryConfirmedAt,
       },
       {
         onSuccess: () => {
@@ -816,6 +933,7 @@ export default function AppPage() {
         savingsGoal,
         usdExchangeRate: parsedRate,
         salaryPaymentDay,
+        lastSalaryConfirmedAt,
       },
       {
         onSuccess: () => {
@@ -842,6 +960,7 @@ export default function AppPage() {
         savingsGoal,
         usdExchangeRate,
         salaryPaymentDay: parsedSalaryDay,
+        lastSalaryConfirmedAt,
       },
       {
         onSuccess: () => {
@@ -855,6 +974,60 @@ export default function AppPage() {
     )
   }
 
+  const handleConfirmSalaryPayment = () => {
+    upsertFamilyFinanceMutation.mutate(
+      {
+        monthlyIncome,
+        savingsGoal,
+        usdExchangeRate,
+        salaryPaymentDay,
+        lastSalaryConfirmedAt: new Date().toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setManualSalaryConfirmationOpen(false)
+          setDismissedSalaryPromptDate(todayPromptKey)
+          closeFamilyMenu()
+          showToast('Cobro confirmado. El ciclo financiero fue actualizado.')
+        },
+        onError: (error: unknown) => {
+          showToast(getErrorMessage(error, 'No se pudo confirmar el cobro.'))
+        },
+      },
+    )
+  }
+
+  const openSalaryConfirmationPrompt = () => {
+    closeFamilyMenu()
+
+    if (!isSalaryPendingConfirmation) {
+      showToast('El cobro de este ciclo ya está confirmado.')
+      return
+    }
+
+    setManualSalaryConfirmationOpen(true)
+  }
+
+  const handleResetMonthlyHistory = () => {
+    const shouldClear = window.confirm(
+      'Se van a borrar todos los gastos cargados de la familia. Esta acción no se puede deshacer. ¿Continuar?',
+    )
+
+    if (!shouldClear) {
+      return
+    }
+
+    clearFamilyExpensesMutation.mutate(undefined, {
+      onSuccess: () => {
+        setMonthlyHistoryModalOpen(false)
+        showToast('Data reiniciada. El cálculo vuelve a empezar desde este mes.')
+      },
+      onError: (error: unknown) => {
+        showToast(getErrorMessage(error, 'No se pudo limpiar la data de gastos.'))
+      },
+    })
+  }
+
   if (!familyId) {
     return null
   }
@@ -863,6 +1036,7 @@ export default function AppPage() {
     createExpenseMutation.isPending ||
     updateExpenseMutation.isPending ||
     deleteExpenseMutation.isPending ||
+    clearFamilyExpensesMutation.isPending ||
     createCategoryMutation.isPending ||
     renameCategoryMutation.isPending ||
     deleteCategoryMutation.isPending ||
@@ -909,19 +1083,15 @@ export default function AppPage() {
             >
               <div className="pay-countdown-shell" style={payTimelineStyles}>
                 <div className="pay-countdown-top">
-                  <p className="pay-countdown-label">Cuenta regresiva sueldo</p>
-                  <p className="pay-countdown-days">
-                    {daysUntilNextPay} {daysUntilNextPay === 1 ? 'día' : 'días'}
-                  </p>
+                  <p className="pay-countdown-label">{payCountdownLabel}</p>
+                  <p className="pay-countdown-days">{payCountdownDaysLabel}</p>
                 </div>
 
                 <div className="pay-countdown-track" role="presentation">
                   <span className="pay-countdown-fill" style={{ width: payCountdownFillWidth }} />
                 </div>
 
-                <p className="pay-countdown-meta">
-                  Próximo cobro: {nextPayDateLabel} · Ciclo: {cycleRangeLabel}
-                </p>
+                <p className="pay-countdown-meta">{payCountdownMeta}</p>
               </div>
 
               <p className="overview-liquid-kicker">Total general</p>
@@ -1240,6 +1410,25 @@ export default function AppPage() {
             >
               <IonIcon icon={calendarOutline} slot="start" />
               <IonLabel>Día de cobro</IonLabel>
+            </IonItem>
+
+            {isSalaryPendingConfirmation ? (
+              <IonItem button detail={false} onClick={openSalaryConfirmationPrompt}>
+                <IonIcon icon={cashOutline} slot="start" />
+                <IonLabel>Confirmar cobro</IonLabel>
+              </IonItem>
+            ) : null}
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                setMonthlyHistoryModalOpen(true)
+              }}
+            >
+              <IonIcon icon={statsChartOutline} slot="start" />
+              <IonLabel>Resultados mensuales</IonLabel>
             </IonItem>
 
             <IonItem
@@ -1576,6 +1765,32 @@ export default function AppPage() {
         ]}
       />
 
+      <IonAlert
+        isOpen={isSalaryConfirmationAlertOpen}
+        onDidDismiss={() => {
+          setManualSalaryConfirmationOpen(false)
+          if (isSalaryPendingConfirmation) {
+            setDismissedSalaryPromptDate(todayPromptKey)
+          }
+        }}
+        backdropDismiss={!isBusy}
+        header="Cobraste?"
+        message="Si confirmás, el ciclo financiero avanza al nuevo cobro. Si todavía no, te lo vamos a volver a recordar."
+        buttons={[
+          {
+            text: 'Todavía no',
+            role: 'cancel',
+          },
+          {
+            text: 'Sí, confirmar',
+            handler: () => {
+              handleConfirmSalaryPayment()
+              return false
+            },
+          },
+        ]}
+      />
+
       <IonModal
         className="content-fit-modal"
         isOpen={Boolean(financeEditorMetric)}
@@ -1736,6 +1951,126 @@ export default function AppPage() {
               onClick={handleSaveSalaryDay}
             >
               Guardar día de cobro
+            </IonButton>
+          </div>
+        </div>
+      </IonModal>
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={isMonthlyHistoryModalOpen}
+        onDidDismiss={() => setMonthlyHistoryModalOpen(false)}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Resultados mensuales</p>
+            <IonButton fill="clear" onClick={() => setMonthlyHistoryModalOpen(false)}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="monthly-history-shell">
+            <p className="monthly-history-note">
+              Últimos 6 meses (incluye mes vigente). El ahorro se estima con ingreso y objetivo
+              actuales.
+            </p>
+
+            <div className="monthly-history-summary-grid">
+              <div className="monthly-history-summary-card">
+                <span className="monthly-history-summary-label">Ahorro acumulado</span>
+                <strong className="monthly-history-summary-value is-saved">
+                  {currencyFormatter.format(monthlyHistoryTotals.totalSaved)}
+                </strong>
+              </div>
+
+              <div className="monthly-history-summary-card">
+                <span className="monthly-history-summary-label">Gasto acumulado</span>
+                <strong className="monthly-history-summary-value is-spent">
+                  {currencyFormatter.format(monthlyHistoryTotals.totalSpent)}
+                </strong>
+              </div>
+            </div>
+
+            {monthlyHistoryQuery.isLoading ? (
+              <div className="loading-row">
+                <IonSpinner name="crescent" />
+              </div>
+            ) : null}
+
+            {!monthlyHistoryQuery.isLoading && monthlyHistoryQuery.error ? (
+              <p className="monthly-history-empty">No se pudo cargar el historial mensual.</p>
+            ) : null}
+
+            {!monthlyHistoryQuery.isLoading &&
+            !monthlyHistoryQuery.error &&
+            monthlyHistory.length === 0 ? (
+              <p className="monthly-history-empty">Todavía no hay movimientos en meses anteriores.</p>
+            ) : null}
+
+            {!monthlyHistoryQuery.isLoading &&
+            !monthlyHistoryQuery.error &&
+            monthlyHistory.length > 0 ? (
+              <div className="monthly-history-list">
+                {monthlyHistory.map((row) => (
+                  <article className="monthly-history-card" key={row.monthStartIso}>
+                    <div className="monthly-history-card-top">
+                      <p className="monthly-history-month">{row.monthLabel}</p>
+                      <span
+                        className={`monthly-history-balance-chip${
+                          row.endBalance < 0 ? ' is-negative' : ' is-positive'
+                        }`}
+                      >
+                        {row.endBalance < 0 ? 'Cierre en rojo' : 'Cierre positivo'}
+                      </span>
+                    </div>
+
+                    <div className="monthly-history-grid">
+                      <div className="monthly-history-metric">
+                        <span className="monthly-history-label">Total gastado</span>
+                        <strong className="monthly-history-value is-spent">
+                          {currencyFormatter.format(row.spent)}
+                        </strong>
+                      </div>
+
+                      <div className="monthly-history-metric">
+                        <span className="monthly-history-label">Total ahorrado</span>
+                        <strong className="monthly-history-value is-saved">
+                          {currencyFormatter.format(row.saved)}
+                        </strong>
+                      </div>
+
+                      <div className="monthly-history-metric">
+                        <span className="monthly-history-label">Ahorro objetivo gastado</span>
+                        <strong className="monthly-history-value is-spent-soft">
+                          {currencyFormatter.format(row.goalSpent)}
+                        </strong>
+                      </div>
+
+                      <div className="monthly-history-metric">
+                        <span className="monthly-history-label">Balance final</span>
+                        <strong
+                          className={`monthly-history-value${
+                            row.endBalance < 0 ? ' is-negative' : ' is-positive'
+                          }`}
+                        >
+                          {currencyFormatter.format(row.endBalance)}
+                        </strong>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            <IonButton
+              className="monthly-history-reset-button"
+              color="danger"
+              disabled={isBusy}
+              expand="block"
+              fill="outline"
+              onClick={handleResetMonthlyHistory}
+            >
+              Limpiar data y reiniciar desde mes vigente
             </IonButton>
           </div>
         </div>

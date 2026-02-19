@@ -76,6 +76,7 @@ create table if not exists public.family_finance (
   savings_goal numeric(12,2) not null default 0 check (savings_goal >= 0),
   usd_exchange_rate numeric(12,4) not null default 1000 check (usd_exchange_rate > 0),
   salary_payment_day smallint not null default 1 check (salary_payment_day between 1 and 31),
+  last_salary_confirmed_at timestamptz null,
   updated_at timestamptz not null default now()
 );
 
@@ -93,6 +94,23 @@ begin
   ) then
     alter table public.categories
       add column color text not null default public.random_category_color();
+  end if;
+exception
+  when duplicate_column then null;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'family_finance'
+      and column_name = 'last_salary_confirmed_at'
+  ) then
+    alter table public.family_finance
+      add column last_salary_confirmed_at timestamptz null;
   end if;
 exception
   when duplicate_column then null;

@@ -7,6 +7,7 @@ interface FinanceStoragePayload {
   savings_goal: number
   usd_exchange_rate: number
   salary_payment_day: number
+  last_salary_confirmed_at: string | null
 }
 
 export interface FamilyFinance extends FinanceStoragePayload {
@@ -47,6 +48,13 @@ function isMissingSalaryPaymentDayColumnError(error: PostgrestError): boolean {
   return MISSING_COLUMN_CODES.has(code) && text.includes('salary_payment_day')
 }
 
+function isMissingLastSalaryConfirmedAtColumnError(error: PostgrestError): boolean {
+  const code = error.code ?? ''
+  const text = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+
+  return MISSING_COLUMN_CODES.has(code) && text.includes('last_salary_confirmed_at')
+}
+
 function readFallbackFinance(familyId: string): FinanceStoragePayload {
   if (typeof window === 'undefined') {
     return {
@@ -54,6 +62,7 @@ function readFallbackFinance(familyId: string): FinanceStoragePayload {
       savings_goal: 0,
       usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
       salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
+      last_salary_confirmed_at: null,
     }
   }
 
@@ -64,6 +73,7 @@ function readFallbackFinance(familyId: string): FinanceStoragePayload {
       savings_goal: 0,
       usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
       salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
+      last_salary_confirmed_at: null,
     }
   }
 
@@ -83,6 +93,11 @@ function readFallbackFinance(familyId: string): FinanceStoragePayload {
         Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
           ? salaryPaymentDay
           : DEFAULT_SALARY_PAYMENT_DAY,
+      last_salary_confirmed_at:
+        typeof parsed.last_salary_confirmed_at === 'string' &&
+        parsed.last_salary_confirmed_at.trim() !== ''
+          ? parsed.last_salary_confirmed_at
+          : null,
     }
   } catch {
     return {
@@ -90,6 +105,7 @@ function readFallbackFinance(familyId: string): FinanceStoragePayload {
       savings_goal: 0,
       usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
       salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
+      last_salary_confirmed_at: null,
     }
   }
 }
@@ -115,6 +131,7 @@ export function useFamilyFinance(familyId?: string) {
           savings_goal: 0,
           usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
           salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
+          last_salary_confirmed_at: null,
           source: 'fallback',
         }
       }
@@ -161,6 +178,11 @@ export function useFamilyFinance(familyId?: string) {
           Number(data.salary_payment_day) <= 31
             ? Number(data.salary_payment_day)
             : DEFAULT_SALARY_PAYMENT_DAY,
+        last_salary_confirmed_at:
+          typeof data.last_salary_confirmed_at === 'string' &&
+          data.last_salary_confirmed_at.trim() !== ''
+            ? data.last_salary_confirmed_at
+            : null,
         source: 'supabase',
       }
     },
@@ -172,6 +194,7 @@ interface UpsertFamilyFinanceInput {
   savingsGoal: number
   usdExchangeRate: number
   salaryPaymentDay: number
+  lastSalaryConfirmedAt: string | null
 }
 
 export function useUpsertFamilyFinance(familyId?: string) {
@@ -183,6 +206,7 @@ export function useUpsertFamilyFinance(familyId?: string) {
       savingsGoal,
       usdExchangeRate,
       salaryPaymentDay,
+      lastSalaryConfirmedAt,
     }: UpsertFamilyFinanceInput) => {
       if (!familyId) {
         throw new Error('No hay familia activa para guardar métricas financieras.')
@@ -204,56 +228,51 @@ export function useUpsertFamilyFinance(familyId?: string) {
         )
       }
 
+      if (
+        lastSalaryConfirmedAt !== null &&
+        (typeof lastSalaryConfirmedAt !== 'string' ||
+          Number.isNaN(new Date(lastSalaryConfirmedAt).getTime()))
+      ) {
+        throw new Error('La fecha de confirmación de cobro es inválida.')
+      }
+
       const payload: FinanceStoragePayload = {
         monthly_income: monthlyIncome,
         savings_goal: savingsGoal,
         usd_exchange_rate: usdExchangeRate,
         salary_payment_day: salaryPaymentDay,
+        last_salary_confirmed_at: lastSalaryConfirmedAt,
       }
 
       writeFallbackFinance(familyId, payload)
 
-      const { error: fullError } = await supabase.from('family_finance').upsert(
-        {
-          family_id: familyId,
-          ...payload,
-        },
-        {
-          onConflict: 'family_id',
-        },
-      )
+      const upsertBody: Record<string, unknown> = {
+        family_id: familyId,
+        ...payload,
+      }
 
-      let upsertError = fullError
+      const runUpsert = async (body: Record<string, unknown>) => {
+        const { error } = await supabase.from('family_finance').upsert(body, {
+          onConflict: 'family_id',
+        })
+        return error
+      }
+
+      let upsertError = await runUpsert(upsertBody)
+
+      if (upsertError && isMissingLastSalaryConfirmedAtColumnError(upsertError)) {
+        delete upsertBody.last_salary_confirmed_at
+        upsertError = await runUpsert(upsertBody)
+      }
 
       if (upsertError && isMissingSalaryPaymentDayColumnError(upsertError)) {
-        const { error: noSalaryError } = await supabase.from('family_finance').upsert(
-          {
-            family_id: familyId,
-            monthly_income: monthlyIncome,
-            savings_goal: savingsGoal,
-            usd_exchange_rate: usdExchangeRate,
-          },
-          {
-            onConflict: 'family_id',
-          },
-        )
-
-        upsertError = noSalaryError
+        delete upsertBody.salary_payment_day
+        upsertError = await runUpsert(upsertBody)
       }
 
       if (upsertError && isMissingUsdExchangeRateColumnError(upsertError)) {
-        const { error: legacyError } = await supabase.from('family_finance').upsert(
-          {
-            family_id: familyId,
-            monthly_income: monthlyIncome,
-            savings_goal: savingsGoal,
-          },
-          {
-            onConflict: 'family_id',
-          },
-        )
-
-        upsertError = legacyError
+        delete upsertBody.usd_exchange_rate
+        upsertError = await runUpsert(upsertBody)
       }
 
       if (upsertError) {
