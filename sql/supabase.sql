@@ -4,6 +4,30 @@
 
 create extension if not exists pgcrypto;
 
+create or replace function public.random_category_color()
+returns text
+language sql
+volatile
+set search_path = public
+as $$
+  select (
+    array[
+      '#89C8F7',
+      '#7EE3D4',
+      '#95E38E',
+      '#CBEA7A',
+      '#F4D87E',
+      '#FFBF8A',
+      '#FFA3A6',
+      '#F6A3D1',
+      '#C7AEFF',
+      '#AEBBFF',
+      '#8FD9E8',
+      '#9DE7C8'
+    ]
+  )[1 + floor(random() * 12)::int];
+$$;
+
 -- -----------------------
 -- Tables
 -- -----------------------
@@ -25,6 +49,7 @@ create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families(id) on delete cascade,
   name text not null,
+  color text not null default public.random_category_color(),
   created_at timestamptz not null default now(),
   unique (family_id, name)
 );
@@ -50,12 +75,93 @@ create table if not exists public.family_finance (
   monthly_income numeric(12,2) not null default 0 check (monthly_income >= 0),
   savings_goal numeric(12,2) not null default 0 check (savings_goal >= 0),
   usd_exchange_rate numeric(12,4) not null default 1000 check (usd_exchange_rate > 0),
+  salary_payment_day smallint not null default 1 check (salary_payment_day between 1 and 31),
   updated_at timestamptz not null default now()
 );
 
 -- -----------------------
 -- Compatibility guards (important when tables already existed)
 -- -----------------------
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'categories'
+      and column_name = 'color'
+  ) then
+    alter table public.categories
+      add column color text not null default public.random_category_color();
+  end if;
+exception
+  when duplicate_column then null;
+end;
+$$;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'categories'
+      and column_name = 'color'
+  ) then
+    update public.categories
+    set color = public.random_category_color()
+    where color is null
+       or btrim(color) = ''
+       or upper(color) in (
+         '#0EA5E9',
+         '#14B8A6',
+         '#22C55E',
+         '#84CC16',
+         '#EAB308',
+         '#F97316',
+         '#EF4444',
+         '#EC4899',
+         '#8B5CF6',
+         '#6366F1',
+         '#06B6D4',
+         '#10B981',
+         '#7FA8C9',
+         '#7FB8B2',
+         '#8FB68C',
+         '#B4BE8A',
+         '#C7B38A',
+         '#C89D84',
+         '#C98B8B',
+         '#C48FAE',
+         '#A596C7',
+         '#8F9DCB',
+         '#7FAFBE',
+         '#88B79F',
+         '#8EBFE2',
+         '#8FCFC7',
+         '#9DCD9B',
+         '#C2D693',
+         '#D9C78F',
+         '#DEB08E',
+         '#DEA0A0',
+         '#D6A1C0',
+         '#B7A9DD',
+         '#A5B4DF',
+         '#92C7D5',
+         '#9CCFB6'
+       );
+
+    alter table public.categories
+      alter column color set default public.random_category_color();
+
+    alter table public.categories
+      alter column color set not null;
+  end if;
+exception
+  when undefined_column then null;
+end;
+$$;
+
 do $$
 begin
   if not exists (
@@ -91,6 +197,23 @@ begin
   ) then
     alter table public.family_finance
       add column usd_exchange_rate numeric(12,4) not null default 1000 check (usd_exchange_rate > 0);
+  end if;
+exception
+  when duplicate_column then null;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'family_finance'
+      and column_name = 'salary_payment_day'
+  ) then
+    alter table public.family_finance
+      add column salary_payment_day smallint not null default 1 check (salary_payment_day between 1 and 31);
   end if;
 exception
   when duplicate_column then null;

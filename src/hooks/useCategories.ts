@@ -1,10 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+
+const CATEGORY_FALLBACK_COLORS = [
+  '#89C8F7',
+  '#7EE3D4',
+  '#95E38E',
+  '#CBEA7A',
+  '#F4D87E',
+  '#FFBF8A',
+  '#FFA3A6',
+  '#F6A3D1',
+  '#C7AEFF',
+  '#AEBBFF',
+  '#8FD9E8',
+  '#9DE7C8',
+]
+
+const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])
+
+interface RawCategory {
+  id: string
+  family_id: string
+  name: string
+  color?: string | null
+  created_at: string
+}
+
+function isMissingCategoryColorColumnError(error: PostgrestError): boolean {
+  const code = error.code ?? ''
+  const text = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+
+  return MISSING_COLUMN_CODES.has(code) && text.includes('color')
+}
+
+function fallbackCategoryColor(categoryId: string): string {
+  let hash = 0
+  for (let index = 0; index < categoryId.length; index += 1) {
+    hash = (hash * 31 + categoryId.charCodeAt(index)) | 0
+  }
+
+  return CATEGORY_FALLBACK_COLORS[Math.abs(hash) % CATEGORY_FALLBACK_COLORS.length]
+}
 
 export interface Category {
   id: string
   family_id: string
   name: string
+  color: string
   created_at: string
 }
 
@@ -21,15 +64,38 @@ export function useCategories(familyId?: string) {
 
       const { data, error } = await supabase
         .from('categories')
-        .select('id, family_id, name, created_at')
+        .select('id, family_id, name, color, created_at')
         .eq('family_id', familyId)
         .order('created_at', { ascending: true })
 
       if (error) {
+        if (isMissingCategoryColorColumnError(error)) {
+          const fallbackResponse = await supabase
+            .from('categories')
+            .select('id, family_id, name, created_at')
+            .eq('family_id', familyId)
+            .order('created_at', { ascending: true })
+
+          if (fallbackResponse.error) {
+            throw fallbackResponse.error
+          }
+
+          return ((fallbackResponse.data as RawCategory[] | null) ?? []).map((category) => ({
+            ...category,
+            color: fallbackCategoryColor(category.id),
+          }))
+        }
+
         throw error
       }
 
-      return data ?? []
+      return ((data as RawCategory[] | null) ?? []).map((category) => ({
+        ...category,
+        color:
+          typeof category.color === 'string' && category.color.trim() !== ''
+            ? category.color
+            : fallbackCategoryColor(category.id),
+      }))
     },
   })
 }

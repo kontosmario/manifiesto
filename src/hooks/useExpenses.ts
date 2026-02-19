@@ -33,6 +33,12 @@ export const expensesQueryKey = (familyId?: string, categoryId?: string) =>
 export const familyTotalQueryKey = (familyId?: string) =>
   ['expenses-total', familyId] as const
 
+export const familyPeriodTotalQueryKey = (
+  familyId?: string,
+  startIso?: string,
+  endIso?: string,
+) => ['expenses-period-total', familyId, startIso, endIso] as const
+
 export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
     queryKey: expensesQueryKey(familyId, categoryId),
@@ -104,6 +110,31 @@ export function useFamilyTotal(familyId?: string) {
   })
 }
 
+export function useFamilyPeriodTotal(familyId?: string, startIso?: string, endIso?: string) {
+  return useQuery<number>({
+    queryKey: familyPeriodTotalQueryKey(familyId, startIso, endIso),
+    enabled: Boolean(familyId && startIso && endIso),
+    queryFn: async () => {
+      if (!familyId || !startIso || !endIso) {
+        return 0
+      }
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('price')
+        .eq('family_id', familyId)
+        .gte('created_at', startIso)
+        .lt('created_at', endIso)
+
+      if (error) {
+        throw error
+      }
+
+      return (data ?? []).reduce((sum, row) => sum + Number(row.price ?? 0), 0)
+    },
+  })
+}
+
 interface CreateExpenseInput {
   categoryId: string
   description: string
@@ -144,6 +175,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
       ])
     },
   })
@@ -190,6 +222,7 @@ export function useUpdateExpense(familyId?: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
       ])
     },
   })
@@ -218,6 +251,7 @@ export function useDeleteExpense(familyId?: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
       ])
     },
   })

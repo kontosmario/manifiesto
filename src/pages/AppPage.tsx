@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   IonAlert,
   IonButton,
@@ -21,16 +21,19 @@ import {
 } from '@ionic/react'
 import {
   addOutline,
+  calendarOutline,
   cashOutline,
   copyOutline,
   ellipsisVerticalOutline,
   createOutline,
   logOutOutline,
   menuOutline,
-  peopleCircleOutline,
   pencilOutline,
   removeCircle,
+  shieldCheckmarkOutline,
+  trendingUpOutline,
   trashOutline,
+  walletOutline,
 } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
 import { useAuthSession } from '../hooks/useAuthSession'
@@ -45,11 +48,13 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useExpenses,
+  useFamilyPeriodTotal,
   useFamilyTotal,
   useUpdateExpense,
   type Expense,
 } from '../hooks/useExpenses'
 import {
+  DEFAULT_SALARY_PAYMENT_DAY,
   DEFAULT_USD_EXCHANGE_RATE,
   useFamilyFinance,
   useUpsertFamilyFinance,
@@ -94,8 +99,68 @@ const integerInputFormatter = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
+const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: 'short',
+})
+
 type MoneyCurrency = 'ARS' | 'USD'
 type FinanceEditorMetric = 'income' | 'savings'
+
+interface PayCycle {
+  start: Date
+  end: Date
+  weeks: number
+  days: number
+}
+
+function normalizeToStartOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function moveToNextBusinessDay(date: Date): Date {
+  const next = normalizeToStartOfDay(date)
+
+  while (next.getDay() === 0 || next.getDay() === 6) {
+    next.setDate(next.getDate() + 1)
+  }
+
+  return next
+}
+
+function buildPayDate(year: number, month: number, paymentDay: number): Date {
+  const monthLastDay = new Date(year, month + 1, 0).getDate()
+  const normalizedPaymentDay = Math.min(Math.max(1, paymentDay), monthLastDay)
+  return moveToNextBusinessDay(new Date(year, month, normalizedPaymentDay))
+}
+
+function getCurrentPayCycle(referenceDate: Date, paymentDay: number): PayCycle {
+  const today = normalizeToStartOfDay(referenceDate)
+  const currentMonthPayDate = buildPayDate(
+    today.getFullYear(),
+    today.getMonth(),
+    paymentDay,
+  )
+
+  const cycleStart =
+    today >= currentMonthPayDate
+      ? currentMonthPayDate
+      : buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
+  const cycleEnd = buildPayDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, paymentDay)
+
+  const cycleDays = Math.max(
+    1,
+    Math.round((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)),
+  )
+  const cycleWeeks = Math.max(1, Math.ceil(cycleDays / 7))
+
+  return {
+    start: cycleStart,
+    end: cycleEnd,
+    weeks: cycleWeeks,
+    days: cycleDays,
+  }
+}
 
 function normalizePriceInput(rawValue: string): string {
   const cleaned = rawValue.replace(/[^\d.,]/g, '')
@@ -189,6 +254,58 @@ function formatUsdFromArs(arsValue: number, usdExchangeRate: number): string {
   return usdFormatter.format(arsValue / usdExchangeRate)
 }
 
+function normalizeHexColor(color: string): string {
+  return /^#[0-9A-Fa-f]{6}$/.test(color) ? color : '#126782'
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeHexColor(hex)
+  const value = normalized.slice(1)
+
+  const r = Number.parseInt(value.slice(0, 2), 16)
+  const g = Number.parseInt(value.slice(2, 4), 16)
+  const b = Number.parseInt(value.slice(4, 6), 16)
+
+  if (![r, g, b].every(Number.isFinite)) {
+    return null
+  }
+
+  return { r, g, b }
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) {
+    return `rgba(18, 103, 130, ${alpha})`
+  }
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+}
+
+function shiftHexColor(hex: string, amount: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) {
+    return '#126782'
+  }
+
+  const shift = (value: number) => Math.max(0, Math.min(255, value + amount))
+  const toHex = (value: number) => value.toString(16).padStart(2, '0')
+
+  return `#${toHex(shift(rgb.r))}${toHex(shift(rgb.g))}${toHex(shift(rgb.b))}`
+}
+
+function buildCategoryTabStyle(color: string): CSSProperties {
+  const accent = normalizeHexColor(color)
+
+  return {
+    '--category-tab-border': hexToRgba(accent, 0.24),
+    '--category-tab-bg': hexToRgba(accent, 0.1),
+    '--category-tab-active-start': shiftHexColor(accent, -4),
+    '--category-tab-active-end': shiftHexColor(accent, -16),
+    '--category-tab-shadow': hexToRgba(accent, 0.24),
+  } as CSSProperties
+}
+
 function convertCurrencyAmount(
   amount: number,
   fromCurrency: MoneyCurrency,
@@ -243,11 +360,23 @@ export default function AppPage() {
 
     return selectedStillExists ? categorySelection : categories[0].id
   }, [categories, categorySelection])
+  const activeCategoryColor = useMemo(() => {
+    const activeCategory = categories.find((category) => category.id === selectedCategoryId)
+    return activeCategory?.color ?? categories[0]?.color ?? '#7FA8C9'
+  }, [categories, selectedCategoryId])
 
   const expensesQuery = useExpenses(familyId, selectedCategoryId || undefined)
   const expenses = expensesQuery.data ?? EMPTY_EXPENSES
   const familyTotalQuery = useFamilyTotal(familyId)
   const familyFinanceQuery = useFamilyFinance(familyId)
+  const salaryPaymentDay =
+    familyFinanceQuery.data?.salary_payment_day ?? DEFAULT_SALARY_PAYMENT_DAY
+  const payCycle = getCurrentPayCycle(new Date(), salaryPaymentDay)
+  const familyPeriodTotalQuery = useFamilyPeriodTotal(
+    familyId,
+    payCycle.start.toISOString(),
+    payCycle.end.toISOString(),
+  )
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
 
   const createExpenseMutation = useCreateExpense(familyId, userId)
@@ -281,6 +410,8 @@ export default function AppPage() {
   const [isUsdRateModalOpen, setUsdRateModalOpen] = useState(false)
   const [usdRateInput, setUsdRateInput] = useState('')
   const [isUsdRateInputFocused, setUsdRateInputFocused] = useState(false)
+  const [isSalaryDayModalOpen, setSalaryDayModalOpen] = useState(false)
+  const [salaryDayInput, setSalaryDayInput] = useState('')
   const [familyMenuEvent, setFamilyMenuEvent] = useState<Event | undefined>()
   const [expenseMenuEvent, setExpenseMenuEvent] = useState<Event | undefined>()
   const [expenseMenuTarget, setExpenseMenuTarget] = useState<Expense | null>(null)
@@ -296,6 +427,87 @@ export default function AppPage() {
   const savingsGoal = familyFinanceQuery.data?.savings_goal ?? 0
   const usdExchangeRate =
     familyFinanceQuery.data?.usd_exchange_rate ?? DEFAULT_USD_EXCHANGE_RATE
+  const spentInCurrentCycle = familyPeriodTotalQuery.data ?? 0
+  const cycleBalanceBeforeSavings = monthlyIncome - savingsGoal - spentInCurrentCycle
+  const savingsSpent = Math.min(savingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
+  const savingsRemaining = Math.max(0, savingsGoal - savingsSpent)
+  const savingsSpentPercent =
+    savingsGoal > 0 ? Math.round((savingsSpent / savingsGoal) * 100) : 0
+  const totalAvailable = cycleBalanceBeforeSavings + savingsSpent
+  const weeklyAvailable = payCycle.weeks > 0 ? totalAvailable / payCycle.weeks : totalAvailable
+  const weeklyShare =
+    totalAvailable > 0 && weeklyAvailable > 0
+      ? weeklyAvailable / Math.max(totalAvailable, Number.EPSILON)
+      : 0
+  const profileInsight = useMemo(() => {
+    const spectrum = [
+      {
+        tone: 'alert' as const,
+        badge: 'Gastador',
+        message: 'Ajuste total ahora.',
+      },
+      {
+        tone: 'alert' as const,
+        badge: 'Derrochador',
+        message: 'Recortá gastos hoy.',
+      },
+      {
+        tone: 'warning' as const,
+        badge: 'Impulsivo',
+        message: 'Controlá cada compra.',
+      },
+      {
+        tone: 'warning' as const,
+        badge: 'Variable',
+        message: 'Evitá impulsos esta semana.',
+      },
+      {
+        tone: 'steady' as const,
+        badge: 'Equilibrado',
+        message: 'Buen control, sostenelo.',
+      },
+      {
+        tone: 'steady' as const,
+        badge: 'Cauto',
+        message: 'Vas más liviano.',
+      },
+      {
+        tone: 'boost' as const,
+        badge: 'Ordenado',
+        message: 'Muy buen manejo.',
+      },
+      {
+        tone: 'boost' as const,
+        badge: 'Ahorrista',
+        message: 'Excelente disciplina.',
+      },
+    ] as const
+
+    const plannedAvailable = monthlyIncome - savingsGoal
+    const availabilityRatio =
+      plannedAvailable > 0 ? totalAvailable / plannedAvailable : totalAvailable > 0 ? 1 : 0
+    const cadenceRatio =
+      Number.isFinite(weeklyShare) && weeklyShare > 0 ? Math.min(1, weeklyShare / 0.3) : 0
+    const blendedScore = availabilityRatio * 0.82 + cadenceRatio * 0.18
+    const normalizedScore = Math.min(1, Math.max(0, (blendedScore + 0.25) / 1.2))
+    const levelIndex = Math.min(7, Math.max(0, Math.round(normalizedScore * 7)))
+    const selected = spectrum[levelIndex]
+
+    return selected
+  }, [monthlyIncome, savingsGoal, totalAvailable, weeklyShare])
+  const todayDate = normalizeToStartOfDay(new Date())
+  const daysUntilNextPay = Math.max(
+    0,
+    Math.round((payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)),
+  )
+  const payCycleProgress = Math.min(
+    1,
+    Math.max(0, 1 - daysUntilNextPay / Math.max(1, payCycle.days)),
+  )
+  const payCountdownHue = Math.round(6 + payCycleProgress * 126)
+  const payCountdownTone = `hsl(${payCountdownHue} 70% 42%)`
+  const payCountdownSurface = `hsl(${payCountdownHue} 84% 94%)`
+  const payCountdownFillWidth = `${Math.max(8, Math.round(payCycleProgress * 100))}%`
 
   const newPriceDisplay = formatPriceInputValue(newPrice, isNewPriceFocused)
   const editingPriceDisplay = formatPriceInputValue(editingPrice, isEditingPriceFocused)
@@ -305,6 +517,21 @@ export default function AppPage() {
     financeEditorCurrency,
   )
   const usdRateInputDisplay = formatPriceInputValue(usdRateInput, isUsdRateInputFocused)
+  const cycleRangeLabel = `${shortDateFormatter.format(payCycle.start)} - ${shortDateFormatter.format(
+    payCycle.end,
+  )}`
+  const nextPayDateLabel = shortDateFormatter.format(payCycle.end)
+  const payTimelineStyles = {
+    '--pay-countdown-tone': payCountdownTone,
+    '--pay-countdown-surface': payCountdownSurface,
+  } as CSSProperties
+  const appThemeStyles = {
+    '--app-bg-start': hexToRgba(activeCategoryColor, 0.2),
+    '--app-bg-mid': hexToRgba(activeCategoryColor, 0.1),
+    '--app-bg-end': '#f6f7f8',
+    '--app-toolbar-bg': hexToRgba(activeCategoryColor, 0.16),
+    '--app-title-color': shiftHexColor(activeCategoryColor, -34),
+  } as CSSProperties
 
   useEffect(() => {
     if (!selectedCategoryId) {
@@ -479,6 +706,16 @@ export default function AppPage() {
     setUsdRateModalOpen(true)
   }
 
+  const closeSalaryDayModal = () => {
+    setSalaryDayModalOpen(false)
+    setSalaryDayInput('')
+  }
+
+  const openSalaryDayModal = () => {
+    setSalaryDayInput(String(salaryPaymentDay))
+    setSalaryDayModalOpen(true)
+  }
+
   const openFinanceEditor = (metric: FinanceEditorMetric) => {
     const arsAmount = metric === 'income' ? monthlyIncome : savingsGoal
 
@@ -541,6 +778,7 @@ export default function AppPage() {
         monthlyIncome: nextMonthlyIncome,
         savingsGoal: nextSavingsGoal,
         usdExchangeRate,
+        salaryPaymentDay,
       },
       {
         onSuccess: () => {
@@ -577,6 +815,7 @@ export default function AppPage() {
         monthlyIncome,
         savingsGoal,
         usdExchangeRate: parsedRate,
+        salaryPaymentDay,
       },
       {
         onSuccess: () => {
@@ -585,6 +824,32 @@ export default function AppPage() {
         },
         onError: (error: unknown) => {
           showToast(getErrorMessage(error, 'No se pudo guardar la cotización de dólar.'))
+        },
+      },
+    )
+  }
+
+  const handleSaveSalaryDay = () => {
+    const parsedSalaryDay = Number.parseInt(salaryDayInput.replace(/[^\d]/g, ''), 10)
+    if (!Number.isInteger(parsedSalaryDay) || parsedSalaryDay < 1 || parsedSalaryDay > 31) {
+      showToast('Ingresá un día de cobro válido (1 a 31).')
+      return
+    }
+
+    upsertFamilyFinanceMutation.mutate(
+      {
+        monthlyIncome,
+        savingsGoal,
+        usdExchangeRate,
+        salaryPaymentDay: parsedSalaryDay,
+      },
+      {
+        onSuccess: () => {
+          closeSalaryDayModal()
+          showToast('Día de cobro actualizado.')
+        },
+        onError: (error: unknown) => {
+          showToast(getErrorMessage(error, 'No se pudo guardar el día de cobro.'))
         },
       },
     )
@@ -605,10 +870,10 @@ export default function AppPage() {
     upsertFamilyFinanceMutation.isPending
 
   return (
-    <IonPage>
+    <IonPage style={appThemeStyles}>
       <IonHeader translucent>
-        <IonToolbar>
-          <IonTitle>Gastos Familia</IonTitle>
+        <IonToolbar className="app-main-toolbar">
+          <IonTitle className="app-main-title">Gastos Familia</IonTitle>
           <IonButtons slot="end">
             <IonButton
               aria-label="Abrir menú de familia"
@@ -620,17 +885,12 @@ export default function AppPage() {
         </IonToolbar>
 
         <IonToolbar className="family-toolbar">
-          <div className="family-header-card">
-            <div className="family-header-row">
-              <div className="family-user-row">
-                <IonIcon className="family-header-icon" icon={peopleCircleOutline} />
-                <div>
-                  <p className="family-header-label">Familia compartida</p>
-                  <p className="family-header-user">{displayName}</p>
-                </div>
-              </div>
-              <span className="code-pill">{familyCode}</span>
+          <div className={`family-header-card family-header-card--${profileInsight.tone}`}>
+            <div className="family-header-top-row">
+              <p className="family-header-user family-header-user--solo">{displayName}</p>
+              <span className="family-header-badge">{profileInsight.badge}</span>
             </div>
+            <p className="family-header-message">{profileInsight.message}</p>
           </div>
         </IonToolbar>
       </IonHeader>
@@ -640,9 +900,30 @@ export default function AppPage() {
           <div className="overview-liquid-shell">
             <div
               className={`overview-liquid-card${
-                familyTotalQuery.isLoading || familyFinanceQuery.isLoading ? ' is-loading' : ''
+                familyTotalQuery.isLoading ||
+                familyFinanceQuery.isLoading ||
+                familyPeriodTotalQuery.isLoading
+                  ? ' is-loading'
+                  : ''
               }`}
             >
+              <div className="pay-countdown-shell" style={payTimelineStyles}>
+                <div className="pay-countdown-top">
+                  <p className="pay-countdown-label">Cuenta regresiva sueldo</p>
+                  <p className="pay-countdown-days">
+                    {daysUntilNextPay} {daysUntilNextPay === 1 ? 'día' : 'días'}
+                  </p>
+                </div>
+
+                <div className="pay-countdown-track" role="presentation">
+                  <span className="pay-countdown-fill" style={{ width: payCountdownFillWidth }} />
+                </div>
+
+                <p className="pay-countdown-meta">
+                  Próximo cobro: {nextPayDateLabel} · Ciclo: {cycleRangeLabel}
+                </p>
+              </div>
+
               <p className="overview-liquid-kicker">Total general</p>
               <p className="overview-liquid-value">
                 {currencyFormatter.format(totalGeneral)}
@@ -652,39 +933,98 @@ export default function AppPage() {
               </p>
 
               <div className="overview-metrics-grid">
-                <button
-                  className="overview-metric-button"
-                  disabled={upsertFamilyFinanceMutation.isPending}
-                  onClick={() => openFinanceEditor('income')}
-                  type="button"
-                >
-                  <span className="overview-metric-label">Total ingreso</span>
-                  <span className="overview-metric-values">
-                    <span className="overview-metric-value">
-                      {currencyFormatter.format(monthlyIncome)}
+                <div className="overview-metrics-inline-row">
+                  <button
+                    className="overview-metric-button overview-metric-button--income is-compact"
+                    disabled={upsertFamilyFinanceMutation.isPending}
+                    onClick={() => openFinanceEditor('income')}
+                    type="button"
+                  >
+                    <span className="overview-metric-heading">
+                      <IonIcon className="overview-metric-icon" icon={trendingUpOutline} />
+                      <span className="overview-metric-label">Total ingreso</span>
                     </span>
-                    <span className="price-usd-hint">
-                      {formatUsdFromArs(monthlyIncome, usdExchangeRate)}
+                    <span className="overview-metric-values">
+                      <span className="overview-metric-value">
+                        {currencyFormatter.format(monthlyIncome)}
+                      </span>
+                      <span className="price-usd-hint">
+                        {formatUsdFromArs(monthlyIncome, usdExchangeRate)}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
 
-                <button
-                  className="overview-metric-button"
-                  disabled={upsertFamilyFinanceMutation.isPending}
-                  onClick={() => openFinanceEditor('savings')}
-                  type="button"
-                >
-                  <span className="overview-metric-label">Ahorro objetivo</span>
-                  <span className="overview-metric-values">
+                  <button
+                    className="overview-metric-button overview-metric-button--savings is-compact"
+                    disabled={upsertFamilyFinanceMutation.isPending}
+                    onClick={() => openFinanceEditor('savings')}
+                    type="button"
+                  >
+                    <span className="overview-metric-heading">
+                      <IonIcon className="overview-metric-icon" icon={shieldCheckmarkOutline} />
+                      <span className="overview-metric-label">Ahorro objetivo</span>
+                    </span>
+                    <span className="overview-metric-values">
+                      <span className="overview-metric-value">
+                        {currencyFormatter.format(savingsGoal)}
+                      </span>
+                      <span className="price-usd-hint">
+                        {formatUsdFromArs(savingsGoal, usdExchangeRate)}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+
+                {savingsSpent > 0 && (
+                  <div className="overview-metric-panel overview-metric-panel--savings-spent is-negative">
+                    <span className="overview-metric-heading">
+                      <IonIcon className="overview-metric-icon" icon={removeCircle} />
+                      <span className="overview-metric-label">Ahorro gastado</span>
+                    </span>
                     <span className="overview-metric-value">
-                      {currencyFormatter.format(savingsGoal)}
+                      {currencyFormatter.format(savingsSpent)}
                     </span>
-                    <span className="price-usd-hint">
-                      {formatUsdFromArs(savingsGoal, usdExchangeRate)}
+                    <span className="overview-metric-footnote">
+                      {savingsSpentPercent}% del objetivo · Resta{' '}
+                      {currencyFormatter.format(savingsRemaining)}
                     </span>
+                    <span className="price-usd-hint overview-metric-usd">
+                      {formatUsdFromArs(savingsSpent, usdExchangeRate)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="overview-metric-panel overview-metric-panel--available">
+                  <span className="overview-metric-heading">
+                    <IonIcon className="overview-metric-icon" icon={walletOutline} />
+                    <span className="overview-metric-label">Total disponible</span>
                   </span>
-                </button>
+                  <span className="overview-metric-value">
+                    {currencyFormatter.format(totalAvailable)}
+                  </span>
+                  <span className="overview-metric-footnote">
+                    Ciclo {cycleRangeLabel} ({payCycle.weeks} sem)
+                  </span>
+                  <span className="price-usd-hint overview-metric-usd">
+                    {formatUsdFromArs(totalAvailable, usdExchangeRate)}
+                  </span>
+                </div>
+
+                <div className="overview-metric-panel overview-metric-panel--weekly">
+                  <span className="overview-metric-heading">
+                    <IonIcon className="overview-metric-icon" icon={calendarOutline} />
+                    <span className="overview-metric-label">Disponible semanal</span>
+                  </span>
+                  <span className="overview-metric-value">
+                    {currencyFormatter.format(weeklyAvailable)}
+                  </span>
+                  <span className="overview-metric-footnote">
+                    Gasto ciclo: {currencyFormatter.format(spentInCurrentCycle)}
+                  </span>
+                  <span className="price-usd-hint overview-metric-usd">
+                    {formatUsdFromArs(weeklyAvailable, usdExchangeRate)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -724,6 +1064,7 @@ export default function AppPage() {
                           }}
                           onClick={() => setCategorySelection(category.id)}
                           role="tab"
+                          style={buildCategoryTabStyle(category.color)}
                           type="button"
                         >
                           {category.name}
@@ -887,6 +1228,18 @@ export default function AppPage() {
             >
               <IonIcon icon={cashOutline} slot="start" />
               <IonLabel>Cotización dólar</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                openSalaryDayModal()
+              }}
+            >
+              <IonIcon icon={calendarOutline} slot="start" />
+              <IonLabel>Día de cobro</IonLabel>
             </IonItem>
 
             <IonItem
@@ -1335,6 +1688,54 @@ export default function AppPage() {
               onClick={handleSaveUsdExchangeRate}
             >
               Guardar cotización
+            </IonButton>
+          </div>
+        </div>
+      </IonModal>
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={isSalaryDayModalOpen}
+        onDidDismiss={closeSalaryDayModal}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Día de cobro del sueldo</p>
+            <IonButton fill="clear" onClick={closeSalaryDayModal}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="expense-liquid-card">
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="salary-day-input">
+                Día del mes (1-31)
+              </label>
+              <IonInput
+                id="salary-day-input"
+                className="expense-liquid-input"
+                inputmode="numeric"
+                maxlength={2}
+                placeholder="Ej: 20"
+                type="text"
+                value={salaryDayInput}
+                onIonInput={(event) =>
+                  setSalaryDayInput((event.detail.value ?? '').replace(/[^\d]/g, '').slice(0, 2))
+                }
+              />
+            </div>
+
+            <p className="finance-currency-hint">
+              Si cae sábado o domingo, se pasa automáticamente al próximo día hábil.
+            </p>
+
+            <IonButton
+              className="expense-liquid-submit"
+              disabled={isBusy}
+              expand="block"
+              onClick={handleSaveSalaryDay}
+            >
+              Guardar día de cobro
             </IonButton>
           </div>
         </div>
