@@ -41,6 +41,18 @@ function normalizeEmail(rawEmail: string): string {
   return rawEmail.trim().toLowerCase()
 }
 
+function getEmailRedirectTo(): string {
+  const configuredUrl = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
+  if (configuredUrl) {
+    return configuredUrl
+  }
+
+  const baseUrl = import.meta.env.BASE_URL || '/'
+  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+
+  return `${window.location.origin}${normalizedBaseUrl}`
+}
+
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
     return error.message
@@ -94,6 +106,7 @@ export default function LoginPage() {
         email: normalizeEmail(rawEmail),
         password: rawPassword,
         options: {
+          emailRedirectTo: getEmailRedirectTo(),
           data: {
             display_name: normalizedDisplayName,
           },
