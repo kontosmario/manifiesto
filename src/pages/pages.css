@@ -1,0 +1,139 @@
+.auth-content,
+.join-content,
+.app-content {
+  --background: linear-gradient(165deg, #ecf2ff 0%, #f9fafb 40%, #f6f7f8 100%);
+}
+
+.auth-shell,
+.app-shell,
+.modal-shell {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 720px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.auth-card,
+.panel-card {
+  border-radius: 20px;
+  box-shadow: 0 16px 36px rgba(16, 24, 40, 0.1);
+  border: 1px solid rgba(26, 93, 118, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.card-subtitle {
+  margin: 8px 0 0;
+  color: #4a5568;
+  font-size: 0.92rem;
+}
+
+.stacked-form {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.submit-button {
+  margin-top: 12px;
+}
+
+.inline-message {
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+
+.action-row {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.action-row.two-columns {
+  grid-template-columns: 1fr;
+}
+
+.loading-row {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.inline-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1b3a4b;
+  margin-bottom: 10px;
+}
+
+.inline-info.between {
+  justify-content: space-between;
+}
+
+.code-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #edf7f8;
+  border: 1px solid #bfe3e6;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.manage-button {
+  margin-top: 12px;
+}
+
+.total-card {
+  background: linear-gradient(135deg, #003049 0%, #126782 100%);
+  color: #f8fafc;
+}
+
+.total-label {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.total-value {
+  margin: 8px 0 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.expenses-list {
+  background: transparent;
+}
+
+.expense-card {
+  margin: 10px 0;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 61, 94, 0.14);
+  box-shadow: none;
+}
+
+.expense-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.expense-author {
+  margin: 8px 0;
+  color: #4a5568;
+  font-size: 0.92rem;
+}
+
+.empty-message {
+  margin: 0;
+  padding: 8px 0;
+}
+
+@media (min-width: 640px) {
+  .action-row.two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
