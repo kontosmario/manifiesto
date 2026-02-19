@@ -30,6 +30,9 @@ export interface Expense {
 export const expensesQueryKey = (familyId?: string, categoryId?: string) =>
   ['expenses', familyId, categoryId] as const
 
+export const familyTotalQueryKey = (familyId?: string) =>
+  ['expenses-total', familyId] as const
+
 export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
     queryKey: expensesQueryKey(familyId, categoryId),
@@ -78,6 +81,29 @@ export function useExpenses(familyId?: string, categoryId?: string) {
   })
 }
 
+export function useFamilyTotal(familyId?: string) {
+  return useQuery<number>({
+    queryKey: familyTotalQueryKey(familyId),
+    enabled: Boolean(familyId),
+    queryFn: async () => {
+      if (!familyId) {
+        return 0
+      }
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('price')
+        .eq('family_id', familyId)
+
+      if (error) {
+        throw error
+      }
+
+      return (data ?? []).reduce((sum, row) => sum + Number(row.price ?? 0), 0)
+    },
+  })
+}
+
 interface CreateExpenseInput {
   categoryId: string
   description: string
@@ -115,7 +141,10 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['expenses', familyId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
+        queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+      ])
     },
   })
 }
@@ -158,7 +187,10 @@ export function useUpdateExpense(familyId?: string) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['expenses', familyId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
+        queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+      ])
     },
   })
 }
@@ -183,7 +215,10 @@ export function useDeleteExpense(familyId?: string) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['expenses', familyId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
+        queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
+      ])
     },
   })
 }

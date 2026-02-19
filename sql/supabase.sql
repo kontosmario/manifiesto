@@ -45,6 +45,14 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.family_finance (
+  family_id uuid primary key references public.families(id) on delete cascade,
+  monthly_income numeric(12,2) not null default 0 check (monthly_income >= 0),
+  savings_goal numeric(12,2) not null default 0 check (savings_goal >= 0),
+  usd_exchange_rate numeric(12,4) not null default 1000 check (usd_exchange_rate > 0),
+  updated_at timestamptz not null default now()
+);
+
 -- -----------------------
 -- Compatibility guards (important when tables already existed)
 -- -----------------------
@@ -69,6 +77,23 @@ begin
   end if;
 exception
   when duplicate_object or duplicate_table then null;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'family_finance'
+      and column_name = 'usd_exchange_rate'
+  ) then
+    alter table public.family_finance
+      add column usd_exchange_rate numeric(12,4) not null default 1000 check (usd_exchange_rate > 0);
+  end if;
+exception
+  when duplicate_column then null;
 end;
 $$;
 
@@ -177,6 +202,22 @@ create trigger trg_expense_creator_immutable
 before update on public.expenses
 for each row
 execute function public.prevent_expense_creator_change();
+
+create or replace function public.touch_family_finance_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_family_finance_updated_at on public.family_finance;
+create trigger trg_family_finance_updated_at
+before update on public.family_finance
+for each row
+execute function public.touch_family_finance_updated_at();
 
 -- -----------------------
 -- RLS helper function
@@ -381,6 +422,7 @@ alter table public.family_members enable row level security;
 alter table public.categories enable row level security;
 alter table public.expenses enable row level security;
 alter table public.profiles enable row level security;
+alter table public.family_finance enable row level security;
 
 -- -----------------------
 -- Policies
@@ -498,3 +540,33 @@ for update
 to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
+
+-- family_finance: CRUD para miembros de la family
+
+drop policy if exists "family_finance_select_members" on public.family_finance;
+create policy "family_finance_select_members"
+on public.family_finance
+for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "family_finance_insert_members" on public.family_finance;
+create policy "family_finance_insert_members"
+on public.family_finance
+for insert
+to authenticated
+with check (public.is_family_member(family_id));
+
+drop policy if exists "family_finance_update_members" on public.family_finance;
+create policy "family_finance_update_members"
+on public.family_finance
+for update
+to authenticated
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "family_finance_delete_members" on public.family_finance;
+create policy "family_finance_delete_members"
+on public.family_finance
+for delete
+to authenticated
+using (public.is_family_member(family_id));

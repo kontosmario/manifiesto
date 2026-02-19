@@ -1,12 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   IonAlert,
   IonButton,
   IonButtons,
-  IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
   IonContent,
   IonHeader,
   IonIcon,
@@ -16,8 +12,7 @@ import {
   IonList,
   IonModal,
   IonPage,
-  IonSelect,
-  IonSelectOption,
+  IonPopover,
   IonSpinner,
   IonText,
   IonTitle,
@@ -26,11 +21,15 @@ import {
 } from '@ionic/react'
 import {
   addOutline,
+  cashOutline,
   copyOutline,
+  ellipsisVerticalOutline,
   createOutline,
   logOutOutline,
+  menuOutline,
   peopleCircleOutline,
   pencilOutline,
+  removeCircle,
   trashOutline,
 } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
@@ -46,9 +45,15 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useExpenses,
+  useFamilyTotal,
   useUpdateExpense,
   type Expense,
 } from '../hooks/useExpenses'
+import {
+  DEFAULT_USD_EXCHANGE_RATE,
+  useFamilyFinance,
+  useUpsertFamilyFinance,
+} from '../hooks/useFamilyFinance'
 import { useFamily } from '../hooks/useFamily'
 import { useMyProfile, useUpdateDisplayName } from '../hooks/useProfile'
 import { supabase } from '../lib/supabaseClient'
@@ -61,14 +66,149 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return fallbackMessage
 }
 
-function parsePrice(rawValue: string): number {
-  return Number(rawValue.replace(',', '.'))
-}
-
 const currencyFormatter = new Intl.NumberFormat('es-AR', {
   style: 'currency',
   currency: 'ARS',
 })
+
+const usdFormatter = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'USD',
+})
+
+const usdInputFormatter = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const currencyInputFormatter = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const integerInputFormatter = new Intl.NumberFormat('es-AR', {
+  maximumFractionDigits: 0,
+})
+
+type MoneyCurrency = 'ARS' | 'USD'
+type FinanceEditorMetric = 'income' | 'savings'
+
+function normalizePriceInput(rawValue: string): string {
+  const cleaned = rawValue.replace(/[^\d.,]/g, '')
+  if (!cleaned) {
+    return ''
+  }
+
+  const commaIndex = cleaned.indexOf(',')
+
+  let integerPart = commaIndex >= 0 ? cleaned.slice(0, commaIndex) : cleaned
+  let decimalPart = commaIndex >= 0 ? cleaned.slice(commaIndex + 1) : ''
+
+  integerPart = integerPart.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '')
+  if (!integerPart) {
+    integerPart = '0'
+  }
+
+  decimalPart = decimalPart.replace(/[^\d]/g, '').slice(0, 2)
+
+  if (commaIndex >= 0) {
+    return decimalPart ? `${integerPart},${decimalPart}` : `${integerPart},`
+  }
+
+  return integerPart
+}
+
+function parsePrice(rawValue: string): number {
+  const normalized = normalizePriceInput(rawValue)
+  if (!normalized) {
+    return Number.NaN
+  }
+
+  const safeValue = normalized.endsWith(',') ? normalized.slice(0, -1) : normalized
+  return Number(safeValue.replace(',', '.'))
+}
+
+function formatPriceInputValue(
+  rawValue: string,
+  isFocused: boolean,
+  currency: MoneyCurrency = 'ARS',
+): string {
+  if (!rawValue) {
+    return ''
+  }
+
+  const normalized = normalizePriceInput(rawValue)
+  if (!normalized) {
+    return ''
+  }
+
+  const hasTrailingDecimalSeparator = normalized.endsWith(',')
+  const [integerPart = '0', decimalPart = ''] = normalized.split(',')
+  const integerValue = Number(integerPart)
+
+  if (!Number.isFinite(integerValue)) {
+    return ''
+  }
+
+  if (isFocused) {
+    const formattedInteger = integerInputFormatter.format(integerValue)
+    const focusedPrefix = currency === 'USD' ? 'US$ ' : '$ '
+    return hasTrailingDecimalSeparator || decimalPart
+      ? `${focusedPrefix}${formattedInteger},${decimalPart}`
+      : `${focusedPrefix}${formattedInteger}`
+  }
+
+  const normalizedForParsing = hasTrailingDecimalSeparator
+    ? `${integerPart}.${decimalPart || '0'}`
+    : normalized
+  const parsed = Number(normalizedForParsing)
+  if (!Number.isFinite(parsed)) {
+    return ''
+  }
+
+  return (currency === 'USD' ? usdInputFormatter : currencyInputFormatter).format(parsed)
+}
+
+function serializePrice(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toString()
+  }
+
+  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',')
+}
+
+function formatUsdFromArs(arsValue: number, usdExchangeRate: number): string {
+  if (!Number.isFinite(arsValue) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
+    return usdFormatter.format(0)
+  }
+
+  return usdFormatter.format(arsValue / usdExchangeRate)
+}
+
+function convertCurrencyAmount(
+  amount: number,
+  fromCurrency: MoneyCurrency,
+  toCurrency: MoneyCurrency,
+  usdExchangeRate: number,
+): number {
+  if (!Number.isFinite(amount) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
+    return Number.NaN
+  }
+
+  if (fromCurrency === toCurrency) {
+    return amount
+  }
+
+  if (fromCurrency === 'USD' && toCurrency === 'ARS') {
+    return amount * usdExchangeRate
+  }
+
+  return amount / usdExchangeRate
+}
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_EXPENSES: Expense[] = []
@@ -88,6 +228,7 @@ export default function AppPage() {
 
   const categoriesQuery = useCategories(familyId)
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES
+  const categoryTabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
   const [categorySelection, setCategorySelection] = useState<string>('')
 
@@ -105,6 +246,9 @@ export default function AppPage() {
 
   const expensesQuery = useExpenses(familyId, selectedCategoryId || undefined)
   const expenses = expensesQuery.data ?? EMPTY_EXPENSES
+  const familyTotalQuery = useFamilyTotal(familyId)
+  const familyFinanceQuery = useFamilyFinance(familyId)
+  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
 
   const createExpenseMutation = useCreateExpense(familyId, userId)
   const updateExpenseMutation = useUpdateExpense(familyId)
@@ -118,15 +262,28 @@ export default function AppPage() {
 
   const [newDescription, setNewDescription] = useState('')
   const [newPrice, setNewPrice] = useState('')
+  const [isNewPriceFocused, setNewPriceFocused] = useState(false)
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editingDescription, setEditingDescription] = useState('')
   const [editingPrice, setEditingPrice] = useState('')
+  const [isEditingPriceFocused, setEditingPriceFocused] = useState(false)
 
   const [isCategoriesModalOpen, setCategoriesModalOpen] = useState(false)
+  const [isAddExpenseModalOpen, setAddExpenseModalOpen] = useState(false)
   const [isNewCategoryAlertOpen, setNewCategoryAlertOpen] = useState(false)
   const [renameTargetCategory, setRenameTargetCategory] = useState<Category | null>(null)
   const [isDisplayNameAlertOpen, setDisplayNameAlertOpen] = useState(false)
+  const [financeEditorMetric, setFinanceEditorMetric] = useState<FinanceEditorMetric | null>(null)
+  const [financeEditorCurrency, setFinanceEditorCurrency] = useState<MoneyCurrency>('ARS')
+  const [financeEditorAmount, setFinanceEditorAmount] = useState('')
+  const [isFinanceEditorAmountFocused, setFinanceEditorAmountFocused] = useState(false)
+  const [isUsdRateModalOpen, setUsdRateModalOpen] = useState(false)
+  const [usdRateInput, setUsdRateInput] = useState('')
+  const [isUsdRateInputFocused, setUsdRateInputFocused] = useState(false)
+  const [familyMenuEvent, setFamilyMenuEvent] = useState<Event | undefined>()
+  const [expenseMenuEvent, setExpenseMenuEvent] = useState<Event | undefined>()
+  const [expenseMenuTarget, setExpenseMenuTarget] = useState<Expense | null>(null)
 
   const [toastMessage, setToastMessage] = useState('')
   const [isToastOpen, setToastOpen] = useState(false)
@@ -134,10 +291,50 @@ export default function AppPage() {
   const totalForCategory = useMemo(() => {
     return expenses.reduce((sum, expense) => sum + expense.price, 0)
   }, [expenses])
+  const totalGeneral = familyTotalQuery.data ?? 0
+  const monthlyIncome = familyFinanceQuery.data?.monthly_income ?? 0
+  const savingsGoal = familyFinanceQuery.data?.savings_goal ?? 0
+  const usdExchangeRate =
+    familyFinanceQuery.data?.usd_exchange_rate ?? DEFAULT_USD_EXCHANGE_RATE
+
+  const newPriceDisplay = formatPriceInputValue(newPrice, isNewPriceFocused)
+  const editingPriceDisplay = formatPriceInputValue(editingPrice, isEditingPriceFocused)
+  const financeEditorAmountDisplay = formatPriceInputValue(
+    financeEditorAmount,
+    isFinanceEditorAmountFocused,
+    financeEditorCurrency,
+  )
+  const usdRateInputDisplay = formatPriceInputValue(usdRateInput, isUsdRateInputFocused)
+
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      return
+    }
+
+    const selectedTab = categoryTabRefs.current[selectedCategoryId]
+    if (!selectedTab) {
+      return
+    }
+
+    selectedTab.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    })
+  }, [selectedCategoryId, categories.length])
 
   const showToast = (message: string) => {
     setToastMessage(message)
     setToastOpen(true)
+  }
+
+  const closeFamilyMenu = () => {
+    setFamilyMenuEvent(undefined)
+  }
+
+  const closeExpenseMenu = () => {
+    setExpenseMenuEvent(undefined)
+    setExpenseMenuTarget(null)
   }
 
   const handleLogout = async () => {
@@ -186,6 +383,8 @@ export default function AppPage() {
         onSuccess: () => {
           setNewDescription('')
           setNewPrice('')
+          setNewPriceFocused(false)
+          setAddExpenseModalOpen(false)
         },
         onError: (error: unknown) => {
           showToast(getErrorMessage(error, 'No se pudo crear el gasto.'))
@@ -197,7 +396,8 @@ export default function AppPage() {
   const openEditExpense = (expense: Expense) => {
     setEditingExpense(expense)
     setEditingDescription(expense.description)
-    setEditingPrice(expense.price.toString())
+    setEditingPrice(serializePrice(expense.price))
+    setEditingPriceFocused(false)
   }
 
   const handleUpdateExpense = () => {
@@ -260,6 +460,136 @@ export default function AppPage() {
     })
   }
 
+  const closeFinanceEditor = () => {
+    setFinanceEditorMetric(null)
+    setFinanceEditorCurrency('ARS')
+    setFinanceEditorAmount('')
+    setFinanceEditorAmountFocused(false)
+  }
+
+  const closeUsdRateModal = () => {
+    setUsdRateModalOpen(false)
+    setUsdRateInput('')
+    setUsdRateInputFocused(false)
+  }
+
+  const openUsdRateModal = () => {
+    setUsdRateInput(serializePrice(usdExchangeRate))
+    setUsdRateInputFocused(false)
+    setUsdRateModalOpen(true)
+  }
+
+  const openFinanceEditor = (metric: FinanceEditorMetric) => {
+    const arsAmount = metric === 'income' ? monthlyIncome : savingsGoal
+
+    setFinanceEditorMetric(metric)
+    setFinanceEditorCurrency('ARS')
+    setFinanceEditorAmount(serializePrice(arsAmount))
+    setFinanceEditorAmountFocused(false)
+  }
+
+  const handleFinanceEditorCurrencySwitch = (nextCurrency: MoneyCurrency) => {
+    if (nextCurrency === financeEditorCurrency) {
+      return
+    }
+
+    const parsedCurrentValue = parsePrice(financeEditorAmount)
+    if (financeEditorAmount && Number.isFinite(parsedCurrentValue) && parsedCurrentValue >= 0) {
+      const converted = convertCurrencyAmount(
+        parsedCurrentValue,
+        financeEditorCurrency,
+        nextCurrency,
+        usdExchangeRate,
+      )
+
+      if (Number.isFinite(converted)) {
+        setFinanceEditorAmount(serializePrice(converted))
+      }
+    }
+
+    setFinanceEditorCurrency(nextCurrency)
+  }
+
+  const handleSaveFinanceEditor = () => {
+    if (!financeEditorMetric) {
+      return
+    }
+
+    const parsedInputAmount = parsePrice(financeEditorAmount)
+    if (!Number.isFinite(parsedInputAmount) || parsedInputAmount < 0) {
+      showToast('Ingresá un monto válido (>= 0).')
+      return
+    }
+
+    const amountInArs = convertCurrencyAmount(
+      parsedInputAmount,
+      financeEditorCurrency,
+      'ARS',
+      usdExchangeRate,
+    )
+
+    if (!Number.isFinite(amountInArs) || amountInArs < 0) {
+      showToast('No se pudo convertir el monto con la cotización actual.')
+      return
+    }
+
+    const nextMonthlyIncome = financeEditorMetric === 'income' ? amountInArs : monthlyIncome
+    const nextSavingsGoal = financeEditorMetric === 'savings' ? amountInArs : savingsGoal
+
+    upsertFamilyFinanceMutation.mutate(
+      {
+        monthlyIncome: nextMonthlyIncome,
+        savingsGoal: nextSavingsGoal,
+        usdExchangeRate,
+      },
+      {
+        onSuccess: () => {
+          closeFinanceEditor()
+          showToast(
+            financeEditorMetric === 'income'
+              ? 'Ingreso actualizado.'
+              : 'Ahorro objetivo actualizado.',
+          )
+        },
+        onError: (error: unknown) => {
+          showToast(
+            getErrorMessage(
+              error,
+              financeEditorMetric === 'income'
+                ? 'No se pudo guardar el ingreso.'
+                : 'No se pudo guardar el ahorro objetivo.',
+            ),
+          )
+        },
+      },
+    )
+  }
+
+  const handleSaveUsdExchangeRate = () => {
+    const parsedRate = parsePrice(usdRateInput)
+    if (!Number.isFinite(parsedRate) || parsedRate <= 0) {
+      showToast('Ingresá una cotización válida de dólar (> 0).')
+      return
+    }
+
+    upsertFamilyFinanceMutation.mutate(
+      {
+        monthlyIncome,
+        savingsGoal,
+        usdExchangeRate: parsedRate,
+      },
+      {
+        onSuccess: () => {
+          closeUsdRateModal()
+          showToast('Cotización de dólar actualizada.')
+        },
+        onError: (error: unknown) => {
+          showToast(getErrorMessage(error, 'No se pudo guardar la cotización de dólar.'))
+        },
+      },
+    )
+  }
+
   if (!familyId) {
     return null
   }
@@ -271,7 +601,8 @@ export default function AppPage() {
     createCategoryMutation.isPending ||
     renameCategoryMutation.isPending ||
     deleteCategoryMutation.isPending ||
-    updateDisplayNameMutation.isPending
+    updateDisplayNameMutation.isPending ||
+    upsertFamilyFinanceMutation.isPending
 
   return (
     <IonPage>
@@ -279,123 +610,169 @@ export default function AppPage() {
         <IonToolbar>
           <IonTitle>Gastos Familia</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={handleLogout}>
-              <IonIcon icon={logOutOutline} slot="start" />
-              Salir
+            <IonButton
+              aria-label="Abrir menú de familia"
+              onClick={(event) => setFamilyMenuEvent(event.nativeEvent)}
+            >
+              <IonIcon icon={menuOutline} />
             </IonButton>
           </IonButtons>
+        </IonToolbar>
+
+        <IonToolbar className="family-toolbar">
+          <div className="family-header-card">
+            <div className="family-header-row">
+              <div className="family-user-row">
+                <IonIcon className="family-header-icon" icon={peopleCircleOutline} />
+                <div>
+                  <p className="family-header-label">Familia compartida</p>
+                  <p className="family-header-user">{displayName}</p>
+                </div>
+              </div>
+              <span className="code-pill">{familyCode}</span>
+            </div>
+          </div>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="app-content" fullscreen>
         <div className="app-shell">
-          <IonCard className="panel-card">
-            <IonCardHeader>
-              <IonCardTitle>Familia compartida</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <div className="inline-info">
-                <IonIcon icon={peopleCircleOutline} />
-                <span>{displayName}</span>
-              </div>
+          <div className="overview-liquid-shell">
+            <div
+              className={`overview-liquid-card${
+                familyTotalQuery.isLoading || familyFinanceQuery.isLoading ? ' is-loading' : ''
+              }`}
+            >
+              <p className="overview-liquid-kicker">Total general</p>
+              <p className="overview-liquid-value">
+                {currencyFormatter.format(totalGeneral)}
+              </p>
+              <p className="price-usd-hint overview-liquid-usd">
+                {formatUsdFromArs(totalGeneral, usdExchangeRate)}
+              </p>
 
-              <div className="inline-info between">
-                <strong>Family Code:</strong>
-                <span className="code-pill">{familyCode}</span>
-              </div>
-
-              <div className="action-row two-columns">
-                <IonButton fill="outline" onClick={handleCopyCode}>
-                  <IonIcon icon={copyOutline} slot="start" />
-                  Copiar código
-                </IonButton>
-
-                <IonButton fill="outline" onClick={() => setDisplayNameAlertOpen(true)}>
-                  <IonIcon icon={pencilOutline} slot="start" />
-                  Cambiar nombre
-                </IonButton>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard className="panel-card">
-            <IonCardHeader>
-              <IonCardTitle>Categoría activa</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <IonItem lines="full">
-                <IonLabel position="stacked">Seleccionar categoría</IonLabel>
-                <IonSelect
-                  interface="popover"
-                  placeholder="Elegí una categoría"
-                  value={selectedCategoryId}
-                  onIonChange={(event) => setCategorySelection(event.detail.value)}
+              <div className="overview-metrics-grid">
+                <button
+                  className="overview-metric-button"
+                  disabled={upsertFamilyFinanceMutation.isPending}
+                  onClick={() => openFinanceEditor('income')}
+                  type="button"
                 >
-                  {categories.map((category) => (
-                    <IonSelectOption key={category.id} value={category.id}>
-                      {category.name}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
+                  <span className="overview-metric-label">Total ingreso</span>
+                  <span className="overview-metric-values">
+                    <span className="overview-metric-value">
+                      {currencyFormatter.format(monthlyIncome)}
+                    </span>
+                    <span className="price-usd-hint">
+                      {formatUsdFromArs(monthlyIncome, usdExchangeRate)}
+                    </span>
+                  </span>
+                </button>
 
-              <IonButton
-                className="manage-button"
-                expand="block"
-                fill="outline"
-                onClick={() => setCategoriesModalOpen(true)}
-              >
-                <IonIcon icon={createOutline} slot="start" />
-                Gestionar categorías
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
+                <button
+                  className="overview-metric-button"
+                  disabled={upsertFamilyFinanceMutation.isPending}
+                  onClick={() => openFinanceEditor('savings')}
+                  type="button"
+                >
+                  <span className="overview-metric-label">Ahorro objetivo</span>
+                  <span className="overview-metric-values">
+                    <span className="overview-metric-value">
+                      {currencyFormatter.format(savingsGoal)}
+                    </span>
+                    <span className="price-usd-hint">
+                      {formatUsdFromArs(savingsGoal, usdExchangeRate)}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-          <IonCard className="panel-card">
-            <IonCardHeader>
-              <IonCardTitle>Nuevo gasto</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <IonItem lines="full">
-                <IonLabel position="stacked">Descripción</IonLabel>
-                <IonInput
-                  placeholder="Ej: Hamburguesa"
-                  type="text"
-                  value={newDescription}
-                  onIonInput={(event) => setNewDescription(event.detail.value ?? '')}
-                />
-              </IonItem>
+          <div className="category-liquid-shell">
+            <div className="category-liquid-card">
+              <div className="category-liquid-top">
+                <p className="category-liquid-kicker">Categoría activa</p>
 
-              <IonItem lines="none">
-                <IonLabel position="stacked">Precio</IonLabel>
-                <IonInput
-                  inputmode="decimal"
-                  placeholder="12000"
-                  type="number"
-                  value={newPrice}
-                  onIonInput={(event) => setNewPrice(event.detail.value ?? '')}
-                />
-              </IonItem>
+                <IonButton
+                  className="category-liquid-manage"
+                  fill="clear"
+                  onClick={() => setCategoriesModalOpen(true)}
+                >
+                  <IonIcon icon={createOutline} slot="start" />
+                  Gestionar
+                </IonButton>
+              </div>
 
-              <IonButton disabled={isBusy} expand="block" onClick={handleAddExpense}>
-                <IonIcon icon={addOutline} slot="start" />
-                Agregar gasto
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
+              {categories.length > 0 ? (
+                <div className="category-tabs-wrap">
+                  <div
+                    aria-label="Selector de categorías"
+                    className="category-tabs-scroll"
+                    role="tablist"
+                  >
+                    {categories.map((category) => {
+                      const isActive = category.id === selectedCategoryId
 
-          <IonCard className="panel-card total-card">
-            <IonCardContent>
-              <p className="total-label">Total de la categoría</p>
-              <p className="total-value">{currencyFormatter.format(totalForCategory)}</p>
-            </IonCardContent>
-          </IonCard>
+                      return (
+                        <button
+                          aria-selected={isActive}
+                          className={`category-tab${isActive ? ' is-active' : ''}`}
+                          key={category.id}
+                          ref={(tabNode) => {
+                            categoryTabRefs.current[category.id] = tabNode
+                          }}
+                          onClick={() => setCategorySelection(category.id)}
+                          role="tab"
+                          type="button"
+                        >
+                          {category.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="category-empty">No hay categorías todavía.</p>
+              )}
 
-          <IonCard className="panel-card">
-            <IonCardHeader>
-              <IonCardTitle>Gastos</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
+              <div className={`category-totals-grid${expensesQuery.isLoading ? ' is-loading' : ''}`}>
+                <div className="category-total-chip">
+                  <div className="category-total-main">
+                    <div className="category-total-texts">
+                      <p className="category-total-label">Total categoría</p>
+                      <p className="category-total-value">
+                        {currencyFormatter.format(totalForCategory)}
+                      </p>
+                      <p className="price-usd-hint category-total-usd">
+                        {formatUsdFromArs(totalForCategory, usdExchangeRate)}
+                      </p>
+                    </div>
+
+                    <button
+                      aria-label="Agregar gasto"
+                      className="category-total-action"
+                      onClick={() => setAddExpenseModalOpen(true)}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="category-total-action-icon">
+                        <IonIcon className="category-total-action-cash" icon={cashOutline} />
+                        <IonIcon className="category-total-action-minus" icon={removeCircle} />
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="expenses-liquid-shell">
+            <div className="expenses-liquid-card">
+              <div className="expenses-liquid-top">
+                <p className="expenses-liquid-kicker">Gastos</p>
+                <span className="expenses-count-chip">{expenses.length}</span>
+              </div>
+
               {categoriesQuery.isLoading || expensesQuery.isLoading ? (
                 <div className="loading-row">
                   <IonSpinner name="crescent" />
@@ -416,59 +793,244 @@ export default function AppPage() {
                 </IonText>
               )}
 
-              <IonList className="expenses-list">
+              <div className="expenses-pills-list">
                 {expenses.map((expense) => (
-                  <IonCard className="expense-card" key={expense.id}>
-                    <IonCardContent>
-                      <div className="expense-head">
-                        <strong>{expense.description}</strong>
-                        <strong>{currencyFormatter.format(expense.price)}</strong>
+                  <article className="expense-pill-item" key={expense.id}>
+                    <div className="expense-pill-main">
+                      <div className="expense-pill-texts">
+                        <p className="expense-pill-description">{expense.description}</p>
+                        <span className="expense-pill-author">{expense.creator_display_name}</span>
                       </div>
+                      <div className="expense-pill-price-stack">
+                        <div className="expense-pill-price-row">
+                          <p className="expense-pill-price">
+                            {currencyFormatter.format(expense.price)}
+                          </p>
 
-                      <p className="expense-author">{expense.creator_display_name}</p>
+                          <button
+                            aria-label="Abrir acciones del gasto"
+                            className="expense-kebab-button"
+                            onClick={(event) => {
+                              setExpenseMenuTarget(expense)
+                              setExpenseMenuEvent(event.nativeEvent)
+                            }}
+                            type="button"
+                          >
+                            <IonIcon icon={ellipsisVerticalOutline} />
+                          </button>
+                        </div>
 
-                      <div className="action-row two-columns">
-                        <IonButton fill="clear" onClick={() => openEditExpense(expense)}>
-                          <IonIcon icon={pencilOutline} slot="start" />
-                          Editar
-                        </IonButton>
-
-                        <IonButton
-                          color="danger"
-                          fill="clear"
-                          onClick={() => handleDeleteExpense(expense.id)}
-                        >
-                          <IonIcon icon={trashOutline} slot="start" />
-                          Borrar
-                        </IonButton>
+                        <p className="price-usd-hint expense-pill-usd">
+                          {formatUsdFromArs(expense.price, usdExchangeRate)}
+                        </p>
                       </div>
-                    </IonCardContent>
-                  </IonCard>
+                    </div>
+                  </article>
                 ))}
-              </IonList>
-            </IonCardContent>
-          </IonCard>
+              </div>
+            </div>
+          </div>
         </div>
       </IonContent>
 
-      <IonModal isOpen={isCategoriesModalOpen} onDidDismiss={() => setCategoriesModalOpen(false)}>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Categorías</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={() => setCategoriesModalOpen(false)}>Cerrar</IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
+      <IonPopover
+        event={familyMenuEvent}
+        isOpen={Boolean(familyMenuEvent)}
+        onDidDismiss={closeFamilyMenu}
+      >
+        <div className="family-menu-popover">
+          <div className="family-menu-top">
+            <p className="family-menu-title">Familia compartida</p>
+            <p className="family-menu-user">{displayName}</p>
+            <div className="family-menu-code-row">
+              <span>Family Code</span>
+              <span className="code-pill">{familyCode}</span>
+            </div>
+            <div className="family-menu-code-row">
+              <span>Dólar</span>
+              <span className="code-pill">{currencyFormatter.format(usdExchangeRate)}</span>
+            </div>
+          </div>
 
-        <IonContent>
-          <div className="modal-shell">
+          <IonList className="family-menu-list" lines="none">
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                void handleCopyCode()
+              }}
+            >
+              <IonIcon icon={copyOutline} slot="start" />
+              <IonLabel>Copiar código</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                setDisplayNameAlertOpen(true)
+              }}
+            >
+              <IonIcon icon={pencilOutline} slot="start" />
+              <IonLabel>Cambiar nombre</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                openUsdRateModal()
+              }}
+            >
+              <IonIcon icon={cashOutline} slot="start" />
+              <IonLabel>Cotización dólar</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                void handleLogout()
+              }}
+            >
+              <IonIcon color="danger" icon={logOutOutline} slot="start" />
+              <IonLabel color="danger">Salir</IonLabel>
+            </IonItem>
+          </IonList>
+        </div>
+      </IonPopover>
+
+      <IonPopover
+        className="expense-actions-popover"
+        event={expenseMenuEvent}
+        isOpen={Boolean(expenseMenuEvent)}
+        onDidDismiss={closeExpenseMenu}
+      >
+        <div className="expense-menu-popover">
+          <div className="expense-menu-actions">
+            <button
+              aria-label="Editar gasto"
+              className="expense-menu-icon-button"
+              onClick={() => {
+                if (!expenseMenuTarget) {
+                  closeExpenseMenu()
+                  return
+                }
+
+                const target = expenseMenuTarget
+                closeExpenseMenu()
+                openEditExpense(target)
+              }}
+              type="button"
+            >
+              <IonIcon icon={pencilOutline} />
+            </button>
+
+            <button
+              aria-label="Borrar gasto"
+              className="expense-menu-icon-button is-danger"
+              onClick={() => {
+                if (!expenseMenuTarget) {
+                  closeExpenseMenu()
+                  return
+                }
+
+                const targetId = expenseMenuTarget.id
+                closeExpenseMenu()
+                handleDeleteExpense(targetId)
+              }}
+              type="button"
+            >
+              <IonIcon icon={trashOutline} />
+            </button>
+          </div>
+        </div>
+      </IonPopover>
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={isAddExpenseModalOpen}
+        onDidDismiss={() => setAddExpenseModalOpen(false)}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Nuevo gasto</p>
+            <IonButton fill="clear" onClick={() => setAddExpenseModalOpen(false)}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="expense-liquid-card">
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="expense-description-modal-input">
+                Descripción
+              </label>
+              <IonInput
+                id="expense-description-modal-input"
+                className="expense-liquid-input"
+                placeholder="Ej: Hamburguesa"
+                type="text"
+                value={newDescription}
+                onIonInput={(event) => setNewDescription(event.detail.value ?? '')}
+              />
+            </div>
+
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="expense-price-modal-input">
+                Precio
+              </label>
+              <IonInput
+                id="expense-price-modal-input"
+                className="expense-liquid-input expense-liquid-price"
+                inputmode="decimal"
+                placeholder="$ 0"
+                type="text"
+                value={newPriceDisplay}
+                onIonInput={(event) =>
+                  setNewPrice(normalizePriceInput(event.detail.value ?? ''))
+                }
+                onIonFocus={() => setNewPriceFocused(true)}
+                onIonBlur={() => setNewPriceFocused(false)}
+              />
+            </div>
+
+            <IonButton
+              className="expense-liquid-submit"
+              disabled={isBusy}
+              expand="block"
+              onClick={handleAddExpense}
+            >
+              <IonIcon icon={addOutline} slot="start" />
+              Agregar gasto
+            </IonButton>
+          </div>
+        </div>
+      </IonModal>
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={isCategoriesModalOpen}
+        onDidDismiss={() => setCategoriesModalOpen(false)}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Categorías</p>
+            <IonButton fill="clear" onClick={() => setCategoriesModalOpen(false)}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="expense-liquid-card">
             <IonButton expand="block" onClick={() => setNewCategoryAlertOpen(true)}>
               <IonIcon icon={addOutline} slot="start" />
               Nueva categoría
             </IonButton>
 
-            <IonList>
+            <IonList className="categories-modal-list" lines="full">
               {categories.map((category) => (
                 <IonItem key={category.id}>
                   <IonLabel>{category.name}</IonLabel>
@@ -493,45 +1055,64 @@ export default function AppPage() {
               ))}
             </IonList>
           </div>
-        </IonContent>
+        </div>
       </IonModal>
 
-      <IonModal isOpen={Boolean(editingExpense)} onDidDismiss={() => setEditingExpense(null)}>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Editar gasto</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={() => setEditingExpense(null)}>Cerrar</IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
+      <IonModal
+        className="content-fit-modal"
+        isOpen={Boolean(editingExpense)}
+        onDidDismiss={() => setEditingExpense(null)}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Editar gasto</p>
+            <IonButton fill="clear" onClick={() => setEditingExpense(null)}>
+              Cerrar
+            </IonButton>
+          </div>
 
-        <IonContent>
-          <div className="modal-shell">
-            <IonItem lines="full">
-              <IonLabel position="stacked">Descripción</IonLabel>
+          <div className="expense-liquid-card">
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="expense-edit-description-input">
+                Descripción
+              </label>
               <IonInput
+                id="expense-edit-description-input"
+                className="expense-liquid-input"
                 type="text"
                 value={editingDescription}
                 onIonInput={(event) => setEditingDescription(event.detail.value ?? '')}
               />
-            </IonItem>
+            </div>
 
-            <IonItem lines="none">
-              <IonLabel position="stacked">Precio</IonLabel>
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="expense-edit-price-input">
+                Precio
+              </label>
               <IonInput
+                id="expense-edit-price-input"
+                className="expense-liquid-input expense-liquid-price"
                 inputmode="decimal"
-                type="number"
-                value={editingPrice}
-                onIonInput={(event) => setEditingPrice(event.detail.value ?? '')}
+                type="text"
+                value={editingPriceDisplay}
+                onIonInput={(event) =>
+                  setEditingPrice(normalizePriceInput(event.detail.value ?? ''))
+                }
+                onIonFocus={() => setEditingPriceFocused(true)}
+                onIonBlur={() => setEditingPriceFocused(false)}
               />
-            </IonItem>
+            </div>
 
-            <IonButton disabled={isBusy} expand="block" onClick={handleUpdateExpense}>
+            <IonButton
+              className="expense-liquid-submit"
+              disabled={isBusy}
+              expand="block"
+              onClick={handleUpdateExpense}
+            >
               Guardar cambios
             </IonButton>
           </div>
-        </IonContent>
+        </div>
       </IonModal>
 
       <IonAlert
@@ -641,6 +1222,123 @@ export default function AppPage() {
           },
         ]}
       />
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={Boolean(financeEditorMetric)}
+        onDidDismiss={closeFinanceEditor}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">
+              {financeEditorMetric === 'income' ? 'Total ingreso' : 'Ahorro objetivo'}
+            </p>
+            <IonButton fill="clear" onClick={closeFinanceEditor}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="expense-liquid-card">
+            <div className="finance-currency-switch" role="group" aria-label="Moneda">
+              <button
+                className={`finance-currency-option${
+                  financeEditorCurrency === 'ARS' ? ' is-active' : ''
+                }`}
+                onClick={() => handleFinanceEditorCurrencySwitch('ARS')}
+                type="button"
+              >
+                ARS
+              </button>
+
+              <button
+                className={`finance-currency-option${
+                  financeEditorCurrency === 'USD' ? ' is-active' : ''
+                }`}
+                onClick={() => handleFinanceEditorCurrencySwitch('USD')}
+                type="button"
+              >
+                USD
+              </button>
+            </div>
+
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="finance-editor-amount-input">
+                Monto ({financeEditorCurrency})
+              </label>
+              <IonInput
+                id="finance-editor-amount-input"
+                className="expense-liquid-input expense-liquid-price"
+                inputmode="decimal"
+                type="text"
+                value={financeEditorAmountDisplay}
+                onIonInput={(event) =>
+                  setFinanceEditorAmount(normalizePriceInput(event.detail.value ?? ''))
+                }
+                onIonFocus={() => setFinanceEditorAmountFocused(true)}
+                onIonBlur={() => setFinanceEditorAmountFocused(false)}
+              />
+            </div>
+
+            <p className="finance-currency-hint">
+              Cotización actual: {currencyFormatter.format(usdExchangeRate)} por USD.
+            </p>
+
+            <IonButton
+              className="expense-liquid-submit"
+              disabled={isBusy}
+              expand="block"
+              onClick={handleSaveFinanceEditor}
+            >
+              Guardar
+            </IonButton>
+          </div>
+        </div>
+      </IonModal>
+
+      <IonModal
+        className="content-fit-modal"
+        isOpen={isUsdRateModalOpen}
+        onDidDismiss={closeUsdRateModal}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Cotización dólar (ARS)</p>
+            <IonButton fill="clear" onClick={closeUsdRateModal}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="expense-liquid-card">
+            <div className="expense-field-group">
+              <label className="expense-field-label" htmlFor="usd-rate-input">
+                Monto por USD
+              </label>
+              <IonInput
+                id="usd-rate-input"
+                className="expense-liquid-input expense-liquid-price"
+                inputmode="decimal"
+                placeholder="$ 0"
+                type="text"
+                value={usdRateInputDisplay}
+                onIonInput={(event) =>
+                  setUsdRateInput(normalizePriceInput(event.detail.value ?? ''))
+                }
+                onIonFocus={() => setUsdRateInputFocused(true)}
+                onIonBlur={() => setUsdRateInputFocused(false)}
+              />
+            </div>
+
+            <IonButton
+              className="expense-liquid-submit"
+              disabled={isBusy}
+              expand="block"
+              onClick={handleSaveUsdExchangeRate}
+            >
+              Guardar cotización
+            </IonButton>
+          </div>
+        </div>
+      </IonModal>
 
       <IonToast
         isOpen={isToastOpen}
