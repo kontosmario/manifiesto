@@ -28,6 +28,63 @@ function base64ToUint8Array(base64Value: string): Uint8Array {
   return output
 }
 
+function isAppleMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+
+  const userAgent = navigator.userAgent.toLowerCase()
+  const isIOSDevice = /iphone|ipad|ipod/.test(userAgent)
+  const isIPadOSDesktopMode = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+  return isIOSDevice || isIPadOSDesktopMode
+}
+
+function isStandaloneDisplayMode(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false
+  }
+
+  const standaloneMediaQuery =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
+  const standaloneNavigatorFlag = navigatorWithStandalone.standalone === true
+
+  return standaloneMediaQuery || standaloneNavigatorFlag
+}
+
+function getPushSupportError(): string | null {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return 'Este dispositivo no soporta notificaciones push web.'
+  }
+
+  if (!window.isSecureContext) {
+    return 'Las notificaciones push requieren HTTPS.'
+  }
+
+  if (!('Notification' in window)) {
+    return 'Este navegador no soporta notificaciones web.'
+  }
+
+  if (!('serviceWorker' in navigator)) {
+    return 'Este navegador no soporta service workers.'
+  }
+
+  if (!('PushManager' in window)) {
+    if (isAppleMobileDevice() && !isStandaloneDisplayMode()) {
+      return 'En iPhone/iPad abrí la app desde Pantalla de inicio (Safari > Compartir > Agregar a inicio).'
+    }
+
+    return 'Este dispositivo o navegador no soporta push web.'
+  }
+
+  if (isAppleMobileDevice() && !isStandaloneDisplayMode()) {
+    return 'En iPhone/iPad abrí la app desde Pantalla de inicio (Safari > Compartir > Agregar a inicio).'
+  }
+
+  return null
+}
+
 export const pushSubscriptionQueryKey = (familyId?: string, userId?: string) =>
   ['push-subscription', familyId, userId] as const
 
@@ -71,14 +128,9 @@ export function useEnablePushNotifications() {
         throw new Error('No hay familia o sesión activa para activar push.')
       }
 
-      if (
-        typeof window === 'undefined' ||
-        typeof navigator === 'undefined' ||
-        !('Notification' in window) ||
-        !('serviceWorker' in navigator) ||
-        !('PushManager' in window)
-      ) {
-        throw new Error('Este dispositivo no soporta notificaciones push web.')
+      const pushSupportError = getPushSupportError()
+      if (pushSupportError) {
+        throw new Error(pushSupportError)
       }
 
       const vapidPublicKey =
@@ -98,7 +150,10 @@ export function useEnablePushNotifications() {
         throw new Error('Permiso de notificaciones no concedido.')
       }
 
-      await navigator.serviceWorker.register('/push-sw.js')
+      const serviceWorkerPath = `${import.meta.env.BASE_URL}push-sw.js`
+      await navigator.serviceWorker.register(serviceWorkerPath, {
+        scope: import.meta.env.BASE_URL,
+      })
       const registration = await navigator.serviceWorker.ready
 
       let subscription = await registration.pushManager.getSubscription()

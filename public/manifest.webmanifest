@@ -1,0 +1,23 @@
+{
+  "name": "Gastos Familia",
+  "short_name": "Gastos",
+  "description": "App de gastos compartidos familiares.",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2d6ce3",
+  "icons": [
+    {
+      "src": "favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

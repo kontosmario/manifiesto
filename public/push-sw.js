@@ -9,13 +9,14 @@ self.addEventListener('push', (event) => {
 
   const title = payload.title || 'Gastos Familia'
   const body = payload.body || 'Tenés una nueva notificación.'
-  const url = payload.url || '/app'
+  const url = payload.url || 'app'
+  const iconUrl = new URL('favicon-32x32.png', self.registration.scope).toString()
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon: '/favicon-32x32.png',
-      badge: '/favicon-32x32.png',
+      icon: iconUrl,
+      badge: iconUrl,
       data: {
         url,
       },
@@ -29,8 +30,9 @@ self.addEventListener('notificationclick', (event) => {
   const targetPath =
     event.notification && event.notification.data && event.notification.data.url
       ? event.notification.data.url
-      : '/app'
-  const targetUrl = new URL(targetPath, self.location.origin).toString()
+      : 'app'
+  const normalizedTargetPath = targetPath.startsWith('/') ? targetPath.slice(1) : targetPath
+  const targetUrl = new URL(normalizedTargetPath || 'app', self.registration.scope).toString()
 
   event.waitUntil(
     (async () => {
