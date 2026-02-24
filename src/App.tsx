@@ -1,12 +1,14 @@
+import { lazy, Suspense } from 'react'
 import { IonApp, IonLoading, IonRouterOutlet } from '@ionic/react'
 import { IonReactRouter } from '@ionic/react-router'
 import { Redirect, Route } from 'react-router-dom'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useFamily } from './hooks/useFamily'
-import AppPage from './pages/AppPage'
-import FixedExpensesPage from './pages/FixedExpensesPage'
-import JoinPage from './pages/JoinPage'
-import LoginPage from './pages/LoginPage'
+
+const AppPage = lazy(() => import('./pages/AppPage'))
+const FixedExpensesPage = lazy(() => import('./pages/FixedExpensesPage'))
+const JoinPage = lazy(() => import('./pages/JoinPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
 
 export default function App() {
   const sessionQuery = useAuthSession()
@@ -33,7 +35,13 @@ export default function App() {
           <Route
             path="/login"
             render={() =>
-              session ? <Redirect to={family ? '/app' : '/join'} /> : <LoginPage />
+              session ? (
+                <Redirect to={family ? '/app' : '/join'} />
+              ) : (
+                <Suspense fallback={<IonLoading isOpen message="Cargando..." />}>
+                  <LoginPage />
+                </Suspense>
+              )
             }
             exact
           />
@@ -41,7 +49,15 @@ export default function App() {
           <Route
             path="/join"
             render={() =>
-              !session ? <Redirect to="/login" /> : family ? <Redirect to="/app" /> : <JoinPage />
+              !session ? (
+                <Redirect to="/login" />
+              ) : family ? (
+                <Redirect to="/app" />
+              ) : (
+                <Suspense fallback={<IonLoading isOpen message="Cargando..." />}>
+                  <JoinPage />
+                </Suspense>
+              )
             }
             exact
           />
@@ -49,7 +65,15 @@ export default function App() {
           <Route
             path="/app/fixed-expenses"
             render={() =>
-              !session ? <Redirect to="/login" /> : !family ? <Redirect to="/join" /> : <FixedExpensesPage />
+              !session ? (
+                <Redirect to="/login" />
+              ) : !family ? (
+                <Redirect to="/join" />
+              ) : (
+                <Suspense fallback={<IonLoading isOpen message="Cargando..." />}>
+                  <FixedExpensesPage />
+                </Suspense>
+              )
             }
             exact
           />
@@ -57,7 +81,15 @@ export default function App() {
           <Route
             path="/app"
             render={() =>
-              !session ? <Redirect to="/login" /> : !family ? <Redirect to="/join" /> : <AppPage />
+              !session ? (
+                <Redirect to="/login" />
+              ) : !family ? (
+                <Redirect to="/join" />
+              ) : (
+                <Suspense fallback={<IonLoading isOpen message="Cargando..." />}>
+                  <AppPage />
+                </Suspense>
+              )
             }
             exact
           />

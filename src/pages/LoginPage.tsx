@@ -18,6 +18,7 @@ import {
 } from '@ionic/react'
 import { useHistory } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { getErrorMessage } from '../utils/errorMessage'
 import './pages.css'
 
 type AuthMode = 'sign-in' | 'sign-up'
@@ -51,13 +52,6 @@ function getEmailRedirectTo(): string {
   const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 
   return `${window.location.origin}${normalizedBaseUrl}`
-}
-
-function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return fallbackMessage
 }
 
 export default function LoginPage() {

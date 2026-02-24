@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
 import { sendFamilyPush } from '../lib/sendFamilyPush'
+import {
+  getCachedProfileDisplayName,
+  setCachedProfileDisplayNames,
+} from '../lib/profileDisplayNameCache'
 
 interface RawExpense {
   id: string
@@ -77,17 +81,31 @@ export function useExpenses(familyId?: string, categoryId?: string) {
       const creatorIds = [...new Set(rows.map((row) => row.created_by))]
 
       const displayNameByUserId = new Map<string, string>()
-      if (creatorIds.length > 0) {
+      creatorIds.forEach((creatorId) => {
+        const cachedDisplayName = getCachedProfileDisplayName(creatorId)
+        if (cachedDisplayName) {
+          displayNameByUserId.set(creatorId, cachedDisplayName)
+        }
+      })
+
+      const missingCreatorIds = creatorIds.filter(
+        (creatorId) => !displayNameByUserId.has(creatorId),
+      )
+
+      if (missingCreatorIds.length > 0) {
         const profilesResponse = await supabase
           .from('profiles')
           .select('id, display_name')
-          .in('id', creatorIds)
+          .in('id', missingCreatorIds)
 
         if (profilesResponse.error) {
           throw profilesResponse.error
         }
 
-        ;(profilesResponse.data as ProfileRow[] | null)?.forEach((profile) => {
+        const loadedProfiles = (profilesResponse.data as ProfileRow[] | null) ?? []
+        setCachedProfileDisplayNames(loadedProfiles)
+
+        loadedProfiles.forEach((profile) => {
           displayNameByUserId.set(profile.id, profile.display_name)
         })
       }

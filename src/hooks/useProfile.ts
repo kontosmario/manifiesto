@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
+import { setCachedProfileDisplayName } from '../lib/profileDisplayNameCache'
 
 export interface Profile {
   id: string
@@ -66,7 +67,11 @@ export function useUpdateDisplayName(userId?: string) {
 
       return displayName
     },
-    onSuccess: async () => {
+    onSuccess: async (displayName) => {
+      if (userId) {
+        setCachedProfileDisplayName(userId, displayName)
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) }),
         queryClient.invalidateQueries({ queryKey: ['expenses'] }),

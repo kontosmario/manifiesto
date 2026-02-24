@@ -79,42 +79,27 @@ import {
 import { useFamily } from '../hooks/useFamily'
 import { useMyProfile, useUpdateDisplayName } from '../hooks/useProfile'
 import { supabase } from '../lib/supabaseClient'
+import { buildCategoryTabStyle, hexToRgba, shiftHexColor } from '../utils/color'
+import { getErrorMessage } from '../utils/errorMessage'
+import {
+  currencyFormatter,
+  convertCurrencyAmount,
+  formatPriceInputValue,
+  formatUsdFromArs,
+  normalizePriceInput,
+  parsePrice,
+  serializePrice,
+  type MoneyCurrency,
+} from '../utils/money'
+import { formatNotificationDate, notificationKindLabel } from '../utils/notifications'
+import {
+  buildPayDate,
+  capitalizeText,
+  formatLocalDateKey,
+  getCurrentPayCycle,
+  normalizeToStartOfDay,
+} from '../utils/payCycle'
 import './pages.css'
-
-function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return fallbackMessage
-}
-
-const currencyFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-})
-
-const usdFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'USD',
-})
-
-const usdInputFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
-
-const currencyInputFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
-
-const integerInputFormatter = new Intl.NumberFormat('es-AR', {
-  maximumFractionDigits: 0,
-})
 
 const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
   day: '2-digit',
@@ -125,285 +110,12 @@ const monthYearFormatter = new Intl.DateTimeFormat('es-AR', {
   month: 'long',
   year: 'numeric',
 })
-
-const notificationDateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-type MoneyCurrency = 'ARS' | 'USD'
 type FinanceEditorMetric = 'income' | 'savings'
-
-interface PayCycle {
-  start: Date
-  end: Date
-  weeks: number
-  days: number
-}
-
-function normalizeToStartOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
-function formatLocalDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function capitalizeText(value: string): string {
-  if (!value) {
-    return value
-  }
-
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
-}
-
-function moveToNextBusinessDay(date: Date): Date {
-  const next = normalizeToStartOfDay(date)
-
-  while (next.getDay() === 0 || next.getDay() === 6) {
-    next.setDate(next.getDate() + 1)
-  }
-
-  return next
-}
-
-function buildPayDate(year: number, month: number, paymentDay: number): Date {
-  const monthLastDay = new Date(year, month + 1, 0).getDate()
-  const normalizedPaymentDay = Math.min(Math.max(1, paymentDay), monthLastDay)
-  return moveToNextBusinessDay(new Date(year, month, normalizedPaymentDay))
-}
-
-function getCurrentPayCycle(
-  referenceDate: Date,
-  paymentDay: number,
-  freezeUntilSalaryConfirmation = false,
-): PayCycle {
-  const today = normalizeToStartOfDay(referenceDate)
-  const currentMonthPayDate = buildPayDate(
-    today.getFullYear(),
-    today.getMonth(),
-    paymentDay,
-  )
-
-  const cycleStart =
-    freezeUntilSalaryConfirmation && today >= currentMonthPayDate
-      ? buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
-      : today >= currentMonthPayDate
-        ? currentMonthPayDate
-        : buildPayDate(today.getFullYear(), today.getMonth() - 1, paymentDay)
-  const cycleEnd =
-    freezeUntilSalaryConfirmation && today >= currentMonthPayDate
-      ? currentMonthPayDate
-      : buildPayDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, paymentDay)
-
-  const cycleDays = Math.max(
-    1,
-    Math.round((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)),
-  )
-  const cycleWeeks = Math.max(1, Math.ceil(cycleDays / 7))
-
-  return {
-    start: cycleStart,
-    end: cycleEnd,
-    weeks: cycleWeeks,
-    days: cycleDays,
-  }
-}
-
-function normalizePriceInput(rawValue: string): string {
-  const cleaned = rawValue.replace(/[^\d.,]/g, '')
-  if (!cleaned) {
-    return ''
-  }
-
-  const commaIndex = cleaned.indexOf(',')
-
-  let integerPart = commaIndex >= 0 ? cleaned.slice(0, commaIndex) : cleaned
-  let decimalPart = commaIndex >= 0 ? cleaned.slice(commaIndex + 1) : ''
-
-  integerPart = integerPart.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '')
-  if (!integerPart) {
-    integerPart = '0'
-  }
-
-  decimalPart = decimalPart.replace(/[^\d]/g, '').slice(0, 2)
-
-  if (commaIndex >= 0) {
-    return decimalPart ? `${integerPart},${decimalPart}` : `${integerPart},`
-  }
-
-  return integerPart
-}
-
-function parsePrice(rawValue: string): number {
-  const normalized = normalizePriceInput(rawValue)
-  if (!normalized) {
-    return Number.NaN
-  }
-
-  const safeValue = normalized.endsWith(',') ? normalized.slice(0, -1) : normalized
-  return Number(safeValue.replace(',', '.'))
-}
-
-function formatPriceInputValue(
-  rawValue: string,
-  isFocused: boolean,
-  currency: MoneyCurrency = 'ARS',
-): string {
-  if (!rawValue) {
-    return ''
-  }
-
-  const normalized = normalizePriceInput(rawValue)
-  if (!normalized) {
-    return ''
-  }
-
-  const hasTrailingDecimalSeparator = normalized.endsWith(',')
-  const [integerPart = '0', decimalPart = ''] = normalized.split(',')
-  const integerValue = Number(integerPart)
-
-  if (!Number.isFinite(integerValue)) {
-    return ''
-  }
-
-  if (isFocused) {
-    const formattedInteger = integerInputFormatter.format(integerValue)
-    const focusedPrefix = currency === 'USD' ? 'US$ ' : '$ '
-    return hasTrailingDecimalSeparator || decimalPart
-      ? `${focusedPrefix}${formattedInteger},${decimalPart}`
-      : `${focusedPrefix}${formattedInteger}`
-  }
-
-  const normalizedForParsing = hasTrailingDecimalSeparator
-    ? `${integerPart}.${decimalPart || '0'}`
-    : normalized
-  const parsed = Number(normalizedForParsing)
-  if (!Number.isFinite(parsed)) {
-    return ''
-  }
-
-  return (currency === 'USD' ? usdInputFormatter : currencyInputFormatter).format(parsed)
-}
-
-function serializePrice(value: number): string {
-  if (Number.isInteger(value)) {
-    return value.toString()
-  }
-
-  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',')
-}
-
-function formatUsdFromArs(arsValue: number, usdExchangeRate: number): string {
-  if (!Number.isFinite(arsValue) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
-    return usdFormatter.format(0)
-  }
-
-  return usdFormatter.format(arsValue / usdExchangeRate)
-}
-
-function normalizeHexColor(color: string): string {
-  return /^#[0-9A-Fa-f]{6}$/.test(color) ? color : '#126782'
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const normalized = normalizeHexColor(hex)
-  const value = normalized.slice(1)
-
-  const r = Number.parseInt(value.slice(0, 2), 16)
-  const g = Number.parseInt(value.slice(2, 4), 16)
-  const b = Number.parseInt(value.slice(4, 6), 16)
-
-  if (![r, g, b].every(Number.isFinite)) {
-    return null
-  }
-
-  return { r, g, b }
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const rgb = hexToRgb(hex)
-  if (!rgb) {
-    return `rgba(18, 103, 130, ${alpha})`
-  }
-
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
-}
-
-function shiftHexColor(hex: string, amount: number): string {
-  const rgb = hexToRgb(hex)
-  if (!rgb) {
-    return '#126782'
-  }
-
-  const shift = (value: number) => Math.max(0, Math.min(255, value + amount))
-  const toHex = (value: number) => value.toString(16).padStart(2, '0')
-
-  return `#${toHex(shift(rgb.r))}${toHex(shift(rgb.g))}${toHex(shift(rgb.b))}`
-}
-
-function buildCategoryTabStyle(color: string): CSSProperties {
-  const accent = normalizeHexColor(color)
-
-  return {
-    '--category-tab-border': hexToRgba(accent, 0.24),
-    '--category-tab-bg': hexToRgba(accent, 0.1),
-    '--category-tab-active-start': shiftHexColor(accent, -4),
-    '--category-tab-active-end': shiftHexColor(accent, -16),
-    '--category-tab-shadow': hexToRgba(accent, 0.24),
-  } as CSSProperties
-}
-
-function convertCurrencyAmount(
-  amount: number,
-  fromCurrency: MoneyCurrency,
-  toCurrency: MoneyCurrency,
-  usdExchangeRate: number,
-): number {
-  if (!Number.isFinite(amount) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
-    return Number.NaN
-  }
-
-  if (fromCurrency === toCurrency) {
-    return amount
-  }
-
-  if (fromCurrency === 'USD' && toCurrency === 'ARS') {
-    return amount * usdExchangeRate
-  }
-
-  return amount / usdExchangeRate
-}
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_EXPENSES: Expense[] = []
 const EMPTY_FIXED_EXPENSES: FixedExpense[] = []
 const EMPTY_NOTIFICATIONS: FamilyNotification[] = []
-
-function notificationKindLabel(kind: string): string {
-  switch (kind) {
-    case 'expense':
-      return 'Gasto'
-    case 'fixed_expense':
-      return 'Fijo'
-    default:
-      return 'Info'
-  }
-}
-
-function formatNotificationDate(value: string): string {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return 'Sin fecha'
-  }
-
-  return notificationDateTimeFormatter.format(parsed)
-}
 
 export default function AppPage() {
   const history = useHistory()
@@ -439,6 +151,13 @@ export default function AppPage() {
     const activeCategory = categories.find((category) => category.id === selectedCategoryId)
     return activeCategory?.color ?? categories[0]?.color ?? '#7FA8C9'
   }, [categories, selectedCategoryId])
+  const categoryTabStylesById = useMemo(() => {
+    const stylesByCategoryId: Record<string, CSSProperties> = {}
+    categories.forEach((category) => {
+      stylesByCategoryId[category.id] = buildCategoryTabStyle(category.color)
+    })
+    return stylesByCategoryId
+  }, [categories])
 
   const expensesQuery = useExpenses(familyId, selectedCategoryId || undefined)
   const expenses = expensesQuery.data ?? EMPTY_EXPENSES
@@ -705,6 +424,144 @@ export default function AppPage() {
     '--app-toolbar-bg': hexToRgba(activeCategoryColor, 0.16),
     '--app-title-color': shiftHexColor(activeCategoryColor, -34),
   } as CSSProperties
+  const renderedCategoryTabs = useMemo(
+    () =>
+      categories.map((category) => {
+        const isActive = category.id === selectedCategoryId
+
+        return (
+          <button
+            aria-selected={isActive}
+            className={`category-tab${isActive ? ' is-active' : ''}`}
+            key={category.id}
+            ref={(tabNode) => {
+              categoryTabRefs.current[category.id] = tabNode
+            }}
+            onClick={() => setCategorySelection(category.id)}
+            role="tab"
+            style={categoryTabStylesById[category.id]}
+            type="button"
+          >
+            {category.name}
+          </button>
+        )
+      }),
+    [categories, selectedCategoryId, categoryTabStylesById],
+  )
+  const renderedExpensePills = useMemo(
+    () =>
+      expenses.map((expense) => (
+        <article className="expense-pill-item" key={expense.id}>
+          <div className="expense-pill-main">
+            <div className="expense-pill-texts">
+              <p className="expense-pill-description">{expense.description}</p>
+              <span className="expense-pill-author">{expense.creator_display_name}</span>
+            </div>
+            <div className="expense-pill-price-stack">
+              <div className="expense-pill-price-row">
+                <p className="expense-pill-price">{currencyFormatter.format(expense.price)}</p>
+
+                <button
+                  aria-label="Abrir acciones del gasto"
+                  className="expense-kebab-button"
+                  onClick={(event) => {
+                    setExpenseMenuTarget(expense)
+                    setExpenseMenuEvent(event.nativeEvent)
+                  }}
+                  type="button"
+                >
+                  <IonIcon icon={ellipsisVerticalOutline} />
+                </button>
+              </div>
+
+              <p className="price-usd-hint expense-pill-usd">
+                {formatUsdFromArs(expense.price, usdExchangeRate)}
+              </p>
+            </div>
+          </div>
+        </article>
+      )),
+    [expenses, usdExchangeRate, setExpenseMenuEvent, setExpenseMenuTarget],
+  )
+  const renderedNotifications = useMemo(
+    () =>
+      notifications.map((notification) => (
+        <article className="monthly-history-card" key={notification.id}>
+          <div className="monthly-history-card-top">
+            <p className="monthly-history-month">{notification.title}</p>
+            <span className="monthly-history-balance-chip is-positive">
+              {notificationKindLabel(notification.kind)}
+            </span>
+          </div>
+
+          {notification.body.trim() !== '' ? (
+            <p className="monthly-history-note">{notification.body}</p>
+          ) : null}
+
+          <p className="monthly-history-label">{formatNotificationDate(notification.created_at)}</p>
+        </article>
+      )),
+    [notifications],
+  )
+  const renderedMonthlyHistory = useMemo(
+    () =>
+      monthlyHistory.map((row) => (
+        <article className="monthly-history-card" key={row.monthStartIso}>
+          <div className="monthly-history-card-top">
+            <p className="monthly-history-month">{row.monthLabel}</p>
+            <span
+              className={`monthly-history-balance-chip${
+                row.endBalance < 0 ? ' is-negative' : ' is-positive'
+              }`}
+            >
+              {row.endBalance < 0 ? 'Cierre en rojo' : 'Cierre positivo'}
+            </span>
+          </div>
+
+          <div className="monthly-history-grid">
+            <div className="monthly-history-metric">
+              <span className="monthly-history-label">Total gastado</span>
+              <strong className="monthly-history-value is-spent">
+                {currencyFormatter.format(row.spent)}
+              </strong>
+            </div>
+
+            <div className="monthly-history-metric">
+              <span className="monthly-history-label">Total ahorrado</span>
+              <strong className="monthly-history-value is-saved">
+                {currencyFormatter.format(row.saved)}
+              </strong>
+            </div>
+
+            <div className="monthly-history-metric">
+              <span className="monthly-history-label">Gasto fijo mensual</span>
+              <strong className="monthly-history-value is-spent-soft">
+                {currencyFormatter.format(row.fixedSpent)}
+              </strong>
+            </div>
+
+            <div className="monthly-history-metric">
+              <span className="monthly-history-label">Ahorro objetivo gastado</span>
+              <strong className="monthly-history-value is-spent-soft">
+                {currencyFormatter.format(row.goalSpent)}
+              </strong>
+            </div>
+
+            <div className="monthly-history-metric">
+              <span className="monthly-history-label">Balance final</span>
+              <strong
+                className={`monthly-history-value${
+                  row.endBalance < 0 ? ' is-negative' : ' is-positive'
+                }`}
+              >
+                {currencyFormatter.format(row.endBalance)}
+              </strong>
+            </div>
+          </div>
+        </article>
+      )),
+    [monthlyHistory],
+  )
 
   useEffect(() => {
     if (!selectedCategoryId) {
@@ -1281,26 +1138,7 @@ export default function AppPage() {
                     className="category-tabs-scroll"
                     role="tablist"
                   >
-                    {categories.map((category) => {
-                      const isActive = category.id === selectedCategoryId
-
-                      return (
-                        <button
-                          aria-selected={isActive}
-                          className={`category-tab${isActive ? ' is-active' : ''}`}
-                          key={category.id}
-                          ref={(tabNode) => {
-                            categoryTabRefs.current[category.id] = tabNode
-                          }}
-                          onClick={() => setCategorySelection(category.id)}
-                          role="tab"
-                          style={buildCategoryTabStyle(category.color)}
-                          type="button"
-                        >
-                          {category.name}
-                        </button>
-                      )
-                    })}
+                    {renderedCategoryTabs}
                   </div>
                 </div>
               ) : (
@@ -1365,39 +1203,7 @@ export default function AppPage() {
               )}
 
               <div className="expenses-pills-list">
-                {expenses.map((expense) => (
-                  <article className="expense-pill-item" key={expense.id}>
-                    <div className="expense-pill-main">
-                      <div className="expense-pill-texts">
-                        <p className="expense-pill-description">{expense.description}</p>
-                        <span className="expense-pill-author">{expense.creator_display_name}</span>
-                      </div>
-                      <div className="expense-pill-price-stack">
-                        <div className="expense-pill-price-row">
-                          <p className="expense-pill-price">
-                            {currencyFormatter.format(expense.price)}
-                          </p>
-
-                          <button
-                            aria-label="Abrir acciones del gasto"
-                            className="expense-kebab-button"
-                            onClick={(event) => {
-                              setExpenseMenuTarget(expense)
-                              setExpenseMenuEvent(event.nativeEvent)
-                            }}
-                            type="button"
-                          >
-                            <IonIcon icon={ellipsisVerticalOutline} />
-                          </button>
-                        </div>
-
-                        <p className="price-usd-hint expense-pill-usd">
-                          {formatUsdFromArs(expense.price, usdExchangeRate)}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                {renderedExpensePills}
               </div>
             </div>
           </div>
@@ -2112,26 +1918,7 @@ export default function AppPage() {
             {!notificationsQuery.isLoading &&
             !notificationsQuery.error &&
             notifications.length > 0 ? (
-              <div className="monthly-history-list">
-                {notifications.map((notification) => (
-                  <article className="monthly-history-card" key={notification.id}>
-                    <div className="monthly-history-card-top">
-                      <p className="monthly-history-month">{notification.title}</p>
-                      <span className="monthly-history-balance-chip is-positive">
-                        {notificationKindLabel(notification.kind)}
-                      </span>
-                    </div>
-
-                    {notification.body.trim() !== '' ? (
-                      <p className="monthly-history-note">{notification.body}</p>
-                    ) : null}
-
-                    <p className="monthly-history-label">
-                      {formatNotificationDate(notification.created_at)}
-                    </p>
-                  </article>
-                ))}
-              </div>
+              <div className="monthly-history-list">{renderedNotifications}</div>
             ) : null}
           </div>
         </div>
@@ -2191,63 +1978,7 @@ export default function AppPage() {
             {!monthlyHistoryQuery.isLoading &&
             !monthlyHistoryQuery.error &&
             monthlyHistory.length > 0 ? (
-              <div className="monthly-history-list">
-                {monthlyHistory.map((row) => (
-                  <article className="monthly-history-card" key={row.monthStartIso}>
-                    <div className="monthly-history-card-top">
-                      <p className="monthly-history-month">{row.monthLabel}</p>
-                      <span
-                        className={`monthly-history-balance-chip${
-                          row.endBalance < 0 ? ' is-negative' : ' is-positive'
-                        }`}
-                      >
-                        {row.endBalance < 0 ? 'Cierre en rojo' : 'Cierre positivo'}
-                      </span>
-                    </div>
-
-                    <div className="monthly-history-grid">
-                      <div className="monthly-history-metric">
-                        <span className="monthly-history-label">Total gastado</span>
-                        <strong className="monthly-history-value is-spent">
-                          {currencyFormatter.format(row.spent)}
-                        </strong>
-                      </div>
-
-                      <div className="monthly-history-metric">
-                        <span className="monthly-history-label">Total ahorrado</span>
-                        <strong className="monthly-history-value is-saved">
-                          {currencyFormatter.format(row.saved)}
-                        </strong>
-                      </div>
-
-                      <div className="monthly-history-metric">
-                        <span className="monthly-history-label">Gasto fijo mensual</span>
-                        <strong className="monthly-history-value is-spent-soft">
-                          {currencyFormatter.format(row.fixedSpent)}
-                        </strong>
-                      </div>
-
-                      <div className="monthly-history-metric">
-                        <span className="monthly-history-label">Ahorro objetivo gastado</span>
-                        <strong className="monthly-history-value is-spent-soft">
-                          {currencyFormatter.format(row.goalSpent)}
-                        </strong>
-                      </div>
-
-                      <div className="monthly-history-metric">
-                        <span className="monthly-history-label">Balance final</span>
-                        <strong
-                          className={`monthly-history-value${
-                            row.endBalance < 0 ? ' is-negative' : ' is-positive'
-                          }`}
-                        >
-                          {currencyFormatter.format(row.endBalance)}
-                        </strong>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <div className="monthly-history-list">{renderedMonthlyHistory}</div>
             ) : null}
 
             <IonButton

@@ -99,11 +99,12 @@ export function useHasPushSubscription(familyId?: string, userId?: string) {
         return false
       }
 
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from('push_subscriptions')
-        .select('id', { head: true, count: 'exact' })
+        .select('id')
         .eq('family_id', familyId)
         .eq('user_id', userId)
+        .limit(1)
 
       if (error) {
         if (isMissingPushSubscriptionsTableError(error)) {
@@ -113,7 +114,7 @@ export function useHasPushSubscription(familyId?: string, userId?: string) {
         throw error
       }
 
-      return (count ?? 0) > 0
+      return (data?.length ?? 0) > 0
     },
   })
 }

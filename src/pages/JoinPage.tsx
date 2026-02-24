@@ -16,14 +16,8 @@ import {
 import { useHistory, useLocation } from 'react-router-dom'
 import { useAuthSession } from '../hooks/useAuthSession'
 import { useBootstrapFamily, useJoinFamily } from '../hooks/useFamilyActions'
+import { getErrorMessage } from '../utils/errorMessage'
 import './pages.css'
-
-function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return fallbackMessage
-}
 
 export default function JoinPage() {
   const history = useHistory()
