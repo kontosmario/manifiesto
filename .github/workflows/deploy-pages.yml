@@ -36,7 +36,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://xaquigyhylzvuyfslkqq.supabase.co' }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY || 'sb_publishable_IW-shCHE7J00_e1DCOaP7Q_9iwprkLd' }}
           VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || format('/{0}/', github.event.repository.name) }}
-          VITE_WEB_PUSH_PUBLIC_KEY: ${{ secrets.VITE_WEB_PUSH_PUBLIC_KEY || vars.VITE_WEB_PUSH_PUBLIC_KEY || '' }}
+          VITE_WEB_PUSH_PUBLIC_KEY: ${{ secrets.VITE_WEB_PUSH_PUBLIC_KEY || vars.VITE_WEB_PUSH_PUBLIC_KEY || secrets.WEB_PUSH_VAPID_PUBLIC_KEY || vars.WEB_PUSH_VAPID_PUBLIC_KEY || '' }}
         run: npm run build
 
       - name: SPA fallback for BrowserRouter
