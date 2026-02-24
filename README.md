@@ -53,6 +53,8 @@ supabase functions deploy send-family-push
 ```
 5. En la app, abrir menú familiar y tocar `Activar push`.
 
+Si desplegás en GitHub Pages, agregá también `VITE_WEB_PUSH_PUBLIC_KEY` como `Repository secret` (o `Repository variable`) para que quede embebida en el build.
+
 ## 4) Correr local
 ```bash
 nvm use 22
@@ -65,6 +67,7 @@ npm run dev
 2. Agregar secrets del repo:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_KEY`
+   - `VITE_WEB_PUSH_PUBLIC_KEY`
 3. En GitHub: `Settings -> Pages -> Build and deployment -> Source: GitHub Actions`.
 4. Push a `main`.
 

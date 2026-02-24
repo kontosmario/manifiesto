@@ -82,9 +82,12 @@ export function useEnablePushNotifications() {
       }
 
       const vapidPublicKey =
-        import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY ?? import.meta.env.VITE_VAPID_PUBLIC_KEY
+        import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY?.trim() ??
+        import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim()
       if (!vapidPublicKey || typeof vapidPublicKey !== 'string') {
-        throw new Error('Falta configurar VITE_WEB_PUSH_PUBLIC_KEY.')
+        throw new Error(
+          'Falta configurar VITE_WEB_PUSH_PUBLIC_KEY (reiniciá el servidor o configuralo en el entorno de deploy).',
+        )
       }
 
       const permissionResult =
