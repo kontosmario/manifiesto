@@ -3,6 +3,8 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
+const DEFAULT_WEB_PUSH_PUBLIC_KEY =
+  'BKZ67coFgS6TnsdNCNv3wmIsAtRROxoWAGBaPn6AEQxBcD9tLA0GDq5Ofsdz1nly28oPGIgTwfuvvZGrm8GG430'
 
 function isMissingPushSubscriptionsTableError(error: PostgrestError): boolean {
   const code = error.code ?? ''
@@ -134,8 +136,9 @@ export function useEnablePushNotifications() {
       }
 
       const vapidPublicKey =
-        import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY?.trim() ??
-        import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim()
+        import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY?.trim() ||
+        import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim() ||
+        DEFAULT_WEB_PUSH_PUBLIC_KEY
       if (!vapidPublicKey || typeof vapidPublicKey !== 'string') {
         throw new Error(
           'Falta configurar VITE_WEB_PUSH_PUBLIC_KEY (reiniciá el servidor o configuralo en el entorno de deploy).',

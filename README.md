@@ -54,6 +54,7 @@ supabase functions deploy send-family-push
 5. En la app, abrir menú familiar y tocar `Activar push`.
 
 Si desplegás en GitHub Pages, agregá también `VITE_WEB_PUSH_PUBLIC_KEY` como `Repository secret` (o `Repository variable`) para que quede embebida en el build.
+La app además tiene fallback a la VAPID pública actual para evitar bloqueos si ese secret falta en el pipeline.
 
 Si en iPhone/iPad aparece "este dispositivo no soporta push web":
 - Abrí la app con Safari (no desde navegador interno de Instagram/WhatsApp).
