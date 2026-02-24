@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { sendFamilyPush } from '../lib/sendFamilyPush'
 
 interface RawFixedExpense {
   id: string
@@ -115,16 +116,13 @@ export function useCreateFixedExpense(familyId?: string) {
 
       if (familyId) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
-        void supabase.functions
-          .invoke('send-family-push', {
-            body: {
-              familyId,
-              title: 'Nuevo gasto fijo',
-              body: pushBody,
-              kind: 'fixed_expense',
-              url: '/app/fixed-expenses',
-            },
-          })
+        void sendFamilyPush({
+          familyId,
+          title: 'Nuevo gasto fijo',
+          body: pushBody,
+          kind: 'fixed_expense',
+          url: '/app/fixed-expenses',
+        })
           .catch(() => {})
       }
     },
@@ -180,16 +178,13 @@ export function useUpdateFixedExpense(familyId?: string) {
 
       if (familyId) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
-        void supabase.functions
-          .invoke('send-family-push', {
-            body: {
-              familyId,
-              title: 'Gasto fijo actualizado',
-              body: pushBody,
-              kind: 'fixed_expense',
-              url: '/app/fixed-expenses',
-            },
-          })
+        void sendFamilyPush({
+          familyId,
+          title: 'Gasto fijo actualizado',
+          body: pushBody,
+          kind: 'fixed_expense',
+          url: '/app/fixed-expenses',
+        })
           .catch(() => {})
       }
     },
@@ -226,16 +221,13 @@ export function useDeleteFixedExpense(familyId?: string) {
       ])
 
       if (familyId) {
-        void supabase.functions
-          .invoke('send-family-push', {
-            body: {
-              familyId,
-              title: 'Gasto fijo eliminado',
-              body: 'Se eliminó un gasto fijo.',
-              kind: 'fixed_expense',
-              url: '/app/fixed-expenses',
-            },
-          })
+        void sendFamilyPush({
+          familyId,
+          title: 'Gasto fijo eliminado',
+          body: 'Se eliminó un gasto fijo.',
+          kind: 'fixed_expense',
+          url: '/app/fixed-expenses',
+        })
           .catch(() => {})
       }
     },

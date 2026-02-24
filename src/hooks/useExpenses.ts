@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
+import { sendFamilyPush } from '../lib/sendFamilyPush'
 
 interface RawExpense {
   id: string
@@ -258,16 +259,13 @@ export function useCreateExpense(familyId?: string, userId?: string) {
 
       if (familyId) {
         const pushBody = `${variables.description.trim()} · $${variables.price}`
-        void supabase.functions
-          .invoke('send-family-push', {
-            body: {
-              familyId,
-              title: 'Nuevo gasto cargado',
-              body: pushBody,
-              kind: 'expense',
-              url: '/app',
-            },
-          })
+        void sendFamilyPush({
+          familyId,
+          title: 'Nuevo gasto cargado',
+          body: pushBody,
+          kind: 'expense',
+          url: '/app',
+        })
           .catch(() => {})
       }
     },

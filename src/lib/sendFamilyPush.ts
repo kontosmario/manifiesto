@@ -1,0 +1,29 @@
+import { supabase } from './supabaseClient'
+
+interface SendFamilyPushInput {
+  familyId: string
+  title: string
+  body: string
+  kind?: string
+  url?: string
+}
+
+export async function sendFamilyPush(input: SendFamilyPushInput): Promise<void> {
+  const { data } = await supabase.auth.getSession()
+  const accessToken = data.session?.access_token
+
+  if (!accessToken) {
+    throw new Error('No hay sesión activa para enviar push.')
+  }
+
+  const { error } = await supabase.functions.invoke('send-family-push', {
+    body: input,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+}
