@@ -65,6 +65,35 @@ function isServerReady(): boolean {
   )
 }
 
+function extractBearerToken(authorizationHeader: string | null): string | null {
+  if (!authorizationHeader) {
+    return null
+  }
+
+  const normalized = authorizationHeader.trim()
+  if (!normalized) {
+    return null
+  }
+
+  const bearerPrefix = 'bearer '
+  if (normalized.toLowerCase().startsWith(bearerPrefix)) {
+    return normalized.slice(bearerPrefix.length).trim() || null
+  }
+
+  return normalized
+}
+
+function getGatewayUserId(request: Request): string | null {
+  const value =
+    request.headers.get('x-supabase-auth-user') ??
+    request.headers.get('x-supabase-auth-user-id')
+  if (!value || !value.trim()) {
+    return null
+  }
+
+  return value.trim()
+}
+
 async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') {
     return new Response('ok', {
@@ -86,11 +115,6 @@ async function handler(request: Request): Promise<Response> {
     )
   }
 
-  const authorization = request.headers.get('Authorization')
-  if (!authorization) {
-    return jsonResponse({ error: 'Missing Authorization header.' }, 401)
-  }
-
   let payload: PushRequestBody
   try {
     payload = (await request.json()) as PushRequestBody
@@ -108,20 +132,37 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'familyId and title are required.' }, 400)
   }
 
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: authorization,
-      },
-    },
-  })
+  const token = extractBearerToken(
+    request.headers.get('Authorization') ?? request.headers.get('authorization'),
+  )
+  const gatewayUserId = getGatewayUserId(request)
 
-  const authUserResponse = await userClient.auth.getUser()
-  if (authUserResponse.error || !authUserResponse.data.user) {
-    return jsonResponse({ error: 'Unauthorized user.' }, 401)
+  let actorUserId = gatewayUserId
+  if (token) {
+    const userClient = createClient(supabaseUrl, supabaseAnonKey)
+    const authUserResponse = await userClient.auth.getUser(token)
+    if (authUserResponse.error || !authUserResponse.data.user) {
+      if (!gatewayUserId) {
+        return jsonResponse(
+          {
+            error: 'Unauthorized user (invalid token).',
+          },
+          401,
+        )
+      }
+    } else {
+      actorUserId = authUserResponse.data.user.id
+    }
   }
 
-  const actorUserId = authUserResponse.data.user.id
+  if (!actorUserId) {
+    return jsonResponse(
+      {
+        error: 'Unauthorized user (missing token).',
+      },
+      401,
+    )
+  }
 
   const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey)
 
