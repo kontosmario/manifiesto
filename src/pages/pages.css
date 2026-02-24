@@ -588,6 +588,186 @@
   font-size: 0.82rem;
 }
 
+.fixed-expenses-liquid-shell {
+  margin-bottom: 12px;
+}
+
+.fixed-expenses-liquid-card {
+  border-radius: 18px;
+  border: 1px solid rgba(56, 108, 138, 0.24);
+  background: linear-gradient(
+    145deg,
+    rgba(245, 255, 248, 0.84) 0%,
+    rgba(231, 249, 238, 0.68) 52%,
+    rgba(247, 255, 250, 0.64) 100%
+  );
+  box-shadow:
+    0 14px 26px rgba(12, 43, 64, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(18px) saturate(148%);
+  -webkit-backdrop-filter: blur(18px) saturate(148%);
+  padding: 10px 12px 12px;
+  transition: opacity 160ms ease;
+}
+
+.fixed-expenses-liquid-card.is-loading {
+  opacity: 0.72;
+}
+
+.fixed-expenses-liquid-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.fixed-expenses-liquid-kicker {
+  margin: 0;
+  color: #4b6172;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fixed-expenses-liquid-add {
+  margin: 0;
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --color: #176348;
+}
+
+.fixed-expenses-total-chip {
+  border: 1px solid rgba(55, 129, 92, 0.28);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 8px 10px;
+}
+
+.fixed-expenses-total-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fixed-expenses-total-label {
+  color: #4c6273;
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fixed-expenses-total-value {
+  color: #19523a;
+  font-size: 1.03rem;
+  line-height: 1.1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixed-expenses-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.fixed-expense-item {
+  border-radius: 12px;
+  border: 1px solid rgba(70, 131, 98, 0.24);
+  background: rgba(255, 255, 255, 0.62);
+  padding: 9px 10px;
+}
+
+.fixed-expense-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fixed-expense-texts {
+  min-width: 0;
+}
+
+.fixed-expense-name {
+  margin: 0;
+  color: #1b3d4f;
+  font-size: 0.96rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-expense-usd {
+  margin-top: 3px;
+}
+
+.fixed-expense-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.fixed-expense-amount {
+  margin: 0;
+  color: #144a35;
+  font-size: 0.99rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fixed-expense-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fixed-expense-action {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 131, 98, 0.24);
+  background: rgba(255, 255, 255, 0.82);
+  color: #2f6c50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.fixed-expense-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fixed-expense-action:not(:disabled):hover,
+.fixed-expense-action:not(:disabled):focus-visible {
+  background: rgba(223, 246, 233, 0.8);
+  border-color: rgba(55, 129, 92, 0.4);
+}
+
+.fixed-expense-action.is-danger {
+  color: #b43838;
+  border-color: rgba(180, 56, 56, 0.28);
+}
+
+.fixed-expense-action.is-danger:not(:disabled):hover,
+.fixed-expense-action.is-danger:not(:disabled):focus-visible {
+  background: rgba(255, 236, 236, 0.9);
+  border-color: rgba(180, 56, 56, 0.44);
+}
+
 .category-liquid-shell {
   margin-bottom: 12px;
 }

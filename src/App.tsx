@@ -4,6 +4,7 @@ import { Redirect, Route } from 'react-router-dom'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useFamily } from './hooks/useFamily'
 import AppPage from './pages/AppPage'
+import FixedExpensesPage from './pages/FixedExpensesPage'
 import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
 
@@ -41,6 +42,14 @@ export default function App() {
             path="/join"
             render={() =>
               !session ? <Redirect to="/login" /> : family ? <Redirect to="/app" /> : <JoinPage />
+            }
+            exact
+          />
+
+          <Route
+            path="/app/fixed-expenses"
+            render={() =>
+              !session ? <Redirect to="/login" /> : !family ? <Redirect to="/join" /> : <FixedExpensesPage />
             }
             exact
           />

@@ -80,6 +80,45 @@ create table if not exists public.family_finance (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.fixed_expenses (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  name text not null,
+  amount numeric(12,2) not null check (amount >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (family_id, name)
+);
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  title text not null,
+  body text not null default '',
+  kind text not null default 'info',
+  created_by uuid null references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notifications_family_created_at_idx
+on public.notifications (family_id, created_at desc);
+
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  user_agent text null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, endpoint)
+);
+
+create index if not exists push_subscriptions_family_idx
+on public.push_subscriptions (family_id);
+
 -- -----------------------
 -- Compatibility guards (important when tables already existed)
 -- -----------------------
@@ -360,6 +399,130 @@ before update on public.family_finance
 for each row
 execute function public.touch_family_finance_updated_at();
 
+create or replace function public.touch_fixed_expenses_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_fixed_expenses_updated_at on public.fixed_expenses;
+create trigger trg_fixed_expenses_updated_at
+before update on public.fixed_expenses
+for each row
+execute function public.touch_fixed_expenses_updated_at();
+
+create or replace function public.touch_push_subscriptions_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_push_subscriptions_updated_at on public.push_subscriptions;
+create trigger trg_push_subscriptions_updated_at
+before update on public.push_subscriptions
+for each row
+execute function public.touch_push_subscriptions_updated_at();
+
+create or replace function public.notify_expense_insert()
+returns trigger
+language plpgsql
+as $$
+begin
+  insert into public.notifications (family_id, title, body, kind, created_by)
+  values (
+    new.family_id,
+    'Nuevo gasto cargado',
+    concat(
+      coalesce(nullif(btrim(new.description), ''), 'Sin descripción'),
+      ' · $',
+      coalesce(new.price, 0)::text
+    ),
+    'expense',
+    new.created_by
+  );
+
+  return new;
+exception
+  when others then
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_expenses_notify_insert on public.expenses;
+create trigger trg_expenses_notify_insert
+after insert on public.expenses
+for each row
+execute function public.notify_expense_insert();
+
+create or replace function public.notify_fixed_expense_change()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_family_id uuid;
+  v_name text;
+  v_amount numeric(12,2);
+  v_title text;
+begin
+  if tg_op = 'INSERT' then
+    v_family_id := new.family_id;
+    v_name := new.name;
+    v_amount := new.amount;
+    v_title := 'Nuevo gasto fijo';
+  elsif tg_op = 'UPDATE' then
+    v_family_id := new.family_id;
+    v_name := new.name;
+    v_amount := new.amount;
+    v_title := 'Gasto fijo actualizado';
+  else
+    v_family_id := old.family_id;
+    v_name := old.name;
+    v_amount := old.amount;
+    v_title := 'Gasto fijo eliminado';
+  end if;
+
+  insert into public.notifications (family_id, title, body, kind, created_by)
+  values (
+    v_family_id,
+    v_title,
+    concat(
+      coalesce(nullif(btrim(v_name), ''), 'Sin nombre'),
+      ' · $',
+      coalesce(v_amount, 0)::text
+    ),
+    'fixed_expense',
+    auth.uid()
+  );
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
+exception
+  when others then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_fixed_expenses_notify_change on public.fixed_expenses;
+create trigger trg_fixed_expenses_notify_change
+after insert or update or delete on public.fixed_expenses
+for each row
+execute function public.notify_fixed_expense_change();
+
 -- -----------------------
 -- RLS helper function
 -- -----------------------
@@ -564,6 +727,9 @@ alter table public.categories enable row level security;
 alter table public.expenses enable row level security;
 alter table public.profiles enable row level security;
 alter table public.family_finance enable row level security;
+alter table public.fixed_expenses enable row level security;
+alter table public.notifications enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 -- -----------------------
 -- Policies
@@ -711,3 +877,107 @@ on public.family_finance
 for delete
 to authenticated
 using (public.is_family_member(family_id));
+
+-- fixed_expenses: CRUD para miembros de la family
+
+drop policy if exists "fixed_expenses_select_members" on public.fixed_expenses;
+create policy "fixed_expenses_select_members"
+on public.fixed_expenses
+for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "fixed_expenses_insert_members" on public.fixed_expenses;
+create policy "fixed_expenses_insert_members"
+on public.fixed_expenses
+for insert
+to authenticated
+with check (public.is_family_member(family_id));
+
+drop policy if exists "fixed_expenses_update_members" on public.fixed_expenses;
+create policy "fixed_expenses_update_members"
+on public.fixed_expenses
+for update
+to authenticated
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "fixed_expenses_delete_members" on public.fixed_expenses;
+create policy "fixed_expenses_delete_members"
+on public.fixed_expenses
+for delete
+to authenticated
+using (public.is_family_member(family_id));
+
+-- notifications: read + insert para miembros de la family
+
+drop policy if exists "notifications_select_members" on public.notifications;
+create policy "notifications_select_members"
+on public.notifications
+for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "notifications_insert_members" on public.notifications;
+create policy "notifications_insert_members"
+on public.notifications
+for insert
+to authenticated
+with check (public.is_family_member(family_id));
+
+drop policy if exists "notifications_delete_members" on public.notifications;
+create policy "notifications_delete_members"
+on public.notifications
+for delete
+to authenticated
+using (public.is_family_member(family_id));
+
+-- push_subscriptions: CRUD de suscripción push para miembros
+
+drop policy if exists "push_subscriptions_select_members" on public.push_subscriptions;
+create policy "push_subscriptions_select_members"
+on public.push_subscriptions
+for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "push_subscriptions_insert_self_member" on public.push_subscriptions;
+create policy "push_subscriptions_insert_self_member"
+on public.push_subscriptions
+for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and public.is_family_member(family_id)
+);
+
+drop policy if exists "push_subscriptions_update_self_member" on public.push_subscriptions;
+create policy "push_subscriptions_update_self_member"
+on public.push_subscriptions
+for update
+to authenticated
+using (
+  user_id = auth.uid()
+  and public.is_family_member(family_id)
+)
+with check (
+  user_id = auth.uid()
+  and public.is_family_member(family_id)
+);
+
+drop policy if exists "push_subscriptions_delete_self_member" on public.push_subscriptions;
+create policy "push_subscriptions_delete_self_member"
+on public.push_subscriptions
+for delete
+to authenticated
+using (
+  user_id = auth.uid()
+  and public.is_family_member(family_id)
+);
+
+-- Realtime publication (idempotente)
+
+do $$
+begin
+  alter publication supabase_realtime add table public.notifications;
+exception
+  when duplicate_object or undefined_object then null;
+end;
+$$;

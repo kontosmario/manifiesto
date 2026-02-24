@@ -28,6 +28,7 @@ import {
   createOutline,
   logOutOutline,
   menuOutline,
+  notificationsOutline,
   pencilOutline,
   removeCircle,
   shieldCheckmarkOutline,
@@ -62,6 +63,19 @@ import {
   useFamilyFinance,
   useUpsertFamilyFinance,
 } from '../hooks/useFamilyFinance'
+import {
+  useFixedExpenses,
+  type FixedExpense,
+} from '../hooks/useFixedExpenses'
+import {
+  useFamilyNotifications,
+  useFamilyNotificationsRealtime,
+  type FamilyNotification,
+} from '../hooks/useNotifications'
+import {
+  useEnablePushNotifications,
+  useHasPushSubscription,
+} from '../hooks/usePushNotifications'
 import { useFamily } from '../hooks/useFamily'
 import { useMyProfile, useUpdateDisplayName } from '../hooks/useProfile'
 import { supabase } from '../lib/supabaseClient'
@@ -110,6 +124,13 @@ const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
 const monthYearFormatter = new Intl.DateTimeFormat('es-AR', {
   month: 'long',
   year: 'numeric',
+})
+
+const notificationDateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
 })
 
 type MoneyCurrency = 'ARS' | 'USD'
@@ -361,6 +382,28 @@ function convertCurrencyAmount(
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_EXPENSES: Expense[] = []
+const EMPTY_FIXED_EXPENSES: FixedExpense[] = []
+const EMPTY_NOTIFICATIONS: FamilyNotification[] = []
+
+function notificationKindLabel(kind: string): string {
+  switch (kind) {
+    case 'expense':
+      return 'Gasto'
+    case 'fixed_expense':
+      return 'Fijo'
+    default:
+      return 'Info'
+  }
+}
+
+function formatNotificationDate(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Sin fecha'
+  }
+
+  return notificationDateTimeFormatter.format(parsed)
+}
 
 export default function AppPage() {
   const history = useHistory()
@@ -399,6 +442,13 @@ export default function AppPage() {
 
   const expensesQuery = useExpenses(familyId, selectedCategoryId || undefined)
   const expenses = expensesQuery.data ?? EMPTY_EXPENSES
+  const fixedExpensesQuery = useFixedExpenses(familyId)
+  const fixedExpenses = fixedExpensesQuery.data ?? EMPTY_FIXED_EXPENSES
+  const notificationsQuery = useFamilyNotifications(familyId, 40)
+  const notifications = notificationsQuery.data ?? EMPTY_NOTIFICATIONS
+  useFamilyNotificationsRealtime(familyId)
+  const hasPushSubscriptionQuery = useHasPushSubscription(familyId, userId)
+  const enablePushMutation = useEnablePushNotifications()
   const familyTotalQuery = useFamilyTotal(familyId)
   const familyFinanceQuery = useFamilyFinance(familyId)
   const salaryPaymentDay =
@@ -469,6 +519,7 @@ export default function AppPage() {
   const [isUsdRateInputFocused, setUsdRateInputFocused] = useState(false)
   const [isSalaryDayModalOpen, setSalaryDayModalOpen] = useState(false)
   const [salaryDayInput, setSalaryDayInput] = useState('')
+  const [isNotificationsModalOpen, setNotificationsModalOpen] = useState(false)
   const [isMonthlyHistoryModalOpen, setMonthlyHistoryModalOpen] = useState(false)
   const [dismissedSalaryPromptDate, setDismissedSalaryPromptDate] = useState<string | null>(
     null,
@@ -489,8 +540,12 @@ export default function AppPage() {
   const savingsGoal = familyFinanceQuery.data?.savings_goal ?? 0
   const usdExchangeRate =
     familyFinanceQuery.data?.usd_exchange_rate ?? DEFAULT_USD_EXCHANGE_RATE
+  const fixedExpensesMonthlyTotal = useMemo(() => {
+    return fixedExpenses.reduce((sum, fixedExpense) => sum + fixedExpense.amount, 0)
+  }, [fixedExpenses])
   const spentInCurrentCycle = familyPeriodTotalQuery.data ?? 0
-  const cycleBalanceBeforeSavings = monthlyIncome - savingsGoal - spentInCurrentCycle
+  const cycleBalanceBeforeSavings =
+    monthlyIncome - savingsGoal - fixedExpensesMonthlyTotal - spentInCurrentCycle
   const savingsSpent = Math.min(savingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
   const savingsRemaining = Math.max(0, savingsGoal - savingsSpent)
   const savingsSpentPercent =
@@ -500,7 +555,8 @@ export default function AppPage() {
     const rows = monthlyHistoryQuery.data ?? []
 
     return rows.map((row) => {
-      const spent = row.totalSpent
+      const fixedSpent = fixedExpensesMonthlyTotal
+      const spent = row.totalSpent + fixedSpent
       const goalSpent = Math.min(savingsGoal, Math.max(0, spent - (monthlyIncome - savingsGoal)))
       const saved = Math.max(0, monthlyIncome - spent)
       const endBalance = monthlyIncome - savingsGoal - spent + goalSpent
@@ -508,6 +564,7 @@ export default function AppPage() {
 
       return {
         ...row,
+        fixedSpent,
         spent,
         saved,
         goalSpent,
@@ -515,7 +572,7 @@ export default function AppPage() {
         monthLabel,
       }
     })
-  }, [monthlyHistoryQuery.data, monthlyIncome, savingsGoal])
+  }, [fixedExpensesMonthlyTotal, monthlyHistoryQuery.data, monthlyIncome, savingsGoal])
   const monthlyHistoryTotals = useMemo(() => {
     return monthlyHistory.reduce(
       (accumulator, row) => {
@@ -1041,7 +1098,8 @@ export default function AppPage() {
     renameCategoryMutation.isPending ||
     deleteCategoryMutation.isPending ||
     updateDisplayNameMutation.isPending ||
-    upsertFamilyFinanceMutation.isPending
+    upsertFamilyFinanceMutation.isPending ||
+    enablePushMutation.isPending
 
   return (
     <IonPage style={appThemeStyles}>
@@ -1076,7 +1134,8 @@ export default function AppPage() {
               className={`overview-liquid-card${
                 familyTotalQuery.isLoading ||
                 familyFinanceQuery.isLoading ||
-                familyPeriodTotalQuery.isLoading
+                familyPeriodTotalQuery.isLoading ||
+                fixedExpensesQuery.isLoading
                   ? ' is-loading'
                   : ''
               }`}
@@ -1173,7 +1232,8 @@ export default function AppPage() {
                     {currencyFormatter.format(totalAvailable)}
                   </span>
                   <span className="overview-metric-footnote">
-                    Ciclo {cycleRangeLabel} ({payCycle.weeks} sem)
+                    Ciclo {cycleRangeLabel} ({payCycle.weeks} sem) · Fijos:{' '}
+                    {currencyFormatter.format(fixedExpensesMonthlyTotal)}
                   </span>
                   <span className="price-usd-hint overview-metric-usd">
                     {formatUsdFromArs(totalAvailable, usdExchangeRate)}
@@ -1189,7 +1249,7 @@ export default function AppPage() {
                     {currencyFormatter.format(weeklyAvailable)}
                   </span>
                   <span className="overview-metric-footnote">
-                    Gasto ciclo: {currencyFormatter.format(spentInCurrentCycle)}
+                    Gasto ciclo: {currencyFormatter.format(spentInCurrentCycle)} + fijos
                   </span>
                   <span className="price-usd-hint overview-metric-usd">
                     {formatUsdFromArs(weeklyAvailable, usdExchangeRate)}
@@ -1410,6 +1470,65 @@ export default function AppPage() {
             >
               <IonIcon icon={calendarOutline} slot="start" />
               <IonLabel>Día de cobro</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                history.push('/app/fixed-expenses')
+              }}
+            >
+              <IonIcon icon={walletOutline} slot="start" />
+              <IonLabel>Gastos fijos</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              onClick={() => {
+                closeFamilyMenu()
+                setNotificationsModalOpen(true)
+              }}
+            >
+              <IonIcon icon={notificationsOutline} slot="start" />
+              <IonLabel>Notificaciones</IonLabel>
+            </IonItem>
+
+            <IonItem
+              button
+              detail={false}
+              disabled={enablePushMutation.isPending}
+              onClick={() => {
+                closeFamilyMenu()
+
+                if (!familyId || !userId) {
+                  showToast('No hay sesión activa para habilitar push.')
+                  return
+                }
+
+                enablePushMutation.mutate(
+                  {
+                    familyId,
+                    userId,
+                  },
+                  {
+                    onSuccess: () => {
+                      void hasPushSubscriptionQuery.refetch()
+                      showToast('Notificaciones push activadas.')
+                    },
+                    onError: (error: unknown) => {
+                      showToast(getErrorMessage(error, 'No se pudo activar push.'))
+                    },
+                  },
+                )
+              }}
+            >
+              <IonIcon icon={notificationsOutline} slot="start" />
+              <IonLabel>
+                {hasPushSubscriptionQuery.data ? 'Push activado' : 'Activar push'}
+              </IonLabel>
             </IonItem>
 
             {isSalaryPendingConfirmation ? (
@@ -1958,6 +2077,68 @@ export default function AppPage() {
 
       <IonModal
         className="content-fit-modal"
+        isOpen={isNotificationsModalOpen}
+        onDidDismiss={() => setNotificationsModalOpen(false)}
+      >
+        <div className="content-fit-modal-shell">
+          <div className="content-fit-modal-header">
+            <p className="content-fit-modal-title">Notificaciones</p>
+            <IonButton fill="clear" onClick={() => setNotificationsModalOpen(false)}>
+              Cerrar
+            </IonButton>
+          </div>
+
+          <div className="monthly-history-shell">
+            <p className="monthly-history-note">
+              Eventos recientes de gastos y gastos fijos de la familia.
+            </p>
+
+            {notificationsQuery.isLoading ? (
+              <div className="loading-row">
+                <IonSpinner name="crescent" />
+              </div>
+            ) : null}
+
+            {!notificationsQuery.isLoading && notificationsQuery.error ? (
+              <p className="monthly-history-empty">No se pudieron cargar las notificaciones.</p>
+            ) : null}
+
+            {!notificationsQuery.isLoading &&
+            !notificationsQuery.error &&
+            notifications.length === 0 ? (
+              <p className="monthly-history-empty">Todavía no hay notificaciones.</p>
+            ) : null}
+
+            {!notificationsQuery.isLoading &&
+            !notificationsQuery.error &&
+            notifications.length > 0 ? (
+              <div className="monthly-history-list">
+                {notifications.map((notification) => (
+                  <article className="monthly-history-card" key={notification.id}>
+                    <div className="monthly-history-card-top">
+                      <p className="monthly-history-month">{notification.title}</p>
+                      <span className="monthly-history-balance-chip is-positive">
+                        {notificationKindLabel(notification.kind)}
+                      </span>
+                    </div>
+
+                    {notification.body.trim() !== '' ? (
+                      <p className="monthly-history-note">{notification.body}</p>
+                    ) : null}
+
+                    <p className="monthly-history-label">
+                      {formatNotificationDate(notification.created_at)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </IonModal>
+
+      <IonModal
+        className="content-fit-modal"
         isOpen={isMonthlyHistoryModalOpen}
         onDidDismiss={() => setMonthlyHistoryModalOpen(false)}
       >
@@ -1971,8 +2152,8 @@ export default function AppPage() {
 
           <div className="monthly-history-shell">
             <p className="monthly-history-note">
-              Últimos 6 meses (incluye mes vigente). El ahorro se estima con ingreso y objetivo
-              actuales.
+              Últimos 6 meses (incluye mes vigente). El cálculo usa ingreso y objetivo actuales e
+              incluye gastos fijos mensuales.
             </p>
 
             <div className="monthly-history-summary-grid">
@@ -2036,6 +2217,13 @@ export default function AppPage() {
                         <span className="monthly-history-label">Total ahorrado</span>
                         <strong className="monthly-history-value is-saved">
                           {currencyFormatter.format(row.saved)}
+                        </strong>
+                      </div>
+
+                      <div className="monthly-history-metric">
+                        <span className="monthly-history-label">Gasto fijo mensual</span>
+                        <strong className="monthly-history-value is-spent-soft">
+                          {currencyFormatter.format(row.fixedSpent)}
                         </strong>
                       </div>
 

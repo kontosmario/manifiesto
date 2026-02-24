@@ -247,13 +247,29 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         throw error
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['expenses', familyId] }),
         queryClient.invalidateQueries({ queryKey: familyTotalQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: ['expenses-period-total', familyId] }),
         queryClient.invalidateQueries({ queryKey: ['expenses-monthly-spent', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['family-notifications', familyId] }),
       ])
+
+      if (familyId) {
+        const pushBody = `${variables.description.trim()} · $${variables.price}`
+        void supabase.functions
+          .invoke('send-family-push', {
+            body: {
+              familyId,
+              title: 'Nuevo gasto cargado',
+              body: pushBody,
+              kind: 'expense',
+              url: '/app',
+            },
+          })
+          .catch(() => {})
+      }
     },
   })
 }

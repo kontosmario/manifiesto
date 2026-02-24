@@ -32,6 +32,27 @@ VITE_BASE_PATH=/
 3. Ir a `Authentication -> Providers -> Email` y habilitar Email/Password.
 4. (Opcional recomendado) desactivar confirmación por email para pruebas rápidas.
 
+### Push notifications (Web Push + Supabase Edge Function)
+1. Generar llaves VAPID:
+```bash
+npx web-push generate-vapid-keys
+```
+2. Configurar frontend (`.env`):
+```env
+VITE_WEB_PUSH_PUBLIC_KEY=<public_key>
+```
+3. Configurar secrets de la Edge Function:
+```bash
+supabase secrets set WEB_PUSH_VAPID_PUBLIC_KEY=<public_key>
+supabase secrets set WEB_PUSH_VAPID_PRIVATE_KEY=<private_key>
+supabase secrets set WEB_PUSH_CONTACT_EMAIL=tu-email@dominio.com
+```
+4. Deploy de la función:
+```bash
+supabase functions deploy send-family-push
+```
+5. En la app, abrir menú familiar y tocar `Activar push`.
+
 ## 4) Correr local
 ```bash
 nvm use 22
