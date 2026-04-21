@@ -1,3 +1,5 @@
+import { typography } from './typography'
+
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type ResolvedThemeMode = 'light' | 'dark'
 
@@ -51,47 +53,7 @@ export interface AppTheme {
     '2xl': number
     pill: number
   }
-  typography: {
-    body: {
-      fontSize: number
-      lineHeight: number
-    }
-    bodySmall: {
-      fontSize: number
-      lineHeight: number
-    }
-    buttonCompact: {
-      fontSize: number
-      fontWeight: '700'
-    }
-    buttonDefault: {
-      fontSize: number
-      fontWeight: '700'
-    }
-    fieldLabel: {
-      fontSize: number
-      fontWeight: '700'
-      letterSpacing: number
-      textTransform: 'uppercase'
-    }
-    metricValue: {
-      fontSize: number
-      fontWeight: '800'
-    }
-    screenTitle: {
-      fontSize: number
-      fontWeight: '900'
-      letterSpacing: number
-    }
-    sectionTitle: {
-      fontSize: number
-      fontWeight: '800'
-    }
-    titleMedium: {
-      fontSize: number
-      fontWeight: '800'
-    }
-  }
+  typography: typeof typography
 }
 
 /**
@@ -125,47 +87,6 @@ const baseTheme = {
     xl:  22,
     '2xl': 28,
     pill: 999,
-  },
-  typography: {
-    body: {
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    bodySmall: {
-      fontSize: 12,
-      lineHeight: 16,
-    },
-    buttonCompact: {
-      fontSize: 14,
-      fontWeight: '700' as const,
-    },
-    buttonDefault: {
-      fontSize: 15,
-      fontWeight: '700' as const,
-    },
-    fieldLabel: {
-      fontSize: 12,
-      fontWeight: '700' as const,
-      letterSpacing: 0.6,
-      textTransform: 'uppercase' as const,
-    },
-    metricValue: {
-      fontSize: 22,
-      fontWeight: '800' as const,
-    },
-    screenTitle: {
-      fontSize: 32,
-      fontWeight: '900' as const,
-      letterSpacing: -0.8,
-    },
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: '800' as const,
-    },
-    titleMedium: {
-      fontSize: 16,
-      fontWeight: '800' as const,
-    },
   },
 }
 
@@ -219,6 +140,6 @@ export function buildTheme(mode: ResolvedThemeMode): AppTheme {
     mode,
     spacing: baseTheme.spacing,
     radii: baseTheme.radii,
-    typography: baseTheme.typography,
+    typography,
   }
 }
