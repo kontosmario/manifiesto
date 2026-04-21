@@ -69,6 +69,17 @@ export const legacySpacing = {
   xxl: 32,
 } as const
 
+/** Radius scale — identical for light and dark modes. */
+export const radii = {
+  xs:    8,
+  sm:    10,
+  md:    14,
+  lg:    18,
+  xl:    22,
+  '2xl': 28,
+  pill:  999,
+} as const
+
 const baseTheme = {
   spacing: {
     xxs: 4,
@@ -79,15 +90,7 @@ const baseTheme = {
     xl:  32,
     xxl: 48,
   },
-  radii: {
-    xs:  8,
-    sm:  10,
-    md:  14,
-    lg:  18,
-    xl:  22,
-    '2xl': 28,
-    pill: 999,
-  },
+  radii,
 }
 
 const lightColors: ThemeColors = {
