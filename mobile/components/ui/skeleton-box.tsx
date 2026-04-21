@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { type DimensionValue, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import { type DimensionValue, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
