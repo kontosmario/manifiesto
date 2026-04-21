@@ -43,10 +43,12 @@ export interface AppTheme {
     xxl: number
   }
   radii: {
+    xs: number
     sm: number
     md: number
     lg: number
     xl: number
+    '2xl': number
     pill: number
   }
   typography: {
@@ -116,10 +118,12 @@ const baseTheme = {
     xxl: 48,
   },
   radii: {
-    sm: 10,
-    md: 14,
-    lg: 20,
-    xl: 28,
+    xs:  8,
+    sm:  10,
+    md:  14,
+    lg:  18,
+    xl:  22,
+    '2xl': 28,
     pill: 999,
   },
   typography: {

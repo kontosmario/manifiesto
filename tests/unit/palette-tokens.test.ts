@@ -53,3 +53,18 @@ describe('spacing tokens', () => {
     })
   })
 })
+
+describe('radii tokens', () => {
+  it('exposes xs/sm/md/lg/xl/2xl/pill radii', () => {
+    const theme = buildTheme('light')
+    expect(theme.radii).toEqual({
+      xs:  8,
+      sm:  10,
+      md:  14,
+      lg:  18,
+      xl:  22,
+      '2xl': 28,
+      pill: 999,
+    })
+  })
+})
