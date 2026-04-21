@@ -34,6 +34,7 @@ export interface AppTheme {
   isDark: boolean
   mode: ResolvedThemeMode
   spacing: {
+    xxs: number
     xs: number
     sm: number
     md: number
@@ -91,14 +92,28 @@ export interface AppTheme {
   }
 }
 
+/**
+ * Deprecated — to be deleted at the end of Foundation Phase 1 (PR #1).
+ * Use `theme.spacing` with the new 4-base scale instead.
+ */
+export const legacySpacing = {
+  xs:  6,
+  sm:  10,
+  md:  14,
+  lg:  18,
+  xl:  24,
+  xxl: 32,
+} as const
+
 const baseTheme = {
   spacing: {
-    xs: 6,
-    sm: 10,
-    md: 14,
-    lg: 18,
-    xl: 24,
-    xxl: 32,
+    xxs: 4,
+    xs:  8,
+    sm:  12,
+    md:  16,
+    lg:  24,
+    xl:  32,
+    xxl: 48,
   },
   radii: {
     sm: 10,

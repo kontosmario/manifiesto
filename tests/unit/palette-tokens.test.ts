@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTheme, brand } from '@/theme/palette'
+import { buildTheme, brand, legacySpacing } from '@/theme/palette'
 
 describe('palette tokens', () => {
   it('brand constants are cross-mode identical', () => {
@@ -25,5 +25,31 @@ describe('palette tokens', () => {
   it('both modes expose brand constants on theme.brand', () => {
     expect(buildTheme('light').brand.deep).toBe('#0F2E1F')
     expect(buildTheme('dark').brand.bright).toBe('#7AD8A3')
+  })
+})
+
+describe('spacing tokens', () => {
+  it('uses 4-base scale', () => {
+    const theme = buildTheme('light')
+    expect(theme.spacing).toEqual({
+      xxs: 4,
+      xs:  8,
+      sm:  12,
+      md:  16,
+      lg:  24,
+      xl:  32,
+      xxl: 48,
+    })
+  })
+
+  it('exposes legacySpacing during the migration window', () => {
+    expect(legacySpacing).toEqual({
+      xs:  6,
+      sm:  10,
+      md:  14,
+      lg:  18,
+      xl:  24,
+      xxl: 32,
+    })
   })
 })
