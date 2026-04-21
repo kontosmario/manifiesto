@@ -56,19 +56,6 @@ export interface AppTheme {
   typography: typeof typography
 }
 
-/**
- * Deprecated — to be deleted at the end of Foundation Phase 1 (PR #1).
- * Use `theme.spacing` with the new 4-base scale instead.
- */
-export const legacySpacing = {
-  xs:  6,
-  sm:  10,
-  md:  14,
-  lg:  18,
-  xl:  24,
-  xxl: 32,
-} as const
-
 /** Radius scale — identical for light and dark modes. */
 export const radii = {
   xs:    8,

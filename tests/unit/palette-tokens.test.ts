@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTheme, brand, legacySpacing } from '@/theme/palette'
+import { buildTheme, brand } from '@/theme/palette'
 
 describe('palette tokens', () => {
   it('brand constants are cross-mode identical', () => {
@@ -42,16 +42,6 @@ describe('spacing tokens', () => {
     })
   })
 
-  it('exposes legacySpacing during the migration window', () => {
-    expect(legacySpacing).toEqual({
-      xs:  6,
-      sm:  10,
-      md:  14,
-      lg:  18,
-      xl:  24,
-      xxl: 32,
-    })
-  })
 })
 
 describe('radii tokens', () => {
