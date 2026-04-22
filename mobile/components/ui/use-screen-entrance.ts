@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Animated, Easing } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
+import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
 
 interface UseScreenEntranceOptions {
   reducedMotion: boolean
@@ -43,15 +44,15 @@ export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
     const headerAnimation = Animated.parallel([
       Animated.timing(headerOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: motionDurations.standard,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.spring(headerTranslateY, {
         toValue: 0,
-        damping: 20,
-        stiffness: 210,
-        mass: 0.9,
+        damping: motionSprings.enter.damping,
+        stiffness: motionSprings.enter.stiffness,
+        mass: motionSprings.enter.mass,
         useNativeDriver: true,
       }),
     ])
@@ -59,20 +60,20 @@ export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
     const contentAnimation = Animated.parallel([
       Animated.timing(contentOpacity, {
         toValue: 1,
-        duration: 260,
+        duration: motionDurations.standard,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.spring(contentTranslateY, {
         toValue: 0,
-        damping: 22,
-        stiffness: 190,
-        mass: 1,
+        damping: motionSprings.enter.damping,
+        stiffness: motionSprings.enter.stiffness,
+        mass: motionSprings.enter.mass,
         useNativeDriver: true,
       }),
     ])
 
-    const animation = Animated.stagger(45, [headerAnimation, contentAnimation])
+    const animation = Animated.stagger(motionStagger.listItem, [headerAnimation, contentAnimation])
     animation.start()
 
     return () => {

@@ -3,6 +3,7 @@ import { Animated } from 'react-native'
 import { State, type PanGestureHandlerGestureEvent, type PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations, motionSprings } from '@/lib/motion'
 
 export function useModalCardMotion({
   onClose,
@@ -56,19 +57,19 @@ export function useModalCardMotion({
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 180,
+        duration: motionDurations.quick,
         useNativeDriver: true,
       }),
       Animated.timing(dragTranslateY, {
         toValue: 260,
-        duration: 220,
+        duration: motionDurations.standard,
         useNativeDriver: true,
       }),
       Animated.spring(sheetScale, {
         toValue: 0.98,
-        damping: 20,
-        stiffness: 210,
-        mass: 0.9,
+        damping: motionSprings.sheet.damping,
+        stiffness: motionSprings.sheet.stiffness,
+        mass: motionSprings.sheet.mass,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -88,16 +89,16 @@ export function useModalCardMotion({
     Animated.parallel([
       Animated.spring(dragTranslateY, {
         toValue: 0,
-        damping: 24,
-        stiffness: 240,
-        mass: 0.9,
+        damping: motionSprings.exit.damping,
+        stiffness: motionSprings.exit.stiffness,
+        mass: motionSprings.exit.mass,
         useNativeDriver: true,
       }),
       Animated.spring(sheetScale, {
         toValue: 1,
-        damping: 20,
-        stiffness: 220,
-        mass: 0.9,
+        damping: motionSprings.enter.damping,
+        stiffness: motionSprings.enter.stiffness,
+        mass: motionSprings.enter.mass,
         useNativeDriver: true,
       }),
     ]).start()
@@ -154,21 +155,21 @@ export function useModalCardMotion({
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: motionDurations.standard,
         useNativeDriver: true,
       }),
       Animated.spring(sheetTranslateY, {
         toValue: 0,
-        damping: 22,
-        stiffness: 210,
-        mass: 0.95,
+        damping: motionSprings.sheet.damping,
+        stiffness: motionSprings.sheet.stiffness,
+        mass: motionSprings.sheet.mass,
         useNativeDriver: true,
       }),
       Animated.spring(sheetScale, {
         toValue: 1,
-        damping: 20,
-        stiffness: 210,
-        mass: 0.9,
+        damping: motionSprings.sheet.damping,
+        stiffness: motionSprings.sheet.stiffness,
+        mass: motionSprings.sheet.mass,
         useNativeDriver: true,
       }),
       Animated.timing(dragTranslateY, {
