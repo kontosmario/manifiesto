@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
@@ -57,10 +57,19 @@ export function AddExpenseDashboard({
   const [numpadVisible, setNumpadVisible] = useState(false)
   const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
 
-  useEffect(() => {
-    const handle = setTimeout(() => setNumpadVisible(true), 350)
-    return () => clearTimeout(handle)
-  }, [])
+  // Keep the selected category visible in the grid even when it isn't in the
+  // top-ranked subset (e.g. the user picked it from "Ver todas"). It lands in
+  // first position, acting as the "most recently used" anchor.
+  const gridCategories = useMemo(() => {
+    if (!selectedCategoryId) return rankedCategories
+    const selected = rankedCategories.find((c) => c.id === selectedCategoryId)
+    if (!selected) return rankedCategories
+    const GRID_LIMIT = 8
+    const topN = rankedCategories.slice(0, GRID_LIMIT)
+    if (topN.some((c) => c.id === selectedCategoryId)) return rankedCategories
+    const rest = rankedCategories.filter((c) => c.id !== selectedCategoryId)
+    return [selected, ...rest]
+  }, [rankedCategories, selectedCategoryId])
 
   return (
     <View style={styles.root}>
@@ -86,7 +95,7 @@ export function AddExpenseDashboard({
         ) : null}
 
         <CategoryPickerGrid
-          categories={rankedCategories}
+          categories={gridCategories}
           selectedCategoryId={selectedCategoryId}
           onSelect={onSelectCategory}
           onSeeAll={() => setAllCategoriesVisible(true)}
@@ -141,6 +150,8 @@ export function AddExpenseDashboard({
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+    justifyContent: 'space-between',
     gap: 14,
   },
   topStack: {

@@ -5,7 +5,7 @@ import Animated, {
   withSpring,
   useReducedMotion,
 } from 'react-native-reanimated'
-import { AnimatedAmount } from '@/components/ui/animated-amount'
+import { formatAnimatedAmount } from '@/components/ui/animated-amount-format'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionSprings } from '@/lib/motion'
 import { brand, radii } from '@/theme/palette'
@@ -27,11 +27,13 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }))
 
+  const displayText = formatAnimatedAmount(amount)
+
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Monto: ${amount}`}
+        accessibilityLabel={`Monto: ${displayText}`}
         accessibilityHint="Abre el numpad para editar el monto"
         onPress={() => {
           void triggerHaptic('light')
@@ -64,12 +66,15 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
             </Text>
           ) : null}
         </View>
-        <AnimatedAmount
-          value={amount}
-          variant="hero"
-          color={theme.colors.text}
-          style={styles.value}
-        />
+        <Text
+          style={[typography.hero, styles.value, { color: theme.colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          allowFontScaling
+          maxFontSizeMultiplier={1.2}
+        >
+          {displayText}
+        </Text>
       </Pressable>
     </Animated.View>
   )

@@ -13,7 +13,7 @@ import { brand, radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
-const GRID_LIMIT = 4
+const GRID_LIMIT = 8
 
 interface CategoryPickerGridProps {
   categories: Category[]
@@ -130,7 +130,7 @@ function SeeAllTile({ onPress }: SeeAllTileProps) {
   }))
 
   return (
-    <Animated.View style={[styles.cell, animatedStyle]}>
+    <Animated.View style={[styles.seeAllCell, animatedStyle]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Ver todas las categorías"
@@ -175,6 +175,9 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: '48.5%',
+  },
+  seeAllCell: {
+    width: '100%',
   },
   tile: {
     flexDirection: 'row',

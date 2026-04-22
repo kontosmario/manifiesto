@@ -14,7 +14,13 @@ import Animated, {
   withSpring,
   withTiming,
   useReducedMotion,
+  runOnJS,
 } from 'react-native-reanimated'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CategoryBadge } from '@/components/ui/category-badge'
 import { SelectableRow } from '@/components/ui/selectable-row'
@@ -24,6 +30,9 @@ import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
+
+const DISMISS_DISTANCE = 120
+const DISMISS_VELOCITY = 650
 
 interface AllCategoriesSheetProps {
   visible: boolean
@@ -74,6 +83,26 @@ export function AllCategoriesSheet({
     opacity: backdropOpacity.value,
   }))
 
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      'worklet'
+      if (event.translationY > 0) {
+        translateY.value = event.translationY
+        backdropOpacity.value = Math.max(0.2, 1 - event.translationY / screenHeight)
+      }
+    })
+    .onEnd((event) => {
+      'worklet'
+      const shouldDismiss =
+        event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
+      if (shouldDismiss) {
+        runOnJS(onDismiss)()
+      } else {
+        translateY.value = withSpring(0, motionSprings.sheet)
+        backdropOpacity.value = withTiming(1, { duration: motionDurations.quick })
+      }
+    })
+
   return (
     <Modal
       visible={visible}
@@ -82,7 +111,7 @@ export function AllCategoriesSheet({
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
-      <View style={styles.root}>
+      <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
           <Pressable
             accessibilityLabel="Cerrar lista de categorías"
@@ -92,54 +121,58 @@ export function AllCategoriesSheet({
           />
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.sheet,
-            sheetAnimatedStyle,
-            {
-              backgroundColor: theme.colors.surface,
-              paddingBottom: insets.bottom + 16,
-              maxHeight: screenHeight * 0.85,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
-          <View style={styles.header}>
-            <Text style={[typography.sectionTitle, { color: theme.colors.text }]}>
-              Todas las categorías
-            </Text>
-          </View>
-          <ScrollView
-            contentContainerStyle={styles.list}
-            keyboardShouldPersistTaps="handled"
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              sheetAnimatedStyle,
+              {
+                backgroundColor: theme.colors.surface,
+                paddingBottom: insets.bottom + 16,
+                maxHeight: screenHeight * 0.85,
+              },
+            ]}
           >
-            {categories.map((category) => (
-              <SelectableRow
-                key={category.id}
-                selected={category.id === selectedCategoryId}
-                onPress={() => {
-                  onSelect(category.id)
-                  onDismiss()
-                }}
-                title={category.name}
-                leading={<CategoryBadge categoryId={category.id} size="md" tone="soft" />}
-              />
-            ))}
-          </ScrollView>
-          {onCreateNew ? (
-            <View style={styles.footer}>
-              <AppButton
-                variant="secondary"
-                label="＋ Crear categoría"
-                onPress={() => {
-                  onDismiss()
-                  onCreateNew()
-                }}
-              />
+            <View style={styles.handleArea}>
+              <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
             </View>
-          ) : null}
-        </Animated.View>
-      </View>
+            <View style={styles.header}>
+              <Text style={[typography.sectionTitle, { color: theme.colors.text }]}>
+                Todas las categorías
+              </Text>
+            </View>
+            <ScrollView
+              contentContainerStyle={styles.list}
+              keyboardShouldPersistTaps="handled"
+            >
+              {categories.map((category) => (
+                <SelectableRow
+                  key={category.id}
+                  selected={category.id === selectedCategoryId}
+                  onPress={() => {
+                    onSelect(category.id)
+                    onDismiss()
+                  }}
+                  title={category.name}
+                  leading={<CategoryBadge categoryId={category.id} size="md" tone="soft" />}
+                />
+              ))}
+            </ScrollView>
+            {onCreateNew ? (
+              <View style={styles.footer}>
+                <AppButton
+                  variant="secondary"
+                  label="＋ Crear categoría"
+                  onPress={() => {
+                    onDismiss()
+                    onCreateNew()
+                  }}
+                />
+              </View>
+            ) : null}
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
     </Modal>
   )
 }
@@ -155,14 +188,17 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: radii['2xl'],
     borderTopRightRadius: radii['2xl'],
-    paddingTop: 8,
+    paddingTop: 0,
+  },
+  handleArea: {
+    paddingTop: 10,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: radii.pill,
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   header: {
     paddingHorizontal: 20,

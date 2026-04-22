@@ -13,7 +13,13 @@ import Animated, {
   withSpring,
   withTiming,
   useReducedMotion,
+  runOnJS,
 } from 'react-native-reanimated'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppSymbol } from './app-symbol'
 import { AppButton } from './button'
@@ -34,7 +40,15 @@ interface InAppNumpadProps {
   doneLabel?: string
 }
 
-const DIGITS: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+const ROWS: readonly (readonly (string | 'backspace')[])[] = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  [',', '0', 'backspace'],
+]
+
+const DISMISS_DISTANCE = 100
+const DISMISS_VELOCITY = 650
 
 export function InAppNumpad({
   visible,
@@ -107,6 +121,41 @@ export function InAppNumpad({
     onDismiss()
   }, [onDismiss])
 
+  const handleKeyPress = useCallback(
+    (key: string | 'backspace') => {
+      if (key === 'backspace') {
+        handleBackspace()
+        return
+      }
+      if (key === ',') {
+        handleComma()
+        return
+      }
+      handleDigit(key)
+    },
+    [handleBackspace, handleComma, handleDigit],
+  )
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      'worklet'
+      if (event.translationY > 0) {
+        translateY.value = event.translationY
+        backdropOpacity.value = Math.max(0.2, 1 - event.translationY / screenHeight)
+      }
+    })
+    .onEnd((event) => {
+      'worklet'
+      const shouldDismiss =
+        event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
+      if (shouldDismiss) {
+        runOnJS(onDismiss)()
+      } else {
+        translateY.value = withSpring(0, motionSprings.sheet)
+        backdropOpacity.value = withTiming(1, { duration: motionDurations.quick })
+      }
+    })
+
   return (
     <Modal
       visible={visible}
@@ -115,7 +164,7 @@ export function InAppNumpad({
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
-      <View style={styles.root}>
+      <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
           <Pressable
             accessibilityLabel="Cerrar numpad"
@@ -125,42 +174,55 @@ export function InAppNumpad({
           />
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.sheet,
-            sheetAnimatedStyle,
-            {
-              backgroundColor: theme.colors.surface,
-              paddingBottom: insets.bottom + 16,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
-          <View style={styles.content}>
-            <AppButton variant="primary" label={doneLabel} onPress={handleDone} />
-            <View style={styles.grid}>
-              {DIGITS.map((digit) => (
-                <NumpadKey
-                  key={digit}
-                  label={digit}
-                  onPress={() => handleDigit(digit)}
-                />
-              ))}
-              <NumpadKey label="," onPress={handleComma} />
-              <NumpadKey label="0" onPress={() => handleDigit('0')} />
-              <NumpadKey
-                onPress={handleBackspace}
-                onLongPress={handleClearAll}
-                icon="delete.backward.fill"
-                iconFallback="backspace"
-                accessibilityLabel="Borrar último dígito"
-                accessibilityHint="Mantené presionado para limpiar todo"
-              />
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              sheetAnimatedStyle,
+              {
+                backgroundColor: theme.colors.surface,
+                paddingBottom: insets.bottom + 16,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.handleArea}>
+              <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
             </View>
-          </View>
-        </Animated.View>
-      </View>
+            <View style={styles.content}>
+              <AppButton variant="primary" label={doneLabel} onPress={handleDone} />
+              <View style={styles.grid}>
+                {ROWS.map((row, rowIndex) => (
+                  <View key={rowIndex} style={styles.row}>
+                    {row.map((key) => (
+                      <NumpadKey
+                        key={key}
+                        label={key === 'backspace' ? undefined : key}
+                        icon={key === 'backspace' ? 'delete.backward.fill' : undefined}
+                        iconFallback={key === 'backspace' ? 'backspace' : undefined}
+                        accessibilityLabel={
+                          key === 'backspace'
+                            ? 'Borrar último dígito'
+                            : key === ','
+                              ? 'Coma'
+                              : key
+                        }
+                        accessibilityHint={
+                          key === 'backspace'
+                            ? 'Mantené presionado para limpiar todo'
+                            : undefined
+                        }
+                        onPress={() => handleKeyPress(key)}
+                        onLongPress={key === 'backspace' ? handleClearAll : undefined}
+                      />
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
     </Modal>
   )
 }
@@ -248,26 +310,31 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii['2xl'],
     borderTopRightRadius: radii['2xl'],
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 8,
+    paddingTop: 0,
+  },
+  handleArea: {
+    paddingTop: 10,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: radii.pill,
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   content: {
     paddingHorizontal: 16,
     gap: 12,
   },
   grid: {
+    gap: 8,
+  },
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
   keyWrap: {
-    width: '32%',
+    flex: 1,
   },
   key: {
     alignItems: 'center',
@@ -275,7 +342,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.md,
     paddingVertical: 18,
-    minHeight: 60,
+    minHeight: 56,
   },
   keyLabel: {
     fontSize: 24,
