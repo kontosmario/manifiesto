@@ -1,6 +1,5 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Chip } from '@/components/ui/chip'
-import { InputGroup } from '@/components/ui/input-group'
 import { TextField } from '@/components/ui/text-field'
 
 interface DescriptionRowProps {
@@ -20,19 +19,17 @@ export function DescriptionRow({
 }: DescriptionRowProps) {
   return (
     <View style={styles.root}>
-      <InputGroup label="Descripción">
-        <TextField
-          label=""
-          autoCapitalize="sentences"
-          autoCorrect={false}
-          maxLength={60}
-          onChangeText={onChange}
-          onFocus={onFocus}
-          placeholder="Ej: Supermercado"
-          returnKeyType="done"
-          value={description}
-        />
-      </InputGroup>
+      <TextField
+        label="Descripción"
+        autoCapitalize="sentences"
+        autoCorrect={false}
+        maxLength={60}
+        onChangeText={onChange}
+        onFocus={onFocus}
+        placeholder="Ej: Supermercado"
+        returnKeyType="done"
+        value={description}
+      />
       {quickSuggestions.length > 0 ? (
         <ScrollView
           contentContainerStyle={styles.suggestionsRow}
