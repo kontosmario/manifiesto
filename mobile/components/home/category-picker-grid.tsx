@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     columnGap: 8,
-    rowGap: 8,
+    rowGap: 6,
   },
   cell: {
     width: '48.5%',
@@ -184,9 +184,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: radii.lg,
-    minHeight: 56,
+    minHeight: 48,
   },
   tileLabel: {
     flex: 1,

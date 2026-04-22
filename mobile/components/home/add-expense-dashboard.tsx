@@ -173,8 +173,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    gap: 14,
-    paddingBottom: 8,
+    gap: 10,
+    paddingBottom: 16,
   },
   helper: {
     paddingHorizontal: 4,

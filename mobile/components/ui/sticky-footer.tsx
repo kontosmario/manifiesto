@@ -46,7 +46,7 @@ export function StickyFooter({ children, style, divider = true }: StickyFooterPr
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
-    paddingTop: 12,
+    paddingTop: 20,
   },
   inner: {
     flexDirection: 'column',

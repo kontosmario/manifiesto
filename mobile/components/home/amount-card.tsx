@@ -116,9 +116,9 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: radii['2xl'],
-    paddingHorizontal: 22,
-    paddingVertical: 20,
-    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 4,
   },
   topRow: {
     flexDirection: 'row',

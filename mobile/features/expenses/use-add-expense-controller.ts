@@ -135,10 +135,9 @@ export function useAddExpenseController({
   const afterValue =
     dashboard.monthlyIncome > 0 ? remainingTodayAfterExpense : remainingCycleAfterExpense
   const afterLabel = dashboard.monthlyIncome > 0 ? 'Te quedan hoy' : 'Te quedan en el ciclo'
-  const amountHelper =
-    dashboard.monthlyIncome > 0 || hasValidAmount
-      ? `${afterLabel} ${currencyFormatter.format(afterValue)}`
-      : undefined
+  const amountHelper = hasValidAmount
+    ? `${afterLabel} ${currencyFormatter.format(afterValue)}`
+    : undefined
 
   const showError = (error: unknown, fallback: string) => {
     void triggerHaptic('error')
