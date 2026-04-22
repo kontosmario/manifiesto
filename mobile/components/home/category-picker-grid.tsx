@@ -1,8 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  useReducedMotion,
+} from 'react-native-reanimated'
 import { CategoryBadge } from '@/components/ui/category-badge'
-import { SelectableCard } from '@/components/ui/selectable-card'
 import type { Category } from '@/features/categories/use-categories'
-import { radii } from '@/theme/palette'
+import { triggerHaptic } from '@/lib/haptics'
+import { motionSprings } from '@/lib/motion'
+import { brand, radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -27,68 +34,139 @@ export function CategoryPickerGrid({
 
   return (
     <View style={styles.root}>
-      <Text
-        style={[typography.eyebrow, styles.eyebrow, { color: theme.colors.textMuted }]}
-      >
+      <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>
         Categoría
       </Text>
       <View style={styles.grid}>
         {visible.map((category) => (
-          <View key={category.id} style={styles.cell}>
-            <SelectableCard
-              selected={category.id === selectedCategoryId}
-              onPress={() => onSelect(category.id)}
-              accessibilityLabel={`Seleccionar ${category.name}`}
-              size="md"
-            >
-              <View style={styles.cardRow}>
-                <CategoryBadge categoryId={category.id} size="sm" tone="soft" />
-                <Text
-                  style={[
-                    typography.buttonCompact,
-                    styles.cardLabel,
-                    { color: theme.colors.text },
-                  ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {category.name}
-                </Text>
-              </View>
-            </SelectableCard>
-          </View>
+          <CategoryTile
+            key={category.id}
+            category={category}
+            selected={category.id === selectedCategoryId}
+            onPress={() => {
+              void triggerHaptic('selection')
+              onSelect(category.id)
+            }}
+          />
         ))}
         {showSeeAll ? (
-          <View style={styles.cell}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ver todas las categorías"
-              onPress={onSeeAll}
-              style={({ pressed }) => [
-                styles.seeAll,
-                {
-                  backgroundColor: theme.colors.surfaceMuted,
-                  borderColor: theme.colors.border,
-                  opacity: pressed ? 0.92 : 1,
-                },
-              ]}
-            >
-              <Text
-                style={[typography.buttonDefault, { color: theme.colors.primaryStrong }]}
-              >
-                Ver todas
-              </Text>
-            </Pressable>
-          </View>
+          <SeeAllTile
+            onPress={() => {
+              void triggerHaptic('light')
+              onSeeAll()
+            }}
+          />
         ) : null}
       </View>
     </View>
   )
 }
 
+interface CategoryTileProps {
+  category: Category
+  selected: boolean
+  onPress: () => void
+}
+
+function CategoryTile({ category, selected, onPress }: CategoryTileProps) {
+  const { theme } = useAppTheme()
+  const reduceMotion = useReducedMotion()
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: reduceMotion ? 1 : scale.value }],
+  }))
+
+  return (
+    <Animated.View style={[styles.cell, animatedStyle]}>
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+        accessibilityLabel={`Seleccionar ${category.name}`}
+        onPressIn={() => {
+          if (reduceMotion) return
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+          scale.value = withSpring(0.97, motionSprings.press)
+        }}
+        onPressOut={() => {
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+          scale.value = withSpring(1, motionSprings.press)
+        }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.tile,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: selected ? brand.deep : theme.colors.border,
+            borderWidth: selected ? 2 : StyleSheet.hairlineWidth,
+            opacity: pressed ? 0.92 : 1,
+          },
+        ]}
+      >
+        <CategoryBadge categoryId={category.id} size="sm" tone="soft" />
+        <Text
+          style={[styles.tileLabel, typography.buttonCompact, { color: theme.colors.text }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {category.name}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+interface SeeAllTileProps {
+  onPress: () => void
+}
+
+function SeeAllTile({ onPress }: SeeAllTileProps) {
+  const { theme } = useAppTheme()
+  const reduceMotion = useReducedMotion()
+  const scale = useSharedValue(1)
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: reduceMotion ? 1 : scale.value }],
+  }))
+
+  return (
+    <Animated.View style={[styles.cell, animatedStyle]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Ver todas las categorías"
+        onPressIn={() => {
+          if (reduceMotion) return
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+          scale.value = withSpring(0.97, motionSprings.press)
+        }}
+        onPressOut={() => {
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+          scale.value = withSpring(1, motionSprings.press)
+        }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.tile,
+          styles.seeAllTile,
+          {
+            backgroundColor: theme.colors.surfaceMuted,
+            borderColor: theme.colors.border,
+            borderWidth: StyleSheet.hairlineWidth,
+            opacity: pressed ? 0.9 : 1,
+          },
+        ]}
+      >
+        <Text
+          style={[typography.buttonCompact, { color: theme.colors.primaryStrong }]}
+        >
+          Ver todas
+        </Text>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
 const styles = StyleSheet.create({
   root: { gap: 10 },
-  eyebrow: {},
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -96,26 +174,22 @@ const styles = StyleSheet.create({
     rowGap: 8,
   },
   cell: {
-    width: '48%',
+    width: '48.5%',
   },
-  cardRow: {
+  tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    flex: 1,
-    minWidth: 0,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: radii.lg,
+    minHeight: 56,
   },
-  cardLabel: {
+  tileLabel: {
+    flex: 1,
     flexShrink: 1,
-    flex: 1,
   },
-  seeAll: {
-    height: 64,
-    borderRadius: radii.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
+  seeAllTile: {
     justifyContent: 'center',
   },
 })

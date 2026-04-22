@@ -28,4 +28,4 @@ export { SelectableRow } from './selectable-row'
 export { SelectableCard, type SelectableCardSize } from './selectable-card'
 export { SwipeableRow, type SwipeAction } from './swipeable-row'
 
-export { InAppNumpad, type InAppNumpadHandle } from './in-app-numpad'
+export { InAppNumpad } from './in-app-numpad'

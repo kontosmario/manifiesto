@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
@@ -6,8 +6,7 @@ import { CategoryPickerGrid } from '@/components/home/category-picker-grid'
 import { DescriptionRow } from '@/components/home/description-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { AppButton } from '@/components/ui/button'
-import { type BottomSheetHandle } from '@/components/ui/bottom-sheet'
-import { InAppNumpad, type InAppNumpadHandle } from '@/components/ui/in-app-numpad'
+import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { StickyFooter } from '@/components/ui/sticky-footer'
 import type { Category } from '@/features/categories/use-categories'
 import { typography } from '@/theme/typography'
@@ -55,14 +54,11 @@ export function AddExpenseDashboard({
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
-  const numpadRef = useRef<InAppNumpadHandle>(null)
-  const allCategoriesRef = useRef<BottomSheetHandle>(null)
-  const didAutoPresent = useRef(false)
+  const [numpadVisible, setNumpadVisible] = useState(false)
+  const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
 
   useEffect(() => {
-    if (didAutoPresent.current) return
-    didAutoPresent.current = true
-    const handle = setTimeout(() => numpadRef.current?.present(), 250)
+    const handle = setTimeout(() => setNumpadVisible(true), 350)
     return () => clearTimeout(handle)
   }, [])
 
@@ -71,8 +67,8 @@ export function AddExpenseDashboard({
       <View style={styles.topStack}>
         <AmountCard
           amount={amount}
-          isActive={false}
-          onPress={() => numpadRef.current?.present()}
+          isActive={numpadVisible}
+          onPress={() => setNumpadVisible(true)}
         />
 
         <SuggestedAmountStrip
@@ -93,7 +89,7 @@ export function AddExpenseDashboard({
           categories={rankedCategories}
           selectedCategoryId={selectedCategoryId}
           onSelect={onSelectCategory}
-          onSeeAll={() => allCategoriesRef.current?.present()}
+          onSeeAll={() => setAllCategoriesVisible(true)}
         />
 
         <DescriptionRow
@@ -125,16 +121,18 @@ export function AddExpenseDashboard({
       </View>
 
       <InAppNumpad
-        ref={numpadRef}
+        visible={numpadVisible}
         rawValue={rawPrice}
         onChangeRawValue={onRawPriceChange}
+        onDismiss={() => setNumpadVisible(false)}
       />
 
       <AllCategoriesSheet
-        ref={allCategoriesRef}
+        visible={allCategoriesVisible}
         categories={rankedCategories}
         selectedCategoryId={selectedCategoryId}
         onSelect={onSelectCategory}
+        onDismiss={() => setAllCategoriesVisible(false)}
         onCreateNew={onCreateCategory}
       />
     </View>
@@ -143,13 +141,13 @@ export function AddExpenseDashboard({
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
+    gap: 14,
   },
   topStack: {
     gap: 14,
   },
   footerWrap: {
-    marginTop: 'auto',
+    marginTop: 8,
   },
   helper: {
     paddingHorizontal: 4,
