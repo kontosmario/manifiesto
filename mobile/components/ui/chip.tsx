@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Animated, Pressable, StyleSheet, Text } from 'react-native'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useAppTheme, useCategoryHue } from '@/theme/theme-provider'
 
 interface ChipProps {
   label: string
@@ -12,11 +13,32 @@ interface ChipProps {
   onPress?: () => void
   color?: string
   compact?: boolean
+  /** When set, resolves a category hue and uses it for surface/ink instead of the default palette. */
+  categoryId?: string
 }
 
-export function Chip({ label, isActive = false, onPress, color, compact = false }: ChipProps) {
+export function Chip({
+  label,
+  isActive = false,
+  onPress,
+  color,
+  compact = false,
+  categoryId,
+}: ChipProps) {
   const { theme } = useAppTheme()
+  const hue = useCategoryHue(categoryId ?? '')
   const isDisabled = !onPress
+  const pressScale = usePressScale({ pressedScale: 0.97 })
+
+  const hasHue = Boolean(categoryId)
+
+  const inactiveSurface = hasHue ? hue.surface : theme.colors.surfaceMuted
+  const inactiveBorder = hasHue ? hue.surface : theme.colors.border
+  const inactiveText = hasHue ? hue.ink : theme.colors.text
+
+  const activeSurface = hasHue ? hue.ink : color ?? theme.colors.primary
+  const activeBorder = activeSurface
+  const activeText = hasHue ? hue.surface : '#FFFFFF'
 
   return (
     <Pressable
@@ -26,39 +48,42 @@ export function Chip({ label, isActive = false, onPress, color, compact = false 
         borderless: false,
         color: isActive
           ? withAlpha('#FFFFFF', 0.16)
-          : withAlpha(color ?? theme.colors.primary, theme.isDark ? 0.2 : 0.12),
+          : withAlpha(hasHue ? hue.ink : color ?? theme.colors.primary, theme.isDark ? 0.2 : 0.12),
       }}
       disabled={isDisabled}
       hitSlop={DEFAULT_HIT_SLOP}
       pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
+      onPressIn={pressScale.onPressIn}
+      onPressOut={pressScale.onPressOut}
       onPress={() => {
         if (onPress) {
           void triggerHaptic(isActive ? 'selection' : 'light')
         }
-
         onPress?.()
       }}
       style={({ pressed }) => [
         styles.baseChip,
         compact ? styles.compactChip : styles.defaultChip,
         {
-          backgroundColor: isActive ? color ?? theme.colors.primary : theme.colors.surfaceMuted,
-          borderColor: isActive ? color ?? theme.colors.primary : theme.colors.border,
-          opacity: pressed ? 0.86 : 1,
+          backgroundColor: isActive ? activeSurface : inactiveSurface,
+          borderColor: isActive ? activeBorder : inactiveBorder,
+          opacity: pressed ? 0.9 : 1,
         },
       ]}
     >
-      <Text
-        style={[
-          styles.baseLabel,
-          compact ? styles.compactLabel : styles.defaultLabel,
-          {
-            color: isActive ? '#FFFFFF' : theme.colors.text,
-          },
-        ]}
-      >
-        {label}
-      </Text>
+      <Animated.View style={[styles.inner, pressScale.animatedStyle]}>
+        <Text
+          style={[
+            styles.baseLabel,
+            compact ? styles.compactLabel : styles.defaultLabel,
+            {
+              color: isActive ? activeText : inactiveText,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -67,6 +92,10 @@ const styles = StyleSheet.create({
   baseChip: {
     borderRadius: radii.pill,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inner: {
     alignItems: 'center',
     justifyContent: 'center',
   },
