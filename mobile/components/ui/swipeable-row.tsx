@@ -37,13 +37,13 @@ export function SwipeableRow({
 }: SwipeableRowProps) {
   const swipeRef = useRef<SwipeableMethods>(null)
 
-  const handleSwipeOpen = useCallback((_direction: 'left' | 'right') => {
+  const handleSwipeOpen = useCallback(() => {
     void triggerHaptic(onSwipeOpenHaptic)
   }, [onSwipeOpenHaptic])
 
   const renderActions = useCallback(
     (actions: SwipeAction[], side: 'left' | 'right') =>
-      (progress: SharedValue<number>, _translation: SharedValue<number>) => (
+      (progress: SharedValue<number>) => (
         <SwipeActionsRow
           actions={actions}
           side={side}

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { createRef, useMemo } from 'react'
 import type { ReturnKeyTypeOptions, TextInput } from 'react-native'
 
 export interface KeyboardChainField {
@@ -25,27 +25,21 @@ export function useKeyboardChain(
   onSubmit?: () => void,
   lastReturnKey: ReturnKeyTypeOptions = 'done',
 ): KeyboardChainField[] {
-  const refs = useRef<Array<React.RefObject<TextInput | null>>>([])
-  if (refs.current.length !== count) {
-    refs.current = Array.from({ length: count }, (_, i) => refs.current[i] ?? { current: null })
-  }
-
-  return useMemo(
-    () =>
-      refs.current.map((ref, index) => {
-        const isLast = index === count - 1
-        return {
-          ref,
-          returnKeyType: isLast ? lastReturnKey : 'next',
-          onSubmitEditing: () => {
-            if (isLast) {
-              onSubmit?.()
-            } else {
-              refs.current[index + 1]?.current?.focus()
-            }
-          },
-        }
-      }),
-    [count, onSubmit, lastReturnKey],
-  )
+  return useMemo(() => {
+    const refs = Array.from({ length: count }, () => createRef<TextInput>())
+    return refs.map((ref, index) => {
+      const isLast = index === count - 1
+      return {
+        ref,
+        returnKeyType: isLast ? lastReturnKey : 'next',
+        onSubmitEditing: () => {
+          if (isLast) {
+            onSubmit?.()
+          } else {
+            refs[index + 1]?.current?.focus()
+          }
+        },
+      }
+    })
+  }, [count, onSubmit, lastReturnKey])
 }

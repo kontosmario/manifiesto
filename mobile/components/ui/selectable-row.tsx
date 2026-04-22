@@ -65,9 +65,13 @@ export function SelectableRow({
         accessibilityState={{ selected, disabled }}
         onPress={handlePress}
         onPressIn={() => {
-          if (!disabled) pressScale.value = withSpring(0.97, motionSprings.press)
+          if (!disabled) {
+            // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+            pressScale.value = withSpring(0.97, motionSprings.press)
+          }
         }}
         onPressOut={() => {
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
           pressScale.value = withSpring(1, motionSprings.press)
         }}
         disabled={disabled}
