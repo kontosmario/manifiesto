@@ -1,11 +1,13 @@
 import { StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { AddExpenseForm } from '@/components/home/add-expense-form'
+import { AddExpenseDashboard } from '@/components/home/add-expense-dashboard'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { IconButton } from '@/components/ui/icon-button'
 import { Screen } from '@/components/ui/screen'
 import { useAddExpenseController } from '@/features/expenses/use-add-expense-controller'
+import { errorMessages } from '@/lib/copy/states'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -21,7 +23,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   const controller = useAddExpenseController({
     familyId,
     onCreated: () => {
-      router.replace('/(app)/(tabs)/expenses')
+      router.back()
     },
     userId,
   })
@@ -31,6 +33,8 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   const shouldShowErrorState = Boolean(
     categoriesLoadError && !controller.categoriesQuery.data,
   )
+  const hasNoCategories =
+    !controller.categoriesQuery.isLoading && controller.categories.length === 0
 
   return (
     <Screen
@@ -49,51 +53,48 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           />
         </View>
       }
-      title="Agregar gasto"
+      title="Agregar"
       titleColor={headerPalette.titleColor}
     >
-      <View style={styles.sectionStack}>
-        {!theme.isDark ? (
-          <AmbientBackdrop variant="form" />
-        ) : null}
+      {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
 
-        {shouldShowErrorState ? (
-          <ErrorState
-            description={getErrorMessage(
-              categoriesLoadError,
-              'No pudimos cargar las categorías necesarias para registrar el gasto.',
-            )}
-            title="No pudimos abrir el formulario"
-            onAction={() => {
-              void controller.categoriesQuery.refetch()
-            }}
-          />
-        ) : (
-          <AddExpenseForm
-            amount={controller.amount}
-            amountHelper={controller.amountHelper}
-            categories={controller.categories}
-            description={controller.description}
-            hasValidAmount={controller.hasValidAmount}
-            isBusy={controller.createExpenseMutation.isPending}
-            isCategoriesLoading={controller.categoriesQuery.isLoading}
-            isPriceFocused={controller.isPriceFocused}
-            normalizeSuggestionLabel={controller.normalizeSuggestionLabel}
-            onDescriptionChange={controller.actions.setDescription}
-            onPriceBlur={() => controller.actions.setPriceFocused(false)}
-            onPriceChange={controller.actions.setPrice}
-            onPriceFocus={() => controller.actions.setPriceFocused(true)}
-            onSelectCategory={controller.actions.selectCategory}
-            onSelectDescriptionSuggestion={controller.actions.useQuickDescription}
-            onSelectSuggestedAmount={controller.actions.setSuggestedAmount}
-            onSubmit={controller.submitExpense}
-            price={controller.price}
-            quickDescriptionSuggestions={controller.quickDescriptionSuggestions}
-            selectedCategoryId={controller.selectedCategoryId}
-            suggestedAmounts={controller.suggestedAmounts}
-          />
-        )}
-      </View>
+      {shouldShowErrorState ? (
+        <ErrorState
+          description={getErrorMessage(categoriesLoadError, errorMessages.server)}
+          title="No pudimos abrir el formulario"
+          onAction={() => {
+            void controller.categoriesQuery.refetch()
+          }}
+        />
+      ) : hasNoCategories ? (
+        <EmptyState
+          stateKey="categories"
+          icon="category"
+          action={{
+            label: 'Crear categoría',
+            onPress: () => router.push('/(app)/(tabs)/expenses'),
+          }}
+        />
+      ) : (
+        <AddExpenseDashboard
+          amount={controller.amount}
+          hasValidAmount={controller.hasValidAmount}
+          amountHelper={controller.amountHelper}
+          rawPrice={controller.rawPrice}
+          rankedCategories={controller.rankedCategories}
+          selectedCategoryId={controller.selectedCategoryId}
+          suggestedAmounts={controller.suggestedAmounts}
+          quickDescriptionSuggestions={controller.quickDescriptionSuggestions}
+          description={controller.description}
+          isBusy={controller.createExpenseMutation.isPending}
+          onRawPriceChange={controller.actions.setRawPrice}
+          onSelectSuggestedAmount={controller.actions.setSuggestedAmount}
+          onSelectCategory={controller.actions.selectCategory}
+          onSelectDescriptionSuggestion={controller.actions.useQuickDescription}
+          onDescriptionChange={controller.actions.setDescription}
+          onSubmit={controller.submitExpense}
+        />
+      )}
     </Screen>
   )
 }
@@ -101,10 +102,6 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
-  },
-  sectionStack: {
-    gap: 18,
-    position: 'relative',
   },
   headerActions: {
     flexDirection: 'row',
