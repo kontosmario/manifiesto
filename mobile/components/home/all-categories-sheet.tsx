@@ -26,7 +26,7 @@ import { CategoryBadge } from '@/components/ui/category-badge'
 import { SelectableRow } from '@/components/ui/selectable-row'
 import { AppButton } from '@/components/ui/button'
 import type { Category } from '@/features/categories/use-categories'
-import { motionDurations, motionSprings } from '@/lib/motion'
+import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -68,10 +68,13 @@ export function AllCategoriesSheet({
     } else {
       translateY.value = reduceMotion
         ? screenHeight
-        : withSpring(screenHeight, motionSprings.exit)
+        : withTiming(screenHeight, {
+            duration: motionDurations.deliberate,
+            easing: motionEasings.accelerate,
+          })
       backdropOpacity.value = reduceMotion
         ? 0
-        : withTiming(0, { duration: motionDurations.quick })
+        : withTiming(0, { duration: motionDurations.standard })
     }
   }, [visible, reduceMotion, screenHeight, translateY, backdropOpacity])
 
@@ -96,6 +99,13 @@ export function AllCategoriesSheet({
       const shouldDismiss =
         event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
       if (shouldDismiss) {
+        translateY.value = withSpring(screenHeight, {
+          velocity: Math.max(event.velocityY, 800),
+          damping: 32,
+          stiffness: 240,
+          mass: 0.9,
+        })
+        backdropOpacity.value = withTiming(0, { duration: motionDurations.quick })
         runOnJS(onDismiss)()
       } else {
         translateY.value = withSpring(0, motionSprings.sheet)

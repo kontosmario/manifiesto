@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
 import { CategoryPickerGrid } from '@/components/home/category-picker-grid'
@@ -73,7 +73,14 @@ export function AddExpenseDashboard({
 
   return (
     <View style={styles.root}>
-      <View style={styles.topStack}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
+      >
         <AmountCard
           amount={amount}
           isActive={numpadVisible}
@@ -115,19 +122,17 @@ export function AddExpenseDashboard({
             {submitErrorMessage}
           </Text>
         ) : null}
-      </View>
+      </ScrollView>
 
-      <View style={styles.footerWrap}>
-        <StickyFooter divider={false}>
-          <AppButton
-            label="Guardar gasto"
-            variant="primary"
-            loading={isBusy}
-            disabled={!hasValidAmount || !selectedCategoryId}
-            onPress={onSubmit}
-          />
-        </StickyFooter>
-      </View>
+      <StickyFooter divider={false}>
+        <AppButton
+          label="Guardar gasto"
+          variant="primary"
+          loading={isBusy}
+          disabled={!hasValidAmount || !selectedCategoryId}
+          onPress={onSubmit}
+        />
+      </StickyFooter>
 
       <InAppNumpad
         visible={numpadVisible}
@@ -151,14 +156,13 @@ export function AddExpenseDashboard({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    justifyContent: 'space-between',
-    gap: 14,
   },
-  topStack: {
-    gap: 14,
+  scroll: {
+    flex: 1,
   },
-  footerWrap: {
-    marginTop: 8,
+  scrollContent: {
+    gap: 14,
+    paddingBottom: 8,
   },
   helper: {
     paddingHorizontal: 4,

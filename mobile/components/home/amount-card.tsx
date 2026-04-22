@@ -1,13 +1,16 @@
+import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   useReducedMotion,
+  interpolateColor,
 } from 'react-native-reanimated'
 import { formatAnimatedAmount } from '@/components/ui/animated-amount-format'
 import { triggerHaptic } from '@/lib/haptics'
-import { motionSprings } from '@/lib/motion'
+import { motionDurations, motionSprings } from '@/lib/motion'
 import { brand, radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -22,15 +25,36 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
+  const activeProgress = useSharedValue(isActive ? 1 : 0)
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  useEffect(() => {
+    const target = isActive ? 1 : 0
+    activeProgress.value = reduceMotion
+      ? target
+      : withTiming(target, { duration: motionDurations.standard })
+  }, [isActive, reduceMotion, activeProgress])
+
+  const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
+  }))
+
+  const borderStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      activeProgress.value,
+      [0, 1],
+      [theme.colors.border, brand.deep],
+    ),
+    borderWidth: 1 + activeProgress.value,
+  }))
+
+  const hintStyle = useAnimatedStyle(() => ({
+    opacity: 1 - activeProgress.value,
   }))
 
   const displayText = formatAnimatedAmount(amount)
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={scaleStyle}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Monto: ${displayText}`}
@@ -49,38 +73,47 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
           scale.value = withSpring(1, motionSprings.press)
         }}
         style={({ pressed }) => [
-          styles.card,
+          styles.cardPressable,
           {
-            backgroundColor: theme.colors.surface,
-            borderColor: isActive ? brand.deep : theme.colors.border,
-            borderWidth: isActive ? 2 : StyleSheet.hairlineWidth,
             opacity: pressed ? 0.96 : 1,
           },
         ]}
       >
-        <View style={styles.topRow}>
-          <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>Monto</Text>
-          {!isActive ? (
-            <Text style={[typography.caption, { color: theme.colors.textSoft }]}>
-              Tap para editar
-            </Text>
-          ) : null}
-        </View>
-        <Text
-          style={[typography.hero, styles.value, { color: theme.colors.text }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          allowFontScaling
-          maxFontSizeMultiplier={1.2}
+        <Animated.View
+          style={[
+            styles.card,
+            borderStyle,
+            { backgroundColor: theme.colors.surface },
+          ]}
         >
-          {displayText}
-        </Text>
+          <View style={styles.topRow}>
+            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>Monto</Text>
+            <Animated.Text
+              style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
+              pointerEvents="none"
+            >
+              Tap para editar
+            </Animated.Text>
+          </View>
+          <Text
+            style={[typography.hero, styles.value, { color: theme.colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling
+            maxFontSizeMultiplier={1.2}
+          >
+            {displayText}
+          </Text>
+        </Animated.View>
       </Pressable>
     </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
+  cardPressable: {
+    borderRadius: radii['2xl'],
+  },
   card: {
     borderRadius: radii['2xl'],
     paddingHorizontal: 22,
