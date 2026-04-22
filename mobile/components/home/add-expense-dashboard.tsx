@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
@@ -57,7 +57,6 @@ export function AddExpenseDashboard({
   const [numpadVisible, setNumpadVisible] = useState(false)
   const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
-  const scrollRef = useRef<ScrollView>(null)
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true))
@@ -67,14 +66,6 @@ export function AddExpenseDashboard({
       hide.remove()
     }
   }, [])
-
-  const handleDescriptionFocus = () => {
-    // Fire the scroll immediately on focus — don't wait for
-    // automaticallyAdjustKeyboardInsets which lags behind the keyboard animation.
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true })
-    })
-  }
 
   // Keep the selected category visible in the grid even when it isn't in the
   // top-ranked subset (e.g. the user picked it from "Ver todas"). It lands in
@@ -93,7 +84,6 @@ export function AddExpenseDashboard({
   return (
     <View style={styles.root}>
       <ScrollView
-        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         scrollEnabled={isKeyboardVisible}
@@ -135,7 +125,6 @@ export function AddExpenseDashboard({
           onChange={onDescriptionChange}
           quickSuggestions={quickDescriptionSuggestions}
           onSelectSuggestion={onSelectDescriptionSuggestion}
-          onFocus={handleDescriptionFocus}
         />
 
         {submitErrorMessage ? (
@@ -185,7 +174,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: 10,
-    paddingBottom: 48,
+    paddingBottom: 12,
   },
   helper: {
     paddingHorizontal: 4,
