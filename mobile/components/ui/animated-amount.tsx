@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Text, type StyleProp, type TextStyle } from 'react-native'
-import Animated, {
+import {
   useSharedValue,
-  useDerivedValue,
-  useAnimatedProps,
+  useAnimatedReaction,
   withSpring,
   useReducedMotion,
+  runOnJS,
 } from 'react-native-reanimated'
 import { typography } from '@/theme/typography'
 import { motionSprings } from '@/lib/motion'
@@ -33,8 +33,6 @@ const VARIANT_TO_PRESET: Record<AmountVariant, keyof typeof typography> = {
   bodyEmphasis: 'bodyEmphasis',
 }
 
-const AnimatedText = Animated.createAnimatedComponent(Text)
-
 export function AnimatedAmount({
   value,
   variant = 'hero',
@@ -47,38 +45,41 @@ export function AnimatedAmount({
 }: AnimatedAmountProps) {
   const reduceMotion = useReducedMotion()
   const current = useSharedValue(value)
+  const [displayText, setDisplayText] = useState(() => formatAnimatedAmount(value, locale, prefix))
 
   useEffect(() => {
     const previous = current.value
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
     current.value = reduceMotion ? value : withSpring(value, motionSprings.value)
     if (hapticOnChange && previous !== value) {
       void triggerHaptic(value > previous ? 'success' : 'selection')
     }
-  }, [value, reduceMotion, hapticOnChange, current])
+    if (reduceMotion) {
+      setDisplayText(formatAnimatedAmount(value, locale, prefix))
+    }
+  }, [value, reduceMotion, hapticOnChange, current, locale, prefix])
 
-  const formatted = useDerivedValue(() => formatAnimatedAmount(current.value, locale, prefix))
-
-  const animatedProps = useAnimatedProps(
-    () =>
-      ({
-        text: formatted.value,
-        defaultValue: formatted.value,
-      }) as unknown as { text: string },
+  useAnimatedReaction(
+    () => Math.round(current.value),
+    (rounded, previous) => {
+      if (rounded === previous) return
+      runOnJS(setDisplayText)(formatAnimatedAmount(rounded, locale, prefix))
+    },
+    [locale, prefix],
   )
 
   const presetKey = VARIANT_TO_PRESET[variant]
   const preset = typography[presetKey]
+  const accessibilityLabel = formatAnimatedAmount(value, locale, prefix)
 
   return (
-    <AnimatedText
+    <Text
       allowFontScaling
       maxFontSizeMultiplier={maxFontSizeMultiplier}
-      accessibilityLabel={formatAnimatedAmount(value, locale, prefix)}
+      accessibilityLabel={accessibilityLabel}
       style={[preset, color ? { color } : null, style]}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      animatedProps={animatedProps as unknown as any}
     >
-      {formatAnimatedAmount(value, locale, prefix)}
-    </AnimatedText>
+      {displayText}
+    </Text>
   )
 }
