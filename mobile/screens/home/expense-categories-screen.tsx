@@ -147,11 +147,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                 </View>
 
                 {categories.length === 0 ? (
-                  <EmptyState
-                    icon="category"
-                    subtitle="Creá tu primera categoría para ordenar mejor el historial y el alta de movimientos."
-                    title="Todavía no hay categorías"
-                  />
+                  <EmptyState icon="category" stateKey="categories" />
                 ) : (
                   <View style={styles.categoryList}>
                     {categories.map((category) => (

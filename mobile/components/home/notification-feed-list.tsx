@@ -93,11 +93,7 @@ export function NotificationFeedList({
         </View>
       )}
       ListEmptyComponent={
-        <EmptyState
-          icon="notifications-none"
-          subtitle="Todavía no hay actividad reciente para mostrar."
-          title="Todo tranquilo"
-        />
+        <EmptyState icon="notifications-none" stateKey="notifications" />
       }
       showsVerticalScrollIndicator={false}
     />
