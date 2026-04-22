@@ -5,11 +5,12 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
 import {
-  buildMinimumTouchTargetHitSlop,
   DEFAULT_PRESS_RETENTION_OFFSET,
 } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+
+const ICON_HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 } as const
 
 type IconButtonVariant = 'surface' | 'ghost' | 'primary'
 
@@ -40,6 +41,7 @@ export function IconButton({
   borderColor,
   showBadge = false,
   badgeColor,
+  hitSlop,
   onPress,
   onPressIn,
   onPressOut,
@@ -90,7 +92,7 @@ export function IconButton({
         radius: buttonSize / 2,
       }}
       disabled={disabled}
-      hitSlop={buildMinimumTouchTargetHitSlop(buttonSize)}
+      hitSlop={hitSlop ?? ICON_HIT_SLOP}
       pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
       style={({ pressed }) => [
         styles.baseButton,
