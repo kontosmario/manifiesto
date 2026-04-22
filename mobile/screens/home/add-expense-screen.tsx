@@ -1,10 +1,9 @@
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { AddExpenseDashboard } from '@/components/home/add-expense-dashboard'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
-import { IconButton } from '@/components/ui/icon-button'
 import { Screen } from '@/components/ui/screen'
 import { useAddExpenseController } from '@/features/expenses/use-add-expense-controller'
 import { errorMessages } from '@/lib/copy/states'
@@ -39,20 +38,8 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   return (
     <Screen
       canGoBack
+      scrollable={false}
       contentContainerStyle={styles.screenContent}
-      rightSlot={
-        <View style={styles.headerActions}>
-          <IconButton
-            accessibilityLabel="Ver historial"
-            backgroundColor={headerPalette.buttonBackgroundColor}
-            borderColor={headerPalette.buttonBorderColor}
-            icon="receipt-long"
-            iconColor={headerPalette.iconColor}
-            symbolName="clock.arrow.circlepath"
-            onPress={() => router.push('/(app)/expenses-history')}
-          />
-        </View>
-      }
       title="Agregar"
       titleColor={headerPalette.titleColor}
     >
@@ -102,10 +89,5 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
 })

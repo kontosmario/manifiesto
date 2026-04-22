@@ -6,7 +6,7 @@ import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
-const GRID_LIMIT = 6
+const GRID_LIMIT = 4
 
 interface CategoryPickerGridProps {
   categories: Category[]
@@ -42,10 +42,15 @@ export function CategoryPickerGrid({
               size="md"
             >
               <View style={styles.cardRow}>
-                <CategoryBadge categoryId={category.id} size="md" tone="soft" />
+                <CategoryBadge categoryId={category.id} size="sm" tone="soft" />
                 <Text
-                  style={[typography.buttonDefault, { color: theme.colors.text }]}
+                  style={[
+                    typography.buttonCompact,
+                    styles.cardLabel,
+                    { color: theme.colors.text },
+                  ]}
                   numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {category.name}
                 </Text>
@@ -96,9 +101,15 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 4,
     paddingVertical: 2,
+    flex: 1,
+    minWidth: 0,
+  },
+  cardLabel: {
+    flexShrink: 1,
+    flex: 1,
   },
   seeAll: {
     height: 64,

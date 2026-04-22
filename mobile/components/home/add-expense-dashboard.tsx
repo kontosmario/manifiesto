@@ -62,63 +62,67 @@ export function AddExpenseDashboard({
   useEffect(() => {
     if (didAutoPresent.current) return
     didAutoPresent.current = true
-    const handle = setTimeout(() => numpadRef.current?.present(), 120)
+    const handle = setTimeout(() => numpadRef.current?.present(), 250)
     return () => clearTimeout(handle)
   }, [])
 
   return (
-    <View style={styles.stack}>
-      <AmountCard
-        amount={amount}
-        isActive={false}
-        onPress={() => numpadRef.current?.present()}
-      />
-
-      <SuggestedAmountStrip
-        amounts={suggestedAmounts}
-        currentAmount={amount}
-        onSelect={onSelectSuggestedAmount}
-      />
-
-      {amountHelper ? (
-        <Text
-          style={[typography.caption, styles.helper, { color: theme.colors.textMuted }]}
-        >
-          {amountHelper}
-        </Text>
-      ) : null}
-
-      <CategoryPickerGrid
-        categories={rankedCategories}
-        selectedCategoryId={selectedCategoryId}
-        onSelect={onSelectCategory}
-        onSeeAll={() => allCategoriesRef.current?.present()}
-      />
-
-      <DescriptionRow
-        description={description}
-        onChange={onDescriptionChange}
-        quickSuggestions={quickDescriptionSuggestions}
-        onSelectSuggestion={onSelectDescriptionSuggestion}
-      />
-
-      {submitErrorMessage ? (
-        <Text
-          style={[typography.caption, styles.error, { color: theme.colors.danger }]}
-        >
-          {submitErrorMessage}
-        </Text>
-      ) : null}
-
-      <StickyFooter>
-        <AppButton
-          label="Guardar gasto"
-          variant="primary"
-          loading={isBusy}
-          disabled={!hasValidAmount || !selectedCategoryId}
-          onPress={onSubmit}
+    <View style={styles.root}>
+      <View style={styles.topStack}>
+        <AmountCard
+          amount={amount}
+          isActive={false}
+          onPress={() => numpadRef.current?.present()}
         />
-      </StickyFooter>
+
+        <SuggestedAmountStrip
+          amounts={suggestedAmounts}
+          currentAmount={amount}
+          onSelect={onSelectSuggestedAmount}
+        />
+
+        {amountHelper ? (
+          <Text
+            style={[typography.caption, styles.helper, { color: theme.colors.textMuted }]}
+          >
+            {amountHelper}
+          </Text>
+        ) : null}
+
+        <CategoryPickerGrid
+          categories={rankedCategories}
+          selectedCategoryId={selectedCategoryId}
+          onSelect={onSelectCategory}
+          onSeeAll={() => allCategoriesRef.current?.present()}
+        />
+
+        <DescriptionRow
+          description={description}
+          onChange={onDescriptionChange}
+          quickSuggestions={quickDescriptionSuggestions}
+          onSelectSuggestion={onSelectDescriptionSuggestion}
+        />
+
+        {submitErrorMessage ? (
+          <Text
+            style={[typography.caption, styles.error, { color: theme.colors.danger }]}
+          >
+            {submitErrorMessage}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.footerWrap}>
+        <StickyFooter divider={false}>
+          <AppButton
+            label="Guardar gasto"
+            variant="primary"
+            loading={isBusy}
+            disabled={!hasValidAmount || !selectedCategoryId}
+            onPress={onSubmit}
+          />
+        </StickyFooter>
+      </View>
 
       <InAppNumpad
         ref={numpadRef}
@@ -138,9 +142,14 @@ export function AddExpenseDashboard({
 }
 
 const styles = StyleSheet.create({
-  stack: {
-    gap: 16,
-    paddingBottom: 88,
+  root: {
+    flex: 1,
+  },
+  topStack: {
+    gap: 14,
+  },
+  footerWrap: {
+    marginTop: 'auto',
   },
   helper: {
     paddingHorizontal: 4,

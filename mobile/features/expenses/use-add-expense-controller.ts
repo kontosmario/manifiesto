@@ -64,8 +64,9 @@ export function useAddExpenseController({
     [expenses],
   )
 
-  const amount = parsePrice(rawPrice)
-  const hasValidAmount = Number.isFinite(amount) && amount > 0
+  const parsedAmount = parsePrice(rawPrice)
+  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
+  const amount = hasValidAmount ? parsedAmount : 0
   const remainingCycleAfterExpense = hasValidAmount
     ? dashboard.totalAvailable - amount
     : dashboard.totalAvailable

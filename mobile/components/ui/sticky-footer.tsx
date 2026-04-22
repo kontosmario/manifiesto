@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   inner: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 10,
     alignItems: 'stretch',
   },

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -6,7 +6,11 @@ import Animated, {
   withSpring,
   useReducedMotion,
 } from 'react-native-reanimated'
-import { BottomSheet, type BottomSheetHandle } from './bottom-sheet'
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet'
 import { AppSymbol } from './app-symbol'
 import { AppButton } from './button'
 import { appendComma, appendDigit, backspace, clearAll } from './in-app-numpad-model'
@@ -31,6 +35,7 @@ interface InAppNumpadProps {
 }
 
 const DIGITS: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+const SNAP_POINTS = ['55%']
 
 export const InAppNumpad = forwardRef<InAppNumpadHandle, InAppNumpadProps>(
   function InAppNumpad(
@@ -44,13 +49,18 @@ export const InAppNumpad = forwardRef<InAppNumpadHandle, InAppNumpadProps>(
     },
     ref,
   ) {
-    const sheetRef = useRef<BottomSheetHandle>(null)
+    const { theme } = useAppTheme()
+    const modalRef = useRef<BottomSheetModal>(null)
 
     useImperativeHandle(
       ref,
       () => ({
-        present: () => sheetRef.current?.present(),
-        dismiss: () => sheetRef.current?.dismiss(),
+        present: () => {
+          modalRef.current?.present()
+        },
+        dismiss: () => {
+          modalRef.current?.dismiss()
+        },
       }),
       [],
     )
@@ -82,24 +92,52 @@ export const InAppNumpad = forwardRef<InAppNumpadHandle, InAppNumpadProps>(
 
     const handleDone = useCallback(() => {
       void triggerHaptic('selection')
-      sheetRef.current?.dismiss()
+      modalRef.current?.dismiss()
     }, [])
 
+    const renderBackdrop = useCallback(
+      (props: BottomSheetBackdropProps) => (
+        <BottomSheetBackdrop
+          {...props}
+          appearsOnIndex={0}
+          disappearsOnIndex={-1}
+          opacity={0.45}
+          pressBehavior="close"
+        />
+      ),
+      [],
+    )
+
+    const backgroundStyle = useMemo(
+      () => ({
+        backgroundColor: theme.colors.surface,
+        borderTopLeftRadius: radii['2xl'],
+        borderTopRightRadius: radii['2xl'],
+      }),
+      [theme.colors.surface],
+    )
+
+    const handleIndicatorStyle = useMemo(
+      () => ({
+        backgroundColor: theme.colors.borderStrong,
+        width: 36,
+        height: 4,
+      }),
+      [theme.colors.borderStrong],
+    )
+
     return (
-      <BottomSheet
-        ref={sheetRef}
-        snapPoints={['50%']}
-        enableDynamicSizing
+      <BottomSheetModal
+        ref={modalRef}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose
         onDismiss={onDismiss}
-        hapticOnDismiss={false}
+        backdropComponent={renderBackdrop}
+        handleIndicatorStyle={handleIndicatorStyle}
+        backgroundStyle={backgroundStyle}
       >
         <View style={styles.container}>
-          <AppButton
-            variant="primary"
-            size="compact"
-            label={doneLabel}
-            onPress={handleDone}
-          />
+          <AppButton variant="primary" label={doneLabel} onPress={handleDone} />
           <View style={styles.grid}>
             {DIGITS.map((digit) => (
               <NumpadKey
@@ -120,7 +158,7 @@ export const InAppNumpad = forwardRef<InAppNumpadHandle, InAppNumpadProps>(
             />
           </View>
         </View>
-      </BottomSheet>
+      </BottomSheetModal>
     )
   },
 )
@@ -173,9 +211,9 @@ function NumpadKey({
         style={({ pressed }) => [
           styles.key,
           {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.surfaceMuted,
             borderColor: theme.colors.border,
-            opacity: pressed ? 0.9 : 1,
+            opacity: pressed ? 0.85 : 1,
           },
         ]}
       >
@@ -198,8 +236,11 @@ function NumpadKey({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     gap: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
   grid: {
     flexDirection: 'row',
@@ -214,8 +255,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.md,
-    paddingVertical: 16,
-    minHeight: 54,
+    paddingVertical: 18,
+    minHeight: 58,
   },
   keyLabel: {
     fontSize: 22,
