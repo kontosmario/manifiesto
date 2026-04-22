@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Text, type StyleProp, type TextStyle } from 'react-native'
 import {
   useSharedValue,
@@ -45,7 +45,19 @@ export function AnimatedAmount({
 }: AnimatedAmountProps) {
   const reduceMotion = useReducedMotion()
   const current = useSharedValue(value)
-  const [displayText, setDisplayText] = useState(() => formatAnimatedAmount(value, locale, prefix))
+  const [displayText, setDisplayText] = useState(() =>
+    formatAnimatedAmount(value, locale, prefix),
+  )
+
+  // JS-thread helper. The worklet in useAnimatedReaction delegates here via
+  // runOnJS so that Intl.NumberFormat runs on the JS runtime (it is not
+  // available in the Reanimated worklet runtime).
+  const applyRounded = useCallback(
+    (rounded: number) => {
+      setDisplayText(formatAnimatedAmount(rounded, locale, prefix))
+    },
+    [locale, prefix],
+  )
 
   useEffect(() => {
     const previous = current.value
@@ -53,18 +65,15 @@ export function AnimatedAmount({
     if (hapticOnChange && previous !== value) {
       void triggerHaptic(value > previous ? 'success' : 'selection')
     }
-    // In reduced-motion mode the shared value lands on `value` synchronously;
-    // useAnimatedReaction below fires once with the new rounded value and the
-    // display text updates via runOnJS — no explicit setState here needed.
   }, [value, reduceMotion, hapticOnChange, current])
 
   useAnimatedReaction(
     () => Math.round(current.value),
     (rounded, previous) => {
       if (rounded === previous) return
-      runOnJS(setDisplayText)(formatAnimatedAmount(rounded, locale, prefix))
+      runOnJS(applyRounded)(rounded)
     },
-    [locale, prefix],
+    [applyRounded],
   )
 
   const presetKey = VARIANT_TO_PRESET[variant]
