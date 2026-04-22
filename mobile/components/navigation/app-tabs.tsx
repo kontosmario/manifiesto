@@ -6,14 +6,17 @@ import {
   TabLabel,
   tabBarUiStyles,
 } from '@/components/navigation/app-tabs-ui'
+import { useTabHaptics } from '@/hooks/use-tab-haptics'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export function AppTabs() {
   const { theme } = useAppTheme()
+  const tabHaptics = useTabHaptics()
 
   return (
     <Tabs
+      screenListeners={tabHaptics}
       screenOptions={{
         freezeOnBlur: true,
         headerShown: false,
