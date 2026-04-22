@@ -1,6 +1,16 @@
+import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  withTiming,
+  useReducedMotion,
+} from 'react-native-reanimated'
 import { AppButton } from '@/components/ui/button'
+import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -21,6 +31,36 @@ export function EmptyState({
   icon = 'info-outline',
 }: EmptyStateProps) {
   const { theme } = useAppTheme()
+  const reduceMotion = useReducedMotion()
+
+  const iconScale = useSharedValue(reduceMotion ? 1 : 0.85)
+  const iconOpacity = useSharedValue(reduceMotion ? 1 : 0)
+  const textOpacity = useSharedValue(reduceMotion ? 1 : 0)
+  const textTranslate = useSharedValue(reduceMotion ? 0 : 6)
+
+  useEffect(() => {
+    if (reduceMotion) return
+    iconScale.value = withSpring(1, motionSprings.celebrate)
+    iconOpacity.value = withTiming(1, { duration: motionDurations.quick })
+    textOpacity.value = withDelay(
+      motionStagger.section,
+      withTiming(1, { duration: motionDurations.standard }),
+    )
+    textTranslate.value = withDelay(
+      motionStagger.section,
+      withSpring(0, motionSprings.enter),
+    )
+  }, [reduceMotion, iconScale, iconOpacity, textOpacity, textTranslate])
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: iconOpacity.value,
+    transform: [{ scale: iconScale.value }],
+  }))
+
+  const textAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    transform: [{ translateY: textTranslate.value }],
+  }))
 
   return (
     <View
@@ -32,13 +72,17 @@ export function EmptyState({
         },
       ]}
     >
-      <MaterialIcons color={theme.colors.textSoft} name={icon} size={24} />
-      <Text style={[styles.title, theme.typography.titleMedium, { color: theme.colors.text }]}>
-        {title}
-      </Text>
-      <Text style={[styles.subtitle, theme.typography.body, { color: theme.colors.textMuted }]}>
-        {subtitle}
-      </Text>
+      <Animated.View style={iconAnimatedStyle}>
+        <MaterialIcons color={theme.colors.textSoft} name={icon} size={24} />
+      </Animated.View>
+      <Animated.View style={[styles.textBlock, textAnimatedStyle]}>
+        <Text style={[styles.title, theme.typography.titleMedium, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        <Text style={[styles.subtitle, theme.typography.body, { color: theme.colors.textMuted }]}>
+          {subtitle}
+        </Text>
+      </Animated.View>
       {action ? (
         <AppButton
           fullWidth={false}
@@ -55,11 +99,15 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radii.xl, // was 24; nearest token xl=22 (intentional 2pt tightening)
+    borderRadius: radii.xl,
     borderWidth: 1,
     padding: 22,
     alignItems: 'center',
     gap: 12,
+  },
+  textBlock: {
+    alignItems: 'center',
+    gap: 6,
   },
   title: {
     textAlign: 'center',

@@ -1,5 +1,14 @@
+import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  useReducedMotion,
+} from 'react-native-reanimated'
 import { AppButton } from '@/components/ui/button'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -18,6 +27,27 @@ export function ErrorState({
   onAction,
 }: ErrorStateProps) {
   const { theme } = useAppTheme()
+  const reduceMotion = useReducedMotion()
+  const pulse = useSharedValue(1)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      pulse.value = 1
+      return
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.04, { duration: 800 }),
+        withTiming(1, { duration: 800 }),
+      ),
+      -1,
+      false,
+    )
+  }, [reduceMotion, pulse])
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }))
 
   return (
     <View
@@ -29,9 +59,10 @@ export function ErrorState({
         },
       ]}
     >
-      <View
+      <Animated.View
         style={[
           styles.iconWrap,
+          iconAnimatedStyle,
           {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.border,
@@ -39,7 +70,7 @@ export function ErrorState({
         ]}
       >
         <MaterialIcons color={theme.colors.danger} name="error-outline" size={24} />
-      </View>
+      </Animated.View>
       <Text style={[styles.title, theme.typography.titleMedium, { color: theme.colors.text }]}>
         {title}
       </Text>
@@ -62,7 +93,7 @@ export function ErrorState({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    borderRadius: radii.xl, // was 24; nearest token xl=22 (intentional 2pt tightening)
+    borderRadius: radii.xl,
     borderWidth: 1,
     gap: 12,
     paddingHorizontal: 22,
