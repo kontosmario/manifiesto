@@ -1,9 +1,10 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, type ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
-import GorhomBottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   type BottomSheetBackdropProps,
-  type BottomSheetProps as GorhomBottomSheetProps,
+  type BottomSheetModalProps,
 } from '@gorhom/bottom-sheet'
 import { useAppTheme } from '@/theme/theme-provider'
 import { radii } from '@/theme/palette'
@@ -21,7 +22,7 @@ interface BottomSheetProps {
   enableDynamicSizing?: boolean
   onDismiss?: () => void
   hapticOnDismiss?: boolean
-  backgroundStyle?: GorhomBottomSheetProps['backgroundStyle']
+  backgroundStyle?: BottomSheetModalProps['backgroundStyle']
 }
 
 export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(function BottomSheet(
@@ -36,19 +37,19 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(funct
   ref,
 ) {
   const { theme } = useAppTheme()
-  const sheetRef = useRef<GorhomBottomSheet>(null)
+  const modalRef = useRef<BottomSheetModal>(null)
 
   useImperativeHandle(
     ref,
     () => ({
-      present: () => sheetRef.current?.expand(),
-      dismiss: () => sheetRef.current?.close(),
-      snapTo: (index: number) => sheetRef.current?.snapToIndex(index),
+      present: () => modalRef.current?.present(),
+      dismiss: () => modalRef.current?.dismiss(),
+      snapTo: (index: number) => modalRef.current?.snapToIndex(index),
     }),
     [],
   )
 
-  const handleClose = useCallback(() => {
+  const handleDismiss = useCallback(() => {
     if (hapticOnDismiss) void triggerHaptic('selection')
     onDismiss?.()
   }, [hapticOnDismiss, onDismiss])
@@ -67,13 +68,12 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(funct
   )
 
   return (
-    <GorhomBottomSheet
-      ref={sheetRef}
-      index={-1}
+    <BottomSheetModal
+      ref={modalRef}
       snapPoints={snapPoints}
       enableDynamicSizing={enableDynamicSizing}
       enablePanDownToClose
-      onClose={handleClose}
+      onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{
         backgroundColor: theme.colors.borderStrong,
@@ -90,7 +90,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(funct
       ]}
     >
       <View style={styles.content}>{children}</View>
-    </GorhomBottomSheet>
+    </BottomSheetModal>
   )
 })
 

@@ -49,15 +49,14 @@ export function AnimatedAmount({
 
   useEffect(() => {
     const previous = current.value
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
     current.value = reduceMotion ? value : withSpring(value, motionSprings.value)
     if (hapticOnChange && previous !== value) {
       void triggerHaptic(value > previous ? 'success' : 'selection')
     }
-    if (reduceMotion) {
-      setDisplayText(formatAnimatedAmount(value, locale, prefix))
-    }
-  }, [value, reduceMotion, hapticOnChange, current, locale, prefix])
+    // In reduced-motion mode the shared value lands on `value` synchronously;
+    // useAnimatedReaction below fires once with the new rounded value and the
+    // display text updates via runOnJS — no explicit setState here needed.
+  }, [value, reduceMotion, hapticOnChange, current])
 
   useAnimatedReaction(
     () => Math.round(current.value),
