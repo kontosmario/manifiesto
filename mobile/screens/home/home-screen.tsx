@@ -1,20 +1,21 @@
-import { useMemo } from 'react'
-import { Alert, StyleSheet, View, useWindowDimensions } from 'react-native'
+import { useMemo, useState } from 'react'
+import { Alert, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { IconButton } from '@/components/ui/icon-button'
-import { ErrorState } from '@/components/ui/error-state'
-import { Screen } from '@/components/ui/screen'
-import { HomeActivityCard } from '@/components/home/home-activity-card'
-import { HomeOverviewCard } from '@/components/home/home-overview-card'
+import { HomeDashboard } from '@/components/home/home-dashboard'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
+import { ErrorState } from '@/components/ui/error-state'
+import { IconButton } from '@/components/ui/icon-button'
+import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
-import { useRecentExpenses } from '@/features/expenses/use-expenses'
+import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
 import {
   buildSalaryConfirmationInput,
   useUpsertFamilyFinance,
 } from '@/features/finance/use-family-finance'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { errorMessages } from '@/lib/copy/states'
+import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -27,45 +28,40 @@ interface HomeScreenProps {
 export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
-  const { width } = useWindowDimensions()
-  const isCompactWidth = width < 410
-  const balanceFontSize = width < 360 ? 30 : width < 410 ? 34 : 38
-  const balanceLineHeight = balanceFontSize + 4
+  const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
+
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
   const recentExpensesQuery = useRecentExpenses(familyId, 3)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
+  const deleteExpenseMutation = useDeleteExpense(familyId)
 
   const categoryNameById = useMemo(
-    () => new Map((categoriesQuery.data ?? []).map((category) => [category.id, category.name] as const)),
+    () =>
+      new Map(
+        (categoriesQuery.data ?? []).map((category) => [category.id, category.name] as const),
+      ),
     [categoriesQuery.data],
   )
   const recentExpenses = recentExpensesQuery.data ?? []
   const headerPalette = buildScreenHeaderPalette(theme)
+
   const shouldShowDashboardError =
     (dashboard.familyFinanceQuery.error && !dashboard.familyFinanceQuery.data) ||
     (dashboard.fixedExpensesQuery.error && !dashboard.fixedExpensesQuery.data) ||
     (dashboard.expensesQuery.error && !dashboard.expensesQuery.data)
-  const activityErrorMessage =
+
+  const activityError =
     recentExpensesQuery.isError && recentExpenses.length === 0
-      ? getErrorMessage(
-          recentExpensesQuery.error,
-          'No pudimos cargar los últimos movimientos del hogar.',
-        )
+      ? recentExpensesQuery.error
       : categoriesQuery.isError && recentExpenses.length === 0
-        ? getErrorMessage(
-            categoriesQuery.error,
-            'No pudimos resolver las categorías para mostrar la actividad.',
-          )
+        ? categoriesQuery.error
         : undefined
 
-  const showError = (error: unknown, fallbackMessage: string) => {
-    Alert.alert('Algo salió mal', getErrorMessage(error, fallbackMessage))
-  }
-
   const confirmSalary = () => {
+    setSalaryErrorMessage(null)
     upsertFamilyFinanceMutation.mutate(
       buildSalaryConfirmationInput({
         dailyBudgetBufferMode: dashboard.dailyBudgetBufferMode,
@@ -80,14 +76,35 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
         usdExchangeRate: dashboard.usdExchangeRate,
         salaryPaymentDay: dashboard.salaryPaymentDay,
-        lastSalaryConfirmedAt: dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
+        lastSalaryConfirmedAt:
+          dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
       }),
       {
         onError: (error: unknown) => {
-          showError(error, 'No se pudo confirmar el cobro.')
+          setSalaryErrorMessage(getErrorMessage(error, errorMessages.server))
+          void triggerHaptic('error')
+        },
+        onSuccess: () => {
+          void triggerHaptic('success')
         },
       },
     )
+  }
+
+  const handleDeleteExpense = (expenseId: string) => {
+    void triggerHaptic('warning')
+    deleteExpenseMutation.mutate(expenseId, {
+      onError: (error: unknown) => {
+        void triggerHaptic('error')
+        Alert.alert(
+          'No pudimos eliminar',
+          getErrorMessage(error, errorMessages.server),
+        )
+      },
+      onSuccess: () => {
+        void triggerHaptic('success')
+      },
+    })
   }
 
   return (
@@ -120,42 +137,32 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       titleColor={headerPalette.titleColor}
       title={`Hola, ${displayName}`}
     >
-      <View style={styles.sectionStack}>
-        {!theme.isDark ? (
-          <AmbientBackdrop variant="home" />
-        ) : null}
-        {shouldShowDashboardError ? (
-          <ErrorState
-            description={getErrorMessage(
-              dashboard.dashboardError,
-              'No pudimos cargar el resumen principal del hogar.',
-            )}
-            title="No pudimos abrir tu panorama"
-            onAction={() => {
-              void dashboard.refetchAll()
-            }}
-          />
-        ) : (
-          <HomeOverviewCard
-            balanceFontSize={balanceFontSize}
-            balanceLineHeight={balanceLineHeight}
-            dashboard={dashboard}
-            isCompactWidth={isCompactWidth}
-            isSaving={upsertFamilyFinanceMutation.isPending}
-            onConfirmSalary={confirmSalary}
-          />
-        )}
+      {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
 
-        <HomeActivityCard
-          categoryNameById={categoryNameById}
-          errorMessage={activityErrorMessage}
-          isLoading={recentExpensesQuery.isLoading}
-          onRetry={() => {
-            void Promise.all([recentExpensesQuery.refetch(), categoriesQuery.refetch()])
+      {shouldShowDashboardError ? (
+        <ErrorState
+          description={getErrorMessage(
+            dashboard.dashboardError,
+            errorMessages.server,
+          )}
+          title="No pudimos abrir tu panorama"
+          onAction={() => {
+            void dashboard.refetchAll()
           }}
-          recentExpenses={recentExpenses}
         />
-      </View>
+      ) : (
+        <HomeDashboard
+          dashboard={dashboard}
+          recentExpenses={recentExpenses}
+          categoryNameById={categoryNameById}
+          isLoadingActivity={recentExpensesQuery.isLoading}
+          activityError={activityError}
+          onConfirmSalary={confirmSalary}
+          onDeleteExpense={handleDeleteExpense}
+          isSavingSalary={upsertFamilyFinanceMutation.isPending}
+          salaryErrorMessage={salaryErrorMessage}
+        />
+      )}
     </Screen>
   )
 }
@@ -163,10 +170,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 8,
-  },
-  sectionStack: {
-    gap: 22,
-    position: 'relative',
   },
   headerActions: {
     flexDirection: 'row',
