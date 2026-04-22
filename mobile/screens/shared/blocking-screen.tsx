@@ -1,4 +1,4 @@
-import { BlockingScreenView } from '@/components/shared/blocking-screen-view'
+import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 
 interface BlockingScreenProps {
   message?: string

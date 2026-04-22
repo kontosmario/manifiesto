@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Redirect } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
-import { BlockingScreenView } from '@/components/shared/blocking-screen-view'
+import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { getIsAuthTransitionSplashVisible, hideAuthTransitionSplash } from '@/lib/auth-transition-splash'
