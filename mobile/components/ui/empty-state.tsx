@@ -10,6 +10,7 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated'
 import { AppButton } from '@/components/ui/button'
+import { emptyStates, type EmptyStateKey } from '@/lib/copy/states'
 import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -20,8 +21,9 @@ interface EmptyStateProps {
     onPress: () => void
   }
   icon?: keyof typeof MaterialIcons.glyphMap
-  subtitle: string
-  title: string
+  subtitle?: string
+  title?: string
+  stateKey?: EmptyStateKey
 }
 
 export function EmptyState({
@@ -29,7 +31,11 @@ export function EmptyState({
   title,
   subtitle,
   icon = 'info-outline',
+  stateKey,
 }: EmptyStateProps) {
+  const template = stateKey ? emptyStates[stateKey] : undefined
+  const resolvedTitle = title ?? template?.title ?? ''
+  const resolvedSubtitle = subtitle ?? template?.description ?? ''
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
 
@@ -77,10 +83,10 @@ export function EmptyState({
       </Animated.View>
       <Animated.View style={[styles.textBlock, textAnimatedStyle]}>
         <Text style={[styles.title, theme.typography.titleMedium, { color: theme.colors.text }]}>
-          {title}
+          {resolvedTitle}
         </Text>
         <Text style={[styles.subtitle, theme.typography.body, { color: theme.colors.textMuted }]}>
-          {subtitle}
+          {resolvedSubtitle}
         </Text>
       </Animated.View>
       {action ? (
