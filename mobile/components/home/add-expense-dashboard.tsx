@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
 import { CategoryPickerGrid } from '@/components/home/category-picker-grid'
@@ -56,6 +56,16 @@ export function AddExpenseDashboard({
   const { theme } = useAppTheme()
   const [numpadVisible, setNumpadVisible] = useState(false)
   const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true))
+    const hide = Keyboard.addListener('keyboardWillHide', () => setIsKeyboardVisible(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
+  }, [])
 
   // Keep the selected category visible in the grid even when it isn't in the
   // top-ranked subset (e.g. the user picked it from "Ver todas"). It lands in
@@ -76,10 +86,12 @@ export function AddExpenseDashboard({
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled={isKeyboardVisible}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+        automaticallyAdjustKeyboardInsets={isKeyboardVisible}
         showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
       >
         <AmountCard
           amount={amount}
