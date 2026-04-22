@@ -7,7 +7,7 @@ interface LoadingBlockProps {
   label?: string
 }
 
-export function LoadingBlock({ label = 'Cargando...' }: LoadingBlockProps) {
+export function LoadingBlock({ label = 'Cargando' }: LoadingBlockProps) {
   const { theme } = useAppTheme()
 
   return (

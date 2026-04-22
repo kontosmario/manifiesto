@@ -6,7 +6,7 @@ interface BlockingScreenViewProps {
   message?: string
 }
 
-export function BlockingScreenView({ message = 'Cargando...' }: BlockingScreenViewProps) {
+export function BlockingScreenView({ message = 'Cargando' }: BlockingScreenViewProps) {
   const { theme } = useAppTheme()
 
   return (
