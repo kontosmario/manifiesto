@@ -5,7 +5,7 @@ import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent'
 type ButtonSize = 'default' | 'compact'
 
 interface AppButtonProps extends Omit<PressableProps, 'style'> {
@@ -57,11 +57,23 @@ export function AppButton({
       borderColor: theme.colors.danger,
       textColor: '#FFFFFF',
     },
+    accent: {
+      backgroundColor: theme.brand.bright,
+      borderColor: theme.brand.bright,
+      textColor: theme.brand.deep,
+    },
   } as const
 
   const activeColors = colorsByVariant[variant]
   const resolvedHaptic =
-    haptic ?? (variant === 'primary' ? 'light' : variant === 'secondary' ? 'selection' : variant === 'danger' ? 'warning' : 'none')
+    haptic ??
+    (variant === 'primary' || variant === 'accent'
+      ? 'light'
+      : variant === 'secondary'
+        ? 'selection'
+        : variant === 'danger'
+          ? 'warning'
+          : 'none')
   const sizeTokens =
     size === 'compact'
       ? {
@@ -86,11 +98,13 @@ export function AppButton({
       accessibilityState={{ busy: loading, disabled: isDisabled }}
       android_ripple={{
         color:
-          variant === 'primary' || variant === 'danger'
-            ? withAlpha('#FFFFFF', 0.18)
-            : variant === 'secondary'
-              ? withAlpha(theme.colors.primaryStrong, 0.12)
-              : withAlpha(theme.colors.text, 0.08),
+          variant === 'accent'
+            ? withAlpha(theme.brand.deep, 0.18)
+            : variant === 'primary' || variant === 'danger'
+              ? withAlpha('#FFFFFF', 0.18)
+              : variant === 'secondary'
+                ? withAlpha(theme.colors.primaryStrong, 0.12)
+                : withAlpha(theme.colors.text, 0.08),
       }}
       disabled={isDisabled}
       hitSlop={DEFAULT_HIT_SLOP}
