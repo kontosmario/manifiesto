@@ -39,6 +39,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
     <Screen
       canGoBack
       scrollable={false}
+      keyboardAware={false}
       contentContainerStyle={styles.screenContent}
       title="Agregar"
       titleColor={headerPalette.titleColor}
