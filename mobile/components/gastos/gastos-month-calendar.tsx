@@ -83,7 +83,23 @@ function GridMode({
   onSelectDay: (day: number) => void
 }) {
   const { theme } = useAppTheme()
-  const leadingEmpties = Array.from({ length: firstWeekdayOffset })
+  // Build the week rows: lead with `firstWeekdayOffset` blanks, then the
+  // month's days, then pad the trailing row so every row is 7 cells.
+  const rows: Array<Array<number | null>> = []
+  let current: Array<number | null> = []
+  for (let i = 0; i < firstWeekdayOffset; i++) current.push(null)
+  for (let d = 1; d <= daysInMonth; d++) {
+    current.push(d)
+    if (current.length === 7) {
+      rows.push(current)
+      current = []
+    }
+  }
+  if (current.length > 0) {
+    while (current.length < 7) current.push(null)
+    rows.push(current)
+  }
+
   return (
     <RiseView delay={300}>
       <View
@@ -111,18 +127,23 @@ function GridMode({
           ))}
         </View>
         <View style={styles.grid}>
-          {leadingEmpties.map((_, i) => (
-            <View key={`empty-${i}`} style={styles.dayCell} />
-          ))}
-          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((n) => (
-            <DayCell
-              key={n}
-              day={n}
-              mood={dayMoods[n] ?? (n <= todayDay ? 'empty' : undefined)}
-              isToday={n === todayDay}
-              isPast={n <= todayDay}
-              onPress={() => onSelectDay(n)}
-            />
+          {rows.map((row, ri) => (
+            <View key={ri} style={styles.gridRow}>
+              {row.map((n, ci) =>
+                n == null ? (
+                  <View key={`e-${ri}-${ci}`} style={styles.dayCell} />
+                ) : (
+                  <DayCell
+                    key={n}
+                    day={n}
+                    mood={dayMoods[n] ?? (n <= todayDay ? 'empty' : undefined)}
+                    isToday={n === todayDay}
+                    isPast={n <= todayDay}
+                    onPress={() => onSelectDay(n)}
+                  />
+                ),
+              )}
+            </View>
           ))}
         </View>
       </View>
@@ -162,8 +183,38 @@ function DayCell({
 }) {
   const { theme } = useAppTheme()
   const moodStyle = getMoodStyle(mood, theme.isDark)
-  const bg = isToday ? theme.colors.text : moodStyle.bg
-  const color = isToday ? theme.colors.creamCard : moodStyle.color
+  const hasMoodFill = !!mood && mood !== 'empty'
+
+  // Three visual states:
+  //   1. Today         → ink fill + cream number + accent dot underneath
+  //   2. Past w/ spend → mood-tinted fill + mood-tinted number
+  //   3. Past empty    → plain number, no tile
+  //   4. Future        → dashed border tile, muted number
+  let bg: string = 'transparent'
+  let color: string = theme.colors.textSoft
+  let borderWidth = 0
+  let borderStyle: 'solid' | 'dashed' = 'solid'
+  let borderColor: string = 'transparent'
+  if (isToday) {
+    bg = theme.colors.text
+    color = theme.colors.creamCard
+  } else if (isPast) {
+    if (hasMoodFill) {
+      bg = moodStyle.bg
+      color = moodStyle.color
+    } else {
+      bg = 'transparent'
+      color = theme.colors.textSoft
+    }
+  } else {
+    // future
+    bg = 'transparent'
+    color = theme.colors.textSoft
+    borderWidth = 1
+    borderStyle = 'dashed'
+    borderColor = theme.isDark ? 'rgba(246,251,239,0.14)' : 'rgba(15,42,30,0.16)'
+  }
+
   return (
     <Pressable
       onPress={isPast ? onPress : undefined}
@@ -172,9 +223,9 @@ function DayCell({
         styles.dayCell,
         {
           backgroundColor: bg,
-          borderStyle: isPast ? 'solid' : 'dashed',
-          borderColor: isPast ? 'transparent' : theme.colors.line,
-          borderWidth: isPast ? 0 : 1,
+          borderStyle,
+          borderColor,
+          borderWidth,
         },
       ]}
       accessibilityRole="button"
@@ -345,19 +396,20 @@ const styles = StyleSheet.create({
   legendDot: { width: 7, height: 7, borderRadius: 4 },
   legendLabel: { fontSize: 9, fontWeight: '600' },
   hint: { fontSize: 10, fontWeight: '500', marginBottom: 8 },
-  weekdaysRow: { flexDirection: 'row' },
+  weekdaysRow: { flexDirection: 'row', marginBottom: 4 },
   weekdayCell: { flex: 1, alignItems: 'center', paddingBottom: 2 },
-  weekdayText: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  weekdayText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
+  grid: { gap: 6 },
+  gridRow: { flexDirection: 'row', gap: 6 },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     position: 'relative',
   },
-  dayNumber: { fontSize: 11, fontWeight: '700' },
+  dayNumber: { fontSize: 13, fontWeight: '700' },
   todayDot: { position: 'absolute', bottom: 4, alignSelf: 'center' },
   moodPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   moodText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
