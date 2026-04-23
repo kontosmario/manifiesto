@@ -1591,3 +1591,21 @@ create policy "fixed_expense_payments_delete_members"
 on public.fixed_expense_payments
 for delete
 using (public.is_fixed_expense_family_member(fixed_expense_id));
+
+-- ==============================================================
+-- One-shot seed: insert a demo "Viaje a Bariloche" goal for any
+-- family that has no active goal yet. Safe to re-run.
+-- ==============================================================
+
+do $$
+begin
+  insert into public.savings_goals (family_id, title, emoji, goal_amount, current_amount, target_months, is_active)
+  select f.id, 'Viaje a Bariloche', '🏔️', 3000000, 1920000, 3, true
+  from public.families f
+  where not exists (
+    select 1
+    from public.savings_goals sg
+    where sg.family_id = f.id and sg.is_active
+  );
+end;
+$$;
