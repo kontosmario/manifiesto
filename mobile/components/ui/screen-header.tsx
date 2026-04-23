@@ -11,7 +11,7 @@ interface ScreenHeaderProps {
   onBackPress: () => void
   rightSlot?: ReactNode
   subtitle?: string
-  title: string
+  title?: string
   titleColor?: string
 }
 
@@ -53,15 +53,17 @@ export function ScreenHeader({
               <MaterialIcons color={theme.colors.text} name="arrow-back-ios-new" size={18} />
             </Pressable>
           ) : null}
-          <Text
-            style={[
-              styles.title,
-              theme.typography.screenTitle,
-              { color: titleColor ?? theme.colors.text },
-            ]}
-          >
-            {title}
-          </Text>
+          {title ? (
+            <Text
+              style={[
+                styles.title,
+                theme.typography.screenTitle,
+                { color: titleColor ?? theme.colors.text },
+              ]}
+            >
+              {title}
+            </Text>
+          ) : null}
         </View>
         {subtitle ? (
           <Text style={[styles.subtitle, theme.typography.body, { color: theme.colors.textMuted }]}>

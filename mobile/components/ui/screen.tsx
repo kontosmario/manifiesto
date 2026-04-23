@@ -19,7 +19,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface ScreenProps extends ScrollViewProps {
-  title: string
+  title?: string
   titleColor?: string
   subtitle?: string
   rightSlot?: ReactNode
