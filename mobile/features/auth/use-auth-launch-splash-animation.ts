@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Animated, Easing } from 'react-native'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 interface UseAuthLaunchSplashAnimationParams {
   onComplete?: () => void
@@ -58,67 +59,67 @@ export function useAuthLaunchSplashAnimation({
         toValue: 1,
         duration: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(badgeOpacity, {
         toValue: 1,
         duration: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(badgeTranslateY, {
         toValue: 0,
         duration: 300,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(walletOpacity, {
         toValue: 1,
         duration: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(walletTranslateY, {
         toValue: 0,
         duration: 420,
         easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(walletScale, {
         toValue: 1,
         duration: 460,
         easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(glowScale, {
         toValue: reducedMotion ? 1 : 1.02,
         duration: 420,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(titleOpacity, {
         toValue: 1,
         duration: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(titleTranslateY, {
         toValue: 0,
         duration: 300,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(subtitleOpacity, {
         toValue: 1,
         duration: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(subtitleTranslateY, {
         toValue: 0,
         duration: 320,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ])
 
@@ -131,13 +132,13 @@ export function useAuthLaunchSplashAnimation({
                 toValue: 1,
                 duration: 1500,
                 easing: Easing.inOut(Easing.sin),
-                useNativeDriver: true,
+                useNativeDriver: USE_NATIVE_DRIVER,
               }),
               Animated.timing(walletFloat, {
                 toValue: 0,
                 duration: 1500,
                 easing: Easing.inOut(Easing.sin),
-                useNativeDriver: true,
+                useNativeDriver: USE_NATIVE_DRIVER,
               }),
             ]),
           ),
@@ -147,13 +148,13 @@ export function useAuthLaunchSplashAnimation({
                 toValue: 1.04,
                 duration: 1400,
                 easing: Easing.inOut(Easing.sin),
-                useNativeDriver: true,
+                useNativeDriver: USE_NATIVE_DRIVER,
               }),
               Animated.timing(glowScale, {
                 toValue: 0.92,
                 duration: 1400,
                 easing: Easing.inOut(Easing.sin),
-                useNativeDriver: true,
+                useNativeDriver: USE_NATIVE_DRIVER,
               }),
             ]),
           ),
@@ -162,7 +163,7 @@ export function useAuthLaunchSplashAnimation({
               toValue: 1,
               duration: 1150,
               easing: Easing.inOut(Easing.cubic),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
             { resetBeforeIteration: true },
           ),
@@ -181,13 +182,13 @@ export function useAuthLaunchSplashAnimation({
               toValue: 0,
               duration: 420,
               easing: Easing.out(Easing.cubic),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
             Animated.timing(stageOpacity, {
               toValue: 0,
               duration: 300,
               easing: Easing.out(Easing.cubic),
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
           ]).start(({ finished }) => {
             if (finished) {

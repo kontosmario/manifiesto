@@ -1,6 +1,7 @@
 import { Animated, Easing } from 'react-native'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthMode } from '@/features/auth/auth-flow'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 export function useAuthEntranceAnimation({
   isReducedMotionEnabled,
@@ -44,13 +45,13 @@ export function useAuthEntranceAnimation({
         toValue: 1,
         duration: 220,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(modeContentTranslateY, {
         toValue: 0,
         duration: 280,
         easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ])
 
@@ -98,33 +99,33 @@ export function useAuthEntranceAnimation({
         toValue: 1,
         duration: 520,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(heroTranslateY, {
         toValue: 0,
         duration: 560,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(heroScale, {
         toValue: 1,
         duration: 580,
         easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(panelOpacity, {
         toValue: 1,
         duration: 460,
         delay: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(panelTranslateY, {
         toValue: 0,
         duration: 520,
         delay: 120,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ])
 

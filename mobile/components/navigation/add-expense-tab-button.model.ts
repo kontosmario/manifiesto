@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Animated, Easing } from 'react-native'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 export const ADD_BUTTON_GLOW_SIZE = 280
 
@@ -18,13 +19,13 @@ export function useAddExpenseButtonBreath(isReducedMotionEnabled: boolean) {
           toValue: 1,
           duration: 1400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(breath, {
           toValue: 0,
           duration: 1400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
     )
@@ -49,7 +50,7 @@ export function useAddExpenseButtonBurst(isReducedMotionEnabled: boolean) {
       toValue: 1,
       duration: 520,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start()
   }
 
@@ -74,7 +75,7 @@ export function useAddExpenseButtonIconRotation(isReducedMotionEnabled: boolean)
     }
     Animated.spring(rotation, {
       toValue: value,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       damping: 12,
       stiffness: 160,
       mass: 0.6,
@@ -149,13 +150,13 @@ export function useAddExpenseButtonGlow(isReducedMotionEnabled: boolean) {
           toValue: 1,
           duration: 220,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(holdGlowProgress, {
           toValue: 1,
           duration: 1350,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start()
 
@@ -167,13 +168,13 @@ export function useAddExpenseButtonGlow(isReducedMotionEnabled: boolean) {
         toValue: 0,
         duration: 260,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(holdGlowProgress, {
         toValue: 0,
         duration: 180,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start()
   }

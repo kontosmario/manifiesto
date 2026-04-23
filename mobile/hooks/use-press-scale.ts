@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Animated } from 'react-native'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 interface PressScaleOptions {
   pressedScale?: number
@@ -20,7 +21,7 @@ export function usePressScale(options: PressScaleOptions = {}) {
 
     Animated.spring(scale, {
       toValue: nextValue,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       damping: motionSprings.press.damping,
       stiffness: motionSprings.press.stiffness,
       mass: motionSprings.press.mass,

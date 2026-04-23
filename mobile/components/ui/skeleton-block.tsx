@@ -8,6 +8,7 @@ import {
 } from 'react-native'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { withAlpha } from '@/theme/color-utils'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SkeletonBlockProps {
@@ -39,13 +40,13 @@ export function SkeletonBlock({
           toValue: 1,
           duration: 820,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(pulse, {
           toValue: 0.72,
           duration: 820,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
     )

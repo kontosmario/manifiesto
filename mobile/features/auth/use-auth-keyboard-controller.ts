@@ -1,6 +1,7 @@
 import { Animated, Easing, Keyboard, Platform, TextInput } from 'react-native'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthMode } from '@/features/auth/auth-flow'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import {
   computeAuthKeyboardShiftTarget,
   type FocusedAuthField,
@@ -176,7 +177,7 @@ export function useAuthKeyboardController({
       toValue: -keyboardShiftTarget,
       duration: keyboardAnimationDurationRef.current,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     })
 
     animation.start()

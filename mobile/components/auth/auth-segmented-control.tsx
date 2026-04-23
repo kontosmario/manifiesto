@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useEffect, useState } from 'react'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { authPalette } from '@/theme/auth-theme'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
@@ -51,7 +52,7 @@ export function AuthSegmentedControl<T extends string>({
       toValue: nextOffset,
       tension: 58,
       friction: 9,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     })
 
     animation.start()

@@ -31,6 +31,7 @@ interface CaptureResult {
 const BANNED_WARNING_PATTERNS: RegExp[] = [
   /"shadow\*?" style props? (?:are|is) deprecated/i,
   /Image: style\.resizeMode is deprecated/i,
+  /useNativeDriver` is not supported/i,
 ]
 
 function captureErrors(page: Page): CaptureResult {

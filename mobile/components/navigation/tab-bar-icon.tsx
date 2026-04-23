@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { useAppTheme } from '@/theme/theme-provider'
 import { brand, radii } from '@/theme/palette'
 
@@ -17,7 +18,7 @@ function useFocusProgress(focused: boolean) {
     }
     Animated.spring(progress, {
       toValue: focused ? 1 : 0,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       damping: 16,
       stiffness: 180,
       mass: 0.7,

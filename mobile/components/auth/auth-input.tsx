@@ -8,6 +8,7 @@ import {
   type TextInputProps,
 } from 'react-native'
 import { forwardRef, type ReactNode, useEffect, useState } from 'react'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { triggerHaptic } from '@/lib/haptics'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
@@ -38,7 +39,7 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
       toValue: isFocused ? 1 : 0,
       duration: reducedMotion ? 0 : isFocused ? 180 : 140,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     })
 
     animation.start()

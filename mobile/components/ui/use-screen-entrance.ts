@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { Animated, Easing } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
+import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 interface UseScreenEntranceOptions {
   reducedMotion: boolean
@@ -46,14 +47,14 @@ export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
         toValue: 1,
         duration: motionDurations.standard,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(headerTranslateY, {
         toValue: 0,
         damping: motionSprings.enter.damping,
         stiffness: motionSprings.enter.stiffness,
         mass: motionSprings.enter.mass,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ])
 
@@ -62,14 +63,14 @@ export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
         toValue: 1,
         duration: motionDurations.standard,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(contentTranslateY, {
         toValue: 0,
         damping: motionSprings.enter.damping,
         stiffness: motionSprings.enter.stiffness,
         mass: motionSprings.enter.mass,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ])
 
