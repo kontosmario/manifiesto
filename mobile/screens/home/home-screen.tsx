@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { Alert, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { HomeDashboard } from '@/components/home/home-dashboard'
-import { getGreeting } from '@/features/home/home-dashboard-model'
 import { brand } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
@@ -15,6 +14,7 @@ import {
   useUpsertFamilyFinance,
 } from '@/features/finance/use-family-finance'
 import { useMyProfile } from '@/features/profile/use-profile'
+import { useFamily } from '@/features/family/use-family'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
@@ -32,10 +32,11 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const greeting = useMemo(() => getGreeting(new Date().getHours()), [])
 
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
+  const { data: familyInfo } = useFamily(userId)
+  const familyName = familyInfo?.familyCode ? `Familia ${familyInfo.familyCode}` : 'Tu familia'
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
   const recentExpensesQuery = useRecentExpenses(familyId, 3)
@@ -155,8 +156,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           />
         </View>
       }
-      titleColor={headerPalette.titleColor}
-      title={`${greeting}, ${displayName}`}
     >
       {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
 
@@ -176,6 +175,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           dashboard={dashboard}
           recentExpenses={recentExpenses}
           categoryNameById={categoryNameById}
+          familyId={familyId}
+          displayName={displayName}
+          familyName={familyName}
           isLoadingActivity={recentExpensesQuery.isLoading}
           activityError={activityError}
           onConfirmSalary={confirmSalary}
