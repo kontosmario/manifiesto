@@ -1,6 +1,6 @@
 // mobile/components/home/home-dashboard.tsx
 import { useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { type BottomSheetHandle } from '@/components/ui/bottom-sheet'
 import { ConfirmSalarySheet } from '@/components/home/confirm-salary-sheet'
@@ -192,7 +192,18 @@ export function HomeDashboard({
 
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
-        <Text style={[styles.activityLink, { color: theme.colors.text }]}>Ver todos</Text>
+        {recentExpenses.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver todo el historial"
+            hitSlop={10}
+            onPress={handleViewGastos}
+          >
+            <Text style={[styles.activityLink, { color: theme.colors.primaryStrong }]}>
+              Ver todos
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       <HomeActivitySection
         expenses={recentExpenses}
@@ -204,7 +215,6 @@ export function HomeDashboard({
         onRetry={() => {
           void dashboard.refetchAll()
         }}
-        onViewAll={handleViewGastos}
         onAddFirst={handleAddExpense}
       />
 
@@ -254,6 +264,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   activityLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700' },
-  activityLink: { fontSize: 13, fontWeight: '600' },
+  activityLink: { fontSize: 14, fontWeight: '700' },
   bottomSpacer: { height: 120 },
 })
