@@ -1,8 +1,17 @@
+import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import { MiniBars } from '@/components/home/mini-bars'
 import { GastosInsightCard } from '@/components/gastos/gastos-insight-card'
-import { GastosStreakBars } from '@/components/gastos/gastos-streak-bars'
 import { formatMoney } from '@/utils/money'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosInsightsRowProps {
@@ -14,7 +23,7 @@ interface GastosInsightsRowProps {
 /**
  * Two-card insights row under the hero:
  *   PROMEDIO DÍA — average daily spend + 7-bar mini histogram
- *   RACHA DE REGISTRO — consecutive days registering + gradient bars
+ *   RACHA DE REGISTRO — consecutive days registering + wiggling 🔥
  */
 export function GastosInsightsRow({
   averageDaily,
@@ -22,6 +31,7 @@ export function GastosInsightsRow({
   streakDays,
 }: GastosInsightsRowProps) {
   const { theme } = useAppTheme()
+  const streakAccent = theme.isDark ? '#E8976A' : '#6B3A4F'
   return (
     <View style={styles.row}>
       <GastosInsightCard
@@ -43,21 +53,40 @@ export function GastosInsightsRow({
         label="RACHA DE REGISTRO"
         value={streakDays === 1 ? '1 día' : `${streakDays} días`}
         sub={streakDays > 0 ? 'sin olvidarte' : 'empezá hoy'}
-        subColor="#6B3A4F"
-        chart={
-          streakDays > 0 ? (
-            <GastosStreakBars count={streakDays} />
-          ) : (
-            <Text style={styles.emoji}>🔥</Text>
-          )
-        }
+        subColor={streakAccent}
+        chart={<WigglingFlame active={streakDays > 0} />}
         delay={260}
       />
     </View>
   )
 }
 
+function WigglingFlame({ active }: { active: boolean }) {
+  const reduced = useReducedMotion()
+  const rotate = useSharedValue(0)
+  useEffect(() => {
+    if (reduced || !active) return
+    rotate.value = withRepeat(
+      withSequence(
+        withTiming(-3, { duration: 1000, easing: Easing.inOut(Easing.quad) }),
+        withTiming(3, { duration: 1000, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    )
+  }, [active, reduced, rotate])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotate.value}deg` }],
+  }))
+  return (
+    <Animated.View style={[styles.emojiWrap, style]}>
+      <Text style={[styles.emoji, { opacity: active ? 1 : 0.45 }]}>🔥</Text>
+    </Animated.View>
+  )
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
-  emoji: { fontSize: 22 },
+  emojiWrap: { alignItems: 'flex-start', justifyContent: 'center' },
+  emoji: { fontSize: 24 },
 })
