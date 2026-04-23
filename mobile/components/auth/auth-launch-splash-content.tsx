@@ -1,6 +1,7 @@
 import { Animated, Image, StyleSheet, Text, View } from 'react-native'
 import { authPalette, authTitleFontFamily } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
+import { withAlpha } from '@/theme/color-utils'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const walletSplash = require('../../../assets/brand/wallet-cartoon-fallback.png') as number
@@ -163,10 +164,7 @@ const styles = StyleSheet.create({
   },
   walletImage: {
     resizeMode: 'contain',
-    shadowColor: authPalette.splash.titleShadow,
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 14 },
+    boxShadow: `0px 14px 18px ${withAlpha(authPalette.splash.titleShadow, 0.28)}`,
   },
   title: {
     color: authPalette.splash.title,

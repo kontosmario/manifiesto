@@ -57,13 +57,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: radii.md,
     overflow: 'hidden',
-    shadowColor: authPalette.cta.glowShadow,
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
+    boxShadow: `0px 6px 10px ${withAlpha(authPalette.cta.glowShadow, 0.14)}`,
   },
   primaryButtonPressed: {
     opacity: 0.92,

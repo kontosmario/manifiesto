@@ -9,63 +9,60 @@ export type ElevationVariant =
   | 'floatingNav'
   | 'segmentedActive'
 
+/**
+ * Builds a cross-platform drop-shadow style using the `boxShadow` CSS-style
+ * property (supported in React Native 0.76+ and react-native-web 0.21+,
+ * replacing the deprecated `shadow*` props). Android also gets an
+ * `elevation` value for its native shadow compositor.
+ */
+function shadowStyle(
+  color: string,
+  offsetY: number,
+  blur: number,
+  opacity: number,
+  elevation: number,
+): ViewStyle {
+  return {
+    boxShadow: `0px ${offsetY}px ${blur}px ${withAlpha(color, opacity)}`,
+    elevation,
+  }
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '')
+  const full =
+    normalized.length === 3
+      ? normalized.split('').map((c) => c + c).join('')
+      : normalized
+  const r = parseInt(full.slice(0, 2), 16)
+  const g = parseInt(full.slice(2, 4), 16)
+  const b = parseInt(full.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 export function buildElevationStyle(
   theme: AppTheme,
   variant: ElevationVariant,
 ): ViewStyle {
   switch (variant) {
     case 'cardElevated':
-      return {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: theme.isDark ? 0.26 : 0.09,
-        shadowRadius: 24,
-        elevation: 9,
-      }
+      return shadowStyle('#000000', 16, 24, theme.isDark ? 0.26 : 0.09, 9)
     case 'panel':
-      return theme.isDark
-        ? {}
-        : {
-            shadowColor: '#4E685A',
-            shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: 0.08,
-            shadowRadius: 20,
-            elevation: 6,
-          }
+      return theme.isDark ? {} : shadowStyle('#4E685A', 12, 20, 0.08, 6)
     case 'panelHero':
-      return theme.isDark
-        ? {}
-        : {
-            shadowColor: '#5F8A70',
-            shadowOffset: { width: 0, height: 18 },
-            shadowOpacity: 0.12,
-            shadowRadius: 28,
-            elevation: 10,
-          }
+      return theme.isDark ? {} : shadowStyle('#5F8A70', 18, 28, 0.12, 10)
     case 'floatingNav':
-      return {
-        shadowColor: theme.isDark ? '#000000' : '#526F5F',
-        shadowOffset: { width: 0, height: 22 },
-        shadowOpacity: theme.isDark ? 0.32 : 0.12,
-        shadowRadius: 30,
-        elevation: 16,
-      }
+      return shadowStyle(
+        theme.isDark ? '#000000' : '#526F5F',
+        22,
+        30,
+        theme.isDark ? 0.32 : 0.12,
+        16,
+      )
     case 'segmentedActive':
-      return {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 1,
-      }
+      return shadowStyle('#000000', 2, 6, 0.08, 1)
     default:
-      return {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: theme.isDark ? 0.14 : 0.04,
-        shadowRadius: 16,
-        elevation: 3,
-      }
+      return shadowStyle('#000000', 10, 16, theme.isDark ? 0.14 : 0.04, 3)
   }
 }
 

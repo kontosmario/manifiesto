@@ -8,6 +8,7 @@ import type { AuthMode } from '@/features/auth/auth-flow'
 import type { BiometricLoginState } from '@/lib/biometric-auth'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
+import { withAlpha } from '@/theme/color-utils'
 
 interface LoginPanelProps {
   biometricState: BiometricLoginState
@@ -160,13 +161,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: authPalette.panel.border,
     gap: 14,
-    shadowColor: authPalette.panel.shadow,
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 9,
-    },
+    boxShadow: `0px 9px 16px ${withAlpha(authPalette.panel.shadow, 0.18)}`,
   },
   panelContentFlow: {
     width: '100%',

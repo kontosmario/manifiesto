@@ -1,6 +1,7 @@
 import { Animated, StyleSheet, View, type Animated as AnimatedType } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { radii, type AppTheme } from '@/theme/palette'
+import { withAlpha } from '@/theme/color-utils'
 import { AppSymbol } from '@/components/ui/app-symbol'
 
 interface AddExpenseTabButtonFaceProps {
@@ -29,8 +30,7 @@ export function AddExpenseTabButtonFace({
         styles.addButton,
         {
           borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
-          shadowColor: theme.isDark ? '#62F49C' : '#31DB82',
-          shadowOpacity: pressed ? (theme.isDark ? 0.42 : 0.26) : theme.isDark ? 0.28 : 0.18,
+          boxShadow: `0px 14px 24px ${withAlpha(theme.isDark ? '#62F49C' : '#31DB82', pressed ? (theme.isDark ? 0.42 : 0.26) : theme.isDark ? 0.28 : 0.18)}`,
         },
       ]}
     >
@@ -102,11 +102,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowOffset: {
-      width: 0,
-      height: 14,
-    },
-    shadowRadius: 24,
     elevation: 12,
   },
   addButtonGloss: {

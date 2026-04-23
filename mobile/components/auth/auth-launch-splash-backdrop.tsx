@@ -2,6 +2,7 @@ import { Animated, StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
+import { withAlpha } from '@/theme/color-utils'
 
 type AnimatedScalar = Animated.AnimatedInterpolation<number> | Animated.Value
 
@@ -50,10 +51,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderRadius: radii.pill,
     backgroundColor: authPalette.splash.glowPrimary,
-    shadowColor: authPalette.splash.titleGlowShadow,
-    shadowOpacity: 0.34,
-    shadowRadius: 34,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: `0px 0px 34px ${withAlpha(authPalette.splash.titleGlowShadow, 0.34)}`,
   },
   glowSecondary: {
     position: 'absolute',

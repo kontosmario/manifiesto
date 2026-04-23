@@ -158,13 +158,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    boxShadow: '0px 5px 10px rgba(0, 0, 0, 0.08)',
   },
   segmentBadgeDot: {
     width: 8,
