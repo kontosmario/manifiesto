@@ -160,3 +160,23 @@ export function convertCurrencyAmount(
 
   return amount / usdExchangeRate
 }
+
+const homeIntegerFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
+
+export function formatMoney(n: number, opts: { zeroAsDash?: boolean } = {}): string {
+  if (opts.zeroAsDash && n === 0) return '—'
+  return '$' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
+}
+
+export function formatMoneyWithSign(n: number): string {
+  const sign = n > 0 ? '+' : n < 0 ? '-' : ''
+  return `${sign}${formatMoney(n)}`
+}
+
+export function formatMoneyShort(n: number): string {
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`
+  return `${sign}$${Math.round(abs)}`
+}
