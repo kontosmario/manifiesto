@@ -256,7 +256,7 @@ function countUpcoming(
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: 14 },
+  stack: { gap: 10 },
   activityHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -265,5 +265,5 @@ const styles = StyleSheet.create({
   },
   activityLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700' },
   activityLink: { fontSize: 14, fontWeight: '700' },
-  bottomSpacer: { height: 120 },
+  bottomSpacer: { height: 0 },
 })
