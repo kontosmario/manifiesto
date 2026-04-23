@@ -39,12 +39,14 @@ export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount
 }
 
 const styles = StyleSheet.create({
-  // Keep the card's own borderRadius so its outline is rounded in the
-  // resting state. The outer SwipeableRow clip shares the same radius,
-  // and the action button sits *behind* the card (overlapping its
-  // rounded right corner) rather than beside it — so no visible cut.
+  // Only round the LEFT corners. The outer SwipeableRow clip rounds
+  // the right side via `overflow: hidden`, so in rest state the card
+  // still reads as a fully rounded outline. During swipe the card's
+  // right edge is a straight line that meets the delete button's
+  // straight left edge flush — no visible gap between them.
   row: {
-    borderRadius: 14,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
