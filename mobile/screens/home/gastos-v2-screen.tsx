@@ -85,6 +85,7 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
         />
         <GastosInsightsRow
           averageDaily={controller.averageDaily}
+          averageDailyBars={controller.recentDailyBars}
           streakDays={controller.registrationStreak}
         />
         <GastosMonthCalendar

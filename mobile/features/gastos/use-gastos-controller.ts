@@ -6,6 +6,7 @@ import {
   computeCategoryWeights,
   computeDailySpend,
   computeGastosDayMoods,
+  computeRecentDailyBars,
   computeRegistrationStreak,
   groupGastosByDay,
   type CategoryLite,
@@ -34,6 +35,7 @@ export interface UseGastosControllerResult {
   dayMoods: Record<number, GastosDayMood>
   dailySpend: ReturnType<typeof computeDailySpend>
   averageDaily: number
+  recentDailyBars: number[]
   registrationStreak: number
   groups: GastosGroup[]
   // month context
@@ -148,6 +150,11 @@ export function useGastosController(familyId: string): UseGastosControllerResult
     [expenses, today],
   )
 
+  const recentDailyBars = useMemo(
+    () => computeRecentDailyBars({ expenses, today, windowDays: 7 }),
+    [expenses, today],
+  )
+
   const registrationStreak = useMemo(
     () => computeRegistrationStreak({ expenses, today }),
     [expenses, today],
@@ -174,6 +181,7 @@ export function useGastosController(familyId: string): UseGastosControllerResult
     dayMoods,
     dailySpend,
     averageDaily,
+    recentDailyBars,
     registrationStreak,
     groups,
     today,

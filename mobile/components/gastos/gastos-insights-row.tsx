@@ -8,7 +8,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
-import { MiniBars } from '@/components/home/mini-bars'
+import { GastosAverageBars } from '@/components/gastos/gastos-average-bars'
 import { GastosInsightCard } from '@/components/gastos/gastos-insight-card'
 import { formatMoney } from '@/utils/money'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -16,6 +16,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosInsightsRowProps {
   averageDaily: number
+  averageDailyBars: number[]
   windowDays?: number
   streakDays: number
 }
@@ -27,11 +28,15 @@ interface GastosInsightsRowProps {
  */
 export function GastosInsightsRow({
   averageDaily,
+  averageDailyBars,
   windowDays = 22,
   streakDays,
 }: GastosInsightsRowProps) {
   const { theme } = useAppTheme()
   const streakAccent = theme.isDark ? '#E8976A' : '#6B3A4F'
+  const barsColor = theme.isDark ? theme.colors.heroAccent : '#0F2A1E'
+  const bars =
+    averageDailyBars.length > 0 ? averageDailyBars : [0.6, 0.8, 0.2, 0.05, 0.7, 0.4, 0.6]
   return (
     <View style={styles.row}>
       <GastosInsightCard
@@ -39,14 +44,7 @@ export function GastosInsightsRow({
         value={formatMoney(averageDaily)}
         sub={`últimos ${windowDays} días`}
         subColor={theme.colors.textMuted}
-        chart={
-          <MiniBars
-            values={[0.4, 0.6, 0.3, 0.7, 0.5, 0.8, 0.55]}
-            color={theme.isDark ? theme.colors.heroAccent : '#2E7D5B'}
-            barWidth={6}
-            totalHeight={24}
-          />
-        }
+        chart={<GastosAverageBars values={bars} color={barsColor} totalHeight={20} />}
         delay={200}
       />
       <GastosInsightCard

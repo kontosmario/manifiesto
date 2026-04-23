@@ -175,6 +175,38 @@ export function computeAverageDailySpend(input: AverageDailySpendInput): number 
   return Math.round(total / windowDays)
 }
 
+/**
+ * Returns the spend per day for the last N calendar days (oldest
+ * first, newest last). Normalized by the max so every value sits in
+ * [0, 1] — ready for a mini bar chart. Days with no spend come back
+ * as 0 so the caller can render them as "dashes".
+ */
+export function computeRecentDailyBars(input: {
+  expenses: Expense[]
+  today: Date
+  windowDays?: number
+}): number[] {
+  const { expenses, today, windowDays = 7 } = input
+  if (windowDays <= 0) return []
+  const todayUtc = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  )
+  const totals = new Array<number>(windowDays).fill(0)
+  for (const e of expenses) {
+    const d = new Date(e.created_at)
+    const dUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+    const diffDays = Math.round((todayUtc - dUtc) / 86_400_000)
+    if (diffDays < 0 || diffDays >= windowDays) continue
+    const idx = windowDays - 1 - diffDays
+    totals[idx] += Math.abs(Number(e.price ?? 0))
+  }
+  const max = Math.max(...totals)
+  if (max <= 0) return totals
+  return totals.map((t) => t / max)
+}
+
 export type GastosGroupLabel = 'Hoy' | 'Ayer' | string
 
 export interface GastosGroup {
