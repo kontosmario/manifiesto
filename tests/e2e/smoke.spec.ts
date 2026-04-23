@@ -39,6 +39,8 @@ const IGNORED_ERROR_PATTERNS: RegExp[] = [
   /expo-linear-gradient/i, // known web warnings about native-only props
   /Failed to load resource: the server responded with a status of 404.*favicon/i,
   /\[expo-notifications\]/i, // web doesn't support native notifications
+  /CanvasKit is not defined/i, // @shopify/react-native-skia web init, pre-existing
+  /PictureRecorder/i,
 ]
 
 function filterNoise(messages: string[]): string[] {
