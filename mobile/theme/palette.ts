@@ -28,6 +28,28 @@ export interface ThemeColors {
   warning: string
   danger: string
   overlay: string
+  // home redesign tokens
+  heroGradient: readonly string[]
+  heroAccent: string
+  heroMuted: string
+  heroMuted2: string
+  heroText: string
+  cream: string
+  creamSoft: string
+  creamCard: string
+  line: string
+  lineSoft: string
+  peach: string
+  peachSoft: string
+  peachBand: string
+  greenBand: string
+  redBand: string
+  auroraA: string
+  auroraB: string
+  auroraC: string
+  shineOverlay: string
+  ringBg: string
+  pageBg: string
 }
 
 export interface AppTheme {
@@ -99,6 +121,27 @@ const lightColors: ThemeColors = {
   warning:            '#C27A0A',
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
+  heroGradient:       ['#0A2E1E', '#0E3A26', '#1B6B42', '#2DA15E'],
+  heroAccent:         '#C7EE9C',
+  heroMuted:          'rgba(255,255,255,0.78)',
+  heroMuted2:         'rgba(255,255,255,0.55)',
+  heroText:           '#F6FBEF',
+  cream:              '#F6EFE3',
+  creamSoft:          '#FAF4EA',
+  creamCard:          '#FFFBF2',
+  line:               '#EFE8D9',
+  lineSoft:           '#E9E1D3',
+  peach:              '#F2B58A',
+  peachSoft:          '#FADFC8',
+  peachBand:          '#FADFC8',
+  greenBand:          '#D6EFBA',
+  redBand:            '#F5C6B6',
+  auroraA:            'rgba(199,238,156,0.35)',
+  auroraB:            'rgba(247,181,138,0.28)',
+  auroraC:            'rgba(141,214,106,0.22)',
+  shineOverlay:       'rgba(255,255,255,0.1)',
+  ringBg:             '#F6EFE3',
+  pageBg:             '#EFF5E8',
 }
 
 const darkColors: ThemeColors = {
@@ -120,6 +163,27 @@ const darkColors: ThemeColors = {
   warning:            '#F3BA57',
   danger:             '#F06A6A',
   overlay:            'rgba(0,0,0,0.52)',
+  heroGradient:       ['#133827', '#1F6B43', '#2E9A5F', '#2E9A5F'],
+  heroAccent:         '#C7EE9C',
+  heroMuted:          'rgba(246,251,239,0.78)',
+  heroMuted2:         'rgba(246,251,239,0.55)',
+  heroText:           '#F6FBEF',
+  cream:              '#0A1410',
+  creamSoft:          '#0E1A15',
+  creamCard:          '#13221B',
+  line:               '#1F332A',
+  lineSoft:           '#16261E',
+  peach:              '#E8976A',
+  peachSoft:          '#3A2A22',
+  peachBand:          '#3A2A22',
+  greenBand:          '#1E3A28',
+  redBand:            '#3A241E',
+  auroraA:            'rgba(199,238,156,0.25)',
+  auroraB:            'rgba(232,151,106,0.22)',
+  auroraC:            'rgba(141,214,106,0.18)',
+  shineOverlay:       'rgba(255,255,255,0.06)',
+  ringBg:             '#0A1410',
+  pageBg:             '#0A1410',
 }
 
 export function buildTheme(mode: ResolvedThemeMode): AppTheme {
