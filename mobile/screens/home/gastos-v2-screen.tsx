@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/screen'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosInsightsRow } from '@/components/gastos/gastos-insights-row'
+import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
@@ -54,6 +55,44 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
           averageDaily={controller.averageDaily}
           streakDays={controller.registrationStreak}
         />
+        <GastosMonthCalendar
+          dayMoods={controller.dayMoods}
+          todayDay={controller.today.getUTCDate()}
+          daysInMonth={controller.daysInMonth}
+          firstWeekdayOffset={getMondayFirstOffset(controller.today)}
+          selectedDay={controller.selectedDay}
+          selectedDayTotal={
+            controller.selectedDay != null
+              ? (controller.dailySpend[controller.selectedDay]?.total ?? 0)
+              : 0
+          }
+          selectedDayCount={
+            controller.selectedDay != null
+              ? (controller.dailySpend[controller.selectedDay]?.count ?? 0)
+              : 0
+          }
+          monthLabel={MONTH_ES[controller.monthIndex]}
+          onSelectDay={controller.setSelectedDay}
+          onClearDay={controller.clearDay}
+          onPrevDay={() =>
+            controller.setSelectedDay(
+              controller.selectedDay == null
+                ? null
+                : controller.selectedDay <= 1
+                  ? controller.daysInMonth
+                  : controller.selectedDay - 1,
+            )
+          }
+          onNextDay={() =>
+            controller.setSelectedDay(
+              controller.selectedDay == null
+                ? null
+                : controller.selectedDay >= controller.daysInMonth
+                  ? 1
+                  : controller.selectedDay + 1,
+            )
+          }
+        />
       </View>
     </Screen>
   )
@@ -63,3 +102,27 @@ const styles = StyleSheet.create({
   screenContent: { paddingTop: 0 },
   stack: { gap: 10 },
 })
+
+const MONTH_ES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+]
+
+/** Offset (0-indexed) of the first of the month when the calendar
+ *  starts on Monday. JS Date.getUTCDay returns 0=Sun..6=Sat; we shift
+ *  so 0=Mon..6=Sun. */
+function getMondayFirstOffset(today: Date): number {
+  const firstOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
+  const jsDow = firstOfMonth.getUTCDay() // 0=Sun..6=Sat
+  return (jsDow + 6) % 7
+}
