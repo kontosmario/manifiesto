@@ -1,0 +1,128 @@
+import { StyleSheet, Text, View } from 'react-native'
+import { SlideInView } from '@/components/home/animated/slide-in-view'
+import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
+import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { formatMoney } from '@/utils/money'
+import { useAppTheme } from '@/theme/theme-provider'
+
+export interface GastoRowProps {
+  title: string
+  categoryName: string
+  categoryColor: string
+  whoName: string
+  whoColor: string
+  amount: number // always negative here (expense)
+  time?: string // HH:MM
+  delay?: number
+}
+
+/**
+ * Movement row — shown inside day groups on Gastos. Same structure as
+ * the Home ActivityRowV2 but with a colored category chip on the
+ * subtitle line and the category color tinted into the icon tile.
+ */
+export function GastoRow({
+  title,
+  categoryName,
+  categoryColor,
+  whoName,
+  whoColor,
+  amount,
+  time,
+  delay = 0,
+}: GastoRowProps) {
+  const { theme } = useAppTheme()
+  const icon = pickIconForCategory(categoryName)
+  return (
+    <SlideInView delay={delay}>
+      <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
+        <View style={styles.iconWrap}>
+          <View
+            style={[
+              styles.iconTile,
+              {
+                backgroundColor: hexAlpha(categoryColor, 0.14),
+                borderColor: hexAlpha(categoryColor, 0.22),
+              },
+            ]}
+          >
+            <Text style={styles.iconText}>{icon}</Text>
+          </View>
+          <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
+        </View>
+        <View style={styles.body}>
+          <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={styles.subRow}>
+            <View
+              style={[
+                styles.catChip,
+                {
+                  backgroundColor: hexAlpha(categoryColor, 0.14),
+                  borderColor: hexAlpha(categoryColor, 0.22),
+                },
+              ]}
+            >
+              <Text style={[styles.catChipText, { color: categoryColor }]} numberOfLines={1}>
+                {categoryName}
+              </Text>
+            </View>
+            <Text style={[styles.subMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
+              · {whoName}
+              {time ? ` · ${time}` : null}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.amountBlock}>
+          <Text style={[styles.amount, { color: theme.colors.text }]}>
+            -{formatMoney(Math.abs(amount))}
+          </Text>
+        </View>
+      </View>
+    </SlideInView>
+  )
+}
+
+function hexAlpha(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '')
+  if (normalized.length !== 6 && normalized.length !== 3) return hex
+  const full =
+    normalized.length === 3
+      ? normalized.split('').map((c) => c + c).join('')
+      : normalized
+  const r = parseInt(full.slice(0, 2), 16)
+  const g = parseInt(full.slice(2, 4), 16)
+  const b = parseInt(full.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const styles = StyleSheet.create({
+  row: {
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconWrap: { position: 'relative' },
+  iconTile: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  iconText: { fontSize: 18 },
+  body: { flex: 1 },
+  title: { fontSize: 14, fontWeight: '700' },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  catChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, borderWidth: 1, flexShrink: 0 },
+  catChipText: { fontSize: 10, fontWeight: '700' },
+  subMeta: { fontSize: 11, flexShrink: 1 },
+  amountBlock: { alignItems: 'flex-end' },
+  amount: { fontSize: 14, fontWeight: '800' },
+})

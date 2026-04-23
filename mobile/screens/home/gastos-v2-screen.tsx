@@ -1,5 +1,6 @@
-import { StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useMemo } from 'react'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
@@ -8,7 +9,9 @@ import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosInsightsRow } from '@/components/gastos/gastos-insights-row'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { GastosSmartFilter } from '@/components/gastos/gastos-smart-filter'
-import { useMemo } from 'react'
+import { GastosMovimientos } from '@/components/gastos/gastos-movimientos'
+import { useDeleteExpense } from '@/features/expenses/use-expenses'
+import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
@@ -26,6 +29,19 @@ interface GastosV2ScreenProps {
 export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
   const router = useRouter()
   const controller = useGastosController(familyId)
+  const membersQuery = useFamilyMembers(familyId)
+  const deleteExpenseMutation = useDeleteExpense(familyId)
+
+  const handleDelete = (expenseId: string) => {
+    void triggerHaptic('warning')
+    deleteExpenseMutation.mutate(expenseId, {
+      onError: (error: unknown) => {
+        void triggerHaptic('error')
+        Alert.alert('No pudimos eliminar', getErrorMessage(error, errorMessages.server))
+      },
+      onSuccess: () => void triggerHaptic('success'),
+    })
+  }
 
   // Per-category movement counts across the month (respecting the day
   // filter) — used by the smart filter pills + "Ver todas" sheet.
@@ -116,6 +132,13 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
           selectedCategoryId={controller.selectedCategoryId}
           onSelect={controller.setSelectedCategoryId}
         />
+        <GastosMovimientos
+          groups={controller.groups}
+          categoriesById={controller.categoriesById}
+          familyMembers={membersQuery.data ?? []}
+          onDelete={handleDelete}
+        />
+        <View style={styles.bottomSpacer} />
       </View>
     </Screen>
   )
@@ -124,6 +147,7 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
 const styles = StyleSheet.create({
   screenContent: { paddingTop: 0 },
   stack: { gap: 10 },
+  bottomSpacer: { height: 24 },
 })
 
 const MONTH_ES = [
