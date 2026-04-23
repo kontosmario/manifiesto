@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet } from 'react-native'
-import { Swipeable } from 'react-native-gesture-handler'
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
 import { ExpenseHistoryRowActions } from '@/components/home/expense-history-row-actions'
 import { ExpenseHistoryRowCard } from '@/components/home/expense-history-row-card'
 import type { Category } from '@/features/categories/use-categories'

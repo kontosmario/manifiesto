@@ -67,7 +67,6 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
         <AddExpenseDashboard
           amount={controller.amount}
           hasValidAmount={controller.hasValidAmount}
-          amountHelper={controller.amountHelper}
           rawPrice={controller.rawPrice}
           rankedCategories={controller.rankedCategories}
           selectedCategoryId={controller.selectedCategoryId}
@@ -90,5 +89,6 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
+    paddingBottom: 0,
   },
 })

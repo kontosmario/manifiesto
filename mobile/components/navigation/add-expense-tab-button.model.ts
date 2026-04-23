@@ -3,6 +3,93 @@ import { Animated, Easing } from 'react-native'
 
 export const ADD_BUTTON_GLOW_SIZE = 280
 
+// Ambient breathing loop — subtle pulse so the FAB feels alive even when idle.
+export function useAddExpenseButtonBreath(isReducedMotionEnabled: boolean) {
+  const [breath] = useState(() => new Animated.Value(0))
+
+  useEffect(() => {
+    if (isReducedMotionEnabled) {
+      breath.setValue(0)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [breath, isReducedMotionEnabled])
+
+  return {
+    breathScale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.035] }),
+    breathHaloOpacity: breath.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0.48] }),
+  }
+}
+
+// Burst ring — expands + fades on release to give a satisfying "ping".
+export function useAddExpenseButtonBurst(isReducedMotionEnabled: boolean) {
+  const [burst] = useState(() => new Animated.Value(0))
+
+  const triggerBurst = () => {
+    if (isReducedMotionEnabled) return
+    burst.setValue(0)
+    Animated.timing(burst, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }
+
+  return {
+    burstScale: burst.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.8] }),
+    burstOpacity: burst.interpolate({
+      inputRange: [0, 0.15, 1],
+      outputRange: [0, 0.5, 0],
+    }),
+    triggerBurst,
+  }
+}
+
+// Rotation of the "+" glyph during press — snaps to 45° (x shape) then springs back.
+export function useAddExpenseButtonIconRotation(isReducedMotionEnabled: boolean) {
+  const [rotation] = useState(() => new Animated.Value(0))
+
+  const animateRotationTo = (value: number) => {
+    if (isReducedMotionEnabled) {
+      rotation.setValue(value)
+      return
+    }
+    Animated.spring(rotation, {
+      toValue: value,
+      useNativeDriver: true,
+      damping: 12,
+      stiffness: 160,
+      mass: 0.6,
+    }).start()
+  }
+
+  return {
+    iconRotate: rotation.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '45deg'],
+    }),
+    animateRotationTo,
+  }
+}
+
 export function clamp(value: number, min = 0, max = 1) {
   return Math.max(min, Math.min(value, max))
 }

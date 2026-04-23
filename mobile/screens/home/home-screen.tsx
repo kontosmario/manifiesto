@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { Alert, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { HomeDashboard } from '@/components/home/home-dashboard'
+import { getGreeting } from '@/features/home/home-dashboard-model'
+import { brand } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
 import { IconButton } from '@/components/ui/icon-button'
@@ -29,6 +31,8 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const greeting = useMemo(() => getGreeting(new Date().getHours()), [])
 
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
@@ -91,6 +95,15 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     )
   }
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await Promise.all([dashboard.refetchAll(), recentExpensesQuery.refetch()])
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [dashboard, recentExpensesQuery])
+
   const handleDeleteExpense = (expenseId: string) => {
     void triggerHaptic('warning')
     deleteExpenseMutation.mutate(expenseId, {
@@ -110,6 +123,14 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   return (
     <Screen
       contentContainerStyle={styles.screenContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor={brand.bright}
+          colors={[brand.deep]}
+        />
+      }
       rightSlot={
         <View style={styles.headerActions}>
           <IconButton
@@ -135,7 +156,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         </View>
       }
       titleColor={headerPalette.titleColor}
-      title={`Hola, ${displayName}`}
+      title={`${greeting}, ${displayName}`}
     >
       {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
 

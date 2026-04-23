@@ -5,13 +5,12 @@ import {
   useCategoryTemplates,
 } from '@/features/categories/use-category-templates'
 import { type Category, useCategories } from '@/features/categories/use-categories'
-import { computeDailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
 import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/home/add-expense-model'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
-import { currencyFormatter, parsePrice } from '@/utils/money'
+import { parsePrice } from '@/utils/money'
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_CATEGORY_TEMPLATES: CategoryTemplate[] = []
@@ -59,41 +58,9 @@ export function useAddExpenseController({
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null
 
-  const variableExpenses = useMemo(
-    () => expenses.filter((expense) => !expense.commitment_id),
-    [expenses],
-  )
-
   const parsedAmount = parsePrice(rawPrice)
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
   const amount = hasValidAmount ? parsedAmount : 0
-  const remainingCycleAfterExpense = hasValidAmount
-    ? dashboard.totalAvailable - amount
-    : dashboard.totalAvailable
-
-  const dailyBudgetSummary = useMemo(
-    () =>
-      computeDailyBudgetSummary({
-        bufferMode: dashboard.dailyBudgetBufferMode,
-        bufferValue: dashboard.dailyBudgetBufferValue,
-        expenses: variableExpenses,
-        fixedExpensesMonthlyTotal: dashboard.fixedExpensesMonthlyTotal,
-        monthlyIncome: dashboard.monthlyIncome,
-        payCycle: dashboard.payCycle,
-        savingsGoal: dashboard.savingsGoal,
-        today: dashboard.todayDate,
-      }),
-    [
-      dashboard.dailyBudgetBufferMode,
-      dashboard.dailyBudgetBufferValue,
-      dashboard.fixedExpensesMonthlyTotal,
-      dashboard.monthlyIncome,
-      dashboard.payCycle,
-      dashboard.savingsGoal,
-      dashboard.todayDate,
-      variableExpenses,
-    ],
-  )
 
   const quickDescriptionSuggestions = useMemo(() => {
     if (!selectedCategory) return []
@@ -114,10 +81,6 @@ export function useAddExpenseController({
       .slice(0, MAX_QUICK_DESCRIPTION_SUGGESTIONS)
   }, [categoryTemplates, expenses, selectedCategory])
 
-  const remainingTodayAfterExpense = hasValidAmount
-    ? dailyBudgetSummary.remainingToday - amount
-    : dailyBudgetSummary.remainingToday
-
   const suggestedAmounts = useMemo(() => {
     const baseAmount =
       dashboard.monthlyIncome > 0
@@ -131,13 +94,6 @@ export function useAddExpenseController({
     () => rankCategoriesByUsage(expenses, categories),
     [expenses, categories],
   )
-
-  const afterValue =
-    dashboard.monthlyIncome > 0 ? remainingTodayAfterExpense : remainingCycleAfterExpense
-  const afterLabel = dashboard.monthlyIncome > 0 ? 'Te quedan hoy' : 'Te quedan en el ciclo'
-  const amountHelper = hasValidAmount
-    ? `${afterLabel} ${currencyFormatter.format(afterValue)}`
-    : undefined
 
   const showError = (error: unknown, fallback: string) => {
     void triggerHaptic('error')
@@ -168,7 +124,6 @@ export function useAddExpenseController({
 
   return {
     amount,
-    amountHelper,
     categories,
     rankedCategories,
     categoriesQuery,

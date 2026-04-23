@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
+import { brand } from '@/theme/palette'
 
 export function TabLabel({
   children,
@@ -10,14 +11,17 @@ export function TabLabel({
 }) {
   const { theme } = useAppTheme()
 
+  // Active label anchors on the Manifiesto brand green — the same family as the
+  // active pill and the home hero accent. Inactive uses the standard muted tone.
+  const focusedColor = theme.isDark ? brand.bright : brand.deep
+  const color = focused ? focusedColor : theme.colors.textMuted
+
   return (
     <Text
       style={[
         styles.label,
-        {
-          color: focused ? (theme.isDark ? '#F2F8F4' : '#1B211D') : theme.colors.textSoft,
-          opacity: focused ? 1 : theme.isDark ? 0.92 : 0.82,
-        },
+        focused ? styles.labelFocused : styles.labelIdle,
+        { color },
       ]}
     >
       {children}
@@ -28,8 +32,13 @@ export function TabLabel({
 const styles = StyleSheet.create({
   label: {
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.15,
+    letterSpacing: 0.2,
     marginBottom: 1,
+  },
+  labelIdle: {
+    fontWeight: '600',
+  },
+  labelFocused: {
+    fontWeight: '800',
   },
 })

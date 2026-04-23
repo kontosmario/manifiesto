@@ -1,0 +1,93 @@
+import { Platform } from 'react-native'
+
+export const authTitleFontFamily = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: undefined,
+})
+
+export const authPalette = {
+  badge: {
+    background: 'rgba(10, 16, 13, 0.46)',
+    border: 'rgba(159, 232, 182, 0.14)',
+    text: '#7AD18F',
+  },
+  biometric: {
+    disabledText: '#7D8A82',
+    icon: '#B7C4B8',
+    text: '#B7C4B8',
+  },
+  canvas: {
+    background: '#0B0F0D',
+    gradient: ['#0B0F0D', '#0F1712', '#111814'] as const,
+  },
+  cta: {
+    disabledGradient: ['#2B4E37', '#234230'] as const,
+    glowShadow: '#52B66B',
+    gradient: ['#0F5B53', '#56AA69', '#0D5A51'] as const,
+    miniSegmentBorder: 'rgba(214, 255, 223, 0.07)',
+    miniSegmentFill: 'rgba(149, 197, 158, 0.08)',
+    text: '#F7FFF8',
+  },
+  feedback: {
+    error: {
+      background: 'rgba(110, 29, 29, 0.35)',
+      border: 'rgba(255, 143, 143, 0.18)',
+      icon: '#FFB5B5',
+    },
+    info: {
+      background: 'rgba(61, 113, 75, 0.28)',
+      border: 'rgba(156, 248, 181, 0.16)',
+      icon: '#D3F7D9',
+    },
+    text: '#EAF2ED',
+  },
+  field: {
+    background: 'rgba(72, 96, 79, 0.12)',
+    border: 'rgba(217, 239, 220, 0.12)',
+    cursor: '#A4F0B7',
+    focusFill: 'rgba(85, 115, 92, 0.18)',
+    focusOutline: 'rgba(176, 248, 196, 0.28)',
+    label: '#B8C8BC',
+    placeholder: '#8BA092',
+    text: '#F3FAF5',
+  },
+  hero: {
+    eyebrowBackground: 'rgba(8, 12, 10, 0.54)',
+    eyebrowBorder: 'rgba(127, 210, 148, 0.1)',
+    eyebrowText: '#6FC786',
+    subtitle: '#B5BEB8',
+    title: '#F8FBF8',
+  },
+  panel: {
+    biometricLink: '#83D898',
+    border: 'rgba(215, 243, 221, 0.06)',
+    gradient: ['rgba(95,156,110,0.14)', 'rgba(39,55,44,0.9)', 'rgba(26,33,30,0.96)'] as const,
+    shadow: '#08120D',
+    subtitle: '#A7B2AA',
+    title: '#F5FAF6',
+  },
+  segmented: {
+    activeGradientCompact: ['#66C97B', '#4AA266'] as const,
+    activeGradientDefault: ['#68C67B', '#59B46F'] as const,
+    background: 'rgba(91, 118, 95, 0.44)',
+    labelActive: '#F5FFF7',
+    labelInactive: '#B7C7BC',
+  },
+  splash: {
+    backdropPlate: 'rgba(12, 24, 18, 0.84)',
+    badgeBackground: 'rgba(10, 16, 13, 0.46)',
+    badgeBorder: 'rgba(159, 232, 182, 0.14)',
+    badgeText: '#7AD18F',
+    glowPrimary: 'rgba(81, 185, 118, 0.18)',
+    glowSecondary: 'rgba(27, 102, 86, 0.18)',
+    halo: 'rgba(83, 197, 122, 0.12)',
+    overlayGradient: ['#07100C', '#0A1510', '#112019'] as const,
+    shimmerTrack: 'rgba(173, 255, 197, 0.08)',
+    shimmerValue: '#70D18B',
+    subtitle: '#AFC0B3',
+    title: '#FAFFFB',
+    titleGlowShadow: '#5CD587',
+    titleShadow: '#060A08',
+  },
+} as const

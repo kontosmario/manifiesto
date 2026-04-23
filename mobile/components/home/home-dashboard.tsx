@@ -5,13 +5,13 @@ import { type BottomSheetHandle } from '@/components/ui/bottom-sheet'
 import { ConfirmSalarySheet } from '@/components/home/confirm-salary-sheet'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
-import { HomeMetricStrip } from '@/components/home/home-metric-strip'
-import { PaydayChip } from '@/components/home/payday-chip'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
   buildHomeMetrics,
+  buildHomeVelocity,
   classifyDashboardError,
   daysUntilPayday,
+  getPaydayCycle,
   isPaydayPending,
   type DashboardErrorKind,
 } from '@/features/home/home-dashboard-model'
@@ -52,8 +52,30 @@ export function HomeDashboard({
     [paymentDay, lastConfirmedAt, today],
   )
   const days = useMemo(() => daysUntilPayday({ paymentDay }, today), [paymentDay, today])
+  const cycle = useMemo(() => getPaydayCycle({ paymentDay }, today), [paymentDay, today])
 
   const metrics = useMemo(() => buildHomeMetrics(dashboard), [dashboard])
+  const velocity = useMemo(
+    () =>
+      buildHomeVelocity({
+        spentInCurrentCycle: dashboard.spentInCurrentCycle ?? 0,
+        totalAvailable: metrics.availableToday,
+        cycle,
+        todayDate: today,
+      }),
+    [cycle, dashboard.spentInCurrentCycle, metrics.availableToday, today],
+  )
+  const burnHint = useMemo(() => {
+    if (!velocity || velocity.runwayDays == null || velocity.runwayDate == null) return null
+    const burn = Math.round(velocity.burnRatePerDay)
+    const formatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
+    const dateFormatter = new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    })
+    return `Ritmo −$${formatter.format(burn)}/día · alcanza hasta ${dateFormatter.format(velocity.runwayDate)}`
+  }, [velocity])
 
   const activityErrorKind: DashboardErrorKind | undefined = activityError
     ? classifyDashboardError(activityError)
@@ -78,15 +100,21 @@ export function HomeDashboard({
 
   return (
     <View style={styles.stack}>
-      <PaydayChip daysUntilPayday={days} isPending={pending} onPressConfirm={handleChipConfirm} />
-
-      <HomeHeroCard
-        availableToday={metrics.availableToday}
-        projectedMargin={metrics.projectedMargin}
-        onPressAddExpense={handleAddExpense}
-      />
-
-      <HomeMetricStrip savedAmount={metrics.savedAmount} fixedAmount={metrics.fixedAmount} />
+      <View>
+        <HomeHeroCard
+          availableToday={metrics.availableToday}
+          projectedMargin={metrics.projectedMargin}
+          savedAmount={metrics.savedAmount}
+          fixedAmount={metrics.fixedAmount}
+          cycleProgress={cycle?.progress ?? null}
+          cycleDaysElapsed={cycle?.daysElapsed ?? null}
+          cycleTotalDays={cycle?.totalDays ?? null}
+          daysUntilPayday={days}
+          isPaydayPending={pending}
+          onPressPaydayConfirm={handleChipConfirm}
+          burnHint={burnHint}
+        />
+      </View>
 
       <HomeActivitySection
         expenses={recentExpenses}

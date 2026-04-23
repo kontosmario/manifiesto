@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.57.0'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.57.0'
 import webpush from 'npm:web-push@3.6.7'
 
 interface PushRequestBody {
@@ -17,6 +17,24 @@ interface PushSubscriptionRow {
   auth: string
 }
 
+interface PushResult {
+  sent: number
+  failed: number
+  removed: number
+}
+
+interface ExpoTicket {
+  status?: 'ok' | 'error'
+  details?: {
+    error?: string
+  }
+}
+
+interface ExpoPushResponse {
+  data?: ExpoTicket[]
+  errors?: Array<{ message?: string }>
+}
+
 const denoGlobal = globalThis as {
   Deno?: {
     serve: (handler: (request: Request) => Promise<Response>) => void
@@ -33,11 +51,14 @@ const supabaseServiceRoleKey = env?.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const vapidPublicKey = env?.get('WEB_PUSH_VAPID_PUBLIC_KEY') ?? ''
 const vapidPrivateKey = env?.get('WEB_PUSH_VAPID_PRIVATE_KEY') ?? ''
 const vapidContactEmail = env?.get('WEB_PUSH_CONTACT_EMAIL') ?? 'push@example.com'
+const hasWebPushConfig = Boolean(vapidPublicKey && vapidPrivateKey)
 const vapidSubject = vapidContactEmail.startsWith('mailto:')
   ? vapidContactEmail
   : `mailto:${vapidContactEmail}`
 
-webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+if (hasWebPushConfig) {
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+}
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -45,7 +66,7 @@ const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-function jsonResponse(payload: Record<string, unknown>, status = 200): Response {
+function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
@@ -56,13 +77,7 @@ function jsonResponse(payload: Record<string, unknown>, status = 200): Response 
 }
 
 function isServerReady(): boolean {
-  return Boolean(
-    supabaseUrl &&
-      supabaseAnonKey &&
-      supabaseServiceRoleKey &&
-      vapidPublicKey &&
-      vapidPrivateKey,
-  )
+  return Boolean(supabaseUrl && supabaseAnonKey && supabaseServiceRoleKey)
 }
 
 function extractBearerToken(authorizationHeader: string | null): string | null {
@@ -94,6 +109,121 @@ function getGatewayUserId(request: Request): string | null {
   return value.trim()
 }
 
+function isExpoPushToken(value: string): boolean {
+  return /^ExponentPushToken\[[^\]]+\]$/.test(value) || /^ExpoPushToken\[[^\]]+\]$/.test(value)
+}
+
+function isExpoSubscription(subscription: PushSubscriptionRow): boolean {
+  return (
+    isExpoPushToken(subscription.endpoint.trim()) ||
+    subscription.p256dh === 'expo' ||
+    subscription.auth === 'expo'
+  )
+}
+
+async function removeSubscription(
+  adminClient: SupabaseClient,
+  subscriptionId: string,
+): Promise<number> {
+  const deleteResponse = await adminClient
+    .from('push_subscriptions')
+    .delete()
+    .eq('id', subscriptionId)
+
+  return deleteResponse.error ? 0 : 1
+}
+
+async function sendExpoPush(
+  adminClient: SupabaseClient,
+  subscription: PushSubscriptionRow,
+  payload: Required<Pick<PushRequestBody, 'title' | 'body' | 'kind' | 'url'>>,
+): Promise<PushResult> {
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([
+        {
+          to: subscription.endpoint,
+          title: payload.title,
+          body: payload.body,
+          sound: 'default',
+          priority: 'high',
+          channelId: 'default',
+          data: {
+            kind: payload.kind,
+            url: payload.url,
+          },
+        },
+      ]),
+    })
+
+    if (!response.ok) {
+      return { sent: 0, failed: 1, removed: 0 }
+    }
+
+    const data = (await response.json()) as ExpoPushResponse
+    const ticket = data.data?.[0]
+
+    if (ticket?.status === 'ok') {
+      return { sent: 1, failed: 0, removed: 0 }
+    }
+
+    let removed = 0
+    if (ticket?.details?.error === 'DeviceNotRegistered') {
+      removed = await removeSubscription(adminClient, subscription.id)
+    }
+
+    return { sent: 0, failed: 1, removed }
+  } catch {
+    return { sent: 0, failed: 1, removed: 0 }
+  }
+}
+
+async function sendWebPush(
+  adminClient: SupabaseClient,
+  subscription: PushSubscriptionRow,
+  payload: string,
+): Promise<PushResult> {
+  if (!hasWebPushConfig) {
+    return { sent: 0, failed: 1, removed: 0 }
+  }
+
+  try {
+    await webpush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+        },
+      },
+      payload,
+    )
+
+    return { sent: 1, failed: 0, removed: 0 }
+  } catch (error) {
+    const statusCode =
+      typeof error === 'object' &&
+      error !== null &&
+      'statusCode' in error &&
+      typeof (error as { statusCode?: unknown }).statusCode === 'number'
+        ? (error as { statusCode: number }).statusCode
+        : null
+
+    if (statusCode === 404 || statusCode === 410) {
+      const removed = await removeSubscription(adminClient, subscription.id)
+      return { sent: 0, failed: 1, removed }
+    }
+
+    return { sent: 0, failed: 1, removed: 0 }
+  }
+}
+
 async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') {
     return new Response('ok', {
@@ -109,7 +239,7 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse(
       {
         error:
-          'Missing env vars in Edge Function (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY).',
+          'Missing env vars in Edge Function (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).',
       },
       500,
     )
@@ -126,7 +256,7 @@ async function handler(request: Request): Promise<Response> {
   const title = (payload.title ?? '').trim()
   const body = payload.body?.trim() ?? ''
   const kind = payload.kind?.trim() || 'info'
-  const url = payload.url?.trim() || '/app'
+  const url = payload.url?.trim() || '/home'
 
   if (!familyId || !title) {
     return jsonResponse({ error: 'familyId and title are required.' }, 400)
@@ -195,56 +325,33 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse({ sent: 0, failed: 0, removed: 0 })
   }
 
-  const pushPayload = JSON.stringify({
+  const webPushPayload = JSON.stringify({
     title,
     body,
     kind,
     url,
   })
 
-  let sent = 0
-  let failed = 0
-  let removed = 0
-
-  await Promise.all(
-    subscriptions.map(async (subscription) => {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: subscription.endpoint,
-            keys: {
-              p256dh: subscription.p256dh,
-              auth: subscription.auth,
-            },
-          },
-          pushPayload,
-        )
-        sent += 1
-      } catch (error) {
-        failed += 1
-        const statusCode =
-          typeof error === 'object' &&
-          error !== null &&
-          'statusCode' in error &&
-          typeof (error as { statusCode?: unknown }).statusCode === 'number'
-            ? (error as { statusCode: number }).statusCode
-            : null
-
-        if (statusCode === 404 || statusCode === 410) {
-          const deleteResponse = await adminClient
-            .from('push_subscriptions')
-            .delete()
-            .eq('id', subscription.id)
-
-          if (!deleteResponse.error) {
-            removed += 1
-          }
-        }
+  const results = await Promise.all(
+    subscriptions.map((subscription) => {
+      if (isExpoSubscription(subscription)) {
+        return sendExpoPush(adminClient, subscription, { title, body, kind, url })
       }
+
+      return sendWebPush(adminClient, subscription, webPushPayload)
     }),
   )
 
-  return jsonResponse({ sent, failed, removed })
+  const summary = results.reduce<PushResult>(
+    (accumulator, current) => ({
+      sent: accumulator.sent + current.sent,
+      failed: accumulator.failed + current.failed,
+      removed: accumulator.removed + current.removed,
+    }),
+    { sent: 0, failed: 0, removed: 0 },
+  )
+
+  return jsonResponse(summary)
 }
 
 if (!denoGlobal.Deno?.serve) {

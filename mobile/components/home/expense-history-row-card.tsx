@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import { RectButton } from 'react-native-gesture-handler'
 import type { Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { withAlpha } from '@/theme/color-utils'
@@ -33,21 +34,16 @@ export function ExpenseHistoryRowCard({
   const { theme } = useAppTheme()
 
   return (
-    <Pressable
+    <RectButton
       accessibilityHint="Doble toque para editar. Tambien podes deslizar hacia la izquierda para acciones."
       accessibilityLabel={`${expense.description}. ${currencyFormatter.format(expense.price)}.`}
-      accessibilityRole="button"
-      android_ripple={{
-        borderless: false,
-        color: withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.06),
-      }}
+      rippleColor={withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.06)}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.expenseRow,
         {
           backgroundColor: palette.backgroundColor,
           borderColor: palette.borderColor,
-          opacity: pressed ? 0.9 : 1,
         },
       ]}
     >
@@ -90,7 +86,7 @@ export function ExpenseHistoryRowCard({
         </Text>
         <Text style={[styles.expenseHint, { color: theme.colors.textSoft }]}>Desliza</Text>
       </View>
-    </Pressable>
+    </RectButton>
   )
 }
 

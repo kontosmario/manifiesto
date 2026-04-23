@@ -1,4 +1,5 @@
 import { SectionList, StyleSheet } from 'react-native'
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler'
 import { ExpenseHistoryRow } from '@/components/home/expense-history-row'
 import { ExpenseHistorySectionHeader } from '@/components/home/expense-history-section-header'
 import { type Category } from '@/features/categories/use-categories'
@@ -26,7 +27,8 @@ export function ExpenseHistoryList({
       initialNumToRender={18}
       keyExtractor={(item) => item.id}
       maxToRenderPerBatch={12}
-      removeClippedSubviews
+      removeClippedSubviews={false}
+      renderScrollComponent={(props) => <GHScrollView {...props} />}
       style={styles.list}
       renderItem={({ item }) => (
         <ExpenseHistoryRow

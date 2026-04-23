@@ -112,7 +112,7 @@ const darkColors: ThemeColors = {
   borderStrong:       'rgba(255,255,255,0.12)',
   text:               '#F8FBF8',
   textMuted:          '#B8C9BE',
-  textSoft:           '#6B8F78',
+  textSoft:           '#8BA797',
   primary:            brand.bright,
   primaryStrong:      '#9AE8BD',
   primarySurface:     brand.surfaceSoft,

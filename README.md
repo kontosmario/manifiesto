@@ -1,98 +1,183 @@
-# Gastos Familia (Ionic React + Supabase)
+# Manifiesto Mobile
 
-App mobile-first de gastos compartidos para 2 usuarios, sin backend propio.
+App mobile-only para gastos familiares compartidos. La base web/Ionic fue migrada a React Native con Expo Router, Supabase y una UI nueva enfocada en teléfono.
 
-## Stack
-- Vite + React + TypeScript
-- Ionic React + Ionic Router
-- Supabase (`@supabase/supabase-js`)
+## Stack actual
+- Expo + React Native + TypeScript
+- Expo Router
+- Supabase
 - TanStack React Query
-- Deploy en GitHub Pages
+- Expo Notifications
+- Dark mode persistente
 
-## 1) Crear proyecto (desde cero)
-```bash
-npm create vite@latest gastos-familia -- --template react-ts
-cd gastos-familia
-npm install
-npm install @ionic/react @ionic/react-router ionicons react-router@5.3.4 react-router-dom@5.3.4 @supabase/supabase-js @tanstack/react-query @tanstack/react-query-devtools
-npm install -D @types/react-router@5 @types/react-router-dom@5
-```
+## Estructura
+- `app/`: rutas de Expo Router
+- `mobile/screens/`: pantallas
+- `mobile/components/`: UI y modales
+- `mobile/features/`: hooks y lógica de negocio por dominio
+- `mobile/lib/`: Supabase, runtime y helpers compartidos
+- `sql/supabase.sql`: esquema completo de base de datos y RLS
+- `supabase/functions/send-family-push/`: edge function para push Expo
+- `legacy-web-src/`: código web anterior, conservado solo como referencia
 
-## 2) Variables de entorno
+## Requisitos
+- Node 22
+- Docker Desktop
+- Xcode para iOS local
+- Android Studio para Android local
+- Expo Go o un development build
+- Dispositivo físico para probar push notifications
+
+## Variables de entorno
 Crear `.env` a partir de `.env.example`:
+
 ```env
-VITE_SUPABASE_URL=https://xaquigyhylzvuyfslkqq.supabase.co
-VITE_SUPABASE_KEY=sb_publishable_IW-shCHE7J00_e1DCOaP7Q_9iwprkLd
-VITE_BASE_PATH=/
+EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+EXPO_PUBLIC_EAS_PROJECT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+EXPO_PUBLIC_AUTH_REDIRECT_PATH=auth/callback
 ```
 
-## 3) Supabase paso a paso
-1. Crear proyecto en Supabase.
-2. Ir a `SQL Editor` y ejecutar `sql/supabase.sql` completo.
-3. Ir a `Authentication -> Providers -> Email` y habilitar Email/Password.
-4. (Opcional recomendado) desactivar confirmación por email para pruebas rápidas.
-
-### Push notifications (Web Push + Supabase Edge Function)
-1. Generar llaves VAPID:
-```bash
-npx web-push generate-vapid-keys
-```
-2. Configurar frontend (`.env`):
-```env
-VITE_WEB_PUSH_PUBLIC_KEY=<public_key>
-```
-3. Configurar secrets de la Edge Function:
-```bash
-supabase secrets set WEB_PUSH_VAPID_PUBLIC_KEY=<public_key>
-supabase secrets set WEB_PUSH_VAPID_PRIVATE_KEY=<private_key>
-supabase secrets set WEB_PUSH_CONTACT_EMAIL=tu-email@dominio.com
-```
-4. Deploy de la función:
-```bash
-supabase functions deploy send-family-push
-```
-5. En la app, abrir menú familiar y tocar `Activar push`.
-
-Si desplegás en GitHub Pages, agregá también `VITE_WEB_PUSH_PUBLIC_KEY` como `Repository secret` (o `Repository variable`) para que quede embebida en el build.
-La app además tiene fallback a la VAPID pública actual para evitar bloqueos si ese secret falta en el pipeline.
-
-Si en iPhone/iPad aparece "este dispositivo no soporta push web":
-- Abrí la app con Safari (no desde navegador interno de Instagram/WhatsApp).
-- Usá `Compartir -> Agregar a inicio` y abrila desde el icono en pantalla de inicio.
-- Verificá que estés en HTTPS.
-
-## 4) Correr local
+## Levantar la app
 ```bash
 nvm use 22
 npm install
-npm run dev
+npm run start
 ```
 
-## 5) Deploy GitHub Pages
-1. Subir repo a GitHub.
-2. Agregar secrets del repo:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_KEY`
-   - `VITE_WEB_PUSH_PUBLIC_KEY`
-3. En GitHub: `Settings -> Pages -> Build and deployment -> Source: GitHub Actions`.
-4. Push a `main`.
+Atajos:
 
-El workflow `/.github/workflows/deploy-pages.yml` compila con:
 ```bash
-VITE_BASE_PATH=/<repo-name>/
+npm run ios
+npm run android
 ```
-y genera también `dist/404.html` para fallback SPA.
-
-## Base path configurable
-`vite.config.ts` usa `VITE_BASE_PATH`:
-```ts
-base: env.VITE_BASE_PATH || '/'
-```
-Para GitHub Pages usar `/<repo-name>/`.
 
 ## Scripts
 ```bash
-npm run dev
-npm run build
-npm run preview
+npm run start
+npm run ios
+npm run android
+npm run lint
+npm run typecheck
+npm run supabase -- --version
+npm run supabase:remote:login
+npm run supabase:remote:link
+npm run supabase:db:push
+npm run supabase:functions:deploy
 ```
+
+## Configuración de Supabase
+La CLI de Supabase ya queda instalada como dependencia local del proyecto. No hace falta instalar nada global.
+
+Chequeo rápido:
+
+```bash
+npm run supabase -- --version
+```
+
+Como el foco del repo es operar contra el proyecto online, dejé un wrapper remoto que lee credenciales desde `.env.supabase`.
+
+1. Crear `.env.supabase` a partir de `.env.supabase.example`.
+2. Completar:
+   - `SUPABASE_ACCESS_TOKEN`
+   - `SUPABASE_DB_PASSWORD`
+   - `SUPABASE_PROJECT_REF` ya viene sembrado con el ref actual del proyecto.
+3. `.env.supabase` queda ignorado por git; es sólo para operar la CLI desde este repo.
+
+Flujo remoto recomendado:
+
+```bash
+npm run supabase:remote:login
+npm run supabase:remote:link
+npm run supabase:remote:db:push
+npm run supabase:remote:functions:deploy
+```
+
+También podés usar el wrapper genérico:
+
+```bash
+npm run supabase:remote -- db pull
+npm run supabase:remote -- secrets set CLAVE=valor
+npm run supabase:remote -- functions deploy send-family-push
+```
+
+Si querés saltear el wrapper, la CLI base sigue disponible:
+
+```bash
+npm run supabase -- migration new nombre_de_migracion
+npm run supabase -- db diff
+npm run supabase -- functions logs send-family-push --project-ref xaquigyhylzvuyfslkqq
+```
+
+Notas:
+- `supabase:remote:login` usa `SUPABASE_ACCESS_TOKEN`.
+- `supabase:remote:db:push` y `db pull` usan `SUPABASE_DB_PASSWORD`.
+- `functions deploy` usa `SUPABASE_PROJECT_REF` y no depende del stack local.
+- Las migraciones del proyecto viven en `supabase/migrations/`.
+- `sql/supabase.sql` sigue siendo el snapshot completo del esquema, pero el flujo normal ahora debería pasar por migraciones + CLI.
+
+Configuración funcional mínima del proyecto remoto:
+- Habilitar `Authentication -> Providers -> Email`.
+- En `Authentication -> URL Configuration`, agregar `manifiesto://auth/callback`.
+
+## Email de confirmación
+- El template local de registro vive en `supabase/templates/confirmation.html`.
+- Los templates futuros de `reset password` y `magic link` viven en `supabase/templates/recovery.html` y `supabase/templates/magic-link.html`.
+- `supabase/config.toml` ya apunta ese template a `auth.email.template.confirmation`.
+- También quedaron configurados `auth.email.template.recovery` y `auth.email.template.magic_link`.
+- En local, `auth.email.enable_confirmations = true`, así que el signup requiere confirmar el email antes de iniciar sesión.
+- Para ver el correo durante desarrollo local, levantá Supabase y abrí Inbucket en `http://127.0.0.1:54324`.
+- Hoy la UI de la app no expone `magic link` ni `reset password`, pero el branding del mail ya queda preparado para cuando esos flujos se habiliten.
+- Si querés usar el mismo diseño en el proyecto remoto administrado por Supabase:
+  - copiar los HTML a `Authentication -> Email Templates -> Confirm signup`, `Reset password` y `Magic Link`,
+  - configurar SMTP propio en `Authentication -> Settings -> SMTP`,
+  - y mantener `manifiesto://auth/callback` dentro de `URL Configuration`.
+
+## Push notifications mobile
+La tabla `push_subscriptions` soporta `provider = 'expo'` y la edge function puede enviar notificaciones a Expo Push.
+
+Secrets mínimos de la Edge Function:
+
+```bash
+npm run supabase:remote -- secrets set SUPABASE_URL=https://tu-proyecto.supabase.co
+npm run supabase:remote -- secrets set SUPABASE_ANON_KEY=tu_anon_key
+npm run supabase:remote -- secrets set SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
+```
+
+Secrets opcionales si querés seguir soportando suscripciones web heredadas:
+
+```bash
+npm run supabase:remote -- secrets set WEB_PUSH_VAPID_PUBLIC_KEY=<public_key>
+npm run supabase:remote -- secrets set WEB_PUSH_VAPID_PRIVATE_KEY=<private_key>
+npm run supabase:remote -- secrets set WEB_PUSH_CONTACT_EMAIL=tu-email@dominio.com
+```
+
+Notas:
+- Expo Push requiere dispositivo físico.
+- Para obtener un token estable del proyecto, completá `EXPO_PUBLIC_EAS_PROJECT_ID`.
+- `eas.json` ya viene preparado con perfiles `development`, `preview` y `production`.
+
+## Auth y deep linking
+- La app usa el scheme `manifiesto://`.
+- El callback de confirmación/email entra por `manifiesto://auth/callback`.
+- El redirect se arma desde `EXPO_PUBLIC_AUTH_REDIRECT_PATH`.
+
+## CI
+El workflow web de GitHub Pages fue removido. Ahora el repo tiene un workflow mobile de verificación en `.github/workflows/mobile-ci.yml` que corre:
+- `npm run lint`
+- `npm run typecheck`
+
+## Estado de la migración
+La migración principal ya quedó enfocada en mobile:
+- autenticación
+- crear/unirse a familia
+- dashboard de gastos
+- categorías
+- gastos fijos
+- insights
+- notificaciones
+- settings
+- dark mode
+- push Expo
+
+El código web anterior no participa del build actual.

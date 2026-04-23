@@ -1,66 +1,55 @@
 import { StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { withAlpha } from '@/theme/color-utils'
+import { brand, radii } from '@/theme/palette'
 
 export function TabBarBackground() {
   const { theme } = useAppTheme()
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tabBarBackground]}>
+      {/* Base fill — warm cream in light, deep onyx-green in dark to echo the hero card */}
       <LinearGradient
         colors={
           theme.isDark
-            ? ['rgba(15, 22, 18, 0.98)', 'rgba(11, 18, 14, 0.97)', 'rgba(8, 13, 10, 0.99)']
-            : ['rgba(252, 253, 252, 0.98)', 'rgba(243, 247, 244, 0.97)', 'rgba(248, 251, 249, 0.99)']
+            ? ['rgba(19, 30, 23, 0.98)', 'rgba(13, 22, 16, 0.97)', 'rgba(9, 15, 11, 0.99)']
+            : ['rgba(253, 252, 249, 0.98)', 'rgba(247, 244, 237, 0.97)', 'rgba(250, 248, 243, 0.99)']
         }
         end={{ x: 1, y: 1 }}
         start={{ x: 0, y: 0 }}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* Single soft brand tint anchored behind the center FAB */}
       <View
+        pointerEvents="none"
         style={[
-          styles.tabBarGlow,
-          styles.tabBarGlowPrimary,
+          styles.centerTint,
           {
-            backgroundColor: theme.isDark ? 'rgba(78, 213, 133, 0.1)' : 'rgba(25, 182, 107, 0.08)',
+            backgroundColor: withAlpha(brand.bright, theme.isDark ? 0.08 : 0.06),
           },
         ]}
       />
-      <View
-        style={[
-          styles.tabBarGlow,
-          styles.tabBarGlowSecondary,
-          {
-            backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.045)' : 'rgba(255, 255, 255, 0.48)',
-          },
+
+      {/* Hairline brand accent on the top edge — Manifiesto signature line */}
+      <LinearGradient
+        colors={[
+          'transparent',
+          withAlpha(brand.bright, theme.isDark ? 0.45 : 0.32),
+          'transparent',
         ]}
+        end={{ x: 1, y: 0 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.brandAccentLine}
       />
-      <LinearGradient
-        colors={
-          theme.isDark
-            ? ['rgba(127, 210, 148, 0.14)', 'rgba(127, 210, 148, 0.03)', 'transparent']
-            : ['rgba(25, 182, 107, 0.09)', 'rgba(25, 182, 107, 0.02)', 'transparent']
-        }
-        end={{ x: 0.5, y: 1 }}
-        start={{ x: 0.5, y: 0.02 }}
-        style={styles.tabBarTint}
-      />
-      <LinearGradient
-        colors={
-          theme.isDark
-            ? ['rgba(255, 255, 255, 0.14)', 'rgba(255, 255, 255, 0.02)', 'transparent']
-            : ['rgba(255, 255, 255, 0.96)', 'rgba(255, 255, 255, 0.18)', 'transparent']
-        }
-        end={{ x: 0.7, y: 1 }}
-        start={{ x: 0.12, y: 0 }}
-        style={styles.tabBarShine}
-      />
+
+      {/* Subtle inner edge */}
       <View
         style={[
           styles.tabBarInset,
           {
-            borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.74)',
+            borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.8)',
           },
         ]}
       />
@@ -73,31 +62,22 @@ const styles = StyleSheet.create({
     borderRadius: radii['2xl'],
     overflow: 'hidden',
   },
-  tabBarTint: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  tabBarGlow: {
+  centerTint: {
     position: 'absolute',
-    borderRadius: radii.pill,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    top: -60,
+    left: '50%',
+    marginLeft: -90,
   },
-  tabBarGlowPrimary: {
-    width: 172,
-    height: 172,
-    top: -116,
-    right: -18,
-  },
-  tabBarGlowSecondary: {
-    width: 128,
-    height: 128,
-    left: 18,
-    top: -58,
-  },
-  tabBarShine: {
+  brandAccentLine: {
     position: 'absolute',
     top: 0,
-    left: 18,
-    right: 18,
-    height: 1,
+    left: 32,
+    right: 32,
+    height: 1.5,
+    borderRadius: radii.pill,
   },
   tabBarInset: {
     ...StyleSheet.absoluteFillObject,

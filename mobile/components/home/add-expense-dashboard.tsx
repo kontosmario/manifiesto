@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
 import { CategoryPickerGrid } from '@/components/home/category-picker-grid'
@@ -15,7 +15,6 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface AddExpenseDashboardProps {
   amount: number
   hasValidAmount: boolean
-  amountHelper?: string
   rawPrice: string
   rankedCategories: Category[]
   selectedCategoryId: string
@@ -36,7 +35,6 @@ interface AddExpenseDashboardProps {
 export function AddExpenseDashboard({
   amount,
   hasValidAmount,
-  amountHelper,
   rawPrice,
   rankedCategories,
   selectedCategoryId,
@@ -58,9 +56,14 @@ export function AddExpenseDashboard({
   const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
+  const scrollRef = useRef<ScrollView>(null)
+
   useEffect(() => {
     const show = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true))
-    const hide = Keyboard.addListener('keyboardWillHide', () => setIsKeyboardVisible(false))
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
+      setIsKeyboardVisible(false)
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
+    })
     return () => {
       show.remove()
       hide.remove()
@@ -84,47 +87,47 @@ export function AddExpenseDashboard({
   return (
     <View style={styles.root}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         scrollEnabled={isKeyboardVisible}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={isKeyboardVisible}
+        automaticallyAdjustKeyboardInsets={false}
         showsVerticalScrollIndicator={false}
         alwaysBounceVertical={false}
       >
-        <AmountCard
-          amount={amount}
-          isActive={numpadVisible}
-          onPress={() => setNumpadVisible(true)}
-        />
+        <Pressable onPress={Keyboard.dismiss} style={styles.dismissArea}>
+          <AmountCard
+            amount={amount}
+            isActive={numpadVisible}
+            onPress={() => setNumpadVisible(true)}
+          />
 
-        <SuggestedAmountStrip
-          amounts={suggestedAmounts}
-          currentAmount={amount}
-          onSelect={onSelectSuggestedAmount}
-        />
+          <SuggestedAmountStrip
+            amounts={suggestedAmounts}
+            currentAmount={amount}
+            onSelect={onSelectSuggestedAmount}
+          />
 
-        {amountHelper ? (
-          <Text
-            style={[typography.caption, styles.helper, { color: theme.colors.textMuted }]}
-          >
-            {amountHelper}
-          </Text>
-        ) : null}
-
-        <CategoryPickerGrid
-          categories={gridCategories}
-          selectedCategoryId={selectedCategoryId}
-          onSelect={onSelectCategory}
-          onSeeAll={() => setAllCategoriesVisible(true)}
-        />
+          <CategoryPickerGrid
+            categories={gridCategories}
+            selectedCategoryId={selectedCategoryId}
+            onSelect={onSelectCategory}
+            onSeeAll={() => setAllCategoriesVisible(true)}
+          />
+        </Pressable>
 
         <DescriptionRow
           description={description}
           onChange={onDescriptionChange}
           quickSuggestions={quickDescriptionSuggestions}
           onSelectSuggestion={onSelectDescriptionSuggestion}
+          onFocus={() => {
+            requestAnimationFrame(() => {
+              scrollRef.current?.scrollToEnd({ animated: true })
+            })
+          }}
         />
 
         {submitErrorMessage ? (
@@ -174,10 +177,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: 10,
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
-  helper: {
-    paddingHorizontal: 4,
+  dismissArea: {
+    gap: 10,
   },
   error: {
     paddingHorizontal: 4,

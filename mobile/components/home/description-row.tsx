@@ -32,9 +32,11 @@ export function DescriptionRow({
       />
       {quickSuggestions.length > 0 ? (
         <ScrollView
-          contentContainerStyle={styles.suggestionsRow}
           horizontal
           showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.suggestionsScroll}
+          contentContainerStyle={styles.suggestionsRow}
         >
           {quickSuggestions.map((suggestion) => (
             <Chip
@@ -54,8 +56,14 @@ const styles = StyleSheet.create({
   root: {
     gap: 8,
   },
+  suggestionsScroll: {
+    marginHorizontal: -20,
+    flexGrow: 0,
+  },
   suggestionsRow: {
     gap: 6,
-    paddingHorizontal: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    alignItems: 'center',
   },
 })

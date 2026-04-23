@@ -18,7 +18,7 @@ export function AppTabs() {
     <Tabs
       screenListeners={tabHaptics}
       screenOptions={{
-        freezeOnBlur: true,
+        freezeOnBlur: false,
         headerShown: false,
         sceneStyle: { backgroundColor: theme.colors.background },
         tabBarActiveTintColor: theme.colors.primaryStrong,
@@ -65,7 +65,7 @@ export function AppTabs() {
       <Tabs.Screen
         name="fixed-expenses"
         options={{
-          title: 'Gastos Fijos',
+          title: 'Fijos',
           tabBarIcon: ({ color, focused, size }) => (
             <TabBarIcon color={color} fallback="payments" focused={focused} name="calendar.badge.clock" size={size} />
           ),

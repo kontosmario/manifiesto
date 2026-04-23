@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native'
+import { Animated, StyleSheet, View, type Animated as AnimatedType } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { radii, type AppTheme } from '@/theme/palette'
 import { AppSymbol } from '@/components/ui/app-symbol'
@@ -6,6 +6,7 @@ import { AppSymbol } from '@/components/ui/app-symbol'
 interface AddExpenseTabButtonFaceProps {
   buttonColorBoostOpacity: number
   buttonShineBoostOpacity: number
+  iconRotate?: AnimatedType.AnimatedInterpolation<string>
   pressed: boolean
   theme: AppTheme
 }
@@ -13,6 +14,7 @@ interface AddExpenseTabButtonFaceProps {
 export function AddExpenseTabButtonFace({
   buttonColorBoostOpacity,
   buttonShineBoostOpacity,
+  iconRotate,
   pressed,
   theme,
 }: AddExpenseTabButtonFaceProps) {
@@ -82,7 +84,11 @@ export function AddExpenseTabButtonFace({
           style={StyleSheet.absoluteFill}
         />
       </View>
-      <AppSymbol color="#FFFFFF" fallback="add" name="plus" size={28} type="monochrome" />
+      <Animated.View
+        style={iconRotate ? { transform: [{ rotate: iconRotate }] } : undefined}
+      >
+        <AppSymbol color="#FFFFFF" fallback="add" name="plus" size={28} type="monochrome" />
+      </Animated.View>
     </LinearGradient>
   )
 }

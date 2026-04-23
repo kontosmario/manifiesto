@@ -1,0 +1,58 @@
+#!/bin/sh
+set -eu
+
+resolve_node_bin() {
+  SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+  PROJECT_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+
+  if [ -f "$PROJECT_ROOT/.nvmrc" ] && [ -d "$HOME/.nvm/versions/node" ]; then
+    REQUESTED_NODE_VERSION="$(tr -d ' \n\r' < "$PROJECT_ROOT/.nvmrc")"
+    MATCHED_NODE_BIN=""
+
+    for candidate in "$HOME"/.nvm/versions/node/v"$REQUESTED_NODE_VERSION"*; do
+      if [ -x "$candidate/bin/node" ]; then
+        MATCHED_NODE_BIN="$candidate/bin/node"
+      fi
+    done
+
+    if [ -n "$MATCHED_NODE_BIN" ]; then
+      printf '%s\n' "$MATCHED_NODE_BIN"
+      return 0
+    fi
+  fi
+
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+
+  if [ -x /usr/local/bin/node ]; then
+    printf '%s\n' /usr/local/bin/node
+    return 0
+  fi
+
+  return 1
+}
+
+NODE_BIN="$(resolve_node_bin || true)"
+
+if [ -z "${NODE_BIN:-}" ]; then
+  printf '%s\n' 'No se encontró Node.js. Instalá una versión compatible y volvé a intentar.' >&2
+  exit 1
+fi
+
+NODE_DIR="$(cd "$(dirname "$NODE_BIN")" && pwd)"
+NODE_PREFIX="$(cd "$NODE_DIR/.." && pwd)"
+NPM_CLI="$NODE_PREFIX/lib/node_modules/npm/bin/npm-cli.js"
+
+if [ ! -f "$NPM_CLI" ]; then
+  if [ -f /usr/local/lib/node_modules/npm/bin/npm-cli.js ]; then
+    NPM_CLI=/usr/local/lib/node_modules/npm/bin/npm-cli.js
+  else
+    printf '%s\n' 'No se encontró npm-cli.js junto a la instalación de Node.' >&2
+    exit 1
+  fi
+fi
+
+export PATH="$NODE_DIR:$PATH"
+exec "$NODE_BIN" "$NPM_CLI" "$@"
