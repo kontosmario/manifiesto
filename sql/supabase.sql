@@ -1456,3 +1456,67 @@ exception
   when duplicate_object or undefined_object then null;
 end;
 $$;
+
+-- ==============================================================
+-- savings_goals — per-family meta for the Home screen
+-- ==============================================================
+
+create table if not exists public.savings_goals (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  title text not null,
+  emoji text not null default '🎯',
+  goal_amount numeric(12,2) not null check (goal_amount > 0),
+  current_amount numeric(12,2) not null default 0 check (current_amount >= 0),
+  target_months integer null check (target_months is null or target_months > 0),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_savings_goals_family_active
+  on public.savings_goals (family_id)
+  where is_active;
+
+alter table public.savings_goals enable row level security;
+
+drop policy if exists "savings_goals_select_members" on public.savings_goals;
+create policy "savings_goals_select_members"
+on public.savings_goals
+for select
+using (public.is_family_member(family_id));
+
+drop policy if exists "savings_goals_insert_members" on public.savings_goals;
+create policy "savings_goals_insert_members"
+on public.savings_goals
+for insert
+to authenticated
+with check (public.is_family_member(family_id));
+
+drop policy if exists "savings_goals_update_members" on public.savings_goals;
+create policy "savings_goals_update_members"
+on public.savings_goals
+for update
+using (public.is_family_member(family_id))
+with check (public.is_family_member(family_id));
+
+drop policy if exists "savings_goals_delete_members" on public.savings_goals;
+create policy "savings_goals_delete_members"
+on public.savings_goals
+for delete
+using (public.is_family_member(family_id));
+
+create or replace function public.savings_goals_touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_savings_goals_updated_at on public.savings_goals;
+create trigger trg_savings_goals_updated_at
+before update on public.savings_goals
+for each row execute function public.savings_goals_touch_updated_at();
