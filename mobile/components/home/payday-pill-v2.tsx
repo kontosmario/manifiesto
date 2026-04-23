@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text } from 'react-native'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { useAppTheme } from '@/theme/theme-provider'
 

@@ -24,7 +24,8 @@ export function CountUpText({ value, duration = 1600, format, style, accessibili
 
   useEffect(() => {
     if (reduced) {
-      setDisplay(format(value))
+      progress.value = value
+      runOnJS(setDisplay)(format(value))
       return
     }
     progress.value = 0

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { View } from 'react-native'
 import Svg, { Path, Circle, Defs as DefsRaw, LinearGradient as LinearGradientRaw, Stop as StopRaw } from 'react-native-svg'
 

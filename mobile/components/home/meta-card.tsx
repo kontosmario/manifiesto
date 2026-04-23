@@ -6,7 +6,6 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { FloatView } from '@/components/home/animated/float-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { formatMoneyShort } from '@/utils/money'
-import { useAppTheme } from '@/theme/theme-provider'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 
@@ -16,7 +15,6 @@ interface MetaCardProps {
 }
 
 export function MetaCard({ goal, onPress }: MetaCardProps) {
-  const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const pct = Math.min(100, Math.round((goal.currentAmount / goal.goalAmount) * 100))
   const scaleX = useSharedValue(reduced ? 1 : 0)

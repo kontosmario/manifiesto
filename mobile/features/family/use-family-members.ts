@@ -23,11 +23,15 @@ export function useFamilyMembers(familyId?: string) {
         .select('user_id, profiles:profiles!inner(id, display_name)')
         .eq('family_id', familyId)
       if (error) throw error
-      return (data ?? []).map((r: any, i: number) => ({
-        id: r.user_id,
-        name: r.profiles?.display_name ?? '—',
-        color: COLOR_POOL[i % COLOR_POOL.length],
-      }))
+      type Row = { user_id: string; profiles?: { display_name?: string } | { display_name?: string }[] | null }
+      return (data ?? []).map((r: Row, i: number) => {
+        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+        return {
+          id: r.user_id,
+          name: profile?.display_name ?? '—',
+          color: COLOR_POOL[i % COLOR_POOL.length],
+        }
+      })
     },
   })
 }
