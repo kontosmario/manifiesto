@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
+import { GastosInsightsRow } from '@/components/gastos/gastos-insights-row'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
@@ -48,6 +49,10 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
           totalVisible={controller.filteredTotal}
           summaryChip={controller.summaryChip}
           topCategories={controller.topCategories}
+        />
+        <GastosInsightsRow
+          averageDaily={controller.averageDaily}
+          streakDays={controller.registrationStreak}
         />
       </View>
     </Screen>
