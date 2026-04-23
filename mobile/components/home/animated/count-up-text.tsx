@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Text, type StyleProp, type TextStyle } from 'react-native'
 import {
   useSharedValue,
@@ -22,10 +22,18 @@ export function CountUpText({ value, duration = 1600, format, style, accessibili
   const [display, setDisplay] = useState(() => format(reduced ? value : 0))
   const progress = useSharedValue(reduced ? value : 0)
 
+  // Format on the JS thread — calling Intl.* inside a worklet crashes Expo Go.
+  const applyDisplay = useCallback(
+    (n: number) => {
+      setDisplay(format(n))
+    },
+    [format],
+  )
+
   useEffect(() => {
     if (reduced) {
       progress.value = value
-      runOnJS(setDisplay)(format(value))
+      setDisplay(format(value))
       return
     }
     progress.value = 0
@@ -35,9 +43,9 @@ export function CountUpText({ value, duration = 1600, format, style, accessibili
   useAnimatedReaction(
     () => progress.value,
     (next) => {
-      runOnJS(setDisplay)(format(Math.round(next)))
+      runOnJS(applyDisplay)(Math.round(next))
     },
-    [format],
+    [applyDisplay],
   )
 
   return (
