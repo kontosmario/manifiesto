@@ -122,7 +122,9 @@ test.describe('Authenticated home', () => {
       `Banned RN-Web deprecation warnings:\n${capture.bannedWarnings.join('\n')}`,
     ).toEqual([])
 
-    // 8. Save a screenshot for the user to inspect the rendered Home.
+    // 8. Give animations time to settle so the screenshot shows the
+    // final state (not a mid-entrance frame where opacity is still 0).
+    await page.waitForTimeout(2500)
     await page.screenshot({
       path: 'test-results/home-v1-cuaderno-rendered.png',
       fullPage: true,
