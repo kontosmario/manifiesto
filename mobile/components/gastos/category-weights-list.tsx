@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -34,9 +37,15 @@ export function CategoryWeightsList({
 }: CategoryWeightsListProps) {
   if (items.length === 0) return null
   return (
-    <View style={styles.list}>
+    <Animated.View style={styles.list} layout={LinearTransition.duration(260)}>
       {items.map((item, index) => (
-        <View key={item.id} style={styles.row}>
+        <Animated.View
+          key={item.id}
+          style={styles.row}
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(160)}
+          layout={LinearTransition.duration(260)}
+        >
           <View style={styles.rowHeader}>
             <View style={styles.rowLeft}>
               <View style={[styles.dot, { backgroundColor: item.color }]} />
@@ -49,14 +58,15 @@ export function CategoryWeightsList({
           </View>
           <View style={[styles.track, { backgroundColor: trackColor }]}>
             <AnimatedBar
+              key={`${item.id}-${item.percent}`}
               percent={item.percent}
               color={item.color}
               delay={400 + index * 100}
             />
           </View>
-        </View>
+        </Animated.View>
       ))}
-    </View>
+    </Animated.View>
   )
 }
 

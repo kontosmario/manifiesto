@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -26,55 +27,69 @@ export function GastosHeroCard({
   const { theme } = useAppTheme()
   return (
     <RiseView delay={100}>
-      <LinearGradient
-        colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
-        style={styles.card}
-      >
-        <ShineOverlay
-          width={430}
-          height={260}
-          tint={theme.colors.shineOverlay}
-          delayMs={1000}
-          periodMs={4200}
-        />
+      {/*
+        Animated wrapper with LinearTransition — when the top-categories
+        list changes length (e.g. switching day filter in the calendar),
+        the hero's height animates smoothly instead of snapping to the
+        new size. The weights block itself also fades each row in/out.
+      */}
+      <Animated.View layout={LinearTransition.duration(260)}>
+        <LinearGradient
+          colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={styles.card}
+        >
+          <ShineOverlay
+            width={430}
+            height={260}
+            tint={theme.colors.shineOverlay}
+            delayMs={1000}
+            periodMs={4200}
+          />
 
-        <View style={styles.topRow}>
-          <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>TOTAL VISIBLE</Text>
-          <View
-            style={[
-              styles.chip,
-              { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.12)' },
-            ]}
-          >
-            <Text style={[styles.chipText, { color: theme.colors.heroMuted }]}>{summaryChip}</Text>
-          </View>
-        </View>
-
-        <CountUpText
-          value={totalVisible}
-          duration={1200}
-          format={(n) => formatMoney(n)}
-          style={[styles.amount, { color: theme.colors.heroText }]}
-        />
-
-        {topCategories.length > 0 ? (
-          <View style={styles.weightsBlock}>
-            <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted2 }]}>
-              MÁS PESO POR CATEGORÍA
-            </Text>
-            <View style={{ marginTop: 6 }}>
-              <CategoryWeightsList
-                items={topCategories}
-                textColor={theme.colors.heroText}
-                mutedColor={theme.colors.heroMuted2}
-                trackColor="rgba(246,251,239,0.12)"
-              />
+          <View style={styles.topRow}>
+            <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>TOTAL VISIBLE</Text>
+            <View
+              style={[
+                styles.chip,
+                { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.12)' },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: theme.colors.heroMuted }]}>{summaryChip}</Text>
             </View>
           </View>
-        ) : null}
-      </LinearGradient>
+
+          <CountUpText
+            value={totalVisible}
+            duration={1200}
+            format={(n) => formatMoney(n)}
+            style={[styles.amount, { color: theme.colors.heroText }]}
+          />
+
+          {topCategories.length > 0 ? (
+            <Animated.View
+              key="weights"
+              style={styles.weightsBlock}
+              entering={FadeIn.duration(220)}
+              exiting={FadeOut.duration(160)}
+              layout={LinearTransition.duration(260)}
+            >
+              <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted2 }]}>
+                MÁS PESO POR CATEGORÍA
+              </Text>
+              <View style={{ marginTop: 6 }}>
+                <CategoryWeightsList
+                  items={topCategories}
+                  textColor={theme.colors.heroText}
+                  mutedColor={theme.colors.heroMuted2}
+                  trackColor="rgba(246,251,239,0.12)"
+                />
+              </View>
+            </Animated.View>
+          ) : null}
+        </LinearGradient>
+      </Animated.View>
     </RiseView>
   )
 }
