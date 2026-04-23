@@ -1,4 +1,5 @@
 import { Alert, StyleSheet, View } from 'react-native'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useMemo } from 'react'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -73,72 +74,90 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
     )
   }
 
+  // Each section in the stack gets `layout={LinearTransition}` so when
+  // one section grows or shrinks (e.g. the hero when top-categories
+  // change on a day-filter switch), the siblings below glide to their
+  // new Y-position instead of snapping.
+  const sectionLayout = LinearTransition.duration(260)
+
   return (
     <Screen contentContainerStyle={styles.screenContent}>
       <View style={styles.stack}>
         <AmbientBlobs />
-        <GastosHeader onPressAdd={handlePressAdd} />
-        <GastosHeroCard
-          totalVisible={controller.filteredTotal}
-          summaryChip={controller.summaryChip}
-          topCategories={controller.topCategories}
-        />
-        <GastosInsightsRow
-          averageDaily={controller.averageDaily}
-          averageDailyBars={controller.recentDailyBars}
-          streakDays={controller.registrationStreak}
-        />
-        <GastosMonthCalendar
-          dayMoods={controller.dayMoods}
-          todayDay={controller.today.getUTCDate()}
-          daysInMonth={controller.daysInMonth}
-          firstWeekdayOffset={getMondayFirstOffset(controller.today)}
-          selectedDay={controller.selectedDay}
-          selectedDayTotal={
-            controller.selectedDay != null
-              ? (controller.dailySpend[controller.selectedDay]?.total ?? 0)
-              : 0
-          }
-          selectedDayCount={
-            controller.selectedDay != null
-              ? (controller.dailySpend[controller.selectedDay]?.count ?? 0)
-              : 0
-          }
-          monthLabel={MONTH_ES[controller.monthIndex]}
-          onSelectDay={controller.setSelectedDay}
-          onClearDay={controller.clearDay}
-          onPrevDay={() =>
-            controller.setSelectedDay(
-              controller.selectedDay == null
-                ? null
-                : controller.selectedDay <= 1
-                  ? controller.daysInMonth
-                  : controller.selectedDay - 1,
-            )
-          }
-          onNextDay={() =>
-            controller.setSelectedDay(
-              controller.selectedDay == null
-                ? null
-                : controller.selectedDay >= controller.daysInMonth
-                  ? 1
-                  : controller.selectedDay + 1,
-            )
-          }
-        />
-        <GastosSmartFilter
-          categories={categoriesList}
-          expenseCountByCategoryId={expenseCountByCategoryId}
-          totalCount={controller.filteredExpenses.length}
-          selectedCategoryId={controller.selectedCategoryId}
-          onSelect={controller.setSelectedCategoryId}
-        />
-        <GastosMovimientos
-          groups={controller.groups}
-          categoriesById={controller.categoriesById}
-          familyMembers={membersQuery.data ?? []}
-          onDelete={handleDelete}
-        />
+        <Animated.View layout={sectionLayout}>
+          <GastosHeader onPressAdd={handlePressAdd} />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <GastosHeroCard
+            totalVisible={controller.filteredTotal}
+            summaryChip={controller.summaryChip}
+            topCategories={controller.topCategories}
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <GastosInsightsRow
+            averageDaily={controller.averageDaily}
+            averageDailyBars={controller.recentDailyBars}
+            streakDays={controller.registrationStreak}
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <GastosMonthCalendar
+            dayMoods={controller.dayMoods}
+            todayDay={controller.today.getUTCDate()}
+            daysInMonth={controller.daysInMonth}
+            firstWeekdayOffset={getMondayFirstOffset(controller.today)}
+            selectedDay={controller.selectedDay}
+            selectedDayTotal={
+              controller.selectedDay != null
+                ? (controller.dailySpend[controller.selectedDay]?.total ?? 0)
+                : 0
+            }
+            selectedDayCount={
+              controller.selectedDay != null
+                ? (controller.dailySpend[controller.selectedDay]?.count ?? 0)
+                : 0
+            }
+            monthLabel={MONTH_ES[controller.monthIndex]}
+            onSelectDay={controller.setSelectedDay}
+            onClearDay={controller.clearDay}
+            onPrevDay={() =>
+              controller.setSelectedDay(
+                controller.selectedDay == null
+                  ? null
+                  : controller.selectedDay <= 1
+                    ? controller.daysInMonth
+                    : controller.selectedDay - 1,
+              )
+            }
+            onNextDay={() =>
+              controller.setSelectedDay(
+                controller.selectedDay == null
+                  ? null
+                  : controller.selectedDay >= controller.daysInMonth
+                    ? 1
+                    : controller.selectedDay + 1,
+              )
+            }
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <GastosSmartFilter
+            categories={categoriesList}
+            expenseCountByCategoryId={expenseCountByCategoryId}
+            totalCount={controller.filteredExpenses.length}
+            selectedCategoryId={controller.selectedCategoryId}
+            onSelect={controller.setSelectedCategoryId}
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <GastosMovimientos
+            groups={controller.groups}
+            categoriesById={controller.categoriesById}
+            familyMembers={membersQuery.data ?? []}
+            onDelete={handleDelete}
+          />
+        </Animated.View>
         <View style={styles.bottomSpacer} />
       </View>
     </Screen>
