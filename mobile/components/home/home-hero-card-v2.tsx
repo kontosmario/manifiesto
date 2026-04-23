@@ -37,7 +37,7 @@ export function HomeHeroCardV2({
   return (
     <RiseView delay={150}>
       <LinearGradient
-        colors={theme.colors.heroGradient as unknown as string[]}
+        colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={[styles.card, { borderColor: 'rgba(199,238,156,0.12)' }]}

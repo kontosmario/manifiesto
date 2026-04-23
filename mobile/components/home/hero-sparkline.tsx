@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { View } from 'react-native'
-import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+import Svg, { Path, Circle, Defs as DefsRaw, LinearGradient as LinearGradientRaw, Stop as StopRaw } from 'react-native-svg'
+
+const Defs = DefsRaw as unknown as React.FC<{ children?: React.ReactNode }>
+const LinearGradient = LinearGradientRaw as unknown as React.FC<{ id: string; x1: string; y1: string; x2: string; y2: string; children?: React.ReactNode }>
+const Stop = StopRaw as unknown as React.FC<{ offset: string; stopColor: string; stopOpacity?: number }>
 import Animated, {
   useSharedValue,
   useAnimatedProps,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Text, type TextStyle } from 'react-native'
+import { Text, type StyleProp, type TextStyle } from 'react-native'
 import {
   useSharedValue,
   useAnimatedReaction,
@@ -13,7 +13,7 @@ interface CountUpTextProps {
   value: number
   duration?: number
   format: (n: number) => string
-  style?: TextStyle
+  style?: StyleProp<TextStyle>
   accessibilityLabel?: string
 }
 
