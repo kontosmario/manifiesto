@@ -35,3 +35,33 @@ export function computeNoExcessStreak(input: ComputeNoExcessStreakInput): number
   }
   return streak
 }
+
+export type DayMood = 'green' | 'amber' | 'red'
+
+export interface ComputeMonthDailyMoodInput {
+  expenses: StreakExpense[]
+  dailyBudget: number | null
+  today: Date
+}
+
+export function computeMonthDailyMood(input: ComputeMonthDailyMoodInput): Record<number, DayMood> {
+  const out: Record<number, DayMood> = {}
+  if (input.dailyBudget == null || input.dailyBudget <= 0) return out
+  const year = input.today.getUTCFullYear()
+  const month = input.today.getUTCMonth()
+  const todayDay = input.today.getUTCDate()
+  const totals = new Map<number, number>()
+  for (const e of input.expenses) {
+    const dt = new Date(e.created_at)
+    if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month) continue
+    const d = dt.getUTCDate()
+    if (d > todayDay) continue
+    totals.set(d, (totals.get(d) ?? 0) + e.price)
+  }
+  for (const [day, total] of totals) {
+    if (total <= input.dailyBudget) out[day] = 'green'
+    else if (total <= input.dailyBudget * 1.2) out[day] = 'amber'
+    else out[day] = 'red'
+  }
+  return out
+}
