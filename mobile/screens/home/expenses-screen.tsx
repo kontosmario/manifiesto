@@ -1,15 +1,14 @@
-import { ExpensesHistoryScreen } from '@/screens/home/expenses-history-screen'
+import { GastosV2Screen } from '@/screens/home/gastos-v2-screen'
 
 interface ExpensesScreenProps {
   familyId: string
 }
 
+/**
+ * The Expenses tab now renders the V1 Cuaderno redesign (GastosV2Screen).
+ * The legacy ExpensesHistoryScreen is still accessible via the
+ * `/expenses-history` route for reference while the redesign lands.
+ */
 export function ExpensesScreen({ familyId }: ExpensesScreenProps) {
-  return (
-    <ExpensesHistoryScreen
-      familyId={familyId}
-      subtitle="Historial, filtros y edición rápida de movimientos."
-      title="Gastos"
-    />
-  )
+  return <GastosV2Screen familyId={familyId} />
 }
