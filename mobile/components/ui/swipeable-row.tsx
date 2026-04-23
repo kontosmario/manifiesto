@@ -26,6 +26,12 @@ interface SwipeableRowProps {
   leftActions?: SwipeAction[]
   accessibilityHint: string  // required — CODE_RULES §11.4
   onSwipeOpenHaptic?: AppHapticTone
+  /**
+   * Outer border radius — both the row content and the swipe-action
+   * reveal are clipped to this radius so the action button visually
+   * fuses with the card instead of poking out as a square panel.
+   */
+  borderRadius?: number
 }
 
 export function SwipeableRow({
@@ -34,6 +40,7 @@ export function SwipeableRow({
   leftActions = [],
   accessibilityHint,
   onSwipeOpenHaptic = 'selection',
+  borderRadius = 16,
 }: SwipeableRowProps) {
   const swipeRef = useRef<SwipeableMethods>(null)
 
@@ -61,6 +68,7 @@ export function SwipeableRow({
     <View
       accessible
       accessibilityHint={accessibilityHint}
+      style={{ borderRadius, overflow: 'hidden' }}
     >
       <Swipeable
         ref={swipeRef}
