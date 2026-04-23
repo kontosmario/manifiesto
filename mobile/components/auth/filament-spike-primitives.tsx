@@ -7,7 +7,12 @@ export function SpikeStageBackdrop() {
   return (
     <View style={styles.stageBackdrop}>
       <View style={styles.stageGlow} />
-      <Image defaultSource={walletFallback} source={walletFallback} style={styles.stageImage} />
+      <Image
+        defaultSource={walletFallback}
+        source={walletFallback}
+        resizeMode="contain"
+        style={styles.stageImage}
+      />
     </View>
   )
 }
@@ -70,7 +75,6 @@ const styles = StyleSheet.create({
   stageImage: {
     width: '86%',
     height: '68%',
-    resizeMode: 'contain',
     opacity: 0.82,
   },
   inlineFallback: {

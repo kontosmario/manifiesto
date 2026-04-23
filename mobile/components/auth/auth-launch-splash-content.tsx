@@ -1,4 +1,4 @@
-import { Animated, Image, StyleSheet, Text, View } from 'react-native'
+import { Animated, Image, StyleSheet, Text, View, type ImageStyle } from 'react-native'
 import { authPalette, authTitleFontFamily } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
 import { withAlpha } from '@/theme/color-utils'
@@ -72,6 +72,7 @@ export function AuthLaunchSplashContent({
         <AnimatedImage
           defaultSource={walletSplash}
           source={walletSplash}
+          resizeMode="contain"
           style={[
             styles.walletImage,
             {
@@ -162,10 +163,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: authPalette.splash.halo,
   },
+  // boxShadow isn't yet typed on ImageStyle but works at runtime on RN 0.76+
+  // and react-native-web. We cast so consumers stay type-safe.
   walletImage: {
-    resizeMode: 'contain',
     boxShadow: `0px 14px 18px ${withAlpha(authPalette.splash.titleShadow, 0.28)}`,
-  },
+  } as unknown as ImageStyle,
   title: {
     color: authPalette.splash.title,
     fontSize: 46,

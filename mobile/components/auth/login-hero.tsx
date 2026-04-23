@@ -99,13 +99,11 @@ function WalletPoster({
             <Image
               defaultSource={walletFallback}
               source={walletFallback}
-              style={[
-                styles.posterImage,
-                {
-                  width: size,
-                  height: posterHeight,
-                },
-              ]}
+              resizeMode="contain"
+              style={{
+                width: size,
+                height: posterHeight,
+              }}
             />
           }
           objectScale={objectScale}
@@ -146,9 +144,6 @@ const styles = StyleSheet.create({
   posterStage: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  posterImage: {
-    resizeMode: 'contain',
   },
   eyebrowChip: {
     paddingHorizontal: 10,
