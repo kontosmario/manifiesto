@@ -79,7 +79,7 @@ export function ShortcutCardsRow({ gastos, fijos, onPressGastos, onPressFijos }:
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
+  row: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
   fijosBigNumber: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3, lineHeight: 20 },
   fijosBigSub: { fontSize: 11, fontWeight: '700', marginTop: 2 },
 })

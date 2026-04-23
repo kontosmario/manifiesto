@@ -89,21 +89,27 @@ export function ShortcutCard({
               trend
             )}
           </View>
-          {chart ? <View style={styles.chartSlot}>{chart}</View> : null}
+          <View style={styles.chartSlot}>{chart}</View>
         </View>
       </Pressable>
     </RiseView>
   )
 }
 
+// Fixed height for the chart slot — both cards reserve the same vertical
+// space for the chart regardless of whether it renders MiniBars (tall) or
+// PagoDots (short), so the two cards line up visually. The tallest chart
+// in use (MiniBars at 30px) drives this value.
+const CHART_SLOT_HEIGHT = 32
+
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, alignSelf: 'stretch' },
   card: {
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1,
-    minHeight: 128,
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -119,8 +125,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginTop: 'auto',
     paddingTop: 14,
+    minHeight: CHART_SLOT_HEIGHT + 14,
   },
-  trendSlot: { flexShrink: 1 },
-  chartSlot: { marginLeft: 8 },
+  trendSlot: { flexShrink: 1, justifyContent: 'flex-end' },
+  chartSlot: {
+    marginLeft: 8,
+    height: CHART_SLOT_HEIGHT,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
   trendText: { fontSize: 11, fontWeight: '700' },
 })
