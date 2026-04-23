@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { RiseView } from '@/components/home/animated/rise-view'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import type { GastosDayMood } from '@/features/gastos/gastos-aggregates.model'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -43,29 +43,47 @@ export function GastosMonthCalendar({
   onPrevDay,
   onNextDay,
 }: GastosMonthCalendarProps) {
-  if (selectedDay != null) {
-    return (
-      <FocusMode
-        day={selectedDay}
-        todayDay={todayDay}
-        mood={dayMoods[selectedDay] ?? 'empty'}
-        total={selectedDayTotal}
-        count={selectedDayCount}
-        monthLabel={monthLabel}
-        onClear={onClearDay}
-        onPrev={onPrevDay}
-        onNext={onNextDay}
-      />
-    )
-  }
+  // Crossfade between grid and focus via Reanimated layout animations
+  // (FadeIn on mount, FadeOut on unmount). Keyed by mode so switching
+  // between them triggers both a fade-out of the old view AND a
+  // fade-in of the new one — the transition reads as a single soft
+  // dissolve instead of a hard swap.
   return (
-    <GridMode
-      dayMoods={dayMoods}
-      todayDay={todayDay}
-      daysInMonth={daysInMonth}
-      firstWeekdayOffset={firstWeekdayOffset}
-      onSelectDay={onSelectDay}
-    />
+    <View>
+      {selectedDay != null ? (
+        <Animated.View
+          key="focus"
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(160)}
+        >
+          <FocusMode
+            day={selectedDay}
+            todayDay={todayDay}
+            mood={dayMoods[selectedDay] ?? 'empty'}
+            total={selectedDayTotal}
+            count={selectedDayCount}
+            monthLabel={monthLabel}
+            onClear={onClearDay}
+            onPrev={onPrevDay}
+            onNext={onNextDay}
+          />
+        </Animated.View>
+      ) : (
+        <Animated.View
+          key="grid"
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(160)}
+        >
+          <GridMode
+            dayMoods={dayMoods}
+            todayDay={todayDay}
+            daysInMonth={daysInMonth}
+            firstWeekdayOffset={firstWeekdayOffset}
+            onSelectDay={onSelectDay}
+          />
+        </Animated.View>
+      )}
+    </View>
   )
 }
 
@@ -101,14 +119,13 @@ function GridMode({
   }
 
   return (
-    <RiseView delay={300}>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-        ]}
-      >
-        <View style={styles.header}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+      ]}
+    >
+      <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>TU MES EN UN VISTAZO</Text>
           <View style={styles.legend}>
             <LegendDot color="#6FE09A" label="bien" theme={theme} />
@@ -146,8 +163,7 @@ function GridMode({
             </View>
           ))}
         </View>
-      </View>
-    </RiseView>
+    </View>
   )
 }
 
@@ -289,14 +305,13 @@ function FocusMode({
   const moodStyle = getMoodStyle(mood, theme.isDark)
 
   return (
-    <RiseView delay={0}>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-        ]}
-      >
-        <View style={styles.header}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+      ]}
+    >
+      <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>DÍA SELECCIONADO</Text>
           <View
             style={[
@@ -353,8 +368,7 @@ function FocusMode({
             </Text>
           </Pressable>
         </View>
-      </View>
-    </RiseView>
+    </View>
   )
 }
 
