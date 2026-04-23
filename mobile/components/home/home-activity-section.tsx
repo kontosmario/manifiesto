@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View, Pressable } from 'react-native'
-import { CategoryBadge } from '@/components/ui/category-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
+import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { errorMessages } from '@/lib/copy/states'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -14,6 +14,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface HomeActivitySectionProps {
   expenses: Expense[]
   categoryNameById: Map<string, string>
+  familyMembers?: Array<{ id: string; name: string; color: string }>
   isLoading: boolean
   errorKind?: DashboardErrorKind
   onDelete: (expenseId: string) => void
@@ -25,6 +26,7 @@ interface HomeActivitySectionProps {
 export function HomeActivitySection({
   expenses,
   categoryNameById,
+  familyMembers = [],
   isLoading,
   errorKind,
   onDelete,
@@ -68,65 +70,29 @@ export function HomeActivitySection({
           action={{ label: 'Registrar primer gasto', onPress: onAddFirst }}
         />
       ) : (
-        <View
-          style={[
-            styles.listContainer,
-            {
-              backgroundColor: theme.colors.surface,
-              shadowColor: '#000',
-            },
-          ]}
-        >
+        <View style={styles.listContainer}>
           {expenses.map((expense, index) => {
-            const categoryName =
-              categoryNameById.get(expense.category_id) ?? 'Sin categoría'
+            const categoryName = categoryNameById.get(expense.category_id) ?? 'Sin categoría'
             const dangerAction: SwipeAction = {
               label: 'Eliminar',
               tone: 'danger',
               onPress: () => onDelete(expense.id),
             }
-            const amount = Math.round(Math.abs(Number(expense.price ?? 0)))
             return (
               <SwipeableRow
                 key={expense.id}
                 accessibilityHint="Desliza hacia la izquierda para eliminar"
                 rightActions={[dangerAction]}
               >
-                <View
-                  style={[
-                    styles.row,
-                    index < expenses.length - 1 && {
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: theme.colors.border,
-                    },
-                  ]}
-                >
-                  <CategoryBadge
-                    categoryId={expense.category_id ?? 'otros'}
-                    size="md"
-                    tone="soft"
-                  />
-                  <View style={styles.rowBody}>
-                    <Text
-                      style={[typography.bodyEmphasis, { color: theme.colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {expense.description || categoryName}
-                    </Text>
-                    <Text
-                      style={[typography.caption, { color: theme.colors.textMuted }]}
-                      numberOfLines={1}
-                    >
-                      {categoryName}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[typography.bodyEmphasis, { color: theme.colors.text }]}
-                    accessibilityLabel={`Monto: $${amount.toLocaleString('es-AR')}`}
-                  >
-                    -${amount.toLocaleString('es-AR')}
-                  </Text>
-                </View>
+                <ActivityRowV2
+                  icon={pickIconForCategory(categoryName)}
+                  title={expense.description || categoryName}
+                  category={categoryName}
+                  whoName={findName(familyMembers, expense.created_by) ?? 'Alguien'}
+                  whoColor={findColor(familyMembers, expense.created_by) ?? '#2E7D5B'}
+                  amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
+                  delay={400 + index * 60}
+                />
               </SwipeableRow>
             )
           })}
@@ -147,20 +113,30 @@ const styles = StyleSheet.create({
   listContainer: {
     borderRadius: radii.lg,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  rowBody: {
-    flex: 1,
-    gap: 2,
   },
 })
+
+function pickIconForCategory(name: string): string {
+  const n = name.toLowerCase()
+  if (/super|alma|comida/.test(n)) return '🛒'
+  if (/transporte|sube|combustible|auto/.test(n)) return '🚌'
+  if (/ocio|salid|fernet/.test(n)) return '🍹'
+  if (/casa|alquil|servic/.test(n)) return '🏠'
+  if (/salud|farm/.test(n)) return '💊'
+  if (/cuid|personal/.test(n)) return '🧴'
+  return '📁'
+}
+
+function findName(
+  members: Array<{ id: string; name: string; color: string }>,
+  userId: string,
+): string | undefined {
+  return members.find((m) => m.id === userId)?.name
+}
+
+function findColor(
+  members: Array<{ id: string; name: string; color: string }>,
+  userId: string,
+): string | undefined {
+  return members.find((m) => m.id === userId)?.color
+}
