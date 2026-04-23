@@ -40,7 +40,7 @@ export function SwipeableRow({
   leftActions = [],
   accessibilityHint,
   onSwipeOpenHaptic = 'selection',
-  borderRadius = 16,
+  borderRadius = 14,
 }: SwipeableRowProps) {
   const swipeRef = useRef<SwipeableMethods>(null)
 
