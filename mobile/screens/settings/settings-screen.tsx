@@ -6,6 +6,7 @@ import { logoutSession } from '@/features/auth/logout'
 import { SettingsAccountCard } from '@/components/settings/settings-account-card'
 import { SettingsAppearanceCard } from '@/components/settings/settings-appearance-card'
 import { SettingsFinanceEditorCard } from '@/components/settings/settings-finance-editor-card'
+import { SettingsSavingsGoalCard } from '@/components/settings/settings-savings-goal-card'
 import { SettingsProfileCard } from '@/components/settings/settings-profile-card'
 import {
   SettingsFamilyCard,
@@ -215,6 +216,8 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
               isSaving={upsertFamilyFinanceMutation.isPending}
               onSave={saveFinance}
             />
+
+            <SettingsSavingsGoalCard familyId={familyId} />
 
             <SettingsFamilyCard
               familyCode={familyCode}
