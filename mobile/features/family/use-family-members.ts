@@ -11,6 +11,14 @@ export const familyMembersKey = (familyId?: string) => ['family-members', family
 
 const COLOR_POOL = ['#2E7D5B', '#E08E63', '#6B3A4F', '#C9A23A', '#4D6FB3', '#8A4D9A']
 
+/**
+ * Fetches display info for every member of a family. We can't use a
+ * single-shot select with a `profiles(...)` embed because
+ * `family_members.user_id` and `profiles.id` both reference
+ * `auth.users(id)` — PostgREST can't infer a direct FK between the
+ * two tables, so it answers 400 on the implicit join. Instead: fetch
+ * members first, then their profiles in a second round-trip.
+ */
 export function useFamilyMembers(familyId?: string) {
   return useQuery<FamilyMemberRow[]>({
     queryKey: familyMembersKey(familyId),
@@ -18,20 +26,34 @@ export function useFamilyMembers(familyId?: string) {
     staleTime: 60_000,
     queryFn: async () => {
       if (!familyId) return []
-      const { data, error } = await supabase
+
+      const membersResponse = await supabase
         .from('family_members')
-        .select('user_id, profiles:profiles!inner(id, display_name)')
+        .select('user_id')
         .eq('family_id', familyId)
-      if (error) throw error
-      type Row = { user_id: string; profiles?: { display_name?: string } | { display_name?: string }[] | null }
-      return (data ?? []).map((r: Row, i: number) => {
-        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return {
-          id: r.user_id,
-          name: profile?.display_name ?? '—',
-          color: COLOR_POOL[i % COLOR_POOL.length],
+      if (membersResponse.error) throw membersResponse.error
+
+      const userIds = (membersResponse.data ?? []).map((m) => m.user_id)
+      if (userIds.length === 0) return []
+
+      const profilesResponse = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds)
+      if (profilesResponse.error) throw profilesResponse.error
+
+      const nameById = new Map<string, string>()
+      for (const p of profilesResponse.data ?? []) {
+        if (p.id && typeof p.display_name === 'string') {
+          nameById.set(p.id, p.display_name)
         }
-      })
+      }
+
+      return userIds.map((id, i) => ({
+        id,
+        name: nameById.get(id) ?? '—',
+        color: COLOR_POOL[i % COLOR_POOL.length],
+      }))
     },
   })
 }

@@ -1,3 +1,5 @@
+import { Platform } from 'react-native'
+
 type SkiaModule = typeof import('@shopify/react-native-skia')
 
 let cachedSkiaModule: SkiaModule | null | undefined
@@ -18,6 +20,16 @@ function formatSkiaError(error: unknown) {
 
 export function getOptionalSkiaModule() {
   if (cachedSkiaModule !== undefined) {
+    return cachedSkiaModule
+  }
+
+  // Skia's web build requires a CanvasKit WASM bundle that Expo web
+  // doesn't wire up out of the box. Loading the module triggers
+  // runtime errors ("CanvasKit is not defined", "PictureRecorder"), so
+  // we skip it entirely on web — every consumer already handles the
+  // null return as a "no-skia" signal and renders an alternate view.
+  if (Platform.OS === 'web') {
+    cachedSkiaModule = null
     return cachedSkiaModule
   }
 

@@ -18,11 +18,12 @@ export function HeroStat({ label, value, sub, accent = false }: HeroStatProps) {
       <Text
         style={[
           styles.value,
-          {
-            color: valueColor,
-            textShadowColor: accent ? theme.colors.heroAccent : 'transparent',
-            textShadowRadius: accent ? 12 : 0,
-          },
+          { color: valueColor },
+          accent
+            ? // textShadow is the new cross-platform API (RN 0.76+ / RN-web 0.21+)
+              // that replaces textShadowColor/Radius. Not yet in TextStyle types.
+              ({ textShadow: `0px 0px 12px ${theme.colors.heroAccent}` } as unknown as import('react-native').TextStyle)
+            : null,
         ]}
       >
         {value}

@@ -30,8 +30,11 @@ interface CaptureResult {
  */
 const BANNED_WARNING_PATTERNS: RegExp[] = [
   /"shadow\*?" style props? (?:are|is) deprecated/i,
+  /"textShadow\*?" style props? (?:are|is) deprecated/i,
   /Image: style\.resizeMode is deprecated/i,
   /useNativeDriver` is not supported/i,
+  /CanvasKit is not defined/i,
+  /PictureRecorder/i,
 ]
 
 function captureErrors(page: Page): CaptureResult {
@@ -57,15 +60,6 @@ const IGNORED_ERROR_PATTERNS: RegExp[] = [
   /expo-linear-gradient/i,
   /Failed to load resource: the server responded with a status of 404.*favicon/i,
   /\[expo-notifications\]/i,
-  // @shopify/react-native-skia needs a CanvasKit WASM init that Expo web
-  // doesn't wire up out of the box. These errors come from pre-existing
-  // chart components (daily-budget-ring-chart, financial-summary-radial)
-  // that are NOT mounted on the Home V1 Cuaderno screen. Tracking this
-  // separately; ignore in web smoke tests.
-  /CanvasKit is not defined/i,
-  /PictureRecorder/i,
-  // Transient HTTP noise (pre-flight 400s, favicon fetches, etc.).
-  /Failed to load resource.*status of (400|404)/i,
   // Library noise we can't control: @gorhom/bottom-sheet and
   // react-native-gesture-handler still pass pointerEvents as a prop
   // internally. Will clear when those libraries update.

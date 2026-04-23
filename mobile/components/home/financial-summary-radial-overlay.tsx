@@ -178,14 +178,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  segmentValueLabelIcon: {
-    textShadowColor: 'rgba(0, 0, 0, 0.34)',
-    textShadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    textShadowRadius: 3,
-  },
+  // textShadow isn't in TextStyle types yet (RN <0.77) but works at runtime.
+  segmentValueLabelIcon: { textShadow: '0px 1px 3px rgba(0, 0, 0, 0.34)' as string } as object,
   centerCore: {
     position: 'absolute',
     borderRadius: radii.pill,
