@@ -19,7 +19,7 @@ export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount
   const amountColor = amount < 0 ? theme.colors.text : theme.colors.success
   return (
     <SlideInView delay={delay}>
-      <View style={[styles.row, { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line }]}>
+      <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
         <View style={styles.iconWrap}>
           <View style={[styles.iconTile, { backgroundColor: theme.colors.peachBand }]}>
             <Text style={styles.iconText}>{icon}</Text>
@@ -39,11 +39,11 @@ export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount
 }
 
 const styles = StyleSheet.create({
-  // Only round the LEFT corners. The outer SwipeableRow clip rounds
-  // the right side via `overflow: hidden`, so in rest state the card
-  // still reads as a fully rounded outline. During swipe the card's
-  // right edge is a straight line that meets the delete button's
-  // straight left edge flush — no visible gap between them.
+  // Only round the LEFT corners. The outer SwipeableRow clip + border
+  // render the rounded outline for all 4 corners (the widget's
+  // "contorno"), and its overflow: hidden clips the right side of the
+  // fill. During swipe the card's right edge stays straight so the
+  // delete button meets it flush — no visible gap.
   row: {
     borderTopLeftRadius: 14,
     borderBottomLeftRadius: 14,
@@ -52,7 +52,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
   },
   iconWrap: { position: 'relative' },
   iconTile: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

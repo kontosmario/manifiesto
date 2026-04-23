@@ -32,6 +32,13 @@ interface SwipeableRowProps {
    * fuses with the card instead of poking out as a square panel.
    */
   borderRadius?: number
+  /**
+   * Outline rendered around the whole swipe widget (card + revealed
+   * actions). Lives on the outer container so the border is rounded
+   * on all 4 corners without interfering with the flush card-to-action
+   * edge during a swipe.
+   */
+  borderColor?: string
 }
 
 export function SwipeableRow({
@@ -41,7 +48,10 @@ export function SwipeableRow({
   accessibilityHint,
   onSwipeOpenHaptic = 'selection',
   borderRadius = 14,
+  borderColor,
 }: SwipeableRowProps) {
+  const { theme } = useAppTheme()
+  const resolvedBorderColor = borderColor ?? theme.colors.line
   const swipeRef = useRef<SwipeableMethods>(null)
 
   const handleSwipeOpen = useCallback(() => {
@@ -68,7 +78,12 @@ export function SwipeableRow({
     <View
       accessible
       accessibilityHint={accessibilityHint}
-      style={{ borderRadius, overflow: 'hidden' }}
+      style={{
+        borderRadius,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: resolvedBorderColor,
+      }}
     >
       <Swipeable
         ref={swipeRef}
