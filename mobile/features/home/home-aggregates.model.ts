@@ -107,3 +107,42 @@ export function computeMonthlyComparison(input: { expenses: StreakExpense[]; tod
   const direction: 'up' | 'down' | 'flat' = deltaAmount > 0 ? 'up' : deltaAmount < 0 ? 'down' : 'flat'
   return { currentMonthTotal: current, previousMonthTotal: previous, deltaAmount, deltaPercent, direction, previousMonthLabel }
 }
+
+export interface BuildDailyAvailableSparklineInput {
+  expenses: StreakExpense[]
+  cycleStart: Date | null
+  totalAvailable: number
+  today: Date
+}
+
+export function buildDailyAvailableSparkline(input: BuildDailyAvailableSparklineInput): number[] | null {
+  if (!input.cycleStart) return null
+  const startUtc = Date.UTC(input.cycleStart.getUTCFullYear(), input.cycleStart.getUTCMonth(), input.cycleStart.getUTCDate())
+  const todayUtc = Date.UTC(input.today.getUTCFullYear(), input.today.getUTCMonth(), input.today.getUTCDate())
+  const daysElapsed = Math.floor((todayUtc - startUtc) / 86_400_000) + 1
+  if (daysElapsed <= 0) return null
+
+  const perDay = new Array<number>(daysElapsed).fill(0)
+  for (const e of input.expenses) {
+    const d = Date.UTC(new Date(e.created_at).getUTCFullYear(), new Date(e.created_at).getUTCMonth(), new Date(e.created_at).getUTCDate())
+    const idx = Math.floor((d - startUtc) / 86_400_000)
+    if (idx < 0 || idx >= daysElapsed) continue
+    perDay[idx] += e.price
+  }
+  let running = 0
+  const series: number[] = []
+  for (let i = 0; i < daysElapsed; i++) {
+    running += perDay[i]
+    series.push(input.totalAvailable - running)
+  }
+
+  const maxPoints = 12
+  if (series.length <= maxPoints) return series
+  const out = new Array<number>(maxPoints)
+  for (let i = 0; i < maxPoints; i++) {
+    const t = i / (maxPoints - 1)
+    const src = Math.round(t * (series.length - 1))
+    out[i] = series[src]
+  }
+  return out
+}
