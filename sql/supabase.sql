@@ -1520,3 +1520,74 @@ drop trigger if exists trg_savings_goals_updated_at on public.savings_goals;
 create trigger trg_savings_goals_updated_at
 before update on public.savings_goals
 for each row execute function public.savings_goals_touch_updated_at();
+
+-- ==============================================================
+-- fixed_expense_payments — per-month payment log for fixed expenses
+-- ==============================================================
+
+create table if not exists public.fixed_expense_payments (
+  id uuid primary key default gen_random_uuid(),
+  fixed_expense_id uuid not null references public.fixed_expenses(id) on delete cascade,
+  period_month date not null,
+  paid_at timestamptz not null default now(),
+  paid_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now(),
+  unique (fixed_expense_id, period_month)
+);
+
+create index if not exists idx_fixed_expense_payments_fe_month
+  on public.fixed_expense_payments (fixed_expense_id, period_month desc);
+
+-- period_month must be the first day of a month
+alter table public.fixed_expense_payments
+  drop constraint if exists fixed_expense_payments_period_is_first_of_month;
+alter table public.fixed_expense_payments
+  add constraint fixed_expense_payments_period_is_first_of_month
+  check (extract(day from period_month) = 1);
+
+alter table public.fixed_expense_payments enable row level security;
+
+create or replace function public.is_fixed_expense_family_member(fe_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.fixed_expenses fe
+    join public.family_members fm on fm.family_id = fe.family_id
+    where fe.id = fe_id
+      and fm.user_id = auth.uid()
+  );
+$$;
+
+drop policy if exists "fixed_expense_payments_select_members" on public.fixed_expense_payments;
+create policy "fixed_expense_payments_select_members"
+on public.fixed_expense_payments
+for select
+using (public.is_fixed_expense_family_member(fixed_expense_id));
+
+drop policy if exists "fixed_expense_payments_insert_members_self" on public.fixed_expense_payments;
+create policy "fixed_expense_payments_insert_members_self"
+on public.fixed_expense_payments
+for insert
+to authenticated
+with check (
+  public.is_fixed_expense_family_member(fixed_expense_id)
+  and paid_by = auth.uid()
+);
+
+drop policy if exists "fixed_expense_payments_update_members" on public.fixed_expense_payments;
+create policy "fixed_expense_payments_update_members"
+on public.fixed_expense_payments
+for update
+using (public.is_fixed_expense_family_member(fixed_expense_id))
+with check (public.is_fixed_expense_family_member(fixed_expense_id));
+
+drop policy if exists "fixed_expense_payments_delete_members" on public.fixed_expense_payments;
+create policy "fixed_expense_payments_delete_members"
+on public.fixed_expense_payments
+for delete
+using (public.is_fixed_expense_family_member(fixed_expense_id));
