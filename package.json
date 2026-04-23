@@ -13,6 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
     "validate": "npm run typecheck && npm run lint && npm run test && npm run guard:legacy-spacing && npm run guard:forbidden-copy",
     "guard:legacy-spacing": "if grep -rn 'legacySpacing' mobile app --include='*.ts' --include='*.tsx'; then echo 'Found legacySpacing references — these must be migrated to the new 4-base spacing scale.'; exit 1; else exit 0; fi",
     "guard:forbidden-copy": "node scripts/guard-forbidden-copy.mjs",
@@ -79,6 +82,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.59.1",
     "@types/react": "~19.1.10",
     "@types/three": "^0.183.1",
     "eslint": "^9.39.1",
