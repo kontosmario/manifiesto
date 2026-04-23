@@ -1,6 +1,6 @@
 import { RequireAuth } from '@/components/guards'
-import { FixedExpensesScreen } from '@/screens/home/fixed-expenses-screen'
+import { FijosV2Screen } from '@/screens/home/fijos-v2-screen'
 
 export default function FixedExpensesRoute() {
-  return <RequireAuth>{({ familyId }) => <FixedExpensesScreen familyId={familyId} />}</RequireAuth>
+  return <RequireAuth>{({ familyId }) => <FijosV2Screen familyId={familyId} />}</RequireAuth>
 }
