@@ -37,7 +37,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const familyName = familyInfo?.familyCode ? `Familia ${familyInfo.familyCode}` : 'Tu familia'
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
-  const recentExpensesQuery = useRecentExpenses(familyId, 3)
+  const recentExpensesQuery = useRecentExpenses(familyId, 5)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
 
