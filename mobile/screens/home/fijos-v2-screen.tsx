@@ -6,7 +6,11 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { FijosHeader } from '@/components/fijos/fijos-header'
 import { FijosCycleHero } from '@/components/fijos/fijos-cycle-hero'
+import { FijosSmartAlerts } from '@/components/fijos/fijos-smart-alerts'
+import { FijosUpcomingStrip } from '@/components/fijos/fijos-upcoming-strip'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
+import { useCategories } from '@/features/categories/use-categories'
+import { useMemo } from 'react'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
@@ -23,6 +27,14 @@ interface FijosV2ScreenProps {
 export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const router = useRouter()
   const controller = useFijosController(familyId)
+  const categoriesQuery = useCategories(familyId)
+  const categoriesById = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; color: string }>()
+    for (const c of categoriesQuery.data ?? []) {
+      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+    }
+    return m
+  }, [categoriesQuery.data])
 
   const handlePressAdd = () => {
     void triggerHaptic('light')
@@ -56,6 +68,19 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             freeAfterFijos={controller.freeAfterFijos}
             pctOfIncome={controller.pctOfIncome}
             monthLabel={MONTH_ES[controller.today.getUTCMonth()]}
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <FijosSmartAlerts
+            zombieCount={controller.summary.zombies.length}
+            onOpenZombies={() => controller.setTab('zombis')}
+          />
+        </Animated.View>
+        <Animated.View layout={sectionLayout}>
+          <FijosUpcomingStrip
+            upcoming={controller.summary.upcoming}
+            todayDay={controller.summary.todayDay}
+            categoriesById={categoriesById}
           />
         </Animated.View>
         <View style={styles.bottomSpacer} />
