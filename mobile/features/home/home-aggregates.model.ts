@@ -146,3 +146,41 @@ export function buildDailyAvailableSparkline(input: BuildDailyAvailableSparkline
   }
   return out
 }
+
+export interface BuildHeroStatsTrioInput {
+  dailyBudget: number | null
+  totalAvailable: number
+  daysElapsed: number
+  expenses: StreakExpense[]
+  today: Date
+}
+
+export interface HeroStatsTrio {
+  todayRemaining: number | null
+  spentToday: number
+  movementsToday: number
+  piggy: number | null
+  piggyState: 'saved' | 'excess' | 'unknown'
+}
+
+export function buildHeroStatsTrio(input: BuildHeroStatsTrioInput): HeroStatsTrio {
+  const todayKey = utcDayKey(input.today)
+  let spentToday = 0
+  let movementsToday = 0
+  let spentBeforeToday = 0
+  for (const e of input.expenses) {
+    if (utcDayKey(new Date(e.created_at)) === todayKey) {
+      spentToday += e.price
+      movementsToday += 1
+    } else {
+      spentBeforeToday += e.price
+    }
+  }
+  if (input.dailyBudget == null || input.dailyBudget <= 0) {
+    return { todayRemaining: null, spentToday, movementsToday, piggy: null, piggyState: 'unknown' }
+  }
+  const todayRemaining = input.dailyBudget - spentToday
+  const piggy = Math.max(0, input.daysElapsed - 1) * input.dailyBudget - spentBeforeToday + todayRemaining
+  const piggyState: HeroStatsTrio['piggyState'] = piggy >= 0 ? 'saved' : 'excess'
+  return { todayRemaining, spentToday, movementsToday, piggy, piggyState }
+}
