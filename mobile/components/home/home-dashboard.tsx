@@ -6,7 +6,7 @@ import { type BottomSheetHandle } from '@/components/ui/bottom-sheet'
 import { ConfirmSalarySheet } from '@/components/home/confirm-salary-sheet'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCardV2 } from '@/components/home/home-hero-card-v2'
-import { GreetingHeader } from '@/components/home/greeting-header'
+import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { ShortcutCardsRow } from '@/components/home/shortcut-cards-row'
 import { MetaCard } from '@/components/home/meta-card'
@@ -37,6 +37,9 @@ interface HomeDashboardProps {
   familyId: string
   displayName: string
   familyName: string
+  hasUnreadNotifications?: boolean
+  onPressNotifications?: () => void
+  onPressSettings?: () => void
   isLoadingActivity: boolean
   activityError: unknown
   onConfirmSalary: () => void
@@ -52,6 +55,9 @@ export function HomeDashboard({
   familyId,
   displayName,
   familyName,
+  hasUnreadNotifications = false,
+  onPressNotifications,
+  onPressSettings,
   isLoadingActivity,
   activityError,
   onConfirmSalary,
@@ -139,7 +145,12 @@ export function HomeDashboard({
   return (
     <View style={styles.stack}>
       <AmbientBlobs />
-      <GreetingHeader name={displayName} />
+      <HomeHeader
+        name={displayName}
+        hasUnreadNotifications={hasUnreadNotifications}
+        onPressNotifications={onPressNotifications}
+        onPressSettings={onPressSettings}
+      />
       <FamilyStrip
         members={membersQuery.data ?? []}
         familyName={familyName}

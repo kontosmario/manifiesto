@@ -1,11 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, RefreshControl, StyleSheet, View } from 'react-native'
+import { Alert, RefreshControl, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { HomeDashboard } from '@/components/home/home-dashboard'
 import { brand } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
-import { IconButton } from '@/components/ui/icon-button'
 import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
@@ -18,7 +17,6 @@ import { useFamily } from '@/features/family/use-family'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
-import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -51,7 +49,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     [categoriesQuery.data],
   )
   const recentExpenses = recentExpensesQuery.data ?? []
-  const headerPalette = buildScreenHeaderPalette(theme)
 
   const shouldShowDashboardError =
     (dashboard.familyFinanceQuery.error && !dashboard.familyFinanceQuery.data) ||
@@ -132,30 +129,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           colors={[brand.deep]}
         />
       }
-      rightSlot={
-        <View style={styles.headerActions}>
-          <IconButton
-            accessibilityLabel="Ir a notificaciones"
-            icon="notifications-none"
-            backgroundColor={headerPalette.buttonBackgroundColor}
-            badgeColor={theme.colors.danger}
-            borderColor={headerPalette.buttonBorderColor}
-            iconColor={headerPalette.iconColor}
-            showBadge
-            symbolName="bell"
-            onPress={() => router.push('/(app)/notifications')}
-          />
-          <IconButton
-            accessibilityLabel="Ir a ajustes"
-            icon="tune"
-            backgroundColor={headerPalette.buttonBackgroundColor}
-            borderColor={headerPalette.buttonBorderColor}
-            iconColor={headerPalette.iconColor}
-            symbolName="slider.horizontal.3"
-            onPress={() => router.push('/(app)/settings')}
-          />
-        </View>
-      }
     >
       {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
 
@@ -178,6 +151,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           familyId={familyId}
           displayName={displayName}
           familyName={familyName}
+          hasUnreadNotifications
+          onPressNotifications={() => router.push('/(app)/notifications')}
+          onPressSettings={() => router.push('/(app)/settings')}
           isLoadingActivity={recentExpensesQuery.isLoading}
           activityError={activityError}
           onConfirmSalary={confirmSalary}
@@ -193,10 +169,5 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 8,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
 })
