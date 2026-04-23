@@ -41,6 +41,8 @@ const IGNORED_ERROR_PATTERNS: RegExp[] = [
   /\[expo-notifications\]/i, // web doesn't support native notifications
   /CanvasKit is not defined/i, // @shopify/react-native-skia web init, pre-existing
   /PictureRecorder/i,
+  // 3rd-party lib internals (@gorhom/bottom-sheet, react-native-gesture-handler)
+  /props\.pointerEvents is deprecated/i,
 ]
 
 function filterNoise(messages: string[]): string[] {

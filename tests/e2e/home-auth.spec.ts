@@ -15,13 +15,32 @@ const TEST_PASSWORD = 'marito78'
 interface CaptureResult {
   consoleErrors: string[]
   pageErrors: string[]
+  bannedWarnings: string[]
 }
 
+/**
+ * Warnings we refuse to regress on — these come from code we control,
+ * so we guard against them reappearing. If a future change reintroduces
+ * the deprecated API, this test fails loudly.
+ *
+ * Note: we do NOT ban `props.pointerEvents` here because that warning
+ * still fires from @gorhom/bottom-sheet and react-native-gesture-handler
+ * internals (tracked upstream, not our code). It's filtered as ignored
+ * noise instead.
+ */
+const BANNED_WARNING_PATTERNS: RegExp[] = [
+  /"shadow\*?" style props? (?:are|is) deprecated/i,
+]
+
 function captureErrors(page: Page): CaptureResult {
-  const result: CaptureResult = { consoleErrors: [], pageErrors: [] }
+  const result: CaptureResult = { consoleErrors: [], pageErrors: [], bannedWarnings: [] }
   page.on('console', (msg: ConsoleMessage) => {
+    const text = msg.text()
     if (msg.type() === 'error') {
-      result.consoleErrors.push(msg.text())
+      result.consoleErrors.push(text)
+    }
+    if (BANNED_WARNING_PATTERNS.some((re) => re.test(text))) {
+      result.bannedWarnings.push(text)
     }
   })
   page.on('pageerror', (err) => {
@@ -45,6 +64,10 @@ const IGNORED_ERROR_PATTERNS: RegExp[] = [
   /PictureRecorder/i,
   // Transient HTTP noise (pre-flight 400s, favicon fetches, etc.).
   /Failed to load resource.*status of (400|404)/i,
+  // Library noise we can't control: @gorhom/bottom-sheet and
+  // react-native-gesture-handler still pass pointerEvents as a prop
+  // internally. Will clear when those libraries update.
+  /props\.pointerEvents is deprecated/i,
 ]
 
 function filterNoise(messages: string[]): string[] {
@@ -96,6 +119,11 @@ test.describe('Authenticated home', () => {
     expect(
       consoleErrors,
       `Console errors:\n${consoleErrors.join('\n')}`,
+    ).toEqual([])
+    // Regression guard — none of these deprecation warnings may come back.
+    expect(
+      capture.bannedWarnings,
+      `Banned RN-Web deprecation warnings:\n${capture.bannedWarnings.join('\n')}`,
     ).toEqual([])
 
     // 8. Save a screenshot for the user to inspect the rendered Home.

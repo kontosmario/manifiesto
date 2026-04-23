@@ -38,11 +38,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run web -- --port 8081 --non-interactive',
+    command: 'npm run web -- --port 8081',
     url: 'http://localhost:8081',
     timeout: 180_000,
     reuseExistingServer: true,
     stdout: 'ignore',
     stderr: 'pipe',
+    env: { CI: '1' },
   },
 })
