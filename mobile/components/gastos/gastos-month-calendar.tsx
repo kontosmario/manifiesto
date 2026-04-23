@@ -408,12 +408,18 @@ const styles = StyleSheet.create({
   weekdayText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   grid: { gap: 6 },
   gridRow: { flexDirection: 'row', gap: 6 },
+  // Every cell — real day cells and trailing empties alike — carries a
+  // 1px (transparent-by-default) border so their content-boxes are
+  // identical. Without it, RN Web's box-sizing shifts the layout by 1px
+  // between states that have a border and states that don't.
   dayCell: {
     flex: 1,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
     position: 'relative',
   },
   dayNumber: { fontSize: 13, fontWeight: '700' },
