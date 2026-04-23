@@ -7,6 +7,8 @@ import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosInsightsRow } from '@/components/gastos/gastos-insights-row'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
+import { GastosSmartFilter } from '@/components/gastos/gastos-smart-filter'
+import { useMemo } from 'react'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
@@ -24,6 +26,20 @@ interface GastosV2ScreenProps {
 export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
   const router = useRouter()
   const controller = useGastosController(familyId)
+
+  // Per-category movement counts across the month (respecting the day
+  // filter) — used by the smart filter pills + "Ver todas" sheet.
+  const expenseCountByCategoryId = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const e of controller.filteredExpenses) {
+      map.set(e.category_id, (map.get(e.category_id) ?? 0) + 1)
+    }
+    return map
+  }, [controller.filteredExpenses])
+  const categoriesList = useMemo(
+    () => Array.from(controller.categoriesById.values()),
+    [controller.categoriesById],
+  )
 
   const handlePressAdd = () => {
     void triggerHaptic('light')
@@ -92,6 +108,13 @@ export function GastosV2Screen({ familyId }: GastosV2ScreenProps) {
                   : controller.selectedDay + 1,
             )
           }
+        />
+        <GastosSmartFilter
+          categories={categoriesList}
+          expenseCountByCategoryId={expenseCountByCategoryId}
+          totalCount={controller.filteredExpenses.length}
+          selectedCategoryId={controller.selectedCategoryId}
+          onSelect={controller.setSelectedCategoryId}
         />
       </View>
     </Screen>
