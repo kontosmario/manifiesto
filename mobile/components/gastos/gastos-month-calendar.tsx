@@ -396,7 +396,10 @@ const styles = StyleSheet.create({
   legendDot: { width: 7, height: 7, borderRadius: 4 },
   legendLabel: { fontSize: 9, fontWeight: '600' },
   hint: { fontSize: 10, fontWeight: '500', marginBottom: 8 },
-  weekdaysRow: { flexDirection: 'row', marginBottom: 4 },
+  // Must share the same gap as gridRow so weekday labels sit exactly
+  // above their day cells — otherwise the 6px column gap in the grid
+  // shifts every day one pixel to the right of its header.
+  weekdaysRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   weekdayCell: { flex: 1, alignItems: 'center', paddingBottom: 2 },
   weekdayText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   grid: { gap: 6 },
