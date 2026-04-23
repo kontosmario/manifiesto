@@ -33,6 +33,10 @@ const config: ExpoConfig = {
   android: {
     package: 'com.manifiesto.mobile',
   },
+  web: {
+    bundler: 'metro',
+    output: 'single',
+  },
   extra: {
     eas: {
       projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
