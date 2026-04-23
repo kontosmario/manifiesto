@@ -1,7 +1,7 @@
 # Manifiesto — Home Redesign (V1 Cuaderno) Design
 
 **Date:** 2026-04-22
-**Status:** Design approved, pending implementation plan
+**Status:** Implemented (pending manual QA + remote Supabase migration)
 **Scope:** Home/Inicio screen end-to-end — new DB tables, new hooks, new components, extended theme tokens, and a new Settings entry for the savings goal.
 **Source design:** `v1-cuaderno.jsx` (the "★ consolidada" home variant) from `Manifiesto.zip`, referenced against screenshot `Captura 14.20.17.png` (current app) in `Manifiesto (1).zip`. Dark variant from `v1-dark.jsx` (same structure, swapped tokens).
 **Depends on:** nothing — standalone PR that ships end-to-end.
