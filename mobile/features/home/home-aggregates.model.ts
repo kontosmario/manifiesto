@@ -184,3 +184,13 @@ export function buildHeroStatsTrio(input: BuildHeroStatsTrioInput): HeroStatsTri
   const piggyState: HeroStatsTrio['piggyState'] = piggy >= 0 ? 'saved' : 'excess'
   return { todayRemaining, spentToday, movementsToday, piggy, piggyState }
 }
+
+export function buildSavingsGoalMonthsRemaining(input: {
+  goalAmount: number
+  currentAmount: number
+  targetMonths: number | null
+}): number | null {
+  if (input.currentAmount >= input.goalAmount) return 0
+  if (input.targetMonths == null) return null
+  return input.targetMonths
+}
