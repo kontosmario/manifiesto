@@ -185,14 +185,19 @@ function DayCell({
   const moodStyle = getMoodStyle(mood, theme.isDark)
   const hasMoodFill = !!mood && mood !== 'empty'
 
-  // Three visual states:
+  // Four visual states:
   //   1. Today         → ink fill + cream number + accent dot underneath
   //   2. Past w/ spend → mood-tinted fill + mood-tinted number
   //   3. Past empty    → plain number, no tile
   //   4. Future        → dashed border tile, muted number
+  //
+  // Every cell carries `borderWidth: 1` (transparent for non-future
+  // states) so the inner content area stays identical across states —
+  // otherwise the future dashed cells would render 2px smaller than
+  // their filled neighbors, producing a visible jitter row-by-row.
   let bg: string = 'transparent'
   let color: string = theme.colors.textSoft
-  let borderWidth = 0
+  const borderWidth = 1
   let borderStyle: 'solid' | 'dashed' = 'solid'
   let borderColor: string = 'transparent'
   if (isToday) {
@@ -210,7 +215,6 @@ function DayCell({
     // future
     bg = 'transparent'
     color = theme.colors.textSoft
-    borderWidth = 1
     borderStyle = 'dashed'
     borderColor = theme.isDark ? 'rgba(246,251,239,0.14)' : 'rgba(15,42,30,0.16)'
   }
