@@ -89,8 +89,7 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
           <View style={styles.topRow}>
             <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>Monto</Text>
             <Animated.Text
-              style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
-              pointerEvents="none"
+              style={[typography.caption, hintStyle, { pointerEvents: 'none', color: theme.colors.textSoft }]}
             >
               Tap para editar
             </Animated.Text>

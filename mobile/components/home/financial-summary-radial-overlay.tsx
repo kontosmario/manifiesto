@@ -48,10 +48,10 @@ export function FinancialSummaryRadialOverlay({
         ? badgeLayouts.map((segment) => (
             <View
               key={`${segment.label}-badge`}
-              pointerEvents="none"
               style={[
                 styles.segmentBadge,
                 {
+                  pointerEvents: 'none',
                   backgroundColor: uiPalette.segmentBadgeBackground,
                   borderColor: `${segment.color}55`,
                   left: segment.left,
@@ -78,10 +78,10 @@ export function FinancialSummaryRadialOverlay({
       {segmentValueLabels.map((label) => (
         <View
           key={label.key}
-          pointerEvents="none"
           style={[
             styles.segmentValueLabelWrap,
             {
+              pointerEvents: 'none',
               left: label.left,
               opacity: label.opacity * (0.92 + settleProgress * 0.08),
               top: label.top,

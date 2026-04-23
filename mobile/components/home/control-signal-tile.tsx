@@ -42,10 +42,10 @@ export function ControlSignalTile({
       ]}
     >
       <View
-        pointerEvents="none"
         style={[
           styles.signalGlow,
           {
+            pointerEvents: 'none',
             backgroundColor: palette.iconBackgroundColor,
           },
         ]}

@@ -53,11 +53,11 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
       <Text style={[styles.fieldLabel, dense && styles.fieldLabelDense]}>{label}</Text>
       <View style={[styles.fieldShell, dense && styles.fieldShellDense]}>
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.fieldFocusFill,
             dense && styles.fieldFocusFillDense,
             {
+              pointerEvents: 'none',
               opacity: focusProgress,
               transform: [
                 {
@@ -71,11 +71,11 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
           ]}
         />
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.fieldFocusOutline,
             dense && styles.fieldFocusOutlineDense,
             {
+              pointerEvents: 'none',
               opacity: focusProgress.interpolate({
                 inputRange: [0, 1],
                 outputRange: [0, 1],

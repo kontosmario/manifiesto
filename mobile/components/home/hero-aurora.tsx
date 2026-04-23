@@ -43,7 +43,7 @@ export function HeroAurora({ radius = 28 }: HeroAuroraProps) {
   }))
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
+    <View style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden', pointerEvents: 'none' }]}>
       <Animated.View style={[styles.blob, { top: -40, right: -40, width: 200, height: 200, backgroundColor: theme.colors.auroraA }, aStyle]} />
       <Animated.View style={[styles.blob, { bottom: -50, left: -30, width: 180, height: 180, backgroundColor: theme.colors.auroraB }, bStyle]} />
       <Animated.View style={[styles.blob, { top: 60, left: '40%', width: 140, height: 140, backgroundColor: theme.colors.auroraC }, cStyle]} />

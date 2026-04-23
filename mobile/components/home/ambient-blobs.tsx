@@ -31,7 +31,7 @@ export function AmbientBlobs() {
   const cStyle = useAnimatedStyle(() => ({ transform: [{ translateY: c.value }] }))
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Animated.View style={[styles.blob, { top: -70, right: -50, width: 240, height: 240, backgroundColor: theme.colors.auroraA, opacity: 0.55 }, aStyle]} />
       <Animated.View style={[styles.blob, { top: 440, left: -80, width: 240, height: 240, backgroundColor: theme.colors.auroraB, opacity: 0.32 }, bStyle]} />
       <Animated.View style={[styles.blob, { top: 1000, right: -60, width: 260, height: 260, backgroundColor: theme.colors.auroraC, opacity: 0.35 }, cStyle]} />

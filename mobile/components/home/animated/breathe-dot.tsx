@@ -34,10 +34,9 @@ export function BreatheDot({ size, color, glow, periodMs = 1800, style }: Breath
           height: size,
           borderRadius: size / 2,
           backgroundColor: color,
-          shadowColor: glow ?? color,
-          shadowOpacity: glow ? 0.8 : 0,
-          shadowRadius: size * 0.8,
-          shadowOffset: { width: 0, height: 0 },
+          // boxShadow is the cross-platform API (React Native 0.76+ / RN-web 0.21+)
+          // that replaces the deprecated shadow* props.
+          boxShadow: glow ? `0 0 ${size * 0.8}px ${glow}` : undefined,
         },
         style,
         a,

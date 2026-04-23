@@ -84,10 +84,10 @@ export function AddExpenseTabButton({
       {({ pressed }) => (
         <>
           <View
-            pointerEvents="none"
             style={[
               styles.addButtonGlowMeshWrap,
               {
+                pointerEvents: 'none',
                 transform: [{ scale: glowMeshScale }],
               },
             ]}
@@ -95,10 +95,10 @@ export function AddExpenseTabButton({
             <AddExpenseGlowMesh intensity={glowIntensity} isDark={theme.isDark} />
           </View>
           <Animated.View
-            pointerEvents="none"
             style={[
               styles.breathHalo,
               {
+                pointerEvents: 'none',
                 backgroundColor: withAlpha(brand.bright, 0.22),
                 opacity: breathHaloOpacity,
                 transform: [{ scale: breathScale }],
@@ -106,10 +106,10 @@ export function AddExpenseTabButton({
             ]}
           />
           <Animated.View
-            pointerEvents="none"
             style={[
               styles.burstRing,
               {
+                pointerEvents: 'none',
                 borderColor: withAlpha(brand.bright, 0.9),
                 opacity: burstOpacity,
                 transform: [{ scale: burstScale }],

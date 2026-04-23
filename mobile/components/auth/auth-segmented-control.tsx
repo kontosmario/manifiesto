@@ -73,12 +73,12 @@ export function AuthSegmentedControl<T extends string>({
     >
       {segmentWidth > 0 ? (
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.segmentIndicatorWrap,
             compact ? styles.segmentIndicatorWrapCompact : styles.segmentIndicatorWrapDefault,
             dense && !compact && styles.segmentIndicatorWrapDense,
             {
+              pointerEvents: 'none',
               left: indicatorInset,
               transform: [{ translateX: indicatorTranslateX }],
               width: segmentWidth,

@@ -8,7 +8,7 @@ export function TabBarBackground() {
   const { theme } = useAppTheme()
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tabBarBackground]}>
+    <View style={[StyleSheet.absoluteFill, styles.tabBarBackground, { pointerEvents: 'none' }]}>
       {/* Base fill — warm cream in light, deep onyx-green in dark to echo the hero card */}
       <LinearGradient
         colors={
@@ -23,10 +23,10 @@ export function TabBarBackground() {
 
       {/* Single soft brand tint anchored behind the center FAB */}
       <View
-        pointerEvents="none"
         style={[
           styles.centerTint,
           {
+            pointerEvents: 'none',
             backgroundColor: withAlpha(brand.bright, theme.isDark ? 0.08 : 0.06),
           },
         ]}

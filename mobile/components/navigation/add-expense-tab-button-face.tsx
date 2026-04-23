@@ -45,10 +45,10 @@ export function AddExpenseTabButtonFace({
         style={styles.addButtonGloss}
       />
       <View
-        pointerEvents="none"
         style={[
           styles.addButtonColorBoost,
           {
+            pointerEvents: 'none',
             opacity: buttonColorBoostOpacity,
           },
         ]}
@@ -65,10 +65,10 @@ export function AddExpenseTabButtonFace({
         />
       </View>
       <View
-        pointerEvents="none"
         style={[
           styles.addButtonShineBoost,
           {
+            pointerEvents: 'none',
             opacity: buttonShineBoostOpacity,
           },
         ]}

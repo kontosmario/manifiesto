@@ -45,10 +45,10 @@ function TabIconFrame({
     <View style={styles.iconSlot}>
       {/* Signature brand dot floating above the pill on the active tab */}
       <Animated.View
-        pointerEvents="none"
         style={[
           styles.signatureDot,
           {
+            pointerEvents: 'none',
             backgroundColor: brand.bright,
             opacity: pillOpacity,
             transform: [
@@ -68,11 +68,11 @@ function TabIconFrame({
       >
         {/* Branded pill — fades in when active, sits flat (no gloss) for a confident look */}
         <Animated.View
-          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             styles.pillShape,
             {
+              pointerEvents: 'none',
               backgroundColor: pillBackground,
               opacity: pillOpacity,
             },

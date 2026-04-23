@@ -141,7 +141,7 @@ export function AmbientBackdrop({ variant }: { variant: AmbientBackdropVariant }
   }
 
   return (
-    <View pointerEvents="none" style={styles.backdrop}>
+    <View style={[styles.backdrop, { pointerEvents: 'none' }]}>
       {variantGlows[variant].map((glow, index) => (
         <View
           key={`${variant}-${index}`}

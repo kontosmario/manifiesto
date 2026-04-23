@@ -102,7 +102,7 @@ export function DailyBudgetRing({
           trackColor={palette.trackColor}
         />
 
-        <View style={styles.centerValue} pointerEvents="none">
+        <View style={[styles.centerValue, { pointerEvents: 'none' }]}>
           <Text style={[styles.centerLabel, compact ? styles.centerLabelCompact : null, { color: theme.colors.textMuted }]}>
             {centerLabel}
           </Text>

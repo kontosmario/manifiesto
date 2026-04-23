@@ -29,10 +29,10 @@ export function LoginHero({
           <Text style={styles.eyebrow}>FINANZAS PARA TODOS</Text>
         </View>
         <View
-          pointerEvents="none"
           style={[
             styles.visualFrame,
             {
+              pointerEvents: 'none',
               width: visualSize,
               height: visualSize,
               transform: [{ translateX: visualOffsetX }, { translateY: visualOffsetY }],

@@ -137,10 +137,10 @@ export function IconButton({
       </Animated.View>
       {showBadge ? (
         <View
-          pointerEvents="none"
           style={[
             styles.badge,
             {
+              pointerEvents: 'none',
               backgroundColor: badgeColor ?? theme.colors.danger,
               borderColor: resolvedBackgroundColor,
               height: badgeSize,

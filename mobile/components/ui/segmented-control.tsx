@@ -80,10 +80,9 @@ export function SegmentedControl<T extends string>({
         style={[
           styles.pill,
           buildElevationStyle(theme, 'segmentedActive'),
-          { backgroundColor: theme.colors.surface },
+          { backgroundColor: theme.colors.surface, pointerEvents: 'none' },
           pillStyle,
         ]}
-        pointerEvents="none"
       />
       {options.map((option, index) => {
         const isActive = option.value === value

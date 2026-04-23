@@ -105,10 +105,10 @@ export function LoginScreen() {
                   ]}
                 >
                   <Animated.View
-                    pointerEvents="none"
                     style={[
                       styles.heroWrap,
                       {
+                        pointerEvents: 'none',
                         opacity: heroOpacity,
                         transform: [{ translateY: heroTranslateY }, { scale: heroScale }],
                       },
