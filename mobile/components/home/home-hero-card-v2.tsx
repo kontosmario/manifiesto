@@ -80,7 +80,7 @@ export function HomeHeroCardV2({
             <HeroSparkline
               data={sparkline}
               width={320}
-              height={58}
+              height={44}
               color={theme.colors.heroAccent}
               fillColor={theme.colors.heroAccent}
               delayMs={400}
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
     padding: 18,
-    paddingBottom: 18,
+    paddingBottom: 0,
     overflow: 'hidden',
     borderWidth: 1,
   },
@@ -126,13 +126,13 @@ const styles = StyleSheet.create({
   topLabel: { fontSize: 11, letterSpacing: 1.8, fontWeight: '800' },
   datePill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   datePillText: { fontSize: 10, fontWeight: '600' },
-  amount: { fontSize: 48, fontWeight: '800', letterSpacing: -2.2, marginTop: 10, lineHeight: 50 },
-  marginRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 },
-  marginText: { fontSize: 13 },
-  marginValue: { fontSize: 13, fontWeight: '800' },
-  deltaPill: { paddingHorizontal: 9, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
-  deltaText: { fontSize: 11, fontWeight: '800' },
-  sparkWrap: { marginTop: 12, marginLeft: -4 },
-  trio: { marginTop: 12, paddingTop: 10, flexDirection: 'row', borderTopWidth: 1 },
+  amount: { fontSize: 40, fontWeight: '800', letterSpacing: -1.8, marginTop: 4, lineHeight: 42 },
+  marginRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 },
+  marginText: { fontSize: 12 },
+  marginValue: { fontSize: 12, fontWeight: '800' },
+  deltaPill: { paddingHorizontal: 8, paddingVertical: 1, borderRadius: 999, borderWidth: 1 },
+  deltaText: { fontSize: 10, fontWeight: '800' },
+  sparkWrap: { marginTop: 6, marginLeft: -4 },
+  trio: { marginTop: 8, paddingTop: 8, flexDirection: 'row', borderTopWidth: 1 },
   trioDivider: { width: 1, alignSelf: 'stretch' },
 })

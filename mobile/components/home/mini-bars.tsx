@@ -11,7 +11,7 @@ interface MiniBarsProps {
   delayBase?: number
 }
 
-export function MiniBars({ values, color, barWidth = 6, totalHeight = 30, delayBase = 400 }: MiniBarsProps) {
+export function MiniBars({ values, color, barWidth = 5, totalHeight = 24, delayBase = 400 }: MiniBarsProps) {
   return (
     <View style={[styles.row, { height: totalHeight }]}>
       {values.map((v, i) => (

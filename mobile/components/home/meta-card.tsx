@@ -70,7 +70,7 @@ export function MetaCard({ goal, onPress }: MetaCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 20, padding: 16, paddingVertical: 14, overflow: 'hidden' },
+  card: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, overflow: 'hidden' },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   flex: { flex: 1 },
   label: { fontSize: 10, letterSpacing: 1.4, fontWeight: '700' },

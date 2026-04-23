@@ -98,16 +98,15 @@ export function ShortcutCard({
 
 // Fixed height for the chart slot — both cards reserve the same vertical
 // space for the chart regardless of whether it renders MiniBars (tall) or
-// PagoDots (short), so the two cards line up visually. The tallest chart
-// in use (MiniBars at 30px) drives this value.
-const CHART_SLOT_HEIGHT = 32
+// PagoDots (short), so the two cards line up visually.
+const CHART_SLOT_HEIGHT = 26
 
 const styles = StyleSheet.create({
   flex: { flex: 1, alignSelf: 'stretch' },
   card: {
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
     flex: 1,
   },
@@ -117,15 +116,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   label: { fontSize: 10, letterSpacing: 1.4, fontWeight: '700' },
-  value: { fontSize: 24, fontWeight: '800', marginTop: 6, letterSpacing: -0.6 },
-  sub: { fontSize: 11.5, marginTop: 2 },
+  value: { fontSize: 22, fontWeight: '800', marginTop: 4, letterSpacing: -0.5 },
+  sub: { fontSize: 11, marginTop: 1 },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     marginTop: 'auto',
-    paddingTop: 14,
-    minHeight: CHART_SLOT_HEIGHT + 14,
+    paddingTop: 8,
+    minHeight: CHART_SLOT_HEIGHT + 8,
   },
   trendSlot: { flexShrink: 1, justifyContent: 'flex-end' },
   chartSlot: {

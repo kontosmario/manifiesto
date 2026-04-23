@@ -39,9 +39,9 @@ export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount
 }
 
 const styles = StyleSheet.create({
-  row: { borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1 },
+  row: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1 },
   iconWrap: { position: 'relative' },
-  iconTile: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconTile: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 18 },
   flex: { flex: 1 },
   title: { fontSize: 14, fontWeight: '700' },
