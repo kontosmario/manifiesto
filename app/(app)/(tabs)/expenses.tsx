@@ -4,7 +4,7 @@ import { ExpensesScreen } from '@/screens/home/expenses-screen'
 export default function ExpensesRoute() {
   return (
     <RequireAuth>
-      {({ familyId }) => <ExpensesScreen familyId={familyId} />}
+      {({ familyId, userId }) => <ExpensesScreen familyId={familyId} userId={userId} />}
     </RequireAuth>
   )
 }

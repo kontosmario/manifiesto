@@ -5,13 +5,24 @@ export interface FinanceStoragePayload {
   daily_budget_buffer_value: number
   daily_budget_checkin_hour: number
   daily_budget_nudges_enabled: boolean
-  essential_monthly_cost: number
   monthly_income: number
   savings_goal: number
   savings_goal_percent: number
   usd_exchange_rate: number
   salary_payment_day: number
   last_salary_confirmed_at: string | null
+  /**
+   * Per-cycle override: amount the user reports they actually have
+   * available at cycle start. NULL when the user kept the default
+   * monthly_income for this cycle.
+   */
+  current_cycle_starting_balance: number | null
+  /**
+   * The pay-cycle start date the override applies to (YYYY-MM-DD).
+   * When the runtime computes a different cycle start, the override
+   * is treated as stale and the user is re-prompted.
+   */
+  current_cycle_anchor: string | null
 }
 
 export interface FamilyFinance extends FinanceStoragePayload {
@@ -23,13 +34,14 @@ export interface UpsertFamilyFinanceInput {
   dailyBudgetBufferValue: number
   dailyBudgetCheckinHour: number
   dailyBudgetNudgesEnabled: boolean
-  essentialMonthlyCost: number
   monthlyIncome: number
   savingsGoal: number
   savingsGoalPercent: number
   usdExchangeRate: number
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
+  currentCycleStartingBalance: number | null
+  currentCycleAnchor: string | null
 }
 
 export interface FamilyFinanceInputSnapshot {
@@ -37,13 +49,14 @@ export interface FamilyFinanceInputSnapshot {
   dailyBudgetBufferValue: number
   dailyBudgetCheckinHour: number
   dailyBudgetNudgesEnabled: boolean
-  essentialMonthlyCost: number
   monthlyIncome: number
   savingsGoal: number
   savingsGoalPercent: number
   usdExchangeRate: number
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
+  currentCycleStartingBalance: number | null
+  currentCycleAnchor: string | null
 }
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
@@ -111,13 +124,14 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     daily_budget_buffer_value: 0,
     daily_budget_checkin_hour: DEFAULT_DAILY_BUDGET_CHECKIN_HOUR,
     daily_budget_nudges_enabled: true,
-    essential_monthly_cost: 0,
     monthly_income: 0,
     savings_goal: 0,
     savings_goal_percent: DEFAULT_SAVINGS_GOAL_PERCENT,
     usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
     salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
     last_salary_confirmed_at: null,
+    current_cycle_starting_balance: null,
+    current_cycle_anchor: null,
   }
 }
 
@@ -127,9 +141,6 @@ export function normalizeFinancePayload(
   const base = defaultFinanceValues()
   const monthlyIncome = Number(payload?.monthly_income ?? 0)
   const savingsGoal = Number(payload?.savings_goal ?? 0)
-  const essentialMonthlyCost = Number(
-    payload?.essential_monthly_cost ?? base.essential_monthly_cost,
-  )
   const usdExchangeRate = Number(payload?.usd_exchange_rate ?? base.usd_exchange_rate)
   const salaryPaymentDay = Number(payload?.salary_payment_day ?? base.salary_payment_day)
   const checkinHour = Number(payload?.daily_budget_checkin_hour ?? base.daily_budget_checkin_hour)
@@ -155,10 +166,6 @@ export function normalizeFinancePayload(
         ? checkinHour
         : base.daily_budget_checkin_hour,
     daily_budget_nudges_enabled: payload?.daily_budget_nudges_enabled !== false,
-    essential_monthly_cost:
-      Number.isFinite(essentialMonthlyCost) && essentialMonthlyCost >= 0
-        ? essentialMonthlyCost
-        : base.essential_monthly_cost,
     monthly_income: monthlyIncome,
     savings_goal: deriveSavingsGoalAmount(monthlyIncome, savingsGoalPercent),
     savings_goal_percent: savingsGoalPercent,
@@ -173,6 +180,23 @@ export function normalizeFinancePayload(
     last_salary_confirmed_at:
       typeof payload?.last_salary_confirmed_at === 'string' && payload.last_salary_confirmed_at.trim() !== ''
         ? payload.last_salary_confirmed_at
+        : null,
+    // PostgREST returns Postgres `numeric` columns as strings by
+    // default (to avoid float precision loss), so coerce explicitly
+    // — same pattern used above for `monthly_income` /
+    // `savings_goal`. Without `Number(...)`, a literal `typeof
+    // === 'number'` check rejects every saved value and the override
+    // is silently dropped, making the UI fall back to the recurring
+    // salary as if the user had never adjusted.
+    current_cycle_starting_balance: (() => {
+      const raw = payload?.current_cycle_starting_balance
+      if (raw == null) return null
+      const parsed = Number(raw)
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+    })(),
+    current_cycle_anchor:
+      typeof payload?.current_cycle_anchor === 'string' && payload.current_cycle_anchor.trim() !== ''
+        ? payload.current_cycle_anchor
         : null,
   }
 }
@@ -208,7 +232,6 @@ export function isMissingTableError(error: PostgrestError): boolean {
 export function isMissingFinanceColumnError(
   error: PostgrestError,
   columnName:
-    | 'essential_monthly_cost'
     | 'usd_exchange_rate'
     | 'salary_payment_day'
     | 'last_salary_confirmed_at'
@@ -216,7 +239,9 @@ export function isMissingFinanceColumnError(
     | 'daily_budget_buffer_value'
     | 'daily_budget_nudges_enabled'
     | 'daily_budget_checkin_hour'
-    | 'savings_goal_percent',
+    | 'savings_goal_percent'
+    | 'current_cycle_starting_balance'
+    | 'current_cycle_anchor',
 ) {
   return isMissingColumnError(error, columnName)
 }
@@ -229,13 +254,14 @@ export function financeInputToStoragePayload(
     daily_budget_buffer_value: input.dailyBudgetBufferValue,
     daily_budget_checkin_hour: input.dailyBudgetCheckinHour,
     daily_budget_nudges_enabled: input.dailyBudgetNudgesEnabled,
-    essential_monthly_cost: input.essentialMonthlyCost,
     monthly_income: input.monthlyIncome,
     savings_goal: deriveSavingsGoalAmount(input.monthlyIncome, input.savingsGoalPercent),
     savings_goal_percent: clampPercent(input.savingsGoalPercent, MAX_SAVINGS_GOAL_PERCENT),
     usd_exchange_rate: input.usdExchangeRate,
     salary_payment_day: input.salaryPaymentDay,
     last_salary_confirmed_at: input.lastSalaryConfirmedAt,
+    current_cycle_starting_balance: input.currentCycleStartingBalance,
+    current_cycle_anchor: input.currentCycleAnchor,
   }
 }
 
@@ -244,7 +270,6 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     !Number.isFinite(input.monthlyIncome) ||
     !Number.isFinite(input.savingsGoal) ||
     !Number.isFinite(input.savingsGoalPercent) ||
-    !Number.isFinite(input.essentialMonthlyCost) ||
     !Number.isFinite(input.usdExchangeRate) ||
     !Number.isFinite(input.dailyBudgetBufferValue) ||
     !Number.isInteger(input.dailyBudgetCheckinHour) ||
@@ -253,7 +278,6 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     input.savingsGoal < 0 ||
     input.savingsGoalPercent < 0 ||
     input.savingsGoalPercent > MAX_SAVINGS_GOAL_PERCENT ||
-    input.essentialMonthlyCost < 0 ||
     input.usdExchangeRate <= 0 ||
     input.dailyBudgetBufferValue < 0 ||
     !['none', 'fixed', 'percent'].includes(input.dailyBudgetBufferMode) ||
@@ -276,6 +300,22 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     throw new Error('La fecha de confirmacion de cobro es invalida.')
   }
 
+  if (
+    input.currentCycleStartingBalance !== null &&
+    (!Number.isFinite(input.currentCycleStartingBalance) ||
+      input.currentCycleStartingBalance < 0)
+  ) {
+    throw new Error('El disponible de este ciclo es invalido.')
+  }
+
+  if (
+    input.currentCycleAnchor !== null &&
+    (typeof input.currentCycleAnchor !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(input.currentCycleAnchor))
+  ) {
+    throw new Error('La fecha de inicio de ciclo es invalida.')
+  }
+
   return financeInputToStoragePayload(input)
 }
 
@@ -287,13 +327,14 @@ export function buildFamilyFinanceInput(
     dailyBudgetBufferValue: snapshot.dailyBudgetBufferValue,
     dailyBudgetCheckinHour: snapshot.dailyBudgetCheckinHour,
     dailyBudgetNudgesEnabled: snapshot.dailyBudgetNudgesEnabled,
-    essentialMonthlyCost: snapshot.essentialMonthlyCost,
     monthlyIncome: snapshot.monthlyIncome,
     savingsGoal: deriveSavingsGoalAmount(snapshot.monthlyIncome, snapshot.savingsGoalPercent),
     savingsGoalPercent: snapshot.savingsGoalPercent,
     usdExchangeRate: snapshot.usdExchangeRate,
     salaryPaymentDay: snapshot.salaryPaymentDay,
     lastSalaryConfirmedAt: snapshot.lastSalaryConfirmedAt,
+    currentCycleStartingBalance: snapshot.currentCycleStartingBalance,
+    currentCycleAnchor: snapshot.currentCycleAnchor,
   }
 }
 
@@ -304,5 +345,33 @@ export function buildSalaryConfirmationInput(
   return buildFamilyFinanceInput({
     ...snapshot,
     lastSalaryConfirmedAt: confirmedAt.toISOString(),
+  })
+}
+
+/**
+ * Build the upsert payload for the cycle "starting balance" prompt.
+ *
+ * Three call shapes encode the tri-state per cycle:
+ *   • `cycleStart` + `startingBalance: number` → user adjusted; the
+ *      engine will use this amount and prorate fixed/savings to
+ *      remaining days.
+ *   • `cycleStart` + `startingBalance: null` → user kept the default
+ *      salary; engine continues with the original formula. The anchor
+ *      is still saved so we don't re-prompt this cycle.
+ *
+ * `lastSalaryConfirmedAt` is also stamped — the prompt doubles as the
+ * existing "ya cobré" confirmation.
+ */
+export function buildCycleStartingBalanceInput(
+  snapshot: FamilyFinanceInputSnapshot,
+  cycleStart: string,
+  startingBalance: number | null,
+  confirmedAt = new Date(),
+): UpsertFamilyFinanceInput {
+  return buildFamilyFinanceInput({
+    ...snapshot,
+    lastSalaryConfirmedAt: confirmedAt.toISOString(),
+    currentCycleAnchor: cycleStart,
+    currentCycleStartingBalance: startingBalance,
   })
 }

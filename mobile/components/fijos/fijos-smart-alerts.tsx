@@ -1,5 +1,14 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
+import type { FijoHikeAlert } from '@/features/fijos/fijos-aggregates.model'
+import {
+  dismissHike,
+  isHikeDismissed,
+  useDismissedHikes,
+} from '@/features/fijos/use-hike-dismiss-store'
+import { triggerHaptic } from '@/lib/haptics'
+import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SmartAlert {
@@ -10,36 +19,66 @@ interface SmartAlert {
   action?: string
   tint: string
   onPress?: () => void
+  /** When provided, renders a small "Entendido" (✓) button that
+   *  calls this callback — used for acknowledgeable alerts (hikes). */
+  onDismiss?: () => void
 }
 
 interface FijosSmartAlertsProps {
   zombieCount: number
+  hikes: FijoHikeAlert[]
   onOpenZombies?: () => void
-  // Future: hike detection can feed into this too. For now we show
-  // zombies only since that's all we can compute from the schema.
+  onOpenHike?: (fixedExpenseId: string) => void
 }
 
 /**
  * Horizontal-scrolling rail of smart alert cards — zombie
- * subscriptions, upcoming hikes, stale payments. Each card has a
- * colored icon tile + title + body + action pill.
+ * subscriptions + detected price hikes. Each card has a colored
+ * icon tile + title + body + action pill.
  */
-export function FijosSmartAlerts({ zombieCount, onOpenZombies }: FijosSmartAlertsProps) {
+export function FijosSmartAlerts({
+  zombieCount,
+  hikes,
+  onOpenZombies,
+  onOpenHike,
+}: FijosSmartAlertsProps) {
+  const dismissedHikes = useDismissedHikes()
   const alerts: SmartAlert[] = []
   if (zombieCount > 0) {
     alerts.push({
       id: 'zombies',
       icon: '🧟',
       title: `${zombieCount} ${zombieCount === 1 ? 'suscripción zombi' : 'suscripciones zombi'}`,
-      body: 'Barato + sin uso. Revisalas.',
+      body: 'Sin uso en 60 días. Podés revisar.',
       action: 'Ver',
       tint: '#C9A6E0',
       onPress: onOpenZombies,
     })
   }
+  // Hide hikes the user already acknowledged at the current price.
+  // If the price changes again later, the stored `dismissedAtPrice`
+  // won't match the new `currentPrice` and the alert re-surfaces.
+  const visibleHikes = hikes.filter(
+    (h) => !isHikeDismissed(h.fixedExpenseId, h.currentPrice, dismissedHikes),
+  )
+  for (const h of visibleHikes) {
+    alerts.push({
+      id: `hike-${h.fixedExpenseId}`,
+      icon: '📈',
+      title: `${h.name}`,
+      body: `Subió ${h.deltaPct}% vs. ${formatMoney(h.previousPrice)}`,
+      action: 'Ver',
+      tint: h.category?.color ?? '#E8976A',
+      onPress: onOpenHike ? () => onOpenHike(h.fixedExpenseId) : undefined,
+      onDismiss: () => {
+        void triggerHaptic('light')
+        void dismissHike(h.fixedExpenseId, h.currentPrice)
+      },
+    })
+  }
   if (alerts.length === 0) return null
   return (
-    <RiseView delay={220}>
+    <RiseView delay={80}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -77,16 +116,38 @@ function AlertCard({ alert, index }: { alert: SmartAlert; index: number }) {
           {alert.body}
         </Text>
       </View>
-      {alert.action ? (
-        <Pressable
-          onPress={alert.onPress}
-          style={[styles.actionBtn, { borderColor: theme.colors.line }]}
-          accessibilityRole="button"
-          accessibilityLabel={alert.action}
-        >
-          <Text style={[styles.actionText, { color: theme.colors.text }]}>{alert.action}</Text>
-        </Pressable>
-      ) : null}
+      <View style={styles.actions}>
+        {alert.action ? (
+          <Pressable
+            onPress={alert.onPress}
+            style={[styles.actionBtn, { borderColor: theme.colors.line }]}
+            accessibilityRole="button"
+            accessibilityLabel={alert.action}
+          >
+            <Text style={[styles.actionText, { color: theme.colors.text }]}>{alert.action}</Text>
+          </Pressable>
+        ) : null}
+        {alert.onDismiss ? (
+          <Pressable
+            onPress={alert.onDismiss}
+            style={[styles.dismissBtn, { borderColor: theme.colors.line }]}
+            accessibilityRole="button"
+            accessibilityLabel="Ya lo vi"
+            accessibilityHint="Oculta este aviso hasta que cambie el precio"
+            hitSlop={8}
+          >
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M5 12l4 4 10-10"
+                stroke={theme.colors.text}
+                strokeWidth={2.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -126,6 +187,11 @@ const styles = StyleSheet.create({
   body: { flex: 1, minWidth: 0 },
   title: { fontSize: 13, fontWeight: '700', lineHeight: 16 },
   bodyText: { fontSize: 11, marginTop: 2 },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   actionBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -133,4 +199,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionText: { fontSize: 11, fontWeight: '700' },
+  dismissBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

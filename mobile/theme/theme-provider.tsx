@@ -10,7 +10,11 @@ import {
 import { useColorScheme } from 'react-native'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { buildTheme, type AppTheme, type ThemePreference } from '@/theme/palette'
-import { resolveCategoryHue, type CategoryHueVariant } from '@/theme/category-hues'
+import {
+  resolveCategoryHue,
+  resolveCategoryHueByName,
+  type CategoryHueVariant,
+} from '@/theme/category-hues'
 
 const THEME_PREFERENCE_KEY = 'manifiesto:theme-preference'
 
@@ -85,5 +89,17 @@ export function useAppTheme() {
 export function useCategoryHue(categoryKeyOrId: string): CategoryHueVariant {
   const { theme } = useAppTheme()
   const hue = resolveCategoryHue(categoryKeyOrId)
+  return theme.isDark ? hue.dark : hue.light
+}
+
+/**
+ * Like `useCategoryHue` but takes the human-readable category name and
+ * always prefers semantic keyword matching ("Comida" → durazno,
+ * "Restaurante" → coral, etc.). Use from surfaces that render with the
+ * name in hand so each category reads as its own color.
+ */
+export function useCategoryHueByName(name: string): CategoryHueVariant {
+  const { theme } = useAppTheme()
+  const hue = resolveCategoryHueByName(name)
   return theme.isDark ? hue.dark : hue.light
 }

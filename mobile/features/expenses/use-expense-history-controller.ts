@@ -47,7 +47,14 @@ export function useExpenseHistoryController(familyId: string, theme: AppTheme) {
     Boolean(selectedCategoryId) ||
     searchQuery.trim().length > 0
   const expensesQuery = useExpenses(familyId, selectedCategoryId || undefined)
-  const expenses = expensesQuery.data ?? EMPTY_EXPENSES
+  // Expense history shows only MANUAL gastos. Commitment payments
+  // (fijos auto-marked as paid) live exclusively on the Fijos screen
+  // — surfacing them in the gastos history would mix two semantically
+  // different streams and break the search/filter UX.
+  const expenses = useMemo(
+    () => (expensesQuery.data ?? EMPTY_EXPENSES).filter((e) => !e.commitment_id),
+    [expensesQuery.data],
+  )
   const updateExpenseMutation = useUpdateExpense(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
   const normalizedSearch = searchQuery.trim().toLowerCase()

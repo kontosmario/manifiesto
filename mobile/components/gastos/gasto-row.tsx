@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { formatMoney } from '@/utils/money'
@@ -13,7 +12,6 @@ export interface GastoRowProps {
   whoColor: string
   amount: number // always negative here (expense)
   time?: string // HH:MM
-  delay?: number
 }
 
 /**
@@ -29,58 +27,55 @@ export function GastoRow({
   whoColor,
   amount,
   time,
-  delay = 0,
 }: GastoRowProps) {
   const { theme } = useAppTheme()
   const icon = pickIconForCategory(categoryName)
   return (
-    <SlideInView delay={delay}>
-      <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
-        <View style={styles.iconWrap}>
+    <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
+      <View style={styles.iconWrap}>
+        <View
+          style={[
+            styles.iconTile,
+            {
+              backgroundColor: hexAlpha(categoryColor, 0.14),
+              borderColor: hexAlpha(categoryColor, 0.22),
+            },
+          ]}
+        >
+          <Text style={styles.iconText}>{icon}</Text>
+        </View>
+        <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
+      </View>
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <View style={styles.subRow}>
           <View
             style={[
-              styles.iconTile,
+              styles.catChip,
               {
                 backgroundColor: hexAlpha(categoryColor, 0.14),
                 borderColor: hexAlpha(categoryColor, 0.22),
               },
             ]}
           >
-            <Text style={styles.iconText}>{icon}</Text>
-          </View>
-          <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
-        </View>
-        <View style={styles.body}>
-          <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
-          <View style={styles.subRow}>
-            <View
-              style={[
-                styles.catChip,
-                {
-                  backgroundColor: hexAlpha(categoryColor, 0.14),
-                  borderColor: hexAlpha(categoryColor, 0.22),
-                },
-              ]}
-            >
-              <Text style={[styles.catChipText, { color: categoryColor }]} numberOfLines={1}>
-                {categoryName}
-              </Text>
-            </View>
-            <Text style={[styles.subMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
-              · {whoName}
-              {time ? ` · ${time}` : null}
+            <Text style={[styles.catChipText, { color: categoryColor }]} numberOfLines={1}>
+              {categoryName}
             </Text>
           </View>
-        </View>
-        <View style={styles.amountBlock}>
-          <Text style={[styles.amount, { color: theme.colors.text }]}>
-            -{formatMoney(Math.abs(amount))}
+          <Text style={[styles.subMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
+            · {whoName}
+            {time ? ` · ${time}` : null}
           </Text>
         </View>
       </View>
-    </SlideInView>
+      <View style={styles.amountBlock}>
+        <Text style={[styles.amount, { color: theme.colors.text }]}>
+          -{formatMoney(Math.abs(amount))}
+        </Text>
+      </View>
+    </View>
   )
 }
 

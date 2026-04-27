@@ -4,6 +4,7 @@ import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
+import { useMyProfile } from '@/features/profile/use-profile'
 import { getIsAuthTransitionSplashVisible, hideAuthTransitionSplash } from '@/lib/auth-transition-splash'
 
 interface RequireAuthProps {
@@ -20,7 +21,11 @@ export function RequireAuth({ children }: RequireAuthProps) {
   const userId = session?.user.id
   const familyQuery = useFamily(userId)
   const family = familyQuery.data ?? null
-  const isLoading = sessionQuery.isLoading || (Boolean(userId) && familyQuery.isLoading)
+  const profileQuery = useMyProfile(userId)
+  const isLoading =
+    sessionQuery.isLoading ||
+    (Boolean(userId) && familyQuery.isLoading) ||
+    (Boolean(userId) && profileQuery.isLoading)
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
@@ -38,7 +43,14 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }
 
   if (!session || !userId) {
-    return <Redirect href="/(auth)/login" />
+    return <Redirect href="/(auth)/welcome" />
+  }
+
+  // First-login onboarding wizard. Once the user finishes, the mutation
+  // flips `onboarding_completed_at` and we fall through to the normal
+  // family/home flow.
+  if (profileQuery.data && !profileQuery.data.onboarding_completed_at) {
+    return <Redirect href="/(app)/onboarding" />
   }
 
   if (!family) {

@@ -38,8 +38,10 @@ export function useDailyBudgetNudges() {
       payCycle: dashboard.payCycle,
       savingsGoal: dashboard.savingsGoal,
       today: dashboard.todayDate,
+      cycleStartingBalance: dashboard.cycleStartingBalanceOverride,
     })
   }, [
+    dashboard.cycleStartingBalanceOverride,
     dashboard.dailyBudgetBufferMode,
     dashboard.dailyBudgetBufferValue,
     dashboard.fixedExpensesMonthlyTotal,

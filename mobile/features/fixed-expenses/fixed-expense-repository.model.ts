@@ -13,6 +13,7 @@ interface RawFixedExpense {
   amount: number | string
   category_id?: string | null
   created_at: string
+  day_of_month?: number | string | null
   ends_on?: string | null
   family_id: string
   frequency?: string | null
@@ -25,6 +26,7 @@ interface RawFixedExpense {
   name: string
   next_due_on?: string | null
   notes?: string | null
+  notify_days_before?: number | string | null
   remaining_balance?: number | string | null
   status?: string | null
   updated_at: string
@@ -36,6 +38,7 @@ const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])
 export interface UpsertFixedExpenseInput {
   amount: number
   categoryId: string
+  dayOfMonth: number
   endsOn?: string | null
   frequency: FixedExpenseFrequency
   installmentsPaid?: number
@@ -45,6 +48,7 @@ export interface UpsertFixedExpenseInput {
   name: string
   nextDueOn: string
   notes?: string | null
+  notifyDaysBefore?: number | null
   remainingBalance?: number | null
   status?: FixedExpenseStatus
 }
@@ -76,12 +80,14 @@ export function isMissingCommitmentColumnsError(error: PostgrestError): boolean 
       'frequency',
       'category_id',
       'next_due_on',
+      'day_of_month',
       'ends_on',
       'installments_total',
       'installments_paid',
       'remaining_balance',
       'lender_name',
       'notes',
+      'notify_days_before',
       'last_paid_at',
     ].some((columnName) => text.includes(columnName))
   )
@@ -101,11 +107,18 @@ function parseFrequency(value: string | null | undefined): FixedExpenseFrequency
 
 export function asFixedExpense(row: RawFixedExpense): FixedExpense {
   const fallbackDueDate = new Date().toISOString().slice(0, 10)
+  const rawDay = row.day_of_month == null ? NaN : Number(row.day_of_month)
+  const fallbackDay =
+    typeof row.next_due_on === 'string' && row.next_due_on.trim() !== ''
+      ? new Date(row.next_due_on).getUTCDate()
+      : 1
+  const day_of_month = Number.isFinite(rawDay) && rawDay >= 1 && rawDay <= 31 ? Math.floor(rawDay) : fallbackDay
 
   return {
     amount: Number(row.amount ?? 0),
     category_id: typeof row.category_id === 'string' && row.category_id.trim() !== '' ? row.category_id : null,
     created_at: row.created_at,
+    day_of_month,
     ends_on: typeof row.ends_on === 'string' && row.ends_on.trim() !== '' ? row.ends_on : null,
     family_id: row.family_id,
     frequency: parseFrequency(row.frequency),
@@ -124,6 +137,10 @@ export function asFixedExpense(row: RawFixedExpense): FixedExpense {
         ? row.next_due_on
         : fallbackDueDate,
     notes: typeof row.notes === 'string' && row.notes.trim() !== '' ? row.notes : null,
+    notify_days_before:
+      row.notify_days_before == null
+        ? null
+        : Math.max(0, Math.min(30, Math.floor(Number(row.notify_days_before)))),
     remaining_balance:
       row.remaining_balance == null ? null : Math.max(0, Number(row.remaining_balance)),
     status: parseStatus(row.status),
@@ -193,6 +210,7 @@ export function buildFixedExpensePayload({
   allowZeroDebtBalance = false,
   amount,
   categoryId,
+  dayOfMonth,
   endsOn = null,
   frequency,
   installmentsPaid = 0,
@@ -202,6 +220,7 @@ export function buildFixedExpensePayload({
   name,
   nextDueOn,
   notes = null,
+  notifyDaysBefore = null,
   remainingBalance = null,
   status = 'active',
 }: UpsertFixedExpenseInput & { allowZeroDebtBalance?: boolean }) {
@@ -215,6 +234,10 @@ export function buildFixedExpensePayload({
     nextDueOn,
     status,
   })
+
+  if (!Number.isFinite(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+    throw new Error('El día del mes debe estar entre 1 y 31.')
+  }
 
   if (kind === 'installment' && (!installmentsTotal || installmentsTotal <= 0)) {
     throw new Error('Defini la cantidad total de cuotas.')
@@ -232,6 +255,7 @@ export function buildFixedExpensePayload({
   return {
     amount,
     category_id: categoryId.trim(),
+    day_of_month: Math.floor(dayOfMonth),
     ends_on: endsOn,
     frequency,
     installments_paid: Math.max(0, installmentsPaid),
@@ -241,6 +265,10 @@ export function buildFixedExpensePayload({
     name: normalizedName,
     next_due_on: nextDueOn,
     notes: notes?.trim() ? notes.trim() : null,
+    notify_days_before:
+      notifyDaysBefore == null
+        ? null
+        : Math.max(0, Math.min(30, Math.floor(notifyDaysBefore))),
     remaining_balance: kind === 'debt' ? Number(remainingBalance) : null,
     status,
   }

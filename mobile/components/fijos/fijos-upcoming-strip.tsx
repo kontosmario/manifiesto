@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
@@ -19,10 +19,10 @@ export function FijosUpcomingStrip({
 }: FijosUpcomingStripProps) {
   const { theme } = useAppTheme()
   if (upcoming.length === 0) return null
-  const maxDays = Math.max(...upcoming.map((u) => u.dayOfMonth - todayDay))
+  const maxDays = Math.max(...upcoming.map((u) => u.daysUntilDue))
 
   return (
-    <RiseView delay={280}>
+    <RiseView delay={100}>
       <View style={styles.header}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>PRÓXIMOS A VENCER</Text>
         <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
@@ -36,7 +36,7 @@ export function FijosUpcomingStrip({
             item={item}
             todayDay={todayDay}
             category={item.category_id ? categoriesById.get(item.category_id) : undefined}
-            delay={320 + i * 60}
+            delay={140 + i * 20}
           />
         ))}
       </View>
@@ -56,19 +56,29 @@ function UpcomingCard({
   delay: number
 }) {
   const { theme } = useAppTheme()
-  const diffDays = Math.max(0, item.dayOfMonth - todayDay)
+  void todayDay
+  void delay
+  const diffDays = Math.max(0, item.daysUntilDue)
   const urgent = diffDays <= 2
   const label = diffDays === 0 ? 'HOY' : diffDays === 1 ? 'MAÑANA' : `EN ${diffDays}D`
   const catColor = category?.color ?? theme.colors.peach
-  const catEmoji = pickIconForCategory(category?.name ?? '')
-  void delay
+  const catEmoji = pickIconForFixedExpenseCategory(category?.name ?? '')
+
+  // V1 Cuaderno palette — urgent cards get a peach wash in light mode
+  // and a deep warm brown in dark mode, so the strip reads the same in
+  // either theme. Non-urgent cards fall back to the surface tokens.
+  const urgentGradient: readonly [string, string] = theme.isDark
+    ? ['#4A201A', '#3A2A22']
+    : ['#FADFC8', '#F5C6B6']
+  const urgentBorder = theme.isDark ? '#E88A70' : '#F2B58A'
+  const urgentLabelColor = theme.isDark ? '#F2B58A' : '#A3452A'
 
   const content = (
     <>
       <Text
         style={[
           styles.daysLabel,
-          { color: urgent ? '#A3452A' : theme.colors.textMuted },
+          { color: urgent ? urgentLabelColor : theme.colors.textMuted },
         ]}
       >
         {label}
@@ -97,10 +107,10 @@ function UpcomingCard({
   if (urgent) {
     return (
       <LinearGradient
-        colors={['#FADFC8', '#F5C6B6'] as unknown as readonly [string, string, ...string[]]}
+        colors={urgentGradient as unknown as readonly [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.card, { borderColor: '#F2B58A' }]}
+        style={[styles.card, { borderColor: urgentBorder }]}
       >
         {content}
       </LinearGradient>

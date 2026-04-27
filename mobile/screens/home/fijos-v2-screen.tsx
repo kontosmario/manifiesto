@@ -1,18 +1,18 @@
 import { Alert, StyleSheet, View } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { FijosHeader } from '@/components/fijos/fijos-header'
-import { FijosCycleHero } from '@/components/fijos/fijos-cycle-hero'
+import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
 import { FijosSmartAlerts } from '@/components/fijos/fijos-smart-alerts'
 import { FijosUpcomingStrip } from '@/components/fijos/fijos-upcoming-strip'
 import { FijosTabs } from '@/components/fijos/fijos-tabs'
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
-import { useCategories } from '@/features/categories/use-categories'
+import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import {
   useDeleteFixedExpense,
   useRecordFixedExpensePayment,
@@ -33,7 +33,7 @@ interface FijosV2ScreenProps {
 export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const router = useRouter()
   const controller = useFijosController(familyId)
-  const categoriesQuery = useCategories(familyId)
+  const categoriesQuery = useFixedExpenseCategories(familyId)
   const categoriesById = useMemo(() => {
     const m = new Map<string, { id: string; name: string; color: string }>()
     for (const c of categoriesQuery.data ?? []) {
@@ -45,48 +45,57 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
   const deleteMutation = useDeleteFixedExpense(familyId)
 
-  const handlePressAdd = () => {
+  const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
     router.push('/(app)/add-fixed-expense')
-  }
+  }, [router])
 
-  const handleMarkPaid = (fixedExpenseId: string) => {
-    void triggerHaptic('success')
-    recordPaymentMutation.mutate(fixedExpenseId, {
-      onError: (error: unknown) => {
-        void triggerHaptic('error')
-        Alert.alert('No pudimos registrar el pago', getErrorMessage(error, errorMessages.server))
-      },
-    })
-  }
-
-  const handleEdit = (fixedExpenseId: string) => {
-    void triggerHaptic('light')
-    router.push({
-      pathname: '/(app)/add-fixed-expense',
-      params: { id: fixedExpenseId },
-    })
-  }
-
-  const handleDelete = (fixedExpenseId: string) => {
-    void triggerHaptic('warning')
-    Alert.alert('Eliminar fijo', '¿Seguro que querés eliminar este fijo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () => {
-          deleteMutation.mutate(fixedExpenseId, {
-            onError: (error: unknown) => {
-              void triggerHaptic('error')
-              Alert.alert('No pudimos eliminar', getErrorMessage(error, errorMessages.server))
-            },
-            onSuccess: () => void triggerHaptic('success'),
-          })
+  const handleMarkPaid = useCallback(
+    (fixedExpenseId: string) => {
+      void triggerHaptic('success')
+      recordPaymentMutation.mutate(fixedExpenseId, {
+        onError: (error: unknown) => {
+          void triggerHaptic('error')
+          Alert.alert('No pudimos registrar el pago', getErrorMessage(error, errorMessages.server))
         },
-      },
-    ])
-  }
+      })
+    },
+    [recordPaymentMutation],
+  )
+
+  const handleEdit = useCallback(
+    (fixedExpenseId: string) => {
+      void triggerHaptic('light')
+      router.push({
+        pathname: '/(app)/add-fixed-expense',
+        params: { id: fixedExpenseId },
+      })
+    },
+    [router],
+  )
+
+  const handleDelete = useCallback(
+    (fixedExpenseId: string) => {
+      void triggerHaptic('warning')
+      Alert.alert('Eliminar fijo', '¿Seguro que querés eliminar este fijo?', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            deleteMutation.mutate(fixedExpenseId, {
+              onError: (error: unknown) => {
+                void triggerHaptic('error')
+                Alert.alert('No pudimos eliminar', getErrorMessage(error, errorMessages.server))
+              },
+              onSuccess: () => void triggerHaptic('success'),
+            })
+          },
+        },
+      ])
+    },
+    [deleteMutation],
+  )
 
   if (controller.error && controller.allItems.length === 0 && !controller.isLoading) {
     return (
@@ -109,18 +118,25 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
           <FijosHeader onPressAdd={handlePressAdd} />
         </Animated.View>
         <Animated.View layout={sectionLayout}>
-          <FijosCycleHero
-            summary={controller.summary}
-            monthlyIncome={controller.monthlyIncome}
-            freeAfterFijos={controller.freeAfterFijos}
-            pctOfIncome={controller.pctOfIncome}
-            monthLabel={MONTH_ES[controller.today.getUTCMonth()]}
+          <FijosHeroCard
+            mes={controller.cycleLabel}
+            diasRestantes={controller.summary.daysRemaining}
+            totalFijos={controller.summary.total}
+            montoPagado={controller.summary.paidAmount}
+            cantidadPagados={controller.summary.paidItems.length}
+            cantidadPendientes={
+              controller.summary.pendingItems.length + controller.summary.overdueItems.length
+            }
+            dineroLibre={controller.freeAfterFijos}
+            porcentajeSueldo={controller.pctOfIncome}
           />
         </Animated.View>
         <Animated.View layout={sectionLayout}>
           <FijosSmartAlerts
             zombieCount={controller.summary.zombies.length}
+            hikes={controller.summary.hikes}
             onOpenZombies={() => controller.setTab('zombis')}
+            onOpenHike={handleEdit}
           />
         </Animated.View>
         <Animated.View layout={sectionLayout}>
@@ -146,9 +162,13 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
         <Animated.View layout={sectionLayout}>
           <FijoCategoryGroups
             groups={controller.groups}
+            todayDay={controller.summary.todayDay}
             onMarkPaid={handleMarkPaid}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            pendingFixedExpenseId={
+              deleteMutation.isPending ? (deleteMutation.variables ?? null) : null
+            }
           />
         </Animated.View>
         <View style={styles.bottomSpacer} />
@@ -157,23 +177,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   )
 }
 
-const MONTH_ES = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-]
-
 const styles = StyleSheet.create({
-  screenContent: { paddingTop: 0 },
+  screenContent: { paddingTop: 14 },
   stack: { gap: 10 },
   bottomSpacer: { height: 24 },
 })

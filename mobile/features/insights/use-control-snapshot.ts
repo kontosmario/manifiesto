@@ -43,8 +43,10 @@ export function useControlSnapshot(familyId: string) {
       payCycle: dashboard.payCycle,
       savingsGoal: dashboard.savingsGoal,
       today: dashboard.todayDate,
+      cycleStartingBalance: dashboard.cycleStartingBalanceOverride,
     })
   }, [
+    dashboard.cycleStartingBalanceOverride,
     dashboard.dailyBudgetBufferMode,
     dashboard.dailyBudgetBufferValue,
     dashboard.fixedExpensesMonthlyTotal,
@@ -77,7 +79,7 @@ export function useControlSnapshot(familyId: string) {
     variableExpenses,
   ])
 
-  const hasDailyBudgetBase = dashboard.monthlyIncome > 0
+  const hasDailyBudgetBase = dashboard.effectiveCycleIncome > 0
   const projectedCloseValue =
     expenseAnalytics?.projectedAvailableAtCycleEnd ?? dashboard.totalAvailable
   const heroState = useMemo(

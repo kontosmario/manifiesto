@@ -64,8 +64,6 @@ export function InsightsScreen({ familyId, canGoBack = false }: InsightsScreenPr
         dailyBudgetBufferValue: dashboard.dailyBudgetBufferValue,
         dailyBudgetCheckinHour: dashboard.dailyBudgetCheckinHour,
         dailyBudgetNudgesEnabled: dashboard.dailyBudgetNudgesEnabled,
-        essentialMonthlyCost:
-          dashboard.familyFinanceQuery.data?.essential_monthly_cost ?? 0,
         monthlyIncome: dashboard.monthlyIncome,
         savingsGoal: dashboard.savingsGoal,
         savingsGoalPercent:
@@ -73,6 +71,10 @@ export function InsightsScreen({ familyId, canGoBack = false }: InsightsScreenPr
         salaryPaymentDay: dashboard.salaryPaymentDay,
         usdExchangeRate: dashboard.usdExchangeRate,
         lastSalaryConfirmedAt: dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
+        currentCycleStartingBalance:
+          dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
+        currentCycleAnchor:
+          dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
       }),
       {
         onError: (error: unknown) => {

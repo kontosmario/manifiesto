@@ -7,6 +7,40 @@ export interface Profile {
   id: string
   display_name: string
   created_at: string
+  avatar_animal: string | null
+  onboarding_completed_at: string | null
+  /**
+   * IANA timezone the user is currently using on their device. Refreshed
+   * by `useTimezoneSync` on every authenticated session. The streak
+   * trigger reads this column to decide which day boundary an expense
+   * belongs to (UTC was wrong; per-user is precise). Optional in the
+   * type because the `home_snapshot` RPC seeds the cache with a smaller
+   * column set — the explicit `useMyProfile` fetch fills it in.
+   */
+  timezone?: string
+  /**
+   * `true` once the user has completed onboarding at least once.
+   * Set automatically by a SQL trigger when
+   * `onboarding_completed_at` transitions from null → timestamp.
+   * Never reset, even if `leave_current_family` clears the
+   * `onboarding_completed_at` gate. The UI uses this to distinguish
+   * brand-new users (false) from users re-entering onboarding after
+   * leaving a family (true).
+   *
+   * Optional in the type because the `home_snapshot` RPC seeds the
+   * cache with the original 5 profile columns. The first explicit
+   * `useMyProfile` fetch after mount populates this field.
+   */
+  previously_onboarded?: boolean
+  /**
+   * Set by `leave_current_family` for the surviving members when an
+   * owner tears the family down. The onboarding screen reads this
+   * to surface a tailored "tu hogar anterior fue cerrado por su
+   * dueño" message. Cleared on the next `bootstrap_family` /
+   * `join_family_by_code`, or when the user finishes onboarding
+   * again.
+   */
+  family_closed_by_owner_at?: string | null
 }
 
 export const profileQueryKey = (userId?: string) => ['profile', userId] as const
@@ -22,7 +56,9 @@ export function useMyProfile(userId?: string) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, created_at')
+        .select(
+          'id, display_name, created_at, avatar_animal, onboarding_completed_at, previously_onboarded, family_closed_by_owner_at, timezone',
+        )
         .eq('id', userId)
         .maybeSingle()
 
@@ -31,6 +67,32 @@ export function useMyProfile(userId?: string) {
       }
 
       return data
+    },
+  })
+}
+
+export function useUpdateAvatarAnimal(userId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      if (!userId) {
+        throw new Error('No hay sesión activa para actualizar el avatar.')
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_animal: slug })
+        .eq('id', userId)
+
+      if (error) {
+        throw error
+      }
+
+      return slug
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
     },
   })
 }

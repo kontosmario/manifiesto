@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
 import { type ViewStyle } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 
 interface BreatheDotProps {
   size: number
@@ -12,19 +11,21 @@ interface BreatheDotProps {
 }
 
 export function BreatheDot({ size, color, glow, periodMs = 1800, style }: BreatheDotProps) {
-  const reduced = useReducedMotion()
   const s = useSharedValue(1)
-  useEffect(() => {
-    if (reduced) return
-    s.value = withRepeat(
-      withSequence(
-        withTiming(1.08, { duration: periodMs / 2, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1, { duration: periodMs / 2, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    )
-  }, [periodMs, reduced, s])
+  useLoopAnimation(
+    () => {
+      s.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: periodMs / 2, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: periodMs / 2, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [s],
+    [periodMs],
+  )
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }))
   return (
     <Animated.View

@@ -1,4 +1,5 @@
-import { Animated, Pressable, StyleSheet, View, type PressableProps } from 'react-native'
+import { Pressable, StyleSheet, View, type PressableProps } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { usePressScale } from '@/hooks/use-press-scale'

@@ -10,12 +10,13 @@ import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/h
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
-import { parsePrice } from '@/utils/money'
+import { parsePrice, serializePrice } from '@/utils/money'
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_CATEGORY_TEMPLATES: CategoryTemplate[] = []
 const EMPTY_EXPENSES: Expense[] = []
 const MAX_QUICK_DESCRIPTION_SUGGESTIONS = 6
+const QUICK_AMOUNTS = [5000, 15000, 30000, 50000, 100000] as const
 
 function normalizeSuggestionLabel(value: string) {
   return value
@@ -29,12 +30,20 @@ interface UseAddExpenseControllerParams {
   familyId: string
   onCreated: () => void
   userId: string
+  /**
+   * When set, the new expense is stamped with this date instead of
+   * `now()`. Used by the Gastos calendar's "registrar gasto olvidado"
+   * flow so a user can back-date a movement to a past day of the
+   * cycle they forgot to log.
+   */
+  forDate?: Date | null
 }
 
 export function useAddExpenseController({
   familyId,
   onCreated,
   userId,
+  forDate,
 }: UseAddExpenseControllerParams) {
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
@@ -43,7 +52,15 @@ export function useAddExpenseController({
   const createExpenseMutation = useCreateExpense(familyId, userId)
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES
   const categoryTemplates = categoryTemplatesQuery.data ?? EMPTY_CATEGORY_TEMPLATES
-  const expenses = expensesQuery.data ?? EMPTY_EXPENSES
+  // Suggestions and category ranking should only learn from MANUAL
+  // gastos (the user's own typing patterns). Commitment payments are
+  // auto-generated when a fijo is marked paid — they'd skew both the
+  // descriptions and the most-used categories toward the fixed-bills
+  // category nobody types into.
+  const expenses = useMemo(
+    () => (expensesQuery.data ?? EMPTY_EXPENSES).filter((e) => !e.commitment_id),
+    [expensesQuery.data],
+  )
   const [categorySelection, setCategorySelection] = useState('')
   const [description, setDescription] = useState('')
   const [rawPrice, setRawPrice] = useState('')
@@ -81,14 +98,7 @@ export function useAddExpenseController({
       .slice(0, MAX_QUICK_DESCRIPTION_SUGGESTIONS)
   }, [categoryTemplates, expenses, selectedCategory])
 
-  const suggestedAmounts = useMemo(() => {
-    const baseAmount =
-      dashboard.monthlyIncome > 0
-        ? Math.max(1500, Math.round((dashboard.monthlyIncome * 0.01) / 500) * 500)
-        : 5000
-    const amounts = [baseAmount, baseAmount * 2, baseAmount * 3, baseAmount * 5]
-    return [...new Set(amounts.map((v) => Math.max(1000, Math.round(v / 500) * 500)))]
-  }, [dashboard.monthlyIncome])
+  const suggestedAmounts = useMemo(() => [...QUICK_AMOUNTS], [])
 
   const rankedCategories = useMemo(
     () => rankCategoriesByUsage(expenses, categories),
@@ -107,6 +117,20 @@ export function useAddExpenseController({
         categoryId: selectedCategoryId,
         description: description.trim(),
         price: amount,
+        // Back-date the movement to the target day at noon local
+        // time (avoids DST edge cases + keeps it visible on the
+        // intended calendar day even across timezones).
+        createdAt: forDate
+          ? new Date(
+              forDate.getFullYear(),
+              forDate.getMonth(),
+              forDate.getDate(),
+              12,
+              0,
+              0,
+              0,
+            ).toISOString()
+          : undefined,
       },
       {
         onError: (error: unknown) => {
@@ -139,12 +163,14 @@ export function useAddExpenseController({
     selectedCategoryId,
     submitExpense,
     suggestedAmounts,
+    forDate,
     actions: {
       selectCategory: setCategorySelection,
       setDescription,
       setRawPrice,
       setNumpadVisible,
-      setSuggestedAmount: (value: number) => setRawPrice(String(Math.round(value))),
+      addQuickAmount: (delta: number) => setRawPrice(serializePrice(amount + delta)),
+      clearAmount: () => setRawPrice(''),
       useQuickDescription: setDescription,
     },
   }

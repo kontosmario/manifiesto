@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { supabase } from '@/lib/supabase'
 
 export interface FamilyMemberRow {
   id: string
   name: string
   color: string
+  avatarSlug: AvatarSlug | null
 }
 
 export const familyMembersKey = (familyId?: string) => ['family-members', familyId ?? null] as const
@@ -38,14 +40,22 @@ export function useFamilyMembers(familyId?: string) {
 
       const profilesResponse = await supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, avatar_animal')
         .in('id', userIds)
       if (profilesResponse.error) throw profilesResponse.error
 
       const nameById = new Map<string, string>()
+      const avatarById = new Map<string, AvatarSlug | null>()
       for (const p of profilesResponse.data ?? []) {
         if (p.id && typeof p.display_name === 'string') {
           nameById.set(p.id, p.display_name)
+        }
+        if (p.id) {
+          const raw = (p as { avatar_animal?: unknown }).avatar_animal
+          avatarById.set(
+            p.id,
+            typeof raw === 'string' && isAvatarSlug(raw) ? raw : null,
+          )
         }
       }
 
@@ -53,6 +63,7 @@ export function useFamilyMembers(familyId?: string) {
         id,
         name: nameById.get(id) ?? '—',
         color: COLOR_POOL[i % COLOR_POOL.length],
+        avatarSlug: avatarById.get(id) ?? null,
       }))
     },
   })

@@ -1,22 +1,27 @@
-import { Animated, StyleSheet, View, type Animated as AnimatedType } from 'react-native'
+import { StyleSheet, type ViewStyle } from 'react-native'
+import Animated, { type AnimatedStyle } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { radii, type AppTheme } from '@/theme/palette'
-import { withAlpha } from '@/theme/color-utils'
 import { AppSymbol } from '@/components/ui/app-symbol'
 
+type ViewAnimatedStyle = AnimatedStyle<ViewStyle>
+
 interface AddExpenseTabButtonFaceProps {
-  buttonColorBoostOpacity: number
-  buttonShineBoostOpacity: number
-  iconRotate?: AnimatedType.AnimatedInterpolation<string>
-  pressed: boolean
+  /** Reanimated style driving opacity for the green boost layer. */
+  colorBoostStyle: ViewAnimatedStyle
+  /** Reanimated style driving opacity for the white shine layer. */
+  shineBoostStyle: ViewAnimatedStyle
+  /** Reanimated style driving the icon rotation during press. */
+  iconRotateStyle: ViewAnimatedStyle
+  /** Kept for API compat — unused after dropping the CSS boxShadow. */
+  pressed?: boolean
   theme: AppTheme
 }
 
 export function AddExpenseTabButtonFace({
-  buttonColorBoostOpacity,
-  buttonShineBoostOpacity,
-  iconRotate,
-  pressed,
+  colorBoostStyle,
+  shineBoostStyle,
+  iconRotateStyle,
   theme,
 }: AddExpenseTabButtonFaceProps) {
   return (
@@ -30,7 +35,11 @@ export function AddExpenseTabButtonFace({
         styles.addButton,
         {
           borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
-          boxShadow: `0px 14px 24px ${withAlpha(theme.isDark ? '#62F49C' : '#31DB82', pressed ? (theme.isDark ? 0.42 : 0.26) : theme.isDark ? 0.28 : 0.18)}`,
+          // `boxShadow` was deliberately removed here — on iOS Expo Go
+          // the CSS-style shadow rendered as a solid green square
+          // behind the FAB. Shadow lives on a wrapper without
+          // `overflow: 'hidden'` in the parent button component
+          // (classic shadowColor/offset/opacity/radius props).
         },
       ]}
     >
@@ -44,14 +53,9 @@ export function AddExpenseTabButtonFace({
         start={{ x: 0.2, y: 0 }}
         style={styles.addButtonGloss}
       />
-      <View
-        style={[
-          styles.addButtonColorBoost,
-          {
-            pointerEvents: 'none',
-            opacity: buttonColorBoostOpacity,
-          },
-        ]}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.addButtonColorBoost, colorBoostStyle]}
       >
         <LinearGradient
           colors={
@@ -63,15 +67,10 @@ export function AddExpenseTabButtonFace({
           start={{ x: 0.12, y: 0.08 }}
           style={StyleSheet.absoluteFill}
         />
-      </View>
-      <View
-        style={[
-          styles.addButtonShineBoost,
-          {
-            pointerEvents: 'none',
-            opacity: buttonShineBoostOpacity,
-          },
-        ]}
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.addButtonShineBoost, shineBoostStyle]}
       >
         <LinearGradient
           colors={
@@ -83,10 +82,8 @@ export function AddExpenseTabButtonFace({
           start={{ x: 0.16, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
-      </View>
-      <Animated.View
-        style={iconRotate ? { transform: [{ rotate: iconRotate }] } : undefined}
-      >
+      </Animated.View>
+      <Animated.View style={iconRotateStyle}>
         <AppSymbol color="#FFFFFF" fallback="add" name="plus" size={28} type="monochrome" />
       </Animated.View>
     </LinearGradient>
@@ -118,3 +115,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 })
+

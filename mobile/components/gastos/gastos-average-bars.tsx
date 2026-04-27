@@ -43,7 +43,7 @@ export function GastosAverageBars({
           height={totalHeight}
           minHeight={minBarHeight}
           radius={radius}
-          delay={400 + i * 60}
+          delay={120 + i * 20}
         />
       ))}
     </View>

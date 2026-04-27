@@ -5,6 +5,7 @@ import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { errorMessages } from '@/lib/copy/states'
+import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
 
@@ -17,6 +18,8 @@ interface HomeActivitySectionProps {
   onDelete: (expenseId: string) => void
   onRetry: () => void
   onAddFirst: () => void
+  /** Expense id currently being deleted (mutation in flight). */
+  pendingExpenseId?: string | null
 }
 
 /**
@@ -34,6 +37,7 @@ export function HomeActivitySection({
   onDelete,
   onRetry,
   onAddFirst,
+  pendingExpenseId,
 }: HomeActivitySectionProps) {
   if (isLoading) {
     return (
@@ -67,6 +71,7 @@ export function HomeActivitySection({
         const dangerAction: SwipeAction = {
           label: 'Eliminar',
           tone: 'danger',
+          icon: 'delete',
           onPress: () => onDelete(expense.id),
         }
         return (
@@ -74,6 +79,7 @@ export function HomeActivitySection({
             key={expense.id}
             accessibilityHint="Desliza hacia la izquierda para eliminar"
             rightActions={[dangerAction]}
+            isProcessing={pendingExpenseId === expense.id}
           >
             <ActivityRowV2
               icon={pickIconForCategory(categoryName)}
@@ -95,17 +101,6 @@ const styles = StyleSheet.create({
   list: { gap: 6 },
   skeleton: { gap: 6 },
 })
-
-function pickIconForCategory(name: string): string {
-  const n = name.toLowerCase()
-  if (/super|alma|comida/.test(n)) return '🛒'
-  if (/transporte|sube|combustible|auto/.test(n)) return '🚌'
-  if (/ocio|salid|fernet/.test(n)) return '🍹'
-  if (/casa|alquil|servic/.test(n)) return '🏠'
-  if (/salud|farm/.test(n)) return '💊'
-  if (/cuid|personal/.test(n)) return '🧴'
-  return '📁'
-}
 
 function findName(
   members: Array<{ id: string; name: string; color: string }>,

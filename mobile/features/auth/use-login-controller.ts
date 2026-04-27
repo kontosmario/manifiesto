@@ -102,8 +102,12 @@ export function useLoginController() {
     refreshBiometricState,
     resetAutoBiometricAttempt,
   } = biometricActions
+  // Used by `useLoginSubmit` when a sign-up resolution returns the
+  // onboarding href. The name keeps "join" for back-compat with the
+  // existing call sites; the destination is now /(app)/onboarding
+  // (the 5-step wizard owns the family decision in step 3).
   const navigateToJoin = useCallback(
-    (href: '/(auth)/join') => {
+    (href: '/(app)/onboarding') => {
       showAuthTransitionSplash()
       router.replace(href)
     },

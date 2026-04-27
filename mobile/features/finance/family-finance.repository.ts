@@ -78,7 +78,6 @@ export async function upsertFamilyFinance(
 
   let upsertError = await runUpsert(upsertBody)
   const optionalColumns: Array<
-    | 'essential_monthly_cost'
     | 'daily_budget_checkin_hour'
     | 'daily_budget_nudges_enabled'
     | 'daily_budget_buffer_value'
@@ -87,8 +86,9 @@ export async function upsertFamilyFinance(
     | 'salary_payment_day'
     | 'savings_goal_percent'
     | 'usd_exchange_rate'
+    | 'current_cycle_starting_balance'
+    | 'current_cycle_anchor'
   > = [
-    'essential_monthly_cost',
     'daily_budget_checkin_hour',
     'daily_budget_nudges_enabled',
     'daily_budget_buffer_value',
@@ -97,6 +97,8 @@ export async function upsertFamilyFinance(
     'salary_payment_day',
     'savings_goal_percent',
     'usd_exchange_rate',
+    'current_cycle_starting_balance',
+    'current_cycle_anchor',
   ]
 
   for (const columnName of optionalColumns) {

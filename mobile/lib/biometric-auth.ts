@@ -140,9 +140,11 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   }
 }
 
-export async function authenticateBiometricAccess() {
+export async function authenticateBiometricAccess(
+  options?: { promptMessage?: string },
+) {
   return await LocalAuthentication.authenticateAsync({
-    promptMessage: 'Desbloqueá tu acceso guardado',
+    promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
     cancelLabel: 'Cancelar',
     fallbackLabel: Platform.OS === 'ios' ? 'Usar código' : undefined,
     disableDeviceFallback: false,

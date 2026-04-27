@@ -19,7 +19,9 @@ const CATEGORY_FALLBACK_COLORS = [
 ] as const
 
 const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])
-const OPTIONAL_CATEGORY_COLUMNS = ['color', 'template_id'] as const
+const OPTIONAL_CATEGORY_COLUMNS = ['color', 'template_id', 'scope'] as const
+
+export type CategoryScope = 'expense' | 'fixed_expense'
 
 interface RawCategory {
   id: string
@@ -27,6 +29,7 @@ interface RawCategory {
   name: string
   color?: string | null
   template_id?: string | null
+  scope?: string | null
   created_at: string
 }
 
@@ -55,28 +58,44 @@ export interface Category {
   name: string
   color: string
   template_id?: string | null
+  scope: CategoryScope
   created_at: string
 }
 
-export const categoriesQueryKey = (familyId?: string) => ['categories', familyId] as const
+export const categoriesQueryKey = (familyId?: string, scope?: CategoryScope) =>
+  ['categories', familyId, scope ?? 'expense'] as const
 
-export function useCategories(familyId?: string) {
+function normalizeScope(raw: string | null | undefined): CategoryScope {
+  return raw === 'fixed_expense' ? 'fixed_expense' : 'expense'
+}
+
+export function useCategories(familyId?: string, scope: CategoryScope = 'expense') {
   return useQuery<Category[]>({
-    queryKey: categoriesQueryKey(familyId),
+    queryKey: categoriesQueryKey(familyId, scope),
     enabled: Boolean(familyId),
     queryFn: async () => {
       if (!familyId) {
         return []
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('categories')
-        .select('id, family_id, name, color, template_id, created_at')
+        .select('id, family_id, name, color, template_id, scope, created_at')
         .eq('family_id', familyId)
+        .eq('scope', scope)
         .order('created_at', { ascending: true })
+
+      const { data, error } = await query
 
       if (error) {
         if (isMissingOptionalCategoryColumnError(error)) {
+          // Pre-scope schema — only expense-scoped cats exist. Return
+          // them when expense scope is requested; return nothing for
+          // fixed_expense so callers can fall back gracefully.
+          if (scope !== 'expense') {
+            return []
+          }
+
           const fallbackResponse = await supabase
             .from('categories')
             .select('id, family_id, name, created_at')
@@ -91,6 +110,7 @@ export function useCategories(familyId?: string) {
             ...category,
             color: fallbackCategoryColor(category.id),
             template_id: null,
+            scope: 'expense' as CategoryScope,
           }))
         }
 
@@ -103,9 +123,14 @@ export function useCategories(familyId?: string) {
           typeof category.color === 'string' && category.color.trim() !== ''
             ? category.color
             : fallbackCategoryColor(category.id),
+        scope: normalizeScope(category.scope),
       }))
     },
   })
+}
+
+export function useFixedExpenseCategories(familyId?: string) {
+  return useCategories(familyId, 'fixed_expense')
 }
 
 export function useCreateCategory(familyId?: string) {

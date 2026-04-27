@@ -382,6 +382,14 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# The project uses asymmetric JWT signing (ES256). The Edge Functions
+# gateway does not yet validate ES256 tokens — it returns 401
+# UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM before the function runs.
+# Disable gateway-level verify_jwt and let the function validate the
+# token itself via GoTrue (auth.getUser), which supports ES256.
+[functions.send-family-push]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

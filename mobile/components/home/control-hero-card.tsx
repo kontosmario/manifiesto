@@ -72,7 +72,7 @@ export function ControlHeroCard({
           {isSalaryPendingConfirmation ? (
             <AppButton
               fullWidth={false}
-              label="Confirmar cobro"
+              label="Confirmar sueldo"
               loading={isSubmittingSalaryConfirmation}
               onPress={onConfirmSalary}
               size="compact"

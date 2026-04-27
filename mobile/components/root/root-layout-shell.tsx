@@ -1,15 +1,32 @@
 import '@/lib/runtime'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
+import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { AppProviders } from '@/providers/app-providers'
+import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 
 let hasShownAppLaunchSplash = false
 
+// Splash overlay timing — slow-in, fast-out follows the
+// `exit-faster-than-enter` motion principle (rule §7).
+const FADE_IN_MS = 220
+const FADE_OUT_MS = 320
+
 export function RootLayoutShell() {
-  const [isLaunchSplashVisible, setLaunchSplashVisible] = useState(() => !hasShownAppLaunchSplash)
+  const [isLaunchSplashVisible, setLaunchSplashVisible] = useState(
+    () => !hasShownAppLaunchSplash,
+  )
+  const isAuthTransitionVisible = useAuthTransitionSplash()
 
   const handleLaunchSplashComplete = useCallback(() => {
     hasShownAppLaunchSplash = true
@@ -17,30 +34,110 @@ export function RootLayoutShell() {
   }, [])
 
   return (
-    <AppProviders>
-      <View style={styles.root}>
-        <NotificationRouterBridge />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
-            animationMatchesGesture: true,
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-            gestureEnabled: true,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="auth/callback" />
-        </Stack>
-        {isLaunchSplashVisible ? <AuthLaunchSplash onComplete={handleLaunchSplashComplete} /> : null}
-      </View>
-    </AppProviders>
+    <RootErrorBoundary>
+      <AppProviders>
+        <View style={styles.root}>
+          <NotificationRouterBridge />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+              animationMatchesGesture: true,
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+              gestureEnabled: true,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="auth/callback" />
+          </Stack>
+
+          {/*
+            Cold-start splash: shown ONCE per app launch, fades itself
+            out via the internal HIDE_DELAY_MS timer and calls
+            `onComplete` so we can dismount it.
+          */}
+          {isLaunchSplashVisible ? (
+            <AuthLaunchSplash onComplete={handleLaunchSplashComplete} />
+          ) : null}
+
+          {/*
+            Auth-transition splash: a persistent overlay tied to a
+            global reactive flag (showAuthTransitionSplash /
+            hideAuthTransitionSplash). Lives on top of the Stack
+            during multi-step navigations (login → onboarding,
+            signup → onboarding, etc.) so the user sees one
+            continuous brand surface across redirects — no skeleton
+            flashes, no FernLogo entrance replay, no remount cost.
+          */}
+          <TransitionOverlay visible={isAuthTransitionVisible} />
+        </View>
+      </AppProviders>
+    </RootErrorBoundary>
+  )
+}
+
+interface TransitionOverlayProps {
+  visible: boolean
+}
+
+function TransitionOverlay({ visible }: TransitionOverlayProps) {
+  // Track whether we should keep the overlay mounted while fading
+  // out. We mount it as soon as `visible` flips true and only
+  // unmount once the fade-out completes — that way the overlay can
+  // animate to opacity 0 instead of just disappearing.
+  const [mounted, setMounted] = useState(visible)
+  const opacity = useSharedValue(visible ? 1 : 0)
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      opacity.value = withTiming(1, {
+        duration: FADE_IN_MS,
+        easing: Easing.out(Easing.cubic),
+      })
+      return
+    }
+    opacity.value = withTiming(
+      0,
+      { duration: FADE_OUT_MS, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        // The completion callback runs as a Reanimated worklet on
+        // the UI thread. Calling React's `setMounted` (a JS-thread
+        // setter) directly would crash without a stack trace in
+        // Expo Go — same constraint as Intl/locale APIs inside
+        // worklets. `runOnJS` marshals the call back to JS safely.
+        if (finished) {
+          runOnJS(setMounted)(false)
+        }
+      },
+    )
+  }, [visible, opacity])
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }))
+
+  if (!mounted) return null
+
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFillObject, styles.overlayShell, overlayStyle]}
+      // pointerEvents stays auto while visible to block taps on the
+      // route below; once we unmount (mounted=false above) the
+      // overlay disappears entirely.
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      <AuthLaunchSplash persistent />
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  overlayShell: {
+    zIndex: 50,
   },
 })

@@ -1,4 +1,5 @@
-import { Animated, Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet, Text } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'

@@ -1,54 +1,22 @@
-import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
+import type { ReactNode } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosHeaderProps {
   title?: string
   subtitle?: string
-  onPressAdd?: () => void
+  /** Slot en la esquina superior derecha. Hoy lo usa StreakFlameIcon;
+   * antes era el botón + para registrar gasto. */
+  rightSlot?: ReactNode
 }
 
 export function GastosHeader({
   title = 'Gastos',
   subtitle = 'Historial, filtros y edición rápida de movimientos.',
-  onPressAdd,
+  rightSlot,
 }: GastosHeaderProps) {
   const { theme } = useAppTheme()
-  const reduced = useReducedMotion()
-  const pulseScale = useSharedValue(1)
-
-  useEffect(() => {
-    if (reduced) return
-    pulseScale.value = withRepeat(
-      withSequence(
-        withTiming(1.05, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    )
-  }, [reduced, pulseScale])
-
-  void USE_NATIVE_DRIVER
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseScale.value }] }))
-
-  const addButtonColors = theme.isDark
-    ? (['#C7EE9C', '#8DD66A'] as const)
-    : (['#1F7A4B', '#0E3A26'] as const)
-  const addButtonIconColor = theme.isDark ? '#0A1410' : '#F6FBEF'
 
   return (
     <RiseView>
@@ -59,30 +27,7 @@ export function GastosHeader({
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Animated.View style={[styles.addButtonWrap, pulseStyle]}>
-          <Pressable
-            onPress={onPressAdd}
-            accessibilityRole="button"
-            accessibilityLabel="Registrar gasto"
-            style={styles.addButtonPressable}
-          >
-            <LinearGradient
-              colors={[...addButtonColors] as unknown as readonly [string, string, ...string[]]}
-              start={{ x: 0.1, y: 0 }}
-              end={{ x: 0.9, y: 1 }}
-              style={styles.addButton}
-            >
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M12 5v14M5 12h14"
-                  stroke={addButtonIconColor}
-                  strokeWidth={2.4}
-                  strokeLinecap="round"
-                />
-              </Svg>
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
+        {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
       </View>
     </RiseView>
   )
@@ -108,17 +53,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     maxWidth: 230,
   },
-  addButtonWrap: {
+  rightSlot: {
     marginTop: 6,
     marginLeft: 8,
-    borderRadius: 999,
-    boxShadow: '0px 8px 18px -6px rgba(14, 58, 38, 0.5)',
-  },
-  addButtonPressable: { borderRadius: 999, overflow: 'hidden' },
-  addButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 })

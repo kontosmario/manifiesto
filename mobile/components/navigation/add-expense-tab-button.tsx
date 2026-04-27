@@ -1,4 +1,10 @@
-import { type PressableProps, type PressableStateCallbackType, Animated, Pressable, StyleSheet, View } from 'react-native'
+import {
+  type PressableProps,
+  type PressableStateCallbackType,
+  Pressable,
+  StyleSheet,
+} from 'react-native'
+import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { AddExpenseGlowMesh } from '@/components/navigation/add-expense-glow-mesh'
 import { AddExpenseTabButtonFace } from '@/components/navigation/add-expense-tab-button-face'
@@ -33,11 +39,16 @@ export function AddExpenseTabButton({
   const pressScale = usePressScale({
     pressedScale: 0.93,
   })
-  const { animateGlowTo, buttonColorBoostOpacity, buttonShineBoostOpacity, glowIntensity, glowMeshScale } =
-    useAddExpenseButtonGlow(isReducedMotionEnabled)
-  const { breathScale, breathHaloOpacity } = useAddExpenseButtonBreath(isReducedMotionEnabled)
-  const { burstScale, burstOpacity, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
-  const { iconRotate, animateRotationTo } = useAddExpenseButtonIconRotation(isReducedMotionEnabled)
+  const {
+    animateGlowTo,
+    glowMeshStyle,
+    colorBoostStyle,
+    shineBoostStyle,
+    intensityShared,
+  } = useAddExpenseButtonGlow(isReducedMotionEnabled)
+  const { breathHaloStyle } = useAddExpenseButtonBreath(isReducedMotionEnabled)
+  const { burstRingStyle, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
+  const { iconRotateStyle, animateRotationTo } = useAddExpenseButtonIconRotation(isReducedMotionEnabled)
   void forwardedOnPress
 
   const resolveForwardedStyle = (state: PressableStateCallbackType) =>
@@ -83,44 +94,49 @@ export function AddExpenseTabButton({
     >
       {({ pressed }) => (
         <>
-          <View
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.addButtonGlowMeshWrap, glowMeshStyle]}
+          >
+            <AddExpenseGlowMesh intensity={intensityShared} isDark={theme.isDark} />
+          </Animated.View>
+          <Animated.View
+            pointerEvents="none"
             style={[
-              styles.addButtonGlowMeshWrap,
+              styles.breathHalo,
+              { backgroundColor: withAlpha(brand.bright, 0.22) },
+              breathHaloStyle,
+            ]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.burstRing,
+              { borderColor: withAlpha(brand.bright, 0.9) },
+              burstRingStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              pressScale.animatedStyle,
+              // Shadow on a wrapper without `overflow: 'hidden'` so iOS
+              // can paint the drop-shadow outside bounds. Classic
+              // shadow* props instead of CSS `boxShadow` — more reliable
+              // across Expo Go SDK versions and plays nicely with the
+              // circular FAB shape.
               {
-                pointerEvents: 'none',
-                transform: [{ scale: glowMeshScale }],
+                shadowColor: theme.isDark ? '#62F49C' : '#31DB82',
+                shadowOffset: { width: 0, height: 12 },
+                shadowOpacity: theme.isDark ? 0.34 : 0.22,
+                shadowRadius: 18,
+                elevation: 12,
               },
             ]}
           >
-            <AddExpenseGlowMesh intensity={glowIntensity} isDark={theme.isDark} />
-          </View>
-          <Animated.View
-            style={[
-              styles.breathHalo,
-              {
-                pointerEvents: 'none',
-                backgroundColor: withAlpha(brand.bright, 0.22),
-                opacity: breathHaloOpacity,
-                transform: [{ scale: breathScale }],
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.burstRing,
-              {
-                pointerEvents: 'none',
-                borderColor: withAlpha(brand.bright, 0.9),
-                opacity: burstOpacity,
-                transform: [{ scale: burstScale }],
-              },
-            ]}
-          />
-          <Animated.View style={pressScale.animatedStyle}>
             <AddExpenseTabButtonFace
-              buttonColorBoostOpacity={buttonColorBoostOpacity}
-              buttonShineBoostOpacity={buttonShineBoostOpacity}
-              iconRotate={iconRotate}
+              colorBoostStyle={colorBoostStyle}
+              shineBoostStyle={shineBoostStyle}
+              iconRotateStyle={iconRotateStyle}
               pressed={pressed}
               theme={theme}
             />

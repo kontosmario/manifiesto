@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
-import { promptBiometricSetup } from '@/features/auth/auth-biometric-prompt'
 import { useAuthBiometricAutoSignIn } from '@/features/auth/use-auth-biometric-auto-sign-in'
 import type { AuthMode } from '@/features/auth/auth-flow'
 import {
@@ -63,13 +62,17 @@ export function useAuthBiometricController({
       let shouldSaveCredentials = nextBiometricState.hasSavedCredentials
 
       if (!shouldSaveCredentials && options?.shouldPromptSetup) {
-        const wantsBiometricSetup = await promptBiometricSetup(nextBiometricState.label)
-
-        if (!wantsBiometricSetup) {
-          return
-        }
-
-        const biometricResult = await authenticateBiometricAccess()
+        // Single interaction: skip the app-level Alert ("Activar
+        // Face ID? — Ahora no / Activar") and go straight to the
+        // native LocalAuthentication prompt. Apple/Android already
+        // own a perfectly clear "Cancel / scan" dialog; the
+        // app-level pre-prompt was asking the same question twice.
+        // The setup-specific `promptMessage` keeps the context
+        // ("Activá X para entrar más rápido la próxima vez") so the
+        // user understands this is opt-in setup, not a guard.
+        const biometricResult = await authenticateBiometricAccess({
+          promptMessage: `Activá ${nextBiometricState.label} para entrar más rápido la próxima vez.`,
+        })
 
         if (!biometricResult.success) {
           return

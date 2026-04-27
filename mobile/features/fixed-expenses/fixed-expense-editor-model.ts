@@ -30,6 +30,8 @@ export interface FixedExpenseEditorValues {
 export interface FixedExpenseEditorSubmitPayload {
   amount: number
   categoryId: string
+  dayOfMonth: number
+  notifyDaysBefore: number | null
   endsOn: string | null
   frequency: FixedExpenseFrequency
   installmentsPaid: number
@@ -104,11 +106,19 @@ export function buildFixedExpenseSubmitState(values: FixedExpenseEditorValues): 
     }
   }
 
+  const dayOfMonth = (() => {
+    const parsed = new Date(serializedNextDueOn)
+    const day = parsed.getUTCDate()
+    return Number.isFinite(day) && day >= 1 && day <= 31 ? day : 1
+  })()
+
   return {
     canSubmit: true,
     payload: {
       amount: parsedAmount,
       categoryId: values.categoryId,
+      dayOfMonth,
+      notifyDaysBefore: null,
       endsOn: serializedEndsOn,
       frequency: values.frequency,
       installmentsPaid:

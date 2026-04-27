@@ -1,215 +1,922 @@
-import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated,
-  Platform,
+  Keyboard,
+  Pressable,
   ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
+  Text,
+  TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
+import { LinearGradient } from 'expo-linear-gradient'
+import { StatusBar } from 'expo-status-bar'
+import { useRouter } from 'expo-router'
+import Svg, { Circle, Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
-import { LoginHero } from '@/components/auth/login-hero'
-import { LoginPanel } from '@/components/auth/login-panel'
+import { TextField } from '@/components/ui/text-field'
+import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
+import { FernLogo } from '@/components/auth/fern-logo'
+import { Screen } from '@/components/ui/screen'
+import { AvatarAnimal } from '@/components/ui/avatar-animal'
+import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { useLoginController } from '@/features/auth/use-login-controller'
-import { authPalette } from '@/theme/auth-theme'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
+import { triggerHaptic } from '@/lib/haptics'
+import { getLastUserProfile, type LastUserProfile } from '@/lib/last-user-cache'
+import { authTokens } from '@/theme/palette'
+import type { ThemeColors } from '@/theme/palette'
+import { useAppTheme } from '@/theme/theme-provider'
+import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
+// Brand-fixed tokens — these stay constant across themes because they
+// belong to the Manifiesto identity (CTA green, peach accent, focus
+// ring, brand cream). Surface and text colors come from the theme.
+const DARK_GREEN = authTokens.welcomeBg
+const CREAM = authTokens.surfaceCream
+const PEACH = authTokens.peach
+const CLAY = authTokens.clay
+const FOCUS = authTokens.focusRing
+
+type Status = 'idle' | 'scanning' | 'authed'
+type FormMode = 'use-password' | 'change-account' | null
+
+/**
+ * Login screen — Face ID-first.
+ *
+ * v1 simplification (per spec): when biometric credentials are saved we show
+ * the Face ID hero. We use the email stored alongside biometric credentials
+ * to derive a display name (the part before "@", capitalized). When no
+ * stored credentials exist we render the password form by default.
+ *
+ * The actual Face ID handshake is delegated to `useLoginController` →
+ * `actions.handleBiometricSignIn`, which prompts Local Authentication and
+ * signs in via the saved password. UI state (`scanning`/`authed`) is local
+ * and synced from controller flags.
+ */
 export function LoginScreen() {
   const router = useRouter()
+  const reducedMotion = useReducedMotion()
   const controller = useLoginController()
+  const { theme } = useAppTheme()
+
   const {
     actions,
-    animation,
     biometricState,
-    containerMinHeight,
-    contentGap,
-    displayName,
     email,
     errorMessage,
-    helperCopy,
     infoMessage,
     isBusy,
-    isCompact,
-    isKeyboardVisible,
     isReducedMotionEnabled,
-    keyboardHeight,
-    mode,
-    nameInputRef,
-    panelGap,
-    panelPadding,
-    panelWidth,
     password,
     passwordInputRef,
-    scrollBottomPadding,
-    scrollTopPadding,
-    useReferenceSignInLayout,
     emailInputRef,
   } = controller
-  const {
-    heroOpacity,
-    heroScale,
-    heroTranslateY,
-    keyboardShift,
-    modeContentOpacity,
-    modeContentTranslateY,
-    panelOpacity,
-    panelTranslateY,
-  } = animation
+
+  const hasSavedBiometric =
+    biometricState.isAvailable && biometricState.hasSavedCredentials
+
+  // Last-known user profile read from SecureStore. Lets us show the
+  // user's actual name + animal avatar on the returning hero before any
+  // network call. `null` while loading or when there's no prior session.
+  const [lastUser, setLastUser] = useState<LastUserProfile | null>(null)
+  const [lastUserLoaded, setLastUserLoaded] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void getLastUserProfile().then((profile) => {
+      if (cancelled) return
+      setLastUser(profile)
+      setLastUserLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const lastUserAvatarSlug: AvatarSlug | null =
+    lastUser?.avatarSlug && isAvatarSlug(lastUser.avatarSlug)
+      ? lastUser.avatarSlug
+      : null
+
+  // "Returning" = either biometric is set up OR we have a cached
+  // profile from a prior successful login on this install.
+  const isReturningUser = hasSavedBiometric || Boolean(lastUser)
+
+  // Pick one of the 50 unisex returning-greetings once per mount so
+  // the eyebrow stays stable while the user types but feels fresh
+  // across app opens. The previous fixed copy ("Bienvenida de
+  // vuelta") was strictly feminine — these are gender-neutral.
+  const returningGreeting = useMemo(() => pickReturningGreeting(), [])
+
+  // Ref to the Screen's underlying ScrollView so we can scrollToEnd
+  // when the keyboard opens during password entry. The system's
+  // automatic keyboard insets only ensure the focused input is
+  // visible — but we want the "Continuar" + "Volver a otro método"
+  // CTAs (which sit BELOW the input) to also clear the keyboard.
+  // scrollToEnd handles that in one shot.
+  const scrollRef = useRef<ScrollView | null>(null)
+
+  // Auto-decide the default form mode once the lastUser cache has
+  // settled. Returning users see the buttons (formMode=null); true
+  // first-timers (no biometric, no cache) get the change-account form
+  // active so they can sign in immediately. We re-evaluate if
+  // hasSavedBiometric flips later (async biometric refresh) — unless
+  // the user has already manually picked a mode.
+  useEffect(() => {
+    if (userPickedModeRef.current) return
+    if (!lastUserLoaded) return
+    setFormMode(isReturningUser ? null : 'change-account')
+  }, [lastUserLoaded, isReturningUser])
+
+  // Form starts hidden. We can't decide the default state synchronously
+  // because `biometricState` initializes as
+  // `{isAvailable: false, hasSavedCredentials: false}` and the real
+  // values are loaded async via `refreshBiometricState`. The `lastUser`
+  // cache is also loaded async. Auto-opening based on the synchronous
+  // initial values would briefly flash the form for returning users
+  // who actually have saved data.
+  const [formMode, setFormMode] = useState<FormMode>(null)
+  // Once the user explicitly picks a mode (via the secondary buttons or
+  // a Face ID failure), don't let the auto-decide effect override them.
+  const userPickedModeRef = useRef(false)
+
+  // When the keyboard opens during password entry, scroll the
+  // ScrollView all the way to the end so the "Continuar" CTA and
+  // the "Volver a otro método" link sit comfortably above the
+  // keyboard. The system's automatic keyboard insets only push
+  // enough to show the focused input — but the user wants context
+  // (the buttons below) visible too.
+  useEffect(() => {
+    if (!formMode) return
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      // requestAnimationFrame ensures the auto-insets layout pass
+      // has settled before we issue our manual scroll.
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true })
+      })
+    })
+    return () => sub.remove()
+  }, [formMode])
+
+  // Local UI status reflects the biometric submission.
+  const [status, setStatus] = useState<Status>('idle')
+
+  useEffect(() => {
+    if (controller.biometricState && controller.isBusy) {
+      setStatus((prev) => (prev === 'idle' ? 'scanning' : prev))
+    } else if (!controller.isBusy && status === 'scanning') {
+      // controller stopped — assume the prompt closed
+      setStatus('idle')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller.isBusy])
+
+  // Greeting prefers the cached display name (set after every successful
+  // session) over an email-derived fallback. Falls back to "amigo" only
+  // when we have no cached profile and no email at all.
+  const greeting = useMemo(() => {
+    const cachedName = lastUser?.displayName?.trim()
+    if (cachedName) return cachedName.split(' ')[0]
+    const sourceEmail = email || lastUser?.email || ''
+    const fromEmail = sourceEmail.includes('@') ? sourceEmail.split('@')[0] : ''
+    if (!fromEmail) return 'amigo'
+    return fromEmail.charAt(0).toUpperCase() + fromEmail.slice(1)
+  }, [email, lastUser])
+
+  // Animations
+  const reduced = reducedMotion || isReducedMotionEnabled
+  const ringScale = useSharedValue(1)
+  const ringOpacity = useSharedValue(0)
+  const haloScale = useSharedValue(1)
+
+  useEffect(() => {
+    if (reduced) {
+      ringScale.value = 1
+      ringOpacity.value = status === 'scanning' ? 0.7 : 0
+      haloScale.value = 1
+      return
+    }
+    if (status === 'scanning') {
+      ringOpacity.value = withTiming(1, { duration: 200 })
+      ringScale.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        false,
+      )
+      haloScale.value = withTiming(1.3, { duration: 1200, easing: Easing.out(Easing.ease) })
+    } else {
+      ringOpacity.value = withTiming(0, { duration: 200 })
+      ringScale.value = withTiming(1, { duration: 200 })
+      haloScale.value = withTiming(1, { duration: 600 })
+    }
+  }, [reduced, status, ringOpacity, ringScale, haloScale])
+
+  const ringStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ringScale.value }],
+    opacity: ringOpacity.value,
+  }))
+  const haloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: haloScale.value }],
+  }))
+
+  // Entrance fades for hero column
+  const fadeUp = (delay: number) => ({ delay, duration: 600 })
+
+  const triggerFaceID = useCallback(async () => {
+    if (status !== 'idle' || isBusy) return
+    await triggerHaptic('selection')
+    setStatus('scanning')
+    try {
+      await actions.handleBiometricSignIn()
+      setStatus('authed')
+    } catch {
+      setStatus('idle')
+      // Surface the use-password form as a fallback after a Face ID
+      // failure — the stored email is still good, only the biometric
+      // handshake failed.
+      userPickedModeRef.current = true
+      setFormMode('use-password')
+    }
+  }, [actions, isBusy, status])
+
+  const handleSwitchAccount = useCallback(() => {
+    void triggerHaptic('selection')
+    userPickedModeRef.current = true
+    setStatus('idle')
+    setFormMode('change-account')
+    actions.setEmail('')
+    actions.setPassword('')
+    setTimeout(() => {
+      emailInputRef.current?.focus?.()
+    }, 80)
+  }, [actions, emailInputRef])
+
+  const handleUsePassword = useCallback(() => {
+    void triggerHaptic('selection')
+    userPickedModeRef.current = true
+    // Pre-populate the email field with the cached user's email so the
+    // submit flow has everything it needs from just the password input
+    // — no email field is rendered in use-password mode.
+    if (!email && lastUser?.email) {
+      actions.setEmail(lastUser.email)
+    }
+    setFormMode('use-password')
+    setTimeout(() => {
+      passwordInputRef.current?.focus?.()
+    }, 80)
+  }, [actions, email, lastUser, passwordInputRef])
+
+  const handleCancelForm = useCallback(() => {
+    void triggerHaptic('light')
+    // Reset the password the user typed; keep the email so re-entering
+    // a mode doesn't lose context. formMode=null restores the buttons
+    // state so the user can pick a different method.
+    actions.setPassword('')
+    setFormMode(null)
+  }, [actions])
+
+
+  const handleBack = useCallback(() => {
+    void triggerHaptic('light')
+    if (router.canGoBack()) router.back()
+    else router.replace('/(auth)/welcome')
+  }, [router])
+
+  const submitPassword = useCallback(() => {
+    void actions.handleSubmit()
+  }, [actions])
+
+  const ctaLabel =
+    status === 'authed'
+      ? 'Entrando…'
+      : status === 'scanning'
+        ? 'Reconociendo'
+        : `Entrar con ${biometricState.label || 'Face ID'}`
+
+  const ctaBg = status === 'authed' ? FOCUS : DARK_GREEN
 
   return (
     <RequireGuest allowFamilylessSession>
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <StatusBar style="light" />
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      {/*
+        Standard mobile login pattern: a single ScrollView wraps the
+        entire screen and `automaticallyAdjustKeyboardInsets` (Screen
+        default) shifts the WHOLE content up together when the keyboard
+        opens — topNav, hero and actions all move as one unit. No
+        inner scroll view, no bottom-pinned actions: the content lives
+        as one continuous block, which is what users expect on iOS /
+        Android forms.
+        `flexGrow: 1` + `justifyContent: 'space-between'` makes the
+        three top-level children distribute when content is short
+        (topNav at top, hero centered, actions near bottom) without
+        introducing a flex split that would break the unified scroll.
+      */}
+      <Screen
+        contentContainerStyle={styles.screenContent}
+        bodyStyle={styles.screenBody}
+        scrollRef={scrollRef}
+      >
+        {/* Top nav */}
+        <View style={styles.topNav}>
+          <Pressable
+            accessibilityLabel="Volver"
+            accessibilityRole="button"
+            hitSlop={DEFAULT_HIT_SLOP}
+            onPress={handleBack}
+            style={styles.navButton}
+          >
+            <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+              <Path
+                d="M11 4l-5 5 5 5"
+                stroke={theme.colors.text}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
+          <FernLogo size={28} palette={theme.isDark ? 'light' : 'dark'} iconMode />
+          <View style={styles.navSpacer} />
+        </View>
 
-        <TouchableWithoutFeedback accessible={false} onPress={actions.dismissKeyboard}>
-          <View style={styles.root}>
-            <LinearGradient
-              colors={authPalette.canvas.gradient}
-              end={{ x: 0.86, y: 1 }}
-              start={{ x: 0.12, y: 0.02 }}
-              style={StyleSheet.absoluteFillObject}
-            />
+        <View style={styles.heroBlockOuter}>
+          {isReturningUser ? (
+            <Animated.View entering={undefined} style={styles.heroBlock}>
+              <FadeInUp reduced={reduced} {...fadeUp(100)}>
+                <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
+                  {returningGreeting}
+                </Text>
+              </FadeInUp>
+              <FadeInUp reduced={reduced} {...fadeUp(200)}>
+                <Text style={[styles.title, { color: theme.colors.text }]}>
+                  Hola, {greeting}
+                </Text>
+              </FadeInUp>
 
-            <View
-              onLayout={(event) => {
-                actions.handleViewportLayout(event.nativeEvent.layout.height)
-              }}
-              style={styles.flex}
-            >
-              <ScrollView
-                alwaysBounceVertical={isKeyboardVisible}
-                automaticallyAdjustKeyboardInsets={false}
-                bounces={isKeyboardVisible}
-                contentContainerStyle={[
-                  styles.scrollContent,
-                  {
-                    minHeight: containerMinHeight,
-                    paddingBottom: scrollBottomPadding + (isKeyboardVisible ? keyboardHeight : 0),
-                    paddingTop: scrollTopPadding,
-                  },
-                ]}
-                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-                keyboardShouldPersistTaps="handled"
-                scrollEnabled={isKeyboardVisible}
-                showsVerticalScrollIndicator={false}
-              >
-                <Animated.View
-                  style={[
-                    styles.content,
+              {/* Avatar with halo + ring */}
+              <FadeInUp reduced={reduced} {...fadeUp(300)} style={styles.avatarWrap}>
+                <View style={styles.avatarSlot}>
+                  <Animated.View style={[styles.halo, haloStyle]} />
+                  <Animated.View style={[styles.ring, ringStyle]} />
+                  <View style={styles.avatar}>
+                    <LinearGradient
+                      colors={[PEACH, CLAY]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    {status === 'authed' ? (
+                      <Svg width={44} height={44} viewBox="0 0 44 44" fill="none">
+                        <Path
+                          d="M11 22l8 8 14-16"
+                          stroke={CREAM}
+                          strokeWidth={3.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </Svg>
+                    ) : lastUserAvatarSlug ? (
+                      // Personalized animal avatar from the cached
+                      // profile — set after every successful session.
+                      <AvatarAnimal
+                        slug={lastUserAvatarSlug}
+                        size={88}
+                        tint={CREAM}
+                        backgroundTint="transparent"
+                      />
+                    ) : (
+                      // Fern fallback when no avatar slug has been
+                      // cached yet (legacy install, brand-new account).
+                      <FernLogo size={64} palette="mono-light" iconMode />
+                    )}
+                  </View>
+                </View>
+              </FadeInUp>
+
+              <FadeInUp reduced={reduced} {...fadeUp(400)}>
+                <Text
+                  style={[styles.emailMicro, { color: theme.colors.textSoft }]}
+                  numberOfLines={1}
+                >
+                  {email || lastUser?.email || 'tu cuenta guardada'}
+                </Text>
+              </FadeInUp>
+
+            </Animated.View>
+          ) : (
+            // First-time login (no stored session): unisex welcome-back
+            // greeting for users who already have an account but are
+            // signing in fresh after an install. No name, no
+            // "tu cuenta guardada", no "Tocá para identificarte" — those
+            // are Face ID copy. The avatar keeps the Fern brand mark.
+            <View style={styles.heroBlock}>
+              <FadeInUp reduced={reduced} {...fadeUp(100)}>
+                <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
+                  Qué bueno verte
+                </Text>
+              </FadeInUp>
+              <FadeInUp reduced={reduced} {...fadeUp(200)}>
+                <Text style={[styles.title, { color: theme.colors.text }]}>
+                  ¡Hola de vuelta! 👋
+                </Text>
+              </FadeInUp>
+
+              <FadeInUp reduced={reduced} {...fadeUp(300)} style={styles.avatarWrap}>
+                <View style={styles.avatarSlot}>
+                  <View style={styles.avatar}>
+                    <LinearGradient
+                      colors={[PEACH, CLAY]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <FernLogo size={64} palette="mono-light" iconMode />
+                  </View>
+                </View>
+              </FadeInUp>
+
+              <FadeInUp reduced={reduced} {...fadeUp(400)}>
+                <Text style={[styles.welcomeBackSub, { color: theme.colors.textSoft }]}>
+                  Ingresá tus datos para volver a tu cuenta.
+                </Text>
+              </FadeInUp>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actionsStack}>
+          {formMode ? (
+              <PasswordForm
+                mode={formMode}
+                storedEmail={email}
+                emailRef={emailInputRef}
+                errorMessage={errorMessage}
+                infoMessage={infoMessage}
+                isBusy={isBusy}
+                isReducedMotionEnabled={isReducedMotionEnabled}
+                onCancel={isReturningUser ? handleCancelForm : undefined}
+                onChangeEmail={actions.setEmail}
+                onChangePassword={actions.setPassword}
+                onSubmit={submitPassword}
+                password={password}
+                passwordRef={passwordInputRef}
+                colors={theme.colors}
+              />
+            ) : hasSavedBiometric ? (
+              <>
+                <Pressable
+                  accessibilityLabel={ctaLabel}
+                  accessibilityRole="button"
+                  disabled={status !== 'idle' || isBusy}
+                  onPress={triggerFaceID}
+                  style={({ pressed }) => [
+                    styles.primaryCta,
                     {
-                      gap: contentGap,
-                      transform: [{ translateY: keyboardShift }],
+                      backgroundColor: ctaBg,
+                      opacity:
+                        pressed && status === 'idle'
+                          ? 0.92
+                          : status === 'scanning'
+                            ? 0.85
+                            : 1,
                     },
                   ]}
                 >
-                  <Animated.View
-                    style={[
-                      styles.heroWrap,
-                      {
-                        pointerEvents: 'none',
-                        opacity: heroOpacity,
-                        transform: [{ translateY: heroTranslateY }, { scale: heroScale }],
-                      },
-                    ]}
-                  >
-                    <LoginHero
-                      compact={isCompact}
-                      dense={useReferenceSignInLayout}
-                      reducedMotion={isReducedMotionEnabled}
-                    />
-                  </Animated.View>
+                  <FaceIDIcon size={26} color={CREAM} scanning={status === 'scanning'} />
+                  <Text style={styles.primaryCtaLabel}>{ctaLabel}</Text>
+                </Pressable>
 
-                  <Animated.View
-                    style={[
-                      styles.panelShadowWrap,
-                      {
-                        opacity: panelOpacity,
-                        transform: [{ translateY: panelTranslateY }],
-                      },
+                <View style={styles.secondaryRow}>
+                  <Pressable
+                    accessibilityLabel="Usar contraseña"
+                    accessibilityRole="button"
+                    hitSlop={DEFAULT_HIT_SLOP}
+                    onPress={handleUsePassword}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      { borderColor: theme.colors.line },
+                      pressed && { opacity: 0.7 },
                     ]}
                   >
-                    <LoginPanel
-                      biometricState={biometricState}
-                      displayName={displayName}
-                      email={email}
-                      emailInputRef={emailInputRef}
-                      errorMessage={errorMessage}
-                      helperCopy={helperCopy}
-                      infoMessage={infoMessage}
-                      isBusy={isBusy}
-                      isReducedMotionEnabled={isReducedMotionEnabled}
-                      mode={mode}
-                      modeContentOpacity={modeContentOpacity}
-                      modeContentTranslateY={modeContentTranslateY}
-                      nameInputRef={nameInputRef}
-                      onBiometricSignIn={() => {
-                        void actions.handleBiometricSignIn()
-                      }}
-                      onDevSpikePress={() => {
-                        router.push('/(auth)/filament-spike')
-                      }}
-                      onFieldBlur={actions.handleFieldBlur}
-                      onFieldFocus={actions.handleFieldFocus}
-                      onPasswordChange={actions.setPassword}
-                      onPasswordSubmit={() => {
-                        void actions.handleSubmit()
-                      }}
-                      onSubmit={() => {
-                        void actions.handleSubmit()
-                      }}
-                      onUpdateDisplayName={actions.setDisplayName}
-                      onUpdateEmail={actions.setEmail}
-                      onUpdateMode={actions.updateMode}
-                      panelGap={panelGap}
-                      panelPadding={panelPadding}
-                      panelWidth={panelWidth}
-                      password={password}
-                      passwordInputRef={passwordInputRef}
-                      useReferenceSignInLayout={useReferenceSignInLayout}
-                    />
-                  </Animated.View>
-                </Animated.View>
-              </ScrollView>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </SafeAreaView>
+                    <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
+                      Usar contraseña
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Cambiar cuenta"
+                    accessibilityRole="button"
+                    hitSlop={DEFAULT_HIT_SLOP}
+                    onPress={handleSwitchAccount}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      { borderColor: theme.colors.line },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
+                      Cambiar cuenta
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : isReturningUser ? (
+              // Cached profile from a previous login but biometric isn't
+              // saved (or the device doesn't support it). Skip the
+              // Face ID CTA and show just the secondary actions.
+              <View style={styles.secondaryRow}>
+                <Pressable
+                  accessibilityLabel="Usar contraseña"
+                  accessibilityRole="button"
+                  hitSlop={DEFAULT_HIT_SLOP}
+                  onPress={handleUsePassword}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    { borderColor: theme.colors.line },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
+                    Usar contraseña
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Cambiar cuenta"
+                  accessibilityRole="button"
+                  hitSlop={DEFAULT_HIT_SLOP}
+                  onPress={handleSwitchAccount}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    { borderColor: theme.colors.line },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
+                    Cambiar cuenta
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+        </View>
+      </Screen>
     </RequireGuest>
   )
 }
 
+interface PasswordFormProps {
+  mode: 'use-password' | 'change-account'
+  storedEmail: string
+  emailRef: React.RefObject<TextInput | null>
+  errorMessage: string | null
+  infoMessage: string | null
+  isBusy: boolean
+  isReducedMotionEnabled: boolean
+  onCancel?: () => void
+  onChangeEmail: (value: string) => void
+  onChangePassword: (value: string) => void
+  onSubmit: () => void
+  password: string
+  passwordRef: React.RefObject<TextInput | null>
+  colors: ThemeColors
+}
+
+function PasswordForm({
+  mode,
+  storedEmail,
+  emailRef,
+  errorMessage,
+  infoMessage,
+  isBusy,
+  isReducedMotionEnabled,
+  onCancel,
+  onChangeEmail,
+  onChangePassword,
+  onSubmit,
+  password,
+  passwordRef,
+  colors,
+}: PasswordFormProps) {
+  const isUsePassword = mode === 'use-password'
+  return (
+    <FadeInUp reduced={isReducedMotionEnabled} delay={50} duration={260} style={styles.passwordForm}>
+      {/*
+        use-password mode: the cached email is already implicit (shown
+        in the hero above and pre-populated into the controller via
+        `handleUsePassword`), so the form renders ONLY the password
+        input. change-account mode shows both email + password.
+      */}
+      {isUsePassword ? null : (
+        <TextField
+          accessibilityLabel="Email"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          label="Email"
+          onChangeText={onChangeEmail}
+          placeholder="nombre@correo.com"
+          ref={emailRef}
+          returnKeyType="next"
+          textContentType="emailAddress"
+          value={storedEmail}
+          onSubmitEditing={() => passwordRef.current?.focus?.()}
+        />
+      )}
+
+      <TextField
+        accessibilityLabel="Contraseña"
+        autoCapitalize="none"
+        autoCorrect={false}
+        label="Contraseña"
+        onChangeText={onChangePassword}
+        placeholder="••••••••"
+        ref={passwordRef}
+        returnKeyType="go"
+        secureTextEntry
+        textContentType="password"
+        value={password}
+        onSubmitEditing={onSubmit}
+      />
+
+      {errorMessage ? <FeedbackPill intent="error" message={errorMessage} /> : null}
+      {!errorMessage && infoMessage ? <FeedbackPill intent="info" message={infoMessage} /> : null}
+
+      <Pressable
+        accessibilityLabel="Continuar"
+        accessibilityRole="button"
+        disabled={isBusy}
+        onPress={onSubmit}
+        style={({ pressed }) => [
+          styles.passwordCta,
+          { backgroundColor: DARK_GREEN, opacity: pressed || isBusy ? 0.85 : 1 },
+        ]}
+      >
+        <Text style={styles.primaryCtaLabel}>Continuar</Text>
+      </Pressable>
+
+      {onCancel ? (
+        <Pressable
+          accessibilityLabel="Elegir otro método de inicio de sesión"
+          accessibilityRole="button"
+          hitSlop={DEFAULT_HIT_SLOP}
+          onPress={onCancel}
+          style={({ pressed }) => [styles.cancelLink, pressed && { opacity: 0.6 }]}
+        >
+          <Text style={[styles.cancelLabel, { color: colors.textSoft }]}>
+            Volver · elegir otro método
+          </Text>
+        </Pressable>
+      ) : null}
+    </FadeInUp>
+  )
+}
+
+function FaceIDIcon({
+  size = 26,
+  color = CREAM,
+  scanning = false,
+}: {
+  size?: number
+  color?: string
+  scanning?: boolean
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* Corners */}
+      <Path d="M3 9V5a2 2 0 012-2h4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M19 3h4a2 2 0 012 2v4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M25 19v4a2 2 0 01-2 2h-4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M9 25H5a2 2 0 01-2-2v-4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      {/* Eyes */}
+      <Circle cx={11} cy={12} r={0.8} fill={color} />
+      <Circle cx={17} cy={12} r={0.8} fill={color} />
+      {/* Nose + mouth */}
+      <Path d="M14 12v3.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Path
+        d="M11.5 18c.8.7 1.6 1 2.5 1s1.7-.3 2.5-1"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+      {scanning ? (
+        <Path d="M3 14h22" stroke={CLAY} strokeWidth={1.5} strokeLinecap="round" />
+      ) : null}
+    </Svg>
+  )
+}
+
+interface FadeInUpProps {
+  delay?: number
+  duration?: number
+  reduced?: boolean
+  style?: object
+  children: React.ReactNode
+}
+
+function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeInUpProps) {
+  const y = useSharedValue(reduced ? 0 : 8)
+  const opacity = useSharedValue(reduced ? 1 : 0)
+  useEffect(() => {
+    if (reduced) {
+      y.value = 0
+      opacity.value = 1
+      return
+    }
+    y.value = withDelay(delay, withTiming(0, { duration, easing: Easing.out(Easing.cubic) }))
+    opacity.value = withDelay(delay, withTiming(1, { duration }))
+  }, [delay, duration, opacity, reduced, y])
+  const animated = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: y.value }],
+  }))
+  return <Animated.View style={[style, animated]}>{children}</Animated.View>
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: authPalette.canvas.background,
-  },
-  root: {
-    flex: 1,
-    backgroundColor: authPalette.canvas.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
+  // Single scrollable column. `flexGrow: 1` makes the contentContainer
+  // fill the ScrollView; the inner `bodyStyle` wrapper picks up the
+  // flex and distributes the three sections via `space-between`.
+  screenContent: {
     flexGrow: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 16,
+    gap: 0,
   },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+  // The Animated.View inside Screen would otherwise size to its
+  // children (intrinsic) — by stretching it with `flex: 1` we get
+  // `justifyContent: 'space-between'` to actually distribute the
+  // topNav, hero and actions to the top, middle, and bottom.
+  // When the keyboard opens, the ScrollView's auto insets scroll the
+  // whole column up TOGETHER (single scroll region, no inner split).
+  screenBody: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
-  heroWrap: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 2,
+  topNav: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 0,
-  },
-  panelShadowWrap: {
-    width: '100%',
+    height: 60,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 6,
+    justifyContent: 'space-between',
+  },
+  navButton: {
+    padding: 8,
+    margin: -8,
+  },
+  navSpacer: {
+    width: 24,
+  },
+  // Wrapper around the hero block — owns horizontal padding so the
+  // hero stays edge-aligned with the topNav/actions. The ScrollView
+  // contentContainer's `justifyContent: 'space-between'` centers this
+  // block vertically when content is short.
+  heroBlockOuter: {
+    paddingHorizontal: 28,
+  },
+  heroBlock: {
+    alignItems: 'center',
+  },
+  // Actions stack — same horizontal padding as the hero so the surface
+  // reads as one continuous column.
+  actionsStack: {
+    paddingHorizontal: 28,
+    paddingTop: 12,
+    gap: 14,
+  },
+  // Hero text colors (eyebrow / title / sub / email) are overridden at
+  // render time with theme-aware values so they adapt to dark mode.
+  eyebrow: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -1.5,
+    textAlign: 'center',
+  },
+  avatarWrap: {
+    marginTop: 40,
+    width: 128,
+    height: 128,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarSlot: {
+    width: 128,
+    height: 128,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  halo: {
+    position: 'absolute',
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: authTokens.focusRingGlow,
+  },
+  ring: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: CLAY,
+  },
+  avatar: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: CREAM,
+  },
+  welcomeBackSub: {
+    marginTop: 18,
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emailMicro: {
+    marginTop: 18,
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  primaryCta: {
+    width: '100%',
+    height: 60,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    shadowColor: DARK_GREEN,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.25,
+    shadowRadius: 30,
+    elevation: 6,
+  },
+  primaryCtaLabel: {
+    color: CREAM,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  secondaryButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  passwordForm: {
+    gap: 14,
+  },
+  cancelLink: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: 4,
+  },
+  cancelLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  passwordCta: {
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
 })

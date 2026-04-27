@@ -11,6 +11,7 @@ import {
 export {
   buildFamilyFinanceInput,
   buildSalaryConfirmationInput,
+  buildCycleStartingBalanceInput,
   DEFAULT_DAILY_BUDGET_BUFFER_MODE,
   DEFAULT_DAILY_BUDGET_CHECKIN_HOUR,
   DEFAULT_SALARY_PAYMENT_DAY,

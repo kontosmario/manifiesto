@@ -1,42 +1,81 @@
-import { ScrollView, StyleSheet } from 'react-native'
-import { Chip } from '@/components/ui/chip'
-import { currencyFormatter } from '@/utils/money'
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { useAppTheme } from '@/theme/theme-provider'
 
 interface SuggestedAmountStripProps {
   amounts: number[]
   currentAmount: number
-  onSelect: (value: number) => void
+  onAdd: (delta: number) => void
+  onClear: () => void
 }
 
 export function SuggestedAmountStrip({
   amounts,
   currentAmount,
-  onSelect,
+  onAdd,
+  onClear,
 }: SuggestedAmountStripProps) {
-  const rounded = Math.round(currentAmount)
+  const { theme } = useAppTheme()
 
   return (
     <ScrollView
-      contentContainerStyle={styles.row}
       horizontal
       showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.row}
+      keyboardShouldPersistTaps="handled"
     >
-      {amounts.map((amount) => (
-        <Chip
-          key={amount}
-          compact
-          isActive={rounded === amount}
-          label={currencyFormatter.format(amount)}
-          onPress={() => onSelect(amount)}
-        />
+      {amounts.map((v) => (
+        <Pressable
+          key={v}
+          onPress={() => onAdd(v)}
+          accessibilityRole="button"
+          accessibilityLabel={`Sumar ${v}`}
+          style={[
+            styles.chip,
+            { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
+          ]}
+        >
+          <Text style={[styles.chipText, { color: theme.colors.text }]}>
+            +${v / 1000}k
+          </Text>
+        </Pressable>
       ))}
+      {currentAmount > 0 ? (
+        <Pressable
+          onPress={onClear}
+          accessibilityRole="button"
+          accessibilityLabel="Borrar monto"
+          style={[styles.chipDashed, { borderColor: theme.colors.line }]}
+        >
+          <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>
+            Borrar
+          </Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   row: {
-    gap: 8,
-    paddingHorizontal: 2,
+    gap: 6,
+    paddingRight: 4,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  chipDashed: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 })

@@ -34,16 +34,16 @@ export function getEmailRedirectTo() {
 export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {
   if (mode === 'sign-in') {
     return {
-      buttonLabel: 'Entrar',
-      subtitle: 'Entrá para continuar.',
-      title: 'Ingresar',
+      buttonLabel: 'Continuar',
+      subtitle: 'Finanzas claras, todos los días.',
+      title: 'Entrá a tu espacio',
     }
   }
 
   return {
     buttonLabel: 'Crear cuenta',
-    subtitle: 'Empezá simple.',
-    title: 'Crear cuenta',
+    subtitle: 'Empezá hoy, ordená el resto.',
+    title: 'Sumate a Manifiesto',
   }
 }
 

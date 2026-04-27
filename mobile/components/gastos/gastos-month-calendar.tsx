@@ -9,19 +9,58 @@ import { formatMoney } from '@/utils/money'
 interface GastosMonthCalendarProps {
   dayMoods: Record<number, GastosDayMood>
   todayDay: number
-  daysInMonth: number
+  /** First date of the current pay cycle (local). */
+  cycleStart: Date
+  /** Total number of days in the cycle window. */
+  cycleDays: number
   firstWeekdayOffset?: number // 0 = Monday first column
   selectedDay: number | null
   selectedDayTotal?: number
   selectedDayCount?: number
-  monthLabel?: string // e.g. "abril"
+  /** Short label for the cycle range, e.g. "20 abr → 20 may". */
+  cycleLabel?: string
   onSelectDay: (day: number) => void
   onClearDay: () => void
   onPrevDay?: () => void
   onNextDay?: () => void
+  /** Disable the prev chevron when the selected day is the cycle's
+   *  first day. Caller computes (selection vs. cycle bounds). */
+  canGoPrev?: boolean
+  /** Disable the next chevron when the selected day is today OR the
+   *  last day of the cycle — can't navigate to future or off-cycle. */
+  canGoNext?: boolean
+  /**
+   * Fired when the user taps "Registrar gasto olvidado" in focus mode
+   * on a PAST day of the cycle. Receives the concrete Date so the
+   * caller can back-date the new movement. Today's selection doesn't
+   * offer this option (regular add-expense flow covers it).
+   */
+  onRegisterForgottenExpense?: (date: Date) => void
 }
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+/**
+ * Finds the concrete Date for a calendar day-of-month within the
+ * current cycle window. Since a cycle spans at most 2 adjacent
+ * months, `dayOfMonth` is unique — we iterate the cycle dates and
+ * return the first match.
+ */
+function resolveCycleDate(
+  cycleStart: Date,
+  cycleDays: number,
+  dayOfMonth: number,
+): Date | null {
+  for (let i = 0; i < cycleDays; i++) {
+    const d = new Date(
+      cycleStart.getFullYear(),
+      cycleStart.getMonth(),
+      cycleStart.getDate() + i,
+    )
+    if (d.getDate() === dayOfMonth) return d
+  }
+  return null
+}
 
 /**
  * Calendar for Gastos — 7-col grid of the current month with a heatmap
@@ -32,16 +71,20 @@ const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 export function GastosMonthCalendar({
   dayMoods,
   todayDay,
-  daysInMonth,
+  cycleStart,
+  cycleDays,
   firstWeekdayOffset = 0,
   selectedDay,
   selectedDayTotal = 0,
   selectedDayCount = 0,
-  monthLabel = '',
+  cycleLabel = '',
   onSelectDay,
   onClearDay,
   onPrevDay,
   onNextDay,
+  canGoPrev = true,
+  canGoNext = true,
+  onRegisterForgottenExpense,
 }: GastosMonthCalendarProps) {
   // Crossfade between grid and focus via Reanimated layout animations
   // (FadeIn on mount, FadeOut on unmount). Keyed by mode so switching
@@ -62,10 +105,20 @@ export function GastosMonthCalendar({
             mood={dayMoods[selectedDay] ?? 'empty'}
             total={selectedDayTotal}
             count={selectedDayCount}
-            monthLabel={monthLabel}
+            cycleLabel={cycleLabel}
             onClear={onClearDay}
             onPrev={onPrevDay}
             onNext={onNextDay}
+            canGoPrev={canGoPrev}
+            canGoNext={canGoNext}
+            onRegisterForgotten={
+              onRegisterForgottenExpense && selectedDay !== todayDay
+                ? () => {
+                    const date = resolveCycleDate(cycleStart, cycleDays, selectedDay)
+                    if (date) onRegisterForgottenExpense(date)
+                  }
+                : undefined
+            }
           />
         </Animated.View>
       ) : (
@@ -77,7 +130,8 @@ export function GastosMonthCalendar({
           <GridMode
             dayMoods={dayMoods}
             todayDay={todayDay}
-            daysInMonth={daysInMonth}
+            cycleStart={cycleStart}
+            cycleDays={cycleDays}
             firstWeekdayOffset={firstWeekdayOffset}
             onSelectDay={onSelectDay}
           />
@@ -90,23 +144,40 @@ export function GastosMonthCalendar({
 function GridMode({
   dayMoods,
   todayDay,
-  daysInMonth,
+  cycleStart,
+  cycleDays,
   firstWeekdayOffset,
   onSelectDay,
 }: {
   dayMoods: Record<number, GastosDayMood>
   todayDay: number
-  daysInMonth: number
+  cycleStart: Date
+  cycleDays: number
   firstWeekdayOffset: number
   onSelectDay: (day: number) => void
 }) {
   const { theme } = useAppTheme()
   // Build the week rows: lead with `firstWeekdayOffset` blanks, then the
-  // month's days, then pad the trailing row so every row is 7 cells.
-  const rows: Array<Array<number | null>> = []
-  let current: Array<number | null> = []
+  // cycle's days rendered with their real calendar day-of-month
+  // (so a 20→20 cycle shows 20,21,22…30,1,2…19). Each cycle day
+  // remains unique because a cycle spans at most two adjacent months.
+  const todayNormalized = new Date()
+  todayNormalized.setHours(0, 0, 0, 0)
+  const todayMs = todayNormalized.getTime()
+  const cycleDates: Date[] = []
+  for (let i = 0; i < cycleDays; i++) {
+    cycleDates.push(
+      new Date(
+        cycleStart.getFullYear(),
+        cycleStart.getMonth(),
+        cycleStart.getDate() + i,
+      ),
+    )
+  }
+  const rows: Array<Array<Date | null>> = []
+  let current: Array<Date | null> = []
   for (let i = 0; i < firstWeekdayOffset; i++) current.push(null)
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (const d of cycleDates) {
     current.push(d)
     if (current.length === 7) {
       rows.push(current)
@@ -146,20 +217,25 @@ function GridMode({
         <View style={styles.grid}>
           {rows.map((row, ri) => (
             <View key={ri} style={styles.gridRow}>
-              {row.map((n, ci) =>
-                n == null ? (
-                  <View key={`e-${ri}-${ci}`} style={styles.dayCell} />
-                ) : (
+              {row.map((cellDate, ci) => {
+                if (cellDate == null) {
+                  return <View key={`e-${ri}-${ci}`} style={styles.dayCell} />
+                }
+                const dayNum = cellDate.getDate()
+                const cellMs = cellDate.getTime()
+                const isToday = cellMs === todayMs
+                const isPast = cellMs <= todayMs
+                return (
                   <DayCell
-                    key={n}
-                    day={n}
-                    mood={dayMoods[n] ?? (n <= todayDay ? 'empty' : undefined)}
-                    isToday={n === todayDay}
-                    isPast={n <= todayDay}
-                    onPress={() => onSelectDay(n)}
+                    key={`${cellDate.getFullYear()}-${cellDate.getMonth()}-${dayNum}`}
+                    day={dayNum}
+                    mood={dayMoods[dayNum] ?? (isPast ? 'empty' : undefined)}
+                    isToday={isToday}
+                    isPast={isPast}
+                    onPress={() => onSelectDay(dayNum)}
                   />
-                ),
-              )}
+                )
+              })}
             </View>
           ))}
         </View>
@@ -280,20 +356,26 @@ function FocusMode({
   mood,
   total,
   count,
-  monthLabel,
+  cycleLabel,
   onClear,
   onPrev,
   onNext,
+  canGoPrev = true,
+  canGoNext = true,
+  onRegisterForgotten,
 }: {
   day: number
   todayDay: number
   mood: GastosDayMood
   total: number
   count: number
-  monthLabel: string
+  cycleLabel: string
   onClear: () => void
   onPrev?: () => void
   onNext?: () => void
+  canGoPrev?: boolean
+  canGoNext?: boolean
+  onRegisterForgotten?: () => void
 }) {
   const { theme } = useAppTheme()
   const isToday = day === todayDay
@@ -324,17 +406,17 @@ function FocusMode({
         </View>
 
         <View style={styles.focusHero}>
-          <ChevronBtn direction="prev" onPress={onPrev} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
-          <Pressable onPress={onClear} style={styles.focusCenter} accessibilityRole="button" accessibilityLabel="Volver al mes completo">
+          <ChevronBtn direction="prev" onPress={onPrev} disabled={!canGoPrev} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
+          <Pressable onPress={onClear} style={styles.focusCenter} accessibilityRole="button" accessibilityLabel="Volver al ciclo completo">
             <Text style={[styles.focusDay, { color: theme.colors.text }]}>{day}</Text>
             <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
-              {monthLabel}
+              {cycleLabel}
               {isToday ? (
                 <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{' · hoy'}</Text>
               ) : null}
             </Text>
           </Pressable>
-          <ChevronBtn direction="next" onPress={onNext} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
+          <ChevronBtn direction="next" onPress={onNext} disabled={!canGoNext} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
         </View>
 
         <View style={[styles.focusStats, { borderTopColor: theme.colors.line }]}>
@@ -348,12 +430,39 @@ function FocusMode({
           </View>
         </View>
 
+        {onRegisterForgotten ? (
+          <Pressable
+            onPress={onRegisterForgotten}
+            style={[
+              styles.registerForgottenBtn,
+              {
+                backgroundColor: theme.colors.creamSoft,
+                borderColor: theme.colors.line,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Registrar gasto olvidado en este día"
+          >
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M12 5v14M5 12h14"
+                stroke={theme.colors.text}
+                strokeWidth={2.4}
+                strokeLinecap="round"
+              />
+            </Svg>
+            <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
+              Registrar gasto olvidado
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.focusBackRow}>
           <Pressable
             onPress={onClear}
             style={[styles.backChip, { backgroundColor: theme.colors.text }]}
             accessibilityRole="button"
-            accessibilityLabel="Volver al mes completo"
+            accessibilityLabel="Volver al ciclo completo"
           >
             <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
               <Path
@@ -364,7 +473,7 @@ function FocusMode({
               />
             </Svg>
             <Text style={[styles.backChipText, { color: theme.colors.creamCard }]}>
-              {capitalize(monthLabel)} completo
+              Ciclo completo
             </Text>
           </Pressable>
         </View>
@@ -375,12 +484,14 @@ function FocusMode({
 function ChevronBtn({
   direction,
   onPress,
+  disabled = false,
   color,
   bg,
   border,
 }: {
   direction: 'prev' | 'next'
   onPress?: () => void
+  disabled?: boolean
   color: string
   bg: string
   border: string
@@ -388,8 +499,17 @@ function ChevronBtn({
   const d = direction === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'
   return (
     <Pressable
-      onPress={onPress}
-      style={[styles.chevronBtn, { backgroundColor: bg, borderColor: border }]}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
+      style={[
+        styles.chevronBtn,
+        {
+          backgroundColor: bg,
+          borderColor: border,
+          opacity: disabled ? 0.35 : 1,
+        },
+      ]}
       accessibilityRole="button"
       accessibilityLabel={direction === 'prev' ? 'Día anterior' : 'Día siguiente'}
     >
@@ -398,11 +518,6 @@ function ChevronBtn({
       </Svg>
     </Pressable>
   )
-}
-
-function capitalize(s: string): string {
-  if (!s) return s
-  return s[0].toUpperCase() + s.slice(1)
 }
 
 const styles = StyleSheet.create({
@@ -454,4 +569,20 @@ const styles = StyleSheet.create({
   focusBackRow: { marginTop: 12, alignItems: 'center' },
   backChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
   backChipText: { fontSize: 12, fontWeight: '700' },
+  registerForgottenBtn: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  registerForgottenText: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.1,
+  },
 })

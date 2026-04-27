@@ -102,12 +102,14 @@ export function buildFinanceFieldValues({
 
 export function buildFinanceSubmitState({
   drafts,
-  essentialMonthlyCost = 0,
   lastSalaryConfirmedAt,
+  currentCycleStartingBalance = null,
+  currentCycleAnchor = null,
 }: {
   drafts: FinanceSettingsDrafts
-  essentialMonthlyCost?: number
   lastSalaryConfirmedAt: string | null
+  currentCycleStartingBalance?: number | null
+  currentCycleAnchor?: string | null
 }): {
   canSaveFinance: boolean
   input: ReturnType<typeof buildFamilyFinanceInput> | null
@@ -124,7 +126,6 @@ export function buildFinanceSubmitState({
     Number.isFinite(savingsPercent) &&
     Number.isFinite(usdRate) &&
     Number.isFinite(buffer) &&
-    Number.isFinite(essentialMonthlyCost) &&
     buffer >= 0 &&
     savingsPercent >= 0 &&
     savingsPercent <= MAX_SAVINGS_GOAL_PERCENT &&
@@ -149,8 +150,9 @@ export function buildFinanceSubmitState({
       dailyBudgetBufferValue: buffer,
       dailyBudgetCheckinHour: checkinHourNumber,
       dailyBudgetNudgesEnabled: drafts.nudgesEnabledDraft,
-      essentialMonthlyCost,
       lastSalaryConfirmedAt,
+      currentCycleStartingBalance,
+      currentCycleAnchor,
       monthlyIncome: income,
       salaryPaymentDay: salaryDayNumber,
       savingsGoal: deriveSavingsGoalAmount(income, savingsPercent),

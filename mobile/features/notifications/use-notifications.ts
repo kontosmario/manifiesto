@@ -1,27 +1,49 @@
 import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
 import { supabase } from '@/lib/supabase'
 
+export type NotificationSeverity = 'info' | 'success' | 'warning' | 'alert'
+
+export interface NotificationMetadata {
+  route?: string
+  expense_id?: string
+  commitment_id?: string
+  goal_id?: string
+  streak?: number
+  milestone?: number
+  delta?: number
+  amount?: number
+  [key: string]: unknown
+}
+
 interface RawNotification {
   id: string
   family_id: string
+  user_id: string | null
   title: string
   body: string
   kind: string
+  severity: string | null
   created_by: string | null
   created_at: string
+  read_at: string | null
+  metadata: NotificationMetadata | null
 }
 
 export interface FamilyNotification {
   id: string
   family_id: string
+  user_id: string | null
   title: string
   body: string
   kind: string
+  severity: NotificationSeverity
   created_by: string | null
   created_at: string
+  read_at: string | null
+  metadata: NotificationMetadata
 }
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
@@ -37,21 +59,69 @@ function isMissingNotificationsTableError(error: PostgrestError): boolean {
   )
 }
 
+function normalizeSeverity(raw: string | null | undefined): NotificationSeverity {
+  switch (raw) {
+    case 'success':
+    case 'warning':
+    case 'alert':
+      return raw
+    default:
+      return 'info'
+  }
+}
+
+function normalizeRow(row: RawNotification): FamilyNotification {
+  return {
+    id: row.id,
+    family_id: row.family_id,
+    user_id: row.user_id,
+    title: row.title ?? '',
+    body: row.body ?? '',
+    kind: row.kind ?? 'info',
+    severity: normalizeSeverity(row.severity),
+    created_by: row.created_by,
+    created_at: row.created_at,
+    read_at: row.read_at,
+    metadata:
+      row.metadata && typeof row.metadata === 'object'
+        ? (row.metadata as NotificationMetadata)
+        : {},
+  }
+}
+
 export const familyNotificationsQueryKey = notificationQueryKeys.list
 
-export function useFamilyNotifications(familyId?: string, limit = 30) {
+const NOTIFICATION_COLUMNS =
+  'id, family_id, user_id, title, body, kind, severity, created_by, created_at, read_at, metadata'
+
+export function useFamilyNotifications(
+  familyId?: string,
+  userId?: string,
+  limit = 60,
+) {
   return useQuery<FamilyNotification[]>({
-    queryKey: notificationQueryKeys.list(familyId, limit),
+    queryKey: notificationQueryKeys.list(familyId, userId ?? null, limit),
     enabled: Boolean(familyId) && limit > 0,
     queryFn: async () => {
       if (!familyId || limit <= 0) {
         return []
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('notifications')
-        .select('id, family_id, title, body, kind, created_by, created_at')
+        .select(NOTIFICATION_COLUMNS)
         .eq('family_id', familyId)
+
+      if (userId) {
+        // Include family-wide notifications (user_id IS NULL) OR those
+        // addressed to the current user. PostgREST `or()` with is.null
+        // requires quoting.
+        query = query.or(`user_id.is.null,user_id.eq.${userId}`)
+      } else {
+        query = query.is('user_id', null)
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(limit)
 
@@ -63,12 +133,95 @@ export function useFamilyNotifications(familyId?: string, limit = 30) {
         throw error
       }
 
-      return ((data as RawNotification[] | null) ?? []).map((row) => ({
-        ...row,
-        title: row.title ?? '',
-        body: row.body ?? '',
-        kind: row.kind ?? 'info',
-      }))
+      return ((data as RawNotification[] | null) ?? []).map(normalizeRow)
+    },
+  })
+}
+
+export function useUnreadNotificationsCount(familyId?: string, userId?: string) {
+  return useQuery<number>({
+    queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
+    enabled: Boolean(familyId),
+    queryFn: async () => {
+      if (!familyId) return 0
+
+      let query = supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('family_id', familyId)
+        .is('read_at', null)
+
+      if (userId) {
+        query = query.or(`user_id.is.null,user_id.eq.${userId}`)
+      } else {
+        query = query.is('user_id', null)
+      }
+
+      const { count, error } = await query
+
+      if (error) {
+        if (isMissingNotificationsTableError(error)) {
+          return 0
+        }
+
+        throw error
+      }
+
+      return count ?? 0
+    },
+  })
+}
+
+export function useMarkNotificationRead(familyId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: { id: string; read: boolean }) => {
+      const nextValue = input.read ? new Date().toISOString() : null
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read_at: nextValue })
+        .eq('id', input.id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      if (!familyId) return
+      void queryClient.invalidateQueries({
+        queryKey: notificationQueryKeys.family(familyId),
+      })
+    },
+  })
+}
+
+export function useMarkAllNotificationsRead(familyId?: string, userId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!familyId) return
+
+      const nowIso = new Date().toISOString()
+      let query = supabase
+        .from('notifications')
+        .update({ read_at: nowIso })
+        .eq('family_id', familyId)
+        .is('read_at', null)
+
+      if (userId) {
+        query = query.or(`user_id.is.null,user_id.eq.${userId}`)
+      } else {
+        query = query.is('user_id', null)
+      }
+
+      const { error } = await query
+      if (error) throw error
+    },
+    onSuccess: () => {
+      if (!familyId) return
+      void queryClient.invalidateQueries({
+        queryKey: notificationQueryKeys.family(familyId),
+      })
     },
   })
 }
@@ -86,7 +239,7 @@ export function useFamilyNotificationsRealtime(familyId?: string) {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `family_id=eq.${familyId}`,
@@ -100,6 +253,11 @@ export function useFamilyNotificationsRealtime(familyId?: string) {
       .subscribe()
 
     return () => {
+      // `unsubscribe` closes the realtime websocket side; `removeChannel`
+      // frees the client-side object. Doing one without the other can
+      // leave listeners attached in memory when the subscription is
+      // torn down while still pending.
+      void channel.unsubscribe()
       void supabase.removeChannel(channel)
     }
   }, [familyId, queryClient])

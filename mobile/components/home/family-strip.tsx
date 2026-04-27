@@ -1,14 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native'
+import type { AvatarSlug } from '@/assets/avatars'
 import { PaydayPillV2 } from '@/components/home/payday-pill-v2'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Avatar } from '@/components/ui/avatar'
+import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { useAppTheme } from '@/theme/theme-provider'
 
-export interface FamilyMember { id: string; name: string; color: string }
+export interface FamilyMember {
+  id: string
+  name: string
+  color: string
+  avatarSlug?: AvatarSlug | null
+}
 
 interface FamilyStripProps {
   members: FamilyMember[]
-  familyName: string
   daysUntilPayday: number | null
   paydayPending: boolean
   onPaydayPress?: () => void
@@ -16,7 +22,7 @@ interface FamilyStripProps {
 
 const MAX_AVATARS = 4
 
-export function FamilyStrip({ members, familyName, daysUntilPayday, paydayPending, onPaydayPress }: FamilyStripProps) {
+export function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress }: FamilyStripProps) {
   const { theme } = useAppTheme()
   const visible = members.slice(0, MAX_AVATARS)
   const overflow = members.length - visible.length
@@ -26,12 +32,20 @@ export function FamilyStrip({ members, familyName, daysUntilPayday, paydayPendin
         <View style={styles.avatars}>
           {visible.map((m, i) => (
             <View key={m.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
-              <Avatar
-                name={m.name}
-                color={m.color}
-                size={26}
-                ringColor={theme.colors.ringBg}
-              />
+              {m.avatarSlug ? (
+                <AvatarAnimal
+                  slug={m.avatarSlug}
+                  size={26}
+                  ringColor={theme.colors.ringBg}
+                />
+              ) : (
+                <Avatar
+                  name={m.name}
+                  color={m.color}
+                  size={26}
+                  ringColor={theme.colors.ringBg}
+                />
+              )}
             </View>
           ))}
           {overflow > 0 ? (
@@ -41,7 +55,7 @@ export function FamilyStrip({ members, familyName, daysUntilPayday, paydayPendin
           ) : null}
         </View>
         <Text style={[styles.familyLabel, { color: theme.colors.textMuted }]}>
-          {familyName} · <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
+          Miembros · <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
         </Text>
         <View style={styles.spacer} />
         <PaydayPillV2 daysUntilPayday={daysUntilPayday} isPending={paydayPending} onPress={onPaydayPress} />

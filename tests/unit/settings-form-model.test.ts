@@ -21,7 +21,6 @@ describe('settings-form.model', () => {
       dailyBudgetBufferValue: 12000,
       dailyBudgetCheckinHour: 9,
       dailyBudgetNudgesEnabled: true,
-      essentialMonthlyCost: 180000,
       lastSalaryConfirmedAt: null,
       monthlyIncome: 350000,
       salaryPaymentDay: 5,
@@ -61,7 +60,6 @@ describe('settings-form.model', () => {
         savingsDraft: '15',
         usdRateDraft: '1150',
       },
-      essentialMonthlyCost: 250000,
       lastSalaryConfirmedAt: '2026-04-15T12:00:00.000Z',
     })
 
@@ -71,7 +69,6 @@ describe('settings-form.model', () => {
       dailyBudgetBufferValue: 10,
       dailyBudgetCheckinHour: 8,
       dailyBudgetNudgesEnabled: false,
-      essentialMonthlyCost: 250000,
       lastSalaryConfirmedAt: '2026-04-15T12:00:00.000Z',
       monthlyIncome: 500000,
       salaryPaymentDay: 12,

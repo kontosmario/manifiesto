@@ -186,6 +186,40 @@ const darkColors: ThemeColors = {
   pageBg:             '#0A1410',
 }
 
+/**
+ * Auth design tokens — shared vocabulary for the new login/welcome/signup
+ * screens. These are intentionally separate from the global `ThemeColors`
+ * shape so the auth flow can hold its own brand expression without leaking
+ * into the rest of the app.
+ *
+ * Import directly: `import { authTokens } from '@/theme/palette'`.
+ */
+export const authTokens = {
+  // backgrounds
+  welcomeBg:      '#0E3A26',
+  formBg:         '#F2EEE3',
+  surfaceCream:   '#FFFBF2',
+  // accents
+  peach:          '#F2B58A',
+  peachSoft:      '#FADFC8',
+  clay:           '#E08E63',
+  plum:           '#6B3A4F',
+  butter:         '#F1D690',
+  // states
+  focusRing:      '#1F7A4B',
+  focusRingGlow:  'rgba(31,122,75,0.12)',
+  strengthWeak:   '#D85A4A',
+  strengthGood:   '#E08E63',
+  strengthStrong: '#1F7A4B',
+  // gradients (3-stop ramp for the welcome/auth panels)
+  welcomeGradient: ['#0E3A26', '#165C3A', '#1F7A4B'] as const,
+  ctaGradient:     ['#0E3A26', '#1F7A4B'] as const,
+  // shadows (use as boxShadow strings — RN 0.76+ supports it)
+  ctaShadow:    '0 14px 30px -10px rgba(15,58,38,0.4)',
+  softShadow:   '0 12px 30px -10px rgba(0,0,0,0.4)',
+  peachShadow:  '0 18px 40px -16px rgba(224,142,99,0.5)',
+} as const
+
 export function buildTheme(mode: ResolvedThemeMode): AppTheme {
   return {
     colors: mode === 'dark' ? darkColors : lightColors,

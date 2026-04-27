@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Modal,
   Pressable,
@@ -6,6 +6,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type LayoutChangeEvent,
 } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -26,6 +27,11 @@ import { AppButton } from './button'
 import { appendComma, appendDigit, backspace, clearAll } from './in-app-numpad-model'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
+import {
+  publishNumpadClose,
+  publishNumpadHeight,
+  publishNumpadOpen,
+} from '@/lib/numpad-visibility'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -63,35 +69,89 @@ export function InAppNumpad({
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
+  const [measuredHeight, setMeasuredHeight] = useState(0)
+  // Internal "mounted" state so the close animation can play out
+  // before the Modal actually unmounts. Without this, setting
+  // `visible=false` on the Modal hides the sheet instantly and the
+  // slide-down timing never paints.
+  const [mounted, setMounted] = useState(false)
 
   const translateY = useSharedValue(screenHeight)
-  const backdropOpacity = useSharedValue(0)
+
+  // Publish visibility + measured height so bottom-anchored surfaces
+  // (ModalCard, sheets) can shift up and avoid being covered. We use
+  // the measured height if available, fall back to an estimate while
+  // the first layout is pending.
+  useEffect(() => {
+    if (!visible) return
+    const fallback = 320 + insets.bottom
+    publishNumpadOpen(measuredHeight > 0 ? measuredHeight : fallback)
+    // We DON'T publish the close here on cleanup. If we did, the
+    // numpadOffset would drop to 0 the instant `visible` flips
+    // false — long before the slide-down animation paints — which
+    // shrinks the ScrollView content abruptly and snaps the
+    // underlying form to the top, undoing any in-flight scroll
+    // restore. The close is published later, from the slide-down
+    // animation's callback, so the offset only releases once the
+    // sheet is fully gone.
+    // measuredHeight intentionally omitted from deps: re-running
+    // this effect when the sheet's measured height arrives would
+    // call `publishNumpadOpen` a SECOND time, bumping `openCount`
+    // to 2. Since we only publish a single close (from the
+    // animation callback), the count would never reach 0 and the
+    // footer would stay hidden forever. Height updates flow
+    // through `publishNumpadHeight` in `handleSheetLayout` which
+    // doesn't touch the open counter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment
+  }, [visible, insets.bottom])
+
+  const handleSheetLayout = useCallback((event: LayoutChangeEvent) => {
+    const h = event.nativeEvent.layout.height
+    setMeasuredHeight(h)
+    publishNumpadHeight(h)
+  }, [])
 
   useEffect(() => {
     if (visible) {
+      // Mount immediately so the Modal renders before we animate up.
+      setMounted(true)
       translateY.value = reduceMotion ? 0 : withSpring(0, motionSprings.sheet)
-      backdropOpacity.value = reduceMotion
-        ? 1
-        : withTiming(1, { duration: motionDurations.standard })
-    } else {
-      translateY.value = reduceMotion
-        ? screenHeight
-        : withTiming(screenHeight, {
-            duration: motionDurations.deliberate,
-            easing: motionEasings.accelerate,
-          })
-      backdropOpacity.value = reduceMotion
-        ? 0
-        : withTiming(0, { duration: motionDurations.standard })
+      return
     }
-  }, [visible, reduceMotion, screenHeight, translateY, backdropOpacity])
+    // Animate the sheet down and only unmount the Modal once the
+    // animation completes. Using `withTiming`'s third-arg callback
+    // (running on the UI thread) + `runOnJS` so we can flip React
+    // state safely. Symmetric duration so the close feels paced
+    // like the open.
+    if (reduceMotion) {
+      translateY.value = screenHeight
+      setMounted(false)
+      publishNumpadClose()
+      return
+    }
+    translateY.value = withTiming(
+      screenHeight,
+      {
+        duration: motionDurations.deliberate,
+        easing: motionEasings.accelerate,
+      },
+      (finished) => {
+        if (finished) {
+          // Both unmount AND release the published numpad offset
+          // happen at the END of the slide-down. While the sheet
+          // is still on screen, the form below keeps its extended
+          // content padding so any auto-scroll restore can play
+          // out smoothly without getting clamped by a content
+          // size change.
+          runOnJS(setMounted)(false)
+          runOnJS(publishNumpadClose)()
+        }
+      },
+    )
+  }, [visible, reduceMotion, screenHeight, translateY])
 
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
-  }))
-
-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
   }))
 
   const handleDigit = useCallback(
@@ -144,7 +204,6 @@ export function InAppNumpad({
       'worklet'
       if (event.translationY > 0) {
         translateY.value = event.translationY
-        backdropOpacity.value = Math.max(0.2, 1 - event.translationY / screenHeight)
       }
     })
     .onEnd((event) => {
@@ -158,34 +217,35 @@ export function InAppNumpad({
           stiffness: 240,
           mass: 0.9,
         })
-        backdropOpacity.value = withTiming(0, { duration: motionDurations.quick })
         runOnJS(onDismiss)()
       } else {
         translateY.value = withSpring(0, motionSprings.sheet)
-        backdropOpacity.value = withTiming(1, { duration: motionDurations.quick })
       }
     })
 
   return (
     <Modal
-      visible={visible}
+      visible={mounted}
       transparent
       animationType="none"
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
       <GestureHandlerRootView style={styles.root}>
-        <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
-          <Pressable
-            accessibilityLabel="Cerrar numpad"
-            accessibilityRole="button"
-            onPress={onDismiss}
-            style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
-          />
-        </Animated.View>
+        {/* Transparent tap-to-dismiss surface — we deliberately do NOT
+            tint the area behind the numpad. The user wants the
+            AmountCard input to remain fully readable while typing.
+            The sheet sliding up is the focus cue, no scrim needed. */}
+        <Pressable
+          accessibilityLabel="Cerrar numpad"
+          accessibilityRole="button"
+          onPress={onDismiss}
+          style={StyleSheet.absoluteFill}
+        />
 
         <GestureDetector gesture={panGesture}>
           <Animated.View
+            onLayout={handleSheetLayout}
             style={[
               styles.sheet,
               sheetAnimatedStyle,

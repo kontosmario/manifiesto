@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
+import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -11,9 +12,14 @@ interface FijoRowProps {
   item: FijoItem
   categoryColor: string
   categoryName: string
+  /** Current UTC day-of-month, passed from the parent so every row shares
+   *  the same value and we don't create a Date per row per render. */
+  todayDay: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  /** Toggle true while a delete/edit mutation is in flight for this item. */
+  isPending?: boolean
 }
 
 /**
@@ -25,13 +31,15 @@ export function FijoRow({
   item,
   categoryColor,
   categoryName,
+  todayDay,
   onMarkPaid,
   onEdit,
   onDelete,
+  isPending = false,
 }: FijoRowProps) {
   const { theme } = useAppTheme()
   const [open, setOpen] = useState(false)
-  const emoji = pickIconForCategory(categoryName)
+  const emoji = pickIconForFixedExpenseCategory(categoryName)
   const status = item.computedStatus
   const statusLabel =
     status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'
@@ -40,7 +48,6 @@ export function FijoRow({
   const statusBg =
     status === 'paid' ? '#DDEFE3' : status === 'overdue' ? '#F5C6B6' : '#FADFC8'
 
-  const todayDay = new Date().getUTCDate()
   const diffDays = item.dayOfMonth - todayDay
   const dueLabel =
     status === 'paid'
@@ -51,12 +58,24 @@ export function FijoRow({
           ? 'Vence hoy'
           : `Vence en ${diffDays}d`
 
+  // Swipe reveals only "Eliminar". Edit + Registrar pago live inside
+  // the tap-to-expand details panel.
   const actions: SwipeAction[] = []
-  if (onEdit) actions.push({ label: 'Editar', tone: 'neutral', onPress: () => onEdit(item.id) })
-  if (onDelete) actions.push({ label: 'Eliminar', tone: 'danger', onPress: () => onDelete(item.id) })
+  if (onDelete) {
+    actions.push({
+      label: 'Eliminar',
+      tone: 'danger',
+      icon: 'delete',
+      onPress: () => onDelete(item.id),
+    })
+  }
 
   return (
-    <SwipeableRow accessibilityHint="Desliza para editar o eliminar" rightActions={actions}>
+    <SwipeableRow
+      accessibilityHint="Desliza para editar o eliminar"
+      rightActions={actions}
+      isProcessing={isPending}
+    >
       <Animated.View layout={LinearTransition.duration(240)}>
         <Pressable
           onPress={() => setOpen((v) => !v)}
@@ -64,7 +83,11 @@ export function FijoRow({
             styles.card,
             {
               backgroundColor: theme.colors.creamCard,
-              boxShadow: open ? '0px 8px 20px -8px rgba(15,42,30,0.2)' : undefined,
+              shadowColor: '#0F2A1E',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: open ? 0.18 : 0,
+              shadowRadius: 10,
+              elevation: open ? 4 : 0,
             },
           ]}
         >
@@ -89,9 +112,14 @@ export function FijoRow({
             </View>
 
             <View style={styles.body}>
-              <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {item.trendDeltaPct != null && Math.abs(item.trendDeltaPct) >= 1 ? (
+                  <TrendBadge deltaPct={item.trendDeltaPct} />
+                ) : null}
+              </View>
               <View style={styles.metaRow}>
                 <View style={[styles.statusChip, { backgroundColor: statusBg }]}>
                   <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
@@ -110,6 +138,9 @@ export function FijoRow({
               <Text style={[styles.amount, { color: theme.colors.text }]}>
                 {formatMoney(item.amount)}
               </Text>
+              {item.priceHistory.length >= 2 ? (
+                <FijoTrendSpark points={item.priceHistory} />
+              ) : null}
             </View>
           </View>
 
@@ -169,6 +200,20 @@ export function FijoRow({
         </Pressable>
       </Animated.View>
     </SwipeableRow>
+  )
+}
+
+function TrendBadge({ deltaPct }: { deltaPct: number }) {
+  const up = deltaPct > 0
+  const bg = up ? 'rgba(232,151,106,0.18)' : 'rgba(46,125,91,0.16)'
+  const fg = up ? '#C25A3E' : '#2E7D5B'
+  return (
+    <View style={[styles.trendBadge, { backgroundColor: bg }]}>
+      <Text style={[styles.trendBadgeText, { color: fg }]}>
+        {up ? '+' : ''}
+        {deltaPct}%
+      </Text>
+    </View>
   )
 }
 
@@ -267,13 +312,20 @@ const styles = StyleSheet.create({
   },
   zombieBadgeText: { fontSize: 8 },
   body: { flex: 1, minWidth: 0 },
-  name: { fontSize: 14, fontWeight: '700' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  trendBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   statusChip: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999 },
   statusText: { fontSize: 10, fontWeight: '700' },
   metaDot: { fontSize: 11 },
   metaText: { fontSize: 11, flexShrink: 1 },
-  amountBlock: { alignItems: 'flex-end' },
+  amountBlock: { alignItems: 'flex-end', gap: 2 },
   amount: { fontSize: 16, fontWeight: '800', letterSpacing: -0.4 },
   detailBlock: {
     marginTop: 12,

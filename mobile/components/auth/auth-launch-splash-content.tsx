@@ -1,201 +1,209 @@
-import { Animated, Image, StyleSheet, Text, View, type ImageStyle } from 'react-native'
-import { authPalette, authTitleFontFamily } from '@/theme/auth-theme'
-import { radii } from '@/theme/palette'
-import { withAlpha } from '@/theme/color-utils'
+import { useEffect } from 'react'
+import { Image, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
+import { BreatheDot } from '@/components/home/animated/breathe-dot'
+import { RiseView } from '@/components/home/animated/rise-view'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useAppTheme } from '@/theme/theme-provider'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const walletSplash = require('../../../assets/brand/wallet-cartoon-fallback.png') as number
-
-const AnimatedImage = Animated.createAnimatedComponent(Image)
-type AnimatedScalar = Animated.AnimatedInterpolation<number> | Animated.Value
+const brandLogo = require('../../../assets/brand/manifiesto-logo.png') as number
 
 interface AuthLaunchSplashContentProps {
-  badgeOpacity: AnimatedScalar
-  badgeTranslateY: AnimatedScalar
-  shimmerOffset: AnimatedScalar
-  shimmerWidth: number
-  stageOpacity: AnimatedScalar
-  subtitleOpacity: AnimatedScalar
-  subtitleTranslateY: AnimatedScalar
-  titleOpacity: AnimatedScalar
-  titleTranslateY: AnimatedScalar
-  walletHeight: number
-  walletLift: AnimatedScalar
-  walletOpacity: AnimatedScalar
-  walletScale: AnimatedScalar
-  walletTranslateY: AnimatedScalar
-  walletWidth: number
+  showWhisper?: boolean
 }
 
-export function AuthLaunchSplashContent({
-  badgeOpacity,
-  badgeTranslateY,
-  shimmerOffset,
-  shimmerWidth,
-  stageOpacity,
-  subtitleOpacity,
-  subtitleTranslateY,
-  titleOpacity,
-  titleTranslateY,
-  walletHeight,
-  walletLift,
-  walletOpacity,
-  walletScale,
-  walletTranslateY,
-  walletWidth,
-}: AuthLaunchSplashContentProps) {
+/**
+ * Splash content stack: brand mark, eyebrow + title, subtitle, shimmer
+ * progress bar. Mirrors the visual rhythm of the home/gastos hero cards
+ * — staggered RiseView entrance, BreatheDot accent, low-key motion.
+ */
+export function AuthLaunchSplashContent({ showWhisper = true }: AuthLaunchSplashContentProps) {
+  const { theme } = useAppTheme()
+  const reduced = useReducedMotion()
+
+  // Brand mark breath: subtle 2-3% scale loop
+  const breath = useSharedValue(1)
+  useEffect(() => {
+    if (reduced) return
+    breath.value = withDelay(
+      700,
+      withRepeat(
+        withSequence(
+          withTiming(1.025, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
+      ),
+    )
+  }, [breath, reduced])
+  const breathStyle = useAnimatedStyle(() => ({ transform: [{ scale: breath.value }] }))
+
+  // Shimmer progress bar: 0 -> 1 over ~2000ms easeOut, then stays.
+  const progress = useSharedValue(reduced ? 1 : 0)
+  useEffect(() => {
+    if (reduced) {
+      progress.value = 1
+      return
+    }
+    progress.value = withDelay(
+      360,
+      withTiming(1, { duration: 2000, easing: Easing.out(Easing.cubic) }),
+    )
+  }, [progress, reduced])
+  const progressFillStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: progress.value }],
+  }))
+
+  // Whisper line fades in after the bar lands.
+  const whisper = useSharedValue(reduced ? 1 : 0)
+  useEffect(() => {
+    if (reduced) {
+      whisper.value = 1
+      return
+    }
+    whisper.value = withDelay(2200, withTiming(1, { duration: 360 }))
+  }, [whisper, reduced])
+  const whisperStyle = useAnimatedStyle(() => ({ opacity: whisper.value }))
+
   return (
-    <Animated.View style={[styles.content, { opacity: stageOpacity }]}>
-      <Animated.View
-        style={[
-          styles.badge,
-          {
-            opacity: badgeOpacity,
-            transform: [{ translateY: badgeTranslateY }],
-          },
-        ]}
-      >
-        <Text style={styles.badgeText}>FINANZAS PARA TODOS</Text>
-      </Animated.View>
+    <View style={styles.content} pointerEvents="none">
+      <RiseView delay={0} duration={620} translateY={18}>
+        <Animated.View style={[styles.brandMarkWrapper, breathStyle]}>
+          <Image
+            source={brandLogo}
+            resizeMode="contain"
+            style={styles.brandMark}
+          />
+        </Animated.View>
+      </RiseView>
 
-      <View style={styles.walletStage}>
-        <Animated.View
+      <RiseView delay={120} duration={600}>
+        <View style={styles.eyebrowRow}>
+          <BreatheDot
+            size={6}
+            color={theme.colors.heroAccent}
+            glow={theme.colors.heroAccent}
+            periodMs={2400}
+          />
+          <Text style={[styles.eyebrow, { color: theme.colors.heroAccent }]}>
+            MANIFIESTO
+          </Text>
+        </View>
+      </RiseView>
+
+      <RiseView delay={200} duration={620}>
+        <Text style={[styles.title, { color: theme.colors.heroText }]}>
+          Manifiesto
+        </Text>
+      </RiseView>
+
+      <RiseView delay={280} duration={620}>
+        <Text style={[styles.subtitle, { color: theme.colors.heroMuted2 }]}>
+          Finanzas claras,{'\n'}todos los días.
+        </Text>
+      </RiseView>
+
+      <RiseView delay={360} duration={520}>
+        <View
           style={[
-            styles.walletHalo,
-            {
-              width: walletWidth * 0.96,
-              height: walletWidth * 0.96,
-              transform: [{ scale: walletScale }],
-            },
+            styles.progressTrack,
+            { backgroundColor: 'rgba(199,238,156,0.18)' },
           ]}
-        />
-        <AnimatedImage
-          defaultSource={walletSplash}
-          source={walletSplash}
-          resizeMode="contain"
-          style={[
-            styles.walletImage,
-            {
-              width: walletWidth,
-              height: walletHeight,
-              opacity: walletOpacity,
-              transform: [
-                { translateY: walletTranslateY },
-                { translateY: walletLift },
-                { scale: walletScale },
-              ],
-            },
-          ]}
-        />
-      </View>
+        >
+          <Animated.View
+            style={[
+              styles.progressFill,
+              { backgroundColor: theme.colors.heroAccent },
+              progressFillStyle,
+            ]}
+          />
+        </View>
+      </RiseView>
 
-      <Animated.Text
-        style={[
-          styles.title,
-          {
-            fontFamily: authTitleFontFamily,
-            opacity: titleOpacity,
-            transform: [{ translateY: titleTranslateY }],
-          },
-        ]}
-      >
-        Manifiesto
-      </Animated.Text>
-
-      <Animated.Text
-        style={[
-          styles.subtitle,
-          {
-            opacity: subtitleOpacity,
-            transform: [{ translateY: subtitleTranslateY }],
-          },
-        ]}
-      >
-        Entrá a tu espacio financiero, claro desde el primer toque.
-      </Animated.Text>
-
-      <View style={[styles.shimmerTrack, { width: shimmerWidth }]}>
-        <Animated.View
-          style={[
-            styles.shimmerBar,
-            {
-              transform: [{ translateX: shimmerOffset }],
-            },
-          ]}
-        />
-      </View>
-    </Animated.View>
+      {showWhisper ? (
+        <Animated.Text
+          style={[styles.whisper, { color: theme.colors.heroMuted2 }, whisperStyle]}
+        >
+          Cargando tu espacio…
+        </Animated.Text>
+      ) : null}
+    </View>
   )
 }
+
+const PROGRESS_WIDTH = 220
 
 const styles = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 28,
-    paddingTop: 56,
-    paddingBottom: 46,
   },
-  badge: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: authPalette.splash.badgeBorder,
-    backgroundColor: authPalette.splash.badgeBackground,
-  },
-  badgeText: {
-    color: authPalette.splash.badgeText,
-    fontSize: 10.5,
-    fontWeight: '900',
-    letterSpacing: 2.1,
-    textAlign: 'center',
-  },
-  walletStage: {
-    marginTop: 26,
-    marginBottom: 14,
+  brandMarkWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 28,
   },
-  walletHalo: {
-    position: 'absolute',
-    borderRadius: radii.pill,
-    backgroundColor: authPalette.splash.halo,
+  brandMark: {
+    width: 120,
+    height: 120,
   },
-  // boxShadow isn't yet typed on ImageStyle but works at runtime on RN 0.76+
-  // and react-native-web. We cast so consumers stay type-safe.
-  walletImage: {
-    boxShadow: `0px 14px 18px ${withAlpha(authPalette.splash.titleShadow, 0.28)}`,
-  } as unknown as ImageStyle,
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    alignSelf: 'center',
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2.4,
+  },
   title: {
-    color: authPalette.splash.title,
     fontSize: 46,
-    lineHeight: 52,
-    fontWeight: '700',
-    letterSpacing: -1.2,
+    lineHeight: 50,
+    fontWeight: '900',
+    letterSpacing: -1,
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: 10,
-    maxWidth: 290,
-    color: authPalette.splash.subtitle,
-    fontSize: 15,
-    lineHeight: 22,
+    marginTop: 12,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '500',
     textAlign: 'center',
+    maxWidth: 280,
   },
-  shimmerTrack: {
-    marginTop: 32,
-    height: 5,
-    borderRadius: radii.pill,
+  progressTrack: {
+    marginTop: 28,
+    width: PROGRESS_WIDTH,
+    height: 3,
+    borderRadius: 2,
     overflow: 'hidden',
-    backgroundColor: authPalette.splash.shimmerTrack,
   },
-  shimmerBar: {
-    width: '48%',
+  progressFill: {
+    width: '100%',
     height: '100%',
-    borderRadius: radii.pill,
-    backgroundColor: authPalette.splash.shimmerValue,
+    borderRadius: 2,
+    transformOrigin: 'left center',
+  },
+  whisper: {
+    marginTop: 14,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
 })

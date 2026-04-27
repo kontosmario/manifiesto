@@ -1,4 +1,4 @@
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import type { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from './app-symbol'
 import { useCategoryHue } from '@/theme/theme-provider'
@@ -9,6 +9,7 @@ export type CategoryBadgeTone = 'soft' | 'filled'
 
 interface CategoryBadgeProps {
   categoryId: string
+  emoji?: string
   iconName?: string
   fallbackIconName?: keyof typeof MaterialIcons.glyphMap
   size?: CategoryBadgeSize
@@ -17,14 +18,15 @@ interface CategoryBadgeProps {
   accessibilityLabel?: string
 }
 
-const SIZE_CONFIG: Record<CategoryBadgeSize, { box: number; icon: number }> = {
-  sm: { box: 28, icon: 14 },
-  md: { box: 36, icon: 18 },
-  lg: { box: 48, icon: 22 },
+const SIZE_CONFIG: Record<CategoryBadgeSize, { box: number; icon: number; emoji: number }> = {
+  sm: { box: 28, icon: 14, emoji: 16 },
+  md: { box: 36, icon: 18, emoji: 20 },
+  lg: { box: 48, icon: 22, emoji: 26 },
 }
 
 export function CategoryBadge({
   categoryId,
+  emoji,
   iconName = 'folder.fill',
   fallbackIconName = 'folder',
   size = 'md',
@@ -33,7 +35,7 @@ export function CategoryBadge({
   accessibilityLabel,
 }: CategoryBadgeProps) {
   const hue = useCategoryHue(categoryId)
-  const { box, icon } = SIZE_CONFIG[size]
+  const { box, icon, emoji: emojiSize } = SIZE_CONFIG[size]
 
   const surfaceColor = tone === 'filled' ? hue.ink : hue.surface
   const iconColor = tone === 'filled' ? hue.surface : hue.ink
@@ -53,12 +55,21 @@ export function CategoryBadge({
         style,
       ]}
     >
-      <AppSymbol
-        name={iconName}
-        fallback={fallbackIconName}
-        size={icon}
-        color={iconColor}
-      />
+      {emoji ? (
+        <Text
+          allowFontScaling={false}
+          style={[styles.emoji, { fontSize: emojiSize, lineHeight: emojiSize + 2 }]}
+        >
+          {emoji}
+        </Text>
+      ) : (
+        <AppSymbol
+          name={iconName}
+          fallback={fallbackIconName}
+          size={icon}
+          color={iconColor}
+        />
+      )}
     </View>
   )
 }
@@ -67,5 +78,10 @@ const styles = StyleSheet.create({
   box: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emoji: {
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
 })

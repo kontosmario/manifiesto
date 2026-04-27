@@ -109,7 +109,6 @@ export function JoinScreen() {
               <TextField
                 autoCapitalize="characters"
                 autoCorrect={false}
-                autoFocus
                 helper="Suele tener entre 6 y 8 caracteres."
                 label="Código familiar"
                 maxLength={8}

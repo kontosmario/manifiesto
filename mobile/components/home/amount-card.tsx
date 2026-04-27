@@ -11,7 +11,7 @@ import Animated, {
 import { formatAnimatedAmount } from '@/components/ui/animated-amount-format'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
-import { brand, radii } from '@/theme/palette'
+import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -19,9 +19,13 @@ interface AmountCardProps {
   amount: number
   isActive: boolean
   onPress: () => void
+  /** Eyebrow text rendered inside the card. Defaults to "Monto". Use
+   *  to repurpose the card for income / goal amount onboarding steps
+   *  while keeping the focus animation + visual format consistent. */
+  label?: string
 }
 
-export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
+export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: AmountCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
@@ -38,11 +42,15 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }))
 
+  // Active focus border tracks `theme.colors.primary` so dark mode gets
+  // the bright accent (brand.bright) and light mode gets the deep green
+  // (brand.deep). Hardcoding brand.deep made the focus invisible against
+  // dark surfaces.
   const borderStyle = useAnimatedStyle(() => ({
     borderColor: interpolateColor(
       activeProgress.value,
       [0, 1],
-      [theme.colors.border, brand.deep],
+      [theme.colors.border, theme.colors.primary],
     ),
     borderWidth: 1 + activeProgress.value,
   }))
@@ -87,7 +95,7 @@ export function AmountCard({ amount, isActive, onPress }: AmountCardProps) {
           ]}
         >
           <View style={styles.topRow}>
-            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>Monto</Text>
+            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>{label}</Text>
             <Animated.Text
               style={[typography.caption, hintStyle, { pointerEvents: 'none', color: theme.colors.textSoft }]}
             >

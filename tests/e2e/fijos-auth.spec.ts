@@ -48,8 +48,8 @@ test.describe('Authenticated Fijos', () => {
     await expect(page.getByText('DISPONIBLE HOY')).toBeVisible({ timeout: 30_000 })
     await page.goto('/fixed-expenses', { waitUntil: 'networkidle' })
 
-    // The Fijos hero shows "CICLO DE <MONTH>"
-    await expect(page.getByText(/CICLO DE /i)).toBeVisible({ timeout: 30_000 })
+    // The Fijos hero shows "Gastos fijos · <MONTH>"
+    await expect(page.getByText(/Gastos fijos\s*·\s*\w+/i)).toBeVisible({ timeout: 30_000 })
 
     const pageErrors = filterNoise(capture.pageErrors)
     const consoleErrors = filterNoise(capture.consoleErrors)

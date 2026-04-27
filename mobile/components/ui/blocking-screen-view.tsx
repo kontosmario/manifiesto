@@ -1,32 +1,37 @@
-import { StyleSheet, Text, View } from 'react-native'
-import { LoadingBlock } from '@/components/ui/loading-block'
-import { useAppTheme } from '@/theme/theme-provider'
+import { StyleSheet, View } from 'react-native'
+import { authTokens } from '@/theme/palette'
 
 interface BlockingScreenViewProps {
+  /**
+   * Legacy prop — preserved for back-compat with existing call sites.
+   * Ignored: the splash overlay at root paints the brand surface, and
+   * showing extra "Cargando…" text underneath would just compete.
+   */
   message?: string
 }
 
-export function BlockingScreenView({ message = 'Cargando' }: BlockingScreenViewProps) {
-  const { theme } = useAppTheme()
-
-  return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <LoadingBlock label={message} />
-      <Text style={[styles.caption, { color: theme.colors.textSoft }]}>Manifiesto mobile</Text>
-    </View>
-  )
+/**
+ * Passive backdrop for auth/transition routes that are still loading
+ * their data.
+ *
+ * The animated brand splash (with breathing aurora + Fern logo) now
+ * lives as a single persistent overlay at the root layout — see
+ * `RootLayoutShell` and `auth-transition-splash`. That overlay fades
+ * in/out without remounting, which means the FernLogo entrance
+ * animation never replays mid-navigation and there are no skeleton
+ * flashes between routes.
+ *
+ * Underneath the overlay, this component just paints the dark green
+ * `welcomeBg` so the screen color stays consistent if the overlay is
+ * fading or hidden during very fast transitions.
+ */
+export function BlockingScreenView(_props: BlockingScreenViewProps) {
+  return <View style={styles.backdrop} />
 }
 
 const styles = StyleSheet.create({
-  container: {
+  backdrop: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    padding: 24,
-  },
-  caption: {
-    fontSize: 13,
-    fontWeight: '600',
+    backgroundColor: authTokens.welcomeBg,
   },
 })

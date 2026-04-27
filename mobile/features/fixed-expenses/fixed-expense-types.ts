@@ -24,12 +24,16 @@ export interface FixedExpense {
   frequency: FixedExpenseFrequency
   category_id: string | null
   next_due_on: string
+  /** 1..31 — anchor for month-based frequencies, survives short months. */
+  day_of_month: number
   ends_on: string | null
   installments_total: number | null
   installments_paid: number
   remaining_balance: number | null
   lender_name: string | null
   notes: string | null
+  /** Days before next_due_on to fire a reminder. Null disables it. */
+  notify_days_before: number | null
   last_paid_at: string | null
   created_at: string
   updated_at: string

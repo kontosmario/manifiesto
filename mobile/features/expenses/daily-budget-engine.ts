@@ -48,6 +48,19 @@ interface ComputeDailyBudgetSummaryInput {
   payCycle: PayCycle
   savingsGoal: number
   today: Date
+  /**
+   * Per-cycle override (`current_cycle_starting_balance`). When the
+   * user has reported their actual available cash for THIS cycle
+   * (different from `monthly_income`), pass the amount here. The
+   * engine then re-anchors the cycle to today: spending before today
+   * is forgotten, and the override is divided across the remaining
+   * days, with `fixedExpensesMonthlyTotal` and `savingsGoal` prorated
+   * to the same window.
+   *
+   * Pass `null`/`undefined` to use the standard formula based on
+   * `monthlyIncome` across the full pay cycle.
+   */
+  cycleStartingBalance?: number | null
 }
 
 function clamp(value: number, min = 0, max = Number.POSITIVE_INFINITY) {
@@ -75,11 +88,37 @@ export function computeDailyBudgetSummary({
   payCycle,
   savingsGoal,
   today,
+  cycleStartingBalance,
 }: ComputeDailyBudgetSummaryInput): DailyBudgetSummary {
   const safeToday = normalizeToStartOfDay(today)
-  const cycleStart = normalizeToStartOfDay(payCycle.start)
+  const originalCycleStart = normalizeToStartOfDay(payCycle.start)
   const cycleEnd = normalizeToStartOfDay(payCycle.end)
-  const plannedVariableBudget = clamp(monthlyIncome - fixedExpensesMonthlyTotal - savingsGoal)
+
+  // ── Override path ───────────────────────────────────────────────
+  // When the user has reported a starting balance for THIS cycle,
+  // re-anchor the cycle to today: the override becomes the new
+  // starting cash, fixed/savings are prorated to the remaining
+  // window, and past spending is excluded from the daily-budget
+  // accounting (it happened "before this synthetic cycle").
+  const hasOverride =
+    typeof cycleStartingBalance === 'number' &&
+    Number.isFinite(cycleStartingBalance) &&
+    cycleStartingBalance >= 0
+  const cycleStart = hasOverride ? safeToday : originalCycleStart
+  const remainingDaysFromToday = Math.max(1, diffDays(safeToday, cycleEnd))
+  const effectiveCycleDays = hasOverride
+    ? remainingDaysFromToday
+    : Math.max(payCycle.days, 1)
+  const proration = hasOverride
+    ? remainingDaysFromToday / Math.max(payCycle.days, 1)
+    : 1
+  const effectiveMonthlyIncome = hasOverride
+    ? (cycleStartingBalance as number)
+    : monthlyIncome
+  const effectiveFixed = hasOverride ? fixedExpensesMonthlyTotal * proration : fixedExpensesMonthlyTotal
+  const effectiveSavings = hasOverride ? savingsGoal * proration : savingsGoal
+
+  const plannedVariableBudget = clamp(effectiveMonthlyIncome - effectiveFixed - effectiveSavings)
   const normalizedBufferValue = clamp(bufferValue)
   const bufferReserve =
     bufferMode === 'fixed'
@@ -88,8 +127,8 @@ export function computeDailyBudgetSummary({
         ? Math.min(plannedVariableBudget, plannedVariableBudget * (normalizedBufferValue / 100))
         : 0
   const operationalCycleBudget = clamp(plannedVariableBudget - bufferReserve)
-  const baseDailyBudget = operationalCycleBudget / Math.max(payCycle.days, 1)
-  const cycleDayIndex = clamp(diffDays(cycleStart, safeToday) + 1, 1, payCycle.days)
+  const baseDailyBudget = operationalCycleBudget / effectiveCycleDays
+  const cycleDayIndex = clamp(diffDays(cycleStart, safeToday) + 1, 1, effectiveCycleDays)
   const dailyTotals = new Map<string, number>()
 
   expenses.forEach((expense) => {
@@ -210,7 +249,7 @@ export function computeDailyBudgetSummary({
     bufferReserve,
     carryoverAmount: carryoverAmount(openingBudget, baseDailyBudget),
     cycleDayIndex,
-    daysInCycle: payCycle.days,
+    daysInCycle: effectiveCycleDays,
     openingBudget,
     operationalCycleBudget,
     plannedVariableBudget,

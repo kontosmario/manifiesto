@@ -1,44 +1,49 @@
-import { useCallback, useRef, type ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { useCallback, useRef, type ComponentProps, type ReactNode } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { RectButton } from 'react-native-gesture-handler'
 import Swipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable'
 import Animated, {
+  FadeIn,
+  FadeOut,
   interpolate,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name']
+
 export interface SwipeAction {
   label: string
   tone?: 'neutral' | 'danger'
+  /** MaterialIcons name. Recommended: 'delete' for destructive, 'edit'
+   *  for edit, 'visibility' / 'visibility-off' for read/unread. */
+  icon?: MaterialIconName
   onPress: () => void
-  iconName?: string
 }
 
 interface SwipeableRowProps {
   children: ReactNode
   rightActions?: SwipeAction[]
   leftActions?: SwipeAction[]
-  accessibilityHint: string  // required — CODE_RULES §11.4
+  accessibilityHint: string
   onSwipeOpenHaptic?: AppHapticTone
-  /**
-   * Outer border radius — both the row content and the swipe-action
-   * reveal are clipped to this radius so the action button visually
-   * fuses with the card instead of poking out as a square panel.
-   */
   borderRadius?: number
-  /**
-   * Outline rendered around the whole swipe widget (card + revealed
-   * actions). Lives on the outer container so the border is rounded
-   * on all 4 corners without interfering with the flush card-to-action
-   * edge during a swipe.
-   */
   borderColor?: string
+  /**
+   * When true, the row content dims + becomes non-interactive and a
+   * floating "Procesando" chip fades in. Use this while an async
+   * mutation (delete / edit) is in flight for this specific row.
+   * Pair with `mutation.isPending && mutation.variables === itemId`.
+   */
+  isProcessing?: boolean
+  /** Copy for the in-flight chip. Defaults to "Procesando…". */
+  processingLabel?: string
 }
 
 export function SwipeableRow({
@@ -49,6 +54,8 @@ export function SwipeableRow({
   onSwipeOpenHaptic = 'selection',
   borderRadius = 14,
   borderColor,
+  isProcessing = false,
+  processingLabel = 'Procesando…',
 }: SwipeableRowProps) {
   const { theme } = useAppTheme()
   const resolvedBorderColor = borderColor ?? theme.colors.line
@@ -90,11 +97,44 @@ export function SwipeableRow({
         friction={1.8}
         overshootLeft={false}
         overshootRight={false}
+        enabled={!isProcessing}
         onSwipeableOpen={handleSwipeOpen}
         renderRightActions={rightActions.length ? renderActions(rightActions, 'right') : undefined}
         renderLeftActions={leftActions.length ? renderActions(leftActions, 'left') : undefined}
       >
-        {children}
+        <View>
+          <View
+            pointerEvents={isProcessing ? 'none' : 'auto'}
+            style={{ opacity: isProcessing ? 0.55 : 1 }}
+          >
+            {children}
+          </View>
+          {isProcessing ? (
+            <Animated.View
+              entering={FadeIn.duration(180)}
+              exiting={FadeOut.duration(140)}
+              style={[
+                styles.processingChip,
+                {
+                  backgroundColor: theme.colors.creamCard,
+                  borderColor: theme.colors.line,
+                },
+              ]}
+              pointerEvents="none"
+            >
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text
+                style={[
+                  styles.processingLabel,
+                  typography.buttonCompact,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {processingLabel}
+              </Text>
+            </Animated.View>
+          ) : null}
+        </View>
       </Swipeable>
     </View>
   )
@@ -144,6 +184,14 @@ function SwipeActionButton({ action, onPress }: { action: SwipeAction; onPress: 
       }}
       style={[styles.actionButton, { backgroundColor: background }]}
     >
+      {action.icon ? (
+        <MaterialIcons
+          name={action.icon}
+          size={22}
+          color={foreground}
+          style={styles.actionIcon}
+        />
+      ) : null}
       <Text style={[typography.buttonCompact, styles.actionLabel, { color: foreground }]}>
         {action.label}
       </Text>
@@ -163,6 +211,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     minWidth: 84,
+    gap: 2,
+  },
+  actionIcon: {
+    marginBottom: 2,
   },
   actionLabel: { textAlign: 'center' },
+  processingChip: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  processingLabel: {
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
 })

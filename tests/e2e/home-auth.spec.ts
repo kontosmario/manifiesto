@@ -95,18 +95,17 @@ test.describe('Authenticated home', () => {
     // Home-specific pieces of copy rendering.
     await page.waitForURL(/(\/home|\/\(app\)|\/$)/, { timeout: 30_000 }).catch(() => {})
 
-    // 5. The new Home V1 Cuaderno shows "DISPONIBLE HOY" in the hero.
-    // That string is unique to the home redesign, so seeing it proves the
-    // new layout mounted end-to-end.
-    await expect(page.getByText('DISPONIBLE HOY')).toBeVisible({ timeout: 30_000 })
+    // 5. The redesigned Home hero shows "Disponible hoy · <Month>, día X
+    // de Y". The label is unique enough to prove the new layout mounted.
+    await expect(page.getByText(/Disponible hoy/i)).toBeVisible({ timeout: 30_000 })
 
-    // 6. Other redesign markers (at least one must be present).
-    const heroAccentVisible = await page
-      .getByText(/Margen del mes/i)
+    // 6. Other redesign markers from the new MonthSummaryCard / hero tiles.
+    const tileVisible = await page
+      .getByText(/Podés gastar por día/i)
       .first()
       .isVisible({ timeout: 5_000 })
       .catch(() => false)
-    expect(heroAccentVisible, 'Hero margen line should render').toBe(true)
+    expect(tileVisible, 'Hero daily-budget tile should render').toBe(true)
 
     // 7. Final crash assertion.
     const pageErrors = filterNoise(capture.pageErrors)

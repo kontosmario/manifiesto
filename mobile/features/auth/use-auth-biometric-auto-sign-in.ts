@@ -1,28 +1,18 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 
 interface UseAuthBiometricAutoSignInParams {
   enabled: boolean
   onAttempt: () => Promise<void> | void
 }
 
-export function useAuthBiometricAutoSignIn({
-  enabled,
-  onAttempt,
-}: UseAuthBiometricAutoSignInParams) {
-  const hasAttemptedAutoBiometricRef = useRef(false)
-
-  useEffect(() => {
-    if (!enabled || hasAttemptedAutoBiometricRef.current) {
-      return
-    }
-
-    hasAttemptedAutoBiometricRef.current = true
-    void onAttempt()
-  }, [enabled, onAttempt])
-
-  const resetAutoBiometricAttempt = useCallback(() => {
-    hasAttemptedAutoBiometricRef.current = false
-  }, [])
+// Auto-attempt is intentionally disabled: Face ID must run only when
+// the user taps the explicit CTA on the login hero. Auto-firing on
+// mount caused a duplicate native prompt (auto + tap) and made the
+// "Entrar con Face ID" button feel out of sync with the actual scan.
+// The reset callback is kept as a no-op for back-compat with the
+// controller's `useFocusEffect`.
+export function useAuthBiometricAutoSignIn(_params: UseAuthBiometricAutoSignInParams) {
+  const resetAutoBiometricAttempt = useCallback(() => {}, [])
 
   return {
     resetAutoBiometricAttempt,

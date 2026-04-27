@@ -21,17 +21,6 @@ export function TabBarBackground() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Single soft brand tint anchored behind the center FAB */}
-      <View
-        style={[
-          styles.centerTint,
-          {
-            pointerEvents: 'none',
-            backgroundColor: withAlpha(brand.bright, theme.isDark ? 0.08 : 0.06),
-          },
-        ]}
-      />
-
       {/* Hairline brand accent on the top edge — Manifiesto signature line */}
       <LinearGradient
         colors={[
@@ -61,15 +50,6 @@ const styles = StyleSheet.create({
   tabBarBackground: {
     borderRadius: radii['2xl'],
     overflow: 'hidden',
-  },
-  centerTint: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    top: -60,
-    left: '50%',
-    marginLeft: -90,
   },
   brandAccentLine: {
     position: 'absolute',

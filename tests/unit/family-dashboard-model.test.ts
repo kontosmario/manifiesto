@@ -54,7 +54,6 @@ function buildFinance(
     daily_budget_buffer_value: 0,
     daily_budget_checkin_hour: 9,
     daily_budget_nudges_enabled: true,
-    essential_monthly_cost: 50_000,
     last_salary_confirmed_at: '2026-04-01T10:00:00.000Z',
     monthly_income: 100_000,
     salary_payment_day: 1,

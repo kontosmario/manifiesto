@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Alert, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import { AppButton } from '@/components/ui/button'
+import { NumpadField } from '@/components/ui/numpad-field'
+import { formatPriceInputValue } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import { validateSavingsGoalInput, type SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
@@ -47,9 +49,28 @@ export function SavingsGoalForm({ familyId, existing, onSaved }: SavingsGoalForm
     <View style={styles.container}>
       <Field label="Título" value={title} onChange={setTitle} maxLength={40} theme={theme} />
       <Field label="Emoji" value={emoji} onChange={setEmoji} maxLength={2} theme={theme} />
-      <Field label="Objetivo ($)" value={goalAmount} onChange={setGoalAmount} keyboardType="numeric" theme={theme} />
-      <Field label="Actual ($)" value={currentAmount} onChange={setCurrentAmount} keyboardType="numeric" theme={theme} />
-      <Field label="Meses objetivo (opcional)" value={targetMonths} onChange={setTargetMonths} keyboardType="numeric" theme={theme} />
+      <NumpadField
+        label="Objetivo ($)"
+        value={goalAmount}
+        onChangeRawValue={setGoalAmount}
+        formatDisplay={(raw) => formatPriceInputValue(raw, false)}
+        placeholder="$ 0"
+      />
+      <NumpadField
+        label="Actual ($)"
+        value={currentAmount}
+        onChangeRawValue={setCurrentAmount}
+        formatDisplay={(raw) => formatPriceInputValue(raw, false)}
+        placeholder="$ 0"
+      />
+      <NumpadField
+        label="Meses objetivo (opcional)"
+        value={targetMonths}
+        onChangeRawValue={setTargetMonths}
+        placeholder="12"
+        maxIntegerDigits={3}
+        maxDecimalDigits={0}
+      />
       <View style={styles.row}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Meta activa</Text>
         <Switch value={isActive} onValueChange={setIsActive} />

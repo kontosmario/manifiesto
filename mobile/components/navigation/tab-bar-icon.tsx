@@ -1,28 +1,36 @@
-import { useEffect, useRef, type ReactNode } from 'react'
-import { Animated, StyleSheet, View } from 'react-native'
+import { useEffect, type ReactNode } from 'react'
+import { StyleSheet, View } from 'react-native'
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { useAppTheme } from '@/theme/theme-provider'
 import { brand, radii } from '@/theme/palette'
 
 function useFocusProgress(focused: boolean) {
   const reduceMotion = useReducedMotion()
-  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current
+  const progress = useSharedValue(focused ? 1 : 0)
 
   useEffect(() => {
+    const target = focused ? 1 : 0
     if (reduceMotion) {
-      progress.setValue(focused ? 1 : 0)
+      progress.value = target
       return
     }
-    Animated.spring(progress, {
-      toValue: focused ? 1 : 0,
-      useNativeDriver: USE_NATIVE_DRIVER,
+    // Reanimated v3 runs on the UI thread on native and compiles to
+    // CSS animations on web — same code path, smooth motion on both
+    // Expo Go (device) and Expo Web without the `useNativeDriver`
+    // branch we used to need.
+    progress.value = withSpring(target, {
       damping: 16,
       stiffness: 180,
       mass: 0.7,
-    }).start()
+    })
   }, [focused, progress, reduceMotion])
 
   return progress
@@ -37,46 +45,46 @@ function TabIconFrame({
 }) {
   const { theme } = useAppTheme()
   const progress = useFocusProgress(focused)
-
   const pillBackground = theme.isDark ? brand.bright : brand.deep
-  const frameScale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] })
-  const pillOpacity = progress
+
+  const dotAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [
+      { scale: interpolate(progress.value, [0, 1], [0, 1]) },
+    ],
+  }))
+
+  const frameAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(progress.value, [0, 1], [0.94, 1]) },
+    ],
+  }))
+
+  const pillAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }))
 
   return (
     <View style={styles.iconSlot}>
       {/* Signature brand dot floating above the pill on the active tab */}
       <Animated.View
+        pointerEvents="none"
         style={[
           styles.signatureDot,
-          {
-            pointerEvents: 'none',
-            backgroundColor: brand.bright,
-            opacity: pillOpacity,
-            transform: [
-              {
-                scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
-              },
-            ],
-          },
+          { backgroundColor: brand.bright },
+          dotAnimatedStyle,
         ]}
       />
 
-      <Animated.View
-        style={[
-          styles.iconFrame,
-          { transform: [{ scale: frameScale }] },
-        ]}
-      >
-        {/* Branded pill — fades in when active, sits flat (no gloss) for a confident look */}
+      <Animated.View style={[styles.iconFrame, frameAnimatedStyle]}>
+        {/* Branded pill — fades in when active, sits flat for a confident look. */}
         <Animated.View
+          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             styles.pillShape,
-            {
-              pointerEvents: 'none',
-              backgroundColor: pillBackground,
-              opacity: pillOpacity,
-            },
+            { backgroundColor: pillBackground },
+            pillAnimatedStyle,
           ]}
         />
         <View style={styles.iconCenter}>{children}</View>
@@ -99,7 +107,8 @@ export function TabBarIcon({
   size: number
 }) {
   const { theme } = useAppTheme()
-  // When active, icon flips to the surface of the pill (white on deep, deep on bright)
+  // When active, the icon flips to the surface of the pill
+  // (white on deep, deep on bright).
   const activeIconColor = theme.isDark ? brand.deep : '#FFFFFF'
   const idleIconColor = theme.colors.textMuted
   const resolvedColor = focused ? activeIconColor : idleIconColor

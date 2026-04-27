@@ -1,0 +1,152 @@
+// Per-user calibration baselines.
+//
+// Hardcoded thresholds (40% category dominance, 1.4× acceleration,
+// 70% night-spend) are average-of-everyone defaults — they fire
+// constantly for some users, never for others. This module computes
+// percentile-based thresholds from the user's *own* closed cycles so
+// each signal adapts to what's actually anomalous for THAT user.
+//
+// Strategy:
+//  - For each metric we care about, derive a per-cycle observation
+//    from `monthly_summaries`.
+//  - Take P75 (75th percentile) of those observations as the
+//    "above what's normal" floor.
+//  - Need ≥3 closed cycles to trust the baseline. Below that we
+//    return null for that metric and the signal falls back to its
+//    hardcoded constant.
+//
+// The baselines object is pure — computed once per render in the
+// hook, threaded through `BuildSignalsArgs`. No state, no side
+// effects.
+
+import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
+
+export interface UserBaselines {
+  /** P75 of "top category share of total variable spend" across
+   *  closed cycles. Replaces the hardcoded 40% threshold for
+   *  `cat-dominance` when ≥3 cycles available. Always ≥ 0.40. */
+  catDominanceP75: number | null
+  /** P75 of any single category's ratio against its own historical
+   *  mean across closed cycles. Replaces the hardcoded 1.4×
+   *  acceleration multiplier for `cat-accel`. Always ≥ 1.4. */
+  catAccelP75: number | null
+  /** Number of closed cycles that fed these calculations. Used by
+   *  the UI to show "según N meses" disclaimers. */
+  closedCycles: number
+}
+
+/**
+ * Minimum closed cycles before per-user calibration kicks in. Below
+ * 3 cycles a single outlier dominates the percentile — better to
+ * fall back to the global constant.
+ */
+const MIN_CYCLES = 3
+
+export function computeUserBaselines(
+  summaries: MonthlySummaryHistory[],
+): UserBaselines {
+  if (summaries.length < MIN_CYCLES) {
+    return {
+      catDominanceP75: null,
+      catAccelP75: null,
+      closedCycles: summaries.length,
+    }
+  }
+
+  // ── Top category share per cycle (drives cat-dominance baseline)
+  const dominanceObs: number[] = []
+  for (const s of summaries) {
+    const breakdown = s.category_breakdown
+    if (!breakdown) continue
+    const entries = normalizeBreakdownEntries(breakdown)
+    if (entries.length === 0) continue
+    const total = entries.reduce((sum, e) => sum + e.amount, 0)
+    if (total <= 0) continue
+    const top = entries.reduce((a, b) => (b.amount > a.amount ? b : a))
+    dominanceObs.push(top.amount / total)
+  }
+
+  // ── Per-category-vs-history ratio per cycle
+  // For each summary at index i, compare each category's share against
+  // the average share across summaries[i+1..]. The biggest ratio in
+  // that cycle is the "acceleration peak" we'd have shown then. Take
+  // P75 across those peaks → personal acceleration threshold.
+  const accelObs: number[] = []
+  for (let i = 0; i < summaries.length - 1; i++) {
+    const cur = summaries[i]
+    if (!cur) continue
+    const curEntries = normalizeBreakdownEntries(cur.category_breakdown)
+    if (curEntries.length === 0) continue
+    let peak = 0
+    for (const e of curEntries) {
+      const baseline = avgCategoryAcrossPriors(summaries.slice(i + 1), e.name)
+      if (baseline <= 0) continue
+      const ratio = e.amount / baseline
+      if (ratio > peak) peak = ratio
+    }
+    if (peak > 0) accelObs.push(peak)
+  }
+
+  return {
+    catDominanceP75:
+      dominanceObs.length >= MIN_CYCLES
+        ? Math.max(0.4, percentile(dominanceObs, 0.75))
+        : null,
+    catAccelP75:
+      accelObs.length >= MIN_CYCLES
+        ? Math.max(1.4, percentile(accelObs, 0.75))
+        : null,
+    closedCycles: summaries.length,
+  }
+}
+
+interface BreakdownEntry {
+  name: string
+  amount: number
+}
+
+function normalizeBreakdownEntries(
+  breakdown: MonthlySummaryHistory['category_breakdown'],
+): BreakdownEntry[] {
+  if (!breakdown) return []
+  if (Array.isArray(breakdown)) {
+    return breakdown
+      .map((e) => ({
+        name: String(e.name ?? ''),
+        amount: Number(e.total ?? 0),
+      }))
+      .filter((e) => e.name && e.amount > 0)
+  }
+  return Object.entries(breakdown as Record<string, { amount?: number }>)
+    .map(([name, v]) => ({ name, amount: Number(v?.amount ?? 0) }))
+    .filter((e) => e.amount > 0)
+}
+
+function avgCategoryAcrossPriors(
+  priors: MonthlySummaryHistory[],
+  categoryName: string,
+): number {
+  if (priors.length === 0) return 0
+  let total = 0
+  let count = 0
+  for (const p of priors) {
+    const entries = normalizeBreakdownEntries(p.category_breakdown)
+    const match = entries.find((e) => e.name === categoryName)
+    if (!match) continue
+    total += match.amount
+    count += 1
+  }
+  return count > 0 ? total / count : 0
+}
+
+/** Linear-interpolation percentile. Expects 0 ≤ p ≤ 1. */
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const idx = (sorted.length - 1) * p
+  const lo = Math.floor(idx)
+  const hi = Math.ceil(idx)
+  if (lo === hi) return sorted[lo]!
+  const frac = idx - lo
+  return sorted[lo]! * (1 - frac) + sorted[hi]! * frac
+}

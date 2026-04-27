@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
 import { StyleSheet, View, type ViewStyle } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withDelay, Easing } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 
 interface ShineOverlayProps {
   width: number
@@ -14,12 +13,15 @@ interface ShineOverlayProps {
 }
 
 export function ShineOverlay({ width, height, tint = 'rgba(255,255,255,0.45)', delayMs = 1800, periodMs = 3200, style }: ShineOverlayProps) {
-  const reduced = useReducedMotion()
   const x = useSharedValue(-width)
-  useEffect(() => {
-    if (reduced) return
-    x.value = withDelay(delayMs, withRepeat(withTiming(width * 1.2, { duration: periodMs, easing: Easing.inOut(Easing.quad) }), -1, false))
-  }, [width, delayMs, periodMs, reduced, x])
+  useLoopAnimation(
+    () => {
+      x.value = -width
+      x.value = withDelay(delayMs, withRepeat(withTiming(width * 1.2, { duration: periodMs, easing: Easing.inOut(Easing.quad) }), -1, false))
+    },
+    [x],
+    [width, delayMs, periodMs],
+  )
   const a = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }))
   return (
     <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', pointerEvents: 'none' }, style]}>

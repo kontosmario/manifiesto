@@ -77,13 +77,14 @@ export async function loadExpenses(familyId: string, filters: ExpenseQueryFilter
 export async function createExpense(
   familyId: string,
   userId: string,
-  { categoryId, commitmentId, description, price }: CreateExpenseInput,
+  { categoryId, commitmentId, createdAt, description, price }: CreateExpenseInput,
 ) {
   const normalizedDescription = validateExpenseDescription(description)
   validateExpensePrice(price)
   const insertPayload = buildExpenseInsertPayload({
     categoryId,
     commitmentId,
+    createdAt,
     description: normalizedDescription,
     familyId,
     price,

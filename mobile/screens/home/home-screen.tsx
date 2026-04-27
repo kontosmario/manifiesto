@@ -9,11 +9,13 @@ import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
 import {
-  buildSalaryConfirmationInput,
+  buildCycleStartingBalanceInput,
   useUpsertFamilyFinance,
 } from '@/features/finance/use-family-finance'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useMyProfile } from '@/features/profile/use-profile'
-import { useFamily } from '@/features/family/use-family'
+import { useUnreadNotificationsCount } from '@/features/notifications/use-notifications'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
@@ -31,15 +33,28 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
+  // AppStackShell already fires and seeds this; here we only need the
+  // refetch handle for pull-to-refresh.
+  const snapshot = useHomeSnapshot(userId)
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await snapshot.refetch()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [snapshot])
+
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
-  const { data: familyInfo } = useFamily(userId)
-  const familyName = familyInfo?.familyCode ? `Familia ${familyInfo.familyCode}` : 'Tu familia'
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
   const recentExpensesQuery = useRecentExpenses(familyId, 6)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
+  const unreadNotificationsQuery = useUnreadNotificationsCount(familyId, userId)
+  const unreadNotificationCount = unreadNotificationsQuery.data ?? 0
 
   const categoryNameById = useMemo(
     () =>
@@ -48,7 +63,13 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       ),
     [categoriesQuery.data],
   )
-  const recentExpenses = recentExpensesQuery.data ?? []
+  // Activity feed shows only variable gastos (manual entries). Rows
+  // with `commitment_id` are auto-recorded payments of fixed
+  // expenses — those live exclusively on the Fijos screen.
+  const recentExpenses = useMemo(
+    () => (recentExpensesQuery.data ?? []).filter((e) => !e.commitment_id),
+    [recentExpensesQuery.data],
+  )
 
   const shouldShowDashboardError =
     (dashboard.familyFinanceQuery.error && !dashboard.familyFinanceQuery.data) ||
@@ -62,25 +83,40 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         ? categoriesQuery.error
         : undefined
 
-  const confirmSalary = () => {
+  // Persists the cycle confirmation. `startingBalance: number` =
+  // user's adjusted available cash for THIS cycle (engine override).
+  // `startingBalance: null` = user kept the default monthly_income;
+  // we still anchor the cycle so we don't re-prompt this period.
+  const confirmCycleStartingBalance = (startingBalance: number | null) => {
     setSalaryErrorMessage(null)
+    // `cycleAnchorTarget` lands on `payCycle.start` in steady state
+    // and pivots to `currentMonthPayDate` while the salary freeze is
+    // active — see family-dashboard-model. Using it ensures the
+    // prompt clears as soon as the freeze releases post-confirm.
+    const cycleAnchor = formatLocalDateKey(dashboard.cycleAnchorTarget)
     upsertFamilyFinanceMutation.mutate(
-      buildSalaryConfirmationInput({
-        dailyBudgetBufferMode: dashboard.dailyBudgetBufferMode,
-        dailyBudgetBufferValue: dashboard.dailyBudgetBufferValue,
-        dailyBudgetCheckinHour: dashboard.dailyBudgetCheckinHour,
-        dailyBudgetNudgesEnabled: dashboard.dailyBudgetNudgesEnabled,
-        essentialMonthlyCost:
-          dashboard.familyFinanceQuery.data?.essential_monthly_cost ?? 0,
-        monthlyIncome: dashboard.monthlyIncome,
-        savingsGoal: dashboard.savingsGoal,
-        savingsGoalPercent:
-          dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
-        usdExchangeRate: dashboard.usdExchangeRate,
-        salaryPaymentDay: dashboard.salaryPaymentDay,
-        lastSalaryConfirmedAt:
-          dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
-      }),
+      buildCycleStartingBalanceInput(
+        {
+          dailyBudgetBufferMode: dashboard.dailyBudgetBufferMode,
+          dailyBudgetBufferValue: dashboard.dailyBudgetBufferValue,
+          dailyBudgetCheckinHour: dashboard.dailyBudgetCheckinHour,
+          dailyBudgetNudgesEnabled: dashboard.dailyBudgetNudgesEnabled,
+          monthlyIncome: dashboard.monthlyIncome,
+          savingsGoal: dashboard.savingsGoal,
+          savingsGoalPercent:
+            dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
+          usdExchangeRate: dashboard.usdExchangeRate,
+          salaryPaymentDay: dashboard.salaryPaymentDay,
+          lastSalaryConfirmedAt:
+            dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
+          currentCycleStartingBalance:
+            dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
+          currentCycleAnchor:
+            dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+        },
+        cycleAnchor,
+        startingBalance,
+      ),
       {
         onError: (error: unknown) => {
           setSalaryErrorMessage(getErrorMessage(error, errorMessages.server))
@@ -92,15 +128,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       },
     )
   }
-
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true)
-    try {
-      await Promise.all([dashboard.refetchAll(), recentExpensesQuery.refetch()])
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [dashboard, recentExpensesQuery])
 
   const handleDeleteExpense = (expenseId: string) => {
     void triggerHaptic('warning')
@@ -150,14 +177,18 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           categoryNameById={categoryNameById}
           familyId={familyId}
           displayName={displayName}
-          familyName={familyName}
-          hasUnreadNotifications
+          hasUnreadNotifications={unreadNotificationCount > 0}
           onPressNotifications={() => router.push('/(app)/notifications')}
           onPressSettings={() => router.push('/(app)/settings')}
           isLoadingActivity={recentExpensesQuery.isLoading}
           activityError={activityError}
-          onConfirmSalary={confirmSalary}
+          onConfirmCycleStartingBalance={confirmCycleStartingBalance}
           onDeleteExpense={handleDeleteExpense}
+          pendingDeleteExpenseId={
+            deleteExpenseMutation.isPending
+              ? (deleteExpenseMutation.variables ?? null)
+              : null
+          }
           isSavingSalary={upsertFamilyFinanceMutation.isPending}
           salaryErrorMessage={salaryErrorMessage}
         />
@@ -168,6 +199,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 
 const styles = StyleSheet.create({
   screenContent: {
-    paddingTop: 0,
+    // Match the Ajustes top offset (safe area + 14pt). Screens without
+    // Screen's own title no longer render an empty ScreenHeader, so
+    // we apply the offset directly.
+    paddingTop: 14,
   },
 })

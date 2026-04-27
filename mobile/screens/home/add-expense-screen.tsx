@@ -1,5 +1,6 @@
+import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AddExpenseDashboard } from '@/components/home/add-expense-dashboard'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -16,15 +17,37 @@ interface AddExpenseScreenProps {
   userId: string
 }
 
+/**
+ * Parses a back-date param shaped as `YYYY-MM-DD` into a local-midnight
+ * Date. Returns null when the string is missing, malformed, or resolves
+ * to a day in the future (guards against deep-link abuse). Used by the
+ * Gastos calendar's "registrar gasto olvidado" entry point.
+ */
+function parseBackdateParam(raw: string | string[] | undefined): Date | null {
+  if (typeof raw !== 'string') return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim())
+  if (!match) return null
+  const [, y, m, d] = match
+  const date = new Date(Number(y), Number(m) - 1, Number(d))
+  if (Number.isNaN(date.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (date.getTime() > today.getTime()) return null
+  return date
+}
+
 export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const params = useLocalSearchParams<{ date?: string | string[] }>()
+  const forDate = useMemo(() => parseBackdateParam(params.date), [params.date])
   const controller = useAddExpenseController({
     familyId,
     onCreated: () => {
       router.back()
     },
     userId,
+    forDate,
   })
 
   const headerPalette = buildScreenHeaderPalette(theme)
@@ -38,10 +61,9 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   return (
     <Screen
       canGoBack
-      scrollable={false}
-      keyboardAware={false}
+      showGrabHandle
       contentContainerStyle={styles.screenContent}
-      title="Agregar"
+      title="Agregar gasto"
       titleColor={headerPalette.titleColor}
     >
       {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
@@ -74,8 +96,10 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           quickDescriptionSuggestions={controller.quickDescriptionSuggestions}
           description={controller.description}
           isBusy={controller.createExpenseMutation.isPending}
+          forDate={controller.forDate}
           onRawPriceChange={controller.actions.setRawPrice}
-          onSelectSuggestedAmount={controller.actions.setSuggestedAmount}
+          onAddQuickAmount={controller.actions.addQuickAmount}
+          onClearAmount={controller.actions.clearAmount}
           onSelectCategory={controller.actions.selectCategory}
           onSelectDescriptionSuggestion={controller.actions.useQuickDescription}
           onDescriptionChange={controller.actions.setDescription}
@@ -89,6 +113,5 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
-    paddingBottom: 0,
   },
 })

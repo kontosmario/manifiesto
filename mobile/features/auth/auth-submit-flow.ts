@@ -8,8 +8,13 @@ export type AuthSubmitResolution =
       type: 'signed-in'
     }
   | {
-      href: '/(auth)/join'
-      type: 'join'
+      // Newly created accounts go straight into the 5-step onboarding
+      // wizard (welcome → avatar → family → sueldo → ahorros). The
+      // family decision is part of step 3, so we do NOT route through
+      // /(auth)/join — that screen is reserved for established users
+      // who somehow lost their family (RequireAuth fallback).
+      href: '/(app)/onboarding'
+      type: 'onboarding'
     }
   | {
       infoMessage: string
@@ -37,7 +42,7 @@ export function resolveAuthSubmitResolution({
   }
 
   return {
-    href: '/(auth)/join',
-    type: 'join',
+    href: '/(app)/onboarding',
+    type: 'onboarding',
   }
 }

@@ -104,13 +104,20 @@ export function useCreateExpense(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ categoryId, commitmentId, description, price }: CreateExpenseInput) => {
+    mutationFn: async ({
+      categoryId,
+      commitmentId,
+      createdAt,
+      description,
+      price,
+    }: CreateExpenseInput) => {
       if (!familyId || !userId) {
         throw new Error('No hay sesión o familia activa para crear gastos.')
       }
       await createExpense(familyId, userId, {
         categoryId,
         commitmentId,
+        createdAt,
         description,
         price,
       })

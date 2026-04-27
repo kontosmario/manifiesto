@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CategoryWeightsList, type CategoryWeight } from '@/components/gastos/category-weights-list'
+import { GastosAverageBars } from '@/components/gastos/gastos-average-bars'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -12,6 +13,9 @@ interface GastosHeroCardProps {
   totalVisible: number
   summaryChip: string // e.g. "47 mov · abril · Todas"
   topCategories: CategoryWeight[] // top 3
+  averageDaily: number
+  averageDailyBars: number[]
+  averageWindowDays?: number
 }
 
 /**
@@ -23,8 +27,13 @@ export function GastosHeroCard({
   totalVisible,
   summaryChip,
   topCategories,
+  averageDaily,
+  averageDailyBars,
+  averageWindowDays = 22,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
+  const fallbackBars = [0.6, 0.8, 0.2, 0.05, 0.7, 0.4, 0.6]
+  const barsData = averageDailyBars.length > 0 ? averageDailyBars : fallbackBars
   return (
     <RiseView delay={100}>
       {/*
@@ -67,12 +76,32 @@ export function GastosHeroCard({
             style={[styles.amount, { color: theme.colors.heroText }]}
           />
 
+          <View style={styles.avgRow}>
+            <View style={styles.avgText}>
+              <Text style={[styles.avgLabel, { color: theme.colors.heroMuted2 }]}>
+                PROMEDIO DÍA
+              </Text>
+              <View style={styles.avgValueRow}>
+                <CountUpText
+                  value={averageDaily}
+                  duration={1000}
+                  format={(n) => formatMoney(n)}
+                  style={[styles.avgValue, { color: theme.colors.heroText }]}
+                />
+                <Text style={[styles.avgSub, { color: theme.colors.heroMuted2 }]}>
+                  · últimos {averageWindowDays}d
+                </Text>
+              </View>
+            </View>
+            <View style={styles.avgBars}>
+              <GastosAverageBars values={barsData} color={theme.colors.heroAccent} totalHeight={24} />
+            </View>
+          </View>
+
           {topCategories.length > 0 ? (
             <Animated.View
               key="weights"
               style={styles.weightsBlock}
-              entering={FadeIn.duration(220)}
-              exiting={FadeOut.duration(160)}
               layout={LinearTransition.duration(260)}
             >
               <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted2 }]}>
@@ -126,4 +155,26 @@ const styles = StyleSheet.create({
   },
   weightsBlock: { marginTop: 12 },
   weightsLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600' },
+  avgRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 10,
+  },
+  avgText: { flex: 1 },
+  avgLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600' },
+  avgValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginTop: 2,
+  },
+  avgValue: { fontSize: 15, fontWeight: '800', letterSpacing: -0.4 },
+  avgSub: { fontSize: 11, fontWeight: '600' },
+  avgBars: {
+    minWidth: 90,
+    height: 24,
+    justifyContent: 'flex-end',
+  },
 })

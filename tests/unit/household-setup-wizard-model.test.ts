@@ -10,7 +10,6 @@ import {
 describe('household-setup-wizard.model', () => {
   it('deriva presets de ahorro usando ingreso y benchmark de tres meses', () => {
     const presets = buildHouseholdSavingsPresets({
-      essentialMonthlyCost: 600000,
       monthlyIncome: 1000000,
     })
 
@@ -21,12 +20,11 @@ describe('household-setup-wizard.model', () => {
     expect(presets[0].savingsPercent).toBe(20)
     expect(presets[2].flexiblePercent).toBe(20)
     expect(presets[2].suggestedBufferMode).toBe('percent')
-    expect(resolveEmergencyFundTarget({ essentialMonthlyCost: 600000, monthlyIncome: 1000000 })).toBe(1800000)
+    expect(resolveEmergencyFundTarget({ monthlyIncome: 1000000 })).toBe(1500000)
   })
 
   it('aplica un preset sobre los drafts del wizard', () => {
     const preset = buildHouseholdSavingsPresets({
-      essentialMonthlyCost: 600000,
       monthlyIncome: 1000000,
     })[1]
 
@@ -36,7 +34,6 @@ describe('household-setup-wizard.model', () => {
         bufferModeDraft: 'none',
         checkinHourDraft: '9',
         currentIncomeConfirmed: false,
-        essentialsDraft: '600000',
         incomeDraft: '1000000',
         nudgesEnabledDraft: true,
         salaryDayDraft: '5',
@@ -62,7 +59,6 @@ describe('household-setup-wizard.model', () => {
         bufferModeDraft: 'percent',
         checkinHourDraft: '8',
         currentIncomeConfirmed: true,
-        essentialsDraft: '300000',
         incomeDraft: '500000',
         nudgesEnabledDraft: true,
         salaryDayDraft: '10',
@@ -75,7 +71,6 @@ describe('household-setup-wizard.model', () => {
         dailyBudgetBufferValue: 0,
         dailyBudgetCheckinHour: 9,
         dailyBudgetNudgesEnabled: true,
-        essentialMonthlyCost: 0,
         lastSalaryConfirmedAt: null,
         monthlyIncome: 0,
         salaryPaymentDay: 1,
@@ -98,7 +93,6 @@ describe('household-setup-wizard.model', () => {
         dailyBudgetBufferValue: 0,
         dailyBudgetCheckinHour: 9,
         dailyBudgetNudgesEnabled: true,
-        essentialMonthlyCost: 0,
         lastSalaryConfirmedAt: null,
         monthlyIncome: 0,
         salaryPaymentDay: 1,

@@ -1,15 +1,19 @@
 // mobile/components/home/home-dashboard.tsx
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { type BottomSheetHandle } from '@/components/ui/bottom-sheet'
-import { ConfirmSalarySheet } from '@/components/home/confirm-salary-sheet'
+import { AlertsStrip } from '@/components/home/alerts-strip'
+import {
+  OnboardingAvailableSheet,
+  SalaryConfirmationSheet,
+} from '@/components/home/cycle-balance-prompt-sheet'
+import { MetaCard } from '@/components/home/meta-card'
+import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
-import { HomeHeroCardV2 } from '@/components/home/home-hero-card-v2'
+import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
-import { ShortcutCardsRow } from '@/components/home/shortcut-cards-row'
-import { MetaCard } from '@/components/home/meta-card'
+import { MonthSummaryCard } from '@/components/home/month-summary-card'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
@@ -17,14 +21,10 @@ import {
   daysUntilPayday,
   getPaydayCycle,
   isPaydayPending,
-  buildHomeMetrics,
   type DashboardErrorKind,
 } from '@/features/home/home-dashboard-model'
-import { buildHeroStatsTrio } from '@/features/home/home-aggregates.model'
-import { useMonthlyExpenseComparison } from '@/features/home/use-monthly-expense-comparison'
-import { useDailyAvailableSparkline } from '@/features/home/use-daily-available-sparkline'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
-import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
+import { useHomeMetrics, type HomeAlert } from '@/features/home/use-home-metrics'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { triggerHaptic } from '@/lib/haptics'
@@ -36,14 +36,19 @@ interface HomeDashboardProps {
   categoryNameById: Map<string, string>
   familyId: string
   displayName: string
-  familyName: string
   hasUnreadNotifications?: boolean
   onPressNotifications?: () => void
   onPressSettings?: () => void
   isLoadingActivity: boolean
   activityError: unknown
-  onConfirmSalary: () => void
+  /**
+   * Persists the cycle balance prompt. Pass `null` for "kept default
+   * salary" (anchors the cycle but no engine override); pass a number
+   * for the user-corrected available amount.
+   */
+  onConfirmCycleStartingBalance: (startingBalance: number | null) => void
   onDeleteExpense: (expenseId: string) => void
+  pendingDeleteExpenseId?: string | null
   isSavingSalary: boolean
   salaryErrorMessage: string | null
 }
@@ -54,21 +59,21 @@ export function HomeDashboard({
   categoryNameById,
   familyId,
   displayName,
-  familyName,
   hasUnreadNotifications = false,
   onPressNotifications,
   onPressSettings,
   isLoadingActivity,
   activityError,
-  onConfirmSalary,
+  onConfirmCycleStartingBalance,
   onDeleteExpense,
+  pendingDeleteExpenseId,
   isSavingSalary,
   salaryErrorMessage,
 }: HomeDashboardProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
-  const sheetRef = useRef<BottomSheetHandle>(null)
   const [today] = useState(() => new Date())
+  const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
 
   const paymentDay = dashboard.familyFinanceQuery.data?.salary_payment_day ?? null
   const lastConfirmedAt = dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null
@@ -78,69 +83,149 @@ export function HomeDashboard({
   )
   const days = useMemo(() => daysUntilPayday({ paymentDay }, today), [paymentDay, today])
   const cycle = useMemo(() => getPaydayCycle({ paymentDay }, today), [paymentDay, today])
-  const metrics = useMemo(() => buildHomeMetrics(dashboard), [dashboard])
+  void cycle
 
-  const dailyBudget =
-    cycle && cycle.totalDays > 0
-      ? Math.max(0, Math.round(metrics.availableToday / (cycle.daysRemaining || 1)))
-      : null
-
-  const cycleStart = cycle?.lastPayday ?? null
-  const sparklineQuery = useDailyAvailableSparkline({
-    familyId,
-    cycleStart,
-    totalAvailable: metrics.availableToday + (dashboard.spentInCurrentCycle ?? 0),
-    today,
-  })
-  const comparisonQuery = useMonthlyExpenseComparison(familyId)
-  const savingsGoalQuery = useSavingsGoal(familyId)
   const membersQuery = useFamilyMembers(familyId)
-
-  const fixedExpenses = dashboard.fixedExpensesQuery.data ?? []
-  const paymentsQuery = useFixedExpensePayments({
-    familyId,
-    fixedExpenseIds: fixedExpenses.map((fe) => fe.id),
-    today,
-  })
-
-  const heroStats = useMemo(
-    () =>
-      buildHeroStatsTrio({
-        dailyBudget,
-        totalAvailable: metrics.availableToday,
-        daysElapsed: cycle?.daysElapsed ?? 0,
-        expenses: recentExpenses.map((e) => ({ price: e.price, created_at: e.created_at })),
-        today,
-      }),
-    [dailyBudget, metrics.availableToday, cycle?.daysElapsed, recentExpenses, today],
-  )
-
-  const cycleDayLabel = useMemo(() => {
-    if (!cycle) return null
-    const monthName = new Intl.DateTimeFormat('es-AR', { month: 'long', timeZone: 'UTC' }).format(
-      today,
-    )
-    return `${monthName[0].toUpperCase()}${monthName.slice(1)} · día ${cycle.daysElapsed}/${cycle.totalDays}`
-  }, [cycle, today])
-
-  const miniBars = useMemo(
-    () => buildMiniBarsForGastos(recentExpenses, today),
-    [recentExpenses, today],
-  )
+  const homeMetrics = useHomeMetrics(familyId)
+  const savingsGoalQuery = useSavingsGoal(familyId)
+  // Same vault calculation that powers the Control alcancía — sum of
+  // positive deltas (cupo - gasto) across closed cycle days. Reading
+  // it here so the MetaCard's slider reads "lo que ahorraste este
+  // ciclo" instead of the static monthly target. The underlying
+  // queries are already cached (home_snapshot warm-up + react-query),
+  // so this is essentially free at runtime.
+  const controlData = useControlV2Data(familyId)
+  const cycleVault = controlData.usingMock ? 0 : controlData.view.vault
 
   const activityErrorKind: DashboardErrorKind | undefined = activityError
     ? classifyDashboardError(activityError)
     : undefined
 
-  const handleChipConfirm = () => sheetRef.current?.present()
-  const handleSheetConfirm = () => onConfirmSalary()
+  // ── Cycle balance prompt — gating ────────────────────────────────
+  //
+  // The OnboardingAvailableSheet is meant for users who haven't
+  // started using the app yet. The moment the user adds an expense
+  // (skipping the modal), asking them about "disponible hoy" stops
+  // making sense — they've already moved on. We treat that as an
+  // implicit "salary is fine as-is" confirmation: silently anchor
+  // the cycle so neither sheet auto-opens until the next payday.
+  const storedCycleAnchor =
+    dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null
+  // Only manual gastos count as "the user moved on". Commitment
+  // payments (fixed expenses auto-recorded as expense rows when
+  // marked paid) are not user-driven activity — they shouldn't
+  // suppress the onboarding prompt.
+  const hasManualExpense = (dashboard.expensesQuery.data ?? []).some(
+    (e) => !e.commitment_id,
+  )
+  const onboardingSkippedViaExpense = storedCycleAnchor == null && hasManualExpense
+  const isOnboardingFlow = storedCycleAnchor == null
+
+  // Side-effect: when the user dropped the onboarding sheet by
+  // adding an expense, write a neutral cycle anchor in the
+  // background. Same backend payload as tapping "Tengo el sueldo
+  // completo" on the modal (balance=null, anchor=cycleAnchorTarget,
+  // lastSalaryConfirmedAt=now). Refetch flips the condition off so
+  // this effect fires at most once per dropped onboarding.
+  const silentAnchorWroteRef = useRef(false)
+  useEffect(() => {
+    if (!onboardingSkippedViaExpense) {
+      silentAnchorWroteRef.current = false
+      return
+    }
+    if (silentAnchorWroteRef.current) return
+    if (dashboard.familyFinanceQuery.isLoading) return
+    if (dashboard.expensesQuery.isLoading) return
+    silentAnchorWroteRef.current = true
+    onConfirmCycleStartingBalance(null)
+  }, [
+    onboardingSkippedViaExpense,
+    dashboard.familyFinanceQuery.isLoading,
+    dashboard.expensesQuery.isLoading,
+    onConfirmCycleStartingBalance,
+  ])
+
+  const shouldAutoOpenCycleSheet =
+    dashboard.isCycleStartingBalancePromptPending &&
+    !dashboard.familyFinanceQuery.isLoading &&
+    Boolean(dashboard.familyFinanceQuery.data) &&
+    dashboard.monthlyIncome > 0 &&
+    // For users already in the recurring loop, only auto-open the
+    // salary-confirmation prompt once payday has actually arrived
+    // this cycle and the user hasn't confirmed yet (`pending`).
+    // Without this gate, editing `salary_payment_day` in Settings
+    // recomputes `cycleAnchorTarget`, the previous anchor stops
+    // matching, and the prompt fires mid-cycle even though the new
+    // payday is still in the future. Onboarding flow is exempt:
+    // those users haven't anchored a cycle yet, so we always ask.
+    (isOnboardingFlow || pending) &&
+    // Once the onboarding sheet has been dropped via an expense,
+    // we silently anchor the cycle (effect above) — never reopen.
+    !onboardingSkippedViaExpense
+  useEffect(() => {
+    if (!shouldAutoOpenCycleSheet) return
+    // Wait for the dashboard's hero + cards to finish their RiseView
+    // entrance animations (the longest delay in the chain is ~320ms;
+    // we add some padding so the screen "settles" first). Letting
+    // the user register the dashboard before the sheet emerges makes
+    // the prompt feel like a soft follow-up instead of an ambush —
+    // and gives us a clean spring-up motion underneath.
+    const handle = setTimeout(() => {
+      void triggerHaptic('selection')
+      setCycleBalanceSheetOpen(true)
+    }, 650)
+    return () => clearTimeout(handle)
+  }, [shouldAutoOpenCycleSheet])
+
+  const handleChipConfirm = () => {
+    // Open the cycle prompt when there's something to do:
+    //  - payday is past + not confirmed (`pending`),
+    //  - the cycle hasn't been anchored yet (`isCycleStartingBalancePromptPending`),
+    //  - or today is literally the payday day (`days === 0`) so the
+    //    user can confirm what they actually received this cycle.
+    if (
+      !pending &&
+      !dashboard.isCycleStartingBalancePromptPending &&
+      days !== 0
+    ) {
+      return
+    }
+    setCycleBalanceSheetOpen(true)
+  }
+  const handleCycleSheetClose = () => {
+    if (isSavingSalary) return
+    setCycleBalanceSheetOpen(false)
+  }
+  const handleCycleSheetSave = (amount: number) => {
+    onConfirmCycleStartingBalance(amount)
+    setCycleBalanceSheetOpen(false)
+  }
+  const handleCycleSheetKeepDefault = () => {
+    onConfirmCycleStartingBalance(null)
+    setCycleBalanceSheetOpen(false)
+  }
+  // Which prompt to render is driven solely by whether the user has
+  // already gone through the one-shot post-onboarding setup:
+  //   • storedAnchor == null  → never resolved → onboarding sheet.
+  //   • storedAnchor != null  → already in the recurring loop;
+  //     when the prompt is pending, it's because payday rolled in
+  //     and the user hasn't confirmed → salary confirmation sheet.
+  // The "skipped via expense" branch silently anchors before this
+  // computes, so by the time it matters `storedCycleAnchor` is set.
+  // `isOnboardingFlow` is declared above for the auto-open gate.
+  const remainingDaysInCycle = Math.max(1, dashboard.remainingUntilPayday)
   const handleAddExpense = () => {
     void triggerHaptic('light')
     router.push('/(app)/(tabs)/add')
   }
   const handleViewGastos = () => router.push('/(app)/(tabs)/expenses')
   const handleViewFijos = () => router.push('/(app)/(tabs)/fixed-expenses')
-  const handleViewMeta = () => router.push('/(app)/savings-goal')
+  const handleAlertPress = (alert: HomeAlert) => {
+    // Every alert routes to the Fijos screen today; deep-linking a
+    // particular fijo id will come when we add the detail route.
+    void alert.actionRoute
+    handleViewFijos()
+  }
 
   return (
     <View style={styles.stack}>
@@ -153,41 +238,23 @@ export function HomeDashboard({
       />
       <FamilyStrip
         members={membersQuery.data ?? []}
-        familyName={familyName}
         daysUntilPayday={days}
         paydayPending={pending}
         onPaydayPress={handleChipConfirm}
       />
-      <HomeHeroCardV2
-        availableToday={metrics.availableToday}
-        projectedMargin={metrics.projectedMargin}
-        monthlyComparison={comparisonQuery.data ?? null}
-        sparkline={sparklineQuery.data ?? null}
-        heroStats={heroStats}
-        cycleDayLabel={cycleDayLabel}
-      />
-      <ShortcutCardsRow
-        gastos={{
-          total: comparisonQuery.data?.currentMonthTotal ?? 0,
-          count: (dashboard.expensesQuery.data ?? []).length,
-          trendLabel:
-            comparisonQuery.data && comparisonQuery.data.deltaPercent != null
-              ? `${comparisonQuery.data.deltaPercent > 0 ? '+' : ''}${Math.round(comparisonQuery.data.deltaPercent)}% vs ${comparisonQuery.data.previousMonthLabel}`
-              : null,
-          trendDirection: comparisonQuery.data?.direction ?? null,
-          miniBars,
-        }}
-        fijos={{
-          monthlyTotal: metrics.fixedAmount,
-          paidCount: paymentsQuery.data?.length ?? 0,
-          totalCount: fixedExpenses.length,
-          upcomingCount: countUpcoming(fixedExpenses, today),
-        }}
-        onPressGastos={handleViewGastos}
-        onPressFijos={handleViewFijos}
+      <HomeHeroCard data={homeMetrics.hero} />
+      <AlertsStrip alerts={homeMetrics.alerts} onPressAlert={handleAlertPress} />
+      <MonthSummaryCard
+        data={homeMetrics.monthSummary}
+        onPressVariable={handleViewGastos}
+        onPressFixed={handleViewFijos}
       />
       {savingsGoalQuery.data ? (
-        <MetaCard goal={savingsGoalQuery.data} onPress={handleViewMeta} />
+        <MetaCard
+          goal={savingsGoalQuery.data}
+          enableQuickAdd
+          suggestedAmount={cycleVault}
+        />
       ) : null}
 
       <View style={styles.activityHeader}>
@@ -212,6 +279,7 @@ export function HomeDashboard({
         isLoading={isLoadingActivity}
         errorKind={activityErrorKind}
         onDelete={onDeleteExpense}
+        pendingExpenseId={pendingDeleteExpenseId ?? null}
         onRetry={() => {
           void dashboard.refetchAll()
         }}
@@ -220,39 +288,31 @@ export function HomeDashboard({
 
       <View style={styles.bottomSpacer} />
 
-      <ConfirmSalarySheet
-        ref={sheetRef}
-        isSaving={isSavingSalary}
-        errorMessage={salaryErrorMessage}
-        onConfirm={handleSheetConfirm}
-      />
+      {isOnboardingFlow ? (
+        <OnboardingAvailableSheet
+          visible={isCycleBalanceSheetOpen}
+          monthlyIncome={dashboard.monthlyIncome}
+          remainingDaysInCycle={remainingDaysInCycle}
+          isSaving={isSavingSalary}
+          errorMessage={salaryErrorMessage}
+          onClose={handleCycleSheetClose}
+          onSaveBalance={handleCycleSheetSave}
+          onKeepDefault={handleCycleSheetKeepDefault}
+        />
+      ) : (
+        <SalaryConfirmationSheet
+          visible={isCycleBalanceSheetOpen}
+          monthlyIncome={dashboard.monthlyIncome}
+          remainingDaysInCycle={remainingDaysInCycle}
+          isSaving={isSavingSalary}
+          errorMessage={salaryErrorMessage}
+          onClose={handleCycleSheetClose}
+          onSaveBalance={handleCycleSheetSave}
+          onKeepDefault={handleCycleSheetKeepDefault}
+        />
+      )}
     </View>
   )
-}
-
-function buildMiniBarsForGastos(expenses: Expense[], today: Date): number[] {
-  const byDay = new Map<number, number>()
-  for (const e of expenses) {
-    const d = new Date(e.created_at)
-    const daysAgo = Math.floor((today.getTime() - d.getTime()) / 86_400_000)
-    if (daysAgo < 0 || daysAgo > 6) continue
-    byDay.set(6 - daysAgo, (byDay.get(6 - daysAgo) ?? 0) + e.price)
-  }
-  const arr = Array.from({ length: 7 }, (_, i) => byDay.get(i) ?? 0)
-  const max = Math.max(1, ...arr)
-  return arr.map((v) => v / max)
-}
-
-function countUpcoming(
-  fixedExpenses: { next_due_on?: string | null }[],
-  today: Date,
-): number {
-  const sevenDays = 7 * 86_400_000
-  return fixedExpenses.filter((fe) => {
-    if (!fe.next_due_on) return false
-    const dueMs = new Date(fe.next_due_on).getTime() - today.getTime()
-    return dueMs >= 0 && dueMs <= sevenDays
-  }).length
 }
 
 const styles = StyleSheet.create({

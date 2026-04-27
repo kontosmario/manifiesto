@@ -57,7 +57,6 @@ export function SettingsFinanceEditorCard({
           savingsDraft,
           usdRateDraft,
         },
-        essentialMonthlyCost: initialSnapshot.essentialMonthlyCost,
         lastSalaryConfirmedAt: initialSnapshot.lastSalaryConfirmedAt,
       }),
     [
@@ -65,7 +64,6 @@ export function SettingsFinanceEditorCard({
       bufferModeDraft,
       checkinHourDraft,
       incomeDraft,
-      initialSnapshot.essentialMonthlyCost,
       initialSnapshot.lastSalaryConfirmedAt,
       nudgesEnabledDraft,
       salaryDayDraft,

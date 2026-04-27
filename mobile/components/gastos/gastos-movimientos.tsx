@@ -18,6 +18,8 @@ interface GastosMovimientosProps {
   familyMembers: FamilyMemberLite[]
   onDelete?: (expenseId: string) => void
   onEdit?: (expenseId: string) => void
+  /** Expense id currently being mutated (delete or edit in flight). */
+  pendingExpenseId?: string | null
 }
 
 /**
@@ -32,6 +34,7 @@ export function GastosMovimientos({
   familyMembers,
   onDelete,
   onEdit,
+  pendingExpenseId,
 }: GastosMovimientosProps) {
   const { theme } = useAppTheme()
   return (
@@ -51,7 +54,7 @@ export function GastosMovimientos({
 
       <View style={styles.groups}>
         {groups.map((group, gi) => (
-          <RiseView key={`${group.label}-${gi}`} delay={400 + gi * 60}>
+          <RiseView key={`${group.label}-${gi}`} delay={Math.min(60 + gi * 20, 200)}>
             <View style={styles.group}>
               <View style={styles.groupHeader}>
                 <View>
@@ -65,29 +68,17 @@ export function GastosMovimientos({
                 </Text>
               </View>
               <View style={styles.groupList}>
-                {group.items.map((expense, i) => {
+                {group.items.map((expense) => {
                   const cat = categoriesById.get(expense.category_id)
                   const who = familyMembers.find((m) => m.id === expense.created_by)
-                  const actions: SwipeAction[] = []
-                  if (onEdit) {
-                    actions.push({
-                      label: 'Editar',
-                      tone: 'neutral',
-                      onPress: () => onEdit(expense.id),
-                    })
-                  }
-                  if (onDelete) {
-                    actions.push({
-                      label: 'Eliminar',
-                      tone: 'danger',
-                      onPress: () => onDelete(expense.id),
-                    })
-                  }
+                  const actions = buildActions(expense.id, onEdit, onDelete)
+                  const isPending = pendingExpenseId === expense.id
                   return (
                     <SwipeableRow
                       key={expense.id}
                       accessibilityHint="Desliza a la izquierda para editar o eliminar"
                       rightActions={actions}
+                      isProcessing={isPending}
                     >
                       <GastoRow
                         title={expense.description || cat?.name || 'Gasto'}
@@ -97,7 +88,6 @@ export function GastosMovimientos({
                         whoColor={who?.color ?? '#2E7D5B'}
                         amount={-Math.abs(Number(expense.price ?? 0))}
                         time={formatTime(expense.created_at)}
-                        delay={480 + i * 50}
                       />
                     </SwipeableRow>
                   )
@@ -109,6 +99,31 @@ export function GastosMovimientos({
       </View>
     </View>
   )
+}
+
+function buildActions(
+  expenseId: string,
+  onEdit?: (id: string) => void,
+  onDelete?: (id: string) => void,
+): SwipeAction[] {
+  const actions: SwipeAction[] = []
+  if (onEdit) {
+    actions.push({
+      label: 'Editar',
+      tone: 'neutral',
+      icon: 'edit',
+      onPress: () => onEdit(expenseId),
+    })
+  }
+  if (onDelete) {
+    actions.push({
+      label: 'Eliminar',
+      tone: 'danger',
+      icon: 'delete',
+      onPress: () => onDelete(expenseId),
+    })
+  }
+  return actions
 }
 
 function formatTime(iso: string): string {

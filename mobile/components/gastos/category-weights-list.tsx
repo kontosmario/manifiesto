@@ -61,7 +61,7 @@ export function CategoryWeightsList({
               key={`${item.id}-${item.percent}`}
               percent={item.percent}
               color={item.color}
-              delay={400 + index * 100}
+              delay={80 + index * 25}
             />
           </View>
         </Animated.View>

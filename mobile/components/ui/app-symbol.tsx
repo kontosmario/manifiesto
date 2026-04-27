@@ -1,39 +1,36 @@
-import { Platform } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { SymbolView, type SymbolType, type SymbolWeight } from 'expo-symbols'
+import type { SymbolType, SymbolWeight } from 'expo-symbols'
 
 interface AppSymbolProps {
-  name: string
+  /** SF Symbol name. Kept for API compatibility; ignored when rendering. */
+  name?: string
+  /** MaterialIcons glyph name — the one actually rendered across all platforms. */
   fallback: keyof typeof MaterialIcons.glyphMap
   size?: number
   color: string
+  /** Kept for API compatibility; ignored. */
   type?: SymbolType
+  /** Kept for API compatibility; ignored. */
   weight?: SymbolWeight
   style?: object
 }
 
+/**
+ * Renders a vector icon from MaterialIcons on every platform (iOS,
+ * Android, web). Previously this branched to SF Symbols on iOS via
+ * `expo-symbols`, which made the iOS build visually diverge from web
+ * and Android. Unifying on MaterialIcons gives pixel-identical icons
+ * on all targets and keeps the icon system token-driven.
+ *
+ * The `name`, `type`, and `weight` props are kept in the signature so
+ * existing call-sites (~14 across the app) compile unchanged, but
+ * they're ignored at render time — only `fallback` is used.
+ */
 export function AppSymbol({
-  name,
   fallback,
   size = 22,
   color,
-  type = 'hierarchical',
-  weight = 'semibold',
   style,
 }: AppSymbolProps) {
-  if (Platform.OS === 'ios') {
-    return (
-      <SymbolView
-        fallback={<MaterialIcons color={color} name={fallback} size={size} />}
-        name={name as never}
-        size={size}
-        style={style}
-        tintColor={color}
-        type={type}
-        weight={weight}
-      />
-    )
-  }
-
   return <MaterialIcons color={color} name={fallback} size={size} style={style} />
 }

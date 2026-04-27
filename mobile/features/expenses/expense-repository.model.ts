@@ -50,6 +50,12 @@ export interface CreateExpenseInput {
   commitmentId?: string | null
   description: string
   price: number
+  /**
+   * Optional ISO timestamp to back-date the movement (used by the
+   * Gastos calendar's "registrar gasto olvidado" flow). When omitted,
+   * the DB default `now()` applies — normal flow.
+   */
+  createdAt?: string | null
 }
 
 export interface UpdateExpenseInput {
@@ -83,6 +89,7 @@ export function validateExpensePrice(price: number) {
 export function buildExpenseInsertPayload({
   categoryId,
   commitmentId,
+  createdAt,
   description,
   familyId,
   price,
@@ -90,6 +97,7 @@ export function buildExpenseInsertPayload({
 }: {
   categoryId: string
   commitmentId?: string | null
+  createdAt?: string | null
   description: string
   familyId: string
   price: number
@@ -98,6 +106,7 @@ export function buildExpenseInsertPayload({
   const insertPayload: {
     category_id: string
     commitment_id?: string
+    created_at?: string
     created_by: string
     description: string
     family_id: string
@@ -112,6 +121,10 @@ export function buildExpenseInsertPayload({
 
   if (typeof commitmentId === 'string' && commitmentId.trim() !== '') {
     insertPayload.commitment_id = commitmentId
+  }
+
+  if (typeof createdAt === 'string' && createdAt.trim() !== '') {
+    insertPayload.created_at = createdAt
   }
 
   return insertPayload

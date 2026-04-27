@@ -26,6 +26,7 @@ describe('fixed-expense-editor-model', () => {
     expect(result.payload).toEqual({
       amount: 125000,
       categoryId: 'rent',
+      dayOfMonth: 25,
       endsOn: '2026-12-31',
       frequency: 'monthly',
       installmentsPaid: 0,
@@ -35,6 +36,7 @@ describe('fixed-expense-editor-model', () => {
       name: 'Alquiler',
       nextDueOn: '2026-04-25',
       notes: 'Contrato anual',
+      notifyDaysBefore: null,
       remainingBalance: null,
       status: 'active',
     })

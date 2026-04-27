@@ -20,7 +20,7 @@ interface UseLoginSubmitInput {
   onErrorMessage: (message: string) => void
   onInfoMessage: (message: string) => void
   onModeChange: (mode: AuthMode) => void
-  onNavigateToJoin: (href: '/(auth)/join') => void
+  onNavigateToJoin: (href: '/(app)/onboarding') => void
   onSignedIn: () => void
   onPasswordReset: () => void
   password: string
@@ -122,7 +122,7 @@ export function useLoginSubmit({
         shouldPromptSetup: true,
       })
 
-      if (resolution.type === 'join') {
+      if (resolution.type === 'onboarding') {
         onNavigateToJoin(resolution.href)
         return
       }

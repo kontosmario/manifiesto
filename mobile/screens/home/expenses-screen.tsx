@@ -2,6 +2,7 @@ import { GastosV2Screen } from '@/screens/home/gastos-v2-screen'
 
 interface ExpensesScreenProps {
   familyId: string
+  userId: string
 }
 
 /**
@@ -9,6 +10,6 @@ interface ExpensesScreenProps {
  * The legacy ExpensesHistoryScreen is still accessible via the
  * `/expenses-history` route for reference while the redesign lands.
  */
-export function ExpensesScreen({ familyId }: ExpensesScreenProps) {
-  return <GastosV2Screen familyId={familyId} />
+export function ExpensesScreen({ familyId, userId }: ExpensesScreenProps) {
+  return <GastosV2Screen familyId={familyId} userId={userId} />
 }

@@ -15,7 +15,8 @@ import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
 import { SectionHeader } from '@/components/ui/section-header'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { TextField } from '@/components/ui/text-field'
+import { NumpadField } from '@/components/ui/numpad-field'
+import { formatPriceInputValue } from '@/utils/money'
 import {
   type FamilyFinance,
   type FamilyFinanceInputSnapshot,
@@ -35,13 +36,9 @@ import {
   HOUSEHOLD_SAVINGS_RESEARCH_NOTE,
   HOUSEHOLD_SAVINGS_RESEARCH_STATS,
   parseHouseholdSetupMoneyInput,
-  resolveCurrentEssentialsPercent,
   resolveEmergencyFundTarget,
   resolveFlexibleTargetPercent,
-  sanitizeHouseholdSetupMoneyInput,
-  sanitizeHouseholdSetupPercentInput,
 } from '@/features/settings/household-setup-wizard.model'
-import { sanitizeDayInput } from '@/features/settings/settings-form.model'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -68,13 +65,14 @@ function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputS
     dailyBudgetBufferValue: finance.daily_budget_buffer_value,
     dailyBudgetCheckinHour: finance.daily_budget_checkin_hour,
     dailyBudgetNudgesEnabled: finance.daily_budget_nudges_enabled,
-    essentialMonthlyCost: finance.essential_monthly_cost,
     lastSalaryConfirmedAt: finance.last_salary_confirmed_at,
     monthlyIncome: finance.monthly_income,
     salaryPaymentDay: finance.salary_payment_day,
     savingsGoal: finance.savings_goal,
     savingsGoalPercent: finance.savings_goal_percent,
     usdExchangeRate: finance.usd_exchange_rate,
+    currentCycleStartingBalance: finance.current_cycle_starting_balance,
+    currentCycleAnchor: finance.current_cycle_anchor,
   }
 }
 
@@ -129,33 +127,23 @@ function HouseholdSetupWizardContent({
   const upsertFinanceMutation = useUpsertFamilyFinance(familyId)
   const [currentStep, setCurrentStep] = useState(0)
   const [drafts, setDrafts] = useState(() => buildHouseholdSetupDraftState(initialSnapshot))
-  const [focusState, setFocusState] = useState({
-    buffer: false,
-    essentials: false,
-    income: false,
-    savings: false,
-    usdRate: false,
-  })
 
+  // Field values still come from the wizard model for the summary card
+  // in step 2 (it shows formatted snapshot copies of each field). The
+  // inputs themselves now use NumpadField with raw drafts + their own
+  // format functions, so we pass `false` for all focused flags.
   const fieldValues = buildHouseholdSetupFieldValues({
-    bufferFocused: focusState.buffer,
+    bufferFocused: false,
     drafts,
-    essentialsFocused: focusState.essentials,
-    incomeFocused: focusState.income,
-    savingsFocused: focusState.savings,
-    usdRateFocused: focusState.usdRate,
+    incomeFocused: false,
+    savingsFocused: false,
+    usdRateFocused: false,
   })
   const monthlyIncome = parseHouseholdSetupMoneyInput(drafts.incomeDraft)
   const savingsTargetPercent = Number(drafts.savingsDraft)
-  const essentialMonthlyCost = parseHouseholdSetupMoneyInput(drafts.essentialsDraft)
-  const currentEssentialsPercent = resolveCurrentEssentialsPercent({
-    essentialMonthlyCost,
-    monthlyIncome,
-  })
   const flexibleTargetPercent = resolveFlexibleTargetPercent(savingsTargetPercent)
   const monthlySavingsGoal = deriveSavingsGoalAmount(monthlyIncome, savingsTargetPercent)
   const benchmarkFund = resolveEmergencyFundTarget({
-    essentialMonthlyCost,
     monthlyIncome,
   })
   const formattedBenchmarkFund =
@@ -163,7 +151,6 @@ function HouseholdSetupWizardContent({
   const formattedMonthlySavingsGoal =
     monthlySavingsGoal > 0 ? CURRENCY_FORMATTER.format(monthlySavingsGoal) : '$ 0'
   const savingsPresets = buildHouseholdSavingsPresets({
-    essentialMonthlyCost,
     monthlyIncome,
   })
   const submitState = buildHouseholdSetupSubmitState({
@@ -251,49 +238,34 @@ function HouseholdSetupWizardContent({
               subtitle="Estos datos ordenan el ciclo de cobro y las referencias principales del hogar."
               title="Ingresos y ciclo"
             />
-            <TextField
-              keyboardType="decimal-pad"
+            <NumpadField
               label="Ingreso mensual del hogar"
-              onBlur={() => setFocusState((current) => ({ ...current, income: false }))}
-              onChangeText={(value) =>
-                setDrafts((current) => ({
-                  ...current,
-                  incomeDraft: sanitizeHouseholdSetupMoneyInput(value),
-                }))
+              value={drafts.incomeDraft}
+              onChangeRawValue={(value) =>
+                setDrafts((current) => ({ ...current, incomeDraft: value }))
               }
-              onFocus={() => setFocusState((current) => ({ ...current, income: true }))}
+              formatDisplay={(raw) => formatPriceInputValue(raw, false)}
               placeholder="$ 0"
-              returnKeyType="next"
-              value={fieldValues.income}
             />
-            <TextField
+            <NumpadField
               helper="Dia del mes en que entra el ingreso principal."
-              keyboardType="number-pad"
               label="Dia de cobro"
-              onChangeText={(value) =>
-                setDrafts((current) => ({
-                  ...current,
-                  salaryDayDraft: sanitizeDayInput(value),
-                }))
+              value={drafts.salaryDayDraft}
+              onChangeRawValue={(value) =>
+                setDrafts((current) => ({ ...current, salaryDayDraft: value }))
               }
               placeholder="1"
-              returnKeyType="next"
-              value={drafts.salaryDayDraft}
+              maxIntegerDigits={2}
+              maxDecimalDigits={0}
             />
-            <TextField
-              keyboardType="decimal-pad"
+            <NumpadField
               label="Cotizacion USD"
-              onBlur={() => setFocusState((current) => ({ ...current, usdRate: false }))}
-              onChangeText={(value) =>
-                setDrafts((current) => ({
-                  ...current,
-                  usdRateDraft: sanitizeHouseholdSetupMoneyInput(value),
-                }))
+              value={drafts.usdRateDraft}
+              onChangeRawValue={(value) =>
+                setDrafts((current) => ({ ...current, usdRateDraft: value }))
               }
-              onFocus={() => setFocusState((current) => ({ ...current, usdRate: true }))}
+              formatDisplay={(raw) => formatPriceInputValue(raw, false)}
               placeholder="$ 0"
-              returnKeyType="done"
-              value={fieldValues.usdRate}
             />
             <SettingsSwitchRow
               description="Si ya entro el ingreso principal, marcamos este ciclo como abierto y evitamos friccion inicial."
@@ -318,25 +290,7 @@ function HouseholdSetupWizardContent({
                 subtitle="Usamos 50% para necesidades como baseline y desplazamos el resto entre ahorro y gasto flexible."
                 title="Distribucion del ingreso"
               />
-              <TextField
-                helper="Cuanto necesita el hogar para cubrir un mes de gastos no negociables. Si no lo defines, estimamos 50% del ingreso."
-                keyboardType="decimal-pad"
-                label="Gasto base mensual"
-                onBlur={() => setFocusState((current) => ({ ...current, essentials: false }))}
-                onChangeText={(value) =>
-                  setDrafts((current) => ({
-                    ...current,
-                    essentialsDraft: sanitizeHouseholdSetupMoneyInput(value),
-                  }))
-                }
-                onFocus={() =>
-                  setFocusState((current) => ({ ...current, essentials: true }))
-                }
-                placeholder="$ 0"
-                value={fieldValues.essentials}
-              />
               <View style={styles.summaryStats}>
-                <HeroStat compact label="Necesidades hoy" value={`${currentEssentialsPercent}%`} />
                 <HeroStat
                   compact
                   label="Base recomendada"
@@ -357,21 +311,21 @@ function HouseholdSetupWizardContent({
                   />
                 ))}
               </View>
-              <TextField
+              <NumpadField
                 helper={`Equivale a ${formattedMonthlySavingsGoal} por mes. Gasto flexible objetivo: ${flexibleTargetPercent}%.`}
-                keyboardType="number-pad"
                 label="Ahorro objetivo (%)"
-                onBlur={() => setFocusState((current) => ({ ...current, savings: false }))}
-                onChangeText={(value) =>
+                value={drafts.savingsDraft}
+                onChangeRawValue={(value) =>
                   setDrafts((current) => ({
                     ...current,
-                    savingsDraft: sanitizeHouseholdSetupPercentInput(value),
+                    savingsDraft: value,
                     selectedPresetId: 'custom',
                   }))
                 }
-                onFocus={() => setFocusState((current) => ({ ...current, savings: true }))}
-                placeholder="20"
-                value={fieldValues.savings}
+                formatDisplay={(raw) => (raw ? `${raw}%` : '')}
+                placeholder="20%"
+                maxIntegerDigits={3}
+                maxDecimalDigits={0}
               />
             </BrandedPanel>
           </>
@@ -395,7 +349,8 @@ function HouseholdSetupWizardContent({
                 ]}
                 value={drafts.bufferModeDraft}
               />
-              <TextField
+              <NumpadField
+                key={drafts.bufferModeDraft}
                 helper={
                   drafts.bufferModeDraft === 'none'
                     ? 'Todo el disponible se reparte dentro del ciclo.'
@@ -403,18 +358,20 @@ function HouseholdSetupWizardContent({
                       ? 'Porcentaje reservado del presupuesto variable.'
                       : 'Monto fijo reservado por fuera del operativo diario.'
                 }
-                keyboardType="decimal-pad"
                 label={drafts.bufferModeDraft === 'percent' ? 'Colchon (%)' : 'Colchon'}
-                onBlur={() => setFocusState((current) => ({ ...current, buffer: false }))}
-                onChangeText={(value) =>
-                  setDrafts((current) => ({
-                    ...current,
-                    bufferDraft: sanitizeHouseholdSetupMoneyInput(value),
-                  }))
+                value={drafts.bufferDraft}
+                onChangeRawValue={(value) =>
+                  setDrafts((current) => ({ ...current, bufferDraft: value }))
                 }
-                onFocus={() => setFocusState((current) => ({ ...current, buffer: true }))}
-                placeholder={drafts.bufferModeDraft === 'percent' ? '0' : '$ 0'}
-                value={fieldValues.buffer}
+                formatDisplay={(raw) =>
+                  drafts.bufferModeDraft === 'percent'
+                    ? (raw ? `${raw}%` : '')
+                    : formatPriceInputValue(raw, false)
+                }
+                placeholder={drafts.bufferModeDraft === 'percent' ? '0%' : '$ 0'}
+                disabled={drafts.bufferModeDraft === 'none'}
+                maxIntegerDigits={drafts.bufferModeDraft === 'percent' ? 3 : undefined}
+                maxDecimalDigits={drafts.bufferModeDraft === 'percent' ? 0 : undefined}
               />
               <SettingsSwitchRow
                 description="Activa recordatorios de apertura diaria y avisos cuando el dia se empieza a apretar."
@@ -424,18 +381,16 @@ function HouseholdSetupWizardContent({
                 }
                 value={drafts.nudgesEnabledDraft}
               />
-              <TextField
+              <NumpadField
                 helper="Hora de referencia para el check-in diario. Usa formato 0 a 23."
-                keyboardType="number-pad"
                 label="Hora del check-in"
-                onChangeText={(value) =>
-                  setDrafts((current) => ({
-                    ...current,
-                    checkinHourDraft: sanitizeDayInput(value),
-                  }))
+                value={drafts.checkinHourDraft}
+                onChangeRawValue={(value) =>
+                  setDrafts((current) => ({ ...current, checkinHourDraft: value }))
                 }
                 placeholder="9"
-                value={drafts.checkinHourDraft}
+                maxIntegerDigits={2}
+                maxDecimalDigits={0}
               />
             </BrandedPanel>
 
@@ -459,7 +414,7 @@ function HouseholdSetupWizardContent({
                 <HeroStat
                   compact
                   label="Necesidades"
-                  value={`${TARGET_ESSENTIALS_PERCENT}% objetivo / ${currentEssentialsPercent}% hoy`}
+                  value={`${TARGET_ESSENTIALS_PERCENT}% objetivo`}
                 />
                 <HeroStat compact label="Flexible" value={`${flexibleTargetPercent}%`} />
                 <HeroStat compact label="Check-in" value={`${checkinHourNumber || 9} hs`} />

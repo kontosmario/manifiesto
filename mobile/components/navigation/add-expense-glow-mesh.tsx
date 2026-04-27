@@ -1,101 +1,99 @@
-import { View } from 'react-native'
-import { getOptionalSkiaModule } from '@/lib/optional-skia'
-import {
-  ADD_BUTTON_GLOW_SIZE,
-  clamp,
-  interpolateValue,
-} from '@/components/navigation/add-expense-tab-button.model'
-import { radii } from '@/theme/palette'
+import type { ComponentType, PropsWithChildren } from 'react'
+import { StyleSheet, type ViewStyle } from 'react-native'
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  type AnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated'
+import Svg, { Defs as DefsRaw, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { ADD_BUTTON_GLOW_SIZE } from '@/components/navigation/add-expense-tab-button.model'
 
+// react-native-svg v15 types `Defs` without children in its BaseProps
+// even though it accepts them at runtime. Re-type locally so JSX
+// compiles without a widespread type-declaration shim.
+const Defs = DefsRaw as unknown as ComponentType<PropsWithChildren>
+
+type ViewAnimatedStyle = AnimatedStyle<ViewStyle>
+
+/**
+ * Soft ambient glow behind the "+" FAB. Renders a **single** SVG with
+ * a real `RadialGradient` — a true GPU-rendered radial falloff from
+ * center to edge with no visible rings or edges. The view itself
+ * animates its opacity in sync with press intensity.
+ *
+ * Why SVG instead of stacked circles: four stacked circular views
+ * with solid backgrounds (our previous attempt) left concentric
+ * rings visible — the human eye picked up the hard edge of each
+ * circle even with smoothly-stepped opacities. A radial gradient has
+ * continuous alpha, so there are no edges to perceive. react-native-svg
+ * works on iOS, Android and web identically.
+ */
 export function AddExpenseGlowMesh({
   intensity,
   isDark,
 }: {
-  intensity: number
+  intensity: SharedValue<number>
   isDark: boolean
 }) {
-  const skia = getOptionalSkiaModule()
-  const normalizedIntensity = clamp(interpolateValue(intensity, [0, 1.75], [0, 1]))
-  const center = ADD_BUTTON_GLOW_SIZE / 2
-  const glowPeakAlpha = interpolateValue(
-    normalizedIntensity,
-    [0, 1],
-    [0.03, isDark ? 0.24 : 0.2],
-  )
-  const glowMidAlpha = interpolateValue(
-    normalizedIntensity,
-    [0, 1],
-    [0.02, isDark ? 0.12 : 0.1],
-  )
-  const glowTailAlpha = interpolateValue(
-    normalizedIntensity,
-    [0, 1],
-    [0.01, isDark ? 0.045 : 0.038],
-  )
+  // Whole component fades in/out with press intensity. The gradient
+  // itself is static; opacity is what reveals it.
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(intensity.value, [0, 1, 1.75], [0.35, 0.85, 1]),
+  })) as ViewAnimatedStyle
 
-  if (!skia) {
-    return (
-      <View style={{ height: ADD_BUTTON_GLOW_SIZE, width: ADD_BUTTON_GLOW_SIZE }}>
-        <View
-          style={{
-            position: 'absolute',
-            left: 34,
-            top: 34,
-            width: ADD_BUTTON_GLOW_SIZE - 68,
-            height: ADD_BUTTON_GLOW_SIZE - 68,
-            borderRadius: radii.pill,
-            backgroundColor: isDark
-              ? `rgba(102, 255, 173, ${glowMidAlpha * 0.54})`
-              : `rgba(70, 233, 144, ${glowMidAlpha * 0.5})`,
-            opacity: 0.6 + normalizedIntensity * 0.35,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            left: 76,
-            top: 76,
-            width: ADD_BUTTON_GLOW_SIZE - 152,
-            height: ADD_BUTTON_GLOW_SIZE - 152,
-            borderRadius: radii.pill,
-            backgroundColor: isDark
-              ? `rgba(190, 255, 214, ${glowPeakAlpha * 0.72})`
-              : `rgba(238, 255, 244, ${glowPeakAlpha * 0.7})`,
-            opacity: 0.5 + normalizedIntensity * 0.4,
-          }}
-        />
-      </View>
-    )
-  }
-
-  const { Canvas, Circle, Paint, RadialGradient, vec } = skia
+  // Hot center color — this is what the gradient starts at (core).
+  const centerColor = isDark ? '#9CFFCB' : '#74F4A4'
+  // Edge color transparent — gradient fades to 0 alpha.
+  const edgeColor = isDark ? '#0F3A22' : '#0F3A22'
 
   return (
-    <Canvas style={{ height: ADD_BUTTON_GLOW_SIZE, width: ADD_BUTTON_GLOW_SIZE }}>
-      <Circle c={vec(center, center)} color="transparent" r={124}>
-        <Paint blendMode="screen">
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.container, glowStyle]}
+    >
+      <Svg
+        width={ADD_BUTTON_GLOW_SIZE}
+        height={ADD_BUTTON_GLOW_SIZE}
+        viewBox={`0 0 ${ADD_BUTTON_GLOW_SIZE} ${ADD_BUTTON_GLOW_SIZE}`}
+      >
+        <Defs>
           <RadialGradient
-            c={vec(center, center)}
-            colors={[
-              isDark
-                ? `rgba(232, 255, 241, ${glowPeakAlpha * 0.24})`
-                : `rgba(241, 255, 246, ${glowPeakAlpha * 0.22})`,
-              isDark
-                ? `rgba(132, 255, 184, ${glowPeakAlpha})`
-                : `rgba(102, 255, 173, ${glowPeakAlpha})`,
-              isDark
-                ? `rgba(74, 247, 142, ${glowMidAlpha})`
-                : `rgba(50, 233, 127, ${glowMidAlpha})`,
-              isDark
-                ? `rgba(59, 224, 122, ${glowTailAlpha})`
-                : `rgba(36, 209, 108, ${glowTailAlpha})`,
-              'rgba(0, 0, 0, 0)',
-            ]}
-            positions={[0.08, 0.24, 0.5, 0.76, 1]}
-            r={124}
-          />
-        </Paint>
-      </Circle>
-    </Canvas>
+            id="fab-glow"
+            cx="50%"
+            cy="50%"
+            rx="50%"
+            ry="50%"
+            fx="50%"
+            fy="50%"
+          >
+            {/* Bright hot core */}
+            <Stop offset="0%" stopColor={centerColor} stopOpacity={isDark ? 0.45 : 0.38} />
+            {/* Warm mid */}
+            <Stop offset="20%" stopColor={centerColor} stopOpacity={isDark ? 0.3 : 0.24} />
+            {/* Fall-off zone */}
+            <Stop offset="45%" stopColor={centerColor} stopOpacity={isDark ? 0.14 : 0.1} />
+            {/* Tail */}
+            <Stop offset="72%" stopColor={centerColor} stopOpacity={isDark ? 0.05 : 0.035} />
+            {/* Fully transparent edge */}
+            <Stop offset="100%" stopColor={edgeColor} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect
+          width={ADD_BUTTON_GLOW_SIZE}
+          height={ADD_BUTTON_GLOW_SIZE}
+          fill="url(#fab-glow)"
+        />
+      </Svg>
+    </Animated.View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: ADD_BUTTON_GLOW_SIZE,
+    height: ADD_BUTTON_GLOW_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+})

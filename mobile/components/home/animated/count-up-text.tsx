@@ -17,6 +17,12 @@ interface CountUpTextProps {
   accessibilityLabel?: string
 }
 
+// `fontVariant: 'tabular-nums'` keeps each digit at the same width so the
+// label doesn't resize frame-by-frame as the count animates. Without it,
+// proportional digits (e.g. 1 vs 8) change glyph width and push siblings
+// around, which reads as jitter.
+const TABULAR: TextStyle = { fontVariant: ['tabular-nums'] }
+
 export function CountUpText({ value, duration = 1600, format, style, accessibilityLabel }: CountUpTextProps) {
   const reduced = useReducedMotion()
   const [display, setDisplay] = useState(() => format(reduced ? value : 0))
@@ -40,16 +46,27 @@ export function CountUpText({ value, duration = 1600, format, style, accessibili
     progress.value = withTiming(value, { duration, easing: Easing.out(Easing.cubic) })
   }, [value, duration, reduced, format, progress])
 
+  // Quantize updates so setState fires at most ~20×/sec on the JS thread.
+  // A tween from 0 to a large integer would otherwise call runOnJS 60×/sec,
+  // re-rendering the parent on every frame. We snap to a step proportional
+  // to the target magnitude (min 1) so the visible countdown stays smooth
+  // but React reconciliation work drops dramatically.
+  const step = Math.max(1, Math.round(Math.abs(value) / 80))
   useAnimatedReaction(
-    () => progress.value,
-    (next) => {
-      runOnJS(applyDisplay)(Math.round(next))
+    () => {
+      const q = Math.round(progress.value / step) * step
+      return q
     },
-    [applyDisplay],
+    (quantized, prev) => {
+      if (quantized !== prev) {
+        runOnJS(applyDisplay)(quantized)
+      }
+    },
+    [applyDisplay, step],
   )
 
   return (
-    <Text style={style} accessibilityLabel={accessibilityLabel ?? display}>
+    <Text style={[TABULAR, style]} accessibilityLabel={accessibilityLabel ?? display}>
       {display}
     </Text>
   )

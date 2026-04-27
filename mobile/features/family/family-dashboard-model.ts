@@ -20,6 +20,7 @@ import {
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import {
   buildPayDate,
+  formatLocalDateKey,
   getCurrentPayCycle,
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
@@ -90,6 +91,7 @@ export function buildFamilyDashboardSnapshot({
   let totalGeneral = 0
   let actualSpentInCurrentCycle = 0
   let variableSpentInCurrentCycle = 0
+  let variableSpentSinceToday = 0
   let commitmentPaymentsInCurrentCycle = 0
   const monthlyTotalsByMonth = new Map<string, number>()
 
@@ -107,6 +109,12 @@ export function buildFamilyDashboardSnapshot({
         commitmentPaymentsInCurrentCycle += expense.price
       } else {
         variableSpentInCurrentCycle += expense.price
+        // "Since today" excludes anything dated before the start of
+        // today — used by the override path, where the user's reported
+        // balance is implicitly post-spending up to now.
+        if (expenseDate >= todayDate) {
+          variableSpentSinceToday += expense.price
+        }
       }
     }
 
@@ -134,15 +142,82 @@ export function buildFamilyDashboardSnapshot({
           savingsGoal,
         })
   const targetFlexiblePercent = resolveFlexibleTargetPercent(savingsGoalPercent)
-  const flexibleTargetAmount = derivePercentAmount(monthlyIncome, targetFlexiblePercent)
   const commitmentPressureInCurrentCycle = currentCycleCommitmentSummary.pressureTotal
+
+  // Cycle-starting-balance override: the user told us the actual
+  // available cash for THIS cycle, separate from monthly_income.
+  //
+  // Anchor target: the date we compare the stored anchor against to
+  // decide "is this for the current cycle?". When the pay cycle is
+  // frozen (today is past payday and the user hasn't confirmed yet)
+  // `payCycle.start` is held on the *previous* payday — using it as
+  // the target would mean "anchor still matches" right when we most
+  // want the prompt to surface. We pivot to `currentMonthPayDate`
+  // during freeze: that's the date the cycle will land on the
+  // moment the user confirms, so the prompt re-fires every entry
+  // until they answer. After the confirm releases the freeze,
+  // `payCycle.start === currentMonthPayDate`, so anchor still
+  // matches and we don't re-prompt this cycle.
+  const cycleAnchorTarget = isSalaryPendingConfirmation
+    ? currentMonthPayDate
+    : payCycle.start
+  const currentCycleAnchorDateKey = formatLocalDateKey(cycleAnchorTarget)
+  const storedAnchor = finance?.current_cycle_anchor ?? null
+  const storedBalance = finance?.current_cycle_starting_balance ?? null
+  const cycleAnchorMatchesCurrent =
+    typeof storedAnchor === 'string' && storedAnchor === currentCycleAnchorDateKey
+  const cycleStartingBalanceOverride =
+    cycleAnchorMatchesCurrent && typeof storedBalance === 'number' && storedBalance >= 0
+      ? storedBalance
+      : null
+  const isCycleStartingBalancePromptPending = !cycleAnchorMatchesCurrent
+
+  // Effective income for the current cycle. When the user has
+  // confirmed an override (e.g. mid-month signup with reduced cash),
+  // every cycle-aware metric below uses this value with proration —
+  // matching the engine path. Without an override, this equals
+  // monthlyIncome and the math is identical to before.
+  const hasCycleOverride = cycleStartingBalanceOverride !== null
+  const effectiveCycleIncome = hasCycleOverride
+    ? (cycleStartingBalanceOverride as number)
+    : monthlyIncome
+  const remainingDaysFromToday = Math.max(
+    1,
+    Math.round((payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)),
+  )
+  const totalCycleDays = Math.max(payCycle.days, 1)
+  // Effective cycle length the daily-budget formula divides into.
+  // With override active, the daily cap spreads the user's reported
+  // balance across the remaining days only (matches engine output).
+  const effectiveCycleDays = hasCycleOverride ? remainingDaysFromToday : totalCycleDays
+  const overrideProration = hasCycleOverride ? remainingDaysFromToday / totalCycleDays : 1
+  // Prorate fixed obligations and savings target to the remaining
+  // window. The user's reported balance is "what I have NOW", not
+  // "what I had at cycle start", so commitments/savings should
+  // reflect what's still owed/targeted from today onwards.
+  const effectiveCommitmentPressure = commitmentPressureInCurrentCycle * overrideProration
+  const effectiveSavingsGoal = savingsGoal * overrideProration
+  // Variable spend that "counts" toward this cycle's tracking. With
+  // override on, the user's reported balance already accounts for
+  // pre-today spending — so we only subtract spending from today
+  // onwards. Without override, the standard cycle-wide total applies.
+  const variableSpentForCycleMetrics = hasCycleOverride
+    ? variableSpentSinceToday
+    : variableSpentInCurrentCycle
+
+  const flexibleTargetAmount = derivePercentAmount(effectiveCycleIncome, targetFlexiblePercent)
   const cycleBalanceBeforeSavings =
-    monthlyIncome - savingsGoal - commitmentPressureInCurrentCycle - variableSpentInCurrentCycle
-  const savingsSpent = Math.min(savingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
-  const savingsRemaining = Math.max(0, savingsGoal - savingsSpent)
-  const flexibleDelta = variableSpentInCurrentCycle - flexibleTargetAmount
-  const flexibleRemaining = Math.max(0, flexibleTargetAmount - variableSpentInCurrentCycle)
+    effectiveCycleIncome -
+    effectiveSavingsGoal -
+    effectiveCommitmentPressure -
+    variableSpentForCycleMetrics
+  const savingsSpent = Math.min(effectiveSavingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
+  const savingsRemaining = Math.max(0, effectiveSavingsGoal - savingsSpent)
+  const flexibleDelta = variableSpentForCycleMetrics - flexibleTargetAmount
+  const flexibleRemaining = Math.max(0, flexibleTargetAmount - variableSpentForCycleMetrics)
   const totalAvailable = cycleBalanceBeforeSavings + savingsSpent
+  // Monthly history uses the full monthly_income — historical rows
+  // represent past cycles where the override doesn't apply.
   const monthlyHistory = buildMonthlyHistoryRows(
     monthlyTotalsByMonth,
     monthlyIncome,
@@ -189,6 +264,11 @@ export function buildFamilyDashboardSnapshot({
     totalGeneral,
     usdExchangeRate: finance?.usd_exchange_rate ?? DEFAULT_USD_EXCHANGE_RATE,
     variableSpentInCurrentCycle,
+    cycleStartingBalanceOverride,
+    effectiveCycleIncome,
+    effectiveCycleDays,
+    isCycleStartingBalancePromptPending,
+    cycleAnchorTarget,
   }
 }
 

@@ -4,6 +4,7 @@ import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
 import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
+import { profileQueryKey } from '@/features/profile/use-profile'
 import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications'
 import { supabase } from '@/lib/supabase'
 import { generateFamilyCode } from '@/utils/generate-family-code'
@@ -104,6 +105,17 @@ export function useLeaveCurrentFamily(userId?: string) {
       return pickRpcResult(data)
     },
     onSuccess: async (result) => {
+      // The `leave_current_family` RPC now resets
+      // `onboarding_completed_at` atomically on the server (see
+      // migration 20260426162741), so we only need to invalidate the
+      // profile cache here so the local copy reflects that change
+      // and the route guard in `/(app)/onboarding.tsx` re-enters
+      // the wizard. `previously_onboarded` stays true on the server
+      // so the rejoin copy surfaces.
+      if (userId) {
+        await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
         queryClient.removeQueries({ queryKey: categoriesQueryKey(result.family_id) }),

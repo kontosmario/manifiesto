@@ -4,23 +4,30 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijoCategoryGroupsProps {
   groups: FijoCategoryGroup[]
+  /** Current UTC day-of-month. Computed once in the parent screen so
+   *  rows share a single value instead of each creating a new Date. */
+  todayDay: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  /** Fixed expense id whose delete/edit mutation is in flight. */
+  pendingFixedExpenseId?: string | null
 }
 
 export function FijoCategoryGroups({
   groups,
+  todayDay,
   onMarkPaid,
   onEdit,
   onDelete,
+  pendingFixedExpenseId,
 }: FijoCategoryGroupsProps) {
   const { theme } = useAppTheme()
   if (groups.length === 0) {
@@ -35,12 +42,14 @@ export function FijoCategoryGroups({
   return (
     <View style={styles.stack}>
       {groups.map((group, gi) => (
-        <RiseView key={group.categoryId} delay={380 + gi * 60}>
+        <RiseView key={group.categoryId} delay={Math.min(60 + gi * 20, 200)}>
           <CategoryGroup
             group={group}
+            todayDay={todayDay}
             onMarkPaid={onMarkPaid}
             onEdit={onEdit}
             onDelete={onDelete}
+            pendingFixedExpenseId={pendingFixedExpenseId ?? null}
           />
         </RiseView>
       ))}
@@ -50,18 +59,22 @@ export function FijoCategoryGroups({
 
 function CategoryGroup({
   group,
+  todayDay,
   onMarkPaid,
   onEdit,
   onDelete,
+  pendingFixedExpenseId,
 }: {
   group: FijoCategoryGroup
+  todayDay: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  pendingFixedExpenseId?: string | null
 }) {
   const { theme } = useAppTheme()
   const [expanded, setExpanded] = useState(true)
-  const emoji = pickIconForCategory(group.label)
+  const emoji = pickIconForFixedExpenseCategory(group.label)
   return (
     <Animated.View layout={LinearTransition.duration(240)}>
       <Pressable
@@ -109,9 +122,11 @@ function CategoryGroup({
               item={item}
               color={group.color}
               label={group.label}
+              todayDay={todayDay}
               onMarkPaid={onMarkPaid}
               onEdit={onEdit}
               onDelete={onDelete}
+              isPending={pendingFixedExpenseId === item.id}
             />
           ))}
         </Animated.View>
@@ -124,25 +139,31 @@ function ItemSlot({
   item,
   color,
   label,
+  todayDay,
   onMarkPaid,
   onEdit,
   onDelete,
+  isPending,
 }: {
   item: FijoItem
   color: string
   label: string
+  todayDay: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  isPending?: boolean
 }) {
   return (
     <FijoRow
       item={item}
       categoryColor={color}
       categoryName={label}
+      todayDay={todayDay}
       onMarkPaid={onMarkPaid}
       onEdit={onEdit}
       onDelete={onDelete}
+      isPending={isPending}
     />
   )
 }

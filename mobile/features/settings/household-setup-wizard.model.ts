@@ -15,14 +15,17 @@ export { resolveFlexibleTargetPercent } from '@/features/finance/family-finance.
 import { formatPriceInputValue, parsePrice, serializePrice } from '@/utils/money'
 
 const EMERGENCY_FUND_MONTHS_BENCHMARK = 3
-const ESSENTIAL_SPEND_FALLBACK_RATE = TARGET_ESSENTIALS_PERCENT / 100
 const WIZARD_ROUNDING_UNIT = 500
+// Fallback used by `resolveEmergencyFundTarget` when we no longer track a
+// dedicated essentials figure: half the monthly income stands in as a
+// proxy for "one month of non-negotiables", consistent with the 50/30/20
+// baseline the wizard presets use.
+const EMERGENCY_FUND_INCOME_PROXY_RATE = 0.5
 
 export type HouseholdSavingsPresetId = 'steady' | 'balanced' | 'resilient' | 'custom'
 
 export interface HouseholdSetupDraftState extends FinanceSettingsDrafts {
   currentIncomeConfirmed: boolean
-  essentialsDraft: string
   selectedPresetId: HouseholdSavingsPresetId
 }
 
@@ -72,43 +75,7 @@ function roundWizardMoney(value: number) {
   return Math.round(value / WIZARD_ROUNDING_UNIT) * WIZARD_ROUNDING_UNIT
 }
 
-function resolveEstimatedEssentialMonthlyCost(monthlyIncome: number, essentialMonthlyCost: number) {
-  if (Number.isFinite(essentialMonthlyCost) && essentialMonthlyCost > 0) {
-    return essentialMonthlyCost
-  }
-
-  if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
-    return 0
-  }
-
-  return roundWizardMoney(monthlyIncome * ESSENTIAL_SPEND_FALLBACK_RATE)
-}
-
-export function resolveCurrentEssentialsPercent({
-  essentialMonthlyCost,
-  monthlyIncome,
-}: {
-  essentialMonthlyCost: number
-  monthlyIncome: number
-}) {
-  if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
-    return 0
-  }
-
-  const resolvedEssentialMonthlyCost = resolveEstimatedEssentialMonthlyCost(
-    monthlyIncome,
-    essentialMonthlyCost,
-  )
-
-  if (resolvedEssentialMonthlyCost <= 0) {
-    return 0
-  }
-
-  return Math.min(100, Math.round((resolvedEssentialMonthlyCost / monthlyIncome) * 100))
-}
-
 function buildHouseholdSavingsPreset({
-  essentialMonthlyCost,
   flexiblePercent,
   suggestedBufferMode,
   suggestedBufferValue,
@@ -118,7 +85,6 @@ function buildHouseholdSavingsPreset({
   subtitle,
   title,
 }: {
-  essentialMonthlyCost: number
   flexiblePercent: number
   id: Exclude<HouseholdSavingsPresetId, 'custom'>
   monthlyIncome: number
@@ -129,7 +95,6 @@ function buildHouseholdSavingsPreset({
   title: string
 }): HouseholdSavingsPreset {
   const benchmarkFund = resolveEmergencyFundTarget({
-    essentialMonthlyCost,
     monthlyIncome,
   })
   const monthlyGoal = roundWizardMoney(
@@ -157,35 +122,21 @@ export function buildHouseholdSetupDraftState(
   snapshot: FamilyFinanceInputSnapshot,
 ): HouseholdSetupDraftState {
   const financeDrafts = buildFinanceDraftState(snapshot)
-  const estimatedEssentialMonthlyCost = resolveEstimatedEssentialMonthlyCost(
-    snapshot.monthlyIncome,
-    snapshot.essentialMonthlyCost,
-  )
 
   return {
     ...financeDrafts,
     currentIncomeConfirmed: Boolean(snapshot.lastSalaryConfirmedAt),
-    essentialsDraft:
-      estimatedEssentialMonthlyCost > 0 ? serializePrice(estimatedEssentialMonthlyCost) : '',
     selectedPresetId: 'custom',
   }
 }
 
 export function buildHouseholdSavingsPresets({
-  essentialMonthlyCost,
   monthlyIncome,
 }: {
-  essentialMonthlyCost: number
   monthlyIncome: number
 }) {
-  const resolvedEssentialMonthlyCost = resolveEstimatedEssentialMonthlyCost(
-    monthlyIncome,
-    essentialMonthlyCost,
-  )
-
   return [
     buildHouseholdSavingsPreset({
-      essentialMonthlyCost: resolvedEssentialMonthlyCost,
       flexiblePercent: 30,
       id: 'steady',
       monthlyIncome,
@@ -196,7 +147,6 @@ export function buildHouseholdSavingsPresets({
       title: 'Base 50/30/20',
     }),
     buildHouseholdSavingsPreset({
-      essentialMonthlyCost: resolvedEssentialMonthlyCost,
       flexiblePercent: 25,
       id: 'balanced',
       monthlyIncome,
@@ -207,7 +157,6 @@ export function buildHouseholdSavingsPresets({
       title: 'Ahorro reforzado',
     }),
     buildHouseholdSavingsPreset({
-      essentialMonthlyCost: resolvedEssentialMonthlyCost,
       flexiblePercent: 20,
       id: 'resilient',
       monthlyIncome,
@@ -239,30 +188,23 @@ export function applyHouseholdSavingsPreset({
 export function buildHouseholdSetupFieldValues({
   bufferFocused,
   drafts,
-  essentialsFocused,
   incomeFocused,
   savingsFocused,
   usdRateFocused,
 }: {
   bufferFocused: boolean
   drafts: HouseholdSetupDraftState
-  essentialsFocused: boolean
   incomeFocused: boolean
   savingsFocused: boolean
   usdRateFocused: boolean
 }) {
-  const financeFieldValues = buildHouseholdSetupFinanceFieldValues({
+  return buildHouseholdSetupFinanceFieldValues({
     bufferFocused,
     drafts,
     incomeFocused,
     savingsFocused,
     usdRateFocused,
   })
-
-  return {
-    ...financeFieldValues,
-    essentials: formatPriceInputValue(drafts.essentialsDraft, essentialsFocused),
-  }
 }
 
 function buildHouseholdSetupFinanceFieldValues({
@@ -291,19 +233,20 @@ function buildHouseholdSetupFinanceFieldValues({
   }
 }
 
+// No longer tracks essentials separately — estimates one month of
+// non-negotiables as half the monthly income (50/30/20 baseline), then
+// multiplies by the emergency-fund month benchmark.
 export function resolveEmergencyFundTarget({
-  essentialMonthlyCost,
   monthlyIncome,
 }: {
-  essentialMonthlyCost: number
   monthlyIncome: number
 }) {
-  const resolvedEssentialMonthlyCost = resolveEstimatedEssentialMonthlyCost(
-    monthlyIncome,
-    essentialMonthlyCost,
-  )
+  if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
+    return 0
+  }
 
-  return roundWizardMoney(resolvedEssentialMonthlyCost * EMERGENCY_FUND_MONTHS_BENCHMARK)
+  const proxyMonthlyEssentials = monthlyIncome * EMERGENCY_FUND_INCOME_PROXY_RATE
+  return roundWizardMoney(proxyMonthlyEssentials * EMERGENCY_FUND_MONTHS_BENCHMARK)
 }
 
 export function resolveMonthsToBenchmark({
@@ -342,7 +285,6 @@ export function buildHouseholdSetupSubmitState({
 
   return buildFinanceSubmitState({
     drafts,
-    essentialMonthlyCost: parsePrice(drafts.essentialsDraft),
     lastSalaryConfirmedAt: resolvedLastSalaryConfirmedAt,
   })
 }

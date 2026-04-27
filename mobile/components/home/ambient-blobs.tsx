@@ -1,31 +1,31 @@
-import { useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export function AmbientBlobs() {
   const { theme } = useAppTheme()
-  const reduced = useReducedMotion()
   const a = useSharedValue(0)
   const b = useSharedValue(0)
   const c = useSharedValue(0)
-  useEffect(() => {
-    if (reduced) return
-    const loop = (sv: typeof a, period: number) => {
-      sv.value = withRepeat(
-        withSequence(
-          withTiming(-10, { duration: period / 2, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: period / 2, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        false,
-      )
-    }
-    loop(a, 9000)
-    loop(b, 11000)
-    loop(c, 13000)
-  }, [reduced, a, b, c])
+  useLoopAnimation(
+    () => {
+      const loop = (sv: typeof a, period: number) => {
+        sv.value = withRepeat(
+          withSequence(
+            withTiming(-10, { duration: period / 2, easing: Easing.inOut(Easing.sin) }),
+            withTiming(0, { duration: period / 2, easing: Easing.inOut(Easing.sin) }),
+          ),
+          -1,
+          false,
+        )
+      }
+      loop(a, 9000)
+      loop(b, 11000)
+      loop(c, 13000)
+    },
+    [a, b, c],
+  )
   const aStyle = useAnimatedStyle(() => ({ transform: [{ translateY: a.value }] }))
   const bStyle = useAnimatedStyle(() => ({ transform: [{ translateY: b.value }] }))
   const cStyle = useAnimatedStyle(() => ({ transform: [{ translateY: c.value }] }))

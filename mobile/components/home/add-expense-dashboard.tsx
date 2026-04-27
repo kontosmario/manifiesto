@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Keyboard, StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
-import { AllCategoriesSheet } from '@/components/home/all-categories-sheet'
-import { CategoryPickerGrid } from '@/components/home/category-picker-grid'
+import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { DescriptionRow } from '@/components/home/description-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
+import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
-import { StickyFooter } from '@/components/ui/sticky-footer'
 import type { Category } from '@/features/categories/use-categories'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -23,12 +22,15 @@ interface AddExpenseDashboardProps {
   description: string
   isBusy: boolean
   submitErrorMessage?: string | null
+  /** When set, the new movement is back-dated to this day — hint
+   *  the user via a pill so they know they're not adding to "today". */
+  forDate?: Date | null
   onRawPriceChange: (value: string) => void
-  onSelectSuggestedAmount: (value: number) => void
+  onAddQuickAmount: (delta: number) => void
+  onClearAmount: () => void
   onSelectCategory: (categoryId: string) => void
   onSelectDescriptionSuggestion: (value: string) => void
   onDescriptionChange: (value: string) => void
-  onCreateCategory?: () => void
   onSubmit: () => void
 }
 
@@ -43,111 +45,121 @@ export function AddExpenseDashboard({
   description,
   isBusy,
   submitErrorMessage,
+  forDate,
   onRawPriceChange,
-  onSelectSuggestedAmount,
+  onAddQuickAmount,
+  onClearAmount,
   onSelectCategory,
   onSelectDescriptionSuggestion,
   onDescriptionChange,
-  onCreateCategory,
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
   const [numpadVisible, setNumpadVisible] = useState(false)
-  const [allCategoriesVisible, setAllCategoriesVisible] = useState(false)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
-  const scrollRef = useRef<ScrollView>(null)
+  const canSubmit = hasValidAmount && Boolean(selectedCategoryId)
 
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true))
-    const hide = Keyboard.addListener('keyboardWillHide', () => {
-      setIsKeyboardVisible(false)
-      scrollRef.current?.scrollTo({ y: 0, animated: true })
-    })
-    return () => {
-      show.remove()
-      hide.remove()
-    }
-  }, [])
-
-  // Keep the selected category visible in the grid even when it isn't in the
-  // top-ranked subset (e.g. the user picked it from "Ver todas"). It lands in
-  // first position, acting as the "most recently used" anchor.
-  const gridCategories = useMemo(() => {
-    if (!selectedCategoryId) return rankedCategories
-    const selected = rankedCategories.find((c) => c.id === selectedCategoryId)
-    if (!selected) return rankedCategories
-    const GRID_LIMIT = 8
-    const topN = rankedCategories.slice(0, GRID_LIMIT)
-    if (topN.some((c) => c.id === selectedCategoryId)) return rankedCategories
-    const rest = rankedCategories.filter((c) => c.id !== selectedCategoryId)
-    return [selected, ...rest]
-  }, [rankedCategories, selectedCategoryId])
+  // Any tap on a non-description control should release the
+  // description input's focus and close the keyboard. Same pattern
+  // we use in AddFijo so the form feels coherent across both flows.
+  const handleOpenNumpad = () => {
+    Keyboard.dismiss()
+    setNumpadVisible(true)
+  }
+  const handleAddQuickAmount = (delta: number) => {
+    Keyboard.dismiss()
+    onAddQuickAmount(delta)
+  }
+  const handleClearAmount = () => {
+    Keyboard.dismiss()
+    onClearAmount()
+  }
+  const handleSelectCategory = (categoryId: string) => {
+    Keyboard.dismiss()
+    onSelectCategory(categoryId)
+  }
+  // Picking a quick description suggestion also closes the keyboard:
+  // the user clearly committed to that label, no point in keeping the
+  // input focused. Mirrors the AddFijo "tap-to-commit" pattern.
+  const handleSelectDescriptionSuggestion = (value: string) => {
+    Keyboard.dismiss()
+    onSelectDescriptionSuggestion(value)
+  }
 
   return (
-    <View style={styles.root}>
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        scrollEnabled={isKeyboardVisible}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={false}
-        showsVerticalScrollIndicator={false}
-        alwaysBounceVertical={false}
-      >
-        <Pressable onPress={Keyboard.dismiss} style={styles.dismissArea}>
-          <AmountCard
-            amount={amount}
-            isActive={numpadVisible}
-            onPress={() => setNumpadVisible(true)}
-          />
+    <View style={styles.stack}>
+      {forDate ? (
+        <RiseView>
+          <View
+            style={[
+              styles.forDatePill,
+              {
+                backgroundColor: theme.colors.creamSoft,
+                borderColor: theme.colors.line,
+              },
+            ]}
+          >
+            <Text style={[styles.forDatePillLabel, { color: theme.colors.textMuted }]}>
+              REGISTRANDO PARA
+            </Text>
+            <Text style={[styles.forDatePillValue, { color: theme.colors.text }]}>
+              {formatForDateLabel(forDate)}
+            </Text>
+          </View>
+        </RiseView>
+      ) : null}
 
-          <SuggestedAmountStrip
-            amounts={suggestedAmounts}
-            currentAmount={amount}
-            onSelect={onSelectSuggestedAmount}
-          />
+      <RiseView delay={forDate ? 60 : 0}>
+        <AmountCard
+          amount={amount}
+          isActive={numpadVisible}
+          onPress={handleOpenNumpad}
+        />
+      </RiseView>
 
-          <CategoryPickerGrid
-            categories={gridCategories}
-            selectedCategoryId={selectedCategoryId}
-            onSelect={onSelectCategory}
-            onSeeAll={() => setAllCategoriesVisible(true)}
-          />
-        </Pressable>
+      <RiseView delay={forDate ? 120 : 60}>
+        <SuggestedAmountStrip
+          amounts={suggestedAmounts}
+          currentAmount={amount}
+          onAdd={handleAddQuickAmount}
+          onClear={handleClearAmount}
+        />
+      </RiseView>
 
+      <RiseView delay={forDate ? 180 : 120}>
+        <CategoryHorizontalRail
+          categories={rankedCategories}
+          selectedCategoryId={selectedCategoryId}
+          onSelect={handleSelectCategory}
+        />
+      </RiseView>
+
+      <RiseView delay={forDate ? 240 : 180}>
         <DescriptionRow
           description={description}
           onChange={onDescriptionChange}
           quickSuggestions={quickDescriptionSuggestions}
-          onSelectSuggestion={onSelectDescriptionSuggestion}
-          onFocus={() => {
-            requestAnimationFrame(() => {
-              scrollRef.current?.scrollToEnd({ animated: true })
-            })
-          }}
+          onSelectSuggestion={handleSelectDescriptionSuggestion}
         />
+      </RiseView>
 
-        {submitErrorMessage ? (
-          <Text
-            style={[typography.caption, styles.error, { color: theme.colors.danger }]}
-          >
-            {submitErrorMessage}
-          </Text>
-        ) : null}
-      </ScrollView>
+      {submitErrorMessage ? (
+        <Text style={[typography.caption, styles.error, { color: theme.colors.danger }]}>
+          {submitErrorMessage}
+        </Text>
+      ) : null}
 
-      <StickyFooter divider={false}>
-        <AppButton
-          label="Guardar gasto"
-          variant="primary"
-          loading={isBusy}
-          disabled={!hasValidAmount || !selectedCategoryId}
-          onPress={onSubmit}
-        />
-      </StickyFooter>
+      <RiseView delay={forDate ? 300 : 240}>
+        <View style={[styles.footer, { borderTopColor: theme.colors.line }]}>
+          <AppButton
+            label="Guardar gasto"
+            variant="primary"
+            loading={isBusy}
+            disabled={!canSubmit}
+            onPress={onSubmit}
+          />
+        </View>
+      </RiseView>
 
       <InAppNumpad
         visible={numpadVisible}
@@ -155,34 +167,62 @@ export function AddExpenseDashboard({
         onChangeRawValue={onRawPriceChange}
         onDismiss={() => setNumpadVisible(false)}
       />
-
-      <AllCategoriesSheet
-        visible={allCategoriesVisible}
-        categories={rankedCategories}
-        selectedCategoryId={selectedCategoryId}
-        onSelect={onSelectCategory}
-        onDismiss={() => setAllCategoriesVisible(false)}
-        onCreateNew={onCreateCategory}
-      />
     </View>
   )
 }
 
+const WEEKDAY_LABELS = [
+  'domingo', 'lunes', 'martes', 'miércoles',
+  'jueves', 'viernes', 'sábado',
+]
+const MONTH_LABELS = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+]
+
+function formatForDateLabel(date: Date): string {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round(
+    (now.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
+  )
+  if (diffDays === 0) return 'hoy'
+  if (diffDays === 1) return 'ayer'
+  const weekday = WEEKDAY_LABELS[date.getDay()]
+  const month = MONTH_LABELS[date.getMonth()]
+  return `${weekday} ${date.getDate()} ${month}`
+}
+
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
+  stack: {
+    gap: 16,
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
+  forDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 10,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  dismissArea: {
-    gap: 10,
+  forDatePillLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  forDatePillValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    textTransform: 'capitalize',
   },
   error: {
     paddingHorizontal: 4,
+  },
+  footer: {
+    paddingTop: 8,
   },
 })

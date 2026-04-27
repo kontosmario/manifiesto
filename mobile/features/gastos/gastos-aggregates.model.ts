@@ -55,20 +55,24 @@ export interface DailySpendRow {
 }
 
 /**
- * Aggregates expenses within a single month by calendar day. Days with
- * no expenses are omitted from the result — caller can treat missing
- * days as zero.
+ * Aggregates expenses within a date window `[start, end)` by calendar
+ * day-of-month. Within a single pay cycle the day-of-month is unique
+ * (cycle spans at most two adjacent months), so callers can still
+ * index by `day` (1..31) without collisions. Days with no expenses are
+ * omitted — caller can treat missing days as zero.
  */
 export function computeDailySpend(
   expenses: Expense[],
-  year: number,
-  month: number, // 0-indexed like Date.getMonth
+  windowStart: Date,
+  windowEnd: Date,
 ): Record<number, DailySpendRow> {
+  const startMs = windowStart.getTime()
+  const endMs = windowEnd.getTime()
   const out: Record<number, DailySpendRow> = {}
   for (const e of expenses) {
-    const d = new Date(e.created_at)
-    if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month) continue
-    const day = d.getUTCDate()
+    const t = new Date(e.created_at).getTime()
+    if (t < startMs || t >= endMs) continue
+    const day = new Date(e.created_at).getDate()
     const prev = out[day]
     const amount = Math.abs(Number(e.price ?? 0))
     if (prev) {
@@ -84,30 +88,69 @@ export function computeDailySpend(
 export type GastosDayMood = 'green' | 'amber' | 'red' | 'empty'
 
 /**
- * Derives a "mood" color for each calendar day based on the month's
- * running daily average. Matches the heatmap in the Gastos mock:
- *   < avg*1.3  → green
- *   ≤ avg*2.0  → amber
- *   > avg*2.0  → red
- *   = 0        → empty
+ * Derives a "mood" color for each day that has elapsed in the cycle.
+ *
+ * Thresholds compare against the user's CUPO DIARIO (daily
+ * discretionary budget) when provided — the single source of truth
+ * shared with Control and Daily Budget Engine. That's the honest
+ * test: "did I spend more than my budget says I can?".
+ *
+ *   spend <= cupo            → green
+ *   spend <= cupo * 1.3      → amber
+ *   spend > cupo * 1.3       → red
+ *   spend = 0                → empty
+ *
+ * When the user has no income / cupo configured (`cupoDiario` is 0
+ * or missing), we fall back to the running cycle average so the
+ * heatmap still conveys some signal. The output is keyed by calendar
+ * day-of-month — unique within one cycle because the cycle spans at
+ * most two adjacent months.
  */
 export function computeGastosDayMoods(input: {
   dailySpend: Record<number, DailySpendRow>
+  cycleStart: Date
+  cycleDays: number
   today: Date
+  /** User's canonical daily discretionary budget. When > 0 it anchors
+   *  the green/amber/red thresholds; otherwise the function falls back
+   *  to the running cycle average so the heatmap is still useful for
+   *  users without an income configured. */
+  cupoDiario?: number
 }): Record<number, GastosDayMood> {
-  const { dailySpend, today } = input
-  const todayDay = today.getUTCDate()
-  const totalSoFar = Object.values(dailySpend).reduce((s, r) => s + r.total, 0)
-  const daysElapsed = Math.max(1, todayDay)
-  const dailyAvg = totalSoFar / daysElapsed
-  const amberThreshold = dailyAvg * 1.3
-  const redThreshold = dailyAvg * 2.0
+  const { dailySpend, cycleStart, cycleDays, today, cupoDiario } = input
+  const todayMs = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  ).getTime()
+  const elapsedDayKeys: number[] = []
+  for (let i = 0; i < cycleDays; i++) {
+    const d = new Date(
+      cycleStart.getFullYear(),
+      cycleStart.getMonth(),
+      cycleStart.getDate() + i,
+    )
+    if (d.getTime() > todayMs) break
+    elapsedDayKeys.push(d.getDate())
+  }
+
+  let anchor: number
+  if (cupoDiario != null && cupoDiario > 0) {
+    anchor = cupoDiario
+  } else {
+    const totalSoFar = Object.values(dailySpend).reduce((s, r) => s + r.total, 0)
+    const daysElapsed = Math.max(1, elapsedDayKeys.length)
+    anchor = totalSoFar / daysElapsed
+  }
+
+  const amberThreshold = anchor
+  const redThreshold = anchor * 1.3
   const out: Record<number, GastosDayMood> = {}
-  for (let day = 1; day <= todayDay; day++) {
+  for (const day of elapsedDayKeys) {
     const spend = dailySpend[day]?.total ?? 0
     if (spend === 0) out[day] = 'empty'
-    else if (spend >= redThreshold) out[day] = 'red'
-    else if (spend >= amberThreshold) out[day] = 'amber'
+    else if (spend > redThreshold) out[day] = 'red'
+    else if (spend > amberThreshold) out[day] = 'amber'
     else out[day] = 'green'
   }
   return out
