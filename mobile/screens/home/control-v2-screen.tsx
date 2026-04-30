@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import type { ControlSectionAnchor as ControlSectionAnchorType } from '@/features/insights/control-action'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ControlV2AlcanciaCard } from '@/components/control-v2/control-v2-alcancia-card'
 import { ControlV2AlcanzaCard } from '@/components/control-v2/control-v2-alcanza-card'
@@ -21,7 +22,7 @@ import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
-import { useControlActionDispatcher } from '@/features/insights/use-control-action-dispatcher'
+import { markControlVisited } from '@/features/insights/control-visit-store'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { triggerHaptic } from '@/lib/haptics'
 
@@ -88,7 +89,12 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     [registerOffset, scrollToSection, pulsingSection],
   )
 
-  const dispatch = useControlActionDispatcher({ familyId, userId })
+  // The dispatcher previously fired here when the asesor card had
+  // per-row CTAs. The new compact card teases only — the full chat
+  // screen owns the dispatcher now. Keep the variable name to avoid
+  // breaking the closure shape that sub-renderers may inspect.
+  // (Removed: useControlActionDispatcher hook is now mounted in
+  // AsistenteScreen.)
 
   // Pipe high-priority advisor signals into the in-app notification
   // feed and (for ≥0.85 confidence) trigger a push. The hook is
@@ -99,6 +105,24 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     familyId,
     userId,
   })
+
+  // Stamp the visit so the Control tab badge clears.
+  useEffect(() => {
+    markControlVisited()
+  }, [])
+
+  // Honor `?section=...` deep-links from the Asistente screen — when
+  // the user taps a CTA that resolves to `scroll-to-section`, the
+  // chat pushes back to this tab with the section name and we scroll
+  // + pulse the relevant anchor here.
+  const params = useLocalSearchParams<{ section?: string }>()
+  useEffect(() => {
+    const incoming = params.section as ControlSectionAnchorType | undefined
+    if (!incoming) return
+    // Defer one tick so card mounts have registered their offsets.
+    const handle = setTimeout(() => scrollToSection(incoming), 200)
+    return () => clearTimeout(handle)
+  }, [params.section, scrollToSection])
 
   const today = new Date()
   const dayLabel = `HOY · ${DOW_FULL[today.getDay()]} ${today.getDate()}`
@@ -118,12 +142,15 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     // que explica por qué no hay datos y guía al próximo paso.
     return (
       <Screen contentContainerStyle={styles.screen} scrollable={false}>
+        {/* Mounted at the Screen level (outside the ScrollView) so the
+            absolute-positioned blobs fill the full viewport and don't
+            scroll with the content or get clipped to the stack View. */}
+        <AmbientBlobs />
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.stack}>
-            <AmbientBlobs />
             <ControlV2Header
               score={0}
               scoreLabel="Pronto"
@@ -150,14 +177,16 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
       <Screen contentContainerStyle={styles.screen} scrollable={false}>
+        {/* Mounted at the Screen level (outside the ScrollView) so the
+            absolute-positioned blobs fill the full viewport and don't
+            scroll with the content or get clipped to the stack View. */}
+        <AmbientBlobs />
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.stack}>
-            <AmbientBlobs />
-
             <ControlV2Header
               score={view.score}
               scoreLabel={view.scoreLabel}
@@ -185,6 +214,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 alreadyExhausted={view.alreadyExhausted}
               />
             </ControlV2Anchor>
+
+            {signals.length > 0 ? (
+              <ControlV2AsesorCard tareas={signals} />
+            ) : null}
 
             <ControlV2Anchor section="alcanza">
               <ControlV2AlcanzaCard
@@ -249,6 +282,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 vsMesDiasBajoCupo={view.vsMesDiasBajoCupo}
                 vsMesMejor={view.vsMesMejor}
                 diasGanadores={view.diasGanadores}
+                diaActual={data.diaActual}
               />
             </ControlV2Anchor>
 
@@ -274,14 +308,6 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               />
             </ControlV2Anchor>
 
-            {signals.length > 0 ? (
-              <ControlV2AsesorCard
-                tareas={signals}
-                onTaskPress={(task) => {
-                  if (task.action) dispatch(task.action)
-                }}
-              />
-            ) : null}
           </View>
         </ScrollView>
       </Screen>
@@ -307,7 +333,10 @@ const styles = StyleSheet.create({
     paddingBottom: 144,
   },
   stack: {
-    gap: 16,
+    // Match the rhythm of Home/Gastos/Fijos which use 8-10pt gaps;
+    // 12 keeps Control breathable but no longer reads as a separate
+    // product layer.
+    gap: 12,
     position: 'relative',
   },
 })

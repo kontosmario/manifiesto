@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
@@ -15,7 +16,7 @@ interface AmbientGlowConfig {
   width: number
 }
 
-export function AmbientBackdrop({ variant }: { variant: AmbientBackdropVariant }) {
+export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { variant: AmbientBackdropVariant }) {
   const { theme } = useAppTheme()
 
   if (theme.isDark) {
@@ -161,7 +162,7 @@ export function AmbientBackdrop({ variant }: { variant: AmbientBackdropVariant }
       ))}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   backdrop: {

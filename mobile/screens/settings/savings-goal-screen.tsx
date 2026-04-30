@@ -7,6 +7,7 @@ import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
 import { MetaCard } from '@/components/home/meta-card'
+import { SavingsAdvisorStrip } from '@/components/settings/savings-advisor-strip'
 import {
   SettingsGroup,
   SettingsRow,
@@ -21,6 +22,7 @@ import {
 } from '@/features/savings-goals/savings-goal.model'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import {
@@ -64,6 +66,9 @@ interface SavingsGoalEditorProps {
 }
 
 function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorProps) {
+  // Cached — same source as Control. Drives the contextual strip
+  // rendered just before the submit footer.
+  const { signals: advisorSignals } = useControlV2Data(familyId)
   const { theme } = useAppTheme()
   const upsert = useUpsertSavingsGoal(familyId)
 
@@ -225,8 +230,12 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
         </SettingsGroup>
       </RiseView>
 
+      <RiseView delay={220}>
+        <SavingsAdvisorStrip signals={advisorSignals} />
+      </RiseView>
+
       {/* CTA */}
-      <RiseView delay={240}>
+      <RiseView delay={260}>
         <View style={[styles.footer, { borderTopColor: theme.colors.line }]}>
           <AppButton
             disabled={!canSubmit || upsert.isPending}

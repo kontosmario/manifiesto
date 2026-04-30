@@ -13,6 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { formatMoney } from '@/utils/money'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useAppTheme } from '@/theme/theme-provider'
 
 export interface CategoryWeight {
   id: string
@@ -24,6 +25,9 @@ export interface CategoryWeight {
 
 interface CategoryWeightsListProps {
   items: CategoryWeight[]
+  /** Optional overrides — when omitted, defaults come from the theme.
+   *  Most callers (Hero card sobre fondo oscuro) pueden omitirlos
+   *  para heredar `heroText` automáticamente. */
   textColor?: string
   mutedColor?: string
   trackColor?: string
@@ -31,10 +35,14 @@ interface CategoryWeightsListProps {
 
 export function CategoryWeightsList({
   items,
-  textColor = '#F6FBEF',
-  mutedColor = 'rgba(246,251,239,0.55)',
-  trackColor = 'rgba(246,251,239,0.12)',
+  textColor,
+  mutedColor,
+  trackColor,
 }: CategoryWeightsListProps) {
+  const { theme } = useAppTheme()
+  const resolvedText = textColor ?? theme.colors.heroText
+  const resolvedMuted = mutedColor ?? theme.colors.heroMuted
+  const resolvedTrack = trackColor ?? 'rgba(255,255,255,0.12)'
   if (items.length === 0) return null
   return (
     <Animated.View style={styles.list} layout={LinearTransition.duration(260)}>
@@ -49,14 +57,14 @@ export function CategoryWeightsList({
           <View style={styles.rowHeader}>
             <View style={styles.rowLeft}>
               <View style={[styles.dot, { backgroundColor: item.color }]} />
-              <Text style={[styles.label, { color: textColor }]}>{item.label}</Text>
+              <Text style={[styles.label, { color: resolvedText }]}>{item.label}</Text>
             </View>
-            <Text style={[styles.amountText, { color: textColor }]}>
+            <Text style={[styles.amountText, { color: resolvedText }]}>
               {formatMoney(item.amount)}{' '}
-              <Text style={{ color: mutedColor, fontWeight: '500' }}>· {item.percent}%</Text>
+              <Text style={{ color: resolvedMuted, fontWeight: '500' }}>· {item.percent}%</Text>
             </Text>
           </View>
-          <View style={[styles.track, { backgroundColor: trackColor }]}>
+          <View style={[styles.track, { backgroundColor: resolvedTrack }]}>
             <AnimatedBar
               key={`${item.id}-${item.percent}`}
               percent={item.percent}

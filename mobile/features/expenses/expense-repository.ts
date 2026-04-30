@@ -1,11 +1,15 @@
 import { supabase } from '@/lib/supabase'
-import { enrichExpenses } from '@/features/expenses/expense-repository-enrichment'
+import {
+  enrichExpenses,
+  enrichExpensesFromEmbed,
+} from '@/features/expenses/expense-repository-enrichment'
 import {
   buildExpenseInsertPayload,
   isMissingCommitmentIdColumnError,
   validateExpenseDescription,
   validateExpensePrice,
   type CreateExpenseInput,
+  type Expense,
   type ExpenseQueryFilters,
   type RawExpense,
   type UpdateExpenseInput,
@@ -24,54 +28,106 @@ export {
   fetchFamilyTotal,
 } from '@/features/expenses/expense-repository-metrics'
 
-export async function loadExpenses(familyId: string, filters: ExpenseQueryFilters = {}) {
-  let expensesRequest = supabase
+function applyExpenseFilters<Q extends {
+  eq: (col: string, val: unknown) => Q
+  gte: (col: string, val: unknown) => Q
+  lt: (col: string, val: unknown) => Q
+  limit: (n: number) => Q
+}>(query: Q, filters: ExpenseQueryFilters): Q {
+  let q = query
+  if (filters.categoryId) q = q.eq('category_id', filters.categoryId)
+  if (filters.createdAtGte) q = q.gte('created_at', filters.createdAtGte)
+  if (filters.createdAtLt) q = q.lt('created_at', filters.createdAtLt)
+  if (typeof filters.limit === 'number' && filters.limit > 0) {
+    q = q.limit(filters.limit)
+  }
+  return q
+}
+
+/**
+ * Single-column list — used by the legacy fallback when the modern
+ * embed select fails. The embed select adds `profiles!inner(display_name)`
+ * to fetch the creator name in the same round-trip (audit §3.3).
+ */
+const EXPENSE_COLUMNS =
+  'id, family_id, category_id, commitment_id, description, price, created_by, created_at'
+
+const EXPENSE_COLUMNS_WITH_PROFILE = `${EXPENSE_COLUMNS}, profiles!expenses_created_by_profile_fkey(display_name)`
+
+const EXPENSE_COLUMNS_LEGACY =
+  'id, family_id, category_id, description, price, created_by, created_at'
+
+export async function loadExpenses(
+  familyId: string,
+  filters: ExpenseQueryFilters = {},
+): Promise<Expense[]> {
+  // Primary path: embed `profiles` via the FK declared in
+  // 20260504000000_expenses_profile_fk.sql — 1 round-trip total.
+  const embedRequest = supabase
     .from('expenses')
-    .select('id, family_id, category_id, commitment_id, description, price, created_by, created_at')
+    .select(EXPENSE_COLUMNS_WITH_PROFILE)
     .eq('family_id', familyId)
     .order('created_at', { ascending: false })
 
-  if (filters.categoryId) {
-    expensesRequest = expensesRequest.eq('category_id', filters.categoryId)
+  const embedResponse = await applyExpenseFilters(embedRequest, filters)
+
+  if (!embedResponse.error) {
+    // PostgREST types many-to-one embeds as arrays by default, even
+    // though `created_by` is a single FK. Cast through unknown and let
+    // `enrichExpensesFromEmbed` normalize either shape (object or
+    // single-element array).
+    const rows = (embedResponse.data ?? []) as unknown as Array<
+      RawExpense & {
+        profiles?:
+          | { display_name: string }
+          | { display_name: string }[]
+          | null
+      }
+    >
+    return enrichExpensesFromEmbed(rows)
   }
 
-  if (typeof filters.limit === 'number' && filters.limit > 0) {
-    expensesRequest = expensesRequest.limit(filters.limit)
-  }
-
-  const expensesResponse = await expensesRequest
-
-  if (expensesResponse.error && isMissingCommitmentIdColumnError(expensesResponse.error)) {
-    let legacyRequest = supabase
+  // Fallback path 1: missing commitment_id column (very-old schemas).
+  if (isMissingCommitmentIdColumnError(embedResponse.error)) {
+    const legacyBase = supabase
       .from('expenses')
-      .select('id, family_id, category_id, description, price, created_by, created_at')
+      .select(EXPENSE_COLUMNS_LEGACY)
       .eq('family_id', familyId)
       .order('created_at', { ascending: false })
 
-    if (filters.categoryId) {
-      legacyRequest = legacyRequest.eq('category_id', filters.categoryId)
-    }
-
-    if (typeof filters.limit === 'number' && filters.limit > 0) {
-      legacyRequest = legacyRequest.limit(filters.limit)
-    }
-
-    const legacyResponse = await legacyRequest
-
-    if (legacyResponse.error) {
-      throw legacyResponse.error
-    }
-
-    const rows = (legacyResponse.data ?? []) as RawExpense[]
-    return enrichExpenses(rows)
+    const legacyResponse = await applyExpenseFilters(legacyBase, filters)
+    if (legacyResponse.error) throw legacyResponse.error
+    return enrichExpenses(legacyResponse.data as RawExpense[])
   }
 
-  if (expensesResponse.error) {
-    throw expensesResponse.error
+  // Fallback path 2: PostgREST didn't infer the relationship (e.g.,
+  // schema cache stale, or the FK migration hasn't landed yet on this
+  // env). Re-issue without the embed and fall back to the 2-round-trip
+  // enrichment via the profiles cache.
+  if (isMissingProfilesEmbedError(embedResponse.error)) {
+    const baseRequest = supabase
+      .from('expenses')
+      .select(EXPENSE_COLUMNS)
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false })
+
+    const baseResponse = await applyExpenseFilters(baseRequest, filters)
+    if (baseResponse.error) throw baseResponse.error
+    return enrichExpenses(baseResponse.data as RawExpense[])
   }
 
-  const rows = (expensesResponse.data ?? []) as RawExpense[]
-  return enrichExpenses(rows)
+  throw embedResponse.error
+}
+
+/**
+ * PostgREST signals an unknown embed relationship with code PGRST200.
+ * Detect that exact case so the legacy fallback only triggers when the
+ * schema cache has not seen the new FK yet.
+ */
+function isMissingProfilesEmbedError(error: { code?: string; message?: string }): boolean {
+  const code = error.code ?? ''
+  const text = (error.message ?? '').toLowerCase()
+  return code === 'PGRST200' || text.includes('relationship') || text.includes('embed')
 }
 
 export async function createExpense(

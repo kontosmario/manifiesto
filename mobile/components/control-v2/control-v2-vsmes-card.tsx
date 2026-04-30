@@ -38,6 +38,11 @@ interface ControlV2VsMesCardProps {
   vsMesDiasBajoCupo: number
   vsMesMejor: boolean
   diasGanadores: number
+  /** Current day of the active cycle (1-indexed). Used to hide or
+   *  de-emphasize the projection when there isn't enough data yet —
+   *  with <4 closed days a single outlier swings the linear project
+   *  by hundreds of percent. */
+  diaActual: number
 }
 
 /**
@@ -93,9 +98,15 @@ export function ControlV2VsMesCard({
   vsMesDiasBajoCupo,
   vsMesMejor,
   diasGanadores,
+  diaActual,
 }: ControlV2VsMesCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
+  // Linear projection volatility: with <4 elapsed days, a single
+  // high-spend outlier blows the projected month-end into wild
+  // territory. Below that threshold we soften the comparison copy
+  // so the user understands the number is provisional.
+  const projectionReliable = diaActual >= 4
 
   // Mood-driven palette — this card is the only place in Control v2
   // where the rollup's `mood` becomes a first-class visual signal.
@@ -118,7 +129,8 @@ export function ControlV2VsMesCard({
             ? 'rgba(122,216,163,0.26)'
             : 'rgba(28,126,58,0.18)',
           icon: 'check-circle' as const,
-          label: 'Cerró tranquilo',
+          canonical: 'Saludable',
+          label: 'Cierre dentro del plan',
         }
       case 'yellow':
         return {
@@ -137,7 +149,8 @@ export function ControlV2VsMesCard({
             ? 'rgba(243,186,87,0.26)'
             : 'rgba(194,122,10,0.18)',
           icon: 'error-outline' as const,
-          label: 'Cerró ajustado',
+          canonical: 'Atención',
+          label: 'Cierre ajustado',
         }
       case 'red':
         return {
@@ -156,7 +169,8 @@ export function ControlV2VsMesCard({
             ? 'rgba(232,138,112,0.30)'
             : 'rgba(192,58,42,0.22)',
           icon: 'priority-high' as const,
-          label: 'Cerró pasado',
+          canonical: 'Crítico',
+          label: 'Cierre por encima del plan',
         }
       default:
         return {
@@ -173,7 +187,8 @@ export function ControlV2VsMesCard({
             ? 'rgba(255,255,255,0.10)'
             : 'rgba(15,42,30,0.10)',
           icon: 'history' as const,
-          label: 'Cerrado',
+          canonical: 'Sin datos',
+          label: 'Sin clasificar',
         }
     }
   })()
@@ -330,7 +345,7 @@ export function ControlV2VsMesCard({
     if (mesPasadoTopCatAmount > 0 && topCatTier === 'urgent') {
       return {
         icon: 'priority-high' as const,
-        text: `Tu ${mesPasadoTopCatLabel} ya superó lo que gastaste en ${mesPasadoNombre} ($${formatMoneyShort(mesPasadoTopCatAmount)}). Cuidá esa categoría.`,
+        text: `${mesPasadoTopCatLabel} ya superó lo gastado en ${mesPasadoNombre} ($${formatMoneyShort(mesPasadoTopCatAmount)}). Cuida esa categoría.`,
       }
     }
     if (mesPasadoTopCatAmount > 0 && topCatTier === 'watch') {
@@ -343,7 +358,7 @@ export function ControlV2VsMesCard({
       const projectedThisSavings = Math.max(0, mesPasadoSavingsDelta + vsMesAhorro)
       return {
         icon: 'savings' as const,
-        text: `En ${mesPasadoNombre} ahorraste ${formatMoneyShort(mesPasadoSavingsDelta)}. Si sostenés el ritmo, este mes cerrás cerca de ${formatMoneyShort(projectedThisSavings)}.`,
+        text: `En ${mesPasadoNombre} ahorraste ${formatMoneyShort(mesPasadoSavingsDelta)}. Si mantienes el ritmo, este mes cierras cerca de ${formatMoneyShort(projectedThisSavings)}.`,
       }
     }
     if (vsMesMejor) {
@@ -413,7 +428,7 @@ export function ControlV2VsMesCard({
               style={[styles.cycleRangeText, { color: theme.colors.textMuted }]}
               numberOfLines={1}
             >
-              Ciclo {mesPasadoCycleRangeLabel} · respeta tu día de cobro
+              Ciclo {mesPasadoCycleRangeLabel}
             </Text>
           </View>
         ) : null}
@@ -460,21 +475,41 @@ export function ControlV2VsMesCard({
           <SegmentStat
             dotColor={projBarColor}
             label="ESTE MES"
-            value={formatMoneyShort(proyectadoMes)}
-            sub={`${diasGanadores} días bajo cupo`}
+            value={
+              projectionReliable
+                ? formatMoneyShort(proyectadoMes)
+                : `~${formatMoneyShort(proyectadoMes)}`
+            }
+            sub={
+              projectionReliable
+                ? `${diasGanadores} días bajo cupo`
+                : `proyección a día ${diaActual}`
+            }
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <SegmentStat
             dotColor={vsMesMejor ? theme.colors.success : theme.colors.warning}
             label="DELTA"
-            value={`${vsMesMejor ? '↓' : '↑'} ${formatMoneyShort(diffAbs)}`}
-            sub={
-              vsMesMejor
-                ? `${pctAbs.toFixed(0)}% menos`
-                : `${pctAbs.toFixed(0)}% más`
+            value={
+              projectionReliable
+                ? `${vsMesMejor ? '↓' : '↑'} ${formatMoneyShort(diffAbs)}`
+                : '—'
             }
-            text={vsMesMejor ? theme.colors.success : theme.colors.warning}
+            sub={
+              !projectionReliable
+                ? 'esperando datos'
+                : vsMesMejor
+                  ? `${pctAbs.toFixed(0)}% menos`
+                  : `${pctAbs.toFixed(0)}% más`
+            }
+            text={
+              projectionReliable
+                ? vsMesMejor
+                  ? theme.colors.success
+                  : theme.colors.warning
+                : theme.colors.textMuted
+            }
             muted={theme.colors.textMuted}
           />
         </View>
@@ -546,7 +581,7 @@ export function ControlV2VsMesCard({
                 style={[styles.topCatTitle, { color: topCatTone.fg }]}
                 numberOfLines={1}
               >
-                Top de {mesPasadoNombre} · {mesPasadoTopCatLabel}
+                {mesPasadoTopCatLabel} · top de {mesPasadoNombre}
               </Text>
             </View>
             <View style={styles.topCatBars}>
@@ -712,10 +747,10 @@ function SegmentStat({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {

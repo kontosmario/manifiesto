@@ -231,7 +231,18 @@ describe('control-signals', () => {
     ]
     const out = buildControlSignals(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
-      baseArgs({ expenses: list as any[] }),
+      baseArgs({
+        expenses: list as any[],
+        // CONTROL_MOCK is a healthy state: positive-forecast, streak-ok and
+        // cat-dominance fire and (correctly) compete for the bottom slots
+        // under the diversity budget. Suppress them so the assertion
+        // exercises the member-imbalance builder in isolation.
+        blockedFamilies: new Set([
+          'positive-forecast',
+          'streak-ok',
+          'cat-dominance',
+        ]),
+      }),
     )
     expect(out.some((s) => s.id.startsWith('member-imbalance'))).toBe(true)
   })
@@ -272,7 +283,14 @@ describe('control-signals', () => {
     ]
     const out = buildControlSignals(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
-      baseArgs({ expenses: list as any[] }),
+      baseArgs({
+        expenses: list as any[],
+        blockedFamilies: new Set([
+          'positive-forecast',
+          'streak-ok',
+          'cat-dominance',
+        ]),
+      }),
     )
     expect(out.some((s) => s.id.startsWith('undetected-sub'))).toBe(true)
   })

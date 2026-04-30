@@ -98,6 +98,22 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="asistente"
+          options={{
+            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
+          name="coach/[signalId]"
+          options={{
+            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
           name="notifications"
           options={{
             freezeOnBlur: true,
@@ -120,6 +136,13 @@ export function AppStackShell() {
         />
         <Stack.Screen
           name="settings/family-admin"
+          options={{
+            freezeOnBlur: true,
+            fullScreenGestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="settings/asistente"
           options={{
             freezeOnBlur: true,
             fullScreenGestureEnabled: false,

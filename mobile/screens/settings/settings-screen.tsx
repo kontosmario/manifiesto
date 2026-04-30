@@ -568,6 +568,18 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
               </SettingsGroup>
             </RiseView>
 
+            {/* 4b. ASISTENTE */}
+            <RiseView delay={300}>
+              <SettingsGroup title="Asistente">
+                <SettingsRow
+                  icon="auto-awesome"
+                  isLast
+                  label="Preferencias del asistente"
+                  onPress={() => router.push('/settings/asistente' as never)}
+                />
+              </SettingsGroup>
+            </RiseView>
+
             {/* 5. NOTIFICACIONES */}
             <RiseView delay={320}>
               <SettingsGroup title="Notificaciones">

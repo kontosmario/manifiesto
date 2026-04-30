@@ -1,80 +1,73 @@
-import { useMemo, useState } from 'react'
-import { useCategories } from '@/features/categories/use-categories'
-import { useExpenses, type Expense } from '@/features/expenses/use-expenses'
+import { useCallback, useMemo, useState } from 'react'
 import {
-  computeAverageDailySpend,
-  computeCategoryWeights,
-  computeDailySpend,
-  computeGastosDayMoods,
-  computeRecentDailyBars,
-  computeRegistrationStreak,
   groupGastosByDay,
   type CategoryLite,
   type CategoryWeightRow,
+  type DayOfMonthSpendRow,
   type GastosDayMood,
   type GastosGroup,
 } from '@/features/gastos/gastos-aggregates.model'
+import {
+  useGastosCalendarSummary,
+  useGastosCategoriesWithCounts,
+  useGastosExpensesForDay,
+  useGastosExpensesPaginated,
+  useGastosHeroSummary,
+} from '@/features/gastos/use-gastos-endpoints'
+import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
+import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-
-export type GastosDateRange =
-  | 'all'
-  | 'today'
-  | 'last-7'
-  | 'first-3-days'
-  | 'last-3-days'
-  | 'nights'
-
-export interface GastosSmartFilter {
-  /** Min price filter (>=) — 0 or undefined means no min. */
-  priceMin?: number
-  /** Max price filter (<) — undefined means no max. */
-  priceMax?: number
-  /** Semantic date range — 'all' (default) applies no date filter. */
-  dateRange?: GastosDateRange
-  /** Highlight a specific expense id without filtering anything out. */
-  focusExpenseId?: string
-}
 
 export interface UseGastosControllerOptions {
   /** Seed initial filter from route params (Asistente deep-links). */
   initialCategoryId?: string | null
-  initialSmartFilter?: GastosSmartFilter
 }
 
 export interface UseGastosControllerResult {
   // raw
   expenses: Expense[]
   categoriesById: Map<string, CategoryLite>
+  /** Per-cycle count of expenses per category, sourced server-side
+   *  via `gastos_categories_with_counts`. Replaces the client-side
+   *  count over `filteredExpenses` which was wrong as soon as the
+   *  list became paginated. */
+  expenseCountByCategoryId: Map<string, number>
   isLoading: boolean
+  isFetching: boolean
   error: unknown
+  refetchAll: () => Promise<void>
   // filter state
   selectedCategoryId: string | null
   setSelectedCategoryId: (id: string | null) => void
   selectedDay: number | null
   setSelectedDay: (day: number | null) => void
-  smartFilter: GastosSmartFilter
-  setSmartFilter: (next: GastosSmartFilter) => void
-  clearSmartFilter: () => void
+  hasAnyFilter: boolean
   // filtered result
   filteredExpenses: Expense[]
   filteredTotal: number
   summaryChip: string
-  // aggregates
+  // aggregates (server-computed)
   topCategories: CategoryWeightRow[]
   dayMoods: Record<number, GastosDayMood>
-  dailySpend: ReturnType<typeof computeDailySpend>
+  /** Day-of-month indexed (1..31). Filled from the calendar RPC. */
+  dailySpend: Record<number, DayOfMonthSpendRow>
   averageDaily: number
   recentDailyBars: number[]
-  registrationStreak: number
   groups: GastosGroup[]
   // cycle context
   today: Date
   cycleStart: Date
   cycleEnd: Date
   cycleDays: number
-  /** Short label for the cycle, e.g. "20 abr → 20 may". */
+  cycleDaysElapsed: number
   cycleLabel: string
+  // pagination (Phase 4 — virtual scroll)
+  /** Loads the next chunk of older days. No-op when `hasNextPage` is
+   *  false or already fetching. */
+  fetchNextPage: () => Promise<void>
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
   // actions
   clearDay: () => void
   clearAll: () => void
@@ -85,50 +78,29 @@ const MONTH_SHORT = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ]
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
 export function useGastosController(
   familyId: string,
   options: UseGastosControllerOptions = {},
 ): UseGastosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
+  const dashboard = useFamilyDashboard(familyId)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     options.initialCategoryId ?? null,
   )
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
-  const [smartFilter, setSmartFilter] = useState<GastosSmartFilter>(
-    options.initialSmartFilter ?? {},
-  )
-  const clearSmartFilter = () => setSmartFilter({})
-
-  const categoriesQuery = useCategories(familyId)
-  const expensesQuery = useExpenses(familyId)
-  const dashboard = useFamilyDashboard(familyId)
-
-  // "Gastos" en el modelo del usuario = movimientos manuales del
-  // flujo "Agregar gasto". Las filas con `commitment_id` son pagos
-  // automáticos de fijos y NO deben aparecer ni sumar acá. Filtramos
-  // a la entrada para que toda la cascada (cycleExpenses, totales,
-  // weights, mood, streak, groups) reciba solo gastos variables.
-  const allExpenses = expensesQuery.data ?? []
-  const expenses = useMemo(
-    () => allExpenses.filter((e) => !e.commitment_id),
-    [allExpenses],
-  )
-  const categories: CategoryLite[] = (categoriesQuery.data ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-  }))
-  const categoriesById = useMemo(() => {
-    const m = new Map<string, CategoryLite>()
-    for (const c of categories) m.set(c.id, c)
-    return m
-  }, [categories])
 
   const cycleStart = cycle.start
   const cycleEnd = cycle.end
   const cycleDays = cycle.days
   const cycleStartMs = cycleStart.getTime()
-  const cycleEndMs = cycleEnd.getTime()
+
+  const cycleDaysElapsedClient = useMemo(() => {
+    const ms = today.getTime() - cycleStartMs
+    const elapsed = Math.floor(ms / MS_PER_DAY) + 1
+    return Math.max(1, Math.min(cycleDays, elapsed))
+  }, [today, cycleStartMs, cycleDays])
 
   const cycleLabel = useMemo(() => {
     const startLabel = `${cycleStart.getDate()} ${MONTH_SHORT[cycleStart.getMonth()]}`
@@ -136,11 +108,7 @@ export function useGastosController(
     return `${startLabel} → ${endLabel}`
   }, [cycleStart, cycleEnd])
 
-  // Cupo diario canónico — misma definición que Control/Home/Daily
-  // Budget Engine: `(sueldo − fijos de ciclo − ahorro) / cycleDays`.
-  // El heatmap lo usa como ancla de los thresholds green/amber/red
-  // para que un día NO se pinte rojo solo porque el promedio del
-  // ciclo todavía es bajo (efecto de pocas muestras).
+  // Cupo diario canónico — pasado al server para anchorar moods.
   const cupoDiario = useMemo(() => {
     const libre = Math.max(
       0,
@@ -156,142 +124,226 @@ export function useGastosController(
     cycleDays,
   ])
 
-  const cycleExpenses = useMemo(
-    () =>
-      expenses.filter((e) => {
-        const t = new Date(e.created_at).getTime()
-        return t >= cycleStartMs && t < cycleEndMs
-      }),
-    [expenses, cycleStartMs, cycleEndMs],
-  )
+  // ── Hooks de los 5 endpoints ────────────────────────────────────
+  const heroQuery = useGastosHeroSummary({
+    familyId,
+    cycleStart,
+    cycleEnd,
+    today,
+    categoryId: selectedCategoryId,
+  })
+  const calendarQuery = useGastosCalendarSummary({
+    familyId,
+    cycleStart,
+    cycleEnd,
+    today,
+    cupoDiario,
+    categoryId: selectedCategoryId,
+  })
+  const categoriesQuery = useGastosCategoriesWithCounts({
+    familyId,
+    cycleStart,
+    cycleEnd,
+  })
+  const paginatedQuery = useGastosExpensesPaginated({
+    familyId,
+    cycleStart,
+    cycleEnd,
+    today,
+    categoryId: selectedCategoryId,
+    daysPerPage: 2,
+  })
 
-  const filteredByCategory = useMemo(
-    () =>
-      selectedCategoryId == null
-        ? cycleExpenses
-        : cycleExpenses.filter((e) => e.category_id === selectedCategoryId),
-    [cycleExpenses, selectedCategoryId],
-  )
-
-  const filteredBySmart = useMemo(() => {
-    let list = filteredByCategory
-    if (smartFilter.priceMin != null) {
-      const min = smartFilter.priceMin
-      list = list.filter((e) => Math.abs(Number(e.price ?? 0)) >= min)
+  // Convert day-of-month → ISO YYYY-MM-DD for the day-detail RPC.
+  const selectedDayIso = useMemo(() => {
+    if (selectedDay == null) return null
+    for (let i = 0; i < cycleDays; i++) {
+      const d = new Date(
+        cycleStart.getFullYear(),
+        cycleStart.getMonth(),
+        cycleStart.getDate() + i,
+      )
+      if (d.getDate() === selectedDay) {
+        return formatLocalIso(d)
+      }
     }
-    if (smartFilter.priceMax != null) {
-      const max = smartFilter.priceMax
-      list = list.filter((e) => Math.abs(Number(e.price ?? 0)) < max)
+    return null
+  }, [selectedDay, cycleStart, cycleDays])
+
+  const forDayQuery = useGastosExpensesForDay({
+    familyId,
+    isoDate: selectedDayIso,
+    categoryId: selectedCategoryId,
+  })
+
+  // ── Categorías ──────────────────────────────────────────────────
+  const categoriesById = useMemo<Map<string, CategoryLite>>(() => {
+    const m = new Map<string, CategoryLite>()
+    for (const c of categoriesQuery.data ?? []) {
+      m.set(c.id, { id: c.id, name: c.name, color: c.color })
     }
-    if (smartFilter.dateRange && smartFilter.dateRange !== 'all') {
-      list = applyDateRange(list, smartFilter.dateRange, today)
+    return m
+  }, [categoriesQuery.data])
+
+  const expenseCountByCategoryId = useMemo<Map<string, number>>(() => {
+    const m = new Map<string, number>()
+    for (const c of categoriesQuery.data ?? []) {
+      m.set(c.id, c.count_in_cycle)
     }
-    return list
-  }, [filteredByCategory, smartFilter, today])
+    return m
+  }, [categoriesQuery.data])
 
-  const filteredExpenses = useMemo(
-    () =>
-      selectedDay == null
-        ? filteredBySmart
-        : filteredBySmart.filter((e) => {
-            const d = new Date(e.created_at)
-            return d.getDate() === selectedDay
-          }),
-    [filteredBySmart, selectedDay],
-  )
-
-  const filteredTotal = useMemo(
-    () => filteredExpenses.reduce((s, e) => s + Math.abs(Number(e.price ?? 0)), 0),
-    [filteredExpenses],
-  )
-
-  const summaryChip = useMemo(() => {
-    const count = filteredExpenses.length
-    const period = selectedDay != null ? `día ${selectedDay}` : cycleLabel
-    const cat =
-      selectedCategoryId == null
-        ? 'Todas'
-        : (categoriesById.get(selectedCategoryId)?.name ?? 'Todas')
-    return `${count} mov · ${period} · ${cat}`
-  }, [filteredExpenses.length, selectedDay, cycleLabel, selectedCategoryId, categoriesById])
-
-  const topCategories = useMemo(
-    () => computeCategoryWeights(filteredExpenses, categories, 3),
-    [filteredExpenses, categories],
-  )
-
-  // Daily mood/heatmap, averages and bars all share the same
-  // "expenses" base now (already filtered to variable-only at the
-  // top of the hook), so the same input feeds totals, lists and
-  // mood without divergence between what's shown and what's
-  // measured.
-  const cycleExpensesByCategory = useMemo(
-    () =>
-      selectedCategoryId == null
-        ? cycleExpenses
-        : cycleExpenses.filter((e) => e.category_id === selectedCategoryId),
-    [cycleExpenses, selectedCategoryId],
-  )
-
-  const dailySpend = useMemo(
-    () => computeDailySpend(cycleExpensesByCategory, cycleStart, cycleEnd),
-    [cycleExpensesByCategory, cycleStart, cycleEnd],
-  )
-
-  const dayMoods = useMemo(
-    () =>
-      computeGastosDayMoods({
-        dailySpend,
-        cycleStart,
-        cycleDays,
-        today,
-        cupoDiario,
-      }),
-    [dailySpend, cycleStart, cycleDays, today, cupoDiario],
-  )
-
-  const averageDaily = useMemo(
-    () =>
-      computeAverageDailySpend({
-        expenses,
-        today,
-        windowDays: 22,
-      }),
-    [expenses, today],
-  )
-
+  // ── Hero (server-computed) ──────────────────────────────────────
+  const hero = heroQuery.data
+  const filteredTotal = hero?.total ?? 0
+  const filteredCount = hero?.count ?? 0
+  const cycleDaysElapsed = hero?.cycle_days_elapsed ?? cycleDaysElapsedClient
+  const averageDaily = hero?.average_daily ?? 0
   const recentDailyBars = useMemo(
+    () => hero?.recent_daily_bars ?? [0, 0, 0, 0, 0, 0, 0],
+    [hero?.recent_daily_bars],
+  )
+  const topCategories = useMemo<CategoryWeightRow[]>(
     () =>
-      computeRecentDailyBars({
-        expenses,
-        today,
-        windowDays: 7,
-      }),
-    [expenses, today],
+      (hero?.top_categories ?? []).map((r) => ({
+        id: r.id,
+        label: r.name,
+        color: r.color,
+        amount: r.amount,
+        percent: r.percent,
+      })),
+    [hero?.top_categories],
   )
 
-  const registrationStreak = useMemo(
-    () => computeRegistrationStreak({ expenses, today }),
-    [expenses, today],
+  // ── Calendar (server-computed moods + per-day totals) ───────────
+  const dayMoods = useMemo<Record<number, GastosDayMood>>(() => {
+    const out: Record<number, GastosDayMood> = {}
+    for (const d of calendarQuery.data?.days ?? []) {
+      // Si dos días del ciclo comparten día-de-mes (caso 31), el
+      // segundo encontrado pisa al primero. Aceptable: el calendario
+      // grafica una grilla de día-de-mes única en ciclos típicos.
+      out[d.day] = d.mood
+    }
+    return out
+  }, [calendarQuery.data])
+
+  const dailySpend = useMemo<Record<number, DayOfMonthSpendRow>>(() => {
+    const out: Record<number, DayOfMonthSpendRow> = {}
+    for (const d of calendarQuery.data?.days ?? []) {
+      out[d.day] = { day: d.day, total: d.total, count: d.count }
+    }
+    return out
+  }, [calendarQuery.data])
+
+  // ── Movimientos (paginated + day-detail) ────────────────────────
+  const paginatedExpenses = useMemo<Expense[]>(
+    () =>
+      (paginatedQuery.data?.pages ?? [])
+        .flatMap((p) => p.expenses)
+        .map(rowToExpense),
+    [paginatedQuery.data],
   )
+
+  const dayDetailExpenses = useMemo<Expense[]>(
+    () => (forDayQuery.data ?? []).map(rowToExpense),
+    [forDayQuery.data],
+  )
+
+  // `expenses` no-filter view: paginated rows. Used by consumers that
+  // want the chronological feed (e.g., empty-state detection).
+  const expenses = paginatedExpenses
+
+  // `filteredExpenses`: when the user tapped a day in the calendar,
+  // we serve the day-detail RPC; otherwise the paginated feed.
+  const filteredExpenses =
+    selectedDay != null ? dayDetailExpenses : paginatedExpenses
 
   const groups = useMemo(
     () => groupGastosByDay({ expenses: filteredExpenses, today }),
     [filteredExpenses, today],
   )
 
+  // ── Summary chip ────────────────────────────────────────────────
+  const summaryChip = useMemo(() => {
+    const period = selectedDay != null ? `día ${selectedDay}` : cycleLabel
+    const cat =
+      selectedCategoryId == null
+        ? 'Todas'
+        : (categoriesById.get(selectedCategoryId)?.name ?? 'Todas')
+    // When the user selected a day, count is the day-detail length.
+    // Otherwise count is the cycle-wide count (from the hero RPC).
+    const count = selectedDay != null ? filteredExpenses.length : filteredCount
+    return `${count} mov · ${period} · ${cat}`
+  }, [
+    filteredCount,
+    filteredExpenses.length,
+    selectedDay,
+    cycleLabel,
+    selectedCategoryId,
+    categoriesById,
+  ])
+
+  // ── Filter state derived ────────────────────────────────────────
+  const hasAnyFilter = selectedCategoryId != null || selectedDay != null
+
+  // ── Loading / error consolidation ───────────────────────────────
+  const isLoading =
+    heroQuery.isLoading ||
+    calendarQuery.isLoading ||
+    categoriesQuery.isLoading ||
+    paginatedQuery.isLoading
+  const isFetching =
+    heroQuery.isFetching ||
+    calendarQuery.isFetching ||
+    categoriesQuery.isFetching ||
+    paginatedQuery.isFetching ||
+    forDayQuery.isFetching
+  const error =
+    heroQuery.error ??
+    calendarQuery.error ??
+    categoriesQuery.error ??
+    paginatedQuery.error ??
+    forDayQuery.error ??
+    null
+
+  // ── Pagination handle (Phase 4) ─────────────────────────────────
+  const fetchNextPage = useCallback(async () => {
+    if (paginatedQuery.hasNextPage && !paginatedQuery.isFetchingNextPage) {
+      await paginatedQuery.fetchNextPage()
+    }
+  }, [paginatedQuery])
+
+  // ── Refetch all (pull-to-refresh) ───────────────────────────────
+  const refetchAll = useCallback(async () => {
+    await Promise.all([
+      heroQuery.refetch(),
+      calendarQuery.refetch(),
+      categoriesQuery.refetch(),
+      paginatedQuery.refetch(),
+      selectedDay != null ? forDayQuery.refetch() : Promise.resolve(),
+      dashboard.refetchAll(),
+    ])
+  }, [heroQuery, calendarQuery, categoriesQuery, paginatedQuery, forDayQuery, dashboard, selectedDay])
+
+  const clearDay = useCallback(() => setSelectedDay(null), [])
+  const clearAll = useCallback(() => {
+    setSelectedDay(null)
+    setSelectedCategoryId(null)
+  }, [])
+
   return {
     expenses,
     categoriesById,
-    isLoading: expensesQuery.isLoading || categoriesQuery.isLoading,
-    error: expensesQuery.error ?? categoriesQuery.error ?? null,
+    expenseCountByCategoryId,
+    isLoading,
+    isFetching,
+    error,
+    refetchAll,
     selectedCategoryId,
     setSelectedCategoryId,
     selectedDay,
     setSelectedDay,
-    smartFilter,
-    setSmartFilter,
-    clearSmartFilter,
+    hasAnyFilter,
     filteredExpenses,
     filteredTotal,
     summaryChip,
@@ -300,50 +352,41 @@ export function useGastosController(
     dailySpend,
     averageDaily,
     recentDailyBars,
-    registrationStreak,
     groups,
     today,
     cycleStart,
     cycleEnd,
     cycleDays,
+    cycleDaysElapsed,
     cycleLabel,
-    clearDay: () => setSelectedDay(null),
-    clearAll: () => {
-      setSelectedDay(null)
-      setSelectedCategoryId(null)
-      setSmartFilter({})
-    },
+    fetchNextPage,
+    hasNextPage: Boolean(paginatedQuery.hasNextPage),
+    isFetchingNextPage: paginatedQuery.isFetchingNextPage,
+    clearDay,
+    clearAll,
   }
 }
 
-function applyDateRange(
-  list: Expense[],
-  range: GastosDateRange,
-  today: Date,
-): Expense[] {
-  switch (range) {
-    case 'today': {
-      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0).getTime()
-      return list.filter((e) => new Date(e.created_at).getTime() >= start)
-    }
-    case 'last-7': {
-      const cutoff = today.getTime() - 7 * 24 * 60 * 60 * 1000
-      return list.filter((e) => new Date(e.created_at).getTime() >= cutoff)
-    }
-    case 'first-3-days': {
-      return list.filter((e) => new Date(e.created_at).getDate() <= 3)
-    }
-    case 'last-3-days': {
-      const cutoff = today.getTime() - 3 * 24 * 60 * 60 * 1000
-      return list.filter((e) => new Date(e.created_at).getTime() >= cutoff)
-    }
-    case 'nights': {
-      return list.filter((e) => {
-        const h = new Date(e.created_at).getHours()
-        return h >= 20 || h < 2
-      })
-    }
-    default:
-      return list
+/** Map a server-side embed row to the legacy `Expense` shape so
+ *  downstream code (groupGastosByDay, the screen's renderItem) keeps
+ *  working without changes. */
+function rowToExpense(row: GastosExpenseRow): Expense {
+  return {
+    id: row.id,
+    family_id: row.family_id,
+    category_id: row.category_id,
+    commitment_id: row.commitment_id,
+    description: row.description,
+    price: row.price,
+    created_at: row.created_at,
+    created_by: row.created_by,
+    creator_display_name: row.creator_display_name ?? 'Sin nombre',
   }
+}
+
+function formatLocalIso(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }

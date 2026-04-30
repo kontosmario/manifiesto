@@ -32,8 +32,13 @@ export function GastosHeroCard({
   averageWindowDays = 22,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
-  const fallbackBars = [0.6, 0.8, 0.2, 0.05, 0.7, 0.4, 0.6]
-  const barsData = averageDailyBars.length > 0 ? averageDailyBars : fallbackBars
+  // Pass through whatever the controller computed — including all
+  // zeros — so the bars truthfully reflect "no spend in window".
+  // Earlier this used a hardcoded fake-data fallback that misled
+  // users into thinking there had been activity. The bars component
+  // already renders a flat dash for zero values.
+  const barsData =
+    averageDailyBars.length > 0 ? averageDailyBars : new Array(7).fill(0)
   return (
     <RiseView delay={100}>
       {/*

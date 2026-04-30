@@ -1,5 +1,11 @@
 import { useCallback, useRef, type ComponentProps, type ReactNode } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  type AccessibilityActionEvent,
+} from 'react-native'
 import { RectButton } from 'react-native-gesture-handler'
 import Swipeable, {
   type SwipeableMethods,
@@ -32,6 +38,16 @@ interface SwipeableRowProps {
   rightActions?: SwipeAction[]
   leftActions?: SwipeAction[]
   accessibilityHint: string
+  /** Optional composed label for VoiceOver/TalkBack. When omitted the
+   *  row falls back to whatever the children expose. */
+  accessibilityLabel?: string
+  /** Accessibility actions exposed via the rotor for screen reader
+   *  users (who can't perform the swipe gesture). Pair with
+   *  `onAccessibilityAction` to handle each. */
+  accessibilityActions?: ReadonlyArray<{ name: string; label?: string }>
+  /** Handler invoked when the screen reader picks an action from the
+   *  rotor. Looks up `event.nativeEvent.actionName` and dispatches. */
+  onAccessibilityAction?: (event: AccessibilityActionEvent) => void
   onSwipeOpenHaptic?: AppHapticTone
   borderRadius?: number
   borderColor?: string
@@ -51,6 +67,9 @@ export function SwipeableRow({
   rightActions = [],
   leftActions = [],
   accessibilityHint,
+  accessibilityLabel,
+  accessibilityActions,
+  onAccessibilityAction,
   onSwipeOpenHaptic = 'selection',
   borderRadius = 14,
   borderColor,
@@ -85,6 +104,9 @@ export function SwipeableRow({
     <View
       accessible
       accessibilityHint={accessibilityHint}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityActions={accessibilityActions as readonly { name: string; label?: string }[] | undefined}
+      onAccessibilityAction={onAccessibilityAction}
       style={{
         borderRadius,
         overflow: 'hidden',

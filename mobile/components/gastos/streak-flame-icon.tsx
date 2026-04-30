@@ -43,8 +43,11 @@ export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
     broken: theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,42,30,0.12)',
   } as const
   const badgeText = derived.status === 'broken' ? '0' : String(data.currentStreak)
-  const badgeBorder = theme.isDark ? '#0A1410' : '#F6FBEF'
-  const badgeTextColor = derived.status === 'broken' ? theme.colors.textMuted : '#F6FBEF'
+  // Borde + texto del badge usan tokens del tema en vez de hex
+  // hardcodeados (audit §13). Pageant + heroText cubren los modos
+  // light y dark con buena legibilidad sobre el fondo del flame.
+  const badgeBorder = theme.colors.pageBg
+  const badgeTextColor = derived.status === 'broken' ? theme.colors.textMuted : theme.colors.heroText
 
   return (
     <Pressable

@@ -4,9 +4,9 @@ import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import {
   AVATAR_LABELS,
   AVATAR_SLUGS,
-  AvatarAnimal,
   type AvatarSlug,
 } from '@/assets/avatars'
+import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 

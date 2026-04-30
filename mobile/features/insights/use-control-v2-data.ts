@@ -11,6 +11,7 @@
 // looks broken in development or on a first-run account.
 
 import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
@@ -38,7 +39,31 @@ import {
   type NotificationLite,
 } from '@/features/insights/control-signals'
 import { computeUserBaselines } from '@/features/insights/user-baselines'
+import { buildForecast7Day, type Forecast7Day } from '@/features/insights/forecast-engine'
+import { detectCausalLinks, type CausalLink } from '@/features/insights/causal-engine'
+import { useInteractionStats } from '@/features/insights/use-interaction-stats'
+import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
+import { inferPersona, type UserPersona } from '@/features/insights/persona'
+import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+
+// ─── Module-level memoization across hook invocations ──────────────
+//
+// The Home tree calls `useControlV2Data` 3 times per render (screen,
+// dashboard, tab-bar advisor badge). Each invocation has its own
+// `useMemo` cache, so without help the heavy computes run 3×. These
+// LRU(1) caches are keyed on referential identity of the React Query
+// data, so multiple call sites within one render collapse to a single
+// computation. As soon as the underlying cache flips, all caches
+// recompute together.
+
+const memoizedBuildData = singleEntryMemoize(buildControlDataFromSnapshot)
+const memoizedComputeView = singleEntryMemoize(computeControlView)
+const memoizedComputeBaselines = singleEntryMemoize(computeUserBaselines)
+const memoizedInferPersona = singleEntryMemoize(inferPersona)
+const memoizedDetectCausal = singleEntryMemoize(detectCausalLinks)
+const memoizedBuildForecast = singleEntryMemoize(buildForecast7Day)
+const memoizedBuildSignals = singleEntryMemoize(buildControlSignals)
 
 interface ControlIntelligenceRow {
   family_id: string
@@ -51,23 +76,69 @@ export interface ControlV2ViewModel {
   data: ControlMockData
   view: ControlView
   signals: ControlAdvisorTask[]
+  /** Optional 7-day forecast — `null` while data is hydrating or
+   *  when the user is still using the mock dataset. */
+  forecast: Forecast7Day | null
   isLoading: boolean
   /** True when we fell back to the mock dataset (no real data yet). */
   usingMock: boolean
 }
 
+export interface UseControlV2DataOptions {
+  /**
+   * When true, defers the heavy queries (`useControlIntelligence` and
+   * `useFamilyNotifications`) by ~600ms after mount. Used by the
+   * Gastos screen so the chip's data load doesn't compete with the
+   * first paint of the screen (audit §3.4 / item 18).
+   *
+   * The lightweight queries (expenses, finance, categories, etc.) are
+   * not deferred because they're already loaded by sibling screens
+   * via React Query's cache, so the cost is amortized.
+   */
+  defer?: boolean
+}
+
 /**
  * One-stop hook: loads every slice, maps to the Control shape,
  * computes derived view + signals, exposes loading state.
+ *
+ * `userId` is optional — when provided, the hook also loads the
+ * Memory Layer interaction stats and infers the user's persona so
+ * builders with copy variants can adapt their framing. Without it,
+ * the persona defaults to `'planner'` (neutral framing).
  */
-export function useControlV2Data(familyId: string): ControlV2ViewModel {
+export function useControlV2Data(
+  familyId: string,
+  userId?: string | null,
+  options?: UseControlV2DataOptions,
+): ControlV2ViewModel {
+  // Defer flag — flips to true ~600ms after mount when
+  // `options.defer` is set, otherwise true immediately. Gates the
+  // heavy intelligence + notifications queries so callers (Gastos)
+  // can defer them past the first paint.
+  const [heavyEnabled, setHeavyEnabled] = useState(!options?.defer)
+  useEffect(() => {
+    if (!options?.defer) return
+    const handle = setTimeout(() => setHeavyEnabled(true), 600)
+    return () => clearTimeout(handle)
+  }, [options?.defer])
+
   const expensesQuery = useExpenses(familyId)
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const financeQuery = useFamilyFinance(familyId)
   const categoriesQuery = useCategories(familyId, 'expense')
   const goalQuery = useSavingsGoal(familyId)
-  const notificationsQuery = useFamilyNotifications(familyId, undefined, 40)
-  const intelligenceQuery = useControlIntelligence(familyId)
+  // Deferred queries: empty/undefined familyId disables the inner
+  // useQuery via its `enabled: Boolean(familyId)` guard. When
+  // heavyEnabled flips, the queries fire normally.
+  const notificationsQuery = useFamilyNotifications(
+    heavyEnabled ? familyId : undefined,
+    undefined,
+    40,
+  )
+  const intelligenceQuery = useControlIntelligence(heavyEnabled ? familyId : '')
+  const interactionStatsQuery = useInteractionStats(userId ?? null)
+  const blocklistQuery = useSignalBlocklist(userId ?? null)
 
   const expenses = expensesQuery.data ?? []
   const fixedExpenses = fixedExpensesQuery.data ?? []
@@ -92,11 +163,15 @@ export function useControlV2Data(familyId: string): ControlV2ViewModel {
     finance.monthly_income <= 0 ||
     expenses.length === 0
 
-  const { cycle: payCycle } = usePayCycle(familyId)
+  const { cycle: payCycle, isSalaryPendingConfirmation } = usePayCycle(familyId)
   const dismissedHikes = useDismissedHikes()
+  // Each `useMemo` here delegates to a module-level LRU(1) cache via
+  // `singleEntryMemoize`. With three Home-tree invocations sharing the
+  // same React Query data identities, the second and third invocations
+  // hit cache and the heavy compute only runs once per render cycle.
   const data = useMemo<ControlMockData>(() => {
     if (usingMock || !finance) return CONTROL_MOCK
-    return buildControlDataFromSnapshot({
+    return memoizedBuildData({
       expenses,
       fixedExpenses,
       finance,
@@ -105,16 +180,42 @@ export function useControlV2Data(familyId: string): ControlV2ViewModel {
     })
   }, [usingMock, expenses, fixedExpenses, finance, summaries, payCycle])
 
-  const view = useMemo<ControlView>(() => computeControlView(data), [data])
+  const view = useMemo<ControlView>(() => memoizedComputeView(data), [data])
 
   const baselines = useMemo(
-    () => computeUserBaselines(summaries),
+    () => memoizedComputeBaselines(summaries),
     [summaries],
   )
 
+  const persona = useMemo<UserPersona>(() => {
+    const stats = interactionStatsQuery.data
+    if (!stats) return 'planner'
+    return memoizedInferPersona(stats)
+  }, [interactionStatsQuery.data])
+
+  const causalLinks = useMemo<CausalLink[]>(() => {
+    if (usingMock) return []
+    if (view.detalleDias.length < 14) return []
+    return memoizedDetectCausal({
+      expenses,
+      closedDays: view.detalleDias.length,
+    })
+  }, [usingMock, expenses, view.detalleDias.length])
+
+  const forecast = useMemo<Forecast7Day | null>(() => {
+    if (usingMock) return null
+    if (view.detalleDias.length === 0) return null
+    return memoizedBuildForecast({
+      view,
+      fixedExpenses,
+      diasRestantes: view.diasRestantes,
+      remaining: view.restanteMes,
+    })
+  }, [usingMock, view, fixedExpenses])
+
   const signals = useMemo<ControlAdvisorTask[]>(() => {
     if (usingMock) return CONTROL_MOCK.tareas
-    return buildControlSignals({
+    return memoizedBuildSignals({
       view,
       expenses,
       fixedExpenses,
@@ -131,6 +232,11 @@ export function useControlV2Data(familyId: string): ControlV2ViewModel {
       fijosMes: data.fijosMes,
       dismissedHikes,
       baselines,
+      forecast,
+      persona,
+      paydayPending: isSalaryPendingConfirmation,
+      blockedFamilies: blocklistQuery.data,
+      causalLinks,
     })
   }, [
     usingMock,
@@ -145,8 +251,15 @@ export function useControlV2Data(familyId: string): ControlV2ViewModel {
     savingsGoal,
     data.cupoDiario,
     data.gastoHoy,
+    data.ingresoMes,
+    data.fijosMes,
     dismissedHikes,
     baselines,
+    forecast,
+    persona,
+    isSalaryPendingConfirmation,
+    blocklistQuery.data,
+    causalLinks,
   ])
 
   const isLoading =
@@ -156,7 +269,7 @@ export function useControlV2Data(familyId: string): ControlV2ViewModel {
     categoriesQuery.isLoading ||
     intelligenceQuery.isLoading
 
-  return { data, view, signals, isLoading, usingMock }
+  return { data, view, signals, forecast, isLoading, usingMock }
 }
 
 // ─── Intelligence slice (summaries + limits + velocity) ─────────────

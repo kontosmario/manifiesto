@@ -62,7 +62,7 @@ export function ControlV2SemanaCard({
   if (diaActual < MIN_DIAS) {
     return (
       <ControlV2Placeholder
-        title="Cómo venís esta semana"
+        title="Cómo va esta semana"
         diaActual={diaActual}
         minDias={MIN_DIAS}
         hint="Necesitamos 7 días del ciclo para comparar tu ritmo."
@@ -86,7 +86,8 @@ export function ControlV2SemanaCard({
           chipBg: isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)',
           chipBorder: isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)',
           icon: 'trending-down' as const,
-          stateLabel: 'Frenando',
+          canonical: 'Saludable',
+          stateLabel: 'Ritmo descendente',
           calloutBg: isDark ? 'rgba(122,216,163,0.10)' : 'rgba(28,126,58,0.06)',
           calloutBorder: isDark
             ? 'rgba(122,216,163,0.26)'
@@ -101,7 +102,8 @@ export function ControlV2SemanaCard({
             ? 'rgba(243,186,87,0.34)'
             : 'rgba(194,122,10,0.26)',
           icon: 'trending-up' as const,
-          stateLabel: 'Acelerando',
+          canonical: 'Atención',
+          stateLabel: 'Ritmo acelerado',
           calloutBg: isDark
             ? 'rgba(243,186,87,0.10)'
             : 'rgba(194,122,10,0.06)',
@@ -118,7 +120,8 @@ export function ControlV2SemanaCard({
             ? 'rgba(255,255,255,0.14)'
             : 'rgba(15,42,30,0.12)',
           icon: 'trending-flat' as const,
-          stateLabel: 'Estable',
+          canonical: 'Saludable',
+          stateLabel: 'Ritmo estable',
           calloutBg: isDark
             ? 'rgba(255,255,255,0.04)'
             : 'rgba(15,42,30,0.04)',
@@ -145,12 +148,17 @@ export function ControlV2SemanaCard({
   const noSpendDays = closed.filter((d) => d.gasto === 0).length
 
   // Actionable hint — pick the most useful nudge given mood + spend.
+  // `hasPriorWeek` distinguishes "no comparison data yet" (cycle days
+  // 7–13) from "real comparison" (≥14 closed days). Without this
+  // guard, momentum-based hints reference "la semana anterior" even
+  // though `avgP7` was synthesized from `avgU7` as a fallback.
   const dailyDeltaVsCupo = avgU7 - cupoDiario // positive = over cupo
+  const hasPriorWeek = closedCount >= 14
   const hint = (() => {
     if (avgU7 > cupoDiario && diasRestantes > 0) {
       return {
         icon: 'trending-down' as const,
-        text: `Bajá ${formatMoneyShort(Math.max(0, dailyDeltaVsCupo))}/día para volver al cupo.`,
+        text: `Reduce ${formatMoneyShort(Math.max(0, dailyDeltaVsCupo))}/día para volver al cupo.`,
       }
     }
     if (avgU7 < cupoDiario) {
@@ -162,20 +170,29 @@ export function ControlV2SemanaCard({
         icon: 'savings' as const,
         text:
           projectedSavings > 0
-            ? `Estás ${formatMoneyShort(Math.abs(dailyDeltaVsCupo))}/día por debajo del cupo. Vas a sumar ~${formatMoneyShort(projectedSavings)} al cierre.`
-            : `Sostenés el ritmo del cupo. Buen pulso.`,
+            ? `${formatMoneyShort(Math.abs(dailyDeltaVsCupo))}/día por debajo del cupo. Suma ~${formatMoneyShort(projectedSavings)} al cierre.`
+            : `Ritmo sostenido en el cupo. Buen pulso.`,
       }
     }
-    if (mood === 'warn') {
+    if (mood === 'warn' && hasPriorWeek) {
       return {
         icon: 'priority-high' as const,
-        text: `Aceleraste ${momentumPct}% — cuidá los próximos días.`,
+        text: `Aceleración del ${momentumPct}% — cuida los próximos días.`,
       }
     }
-    if (mood === 'good') {
+    if (mood === 'good' && hasPriorWeek) {
       return {
         icon: 'savings' as const,
-        text: `Frenaste ${momentumPct}% vs la semana anterior. Vas a ahorrar.`,
+        text: `Reducción del ${momentumPct}% vs la semana anterior. Camino al ahorro.`,
+      }
+    }
+    if (!hasPriorWeek) {
+      // First week of the cycle — no real comparison base yet. Avoid
+      // the "vs la semana anterior" copy that misleads the user into
+      // thinking we're comparing against actual prior data.
+      return {
+        icon: 'trending-flat' as const,
+        text: 'Recién arrancás el ciclo. La comparación vs. tu semana anterior aparece a partir del día 14.',
       }
     }
     return {
@@ -185,9 +202,12 @@ export function ControlV2SemanaCard({
   })()
 
   // Stat tone for "vs prev". Rendered with the mood color so the sign
-  // and the chip agree visually + via the icon.
-  const vsPrevText =
-    momentum > 1
+  // and the chip agree visually + via the icon. When there's no real
+  // prior week of data, show "—" instead of "0%" so the user doesn't
+  // misread a synthetic momentum=1 as a real comparison.
+  const vsPrevText = !hasPriorWeek
+    ? '—'
+    : momentum > 1
       ? `+${momentumPct}%`
       : momentum < 1
         ? `−${momentumPct}%`
@@ -207,8 +227,8 @@ export function ControlV2SemanaCard({
     noSpendDot: isDark ? 'rgba(122,216,163,0.65)' : 'rgba(28,126,58,0.55)',
   }
   const cupoLineColor = isDark
-    ? 'rgba(255,255,255,0.22)'
-    : 'rgba(15,42,30,0.20)'
+    ? 'rgba(255,255,255,0.38)'
+    : 'rgba(15,42,30,0.32)'
 
   return (
     <RiseView delay={220}>
@@ -224,7 +244,7 @@ export function ControlV2SemanaCard({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={palette.fg} glow={palette.fg} />
           <Text style={[styles.eyebrow, { color: palette.fg }]} numberOfLines={1}>
-            CÓMO VENÍS · ÚLTIMOS 7 DÍAS
+            CÓMO VA · ÚLTIMOS 7 DÍAS
           </Text>
           <View
             style={[
@@ -280,81 +300,100 @@ export function ControlV2SemanaCard({
             },
           ]}
         >
-          <View style={styles.barsRow}>
-            <View
-              style={[
-                styles.cupoLine,
-                { bottom: `${cupoLinePct}%`, backgroundColor: cupoLineColor },
-              ]}
-            >
+          <View style={styles.chartZone}>
+            <View style={styles.barsRow}>
+              <View
+                style={[styles.cupoLineWrap, { bottom: `${cupoLinePct}%` }]}
+                pointerEvents="none"
+              >
+                <View
+                  style={[styles.cupoLineDot, { backgroundColor: cupoLineColor }]}
+                />
+                <DashedLine color={cupoLineColor} />
+              </View>
+              {last7.map((d, i) => {
+                const pct = Math.min(1, d.gasto / maxDisplay)
+                const isToday = d.inProgress
+                const isNoSpend = !isToday && d.gasto === 0
+                const over = !isToday && d.gasto > cupoDiario
+                const fill = isToday
+                  ? barColors.today
+                  : over
+                    ? barColors.over
+                    : barColors.under
+                return (
+                  <View key={`${d.dia}-${i}`} style={styles.barCol}>
+                    {isNoSpend ? (
+                      <View
+                        style={[styles.noSpendDot, { backgroundColor: barColors.noSpendDot }]}
+                        accessibilityLabel="Día sin gastos"
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.bar,
+                          {
+                            height: `${Math.max(2, pct * 100)}%`,
+                            backgroundColor: fill,
+                            borderColor: isToday
+                              ? theme.colors.text
+                              : 'transparent',
+                            borderWidth: isToday ? 1 : 0,
+                          },
+                        ]}
+                      />
+                    )}
+                  </View>
+                )
+              })}
+            </View>
+            <View style={styles.axisZone}>
               <View
                 style={[
                   styles.cupoTag,
                   {
+                    bottom: `${cupoLinePct}%`,
                     backgroundColor: theme.colors.surfaceMuted,
                     borderColor: theme.colors.border,
                   },
                 ]}
               >
-                <Text style={[styles.cupoTagText, { color: theme.colors.textMuted }]}>
-                  CUPO {formatMoneyShort(cupoDiario)}
+                <Text
+                  style={[styles.cupoTagLabel, { color: theme.colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  CUPO
+                </Text>
+                <Text
+                  style={[styles.cupoTagValue, { color: theme.colors.text }]}
+                  numberOfLines={1}
+                >
+                  {formatMoneyShort(cupoDiario)}
                 </Text>
               </View>
             </View>
-            {last7.map((d, i) => {
-              const pct = Math.min(1, d.gasto / maxDisplay)
-              const isToday = d.inProgress
-              const isNoSpend = !isToday && d.gasto === 0
-              const over = !isToday && d.gasto > cupoDiario
-              const fill = isToday
-                ? barColors.today
-                : over
-                  ? barColors.over
-                  : barColors.under
-              return (
-                <View key={`${d.dia}-${i}`} style={styles.barCol}>
-                  {isNoSpend ? (
-                    <View
-                      style={[styles.noSpendDot, { backgroundColor: barColors.noSpendDot }]}
-                      accessibilityLabel="Día sin gastos"
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.bar,
-                        {
-                          height: `${Math.max(2, pct * 100)}%`,
-                          backgroundColor: fill,
-                          borderColor: isToday
-                            ? theme.colors.text
-                            : 'transparent',
-                          borderWidth: isToday ? 1 : 0,
-                        },
-                      ]}
-                    />
-                  )}
-                </View>
-              )
-            })}
           </View>
-          <View style={styles.dayLabels}>
-            {last7.map((d, i) => {
-              const dowLetter = DAY_NAMES[d.dow] ?? ''
-              return (
-                <Text
-                  key={`${d.dia}-${i}`}
-                  style={[
-                    styles.dayLabel,
-                    {
-                      color: d.inProgress ? theme.colors.text : theme.colors.textMuted,
-                      fontWeight: d.inProgress ? '800' : '600',
-                    },
-                  ]}
-                >
-                  {dowLetter}
-                </Text>
-              )
-            })}
+          <View style={styles.dayLabelsRow}>
+            <View style={styles.dayLabels}>
+              {last7.map((d, i) => {
+                const dowLetter = DAY_NAMES[d.dow] ?? ''
+                return (
+                  <Text
+                    key={`${d.dia}-${i}`}
+                    style={[
+                      styles.dayLabel,
+                      {
+                        color: d.inProgress ? theme.colors.text : theme.colors.textMuted,
+                        fontWeight: d.inProgress ? '800' : '600',
+                      },
+                    ]}
+                  >
+                    {dowLetter}
+                  </Text>
+                )
+              })}
+            </View>
+            <View style={styles.axisZoneSpacer} />
           </View>
         </View>
 
@@ -375,6 +414,16 @@ export function ControlV2SemanaCard({
         </View>
       </View>
     </RiseView>
+  )
+}
+
+function DashedLine({ color }: { color: string }) {
+  return (
+    <View style={styles.dashedLine}>
+      {Array.from({ length: 22 }).map((_, i) => (
+        <View key={i} style={[styles.dash, { backgroundColor: color }]} />
+      ))}
+    </View>
   )
 }
 
@@ -415,10 +464,10 @@ function Stat({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {
@@ -440,6 +489,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
     borderWidth: 1,
+    maxWidth: 160,
   },
   statePillText: {
     fontSize: 10,
@@ -472,36 +522,80 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 12,
-    paddingTop: 18,
+    paddingTop: 14,
     paddingBottom: 10,
   },
+  chartZone: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
   barsRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     height: 96,
     gap: 8,
     position: 'relative',
   },
-  cupoLine: {
+  cupoLineWrap: {
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 1,
-    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 8,
+    marginBottom: -4,
+    zIndex: 3,
+  },
+  cupoLineDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginRight: 4,
+    opacity: 0.8,
+  },
+  dashedLine: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 8,
+  },
+  dash: {
+    width: 4,
+    height: 1.5,
+    borderRadius: 1,
+  },
+  axisZone: {
+    width: 52,
+    marginLeft: 8,
+    position: 'relative',
+  },
+  axisZoneSpacer: {
+    width: 52,
+    marginLeft: 8,
   },
   cupoTag: {
     position: 'absolute',
     right: 0,
-    top: -10,
+    left: 0,
     paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: -11,
   },
-  cupoTagText: {
-    fontSize: 9,
+  cupoTagLabel: {
+    fontSize: 8,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
+  },
+  cupoTagValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginTop: 1,
   },
   barCol: {
     flex: 1,
@@ -520,10 +614,15 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     marginBottom: 2,
   },
+  dayLabelsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
   dayLabels: {
+    flex: 1,
     flexDirection: 'row',
     gap: 8,
-    marginTop: 8,
   },
   dayLabel: {
     flex: 1,

@@ -39,9 +39,11 @@ function useFocusProgress(focused: boolean) {
 function TabIconFrame({
   children,
   focused,
+  showAlert,
 }: {
   children: ReactNode
   focused: boolean
+  showAlert?: boolean
 }) {
   const { theme } = useAppTheme()
   const progress = useFocusProgress(focused)
@@ -89,6 +91,21 @@ function TabIconFrame({
         />
         <View style={styles.iconCenter}>{children}</View>
       </Animated.View>
+
+      {/* Unread-alert dot — sibling of the frame so the frame's
+          overflow:hidden doesn't clip it. Suppressed while focused. */}
+      {showAlert && !focused ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.alertDot,
+            {
+              backgroundColor: theme.colors.warning,
+              borderColor: theme.colors.background,
+            },
+          ]}
+        />
+      ) : null}
     </View>
   )
 }
@@ -99,24 +116,26 @@ export function TabBarIcon({
   focused,
   name,
   size,
+  showAlert = false,
 }: {
   color: string
   fallback: keyof typeof MaterialIcons.glyphMap
   focused: boolean
   name: string
   size: number
+  /** When true, render a small unread-alert dot (top-right of the
+   *  icon frame). Suppressed automatically while focused — the user
+   *  is already on this tab. */
+  showAlert?: boolean
 }) {
   const { theme } = useAppTheme()
-  // When active, the icon flips to the surface of the pill
-  // (white on deep, deep on bright).
   const activeIconColor = theme.isDark ? brand.deep : '#FFFFFF'
   const idleIconColor = theme.colors.textMuted
   const resolvedColor = focused ? activeIconColor : idleIconColor
-  // `color` from the tab options stays as fallback if theme isn't ready
   void color
 
   return (
-    <TabIconFrame focused={focused}>
+    <TabIconFrame focused={focused} showAlert={showAlert}>
       <AppSymbol
         color={resolvedColor}
         fallback={fallback}
@@ -155,5 +174,14 @@ const styles = StyleSheet.create({
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  alertDot: {
+    position: 'absolute',
+    top: 1,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    borderWidth: 1.5,
   },
 })

@@ -64,6 +64,20 @@ export interface HomeHeroMetrics {
    * meaningful when `paydayPending === true`.
    */
   paydayDaysOverdue: number
+  /**
+   * `true` when there's enough cycle history to project the closing
+   * balance with confidence (≥4 elapsed days). On day 1–3 the daily
+   * average swings wildly with each new expense, so the hero hides
+   * the projected number and shows a "Aprendiendo tu ritmo…" state
+   * instead of misleading the user with volatile numbers.
+   */
+  projectionReliable: boolean
+  /**
+   * `true` when the family has set a monthly income (>0). When false
+   * the entire downstream math collapses to zero and the hero shows
+   * a setup CTA instead of "$0 disponible".
+   */
+  incomeConfigured: boolean
 }
 
 export interface HomeMonthSummary {
@@ -204,6 +218,13 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
         )
       : 0
 
+    // Projection reliability: with <4 elapsed days, a single high-spend
+    // outlier blows the linear projection up and shows the user wildly
+    // wrong "vas a cerrar con" numbers. Wait until day 4+ before
+    // surfacing the projection (UI shows a placeholder until then).
+    const projectionReliable = cycleDay >= 4
+    const incomeConfigured = dashboard.monthlyIncome > 0
+
     const hero: HomeHeroMetrics = {
       availableToday,
       cycleDay,
@@ -214,6 +235,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       cycleAdjusted: dashboard.cycleStartingBalanceOverride !== null,
       paydayPending: dashboard.isSalaryPendingConfirmation,
       paydayDaysOverdue,
+      projectionReliable,
+      incomeConfigured,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)

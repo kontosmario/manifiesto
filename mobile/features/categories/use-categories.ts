@@ -73,6 +73,10 @@ export function useCategories(familyId?: string, scope: CategoryScope = 'expense
   return useQuery<Category[]>({
     queryKey: categoriesQueryKey(familyId, scope),
     enabled: Boolean(familyId),
+    // Categories rarely change mid-session and mutations invalidate
+    // the key explicitly. Override the global 30s staleTime so tab
+    // switches don't fire silent refetches.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!familyId) {
         return []

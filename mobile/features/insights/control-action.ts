@@ -75,6 +75,21 @@ export type ControlAction =
    * doesn't reappear, and the UI collapses it with a check.
    */
   | { kind: 'dismiss'; dismissId: string }
+  /**
+   * Open an external resource — guides, articles, settings deep
+   * links, partner offers. The dispatcher will validate the URL
+   * (https-only) and route through `Linking.openURL` so the user
+   * leaves the app explicitly.
+   */
+  | { kind: 'open-external-url'; url: string; dismissId?: string }
+  /**
+   * Open a focused "coach" mode for a given signal — a longer-form
+   * experience that explains the pattern, walks through the data,
+   * and proposes structured next steps. Implemented as a route on
+   * `/coach/[signalId]` that the host app can render however it
+   * wants (full-screen modal today, immersive view later).
+   */
+  | { kind: 'open-coach-mode'; signalId: string; topic?: string }
 
 /** Helper to keep the action field compact at the rule definition. */
 export function a(action: ControlAction): ControlAction {

@@ -36,14 +36,14 @@ export function ControlV2EmptyState({
   const heading = missingIncome
     ? 'Configurá tu sueldo para empezar'
     : missingExpenses
-      ? 'Registrá tu primer gasto'
+      ? 'Registra tu primer gasto'
       : 'Estamos juntando datos'
 
   const subtitle = missingIncome
-    ? 'Con tu ingreso mensual calculamos cuánto podés gastar por día sin salirte del presupuesto.'
+    ? 'Con tu ingreso mensual calculamos cuánto puedes gastar por día sin salirte del presupuesto.'
     : missingExpenses
-      ? 'A medida que vayas registrando gastos, vas a ver tu ritmo diario, alertas y proyecciones en esta pantalla.'
-      : 'Necesitamos al menos una semana de gastos para armar tus estadísticas.'
+      ? 'A medida que registres gastos, aparecen aquí tu ritmo diario, alertas y proyecciones.'
+      : 'Necesitamos al menos una semana de gastos para armar las estadísticas.'
 
   return (
     <RiseView delay={80}>

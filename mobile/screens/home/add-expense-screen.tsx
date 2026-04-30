@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useAddExpenseController } from '@/features/expenses/use-add-expense-controller'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { errorMessages } from '@/lib/copy/states'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -49,6 +50,11 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
     userId,
     forDate,
   })
+  // Advisor signals are reused from the cached `useControlV2Data`
+  // query, so this hook adds no extra network. The dashboard renders
+  // an inline banner when the selected category has a relevant alert
+  // or when today is already over cupo.
+  const { signals: advisorSignals } = useControlV2Data(familyId)
 
   const headerPalette = buildScreenHeaderPalette(theme)
   const categoriesLoadError = controller.categoriesQuery.error
@@ -97,6 +103,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           description={controller.description}
           isBusy={controller.createExpenseMutation.isPending}
           forDate={controller.forDate}
+          advisorSignals={advisorSignals}
           onRawPriceChange={controller.actions.setRawPrice}
           onAddQuickAmount={controller.actions.addQuickAmount}
           onClearAmount={controller.actions.clearAmount}

@@ -122,7 +122,8 @@ export function ControlV2AlcanzaCard({
             ? 'rgba(122,216,163,0.26)'
             : 'rgba(28,126,58,0.18)',
           icon: 'check-circle' as const,
-          stateLabel: 'Llegás cómodo',
+          canonical: 'Saludable',
+          stateLabel: 'Saldo holgado',
           timelineFill: isDark ? '#7AD8A3' : '#1C7E3A',
         }
       case 'warn':
@@ -140,7 +141,8 @@ export function ControlV2AlcanzaCard({
             ? 'rgba(243,186,87,0.28)'
             : 'rgba(194,122,10,0.20)',
           icon: 'error-outline' as const,
-          stateLabel: alcanzaElMes ? 'Estás justo' : 'Te quedás corto',
+          canonical: 'Atención',
+          stateLabel: alcanzaElMes ? 'Saldo ajustado' : 'Saldo insuficiente',
           timelineFill: isDark ? '#F3BA57' : '#C27A0A',
         }
       case 'critical':
@@ -158,7 +160,8 @@ export function ControlV2AlcanzaCard({
             ? 'rgba(232,138,112,0.30)'
             : 'rgba(192,58,42,0.22)',
           icon: 'priority-high' as const,
-          stateLabel: 'Presupuesto agotado',
+          canonical: 'Crítico',
+          stateLabel: 'Saldo agotado',
           timelineFill: isDark ? '#E88A70' : '#C03A2A',
         }
     }
@@ -180,8 +183,8 @@ export function ControlV2AlcanzaCard({
         icon: 'priority-high' as const,
         text:
           restanteMes >= 0
-            ? `Te queda ${formatMoneyShort(Math.max(0, restanteMes))} hasta el próximo sueldo. Cuidalo a pulso.`
-            : `Pasaste el presupuesto libre. Cuidá el ritmo hasta el próximo sueldo.`,
+            ? `Quedan ${formatMoneyShort(Math.max(0, restanteMes))} hasta el próximo cobro. Cuida cada gasto.`
+            : `Presupuesto libre agotado. Cuida el ritmo hasta el próximo cobro.`,
       }
     }
     if (!alcanzaElMes) {
@@ -189,14 +192,14 @@ export function ControlV2AlcanzaCard({
         icon: 'trending-down' as const,
         text:
           dailyReduction > 0
-            ? `Bajá ${formatMoneyShort(dailyReduction)}/día para llegar holgado al próximo sueldo.`
-            : `Achicá el ritmo los próximos ${Math.max(1, diasMes - diaAgotamiento)} días para no quedarte corto.`,
+            ? `Reduce ${formatMoneyShort(dailyReduction)}/día para llegar holgado al próximo cobro.`
+            : `Reduce el ritmo los próximos ${Math.max(1, diasMes - diaAgotamiento)} días para no quedar corto.`,
       }
     }
     if (isTight) {
       return {
         icon: 'flag' as const,
-        text: `Llegás justito — sostené el ritmo y vas a cerrar con ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))} de margen.`,
+        text: `Saldo ajustado — manteniendo el ritmo, el ciclo cierra con ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))} de margen.`,
       }
     }
     return {
@@ -207,12 +210,12 @@ export function ControlV2AlcanzaCard({
 
   // ── Headline copy ───────────────────────────────────────────
   const headline = alreadyExhausted
-    ? `Pasaste el presupuesto libre cerca del día ${Math.max(1, diaAgotamiento)} del ciclo.`
+    ? `Presupuesto libre superado cerca del día ${Math.max(1, diaAgotamiento)} del ciclo.`
     : alcanzaElMes
       ? isComfortable
-        ? 'La plata te alcanza todo el mes — y de sobra.'
-        : 'Llegás al próximo sueldo, pero ajustado.'
-      : `Si seguís así, la plata se acaba el día ${diaAgotamiento} del ciclo.`
+        ? 'El presupuesto alcanza todo el mes — con margen de sobra.'
+        : 'Llega al próximo cobro, pero ajustado.'
+      : `Al ritmo actual, el presupuesto se agota el día ${diaAgotamiento} del ciclo.`
 
   // ── Timeline math (forward-projection only) ─────────────────
   const safeDiasMes = diasMes > 0 ? diasMes : 1
@@ -463,10 +466,10 @@ function Stat({ label, value, sub, text, muted }: StatProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {

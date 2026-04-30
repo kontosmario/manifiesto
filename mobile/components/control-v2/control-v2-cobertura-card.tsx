@@ -3,6 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
+import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
 import { formatMoneyShort } from '@/utils/money'
 
 interface ControlV2CoberturaCardProps {
@@ -80,90 +81,42 @@ export function ControlV2CoberturaCard({
   const librePct = Math.max(0, 100 - fijosPct - ahorroPct)
 
   // ── Health tiers ─────────────────────────────────────────────
-  // Common rule of thumb: fixed-cost ratio over 50% is "alto", over
-  // 65% is unsustainable territory. Below 35% is exceptional. Three
-  // colors + four copy variants give the user a real signal.
-  const mood: 'good' | 'fine' | 'warn' | 'critical' =
+  // Three states (positive/caution/critical) on top of the unified
+  // state tokens. "Excelente" (<35%) and "Saludable" (35-50%) used to
+  // be two separate green tiers — that confused users about whether
+  // we approve or just tolerate the ratio. Both now collapse to
+  // `positive` and the contextual sub-label distinguishes the two.
+  const state: SemanticState =
     fijosRatioPct >= 65
       ? 'critical'
       : fijosRatioPct >= 50
-        ? 'warn'
-        : fijosRatioPct >= 35
-          ? 'fine'
-          : 'good'
+        ? 'caution'
+        : 'positive'
 
-  const palette = (() => {
-    switch (mood) {
-      case 'good':
-        return {
-          fg: theme.colors.success,
-          border: isDark ? 'rgba(122,216,163,0.36)' : 'rgba(28,126,58,0.28)',
-          chipBg: isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)',
-          chipBorder: isDark
-            ? 'rgba(122,216,163,0.34)'
-            : 'rgba(28,126,58,0.26)',
-          calloutBg: isDark
-            ? 'rgba(122,216,163,0.10)'
-            : 'rgba(28,126,58,0.06)',
-          calloutBorder: isDark
-            ? 'rgba(122,216,163,0.26)'
-            : 'rgba(28,126,58,0.18)',
-          icon: 'check-circle' as const,
-          stateLabel: 'Excelente',
-        }
-      case 'fine':
-        return {
-          fg: theme.colors.success,
-          border: isDark ? 'rgba(122,216,163,0.30)' : 'rgba(28,126,58,0.22)',
-          chipBg: isDark ? 'rgba(122,216,163,0.14)' : 'rgba(28,126,58,0.08)',
-          chipBorder: isDark
-            ? 'rgba(122,216,163,0.30)'
-            : 'rgba(28,126,58,0.22)',
-          calloutBg: isDark
-            ? 'rgba(122,216,163,0.08)'
-            : 'rgba(28,126,58,0.05)',
-          calloutBorder: isDark
-            ? 'rgba(122,216,163,0.22)'
-            : 'rgba(28,126,58,0.16)',
-          icon: 'verified' as const,
-          stateLabel: 'Saludable',
-        }
-      case 'warn':
-        return {
-          fg: theme.colors.warning,
-          border: isDark ? 'rgba(243,186,87,0.42)' : 'rgba(194,122,10,0.32)',
-          chipBg: isDark ? 'rgba(243,186,87,0.16)' : 'rgba(194,122,10,0.10)',
-          chipBorder: isDark
-            ? 'rgba(243,186,87,0.34)'
-            : 'rgba(194,122,10,0.26)',
-          calloutBg: isDark
-            ? 'rgba(243,186,87,0.10)'
-            : 'rgba(194,122,10,0.06)',
-          calloutBorder: isDark
-            ? 'rgba(243,186,87,0.28)'
-            : 'rgba(194,122,10,0.20)',
-          icon: 'error-outline' as const,
-          stateLabel: 'Alto',
-        }
-      case 'critical':
-        return {
-          fg: theme.colors.danger,
-          border: isDark ? 'rgba(232,138,112,0.45)' : 'rgba(192,58,42,0.32)',
-          chipBg: isDark ? 'rgba(232,138,112,0.18)' : 'rgba(192,58,42,0.12)',
-          chipBorder: isDark
-            ? 'rgba(232,138,112,0.42)'
-            : 'rgba(192,58,42,0.30)',
-          calloutBg: isDark
-            ? 'rgba(232,138,112,0.12)'
-            : 'rgba(192,58,42,0.08)',
-          calloutBorder: isDark
-            ? 'rgba(232,138,112,0.30)'
-            : 'rgba(192,58,42,0.22)',
-          icon: 'priority-high' as const,
-          stateLabel: 'Crítico',
-        }
-    }
-  })()
+  // The "above the line" sub-label still surfaces the more granular
+  // read inside the positive band, so power users see "Excelente" on
+  // <35% — but the visual treatment stays unified.
+  const positiveContext =
+    fijosRatioPct < 35 ? 'Excelente' : 'Saludable'
+  const cautionContext = 'Alto'
+  const criticalContext = 'Crítico'
+
+  const tokens = getStateTokens(state, theme)
+  const palette = {
+    fg: tokens.fg,
+    border: tokens.border,
+    chipBg: tokens.bg,
+    chipBorder: tokens.border,
+    calloutBg: tokens.bg,
+    calloutBorder: tokens.border,
+    icon: tokens.icon,
+    stateLabel:
+      state === 'positive'
+        ? positiveContext
+        : state === 'caution'
+          ? cautionContext
+          : criticalContext,
+  }
 
   // Segment tones — match the stats dot colors to the bar fill so
   // the eye maps "this slice" → "this row" without legend overhead.
@@ -191,26 +144,24 @@ export function ControlV2CoberturaCard({
         text: 'No definiste cuánto ahorrar. Configurá tu meta mensual en Ajustes para que la app la respete.',
       }
     }
-    switch (mood) {
-      case 'good':
+    switch (state) {
+      case 'positive':
         return {
-          icon: 'check-circle' as const,
-          text: `Excelente: ${Math.round(fijosRatioPct)}% va a fijos. Tu margen es amplio.`,
+          icon: tokens.icon,
+          text:
+            fijosRatioPct < 35
+              ? `Excelente: ${Math.round(fijosRatioPct)}% va a fijos. Tu margen es amplio.`
+              : `Saludable: ${Math.round(fijosRatioPct)}% va a fijos. Estás dentro del rango ideal (35-50%).`,
         }
-      case 'fine':
+      case 'caution':
         return {
-          icon: 'verified' as const,
-          text: `Saludable: ${Math.round(fijosRatioPct)}% va a fijos. Estás dentro del rango ideal (35-50%).`,
-        }
-      case 'warn':
-        return {
-          icon: 'error-outline' as const,
-          text: `Alto: ${Math.round(fijosRatioPct)}% se va a fijos. Identificá si podés renegociar suscripciones o servicios.`,
+          icon: tokens.icon,
+          text: `Alto: ${Math.round(fijosRatioPct)}% se va a fijos. Revisa si puedes renegociar suscripciones o servicios.`,
         }
       case 'critical':
         return {
-          icon: 'priority-high' as const,
-          text: `Crítico: ${Math.round(fijosRatioPct)}% va a fijos. Necesitás reducir o renegociar para tener oxígeno real.`,
+          icon: tokens.icon,
+          text: `Crítico: ${Math.round(fijosRatioPct)}% va a fijos. Hay que reducir o renegociar para tener margen real.`,
         }
     }
   })()
@@ -245,7 +196,7 @@ export function ControlV2CoberturaCard({
               style={[styles.statePillText, { color: palette.fg }]}
               numberOfLines={1}
             >
-              {Math.round(fijosRatioPct)}% fijos · {palette.stateLabel}
+              {tokens.label} · {Math.round(fijosRatioPct)}% fijos
             </Text>
           </View>
         </View>
@@ -436,10 +387,10 @@ function SegmentStat({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {

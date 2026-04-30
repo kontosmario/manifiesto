@@ -13,6 +13,10 @@ import {
 } from '@/features/fixed-expenses/fixed-expense-repository'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import {
+  captureHikeReduction,
+  captureZombieDeletion,
+} from '@/features/insights/fixed-expense-value-capture'
+import {
   type FixedExpense,
   type FixedExpenseStatus,
 } from './fixed-expense-types'
@@ -28,6 +32,10 @@ export function useFixedExpenses(familyId?: string) {
   return useQuery<FixedExpense[]>({
     queryKey: fixedExpensesQueryKey(familyId),
     enabled: Boolean(familyId),
+    // Fixed expenses change at most a few times per day via explicit
+    // mutations (which invalidate this key). Bumped from the global
+    // 30s default to skip silent refetches on tab switch.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!familyId) {
         return []
@@ -78,6 +86,19 @@ export function useUpdateFixedExpense(familyId?: string) {
       await updateFixedExpense(familyId, input)
     },
     onSuccess: async (_data, variables) => {
+      // Counterfactual value capture: if the user just lowered the
+      // amount on a fixed expense that recently fired a `price_hike`
+      // alert, log the renegotiated savings BEFORE invalidating the
+      // cache (the helper reads the previous amount from the cache).
+      if (familyId) {
+        void captureHikeReduction({
+          queryClient,
+          familyId,
+          fixedExpenseId: variables.fixedExpenseId,
+          newAmount: variables.amount,
+        })
+      }
+
       await invalidateFamilyBudgetData(queryClient, familyId, {
         includeFixedExpenses: true,
         includeNotifications: true,
@@ -150,7 +171,19 @@ export function useDeleteFixedExpense(familyId?: string) {
       }
       await deleteFixedExpense(familyId, fixedExpenseId)
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, fixedExpenseId) => {
+      // Counterfactual value capture: if a recent `zombie_alert` was
+      // attached to this fixed expense, attribute the deletion to the
+      // advisor and log it. Runs BEFORE invalidation so the helper can
+      // still read the row from cache.
+      if (familyId) {
+        void captureZombieDeletion({
+          queryClient,
+          familyId,
+          fixedExpenseId,
+        })
+      }
+
       await invalidateFamilyBudgetData(queryClient, familyId, {
         includeFixedExpenses: true,
         includeNotifications: true,

@@ -77,7 +77,16 @@ export function HeroAurora({ radius = 28 }: HeroAuroraProps) {
           colorC={theme.colors.auroraC}
         />
       )}
-      {size ? <ParticleField height={size.height} width={size.width} /> : null}
+      {/*
+        ParticleField (22 Reanimated nodes — one per particle) was the
+        single biggest contributor to the Home steady-state UI thread
+        budget. The Skia aurora circles already provide enough soft
+        motion at the hero, so the particles were near-invisible at
+        steady state. Removed entirely; if a richer effect is desired
+        in the future, it should land as a single Skia draw call (one
+        canvas pintando todas las partículas en una pasada), not as
+        N independent Animated.Views.
+      */}
     </View>
   )
 }

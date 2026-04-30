@@ -17,13 +17,26 @@ export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingH
 
   return (
     <RiseView>
-      <View style={styles.row}>
+      <View
+        style={styles.row}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${greeting}, ${name}`}
+      >
         <FloatView amplitude={4} periodMs={5000} style={styles.iconWrap}>
           <Icon />
         </FloatView>
-        <Text style={[styles.greeting, { color: theme.colors.textMuted }]}>{greeting.toLowerCase()},</Text>
+        <Text
+          style={[styles.greeting, { color: theme.colors.textMuted }]}
+          maxFontSizeMultiplier={1.4}
+        >
+          {greeting.toLowerCase()},
+        </Text>
       </View>
-      <Text style={[styles.name, { color: theme.colors.text }]}>
+      <Text
+        style={[styles.name, { color: theme.colors.text }]}
+        maxFontSizeMultiplier={1.4}
+      >
         Hola, {name}
       </Text>
     </RiseView>

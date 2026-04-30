@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import type { AvatarSlug } from '@/assets/avatars'
 import { PaydayPillV2 } from '@/components/home/payday-pill-v2'
@@ -22,14 +23,18 @@ interface FamilyStripProps {
 
 const MAX_AVATARS = 4
 
-export function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress }: FamilyStripProps) {
+export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress }: FamilyStripProps) {
   const { theme } = useAppTheme()
   const visible = members.slice(0, MAX_AVATARS)
   const overflow = members.length - visible.length
   return (
     <RiseView delay={100}>
       <View style={styles.row}>
-        <View style={styles.avatars}>
+        <View
+          style={styles.avatars}
+          accessible
+          accessibilityLabel={`Miembros del hogar: ${members.length === 0 ? 'ninguno' : members.map((m) => m.name).join(', ')}.`}
+        >
           {visible.map((m, i) => (
             <View key={m.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
               {m.avatarSlug ? (
@@ -62,7 +67,7 @@ export function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayP
       </View>
     </RiseView>
   )
-}
+})
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },

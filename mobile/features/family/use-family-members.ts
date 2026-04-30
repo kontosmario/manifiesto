@@ -25,7 +25,9 @@ export function useFamilyMembers(familyId?: string) {
   return useQuery<FamilyMemberRow[]>({
     queryKey: familyMembersKey(familyId),
     enabled: Boolean(familyId),
-    staleTime: 60_000,
+    // Family roster rarely flips mid-session. Bumped from 60s so tab
+    // switches don't trigger silent refetches.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!familyId) return []
 
@@ -61,7 +63,11 @@ export function useFamilyMembers(familyId?: string) {
 
       return userIds.map((id, i) => ({
         id,
-        name: nameById.get(id) ?? '—',
+        // Empty string when display_name is missing — `Avatar` falls
+        // back to a person silhouette in that case. Previously this
+        // was '—' which rendered as a stranded em dash inside the
+        // colored circle (looked like a broken icon).
+        name: nameById.get(id) ?? '',
         color: COLOR_POOL[i % COLOR_POOL.length],
         avatarSlug: avatarById.get(id) ?? null,
       }))

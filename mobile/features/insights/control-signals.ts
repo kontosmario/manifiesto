@@ -27,6 +27,7 @@
 
 import type { Expense } from '@/features/expenses/expense-repository'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
+import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
 import type { Category } from '@/features/categories/use-categories'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import type {
@@ -38,6 +39,17 @@ import type {
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import type { ControlAction } from '@/features/insights/control-action'
 import type { UserBaselines } from '@/features/insights/user-baselines'
+import type { Forecast7Day } from '@/features/insights/forecast-engine'
+import type { CausalLink } from '@/features/insights/causal-engine'
+import type { UserPersona } from '@/features/insights/persona'
+import { framingFor } from '@/features/insights/persona'
+import { signalFamilyOf } from '@/features/insights/signal-family'
+import {
+  recoveryHardBody,
+  velocityBody,
+  fijosRatioBody,
+  positiveForecastBody,
+} from '@/features/insights/control-signals-copy'
 
 export interface CategoryLimit {
   id: string
@@ -79,6 +91,24 @@ interface BuildSignalsArgs {
   diasRestantes: number
   ingresoMes: number
   fijosMes: number
+  /** Optional 7-day rolling forecast (cognitive layer P1).
+   *  When present, the predictive builders (`forecast-*`) consume it. */
+  forecast?: Forecast7Day | null
+  /** Inferred persona (cognitive layer P2). Builders that have copy
+   *  variants (recovery-hard, velocity, fijos-ratio, positive-forecast)
+   *  swap the `body` accordingly. Defaults to `'planner'` (neutral
+   *  framing) when omitted. */
+   persona?: UserPersona
+  /** True when today is past the user's expected payday but they
+   *  haven't yet confirmed receipt — drives `income-missing`. */
+  paydayPending?: boolean
+  /** Per-user blocked signal families (cognitive layer P3). Signals
+   *  whose `signalFamilyOf(id)` matches any entry are dropped from
+   *  the surface entirely — the user has explicitly opted out. */
+  blockedFamilies?: ReadonlySet<string>
+  /** Causal links detected by `detectCausalLinks()` (P3). Builders
+   *  for the `causal-*` family consume them. */
+  causalLinks?: CausalLink[]
   /** Persisted per-device dismiss map keyed by fixed_expense_id →
    *  price-at-dismissal. */
   dismissedHikes?: Record<string, number>
@@ -173,24 +203,133 @@ export function buildControlSignals(
   // Group 8 — Positive reinforcement
   pushIfDefined(signals, buildStreakEncouragement(args))
 
+  // Group 9 — Atomic awareness (P1)
+  pushIfDefined(signals, buildHighSingleExpense(args))
+  pushIfDefined(signals, buildDuplicateMerchant(args))
+  pushIfDefined(signals, buildDataGapWarning(args))
+  pushIfDefined(signals, buildSavingsMilestone(args))
+  pushIfDefined(signals, buildCycleStartProjection(args))
+  pushIfDefined(signals, buildIncomeMissing(args))
+
+  // Group 10 — Forecast (P1)
+  pushIfDefined(signals, buildForecastTomorrowRisk(args))
+  pushIfDefined(signals, buildForecastStormWeek(args))
+  pushIfDefined(signals, buildForecastPaydayGap(args))
+
+  // Group 11 — Causal patterns (P3)
+  pushIfDefined(signals, buildCausalFridayCascade(args))
+  pushIfDefined(signals, buildCausalPairedImpulse(args))
+  pushIfDefined(signals, buildCausalStressSpending(args))
+
   // Drop low-confidence, fuse related signals into richer single
-  // cards, then rerank by urgency × impact × confidence.
-  const filtered = signals.filter((s) => s.confidence >= MIN_CONFIDENCE)
+  // cards, then rerank by urgency × annualizedImpact × confidence
+  // and apply a diversity budget so a single domain can't monopolize
+  // the top slots.
+  // ControlView doesn't expose diasMes directly — derive it from
+  // closed days + days remaining (matches both mock and adapter).
+  const cycleDays = Math.max(
+    1,
+    args.view.detalleDias.length + args.view.diasRestantes,
+  )
+  const blocked = args.blockedFamilies
+  const filtered = signals.filter((s) => {
+    if (s.confidence < MIN_CONFIDENCE) return false
+    // Hard mute: a user who blocked a family never sees signals of
+    // that family again until they unblock it. Family resolution
+    // collapses dynamic prefixes (zombie-* → 'zombie', etc.).
+    if (blocked && blocked.size > 0 && blocked.has(signalFamilyOf(s.id))) {
+      return false
+    }
+    return true
+  })
   const fused = fuseSignals(filtered)
-  return fused
+  const composed = composeSuperSignals(fused)
+  const ranked = composed
     .sort((a, b) => {
       const sa =
         urgencyWeight(a.urgency) *
-        Math.max(1, a.impactRaw) *
+        Math.max(1, annualizedImpact(a, cycleDays)) *
         a.confidence
       const sb =
         urgencyWeight(b.urgency) *
-        Math.max(1, b.impactRaw) *
+        Math.max(1, annualizedImpact(b, cycleDays)) *
         b.confidence
       if (sb !== sa) return sb - sa
-      return b.impactRaw - a.impactRaw
+      // Stable tiebreak: annualized impact → urgency → id (lexicographic)
+      const ia = annualizedImpact(a, cycleDays)
+      const ib = annualizedImpact(b, cycleDays)
+      if (ib !== ia) return ib - ia
+      const ua = urgencyWeight(a.urgency)
+      const ub = urgencyWeight(b.urgency)
+      if (ub !== ua) return ub - ua
+      return a.id.localeCompare(b.id)
     })
-    .slice(0, 5)
+  return applyDiversityBudget(ranked).slice(0, 5)
+}
+
+// ─── annualized impact ──────────────────────────────────────────────
+//
+// Compares signals on a common time horizon so a one-shot $50k zombie
+// doesn't out-rank a $30k/mes velocity warning. `impactScope` defaults
+// to 'monthly' to preserve current behavior for builders that haven't
+// been migrated yet.
+function annualizedImpact(
+  s: ControlAdvisorTask,
+  cycleDays: number,
+): number {
+  const scope = s.impactScope ?? 'monthly'
+  const raw = Math.abs(s.impactRaw)
+  switch (scope) {
+    case 'monthly':
+      return raw * 12
+    case 'oneTime':
+      return raw
+    case 'cycle':
+      return (raw * 365) / Math.max(1, cycleDays)
+  }
+}
+
+// ─── diversity budget ───────────────────────────────────────────────
+//
+// Caps the surface so a single tone (e.g. three "alta" criticals on the
+// same category) can't crowd out other dimensions. Keeps at most 3 of
+// any urgency, and at most 1 reinforcement (positive) signal per cycle.
+const REINFORCEMENT_IDS = new Set([
+  'streak-ok',
+  'cat-win',
+  'savings-over',
+  'positive-forecast',
+])
+
+/** Hard cap on super-signals per surface — they're aggregations of
+ *  multiple atomics, more than 2 in one view buries the lead. */
+const MAX_SUPER_SIGNALS = 2
+
+function applyDiversityBudget(
+  ranked: ControlAdvisorTask[],
+): ControlAdvisorTask[] {
+  let altaCount = 0
+  let mediaCount = 0
+  let bajaCount = 0
+  let reinforcementCount = 0
+  let superCount = 0
+  const kept: ControlAdvisorTask[] = []
+  for (const s of ranked) {
+    const isSuper = s.id.startsWith('super-')
+    if (isSuper && superCount >= MAX_SUPER_SIGNALS) continue
+    const isReinforcement = REINFORCEMENT_IDS.has(s.id)
+    if (!isSuper && isReinforcement && reinforcementCount >= 1) continue
+    if (s.urgency === 'alta' && altaCount >= 3) continue
+    if (s.urgency === 'media' && mediaCount >= 3) continue
+    if (s.urgency === 'baja' && bajaCount >= 3) continue
+    kept.push(s)
+    if (isSuper) superCount++
+    if (!isSuper && isReinforcement) reinforcementCount++
+    if (s.urgency === 'alta') altaCount++
+    else if (s.urgency === 'media') mediaCount++
+    else bajaCount++
+  }
+  return kept
 }
 
 // ─── F8 — signal fusion ─────────────────────────────────────────────
@@ -216,9 +355,15 @@ function fuseSignals(
   const startSplurge = byId.get('start-splurge')
   const velocity = byId.get('velocity')
   if (startSplurge && velocity) {
+    // start-splurge title is "${pct}% del mes gastado en los primeros 3 días" —
+    // pull the percentage out by regex so the merged copy carries the
+    // real number (the previous `split(': ')` always missed and fell
+    // back to a generic phrase).
+    const pctMatch = startSplurge.title.match(/(\d+%)/)
+    const pctText = pctMatch ? `${pctMatch[1]} del mes en los primeros días` : 'porcentaje alto en los primeros días'
     const merged: ControlAdvisorTask = {
       ...velocity,
-      body: `Arrancaste fuerte (${startSplurge.title.split(': ')[1] ?? 'porcentaje alto en los primeros días'}). ${velocity.body}`,
+      body: `Arranque elevado (${pctText}). ${velocity.body}`,
       confidence: Math.max(velocity.confidence, startSplurge.confidence),
     }
     byId.set('velocity', merged)
@@ -235,7 +380,7 @@ function fuseSignals(
       const dominance = byId.get(dominanceKey)!
       const merged: ControlAdvisorTask = {
         ...catAccel,
-        body: `${catAccel.body} Además, ya pesa el ${dominance.title.match(/\d+%/)?.[0] ?? '40%'} del mes — palanca grande.`,
+        body: `${catAccel.body} Además, ya concentra el ${dominance.title.match(/\d+%/)?.[0] ?? '40%'} del gasto del mes — punto de apalancamiento alto.`,
         urgency: 'media',
         impactRaw: catAccel.impactRaw + Math.round(dominance.impactRaw * 0.5),
         confidence: Math.max(catAccel.confidence, dominance.confidence),
@@ -253,6 +398,155 @@ function fuseSignals(
   return Array.from(byId.values())
 }
 
+// ─── Super-signal composition (P1) ──────────────────────────────────
+//
+// A super-signal groups 2-3 individually-firing atomic signals that
+// share an underlying narrative (a "perfect storm" of stress factors,
+// a positive momentum confluence, a hidden-drain pattern). When the
+// composition rule matches, we generate a single richer card and drop
+// the constituents — that single card communicates the gestalt better
+// than three separate ones, and frees space in the diversity budget.
+
+function findFirst(
+  byId: Map<string, ControlAdvisorTask>,
+  predicate: (id: string, t: ControlAdvisorTask) => boolean,
+): { id: string; task: ControlAdvisorTask } | null {
+  for (const [id, task] of byId) {
+    if (predicate(id, task)) return { id, task }
+  }
+  return null
+}
+
+function tryComposePerfectStorm(
+  byId: Map<string, ControlAdvisorTask>,
+): ControlAdvisorTask | null {
+  const fijos = byId.get('fijos-ratio')
+  // `velocity` may have been dropped by `fuseSignals` when
+  // `recovery-hard` is present (the two are redundant). Treat it as
+  // optional so the storm still composes in exactly that scenario —
+  // we just need ≥2 of {fijos, velocity, recovery} to fire.
+  const velocity = byId.get('velocity') ?? null
+  const recovery =
+    byId.get('recovery-hard') ?? byId.get('recovery-soft') ?? null
+  const present = [fijos, velocity, recovery].filter(
+    (t): t is ControlAdvisorTask => Boolean(t),
+  )
+  if (present.length < 2) return null
+  const altaCount = present.filter((t) => t.urgency === 'alta').length
+  if (altaCount < 2) return null
+  const composedOf = present.map((t) => t.id)
+  for (const id of composedOf) byId.delete(id)
+  // Annualize each constituent according to its declared scope so the
+  // combined carga is comparable to other annualized signals.
+  const annualizedSum = present.reduce((sum, t) => {
+    const scope = t.impactScope ?? 'monthly'
+    if (scope === 'monthly') return sum + t.impactRaw * 12
+    return sum + t.impactRaw // oneTime / cycle treated at face value
+  }, 0)
+  const titleSummary = present.map((t) => t.title.toLowerCase()).join(', ')
+  return {
+    id: 'super-perfect-storm',
+    emoji: '🌪️',
+    cat: 'Confluencia',
+    title: 'Confluencia crítica',
+    body: `${present.length === 3 ? 'Tres' : 'Dos'} factores se alinean: ${titleSummary}. Plan integral sugerido.`,
+    impact: `Carga combinada: ${fmt(Math.round(annualizedSum * 1.2))}`,
+    impactRaw: Math.round(annualizedSum * 1.2),
+    impactScope: 'oneTime',
+    cta: 'Plan integral',
+    urgency: 'alta',
+    confidence: Math.min(...present.map((t) => t.confidence)),
+    dataDays: Math.max(...present.map((t) => t.dataDays)),
+    dummyExplanation:
+      'Cuando los fijos pesan demasiado y al mismo tiempo hay sobregiro o aceleración, no es un problema aislado: es la suma. El plan integral baja a la vez la presión estructural y el día a día.',
+    composedOf,
+    action: { kind: 'open-coach-mode', signalId: 'super-perfect-storm', topic: 'crisis' },
+  }
+}
+
+function tryComposeSavingsMomentum(
+  byId: Map<string, ControlAdvisorTask>,
+): ControlAdvisorTask | null {
+  const streak = byId.get('streak-ok')
+  const positive = byId.get('positive-forecast')
+  const reinforcer =
+    byId.get('cat-win') ?? byId.get('savings-over')
+  if (!streak || !positive || !reinforcer) return null
+  const composedOf = [streak.id, positive.id, reinforcer.id]
+  for (const id of composedOf) byId.delete(id)
+  const totalImpact = positive.impactRaw + reinforcer.impactRaw * 12
+  return {
+    id: 'super-savings-momentum',
+    emoji: '🚀',
+    cat: 'Momentum',
+    title: 'Momentum positivo',
+    body: `Llevás racha sostenida, el ciclo proyecta sobrante, y hay categorías a favor. Es el momento de capitalizar: subir la meta o reasignar el excedente.`,
+    impact: `+${fmt(totalImpact)} a favor`,
+    impactRaw: Math.round(totalImpact),
+    impactScope: 'oneTime',
+    cta: 'Capitalizar',
+    urgency: 'baja',
+    confidence: Math.min(streak.confidence, positive.confidence, reinforcer.confidence),
+    dataDays: Math.max(streak.dataDays, positive.dataDays, reinforcer.dataDays),
+    dummyExplanation:
+      'La combinación de tres señales positivas a la vez — racha, sobrante y win por categoría — sostiene un cambio real. Buen momento para subir la meta o destinar el excedente.',
+    composedOf,
+    action: { kind: 'open-savings-goal' },
+  }
+}
+
+function tryComposeHiddenDrain(
+  byId: Map<string, ControlAdvisorTask>,
+): ControlAdvisorTask | null {
+  const leaks = byId.get('small-leaks')
+  const dominance = findFirst(byId, (id) => id.startsWith('cat-dominance-'))
+  const undetectedSub = findFirst(byId, (id) => id.startsWith('undetected-sub-'))
+  // Need ≥2 of the three.
+  const present = [leaks, dominance?.task, undetectedSub?.task].filter(
+    (t): t is ControlAdvisorTask => Boolean(t),
+  )
+  if (present.length < 2) return null
+  const composedOf = present.map((t) => t.id)
+  if (leaks) byId.delete(leaks.id)
+  if (dominance) byId.delete(dominance.id)
+  if (undetectedSub) byId.delete(undetectedSub.id)
+  const annualizedSum = present.reduce((sum, t) => sum + t.impactRaw * 12, 0)
+  return {
+    id: 'super-hidden-drain',
+    emoji: '💧',
+    cat: 'Drenaje',
+    title: 'Drenaje invisible',
+    body: 'Filtraciones chicas, una categoría dominante y/o un monto repetido sin registrar como fijo. Tres señales que en conjunto suelen explicar el goteo del ciclo.',
+    impact: `Goteo anual estimado: ${fmt(annualizedSum)}`,
+    impactRaw: Math.round(annualizedSum),
+    impactScope: 'oneTime',
+    cta: 'Auditar',
+    urgency: 'media',
+    confidence: Math.min(...present.map((t) => t.confidence)),
+    dataDays: Math.max(...present.map((t) => t.dataDays)),
+    dummyExplanation:
+      'Cuando varios patrones de gasto chico coinciden, el problema no está en una compra — está en la dinámica. Una auditoría guiada ayuda a ver qué cancelar, qué reasignar y qué dejar pasar.',
+    composedOf,
+    action: { kind: 'open-coach-mode', signalId: 'super-hidden-drain', topic: 'leaks' },
+  }
+}
+
+function composeSuperSignals(
+  tasks: ControlAdvisorTask[],
+): ControlAdvisorTask[] {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  const supers: ControlAdvisorTask[] = []
+  // Order matters: critical confluence first, then positive momentum,
+  // finally hidden drain (which competes for `small-leaks` etc.).
+  const storm = tryComposePerfectStorm(byId)
+  if (storm) supers.push(storm)
+  const momentum = tryComposeSavingsMomentum(byId)
+  if (momentum) supers.push(momentum)
+  const drain = tryComposeHiddenDrain(byId)
+  if (drain) supers.push(drain)
+  return [...supers, ...byId.values()]
+}
+
 // ─── Group 1 — Cycle mechanics ──────────────────────────────────────
 
 /** 3+ fijos due in next 7 days → heads-up about the coming squeeze. */
@@ -263,7 +557,12 @@ function buildStressWeek(
   const cutoff = new Date(now.getTime() + 7 * DAY_MS)
   const due = args.fixedExpenses.filter((f) => {
     if (f.status === 'completed' || !f.next_due_on) return false
-    const dueDate = new Date(f.next_due_on)
+    // `parseFixedExpenseDate` parses bare `YYYY-MM-DD` as local-day
+    // midnight. The naive `new Date(...)` shifts to UTC and drops
+    // fijos one day early in negative-UTC timezones — same bug the
+    // Próximo fijo chip's helper guards against.
+    const dueDate = parseFixedExpenseDate(f.next_due_on)
+    if (!dueDate) return false
     return dueDate >= now && dueDate <= cutoff
   })
   if (due.length < 3) return null
@@ -273,16 +572,17 @@ function buildStressWeek(
     id: 'stress-week',
     emoji: '📅',
     cat: 'Fijos',
-    title: `Semana cargada: ${due.length} fijos por vencer`,
-    body: `Se vienen ${names}${due.length > 3 ? ` y ${due.length - 3} más` : ''} en 7 días. Sumado es ${fmt(total)}. Mirá de tener la reserva hecha.`,
-    impact: `Reservar ${fmt(total)} antes del finde`,
+    title: `${due.length} pagos fijos vencen en 7 días`,
+    body: `${names}${due.length > 3 ? ` y ${due.length - 3} más` : ''} suman ${fmt(total)}. Es mejor reservar ese monto para evitar imprevistos.`,
+    impact: `Reservar ${fmt(total)}`,
     impactRaw: total,
+    impactScope: 'cycle',
     cta: 'Ver fijos',
     urgency: 'alta',
-    confidence: 1.0, // T0 — derived from fixed_expenses.next_due_on, no history needed
+    confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Un "fijo" es un pago que te llega todos los meses sí o sí (alquiler, luz, internet, suscripciones). Cuando varios caen en la misma semana, esa semana tenés menos plata libre. Te avisamos con tiempo para que no te agarre desprevenido.',
+      'Un "fijo" es un pago mensual recurrente (alquiler, servicios, suscripciones). Cuando varios caen en la misma semana, hay menos margen disponible para gasto variable. Avisamos con anticipación para evitar sorpresas.',
     action: { kind: 'navigate', route: '/(app)/(tabs)/fixed-expenses' },
   }
 }
@@ -300,16 +600,17 @@ function buildPaydayProximity(
     id: 'payday-proximity',
     emoji: '📆',
     cat: 'Ciclo',
-    title: `Faltan ${args.diasRestantes} días y te queda ${fmt(remaining)}`,
-    body: `Para llegar al próximo sueldo sin entrar en rojo, tu tope de los próximos días es ${fmt(sustainable)}/día (era ${fmt(args.cupoDiario)}). Tratá de no pasarte.`,
-    impact: `Tope nuevo: ${fmt(sustainable)}/día`,
+    title: `Quedan ${args.diasRestantes} días con ${fmt(remaining)} disponibles`,
+    body: `Para llegar al próximo cobro sin quedar en cero, el tope diario sugerido es ${fmt(sustainable)} (antes ${fmt(args.cupoDiario)}).`,
+    impact: `Nuevo tope diario: ${fmt(sustainable)}`,
     impactRaw: Math.round((args.cupoDiario - sustainable) * args.diasRestantes),
+    impactScope: 'cycle',
     cta: 'Entendido',
     urgency: sustainable < args.cupoDiario * 0.5 ? 'alta' : 'media',
-    confidence: 1.0, // T0 — based on remaining cycle math only
+    confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Agarramos la plata que te queda para el mes y la dividimos por los días que faltan para cobrar. Ese número es lo máximo que podés gastar cada día para no llegar seco.',
+      'Divide el saldo restante del ciclo por los días que faltan al próximo cobro. El resultado es el monto máximo a gastar por día para no quedar en cero antes del cierre.',
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
   }
 }
@@ -330,16 +631,22 @@ function buildStartOfCycleSplurge(
     id: 'start-splurge',
     emoji: '🚀',
     cat: 'Arranque',
-    title: `Arrancaste fuerte: ${Math.round(pct)}% del mes en 3 días`,
-    body: `Los primeros 3 días gastaste ${fmt(spent)} — equivalente a más de ${Math.round(pct / 3.3)} días de cupo. No es grave, pero el ritmo no escala.`,
-    impact: `Bajar al cupo = +${fmt(spent - args.cupoDiario * 3)}/mes`,
+    title: `${Math.round(pct)}% del mes gastado en los primeros 3 días`,
+    body: `Los primeros 3 días representan ${fmt(spent)}, equivalente a más de ${Math.round(pct / 3.3)} días de cupo. Si el ritmo se mantiene, el resto del mes queda ajustado.`,
+    // The $X is the 3-day OVERAGE the user already spent vs the daily
+    // cap × 3 days — it's a one-time recovery target, NOT a recurring
+    // monthly amount. Earlier copy said "+$X/mes" which conflated the
+    // two and inflated perceived severity. Now the label is honest
+    // about what the number represents.
+    impact: `Recuperar: +${fmt(spent - args.cupoDiario * 3)}`,
     impactRaw: Math.max(0, Math.round(spent - args.cupoDiario * 3)),
-    cta: 'Voy a cuidarme',
+    impactScope: 'oneTime',
+    cta: 'Entendido',
     urgency: 'media',
-    confidence: 0.9, // T1 — needs 3+ closed days; high since data is fresh
+    confidence: 0.9,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Apenas cobrás, gastar más tranquilo es común — hay plata nueva en la cuenta. El problema es cuando los primeros 3 días ya te comiste una porción grande: el resto del mes queda ajustado.',
+      'Es normal gastar con menos restricción los días después del cobro, cuando hay saldo fresco. Si los primeros 3 días se llevan una porción grande del presupuesto, el resto del mes queda ajustado.',
     action: { kind: 'dismiss', dismissId: 'start-splurge' },
   }
 }
@@ -361,16 +668,17 @@ function buildEndOfCycleAcceleration(
     id: 'end-acceleration',
     emoji: '⚠️',
     cat: 'Cierre',
-    title: `Últimos 3 días ${Math.round((ratio - 1) * 100)}% arriba`,
-    body: `Los últimos 3 días promediaste ${fmt(last3Avg)} vs ${fmt(cycleAvg)} del mes. Faltan ${args.diasRestantes} días — si sostenés este ritmo, te pasás.`,
-    impact: `Volver al promedio = ${fmtDelta(-extra)}`,
+    title: `Aceleración del ${Math.round((ratio - 1) * 100)}% en los últimos 3 días`,
+    body: `Promedio reciente: ${fmt(last3Avg)}/día vs ${fmt(cycleAvg)} del ciclo. Quedan ${args.diasRestantes} días — al ritmo actual, el cierre se va por encima del presupuesto.`,
+    impact: `Volver al promedio: ${fmtDelta(-extra)}`,
     impactRaw: Math.round(extra),
-    cta: 'Voy a frenar',
+    impactScope: 'cycle',
+    cta: 'Entendido',
     urgency: 'alta',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Hacia el final del mes muchos aflojan el control pensando "ya está, cierro mañana". Justo ahí es cuando más rápido se va la plata. Comparamos los últimos 3 días con tu promedio del mes para avisarte si la velocidad cambió.',
+      'Es común relajar el control al final del ciclo, justo cuando una aceleración golpea más al cierre. Comparar los últimos 3 días contra el promedio del ciclo ayuda a detectar el cambio a tiempo.',
     action: { kind: 'dismiss', dismissId: 'end-acceleration' },
   }
 }
@@ -384,20 +692,26 @@ function buildRecoveryPath(
   const overspend = Math.abs(args.view.delta)
   const newCupo = args.cupoDiario - overspend / args.diasRestantes
   if (newCupo < args.cupoDiario * 0.4) {
+    const framing = framingFor(args.persona ?? 'planner')
     return {
       id: 'recovery-hard',
       emoji: '🧭',
       cat: 'Recuperación',
-      title: 'Te pasaste bastante hoy',
-      body: `Para cerrar como querías, tendrías que gastar menos de ${fmt(newCupo)}/día los próximos ${args.diasRestantes} días. Es durísimo — considerá reajustar la meta o mover algún fijo.`,
-      impact: `Recuperar ${fmt(overspend)}`,
+      title: 'Sobregiro fuerte hoy',
+      body: recoveryHardBody(framing, {
+        newCupo: fmt(newCupo),
+        diasRestantes: args.diasRestantes,
+        overspend: fmt(overspend),
+      }),
+      impact: `A recuperar: ${fmt(overspend)}`,
       impactRaw: Math.round(overspend),
+      impactScope: 'oneTime',
       cta: 'Ajustar',
       urgency: 'alta',
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Te pasaste tanto del presupuesto de hoy que recuperarte apretando los próximos días no es realista. Mejor ajustar la meta o ver si hay algún fijo que puedas mover.',
+        'Cuando el sobregiro del día es grande, intentar bajar mucho el cupo el resto del mes no funciona. Mejor reajustar la meta de ahorro o reordenar algún gasto fijo antes que sostener un objetivo imposible.',
       action: { kind: 'navigate', route: '/(app)/settings' },
     }
   }
@@ -405,16 +719,17 @@ function buildRecoveryPath(
     id: 'recovery-soft',
     emoji: '🧭',
     cat: 'Recuperación',
-    title: 'Ajustá el cupo y cerrás bien',
-    body: `Hoy te pasaste por ${fmt(overspend)}. Si de acá hasta fin de mes gastás ${fmt(newCupo)}/día, llegás sin quedarte corto.`,
-    impact: `Nuevo cupo sugerido: ${fmt(newCupo)}/día`,
+    title: 'Cupo diario reajustado',
+    body: `Sobregiro del día: ${fmt(overspend)}. Si se mantiene ${fmt(newCupo)}/día hasta fin de mes, el ciclo cierra sin problemas.`,
+    impact: `Nuevo cupo: ${fmt(newCupo)}/día`,
     impactRaw: Math.round(overspend),
+    impactScope: 'oneTime',
     cta: 'Entendido',
     urgency: 'media',
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Te pasaste del tope de hoy. Repartimos el sobrante entre los días que quedan y te sale un cupo nuevo un poco más bajo. Si seguís ese número el resto del mes, cerrás sin quedarte corto.',
+      'Cuando el sobregiro es moderado, se reparte entre los días que quedan y queda un cupo un poco más bajo. Si se mantiene ese cupo, el ciclo cierra dentro del presupuesto.',
     action: { kind: 'dismiss', dismissId: 'recovery-soft' },
   }
 }
@@ -433,24 +748,27 @@ function buildVelocityWarning(
       : v.stress_level === 'warn'
         ? 'media'
         : 'baja'
+  const framing = framingFor(args.persona ?? 'planner')
   return {
     id: 'velocity',
     emoji: '⏱️',
     cat: 'Ritmo',
     title: stressTitle(v.stress_level),
-    body: `Tu ritmo de los últimos 7 días proyecta cerrar en ${fmt(v.forecast_close_amount)}. ${
-      v.momentum > 1
-        ? `Vas ${((v.momentum - 1) * 100).toFixed(0)}% más rápido que el promedio del mes.`
-        : 'El ritmo bajó un poco — seguí así.'
-    }`,
-    impact: over > 0 ? `Freno = ${fmtDelta(-over)}` : 'Mantener ritmo',
+    body: velocityBody(framing, {
+      forecast: fmt(v.forecast_close_amount),
+      momentumPct: Math.max(0, Math.round((v.momentum - 1) * 100)),
+      faster: v.momentum > 1,
+      over: over > 0 ? fmt(over) : null,
+    }),
+    impact: over > 0 ? `Frenar: ${fmtDelta(-over)}` : 'Mantener ritmo',
     impactRaw: Math.max(0, Math.round(over)),
+    impactScope: 'oneTime',
     cta: 'Entendido',
     urgency,
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Medimos a qué velocidad venís gastando últimamente comparado con lo que venías haciendo antes. Si aceleraste mucho, te estimamos a qué número vas a cerrar el mes.',
+      'Compara la velocidad de gasto reciente (últimos 7 días) contra el promedio del ciclo. Si la velocidad se aceleró, proyecta el monto estimado de cierre para anticipar el resultado del mes.',
     action: { kind: 'dismiss', dismissId: 'velocity' },
   }
 }
@@ -469,24 +787,29 @@ function buildPositiveForecast(
   const hasActiveGoal = !!(args.savingsGoal && args.savingsGoal.isActive)
   // Round the contribution down to the nearest 1k for nicer copy.
   const proposed = Math.max(0, Math.floor((sobra * 0.5) / 1000) * 1000)
+  const framing = framingFor(args.persona ?? 'planner')
   return {
     id: 'positive-forecast',
     emoji: '🌱',
     cat: 'Proyección',
-    title: `Vas a cerrar con ${fmt(sobra)} de sobra`,
-    body: hasActiveGoal && proposed > 0
-      ? `Si sostenés este ritmo los ${args.diasRestantes} días que quedan, cerrás en verde. Te propongo mover ${fmt(proposed)} a "${args.savingsGoal!.title}" ya — el resto te queda de colchón.`
-      : `Si sostenés este ritmo los ${args.diasRestantes} días que quedan, cerrás en verde. Ese excedente puede ir a tu meta o a la alcancía.`,
+    title: `Excedente proyectado: ${fmt(sobra)}`,
+    body: positiveForecastBody(framing, {
+      sobra: fmt(sobra),
+      proposed: hasActiveGoal && proposed > 0 ? fmt(proposed) : null,
+      goalTitle: hasActiveGoal && args.savingsGoal ? args.savingsGoal.title : null,
+      diasRestantes: args.diasRestantes,
+    }),
     impact: hasActiveGoal && proposed > 0
-      ? `+${fmt(proposed)} a la alcancía`
+      ? `+${fmt(proposed)} a la meta`
       : `+${fmt(sobra)} al cierre`,
     impactRaw: Math.round(proposed > 0 ? proposed : sobra),
-    cta: hasActiveGoal && proposed > 0 ? `Mover ${fmt(proposed)}` : 'A la meta',
+    impactScope: 'oneTime',
+    cta: hasActiveGoal && proposed > 0 ? `Mover ${fmt(proposed)}` : 'Ver meta',
     urgency: 'baja',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Mirando cómo venís gastando y los días que faltan, te proyectamos con cuánto terminás el mes si no cambia nada. Cuando es positivo, es plata que te sobró — podés mandarla a tu meta o dejarla de colchón.',
+      'Proyecta el cierre del ciclo combinando el ritmo de gasto actual con los días restantes. Cuando el resultado es positivo, anticipa el monto excedente disponible para meta de ahorro o reserva.',
     action:
       hasActiveGoal && proposed > 0
         ? {
@@ -521,17 +844,17 @@ function buildCategoryAcceleration(
   // likely a one-off (cumple, viaje, electrodoméstico) — say so. A
   // gradual rise suggests a habit shift.
   const spike = isCategorySpike(args.expenses, topNow.id, args.now ?? new Date())
-  const titleSuffix = spike ? ' (puede ser un gasto puntual)' : ''
+  const titleSuffix = spike ? ' (gasto puntual)' : ''
   const body = spike
-    ? `Llevás ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. Casi todo es de los últimos 7 días — si fue algo único (cumple, viaje, electrodoméstico), tranqui. Si se repite, el mes próximo va a doler.`
-    : `Llevás ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. La suba viene gradual, no de un solo día — parece un cambio de hábito.`
+    ? `Llevas ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. Casi todo es de los últimos 7 días — probablemente un gasto único (viaje, regalo, compra grande). Si se repite, el próximo mes va a ser ajustado.`
+    : `Llevas ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. La suba es gradual, parece un cambio de hábito.`
   return {
     id: 'cat-accel',
     emoji: spike ? '🎯' : '📈',
     cat: topNow.name,
-    title: `${topNow.name} +${Math.round((ratio - 1) * 100)}% vs tu promedio${titleSuffix}`,
+    title: `${topNow.name} +${Math.round((ratio - 1) * 100)}% vs promedio${titleSuffix}`,
     body,
-    impact: `Volver al promedio = ${fmtDelta(-delta)}/mes`,
+    impact: `Volver al promedio: ${fmtDelta(-delta)}/mes`,
     impactRaw: Math.round(delta),
     cta: 'Ver gastos',
     urgency: 'media',
@@ -540,7 +863,7 @@ function buildCategoryAcceleration(
       rampSummaries(args.summaries.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Si veniste gastando $100 en una cosa y este mes vas por $140, algo cambió. Puede ser puntual o un hábito nuevo — vale la pena mirar antes de que se haga costumbre.',
+      'Compara el gasto actual en una categoría contra su promedio histórico. Una suba marcada puede ser puntual (un evento único) o el inicio de un cambio de hábito. Detectarla a tiempo ayuda a ajustar antes de que afecte el cierre.',
     action: {
       kind: 'open-expenses-filtered',
       filter: { categoryId: topNow.id },
@@ -570,21 +893,23 @@ function buildCategoryCapBreaches(
       emoji: breach ? '🚫' : '⚠️',
       cat: name,
       title: breach
-        ? `Te pasaste del tope en ${name}`
-        : `${name} va al ${pct}% de tu tope`,
+        ? `${name}: tope superado`
+        : `${name} al ${pct}% del tope`,
       body: breach
-        ? `Tu tope era ${fmt(limit.monthly_cap)} y ya gastaste ${fmt(spent)}. Te sobregiraste por ${fmt(spent - limit.monthly_cap)}.`
-        : `Llevás ${fmt(spent)} de los ${fmt(limit.monthly_cap)} que te propusiste. Quedan ${fmt(limit.monthly_cap - spent)} para cerrar el mes.`,
+        ? `Tu tope era ${fmt(limit.monthly_cap)} y llevas gastados ${fmt(spent)}. Sobregiro: ${fmt(spent - limit.monthly_cap)}.`
+        : `Llevas ${fmt(spent)} de los ${fmt(limit.monthly_cap)} que pusiste como tope. Quedan ${fmt(limit.monthly_cap - spent)} para cerrar el mes.`,
       impact: breach
-        ? `Frenar acá = ${fmtDelta(-(spent - limit.monthly_cap))}`
-        : `Mantenerte ≤ ${fmt(limit.monthly_cap)} = meta ok`,
+        ? `Frenar ahora: ${fmtDelta(-(spent - limit.monthly_cap))}`
+        : `Mantener bajo ${fmt(limit.monthly_cap)}`,
       impactRaw: breach ? Math.round(spent - limit.monthly_cap) : 0,
+      // Overshoot is for THIS cycle only — not a recurring monthly amount.
+      impactScope: 'cycle',
       cta: 'Ver detalle',
       urgency: breach ? 'alta' : 'media',
-      confidence: 1.0, // T0 — explicit user-set cap, no inference
+      confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Vos le pusiste un tope a esta categoría ("no quiero gastar más de $X"). Cuando te acercás o te pasás, te avisamos. Es como ponerte una meta personal — ayuda a frenar antes de que sea tarde.',
+        'Si pones un tope mensual a una categoría, la app avisa cuando te acercas o lo superas. Funciona como una meta personal: ayuda a frenar el gasto antes de que afecte el cierre del ciclo.',
       action: {
         kind: 'open-expenses-filtered',
         filter: { categoryId: limit.category_id },
@@ -616,16 +941,16 @@ function buildCategoryDominance(
     id: `cat-dominance-${top.id}`,
     emoji: '🎯',
     cat: top.name,
-    title: `${top.name} se llevó ${Math.round(pct)}% del mes`,
-    body: `De los ${fmt(total)} que gastaste, ${fmt(top.amount)} fueron a ${top.name}. Un recorte del 10% ahí es más grande que ahorrar en 3 categorías chicas.`,
-    impact: `10% menos = +${fmt(save10)}/mes`,
+    title: `${top.name}: ${Math.round(pct)}% del gasto del mes`,
+    body: `De los ${fmt(total)} que llevas gastados, ${fmt(top.amount)} son de ${top.name}. Bajar 10% en esta categoría rinde más que ajustar varias menores.`,
+    impact: `Reducir 10%: +${fmt(save10)}/mes`,
     impactRaw: Math.round(save10),
     cta: 'Entendido',
     urgency: 'media',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuando una sola categoría se come 40%+ de tu gasto, ahí está tu palanca más grande para ahorrar. Recortar 10% en esa categoría rinde más que cuidar 5 categorías chicas.',
+      'Cuando una categoría concentra el 40% o más del gasto, ahí está la mayor palanca para ahorrar. Una reducción chica en la categoría dominante rinde más que varios ajustes menores.',
     action: { kind: 'dismiss', dismissId: `cat-dominance-${top.id}` },
   }
 }
@@ -655,18 +980,18 @@ function buildCategoryReductionWin(
     id: 'cat-win',
     emoji: '✅',
     cat: bestWin.name,
-    title: `${bestWin.name} bajó ${pct}% vs tu promedio`,
-    body: `Gastaste ${fmt(bestWin.now)} este mes cuando solías gastar ${fmt(bestWin.avg)}. Si lo sostenés, son ${fmt(bestWin.delta * 12)} al año.`,
+    title: `${bestWin.name} −${pct}% vs promedio`,
+    body: `Gastaste ${fmt(bestWin.now)} este mes vs ${fmt(bestWin.avg)} de promedio. Si lo mantienes, son ${fmt(bestWin.delta * 12)} al año.`,
     impact: `+${fmt(bestWin.delta)}/mes sostenido`,
     impactRaw: Math.round(bestWin.delta),
-    cta: '¡Gracias!',
+    cta: 'Entendido',
     urgency: 'baja',
     confidence:
       rampOneCycle(args.view.detalleDias.length) *
       rampSummaries(args.summaries.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Una categoría donde venías gastando $X bajó claramente este mes. Te mostramos el ahorro anual que representa — motiva sostener el cambio.',
+      'Detecta categorías donde el gasto del mes está claramente por debajo del promedio histórico. Mostrar el equivalente anual ayuda a sostener el cambio en el tiempo.',
     action: { kind: 'dismiss', dismissId: 'cat-win' },
   }
 }
@@ -687,16 +1012,16 @@ function buildSmallLeaksInsight(
     id: 'small-leaks',
     emoji: '💧',
     cat: 'Goteo',
-    title: `${small.length} gastos chicos suman ${fmt(total)}`,
-    body: `Son compras de menos de $5.000 que pasan desapercibidas (kiosko, delivery, café). Juntos son el ${Math.round(pctOfCycle * 100)}% de lo que llevás gastado este mes.`,
-    impact: `Cortar 30% = ${fmt(total * 0.3)}/mes`,
+    title: `${small.length} gastos pequeños suman ${fmt(total)}`,
+    body: `Compras menores a $5.000 (kiosco, delivery, café) representan el ${Math.round(pctOfCycle * 100)}% del gasto del mes. Suelen pasar desapercibidas una por una.`,
+    impact: `Reducir 30%: ${fmt(total * 0.3)}/mes`,
     impactRaw: Math.round(total * 0.3),
-    cta: 'Ver chicos',
+    cta: 'Ver detalle',
     urgency: 'media',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Los gastos de menos de $5.000 parecen insignificantes uno por uno, pero juntos son como una canilla que gotea. Es donde más plata escondida hay, porque nadie los registra mentalmente.',
+      'Los gastos menores a $5.000 parecen insignificantes uno por uno, pero juntos suman una porción importante del mes. Verlos juntos ayuda a detectar dónde se concentra el "goteo" del presupuesto.',
     action: {
       kind: 'open-expenses-filtered',
       filter: { priceMax: 5000 },
@@ -731,16 +1056,16 @@ function buildNightImpulse(
     id: 'night-impulse',
     emoji: '🌙',
     cat: 'Horario',
-    title: `${Math.round(nightPct)}% de tu gasto es de noche`,
-    body: `${night} de tus ${discretionary.length} compras fueron después de las 22hs — suman ${fmt(nightAmount)}. Revisar el carrito antes de dormir suele bajar ese ratio.`,
-    impact: `Cortar 20% = +${fmt(nightAmount * 0.2)}/mes`,
+    title: `${Math.round(nightPct)}% del gasto se concentra de noche`,
+    body: `${night} de ${discretionary.length} compras fueron después de las 22hs, sumando ${fmt(nightAmount)}. Las compras nocturnas suelen ser más impulsivas.`,
+    impact: `Reducir 20%: +${fmt(nightAmount * 0.2)}/mes`,
     impactRaw: Math.round(nightAmount * 0.2),
-    cta: 'Lo voy a notar',
+    cta: 'Entendido',
     urgency: 'media',
     confidence: rampThreeWeeks(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Las compras nocturnas (después de las 22hs) suelen ser más impulsivas — delivery, cosas en apps. Si la mayoría de tus gastos caen ahí, conviene notarlo: revisar el carrito al otro día suele cortar la mitad.',
+      'Las compras nocturnas (delivery, apps) suelen ser más impulsivas — varios estudios lo muestran. Esperar al día siguiente para decidir suele cortar la mitad de esas compras.',
     action: { kind: 'dismiss', dismissId: 'night-impulse' },
   }
 }
@@ -771,17 +1096,21 @@ function buildUndetectedSubscription(
       id: `undetected-sub-${amount}`,
       emoji: '🔁',
       cat: 'Suscripciones',
-      title: `Posible suscripción sin registrar: ${fmt(amount)}`,
-      body: `Detecté ${entries.length} gastos del mismo monto${desc ? ` ("${desc.slice(0, 40)}")` : ''}. Si se repite todos los meses, registrarlo como fijo te lo muestra mejor.`,
-      impact: `Registrar = control`,
-      impactRaw: amount * 12, // value of having it tracked over a year
-      cta: 'Convertir',
+      title: `Posible suscripción no registrada: ${fmt(amount)}`,
+      body: `Encontramos ${entries.length} gastos por el mismo monto${desc ? ` ("${desc.slice(0, 40)}")` : ''}. Si se repite todos los meses, mejor registrarlo como gasto fijo para hacer seguimiento.`,
+      impact: `Mejor seguimiento mensual`,
+      // Monthly magnitude (ranking convention: every signal's
+      // impactRaw is in MONTHLY equivalent so the score formula
+      // `urgencyWeight × impactRaw × confidence` compares apples to
+      // apples). The annual context lives in the body ("Si se repite
+      // todos los meses…"), not in the rank-driving number.
+      impactRaw: Math.round(amount),
+      cta: 'Registrar',
       urgency: 'baja',
-      // Confidence ramps with closed days (T3 — needs ~21 days).
       confidence: rampThreeWeeks(args.view.detalleDias.length),
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Detectamos un monto que se repite en distintos días — típico patrón de una suscripción que entraste como gasto normal. Si la registrás como "fijo", aparece en compromisos y la podés trackear mejor.',
+        'Detecta montos que se repiten en días distintos — patrón típico de suscripciones cargadas como gasto variable. Si las registras como gasto fijo, puedes seguir aumentos y detectar las que dejas de usar.',
       action: {
         kind: 'open-add-fixed-prefilled',
         amount,
@@ -807,10 +1136,16 @@ function buildWeeklyPattern(
   if (!porDowEnriched || porDowEnriched.length < 7 || globalAvg <= 0) return null
 
   // ── Candidate A: worst single DoW
+  // Use actual cycle length to compute how many of this weekday fall
+  // in a typical month — `cycleDays / 7` (≈ 4.28 for a 30-day cycle).
+  // The hardcoded `* 4` was correct only for 28-day cycles and
+  // under-counted impact by ~7% for longer cycles.
+  const cycleDays =
+    args.view.detalleDias.length + args.view.diasRestantes
   let dowExtra = 0
   let dowName = ''
   if (peorDow && peorDow.avg > 0 && peorDow.ratio >= 1.4) {
-    const monthlyOccurrences = 4
+    const monthlyOccurrences = cycleDays / 7
     dowExtra = (peorDow.avg - globalAvg) * monthlyOccurrences
     dowName =
       DOW_NAMES_FULL[dowIndexFromName(peorDow.name)] ?? peorDow.name.toLowerCase()
@@ -835,7 +1170,11 @@ function buildWeeklyPattern(
       if (wkdayAvgValue > 0) {
         wkRatio = weekendAvgValue / wkdayAvgValue
         if (wkRatio >= 1.5) {
-          wkExtra = (weekendAvgValue - wkdayAvgValue) * 8
+          // 2 weekend days per 7-day week, scaled by actual cycle
+          // length. Hardcoded `* 8` was correct for 28-day cycles
+          // only; this generalizes (≈8.57 for a 30-day cycle).
+          wkExtra =
+            (weekendAvgValue - wkdayAvgValue) * (2 * cycleDays) / 7
         }
       }
     }
@@ -851,8 +1190,8 @@ function buildWeeklyPattern(
       id: 'weekly-pattern',
       emoji: '🗓️',
       cat: 'Patrón',
-      title: `Los ${dowName}s se te va la mano`,
-      body: `Gastás ${peorDow!.ratio.toFixed(1)}× más que un día promedio. Si el próximo ${dowName} lo hacés en casa, ganás el equivalente a un día entero de cupo.`,
+      title: `Los ${dowName} elevan el gasto`,
+      body: `El gasto promedio de los ${dowName} es ${peorDow!.ratio.toFixed(1)}× un día normal. Reducirlo equivale a recuperar un día entero de cupo al mes.`,
       impact: `+${fmt(dowExtra)}/mes`,
       impactRaw: Math.round(dowExtra),
       cta: 'Entendido',
@@ -860,26 +1199,25 @@ function buildWeeklyPattern(
       confidence: rampThreeWeeks(args.view.detalleDias.length),
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Agrupamos tus gastos por día de semana y sacamos el promedio de cada uno. Así descubrimos si hay un día donde siempre te vas de mambo.',
+        'Agrupa el gasto por día de la semana y calcula el promedio de cada uno. Permite identificar el día que concentra el mayor gasto recurrente.',
       action: { kind: 'dismiss', dismissId: 'weekly-pattern' },
     }
   }
 
-  // weekend
   return {
     id: 'weekly-pattern',
     emoji: '🎉',
     cat: 'Fin de semana',
-    title: `Los findes cuestan ${Math.round((wkRatio - 1) * 100)}% más`,
-    body: `De lunes a viernes promediás ${fmt(wkdayAvgValue)}/día; sáb-dom ${fmt(weekendAvgValue)}. Es donde más margen hay para emparejar.`,
-    impact: `+${fmt(wkExtra)}/mes si emparejás`,
+    title: `Fines de semana: +${Math.round((wkRatio - 1) * 100)}% de gasto`,
+    body: `Lunes a viernes: ${fmt(wkdayAvgValue)}/día en promedio. Sábados y domingos: ${fmt(weekendAvgValue)}/día. Ahí está el mayor margen para ajustar.`,
+    impact: `+${fmt(wkExtra)}/mes ajustando`,
     impactRaw: Math.round(wkExtra),
     cta: 'Entendido',
     urgency: 'baja',
     confidence: rampThreeWeeks(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Los sábados y domingos suelen tener salidas, delivery, planes con amigos — y gastás bastante más que los días de semana. Si bajás un poco, sumás al fin del mes sin sentir que te privás.',
+      'Los fines de semana concentran salidas, delivery y planes sociales que elevan el gasto promedio. Pequeños ajustes en sábado y domingo suman varios miles al cierre sin afectar el resto de la semana.',
     action: { kind: 'dismiss', dismissId: 'weekly-pattern' },
   }
 }
@@ -897,20 +1235,25 @@ function buildFijosRatioHealth(
   const excess = args.fijosMes - target
   const severity: ControlAdvisorTask['urgency'] =
     ratio > 0.75 ? 'alta' : 'media'
+  const framing = framingFor(args.persona ?? 'planner')
   return {
     id: 'fijos-ratio',
     emoji: '⚖️',
     cat: 'Fijos',
-    title: `Tus fijos son el ${Math.round(ratio * 100)}% del sueldo`,
-    body: `Lo sano es ≤ 50%. Hoy cada $100 que entran, ${Math.round(ratio * 100)} ya están comprometidos antes de gastar nada. Revisá las suscripciones y los variables recurrentes.`,
-    impact: `Bajar al 50% libera ${fmt(excess)}/mes`,
+    title: `Gastos fijos: ${Math.round(ratio * 100)}% del ingreso`,
+    body: fijosRatioBody(framing, {
+      ratioPct: Math.round(ratio * 100),
+      excess: fmt(excess),
+      comprometidoPct: Math.round(ratio * 100),
+    }),
+    impact: `Bajar al 50%: libera ${fmt(excess)}/mes`,
     impactRaw: Math.round(excess),
     cta: 'Ver fijos',
     urgency: severity,
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'La regla común dice que tus fijos no deberían pasar del 50% del sueldo, porque si suben no te queda margen para imprevistos. Te mostramos tu porcentaje para que sepas qué tan apretado estás.',
+      'La regla común dice que los gastos fijos no deberían pasar el 50% del ingreso. Por encima de ese límite, queda poco margen para imprevistos y ahorro.',
     action: { kind: 'navigate', route: '/(app)/(tabs)/fixed-expenses' },
   }
 }
@@ -937,11 +1280,11 @@ function buildIncomeVolatility(
     emoji: better ? '📈' : '📉',
     cat: 'Ingreso',
     title: better
-      ? `Tu ingreso subió ${pct.toFixed(0)}% vs el promedio`
-      : `Tu ingreso bajó ${Math.abs(pct).toFixed(0)}% vs el promedio`,
+      ? `Ingreso +${pct.toFixed(0)}% vs promedio histórico`
+      : `Ingreso −${Math.abs(pct).toFixed(0)}% vs promedio histórico`,
     body: better
-      ? `Pasaste de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. El libre subió — buen momento para empujar tu meta.`
-      : `Pasaste de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. Tus fijos quedaron pesando más en proporción — revisalos.`,
+      ? `Tu ingreso pasó de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. El presupuesto libre creció — buen momento para subir el ahorro mensual.`
+      : `Tu ingreso pasó de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. Los fijos pesan más en proporción — momento de revisarlos.`,
     impact: fmtDelta(delta),
     impactRaw: Math.abs(Math.round(delta)),
     cta: better ? 'Ver meta' : 'Ver fijos',
@@ -949,7 +1292,7 @@ function buildIncomeVolatility(
     confidence: rampSummaries(args.summaries.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Comparamos tu sueldo de este mes contra el promedio de los últimos 3 meses. Si subió, es buen momento para ahorrar más. Si bajó, ojo: tus fijos ahora son un porcentaje más grande de tu ingreso.',
+      'Compara el ingreso del mes contra el promedio de los últimos 3 meses. Una variación significativa cambia el peso relativo de los gastos fijos y la capacidad de ahorro disponible.',
     action,
   }
 }
@@ -972,16 +1315,16 @@ function buildFromZombieNotifications(
       id: `zombie-${n.id}`,
       emoji: '🧟',
       cat: 'Suscripciones',
-      title: `${name} no la venís usando`,
-      body: `Pagás ${fmt(amount)} cada mes y hace más de 2 meses que no la abrís. Cancelando ahora te quedan ${fmt(amount * 12)} a fin de año.`,
+      title: `${name}: sin uso reciente`,
+      body: `Cuesta ${fmt(amount)} al mes y hace 2+ meses que no se usa. Si la cancelas ahora, son ${fmt(amount * 12)} hasta fin de año.`,
       impact: `+${fmt(amount)}/mes`,
       impactRaw: Math.round(amount),
       cta: 'Cancelar',
       urgency: 'alta',
-      confidence: 1.0, // explicit detection from server
+      confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Las "zombis" son las suscripciones que seguís pagando aunque no las uses. Hace meses no tocás ésta — si no la necesitás, cada mes que la mantenés es plata tirada.',
+        'Una suscripción "zombi" es un servicio que pagas mes a mes pero no usas. La detectamos a partir de los patrones de uso registrados. Si la cancelas, recuperas ese monto al instante.',
       action: {
         kind: 'open-fixed-expense',
         fixedExpenseId: String(n.metadata.fixed_expense_id ?? ''),
@@ -1019,16 +1362,16 @@ function buildFromPriceHikeNotifications(
       id: `hike-${n.id}`,
       emoji: '⚡',
       cat: 'Fijos',
-      title: `${name} subió ${pct.toFixed(0)}%`,
-      body: `Pasó de ${fmt(prev)} a ${fmt(next)}. En 12 meses, son ${fmt(delta * 12)} más. Si podés comparar o renegociar, vale la pena.`,
-      impact: `${fmtDelta(-delta)}/mes si bajás`,
+      title: `${name}: aumento del ${pct.toFixed(0)}%`,
+      body: `Pasó de ${fmt(prev)} a ${fmt(next)}. En 12 meses son ${fmt(delta * 12)} más. Comparar otros proveedores o renegociar puede recuperar parte del aumento.`,
+      impact: `Hasta ${fmtDelta(-delta)}/mes negociando`,
       impactRaw: Math.round(delta),
       cta: 'Comparar',
       urgency: 'baja',
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Uno de tus pagos fijos subió. Los aumentos parecen chicos mes a mes, pero acumulados en un año suman bastante. Te avisamos para que puedas comparar o renegociar antes de que se normalice el precio alto.',
+        'Detecta aumentos en los gastos fijos cuando se cargan. Los aumentos parecen chicos mes a mes, pero acumulados en un año suelen justificar buscar alternativas o renegociar con el proveedor.',
       action: {
         kind: 'open-fixed-expense',
         fixedExpenseId: String(n.metadata.fixed_expense_id ?? ''),
@@ -1057,16 +1400,16 @@ function buildSavingsFeasibility(
     id: 'savings-feasibility',
     emoji: '🎯',
     cat: goal.title,
-    title: `Falta ${fmt(shortfall)} para tu meta`,
-    body: `Para ${goal.title} necesitás ahorrar ${fmt(monthlyNeeded)}/mes y este mes vas por ${fmt(monthlyActual)}. Si no lo recuperás, se estira el plazo.`,
-    impact: `Suma ${fmt(shortfall)} este mes`,
+    title: `Meta "${goal.title}": faltan ${fmt(shortfall)} este mes`,
+    body: `El plan necesita ${fmt(monthlyNeeded)}/mes para llegar al objetivo. Este mes vas por ${fmt(monthlyActual)}. Si no se recupera la diferencia, la fecha se aleja.`,
+    impact: `Cubrir ${fmt(shortfall)} este mes`,
     impactRaw: Math.round(shortfall),
     cta: 'Ver meta',
     urgency: 'media',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Si querés llegar a una meta en X meses, tenés que poner cierta plata cada mes. Esta regla compara cuánto pusiste vs cuánto pediría el plan. Mejor saberlo ahora que en el mes 11.',
+      'Compara el ahorro mensual actual contra el monto que pide el plan. Detectar el desvío en los primeros meses ayuda a ajustar antes de que se extienda mucho el plazo.',
     action: { kind: 'open-savings-goal' },
   }
 }
@@ -1091,16 +1434,16 @@ function buildSavingsOverachievement(
     id: 'savings-over',
     emoji: '🚀',
     cat: goal.title,
-    title: `Vas ${saved} meses adelantado a tu meta`,
-    body: `Este mes ahorraste ${fmt(actual)} cuando el plan pedía ${fmt(planned)}. A ese ritmo llegás a ${goal.title} en ${newMonths} meses en vez de ${months}.`,
-    impact: `-${saved} meses`,
+    title: `Meta adelantada en ${saved} ${saved === 1 ? 'mes' : 'meses'}`,
+    body: `Este mes ahorraste ${fmt(actual)} cuando el plan pedía ${fmt(planned)}. A este ritmo, ${goal.title} llega en ${newMonths} meses en vez de ${months}.`,
+    impact: `−${saved} ${saved === 1 ? 'mes' : 'meses'} al objetivo`,
     impactRaw: Math.round(actual - planned),
     cta: 'Ver meta',
     urgency: 'baja',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Este mes ahorraste más de lo que pedía tu plan. Si sostenés el ritmo, llegás antes a tu objetivo. Te mostramos en cuántos meses llegarías para que puedas ajustar la meta o agregar un extra.',
+      'Cuando el ahorro mensual supera el plan, recalculamos la fecha estimada de cumplimiento. Puedes mantener el ritmo para llegar antes o subir la meta.',
     action: { kind: 'open-savings-goal' },
   }
 }
@@ -1132,21 +1475,488 @@ function buildMemberContributionImbalance(
     id: `member-imbalance-${topId}`,
     emoji: '👥',
     cat: 'Familia',
-    title: `Un miembro carga el ${Math.round(pct)}% del gasto`,
-    body: `De los ${fmt(total)} gastados este mes, ${fmt(topAmount)} los puso una sola persona. Si es por comodidad, está bien; si no, puede valer la pena compartir.`,
-    impact: `Reparto 50/50 = ${fmt(total / 2)}`,
+    title: `Distribución desbalanceada: ${Math.round(pct)}% en un miembro`,
+    body: `Del total de ${fmt(total)} gastado este mes, ${fmt(topAmount)} los puso una sola persona. Vale la pena revisar si el reparto refleja el acuerdo del hogar.`,
+    impact: `Reparto equitativo: ${fmt(total / 2)} cada uno`,
     impactRaw: 0,
     cta: 'Avisar',
     urgency: 'baja',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'En hogares compartidos a veces uno termina pagando casi todo por costumbre, no porque se acordó así. Te mostramos el split real para que lo hablen.',
+      'En hogares compartidos, la distribución del gasto suele desviarse del acuerdo sin que nadie lo note. Mostrar el reparto real ayuda a hablarlo entre todos.',
     action: {
       kind: 'send-member-warning',
       targetUserId: topId,
-      message: `Aviso: este mes pusiste el ${Math.round(pct)}% del gasto del hogar (${fmt(topAmount)} de ${fmt(total)}). Quizás quieran hablarlo.`,
+      message: `Aviso del asistente: este ciclo concentraste el ${Math.round(pct)}% del gasto del hogar (${fmt(topAmount)} de ${fmt(total)}).`,
     },
+  }
+}
+
+// ─── Group 9 — Atomic awareness (P1) ────────────────────────────────
+//
+// Signals that don't depend on the cognitive layer (memory / causal /
+// forecast). They are computed from the same `BuildSignalsArgs` as the
+// rest and are registered in the main pipeline. Each has a stable id
+// and respects the existing dismiss / cooldown / diversity-budget
+// machinery.
+
+const DAY_MS_LOCAL = 24 * 60 * 60 * 1000
+
+function startOfLocalDay(date: Date): number {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/** Single tx today >= 30% of daily cap. Pure-T0; alerts on the spot. */
+function buildHighSingleExpense(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  if (args.cupoDiario <= 0) return null
+  const today = startOfLocalDay(args.now ?? new Date())
+  const todayExpenses = args.expenses.filter((e) => {
+    const ts = new Date(e.created_at).getTime()
+    return ts >= today && ts < today + DAY_MS_LOCAL
+  })
+  if (todayExpenses.length === 0) return null
+  let max = todayExpenses[0]
+  for (const e of todayExpenses) if (Number(e.price ?? 0) > Number(max.price ?? 0)) max = e
+  const price = Number(max.price ?? 0)
+  if (price < args.cupoDiario * 0.3) return null
+  const pct = Math.round((price / args.cupoDiario) * 100)
+  return {
+    id: 'high-single-expense',
+    emoji: '💥',
+    cat: 'Gasto único',
+    title: `Movimiento alto hoy: ${fmt(price)}`,
+    body: `Hoy registraste ${fmt(price)} en un solo movimiento — ${pct}% del cupo diario (${fmt(args.cupoDiario)}). Mirá si conviene compensar el resto del día.`,
+    impact: `Hoy: ${fmt(price)}`,
+    impactRaw: Math.round(price),
+    impactScope: 'oneTime',
+    cta: 'Ver detalle',
+    urgency: 'media',
+    confidence: 1.0,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Cuando un solo gasto ocupa una porción grande del cupo del día, el resto del día queda sin margen. Verlo apenas pasa permite reaccionar.',
+    action: {
+      kind: 'open-expenses-filtered',
+      filter: { focusExpenseId: max.id },
+    },
+  }
+}
+
+/** Two expenses with same description (normalized) and similar price within 48h. */
+function buildDuplicateMerchant(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const now = (args.now ?? new Date()).getTime()
+  const cutoff = now - 48 * 60 * 60 * 1000
+  const recent = args.expenses.filter(
+    (e) => new Date(e.created_at).getTime() >= cutoff,
+  )
+  if (recent.length < 2) return null
+  const seen = new Map<string, typeof recent>()
+  for (const e of recent) {
+    const key = (e.description ?? '').trim().toLowerCase()
+    if (!key) continue
+    const arr = seen.get(key) ?? []
+    arr.push(e)
+    seen.set(key, arr)
+  }
+  for (const [, list] of seen) {
+    if (list.length < 2) continue
+    list.sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))
+    const lo = Number(list[0].price ?? 0)
+    const hi = Number(list[list.length - 1].price ?? 0)
+    if (lo <= 0) continue
+    if (hi - lo > lo * 0.05) continue // ±5% tolerance
+    const focus = list[list.length - 1]
+    return {
+      id: `duplicate-${focus.id}`,
+      emoji: '🪞',
+      cat: 'Posible duplicado',
+      title: `${list.length} cargos parecidos en 48h`,
+      body: `Detecté ${list.length} cargos de "${focus.description}" por ~${fmt(hi)} en menos de 48h. ¿Confirmás que son distintos?`,
+      impact: `Revisar: ${fmt(hi)}`,
+      impactRaw: Math.round(hi),
+      impactScope: 'oneTime',
+      cta: 'Revisar',
+      urgency: 'baja',
+      confidence: 1.0,
+      dataDays: args.view.detalleDias.length,
+      dummyExplanation:
+        'Dos cargos con descripción y monto casi idénticos en pocas horas suelen ser un duplicado del comercio o del registro manual. La idea es que el usuario lo confirme.',
+      action: {
+        kind: 'open-expenses-filtered',
+        filter: { focusExpenseId: focus.id },
+      },
+    }
+  }
+  return null
+}
+
+/** No expenses logged in the last N days — surface a low-friction nudge. */
+function buildDataGapWarning(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  if (args.expenses.length === 0) return null
+  // Sorted by `created_at desc` upstream; first item is the most recent.
+  const last = args.expenses[0]
+  const lastTs = new Date(last.created_at).getTime()
+  const now = (args.now ?? new Date()).getTime()
+  const daysSince = Math.floor((now - lastTs) / DAY_MS_LOCAL)
+  if (daysSince < 3) return null
+  if (daysSince > 14) return null // beyond this we don't pester
+  return {
+    id: 'data-gap-warning',
+    emoji: '📭',
+    cat: 'Registros',
+    title: `${daysSince} días sin gastos cargados`,
+    body: `Si tuviste movimientos esos días, registralos para que el cierre del ciclo refleje la realidad. Si no, ignorá este aviso.`,
+    impact: `Hace ${daysSince} días`,
+    impactRaw: 0,
+    impactScope: 'oneTime',
+    cta: 'Cargar gastos',
+    urgency: 'baja',
+    confidence: 1.0,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Los signals dependen de que los gastos estén cargados. Una pausa larga sin registros suele indicar que algo no se anotó, no que no se gastó.',
+    action: { kind: 'navigate', route: '/(app)/(tabs)/expenses' },
+  }
+}
+
+/** Goal hit 100% — positive reinforcement that doubles as a CTA to extend. */
+function buildSavingsMilestone(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const goal = args.savingsGoal
+  if (!goal || !goal.isActive) return null
+  if (goal.currentAmount < goal.goalAmount) return null
+  return {
+    id: 'savings-milestone',
+    emoji: '🎯',
+    cat: goal.title,
+    title: `¡Llegaste a la meta!`,
+    body: `Cumpliste el 100% de "${goal.title}" con ${fmt(goal.currentAmount)} ahorrados. Buen momento para definir la siguiente.`,
+    impact: `Total: ${fmt(goal.goalAmount)}`,
+    impactRaw: Math.round(goal.goalAmount),
+    impactScope: 'oneTime',
+    cta: 'Ver meta',
+    urgency: 'baja',
+    confidence: 1.0,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Un hito sirve para celebrar y para reusar el momentum: la siguiente meta arranca con el hábito ya construido, no desde cero.',
+    action: { kind: 'open-savings-goal' },
+  }
+}
+
+/** Payday passed but salary not yet confirmed → ask the user to
+ *  refresh the cycle balance or adjust the payday. Critical because
+ *  the rest of the engine assumes a confirmed cycle anchor. */
+function buildIncomeMissing(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  if (!args.paydayPending) return null
+  return {
+    id: 'income-missing',
+    emoji: '📭',
+    cat: 'Cobro',
+    title: 'Cobro esperado no confirmado',
+    body: `Tu cobro estaba previsto pero el ciclo no se confirmó. Si llegó, actualizá el balance del nuevo ciclo. Si cambió la fecha, ajustá tu día de pago.`,
+    impact: args.ingresoMes > 0 ? `Ingreso esperado: ${fmt(args.ingresoMes)}` : 'Confirmar cobro',
+    impactRaw: Math.round(args.ingresoMes),
+    impactScope: 'oneTime',
+    cta: 'Actualizar',
+    urgency: 'alta',
+    confidence: 1.0,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Cuando el día de pago configurado ya pasó pero el ciclo no se confirmó, el resto del cálculo (cupo diario, proyecciones) trabaja con el ciclo anterior. Confirmar acá restablece la base.',
+    action: { kind: 'navigate', route: '/(app)/(tabs)/control' },
+  }
+}
+
+/** First 1-2 days of cycle: structural libreRatio < 25% means tight month ahead. */
+function buildCycleStartProjection(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const closedDays = args.view.detalleDias.length
+  if (closedDays > 2) return null
+  if (args.ingresoMes <= 0) return null
+  const monthlyGoalNeed =
+    args.savingsGoal && args.savingsGoal.isActive && args.savingsGoal.targetMonths
+      ? Math.max(
+          0,
+          (args.savingsGoal.goalAmount - args.savingsGoal.currentAmount) /
+            args.savingsGoal.targetMonths,
+        )
+      : 0
+  const libre = args.ingresoMes - args.fijosMes - monthlyGoalNeed
+  if (libre <= 0) return null
+  const libreRatio = libre / args.ingresoMes
+  if (libreRatio >= 0.25) return null
+  const target = Math.round(args.ingresoMes * 0.25)
+  const gap = Math.max(0, target - libre)
+  return {
+    id: 'cycle-start-projection',
+    emoji: '🪶',
+    cat: 'Inicio de ciclo',
+    title: `Mes apretado: ${Math.round(libreRatio * 100)}% libre`,
+    body: `Después de fijos${monthlyGoalNeed > 0 ? ' y meta' : ''}, te queda ${fmt(libre)} libre (${Math.round(libreRatio * 100)}% del ingreso). Lo saludable es ≥25%. Pausar la meta este mes o renegociar un fijo te da aire.`,
+    impact: `Aire faltante: ${fmt(gap)}`,
+    impactRaw: gap,
+    impactScope: 'monthly',
+    cta: 'Ver fijos',
+    urgency: 'media',
+    confidence: 1.0,
+    dataDays: closedDays,
+    dummyExplanation:
+      '"Libre" es lo que te queda del ingreso después de pagar fijos y separar la meta de ahorro. Si arranca bajo, cualquier imprevisto pega más fuerte. Mejor avisarlo al inicio del ciclo cuando todavía hay margen para ajustar.',
+    action: { kind: 'navigate', route: '/(app)/(tabs)/fixed-expenses' },
+  }
+}
+
+// ─── Group 10 — Forecast (P1) ───────────────────────────────────────
+//
+// The three predictive signals consume the optional `args.forecast`
+// snapshot. They return null when the forecast is absent or doesn't
+// carry the data the rule needs — the system degrades gracefully on
+// older deploys / cold starts.
+
+const PROJECT_DOW_FROM_NAME: Record<string, number> = {
+  Lun: 0,
+  Mar: 1,
+  Mié: 2,
+  Jue: 3,
+  Vie: 4,
+  Sáb: 5,
+  Dom: 6,
+}
+
+/** Tomorrow falls on the user's worst-historical DoW with a thin margin. */
+function buildForecastTomorrowRisk(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const peor = args.view.peorDow
+  if (!peor || peor.count < 2) return null
+  const peorDowIdx = PROJECT_DOW_FROM_NAME[peor.name]
+  if (peorDowIdx == null) return null
+  const now = args.now ?? new Date()
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const tomorrowDow = (tomorrow.getDay() + 6) % 7
+  if (tomorrowDow !== peorDowIdx) return null
+  const remaining = args.view.restanteMes
+  const expected = peor.avg
+  if (expected <= 0) return null
+  if (remaining > expected * 1.5) return null
+  const buffer = Math.max(0, remaining - expected)
+  return {
+    id: 'forecast-tomorrow-risk',
+    emoji: '📅',
+    cat: 'Predicción',
+    title: `Mañana suele ser tu peor día`,
+    body: `Mañana es ${peor.name.toLowerCase()}, históricamente promediás ${fmt(expected)}. Hoy te queda ${fmt(remaining)} libre — gastá menos de ${fmt(buffer)} para no arrancar mañana en rojo.`,
+    impact: `Margen mañana: ${fmt(buffer)}`,
+    impactRaw: Math.round(expected),
+    impactScope: 'oneTime',
+    cta: 'Ver semana',
+    urgency: 'media',
+    confidence: rampThreeWeeks(args.view.detalleDias.length),
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'El sistema mira tus gastos por día de la semana y detecta cuál suele ser el más caro. Si mañana es ese día, conviene cerrar hoy con margen.',
+    action: { kind: 'scroll-to-section', section: 'semana' },
+  }
+}
+
+/** Three or more DISTINCT inflection days in next 7 → "storm week". */
+function buildForecastStormWeek(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const f = args.forecast
+  if (!f) return null
+  // Count distinct dates so a single date that triggers both
+  // `fixed_payment` and `historical_high_dow` doesn't double-count
+  // toward the threshold. We keep the highest expectedAmount per day
+  // for the impact total.
+  const byDay = new Map<string, number>()
+  for (const ev of f.inflectionDays) {
+    const prev = byDay.get(ev.day) ?? 0
+    if (ev.expectedAmount > prev) byDay.set(ev.day, ev.expectedAmount)
+  }
+  const distinctDays = byDay.size
+  if (distinctDays < 3) return null
+  // Sum only the top 5 distinct-day amounts to keep the impact bounded.
+  const sorted = Array.from(byDay.values()).sort((a, b) => b - a)
+  const totalImpact = sorted.slice(0, 5).reduce((s, v) => s + v, 0)
+  if (totalImpact <= 0) return null
+  return {
+    id: 'forecast-storm-week',
+    emoji: '🌩️',
+    cat: 'Predicción',
+    title: `Semana cargada: ${distinctDays} días`,
+    body: `Próximos 7 días: ${distinctDays} días con cargos importantes (${fmt(totalImpact)} en total). Reservá margen antes de que lleguen.`,
+    impact: `A reservar: ${fmt(totalImpact)}`,
+    impactRaw: Math.round(totalImpact),
+    impactScope: 'oneTime',
+    cta: 'Ver semana',
+    urgency: 'alta',
+    confidence: rampOneCycle(args.view.detalleDias.length),
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Cuando se acumulan vencimientos de fijos, días caros y caps cerca, conviene reservar el monto antes que reaccionar después. El forecast detecta ese cluster.',
+    action: { kind: 'scroll-to-section', section: 'semana' },
+  }
+}
+
+/** Pessimistic track exhausts `restanteMes` before payday → recovery urgent. */
+function buildForecastPaydayGap(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const f = args.forecast
+  if (!f) return null
+  if (args.diasRestantes <= 1) return null
+  if (f.pessimistic.dailyAvg <= 0) return null
+  const remaining = args.view.restanteMes
+  if (f.pessimistic.totalProjected <= remaining) return null
+  const daysToZero = Math.floor(remaining / f.pessimistic.dailyAvg)
+  if (daysToZero >= args.diasRestantes) return null
+  const gapDays = args.diasRestantes - daysToZero
+  if (gapDays <= 0) return null
+  const gapAmount = Math.round(f.pessimistic.dailyAvg * gapDays)
+  return {
+    id: 'forecast-payday-gap',
+    emoji: '⏳',
+    cat: 'Predicción',
+    title: `Riesgo: $0 ${gapDays} día${gapDays === 1 ? '' : 's'} antes del cobro`,
+    body: `Si seguís al ritmo proyectado de los últimos días, llegás a $0 unos ${gapDays} ${gapDays === 1 ? 'día' : 'días'} antes del próximo cobro. Hay margen para corregir si recortás ahora.`,
+    impact: `Faltan ${fmt(gapAmount)}`,
+    impactRaw: gapAmount,
+    impactScope: 'oneTime',
+    cta: 'Ajustar plan',
+    urgency: 'alta',
+    confidence: rampOneCycle(args.view.detalleDias.length),
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Comparamos lo que te queda con lo que proyectamos en el peor escenario (días caros + fijos). Si la cuenta da menos que los días que faltan al cobro, se prende esta alerta.',
+    action: { kind: 'navigate', route: '/(app)/(tabs)/control' },
+  }
+}
+
+// ─── Group 11 — Causal patterns (P3) ────────────────────────────────
+//
+// Each builder consumes a single `CausalLink` from `detectCausalLinks`
+// and converts it into an INSIGHT card. We require a minimum
+// `confidence` of 0.4 (same as the global floor) so brand-new patterns
+// stay invisible until they stabilize.
+
+function buildCausalFridayCascade(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const links = args.causalLinks
+  if (!links || links.length === 0) return null
+  const link = links.find(
+    (l) =>
+      l.cause.type === 'day' &&
+      l.cause.value === 'friday' &&
+      l.effect.type === 'spending_spike',
+  )
+  if (!link) return null
+  if (link.confidence < 0.4) return null
+  // Only nudge on Thursday — by then the user can still adjust before
+  // the cascade kicks in.
+  const now = args.now ?? new Date()
+  const projectDow = (now.getDay() + 6) % 7
+  if (projectDow !== 3) return null
+  const pct = Math.round(link.effect.magnitude * 100)
+  return {
+    id: 'causal-friday-cascade',
+    emoji: '🪢',
+    cat: 'Patrón causal',
+    title: 'Patrón viernes → sábado',
+    body: `Detecté ${link.occurrences} veces que un viernes con gasto alto dispara un sábado ${pct}% más caro de lo habitual. Hoy es jueves: si mañana hay salida, ojo el sábado.`,
+    impact: `+${pct}% en sábados gatillados`,
+    impactRaw: Math.round(link.effect.magnitude * 5000),
+    impactScope: 'monthly',
+    cta: 'Entendido',
+    urgency: 'baja',
+    confidence: link.confidence,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Cuando dos días seguidos suelen "encadenarse" (un día caro dispara el siguiente), avisarlo el día anterior te da margen para frenar el rebote sin esfuerzo.',
+    action: { kind: 'dismiss', dismissId: 'causal-friday-cascade' },
+  }
+}
+
+function buildCausalPairedImpulse(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const links = args.causalLinks
+  if (!links || links.length === 0) return null
+  const link = links.find(
+    (l) => l.cause.type === 'category' && l.effect.type === 'spending_spike',
+  )
+  if (!link) return null
+  if (link.confidence < 0.4) return null
+  const cat = args.categoriesExpense.find((c) => c.id === link.cause.value)
+  const catName = cat?.name ?? 'esa categoría'
+  const pct = Math.round(link.effect.magnitude * 100)
+  return {
+    id: `causal-paired-${link.cause.value}`,
+    emoji: '🪞',
+    cat: catName,
+    title: 'Compras pareadas',
+    body: `Cuando comprás en ${catName}, el ${pct}% de las veces hay otro gasto similar en menos de 3 horas. Si te pasa hoy, esperá 24h antes del segundo.`,
+    impact: 'Pausa de 24h sugerida',
+    impactRaw: Math.round(link.effect.magnitude * 8000),
+    impactScope: 'monthly',
+    cta: 'Entendido',
+    urgency: 'baja',
+    confidence: link.confidence,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Las compras pareadas suelen ser impulsos seguidos (algo + el "vamos a aprovechar"). Detectamos el patrón cuando se repite y sugerimos romperlo con una pausa explícita.',
+    action: {
+      kind: 'dismiss',
+      dismissId: `causal-paired-${link.cause.value}`,
+    },
+  }
+}
+
+function buildCausalStressSpending(
+  args: BuildSignalsArgs,
+): ControlAdvisorTask | null {
+  const links = args.causalLinks
+  if (!links || links.length === 0) return null
+  const link = links.find(
+    (l) =>
+      l.cause.type === 'time' &&
+      l.cause.value === 'multi-tx-day' &&
+      l.effect.type === 'spending_spike',
+  )
+  if (!link) return null
+  if (link.confidence < 0.4) return null
+  const pct = Math.round(link.effect.magnitude * 100)
+  return {
+    id: 'causal-stress-spending',
+    emoji: '🌪️',
+    cat: 'Patrón causal',
+    title: 'Días de muchas compras chicas',
+    body: `Detecté ${link.occurrences} días con 4+ transacciones — esos días gastás ${pct}% más en promedio, casi todo discrecional. Probá una pausa antes de la 5ª compra del día.`,
+    impact: `+${pct}% en días de stress`,
+    impactRaw: Math.round(link.effect.magnitude * 8000),
+    impactScope: 'monthly',
+    cta: 'Entendido',
+    urgency: 'baja',
+    confidence: link.confidence,
+    dataDays: args.view.detalleDias.length,
+    dummyExplanation:
+      'Los días con muchas transacciones chicas suelen ser días "altos" en discrecional. Avisar a partir de la cuarta tx del día corta el patrón antes que escale.',
+    action: { kind: 'dismiss', dismissId: 'causal-stress-spending' },
   }
 }
 
@@ -1161,18 +1971,18 @@ function buildStreakEncouragement(
     id: 'streak-ok',
     emoji: '🔥',
     cat: 'Racha',
-    title: `${racha} días seguidos bajo cupo`,
-    body: `Venís sosteniendo el ritmo. A este paso, al cierre del mes vas a haber guardado ${fmt(
+    title: `Racha: ${racha} días bajo cupo`,
+    body: `Ritmo sostenido en el ciclo. A este paso, el cierre del mes deja un excedente de ${fmt(
       Math.max(0, args.view.sobrantePresupuestadoMes),
-    )}. Seguí así un día más.`,
-    impact: `Plata del día: ${fmt(args.cupoDiario)}`,
+    )}.`,
+    impact: `Cupo del día: ${fmt(args.cupoDiario)}`,
     impactRaw: 0,
-    cta: '¡Gracias!',
+    cta: 'Entendido',
     urgency: 'baja',
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Una racha son días seguidos en los que no te pasaste del tope. Como ir al gimnasio: la primera semana cuesta, después te acostumbrás. Te mostramos la racha para que veas el progreso.',
+      'Cuenta días seguidos en los que el gasto del día se mantuvo dentro del cupo. Ver la racha refuerza el hábito y hace visible el progreso del ciclo.',
     action: { kind: 'dismiss', dismissId: 'streak-ok' },
   }
 }
@@ -1293,11 +2103,11 @@ function avgCategoryFromSummaries(
 function stressTitle(level: VelocitySnapshot['stress_level']): string {
   switch (level) {
     case 'critical':
-      return 'Vas a cerrar muy apretado'
+      return 'Cierre por encima del presupuesto'
     case 'warn':
-      return 'Estás por encima del objetivo'
+      return 'Ritmo por encima del objetivo'
     case 'watch':
-      return 'Ritmo alto — conviene mirarlo'
+      return 'Ritmo elevado'
     default:
       return 'Ritmo estable'
   }

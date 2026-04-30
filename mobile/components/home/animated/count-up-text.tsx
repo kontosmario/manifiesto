@@ -15,6 +15,11 @@ interface CountUpTextProps {
   format: (n: number) => string
   style?: StyleProp<TextStyle>
   accessibilityLabel?: string
+  /** Cap on system font scaling. Avoids overflow when iOS Dynamic
+   *  Type or Android Larger Text inflate large hero figures past
+   *  their container. Defaults to 1.4 — generous enough for
+   *  accessibility without breaking the hero card geometry. */
+  maxFontSizeMultiplier?: number
 }
 
 // `fontVariant: 'tabular-nums'` keeps each digit at the same width so the
@@ -23,7 +28,14 @@ interface CountUpTextProps {
 // around, which reads as jitter.
 const TABULAR: TextStyle = { fontVariant: ['tabular-nums'] }
 
-export function CountUpText({ value, duration = 1600, format, style, accessibilityLabel }: CountUpTextProps) {
+export function CountUpText({
+  value,
+  duration = 1600,
+  format,
+  style,
+  accessibilityLabel,
+  maxFontSizeMultiplier = 1.4,
+}: CountUpTextProps) {
   const reduced = useReducedMotion()
   const [display, setDisplay] = useState(() => format(reduced ? value : 0))
   const progress = useSharedValue(reduced ? value : 0)
@@ -66,7 +78,11 @@ export function CountUpText({ value, duration = 1600, format, style, accessibili
   )
 
   return (
-    <Text style={[TABULAR, style]} accessibilityLabel={accessibilityLabel ?? display}>
+    <Text
+      style={[TABULAR, style]}
+      accessibilityLabel={accessibilityLabel ?? display}
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
+    >
       {display}
     </Text>
   )

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -16,11 +17,25 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { HeroAurora } from '@/components/home/hero-aurora'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
+import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface HomeHeroCardProps {
   data: HomeHeroMetrics
+  /** Optional handler invoked when the hero is in the
+   *  "income not configured" state and the user taps the setup CTA. */
+  onPressConfigureIncome?: () => void
+  /** Sprint 3 — fraction vs prior cycle (e.g. -0.08 = "-8%"). When
+   *  provided and the projection is reliable, the projection tile
+   *  renders an arrow + signed % below the main value. `null` hides
+   *  the line — used when there's no prior-cycle baseline yet. */
+  projectedCloseTrend?: number | null
+  /** Read-only "Apartando ahorro" chip. Surfaces the configured
+   *  monthly savings target and how much of it survived the cycle's
+   *  variable spending. `null` hides the chip — used when savings
+   *  isn't configured or income is missing. */
+  savingsChip?: SavingsHeroChip | null
 }
 
 /**
@@ -29,7 +44,12 @@ interface HomeHeroCardProps {
  * The two side tiles split the single "available today" figure into
  * "podés gastar por día" (accent) and "vas a cerrar con" (neutral).
  */
-export function HomeHeroCard({ data }: HomeHeroCardProps) {
+export function HomeHeroCard({
+  data,
+  onPressConfigureIncome,
+  projectedCloseTrend = null,
+  savingsChip = null,
+}: HomeHeroCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const projPositive = data.projectedClose >= 0
@@ -69,6 +89,22 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
     transform: [{ scale: pulseScale.value }],
   }))
 
+  // Compose a single accessibility label for the whole card so screen
+  // readers announce it as a summary unit rather than reading each
+  // chip / number / chip in document order. The fall-through for the
+  // setup state stays simple — there's no number to announce yet.
+  const a11yLabel = data.incomeConfigured
+    ? `Disponible hoy: ${formatMoney(data.availableToday)}. ${
+        data.dailyBudget != null
+          ? `Cupo diario: ${formatMoney(data.dailyBudget)}.`
+          : ''
+      } ${
+        data.projectionReliable && data.projectedClose != null
+          ? `Cierre proyectado: ${formatMoney(data.projectedClose)}.`
+          : ''
+      } ${savingsChip ? savingsChip.a11y : ''}`.trim()
+    : 'Configurá tu ingreso mensual para activar el seguimiento del ciclo.'
+
   return (
     <RiseView delay={60}>
       <LinearGradient
@@ -76,6 +112,9 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={[styles.card, { borderColor: 'rgba(199,238,156,0.12)' }]}
+        accessible
+        accessibilityRole="summary"
+        accessibilityLabel={a11yLabel}
       >
         <HeroAurora radius={24} />
         <ShineOverlay
@@ -86,6 +125,79 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
           periodMs={4200}
         />
 
+        {!data.incomeConfigured ? (
+          // Setup state — no monthly income on file. Showing "$0
+          // disponible" is misleading; instead we surface a clear
+          // CTA that takes the user to Settings to configure their
+          // ingreso. Keeps the hero chrome (gradient, shine, aurora)
+          // so the user lands on a familiar surface, just with a
+          // setup-flavored body.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Configurar tu ingreso mensual"
+            onPress={onPressConfigureIncome}
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+          >
+            <RiseView>
+              <View style={styles.labelRow}>
+                <View style={styles.labelLeft}>
+                  <BreatheDot
+                    size={8}
+                    color={theme.colors.heroAccent}
+                    glow={theme.colors.heroAccent}
+                  />
+                  <Text
+                    style={[styles.label, { color: theme.colors.heroAccent }]}
+                  >
+                    Empezá acá
+                  </Text>
+                </View>
+              </View>
+            </RiseView>
+            <RiseView delay={80}>
+              <Text
+                style={[
+                  styles.setupTitle,
+                  { color: theme.colors.heroText },
+                ]}
+              >
+                Configurá tu ingreso mensual
+              </Text>
+              <Text
+                style={[
+                  styles.setupBody,
+                  { color: theme.colors.heroMuted },
+                ]}
+              >
+                Una vez que cargues tu sueldo y tus fijos, te decimos
+                cuánto podés gastar por día y cómo vas a cerrar el ciclo.
+              </Text>
+            </RiseView>
+            <RiseView delay={160}>
+              <View
+                style={[
+                  styles.setupCta,
+                  {
+                    backgroundColor: 'rgba(199,238,156,0.16)',
+                    borderColor: 'rgba(199,238,156,0.35)',
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.setupCtaText, { color: theme.colors.heroAccent }]}
+                >
+                  Configurar ahora
+                </Text>
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={16}
+                  color={theme.colors.heroAccent}
+                />
+              </View>
+            </RiseView>
+          </Pressable>
+        ) : (
+        <>
         <RiseView>
           {/*
             Top row: label on the left, compact day-counter chip on
@@ -102,7 +214,7 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
                 glow={theme.colors.heroAccent}
               />
               <Text style={[styles.label, { color: theme.colors.heroAccent }]}>
-                Disponible hoy
+                Disponible
               </Text>
             </View>
             {data.paydayPending ? (
@@ -157,41 +269,96 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
                 // Tighter gap when the override pill is present so the
                 // amount/chip read as a single block, otherwise keep
                 // the original generous spacing before the tiles.
-                marginBottom: data.cycleAdjusted ? 8 : 18,
+                marginBottom: data.cycleAdjusted || savingsChip ? 8 : 18,
               },
             ]}
           />
         </RiseView>
 
-        {data.cycleAdjusted ? (
-          // Read-only marker — tells the user why the daily cap looks
-          // different this cycle. Editing the override only happens
-          // via the recurring "Confirmá tu cobro" flow on payday, so
-          // there's no tap action here on purpose.
-          <RiseView delay={120}>
-            <View
-              accessibilityRole="text"
-              accessibilityLabel="Disponible ajustado para este ciclo"
-              style={[
-                styles.adjustedChip,
-                {
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  borderColor: 'rgba(255,255,255,0.16)',
-                },
-              ]}
-            >
-              <Text
-                style={[styles.adjustedChipDot, { color: theme.colors.heroAccent }]}
-              >
-                •
-              </Text>
-              <Text
-                style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
-              >
-                Ajustado para este ciclo
-              </Text>
-            </View>
-          </RiseView>
+        {data.cycleAdjusted || savingsChip ? (
+          // Read-only chip stack between the disponible amount and the
+          // tiles row. Two captions can co-exist: "Ajustado para este
+          // ciclo" (cycle override) and "Apartando ahorro" (savings).
+          // The wrapper owns the bottom spacing so adding/removing
+          // either chip doesn't shift the tiles.
+          <View style={styles.heroChipStack}>
+            {data.cycleAdjusted ? (
+              <RiseView delay={120}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel="Disponible ajustado para este ciclo"
+                  style={[
+                    styles.adjustedChip,
+                    {
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      borderColor: 'rgba(255,255,255,0.16)',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.adjustedChipDot, { color: theme.colors.heroAccent }]}
+                  >
+                    •
+                  </Text>
+                  <Text
+                    style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
+                  >
+                    Ajustado para este ciclo
+                  </Text>
+                </View>
+              </RiseView>
+            ) : null}
+
+            {savingsChip ? (
+              // Three states drive tone: healthy (mint, on-track),
+              // partial (mint dim, some overspend ate into the buffer),
+              // consumed (peach urgency — the whole buffer was wiped).
+              <RiseView delay={140}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={savingsChip.a11y}
+                  style={[
+                    styles.savingsChip,
+                    savingsChip.kind === 'consumed'
+                      ? {
+                          backgroundColor: 'rgba(232,151,106,0.16)',
+                          borderColor: 'rgba(232,151,106,0.45)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(199,238,156,0.10)',
+                          borderColor: 'rgba(199,238,156,0.28)',
+                        },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={savingsChip.kind === 'consumed' ? 'warning-amber' : 'savings'}
+                    size={13}
+                    color={
+                      savingsChip.kind === 'consumed' ? '#F2B58A' : theme.colors.heroAccent
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.savingsChipText,
+                      {
+                        color:
+                          savingsChip.kind === 'consumed'
+                            ? '#F2B58A'
+                            : savingsChip.kind === 'partial'
+                              ? theme.colors.heroMuted
+                              : theme.colors.heroAccent,
+                        fontVariant: ['tabular-nums'],
+                      },
+                    ]}
+                    maxFontSizeMultiplier={1.4}
+                    numberOfLines={1}
+                  >
+                    {savingsChip.label}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : null}
+          </View>
         ) : null}
 
         <View style={styles.tilesRow}>
@@ -230,16 +397,96 @@ export function HomeHeroCard({ data }: HomeHeroCardProps) {
               <Text style={[styles.tileLabel, { color: theme.colors.heroMuted2 }]}>
                 Vas a cerrar con
               </Text>
-              <Text style={[styles.tileValue, { color: projColor }]}>
-                {projPositive ? '+' : ''}
-                {formatMoneyShort(data.projectedClose)}
-              </Text>
-              <Text style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}>
-                si seguís este ritmo
-              </Text>
+              {data.projectionReliable ? (
+                <>
+                  <Text style={[styles.tileValue, { color: projColor }]}>
+                    {projPositive ? '+' : ''}
+                    {formatMoneyShort(data.projectedClose)}
+                  </Text>
+                  {/* Sprint 3 — show the trend arrow + signed % vs
+                      prior cycle when we have a baseline. The hint
+                      "si seguís este ritmo" stays as a fallback when
+                      no comparison data exists yet. */}
+                  {projectedCloseTrend != null ? (
+                    <View
+                      style={styles.tileTrendRow}
+                      accessibilityRole="text"
+                      accessibilityLabel={(() => {
+                        const pct = Math.abs(Math.round(projectedCloseTrend * 100))
+                        if (projectedCloseTrend > 0) {
+                          return `${pct} por ciento más que el ciclo anterior.`
+                        }
+                        if (projectedCloseTrend < 0) {
+                          return `${pct} por ciento menos que el ciclo anterior.`
+                        }
+                        return 'Mismo ritmo que el ciclo anterior.'
+                      })()}
+                    >
+                      <MaterialIcons
+                        name={
+                          projectedCloseTrend > 0
+                            ? 'trending-up'
+                            : projectedCloseTrend < 0
+                              ? 'trending-down'
+                              : 'trending-flat'
+                        }
+                        size={11}
+                        color={
+                          projectedCloseTrend > 0
+                            ? '#F2B58A'
+                            : projectedCloseTrend < 0
+                              ? theme.colors.heroAccent
+                              : theme.colors.heroMuted2
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.tileSub,
+                          {
+                            color:
+                              projectedCloseTrend > 0
+                                ? '#F2B58A'
+                                : projectedCloseTrend < 0
+                                  ? theme.colors.heroAccent
+                                  : theme.colors.heroMuted2,
+                            fontVariant: ['tabular-nums'],
+                          },
+                        ]}
+                        maxFontSizeMultiplier={1.4}
+                      >
+                        {`${projectedCloseTrend > 0 ? '+' : projectedCloseTrend < 0 ? '−' : ''}${Math.abs(Math.round(projectedCloseTrend * 100))}% vs ciclo anterior`}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}>
+                      si seguís este ritmo
+                    </Text>
+                  )}
+                </>
+              ) : (
+                // Day 1–3 of the cycle: the linear projection swings
+                // wildly with each new expense, so we hide the number
+                // and tell the user we're still learning instead of
+                // misleading them with volatile data.
+                <>
+                  <Text
+                    style={[styles.tileValue, { color: theme.colors.heroMuted }]}
+                  >
+                    —
+                  </Text>
+                  <Text
+                    style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}
+                  >
+                    en {Math.max(1, 4 - data.cycleDay)}{' '}
+                    {4 - data.cycleDay === 1 ? 'día' : 'días'}
+                  </Text>
+                </>
+              )}
             </View>
           </RiseView>
         </View>
+        </>
+        )}
       </LinearGradient>
     </RiseView>
   )
@@ -294,6 +541,44 @@ const styles = StyleSheet.create({
     letterSpacing: -1.8,
     lineHeight: 48,
   },
+  // Setup state (income not configured)
+  setupTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    lineHeight: 30,
+    marginTop: 4,
+  },
+  setupBody: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  setupCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  setupCtaText: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  // Stack wrapper for the read-only chips that may sit between the
+  // disponible amount and the tiles row. `gap` controls inter-chip
+  // spacing; `marginBottom` controls the gap to the tiles below.
+  heroChipStack: {
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 14,
+  },
   adjustedChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -303,7 +588,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-    marginBottom: 14,
   },
   adjustedChipDot: {
     fontSize: 14,
@@ -313,6 +597,25 @@ const styles = StyleSheet.create({
   adjustedChipText: {
     fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  // "Apartando ahorro" chip — sits below the disponible amount,
+  // above the tiles row. Stacks with the adjustedChip when both
+  // apply (both are short, read-only captions; vertical rhythm
+  // remains consistent at the same hierarchical level).
+  savingsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  savingsChipText: {
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
   tilesRow: {
@@ -337,6 +640,15 @@ const styles = StyleSheet.create({
   },
   tileSub: {
     fontSize: 11,
+    marginTop: 3,
+  },
+  // Trend arrow + signed % row under the projection value (Sprint 3).
+  // Tight gap so the icon hugs the number; uses tabular nums via the
+  // text style to keep the percent stable while the value shifts.
+  tileTrendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     marginTop: 3,
   },
 })

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
@@ -28,7 +29,7 @@ interface HomeActivitySectionProps {
  * ("ACTIVIDAD" + "Ver todos") is owned by HomeDashboard so the layout
  * stays consistent with the V1 Cuaderno mock.
  */
-export function HomeActivitySection({
+function HomeActivitySectionImpl({
   expenses,
   categoryNameById,
   familyMembers = [],
@@ -96,6 +97,8 @@ export function HomeActivitySection({
     </View>
   )
 }
+
+export const HomeActivitySection = memo(HomeActivitySectionImpl)
 
 const styles = StyleSheet.create({
   list: { gap: 6 },

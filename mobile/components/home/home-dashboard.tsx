@@ -1,20 +1,25 @@
 // mobile/components/home/home-dashboard.tsx
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCurrentDate } from '@/hooks/use-current-date'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { AlertsStrip } from '@/components/home/alerts-strip'
-import {
-  OnboardingAvailableSheet,
-  SalaryConfirmationSheet,
-} from '@/components/home/cycle-balance-prompt-sheet'
+import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 import { MetaCard } from '@/components/home/meta-card'
+import { MetaEmptyCard } from '@/components/home/meta-empty-card'
+import {
+  computeTopCategory,
+  computeTopCategoryFallback,
+} from '@/components/home/home-top-category-helpers'
+import { computeNextFixed } from '@/components/home/home-next-fixed-helpers'
+import { computeSavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
+import { useTrackElement } from '@/features/home/use-track-element'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { OfflinePill } from '@/components/ui/offline-pill'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
   classifyDashboardError,
@@ -23,8 +28,13 @@ import {
   isPaydayPending,
   type DashboardErrorKind,
 } from '@/features/home/home-dashboard-model'
-import { useHomeMetrics, type HomeAlert } from '@/features/home/use-home-metrics'
+import { useHomeMetrics } from '@/features/home/use-home-metrics'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
+import {
+  logHomeEvent,
+  type HomeElementId,
+  type HomeSlot,
+} from '@/features/home/log-home-event'
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { triggerHaptic } from '@/lib/haptics'
@@ -37,8 +47,13 @@ interface HomeDashboardProps {
   familyId: string
   displayName: string
   hasUnreadNotifications?: boolean
+  assistantPendingCount?: number
   onPressNotifications?: () => void
   onPressSettings?: () => void
+  onPressAssistant?: () => void
+  /** Invoked from the hero card's setup state (income not configured)
+   *  to drop the user into the income setup flow. */
+  onPressConfigureIncome?: () => void
   isLoadingActivity: boolean
   activityError: unknown
   /**
@@ -51,6 +66,13 @@ interface HomeDashboardProps {
   pendingDeleteExpenseId?: string | null
   isSavingSalary: boolean
   salaryErrorMessage: string | null
+  /** Telemetry session id from `useHomeTelemetry`. Optional so the
+   *  component still works in screens without telemetry wiring. */
+  telemetrySessionId?: string
+  /** Called when any tracked element is tapped. Lets the parent
+   *  (HomeScreen) know the user did at least one thing in this
+   *  session — used to suppress `home.left_without_tap`. */
+  onMarkTapped?: () => void
 }
 
 export function HomeDashboard({
@@ -60,8 +82,11 @@ export function HomeDashboard({
   familyId,
   displayName,
   hasUnreadNotifications = false,
+  assistantPendingCount = 0,
   onPressNotifications,
   onPressSettings,
+  onPressAssistant,
+  onPressConfigureIncome,
   isLoadingActivity,
   activityError,
   onConfirmCycleStartingBalance,
@@ -69,10 +94,12 @@ export function HomeDashboard({
   pendingDeleteExpenseId,
   isSavingSalary,
   salaryErrorMessage,
+  telemetrySessionId,
+  onMarkTapped,
 }: HomeDashboardProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
-  const [today] = useState(() => new Date())
+  const today = useCurrentDate()
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
 
   const paymentDay = dashboard.familyFinanceQuery.data?.salary_payment_day ?? null
@@ -177,7 +204,7 @@ export function HomeDashboard({
     return () => clearTimeout(handle)
   }, [shouldAutoOpenCycleSheet])
 
-  const handleChipConfirm = () => {
+  const handleChipConfirm = useCallback(() => {
     // Open the cycle prompt when there's something to do:
     //  - payday is past + not confirmed (`pending`),
     //  - the cycle hasn't been anchored yet (`isCycleStartingBalancePromptPending`),
@@ -191,19 +218,19 @@ export function HomeDashboard({
       return
     }
     setCycleBalanceSheetOpen(true)
-  }
-  const handleCycleSheetClose = () => {
+  }, [pending, dashboard.isCycleStartingBalancePromptPending, days])
+  const handleCycleSheetClose = useCallback(() => {
     if (isSavingSalary) return
     setCycleBalanceSheetOpen(false)
-  }
-  const handleCycleSheetSave = (amount: number) => {
+  }, [isSavingSalary])
+  const handleCycleSheetSave = useCallback((amount: number) => {
     onConfirmCycleStartingBalance(amount)
     setCycleBalanceSheetOpen(false)
-  }
-  const handleCycleSheetKeepDefault = () => {
+  }, [onConfirmCycleStartingBalance])
+  const handleCycleSheetKeepDefault = useCallback(() => {
     onConfirmCycleStartingBalance(null)
     setCycleBalanceSheetOpen(false)
-  }
+  }, [onConfirmCycleStartingBalance])
   // Which prompt to render is driven solely by whether the user has
   // already gone through the one-shot post-onboarding setup:
   //   • storedAnchor == null  → never resolved → onboarding sheet.
@@ -214,40 +241,241 @@ export function HomeDashboard({
   // computes, so by the time it matters `storedCycleAnchor` is set.
   // `isOnboardingFlow` is declared above for the auto-open gate.
   const remainingDaysInCycle = Math.max(1, dashboard.remainingUntilPayday)
-  const handleAddExpense = () => {
+  // Telemetry helper: fires a tap event AND marks the session as
+  // tapped so HomeScreen can suppress `home.left_without_tap`. No-op
+  // when the parent didn't pass telemetry props (e.g. tests).
+  const trackTap = useCallback(
+    (
+      elementId: HomeElementId,
+      slot: HomeSlot,
+      destinationRoute?: string,
+    ) => {
+      onMarkTapped?.()
+      if (!telemetrySessionId) return
+      void logHomeEvent({
+        familyId,
+        event: 'home.element_tapped',
+        elementId,
+        slot,
+        context: {
+          session_id: telemetrySessionId,
+          destination_route: destinationRoute ?? null,
+        },
+      })
+    },
+    [familyId, telemetrySessionId, onMarkTapped],
+  )
+
+  const handleAddExpense = useCallback(() => {
     void triggerHaptic('light')
+    trackTap('activity_empty_cta', 'S7', '/(app)/(tabs)/add')
     router.push('/(app)/(tabs)/add')
-  }
-  const handleViewGastos = () => router.push('/(app)/(tabs)/expenses')
-  const handleViewFijos = () => router.push('/(app)/(tabs)/fixed-expenses')
-  const handleAlertPress = (alert: HomeAlert) => {
-    // Every alert routes to the Fijos screen today; deep-linking a
-    // particular fijo id will come when we add the detail route.
-    void alert.actionRoute
-    handleViewFijos()
-  }
+  }, [router, trackTap])
+  const handleViewGastos = useCallback(() => {
+    trackTap('month_summary_variables', 'S5', '/(app)/(tabs)/expenses')
+    router.push('/(app)/(tabs)/expenses')
+  }, [router, trackTap])
+  const handleViewFijos = useCallback(() => {
+    trackTap('month_summary_fixed', 'S5', '/(app)/(tabs)/fixed-expenses')
+    router.push('/(app)/(tabs)/fixed-expenses')
+  }, [router, trackTap])
+  const handleActivityRetry = useCallback(() => {
+    void dashboard.refetchAll()
+  }, [dashboard])
+
+  // Wrap header callbacks so each one emits a tap event before
+  // delegating to the parent's handler. Wrappers are memoized so the
+  // memoized HomeHeader child sees stable identities.
+  const handlePressNotifications = useCallback(() => {
+    trackTap('header_bell', 'S1', '/(app)/notifications')
+    onPressNotifications?.()
+  }, [trackTap, onPressNotifications])
+  const handlePressSettings = useCallback(() => {
+    trackTap('header_settings', 'S1', '/(app)/settings')
+    onPressSettings?.()
+  }, [trackTap, onPressSettings])
+  const handlePressAssistant = useCallback(() => {
+    trackTap('header_assistant', 'S1', '/(app)/asistente')
+    onPressAssistant?.()
+  }, [trackTap, onPressAssistant])
+  const handlePressConfigureIncome = useCallback(() => {
+    trackTap('hero_setup_cta', 'S3', '/(app)/settings')
+    onPressConfigureIncome?.()
+  }, [trackTap, onPressConfigureIncome])
+
+  // Wrap the cycle prompt confirm so we capture taps on the payday
+  // pill / cycle adjusted chip before opening the sheet.
+  const handleChipConfirmTracked = useCallback(() => {
+    trackTap('payday_pill', 'S2')
+    handleChipConfirm()
+  }, [trackTap, handleChipConfirm])
+
+  // Activity row delete is a destructive action — capture it as a
+  // distinct tap so analytics can spot patterns of mis-taps.
+  const handleDeleteExpenseTracked = useCallback(
+    (expenseId: string) => {
+      trackTap('activity_row', 'S7')
+      onDeleteExpense(expenseId)
+    },
+    [trackTap, onDeleteExpense],
+  )
+
+  // Sprint 2A — Top category chip (S5 / Variables panel).
+  // Computed from the cached cycle expenses + categories. Memoized
+  // off the same identities so the heavy aggregation runs only when
+  // the inputs actually change.
+  const topCategory = useMemo(
+    () =>
+      computeTopCategory({
+        expenses: dashboard.expensesQuery.data ?? [],
+        cycleStart: dashboard.payCycle.start,
+        cycleEnd: dashboard.payCycle.end,
+        categoryNameById,
+      }),
+    [
+      dashboard.expensesQuery.data,
+      dashboard.payCycle.start,
+      dashboard.payCycle.end,
+      categoryNameById,
+    ],
+  )
+  const topCategoryTracker = useTrackElement({
+    familyId,
+    sessionId: telemetrySessionId ?? '',
+    elementId: 'top_category_chip',
+    slot: 'S5',
+    isVisible: topCategory != null,
+  })
+
+  // Fallback band for the Variables card when `computeTopCategory`
+  // can't surface a leader yet (early cycle / sparse / empty). Keeps
+  // the band slot populated so the two MonthSummary cards stay
+  // symmetric with the Fijos "Todos pagados" / próximo-fijo bands.
+  const topCategoryFallback = useMemo(
+    () =>
+      computeTopCategoryFallback({
+        topCategory,
+        variableCount: homeMetrics.monthSummary.variableCount,
+      }),
+    [topCategory, homeMetrics.monthSummary.variableCount],
+  )
+  const handleTopCategoryFallbackPress = useCallback(() => {
+    onMarkTapped?.()
+    void triggerHaptic('selection')
+    router.push('/(app)/(tabs)/add')
+  }, [router, onMarkTapped])
+  const handleTopCategoryPress = useCallback(
+    (categoryId: string) => {
+      onMarkTapped?.()
+      topCategoryTracker.onTap('/(app)/(tabs)/expenses')
+      router.push({
+        pathname: '/(app)/(tabs)/expenses',
+        params: categoryId ? { categoryId } : {},
+      })
+    },
+    [router, topCategoryTracker, onMarkTapped],
+  )
+
+  // Sprint 2B — Próximo fijo chip (S5 / Fijos panel).
+  const nextFixed = useMemo(
+    () =>
+      computeNextFixed({
+        fixedExpenses: dashboard.fixedExpensesQuery.data ?? [],
+        // Scope to the current pay cycle: once the user pays a fijo
+        // and its `next_due_on` rolls forward to the next cycle, we
+        // stop surfacing it as pending here.
+        cycleEnd: dashboard.payCycle.end,
+      }),
+    [dashboard.fixedExpensesQuery.data, dashboard.payCycle.end],
+  )
+  const nextFixedTracker = useTrackElement({
+    familyId,
+    sessionId: telemetrySessionId ?? '',
+    elementId: 'next_fixed_chip',
+    slot: 'S5',
+    isVisible: nextFixed != null,
+  })
+  const handleNextFixedPress = useCallback(
+    (fixedExpenseId: string) => {
+      onMarkTapped?.()
+      nextFixedTracker.onTap('/(app)/(tabs)/fixed-expenses')
+      router.push({
+        pathname: '/(app)/(tabs)/fixed-expenses',
+        params: fixedExpenseId ? { focusFixedExpenseId: fixedExpenseId } : {},
+      })
+    },
+    [router, nextFixedTracker, onMarkTapped],
+  )
+
+  // Sprint 3 — Forecast trend (renders inside the hero card via
+  // HomeHeroCard's `projectedCloseTrend` prop). Tracker fires when
+  // the trend is actually rendered (projection reliable AND
+  // comparison data exists). The user can't tap the trend line —
+  // it's informational — so only `home.element_shown` fires here.
+  const projectedCloseTrend = homeMetrics.monthSummary.variableTrend
+  useTrackElement({
+    familyId,
+    sessionId: telemetrySessionId ?? '',
+    elementId: 'forecast_summary',
+    slot: 'S3',
+    isVisible:
+      homeMetrics.hero.projectionReliable && projectedCloseTrend != null,
+  })
+
+  // "Apartando ahorro" chip — read-only caption inside the hero,
+  // visible when the user has configured a monthly savings target.
+  // The dashboard model already prorates for cycle-balance overrides
+  // and clamps `savingsRemaining` to ≥ 0, so we feed those values
+  // straight into the pure helper.
+  const savingsChip = useMemo(
+    () =>
+      computeSavingsHeroChip({
+        savingsGoal: dashboard.savingsGoal,
+        savingsRemaining: dashboard.savingsRemaining,
+        savingsGoalPercent: dashboard.savingsGoalPercent,
+        incomeConfigured: homeMetrics.hero.incomeConfigured,
+      }),
+    [
+      dashboard.savingsGoal,
+      dashboard.savingsRemaining,
+      dashboard.savingsGoalPercent,
+      homeMetrics.hero.incomeConfigured,
+    ],
+  )
 
   return (
     <View style={styles.stack}>
-      <AmbientBlobs />
       <HomeHeader
         name={displayName}
         hasUnreadNotifications={hasUnreadNotifications}
-        onPressNotifications={onPressNotifications}
-        onPressSettings={onPressSettings}
+        assistantPendingCount={assistantPendingCount}
+        onPressNotifications={handlePressNotifications}
+        onPressSettings={handlePressSettings}
+        onPressAssistant={handlePressAssistant}
       />
+      <OfflinePill />
       <FamilyStrip
         members={membersQuery.data ?? []}
         daysUntilPayday={days}
         paydayPending={pending}
-        onPaydayPress={handleChipConfirm}
+        onPaydayPress={handleChipConfirmTracked}
       />
-      <HomeHeroCard data={homeMetrics.hero} />
-      <AlertsStrip alerts={homeMetrics.alerts} onPressAlert={handleAlertPress} />
+      <HomeHeroCard
+        data={homeMetrics.hero}
+        onPressConfigureIncome={handlePressConfigureIncome}
+        projectedCloseTrend={projectedCloseTrend}
+        savingsChip={savingsChip}
+      />
       <MonthSummaryCard
         data={homeMetrics.monthSummary}
         onPressVariable={handleViewGastos}
         onPressFixed={handleViewFijos}
+        topCategory={topCategory}
+        onPressTopCategory={handleTopCategoryPress}
+        topCategoryFallback={topCategoryFallback}
+        onPressTopCategoryFallback={handleTopCategoryFallbackPress}
+        nextFixed={nextFixed}
+        onPressNextFixed={handleNextFixedPress}
       />
       {savingsGoalQuery.data ? (
         <MetaCard
@@ -255,7 +483,9 @@ export function HomeDashboard({
           enableQuickAdd
           suggestedAmount={cycleVault}
         />
-      ) : null}
+      ) : (
+        <MetaEmptyCard />
+      )}
 
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
@@ -278,39 +508,25 @@ export function HomeDashboard({
         familyMembers={membersQuery.data ?? []}
         isLoading={isLoadingActivity}
         errorKind={activityErrorKind}
-        onDelete={onDeleteExpense}
+        onDelete={handleDeleteExpenseTracked}
         pendingExpenseId={pendingDeleteExpenseId ?? null}
-        onRetry={() => {
-          void dashboard.refetchAll()
-        }}
+        onRetry={handleActivityRetry}
         onAddFirst={handleAddExpense}
       />
 
       <View style={styles.bottomSpacer} />
 
-      {isOnboardingFlow ? (
-        <OnboardingAvailableSheet
-          visible={isCycleBalanceSheetOpen}
-          monthlyIncome={dashboard.monthlyIncome}
-          remainingDaysInCycle={remainingDaysInCycle}
-          isSaving={isSavingSalary}
-          errorMessage={salaryErrorMessage}
-          onClose={handleCycleSheetClose}
-          onSaveBalance={handleCycleSheetSave}
-          onKeepDefault={handleCycleSheetKeepDefault}
-        />
-      ) : (
-        <SalaryConfirmationSheet
-          visible={isCycleBalanceSheetOpen}
-          monthlyIncome={dashboard.monthlyIncome}
-          remainingDaysInCycle={remainingDaysInCycle}
-          isSaving={isSavingSalary}
-          errorMessage={salaryErrorMessage}
-          onClose={handleCycleSheetClose}
-          onSaveBalance={handleCycleSheetSave}
-          onKeepDefault={handleCycleSheetKeepDefault}
-        />
-      )}
+      <HomeDashboardSheets
+        isOpen={isCycleBalanceSheetOpen}
+        isOnboardingFlow={isOnboardingFlow}
+        monthlyIncome={dashboard.monthlyIncome}
+        remainingDaysInCycle={remainingDaysInCycle}
+        isSaving={isSavingSalary}
+        errorMessage={salaryErrorMessage}
+        onClose={handleCycleSheetClose}
+        onSaveBalance={handleCycleSheetSave}
+        onKeepDefault={handleCycleSheetKeepDefault}
+      />
     </View>
   )
 }

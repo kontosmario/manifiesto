@@ -1,12 +1,15 @@
 // AUTO-GENERATED avatar registry. Maps DB slugs (public.avatar_animals.slug)
 // to React Native Svg components. If you add/remove an entry here,
 // update the Supabase seed in migration 20260423234539 too.
+//
+// `AvatarAnimal` and `AvatarAnimalRow` USED to be re-exported from
+// here, but that produced a require cycle:
+//   `assets/avatars/index.ts` → `components/ui/avatar-animal.tsx`
+//   `components/ui/avatar-animal.tsx` → `assets/avatars/index.ts`
+// Consumers should import the components directly from
+// `@/components/ui/avatar-animal`. This module owns only the slug
+// registry, labels, components map, and pure helpers — no UI.
 import type { ComponentType } from 'react'
-export { AvatarAnimal, AvatarAnimalRow } from '@/components/ui/avatar-animal'
-export type {
-  AvatarAnimalProps,
-  AvatarAnimalRowProps,
-} from '@/components/ui/avatar-animal'
 import { AlpacaAvatar } from './components/alpaca'
 import { AnteaterAvatar } from './components/anteater'
 import { BatAvatar } from './components/bat'

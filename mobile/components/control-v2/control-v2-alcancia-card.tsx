@@ -128,8 +128,8 @@ export function ControlV2AlcanciaCard({
       // first goal once they land on the form.
       void triggerHaptic('selection')
       Alert.alert(
-        'Aún no tenés meta',
-        'Creá tu meta de ahorro desde Ajustes → Metas para empezar a usar la alcancía.',
+        'Aún no tienes meta',
+        'Crea tu meta de ahorro desde Ajustes → Metas para empezar a usar la alcancía.',
       )
       return
     }
@@ -150,7 +150,7 @@ export function ControlV2AlcanciaCard({
           void triggerHaptic('error')
           Alert.alert(
             'No pudimos sumar el aporte',
-            err instanceof Error ? err.message : 'Reintentá en un momento.',
+            err instanceof Error ? err.message : 'Reintenta en un momento.',
           )
         },
       },
@@ -160,10 +160,10 @@ export function ControlV2AlcanciaCard({
   const subSpendDays = `${diasGanadores} de ${Math.max(closedDays, diasGanadores)} días`
   const subSpendCopy =
     vault > 0
-      ? `Sub-gastaste el cupo en ${subSpendDays} cerrados de este ciclo.`
+      ? `Gasto debajo del cupo en ${subSpendDays} cerrados de este ciclo.`
       : closedDays === 0
         ? 'Aún no hay días cerrados — empezamos a calcular mañana.'
-        : `Esta semana te pasaste casi siempre del cupo. Cuando bajes, lo guardamos acá.`
+        : `Esta semana el gasto superó el cupo casi todos los días. Cuando bajes, lo guardamos aquí.`
 
   return (
     <RiseView delay={180}>
@@ -187,7 +187,7 @@ export function ControlV2AlcanciaCard({
                 style={[styles.metaChipText, { color: accentFg }]}
                 numberOfLines={1}
               >
-                {goalPct}% · {goal!.title}
+                META · {goalPct}%
               </Text>
             </View>
           ) : null}
@@ -360,10 +360,10 @@ function StatTile({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {

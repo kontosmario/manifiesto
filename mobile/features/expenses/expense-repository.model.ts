@@ -24,6 +24,14 @@ export interface ExpenseMonthRow {
 export interface ExpenseQueryFilters {
   categoryId?: string
   limit?: number
+  /** ISO timestamp inclusive lower bound for `created_at`. When set,
+   *  scopes the result to expenses on or after this instant — used by
+   *  the cycle-windowed Gastos query so the screen no longer parses
+   *  the full family history just to show one cycle. */
+  createdAtGte?: string
+  /** ISO timestamp exclusive upper bound for `created_at`. Pair with
+   *  `createdAtGte` to express a `[start, end)` cycle window. */
+  createdAtLt?: string
 }
 
 const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])
@@ -71,18 +79,36 @@ export function isMissingCommitmentIdColumnError(error: PostgrestError): boolean
   return MISSING_COLUMN_CODES.has(code) && text.includes('commitment_id')
 }
 
+/** Hard cap on description length. Mirror this with a server-side
+ *  CHECK constraint when migrating the schema. 200 cubre descripciones
+ *  con detalle ("Compra del super en el barrio chino — viandas") sin
+ *  permitir abuso (texto pegado de email, etc.). */
+export const EXPENSE_DESCRIPTION_MAX_LENGTH = 200
+
+/** Hard cap on price. ARS rara vez supera 8 dígitos en un solo gasto;
+ *  el techo de 10⁹ deja headroom para casos extremos sin permitir
+ *  overflow del IEEE 754 ni totales nonsensicales. */
+export const EXPENSE_PRICE_MAX = 1_000_000_000
+
 export function validateExpenseDescription(description: string) {
   const normalizedDescription = description.trim()
   if (!normalizedDescription) {
-    throw new Error('La descripcion es obligatoria.')
+    throw new Error('La descripción es obligatoria.')
   }
-
+  if (normalizedDescription.length > EXPENSE_DESCRIPTION_MAX_LENGTH) {
+    throw new Error(
+      `La descripción no puede superar los ${EXPENSE_DESCRIPTION_MAX_LENGTH} caracteres.`,
+    )
+  }
   return normalizedDescription
 }
 
 export function validateExpensePrice(price: number) {
   if (!Number.isFinite(price) || price < 0) {
-    throw new Error('El precio debe ser un numero mayor o igual a 0.')
+    throw new Error('El precio debe ser un número mayor o igual a 0.')
+  }
+  if (price > EXPENSE_PRICE_MAX) {
+    throw new Error('El precio supera el máximo permitido.')
   }
 }
 

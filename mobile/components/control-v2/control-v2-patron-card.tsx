@@ -67,7 +67,7 @@ export function ControlV2PatronCard({
         title="Tu patrón semanal"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Con 14 días podemos detectar qué día de la semana gastás más."
+        hint="Con 14 días podemos detectar qué día de la semana se gasta más."
       />
     )
   }
@@ -96,6 +96,7 @@ export function ControlV2PatronCard({
             ? 'rgba(243,186,87,0.28)'
             : 'rgba(194,122,10,0.20)',
           icon: 'trending-up' as const,
+          canonical: 'Atención',
           stateLabel: `${dowFullName(peorDow.name)} intenso`,
         }
       case 'leve':
@@ -113,6 +114,7 @@ export function ControlV2PatronCard({
             ? 'rgba(243,186,87,0.22)'
             : 'rgba(194,122,10,0.16)',
           icon: 'trending-up' as const,
+          canonical: 'Atención',
           stateLabel: `${dowFullName(peorDow.name)} alto`,
         }
       case 'plano':
@@ -130,7 +132,8 @@ export function ControlV2PatronCard({
             ? 'rgba(122,216,163,0.22)'
             : 'rgba(28,126,58,0.16)',
           icon: 'trending-flat' as const,
-          stateLabel: 'Patrón parejo',
+          canonical: 'Saludable',
+          stateLabel: 'Distribución pareja',
         }
     }
   })()
@@ -168,12 +171,12 @@ export function ControlV2PatronCard({
     if (severity === 'leve') {
       return {
         icon: 'trending-up' as const,
-        text: `Los ${dowPlural(peorDow.name)} tienden a ser más caros (${ratio.toFixed(1)}×). Vigilalos.`,
+        text: `Los ${dowPlural(peorDow.name)} tienden a ser más caros (${ratio.toFixed(1)}×). Vale la pena prestarles atención.`,
       }
     }
     return {
       icon: 'savings' as const,
-      text: `Si los ${dowPlural(peorDow.name)} bajás al promedio, ahorrás ~${formatMoneyShort(ahorroProyectado)} en este ciclo.`,
+      text: `Si los ${dowPlural(peorDow.name)} bajan al promedio, ahorras ~${formatMoneyShort(ahorroProyectado)} en este ciclo.`,
     }
   })()
 
@@ -224,7 +227,7 @@ export function ControlV2PatronCard({
               <Text style={[styles.headlineStrong, { color: tones.peor }]}>
                 {dowPlural(peorDow.name)}
               </Text>{' '}
-              gastás{' '}
+              gastas{' '}
               <Text style={[styles.headlineStrong, { color: tones.peor }]}>
                 {ratio.toFixed(1)}×
               </Text>{' '}
@@ -409,7 +412,7 @@ export function ControlV2PatronCard({
             <Text
               style={[styles.todayCalloutText, { color: theme.colors.text }]}
             >
-              Hoy es {dowFullName(peorDow.name)} — cuidá el ritmo.
+              Hoy es {dowFullName(peorDow.name)} — cuida el ritmo.
             </Text>
           </View>
         ) : null}
@@ -507,10 +510,10 @@ function dowFullName(name: string): string {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   eyebrowRow: {

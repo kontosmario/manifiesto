@@ -56,5 +56,9 @@ const styles = StyleSheet.create({
   rightSlot: {
     marginTop: 6,
     marginLeft: 8,
+    // Right clearance so the StreakFlameIcon's overflow badge
+    // (`top: -5, right: -5`) doesn't get clipped by the SectionList
+    // header cell's right edge.
+    marginRight: 6,
   },
 })

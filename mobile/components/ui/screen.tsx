@@ -51,6 +51,15 @@ interface ScreenProps extends ScrollViewProps {
    * the keyboard opens.
    */
   scrollRef?: React.RefObject<ScrollView | null>
+  /**
+   * Rendered inside the safe-area, BEHIND the scrollable content.
+   * Use for absolute-positioned ambient decorations (blobs,
+   * gradients) that must cover the full viewport and stay fixed
+   * while the content scrolls. Putting them inside `children` would
+   * either scroll with content (scrollable Screen) or get clipped
+   * to the inner stack View's bounds.
+   */
+  backgroundSlot?: ReactNode
 }
 
 export function Screen({
@@ -65,6 +74,7 @@ export function Screen({
   backgroundColor,
   showGrabHandle = false,
   scrollRef,
+  backgroundSlot,
   children,
   contentContainerStyle,
   ...scrollViewProps
@@ -144,6 +154,7 @@ export function Screen({
         style={styles.safeArea}
       >
         <Animated.View style={[styles.safeArea, tabFocusStyle]}>
+        {backgroundSlot}
         {scrollable ? (
           <ScrollView
             ref={scrollRef}

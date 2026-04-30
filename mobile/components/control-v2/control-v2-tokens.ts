@@ -32,5 +32,5 @@ export const controlV2Tokens = {
 
 export const controlV2Copy = {
   title: 'Control',
-  subtitle: 'Tu guía simple de gastos, día a día.',
+  subtitle: 'El estado de tus finanzas, día a día.',
 } as const

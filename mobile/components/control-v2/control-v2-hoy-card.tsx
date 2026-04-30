@@ -1,39 +1,36 @@
-import type { ComponentType, PropsWithChildren, ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
-import Svg, {
-  Circle,
-  Defs as DefsRaw,
-  LinearGradient as SvgGradient,
-  Line,
-  RadialGradient,
-  Stop,
-} from 'react-native-svg'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native'
+import Animated, {
+  Easing,
+  LinearTransition,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ShineOverlay } from '@/components/home/animated/shine-overlay'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
-
-// react-native-svg v15 types `Defs` without children in its BaseProps
-// even though it accepts them at runtime. Re-type so JSX compiles.
-const Defs = DefsRaw as unknown as ComponentType<PropsWithChildren>
-
-type Severity = 'ok' | 'warn' | 'critical'
-
-interface Tone {
-  /** Brighter tip of the gauge gradient. */
-  tint: string
-  /** Deeper end of the gauge gradient. */
-  solid: string
-  /** Status pill icon. */
-  icon: keyof typeof MaterialIcons.glyphMap
-  /** Status pill label. */
-  label: string
-}
+import {
+  getStateTokens,
+  hexAlpha,
+  type SemanticState,
+} from '@/theme/state-tokens'
 
 interface ControlV2HoyCardProps {
   cupoDiario: number
@@ -67,22 +64,24 @@ interface ControlV2HoyCardProps {
 /**
  * HOY hero — the principal card of Control v2.
  *
- * Layered chrome (back → front):
- *   1. Hero gradient shell + tone-tinted ambient blob in the corner —
- *      the card itself reacts to severity.
- *   2. Top-edge hairline highlight for glass affordance.
- *   3. ShineOverlay (existing) for slow specular pass.
+ * Designed for glanceability: a horizontal **pace bar** compares
+ * actual spend (filled portion) against the proportional position of
+ * the day (floating "AHORA" chip + vertical marker line). The visual
+ * gap between fill and marker IS the delta — read at a glance.
  *
- * Content:
- *   · Header — day label + tone-pill (icon + copy escalates with
- *     severity: ok / warn / critical).
- *   · Body — signature gauge dial (radial halo behind, severity arc,
- *     orbital hour-hand dot with glow ring) flanked by two iconified
- *     mini panels.
- *   · Insights strip — three glass chips: streak, days-under-cupo
- *     ratio, days until next salary.
- *   · Smart hint — single-line cascade with a tone-tinted accent
- *     stripe on the leading edge.
+ * Layered chrome (back → front):
+ *   1. Hero gradient shell + tone-tinted ambient blob in the corner
+ *   2. Top-edge hairline highlight
+ *   3. ShineOverlay (slow specular pass)
+ *
+ * Content hierarchy (top → bottom):
+ *   · Header: day label + state pill.
+ *   · Hero stat: marquee amount + signed delta chip + reference.
+ *   · Pace bar: floating AHORA chip with arrow → marker line through
+ *     a track with a sheen-gradient fill and a pulsing leading-edge
+ *     dot. Below the bar a single combined label.
+ *   · 3 stats chips (racha, días bajo cupo, días al cobro).
+ *   · Smart hint with tone-tinted accent stripe.
  */
 export function ControlV2HoyCard({
   cupoDiario,
@@ -105,31 +104,93 @@ export function ControlV2HoyCard({
 }: ControlV2HoyCardProps) {
   const { theme } = useAppTheme()
 
-  const severity: Severity = alreadyExhausted
+  const state: SemanticState = alreadyExhausted
     ? 'critical'
     : libreHoy <= 0
       ? 'critical'
       : estaOk
-        ? 'ok'
-        : 'warn'
+        ? 'positive'
+        : 'caution'
 
-  const tone = pickTone(severity)
+  const tokens = getStateTokens(state, theme)
   const heroText = theme.colors.heroText
   const heroAccent = theme.colors.heroAccent
-  const heroMuted = theme.colors.heroMuted
-  const heroMuted2 = theme.colors.heroMuted2
 
-  const innerPanelBg = 'rgba(246,251,239,0.05)'
-  const innerPanelBorder = 'rgba(246,251,239,0.10)'
-  const chipBg = 'rgba(246,251,239,0.07)'
-  const chipBorder = 'rgba(246,251,239,0.10)'
-  const tonePillBg = withAlpha(tone.tint, 0.14)
+  // ── Bright state hues for the hero gradient ─────────────────────
+  // `tokens.fillSoft` (theme.success @ 55% alpha) ends up as a dim
+  // greenish smudge on top of the dark-green hero gradient. We need
+  // a **luminous** sister-palette designed specifically for use on
+  // this card's chrome — same semantic mapping, but each hue is
+  // bright enough to clear WCAG-AA on the deep hero green.
+  const heroStateColor: Record<SemanticState, string> = {
+    positive: '#C7EE9C', // bright pastel mint
+    caution: '#F1D690', // bright butter yellow
+    critical: '#F2B58A', // bright peach
+    neutral: 'rgba(246,251,239,0.92)',
+  }
+  const stateBright = heroStateColor[state]
 
-  const accentText = tone.tint
+  // ── Local high-contrast palette ─────────────────────────────────
+  // Theme `heroMuted2` (0.55 alpha) was too low for tiny captions on
+  // the dark gradient. We bump every secondary tone locally so each
+  // typographic level reads independently.
+  const textPrimary = heroText // 100% — marquee, big values
+  const textSecondary = 'rgba(246,251,239,0.92)' // strong sub-headings
+  const textBody = 'rgba(246,251,239,0.78)' // captions, sub
+  const textHint = 'rgba(246,251,239,0.62)' // subtle micro
+
+  // ── Chip surfaces ───────────────────────────────────────────────
+  // All chips share the same neutral white-translucent surface, the
+  // same pattern Home/Gastos/Fijos hero cards use. State info comes
+  // from the icon hue inside, NOT from the chip background — that
+  // way "positive" chips don't disappear into a green hero gradient.
+  const trackBg = 'rgba(0,0,0,0.50)' // deep inset → fill pops on top
+  const trackBorder = 'rgba(255,255,255,0.18)'
+  const chipBg = 'rgba(255,255,255,0.10)'
+  const chipBorder = 'rgba(255,255,255,0.20)'
+  const markerChipBg = 'rgba(20,32,28,0.92)'
+  const markerChipBorder = hexAlpha(heroAccent, 0.45)
+
+  // Categorical colors for stat-chip icons — distinct hues so all
+  // three stats read separately at a glance, regardless of state.
+  const ICON_RACHA = '#F1D690' // warm yellow (fire)
+  const ICON_BAJO_CUPO = heroAccent // bright pastel mint
+  const ICON_AL_COBRO = '#F2B58A' // warm peach (calendar)
+
   const minutos = `${String(horaActual).padStart(2, '0')}:${String(minActual).padStart(2, '0')}`
 
+  const spentPct = clamp((gastoHoy / Math.max(1, cupoDiario)) * 100, 0, 100)
+  const pacePct = clamp((horaF / 24) * 100, 0, 100)
+  // Clamp the floating chip's horizontal anchor so the chip never
+  // gets clipped at the bar edges. The marker line itself uses the
+  // raw `pacePct` — only the chip+arrow composite is constrained.
+  const chipAnchorPct = clamp(pacePct, 12, 88)
+
+  const deltaPositive = delta >= 0
+  const deltaIcon: keyof typeof MaterialIcons.glyphMap = deltaPositive
+    ? 'trending-down'
+    : 'trending-up'
+  const deltaSign = deltaPositive ? '+' : '−'
+
+  const heroAmountValue = libreHoy > 0 ? libreHoy : Math.abs(libreHoy)
+  const heroEyebrowText = libreHoy > 0 ? 'DISPONIBLE HOY' : 'CUPO EXCEDIDO'
+
+  // Derived percentage for the combined label under the bar.
+  const spentPctRound = Math.round(spentPct)
+
+  // Combined "spent" label below the bar — switches to a dedicated
+  // copy when there's no spend yet (so the user doesn't see "$0 · 0%
+  // del cupo" which reads as a weird metric).
+  const spentBarLabel =
+    gastoHoy <= 0
+      ? { money: 'Sin gastos hoy', pct: 'el cupo está intacto' }
+      : {
+          money: formatMoney(gastoHoy),
+          pct: `${spentPctRound}% del cupo`,
+        }
+
   const hint = pickHint({
-    severity,
+    state,
     libreHoy,
     delta,
     racha,
@@ -142,9 +203,113 @@ export function ControlV2HoyCard({
     alreadyExhausted,
   })
 
-  const deltaPanelIcon: keyof typeof MaterialIcons.glyphMap = estaOk
-    ? 'savings'
-    : 'trending-up'
+  // ── Animation: full motion choreography ────────────────────────
+  // The card has 6 layered animations, each with a clear semantic
+  // role. They're all UI-thread (Reanimated), pause on blur via
+  // `useLoopAnimation`, and respect prefers-reduced-motion.
+  //
+  //   Perpetual loops:
+  //     · particleWave  — single shared 0→1 sweep that drives the
+  //                       state-tinted particle field (each particle
+  //                       reads `(wave + phase) % 1` so the field
+  //                       cascades organically, like floating embers)
+  //     · shimmer       — band traveling left→right inside the fill
+  //                       (evokes "rhythm in motion")
+  //     · sonar         — staggered rings from the leading-edge dot
+  //                       (marks the "current spend" as a live point)
+  //     · markerHalo    — soft glow pulse around the marker line
+  //                       ("now is now" emphasis)
+  //     · ahoraFloat    — gentle vertical float of the AHORA chip
+  //                       ("tethered to the passage of time")
+  //     · hintBreath    — scale breath on the hint icon badge
+  //                       (signals the hint is "thinking" / live)
+  //
+  //   One-shot on mount/data change:
+  //     · fillProgress  — bar fill grows from 0% to spentPct on
+  //                       mount, and re-animates on data updates
+  //                       (pairs the visual with CountUpText's
+  //                       number ticker)
+  const reducedMotion = useReducedMotion()
+  const shimmer = useSharedValue(0)
+  const sonar = useSharedValue(0)
+  const particleWave = useSharedValue(0)
+  const markerHalo = useSharedValue(0)
+  const ahoraFloat = useSharedValue(0)
+  const hintBreath = useSharedValue(0)
+  useLoopAnimation(
+    () => {
+      shimmer.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 0 }),
+        ),
+        -1,
+        false,
+      )
+      sonar.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2400, easing: Easing.out(Easing.ease) }),
+          withTiming(0, { duration: 0 }),
+        ),
+        -1,
+        false,
+      )
+      // Single shared wave that drives the particle field. 9s linear
+      // sweep, looped with instant reset. Each particle reads
+      // `(wave + phase) % 1` so the field cascades organically.
+      particleWave.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 9000, easing: Easing.linear }),
+          withTiming(0, { duration: 0 }),
+        ),
+        -1,
+        false,
+      )
+      // Marker halo — 3.6s breath.
+      markerHalo.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
+      )
+      // AHORA chip subtle float — 5s, ±1.5pt translateY.
+      ahoraFloat.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
+      )
+      // Hint icon badge breath — 5s, scale 1.0 ↔ 1.06.
+      hintBreath.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [shimmer, sonar, particleWave, markerHalo, ahoraFloat, hintBreath],
+  )
+
+  // Fill-bar growth — animates from 0% to spentPct on mount, and
+  // re-animates when spentPct changes (live spending updates). Skip
+  // the one-shot when reduced motion is on (jump to value).
+  const fillProgress = useSharedValue(0)
+  useEffect(() => {
+    if (reducedMotion) {
+      fillProgress.value = spentPct
+      return
+    }
+    fillProgress.value = withDelay(
+      220,
+      withTiming(spentPct, { duration: 1000, easing: Easing.out(Easing.cubic) }),
+    )
+  }, [spentPct, fillProgress, reducedMotion])
 
   return (
     <RiseView delay={80}>
@@ -155,25 +320,16 @@ export function ControlV2HoyCard({
           end={{ x: 0.9, y: 1 }}
           style={styles.card}
         >
-          <View
-            pointerEvents="none"
-            style={[
-              styles.toneBlob,
-              { backgroundColor: tone.tint, opacity: 0.16 },
-            ]}
+          <ParticleField
+            color={stateBright}
+            wave={particleWave}
           />
           <View pointerEvents="none" style={styles.topHighlight} />
-          <ShineOverlay
-            width={430}
-            height={340}
-            tint={theme.colors.shineOverlay}
-            delayMs={1000}
-            periodMs={4200}
-          />
 
+          {/* ── Header ── */}
           <View style={styles.headerRow}>
             <View style={styles.eyebrowRow}>
-              <BreatheDot size={7} color={tone.tint} glow={tone.tint} />
+              <BreatheDot size={8} color={stateBright} glow={stateBright} />
               <Text style={[styles.eyebrow, { color: heroAccent }]}>
                 {diaLabel}
               </Text>
@@ -181,147 +337,165 @@ export function ControlV2HoyCard({
             <View
               style={[
                 styles.statusPill,
-                { backgroundColor: tonePillBg },
+                { backgroundColor: chipBg, borderColor: chipBorder },
               ]}
             >
-              <MaterialIcons name={tone.icon} size={13} color={tone.tint} />
-              <Text style={[styles.statusPillText, { color: tone.tint }]}>
-                {tone.label}
+              <MaterialIcons name={tokens.icon} size={14} color={stateBright} />
+              <Text style={[styles.statusPillText, { color: stateBright }]}>
+                {tokens.label}
               </Text>
             </View>
           </View>
 
-          <View style={styles.body}>
-            <GaugeDial
-              percent={Math.min(1, gastoHoy / Math.max(1, cupoDiario))}
-              horaFraction={horaF / 24}
-              tone={tone}
-            >
-              <Text style={[styles.gaugeEyebrow, { color: heroMuted2 }]}>
-                {libreHoy > 0 ? 'TE QUEDAN HOY' : 'TE PASASTE DEL DÍA'}
-              </Text>
+          {/* ── Hero stat ── */}
+          <View style={styles.heroStat}>
+            <Text style={[styles.heroEyebrow, { color: textBody }]}>
+              {heroEyebrowText}
+            </Text>
+            <View style={styles.amountRow}>
               <CountUpText
-                value={Math.max(0, libreHoy > 0 ? libreHoy : Math.abs(libreHoy))}
+                value={Math.max(0, heroAmountValue)}
                 duration={1200}
                 format={(n) => formatMoney(n)}
-                style={[styles.gaugeAmount, { color: heroText }]}
+                style={[styles.heroAmount, { color: textPrimary }]}
               />
-              <Text style={[styles.gaugeFooter, { color: heroMuted }]}>
-                ya gastaste {formatMoney(gastoHoy)}
-              </Text>
-            </GaugeDial>
-
-            <View style={styles.miniStack}>
-              <MiniPanel
-                icon="account-balance-wallet"
-                iconColor={heroAccent}
-                label="TU PLATA DEL DÍA"
-                value={formatMoney(cupoDiario)}
-                sub="sin tocar fijos"
-                background={innerPanelBg}
-                border={innerPanelBorder}
-                accent={heroText}
-                minor={heroMuted}
-                minorSoft={heroMuted2}
-              />
-              <MiniPanel
-                icon={deltaPanelIcon}
-                iconColor={tone.tint}
-                label={estaOk ? 'TE ESTÁS AHORRANDO' : 'TE PASASTE POR'}
-                value={formatMoney(Math.abs(delta))}
-                sub={`a las ${minutos}`}
-                background={innerPanelBg}
-                border={innerPanelBorder}
-                accent={accentText}
-                minor={heroMuted}
-                minorSoft={heroMuted2}
-              />
+              {/*
+                Delta tag — two-line micro-card. Top line: signed
+                amount with directional arrow (state-colored).
+                Bottom line: explicit "vs ritmo" / "sobre ritmo" so
+                the user understands what the +/− is comparing
+                against. Without that caption, just an arrow + amount
+                reads as ambiguous ("baja de qué?").
+              */}
+              <View
+                style={[
+                  styles.deltaTag,
+                  { backgroundColor: chipBg, borderColor: chipBorder },
+                ]}
+              >
+                <View style={styles.deltaTagAmountRow}>
+                  <MaterialIcons name={deltaIcon} size={13} color={stateBright} />
+                  <Text style={[styles.deltaTagAmount, { color: stateBright }]}>
+                    {deltaSign}{formatMoney(Math.abs(delta))}
+                  </Text>
+                </View>
+                <Text style={[styles.deltaTagCaption, { color: textBody }]}>
+                  {deltaPositive ? 'BAJO RITMO' : 'SOBRE RITMO'}
+                </Text>
+              </View>
             </View>
+            <Text style={[styles.heroSub, { color: textBody }]}>
+              de {formatMoney(cupoDiario)} cupo del día
+            </Text>
           </View>
 
-          <View style={styles.divider} />
+          {/* ── Pace bar ── */}
+          <PaceBar
+            spentPct={spentPct}
+            pacePct={pacePct}
+            chipAnchorPct={chipAnchorPct}
+            fillColor={stateBright}
+            fillSheen={hexAlpha(tokens.fg, 1)}
+            trackBg={trackBg}
+            trackBorder={trackBorder}
+            markerColor={heroAccent}
+            markerChipBg={markerChipBg}
+            markerChipBorder={markerChipBorder}
+            markerLabel={`AHORA · ${minutos}`}
+            spentMoneyText={spentBarLabel.money}
+            spentPctText={spentBarLabel.pct}
+            spentHasMoney={gastoHoy > 0}
+            textPrimary={textPrimary}
+            textBody={textBody}
+            textHint={textHint}
+            shimmer={shimmer}
+            sonar={sonar}
+            fillProgress={fillProgress}
+            markerHalo={markerHalo}
+            ahoraFloat={ahoraFloat}
+          />
 
+          {/* ── Stats row ── */}
           <View style={styles.statsRow}>
-            <StatChip
-              icon="local-fire-department"
-              iconColor={racha > 0 ? '#F1D690' : heroMuted2}
-              label={racha > 0 ? `${racha}` : '—'}
-              caption={racha === 1 ? 'día racha' : 'días racha'}
-              text={heroText}
-              minor={heroMuted2}
-              background={chipBg}
-              border={chipBorder}
-            />
-            <StatChip
-              icon="military-tech"
-              iconColor={tone.tint}
-              label={closedDays > 0 ? `${diasGanadores}/${closedDays}` : '—'}
-              caption="bajo cupo"
-              text={heroText}
-              minor={heroMuted2}
-              background={chipBg}
-              border={chipBorder}
-            />
-            <StatChip
-              icon="event"
-              iconColor={heroAccent}
-              label={proximoSueldoEnDias <= 0 ? 'Hoy' : `${proximoSueldoEnDias}`}
-              caption={proximoSueldoEnDias === 1 ? 'día al cobro' : 'días al cobro'}
-              text={heroText}
-              minor={heroMuted2}
-              background={chipBg}
-              border={chipBorder}
-            />
+            <RiseView delay={420} style={styles.statChipFlex}>
+              <StatChip
+                icon="local-fire-department"
+                iconColor={racha > 0 ? ICON_RACHA : textHint}
+                label={racha > 0 ? `${racha}` : '—'}
+                caption="Racha"
+                text={textPrimary}
+                minor={textBody}
+                background={chipBg}
+                border={chipBorder}
+              />
+            </RiseView>
+            <RiseView delay={480} style={styles.statChipFlex}>
+              <StatChip
+                icon="military-tech"
+                iconColor={ICON_BAJO_CUPO}
+                label={closedDays > 0 ? `${diasGanadores}/${closedDays}` : '—'}
+                caption="Bajo cupo"
+                text={textPrimary}
+                minor={textBody}
+                background={chipBg}
+                border={chipBorder}
+              />
+            </RiseView>
+            <RiseView delay={540} style={styles.statChipFlex}>
+              <StatChip
+                icon="event"
+                iconColor={ICON_AL_COBRO}
+                label={proximoSueldoEnDias <= 0 ? 'Hoy' : `${proximoSueldoEnDias}d`}
+                caption="Al cobro"
+                text={textPrimary}
+                minor={textBody}
+                background={chipBg}
+                border={chipBorder}
+              />
+            </RiseView>
           </View>
 
+          {/* ── Smart hint ── */}
+          <RiseView delay={640}>
           <View
             style={[
               styles.hintRow,
               { backgroundColor: chipBg, borderColor: chipBorder },
             ]}
           >
+            {/* State-colored stripe — flush against the left edge */}
             <View
-              style={[styles.hintAccent, { backgroundColor: tone.tint }]}
+              style={[styles.hintAccent, { backgroundColor: stateBright }]}
             />
-            <MaterialIcons name={hint.icon} size={16} color={tone.tint} />
-            <Text style={[styles.hintText, { color: heroText }]}>
+            {/* Icon badge — neutral surface, pulses subtly so the
+                hint feels "alive". */}
+            <HintIconBadge
+              icon={hint.icon}
+              color={stateBright}
+              breath={hintBreath}
+            />
+            <Text style={[styles.hintText, { color: textPrimary }]}>
               {hint.text}
             </Text>
           </View>
+          </RiseView>
         </LinearGradient>
       </Animated.View>
     </RiseView>
   )
 }
 
-function pickTone(severity: Severity): Tone {
-  switch (severity) {
-    case 'ok':
-      return {
-        tint: '#C7EE9C',
-        solid: '#6FE09A',
-        icon: 'check-circle',
-        label: 'vas bien',
-      }
-    case 'warn':
-      return {
-        tint: '#F1D690',
-        solid: '#E8B85F',
-        icon: 'priority-high',
-        label: 'mirá el ritmo',
-      }
-    case 'critical':
-      return {
-        tint: '#F2B58A',
-        solid: '#E88A70',
-        icon: 'error-outline',
-        label: 'sin cupo hoy',
-      }
-  }
+// ─── Helpers ───────────────────────────────────────────────────────
+
+function clamp(n: number, lo: number, hi: number): number {
+  if (!Number.isFinite(n)) return lo
+  if (n < lo) return lo
+  if (n > hi) return hi
+  return n
 }
 
 interface HintInput {
-  severity: Severity
+  state: SemanticState
   libreHoy: number
   delta: number
   racha: number
@@ -343,47 +517,47 @@ function pickHint(i: HintInput): Hint {
   if (i.alreadyExhausted) {
     return {
       icon: 'report',
-      text: `Te pasaste del libre del ciclo. Quedan ${i.diasRestantes} ${
+      text: `Presupuesto libre del ciclo agotado. Quedan ${i.diasRestantes} ${
         i.diasRestantes === 1 ? 'día' : 'días'
-      } al sueldo.`,
+      } al próximo cobro.`,
     }
   }
   if (i.libreHoy <= 0) {
     return {
       icon: 'pause-circle-outline',
-      text: 'Quedate tranqui hasta mañana — arrancás con todo el cupo.',
+      text: 'Cupo del día agotado. Mañana se reinicia con el cupo completo.',
     }
   }
   if (i.closedDays === 0) {
     return {
       icon: 'play-circle-outline',
-      text: 'Primer día del ciclo. Hoy marcás el ritmo.',
+      text: 'Primer día del ciclo. El ritmo de hoy define el resto del mes.',
     }
   }
   if (i.racha >= 3) {
     return {
       icon: 'local-fire-department',
-      text: `Llevás ${i.racha} días bajo cupo — seguí así.`,
+      text: `Racha de ${i.racha} días bajo cupo en curso.`,
     }
   }
   if (i.momentum >= 1.2 && i.closedDays >= 7) {
     const pct = Math.round((i.momentum - 1) * 100)
     return {
       icon: 'trending-up',
-      text: `Esta semana gastás un ${pct}% más que la previa.`,
+      text: `Gasto semanal +${pct}% vs la semana anterior.`,
     }
   }
   if (i.momentum <= 0.85 && i.closedDays >= 7) {
     const pct = Math.round((1 - i.momentum) * 100)
     return {
       icon: 'trending-down',
-      text: `Bajaste el ritmo un ${pct}% vs la semana previa.`,
+      text: `Gasto semanal −${pct}% vs la semana anterior.`,
     }
   }
-  if (i.severity === 'warn') {
+  if (i.state === 'caution') {
     return {
       icon: 'speed',
-      text: 'Vas un poco adelantado al ritmo del día — bajá el ritmo.',
+      text: 'Ritmo adelantado al cupo del día. Conviene moderar el gasto.',
     }
   }
   if (
@@ -392,7 +566,7 @@ function pickHint(i: HintInput): Hint {
   ) {
     return {
       icon: 'verified',
-      text: 'Casi todos tus días cierran en verde este ciclo.',
+      text: 'Casi todos los días del ciclo cierran dentro del cupo.',
     }
   }
   if (i.noSpendCount > 0) {
@@ -400,166 +574,497 @@ function pickHint(i: HintInput): Hint {
       icon: 'savings',
       text: `${i.noSpendCount} ${
         i.noSpendCount === 1 ? 'día' : 'días'
-      } sin gastar este ciclo — sumás a la alcancía.`,
+      } sin gasto en el ciclo — suma a la alcancía.`,
     }
   }
   return {
     icon: 'event',
     text: `Quedan ${i.diasRestantes} ${
       i.diasRestantes === 1 ? 'día' : 'días'
-    } hasta tu próximo cobro.`,
+    } hasta el próximo cobro.`,
   }
 }
 
-function GaugeDial({
-  percent,
-  horaFraction,
-  tone,
-  children,
-}: {
-  percent: number
-  horaFraction: number
-  tone: Tone
-  children: ReactNode
-}) {
-  const size = 196
-  const strokeWidth = 14
-  const r = 82
-  const cx = size / 2
-  const cy = size / 2
-  const circumference = 2 * Math.PI * r
-  const dash = Math.min(percent, 1) * circumference
+// ─── ParticleField ─────────────────────────────────────────────────
 
-  // Clock-hand dot position (marks the hour around the dial).
-  const angle = horaFraction * 2 * Math.PI - Math.PI / 2
-  const dotR = r + 10
-  const dotX = cx + dotR * Math.cos(angle)
-  const dotY = cy + dotR * Math.sin(angle)
-
-  const trackColor = 'rgba(246,251,239,0.10)'
-  const tickColor = 'rgba(246,251,239,0.28)'
-
-  return (
-    <View style={[styles.gaugeRoot, { width: size, height: size }]}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <SvgGradient id="hoy-arc" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor={tone.tint} />
-            <Stop offset="100%" stopColor={tone.solid} />
-          </SvgGradient>
-          <RadialGradient
-            id="hoy-halo"
-            cx="50%"
-            cy="50%"
-            r="50%"
-            fx="50%"
-            fy="50%"
-          >
-            <Stop offset="0%" stopColor={tone.tint} stopOpacity={0.22} />
-            <Stop offset="60%" stopColor={tone.tint} stopOpacity={0.06} />
-            <Stop offset="100%" stopColor={tone.tint} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        {/* tone-tinted halo behind the gauge */}
-        <Circle cx={cx} cy={cy} r={r + 14} fill="url(#hoy-halo)" />
-        {/* hour ticks */}
-        {Array.from({ length: 12 }).map((_, i) => {
-          const a = (i / 12) * 2 * Math.PI - Math.PI / 2
-          const r1 = r + 14
-          const r2 = r + 8
-          const major = i % 3 === 0
-          return (
-            <Line
-              key={i}
-              x1={cx + r1 * Math.cos(a)}
-              y1={cy + r1 * Math.sin(a)}
-              x2={cx + r2 * Math.cos(a)}
-              y2={cy + r2 * Math.sin(a)}
-              stroke={tickColor}
-              strokeWidth={major ? 2 : 1}
-              strokeLinecap="round"
-              opacity={major ? 1 : 0.6}
-            />
-          )
-        })}
-        <Circle
-          cx={cx}
-          cy={cy}
-          r={r}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={cx}
-          cy={cy}
-          r={r}
-          stroke="url(#hoy-arc)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference}`}
-          transform={`rotate(-90 ${cx} ${cy})`}
-          fill="none"
-        />
-        {/* hour-hand dot with glow ring */}
-        <Circle cx={dotX} cy={dotY} r={9} fill={tone.tint} opacity={0.22} />
-        <Circle cx={dotX} cy={dotY} r={4.5} fill={tone.tint} />
-      </Svg>
-      <View style={styles.gaugeCenter} pointerEvents="none">
-        {children}
-      </View>
-    </View>
-  )
+interface ParticleSpec {
+  /** Anchor X position in card coordinates (px). */
+  x: number
+  /** Anchor Y position in card coordinates (px). */
+  y: number
+  /** Particle radius in px. Mixed sizes feel organic. */
+  size: number
+  /** Total horizontal drift across one cycle (px, can be negative). */
+  driftX: number
+  /** Total vertical drift across one cycle (px). Negative = upward. */
+  driftY: number
+  /** Maximum opacity at the bell-curve peak. */
+  maxOpacity: number
+  /** Phase offset 0–1 — where in the cycle this particle starts. */
+  phase: number
 }
 
-function MiniPanel({
-  icon,
-  iconColor,
-  label,
-  value,
-  sub,
-  background,
-  border,
-  accent,
-  minor,
-  minorSoft,
+const PARTICLE_COUNT = 18
+
+/**
+ * Deterministic seeded layout — same particle distribution on every
+ * mount so it doesn't visually "shuffle" on re-renders.
+ */
+function buildParticleSpecs(width: number, height: number): ParticleSpec[] {
+  const specs: ParticleSpec[] = []
+  let seed = 0xa1b2c3
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0
+    return (seed & 0xfffffff) / 0xfffffff
+  }
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    specs.push({
+      x: rand() * width,
+      // Spawn slightly below the visible area so the upward drift
+      // brings them into view as they fade in.
+      y: 12 + rand() * (height - 24),
+      size: 1.5 + rand() * 2.0,
+      driftX: (rand() * 2 - 1) * 16,
+      driftY: -(24 + rand() * 48), // upward 24–72pt
+      maxOpacity: 0.32 + rand() * 0.42,
+      phase: rand(),
+    })
+  }
+  return specs
+}
+
+/**
+ * State-tinted particle field — 18 small dots distributed across the
+ * card, drifting upward with a sin-bell opacity curve so each one
+ * fades in, peaks, fades out. All driven by ONE shared `wave` value
+ * with per-particle phase offsets, which gives the field a
+ * cascading "floating embers" feel and avoids 18 independent
+ * timers.
+ *
+ * Replaces the earlier corner blob — particles communicate the
+ * card's state hue (positive=mint, caution=yellow, critical=peach)
+ * across the whole surface instead of in one corner.
+ */
+function ParticleField({
+  color,
+  wave,
 }: {
-  icon: keyof typeof MaterialIcons.glyphMap
-  iconColor: string
-  label: string
-  value: string
-  sub?: string
-  background: string
-  border: string
-  accent: string
-  minor: string
-  minorSoft: string
+  color: string
+  wave: SharedValue<number>
 }) {
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
+  )
+
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width, height } = e.nativeEvent.layout
+      if (!size || size.width !== width || size.height !== height) {
+        setSize({ width, height })
+      }
+    },
+    [size],
+  )
+
+  const specs = useMemo(() => {
+    if (!size) return []
+    return buildParticleSpecs(size.width, size.height)
+  }, [size])
+
   return (
     <View
+      pointerEvents="none"
+      onLayout={onLayout}
       style={[
-        styles.miniPanel,
-        { backgroundColor: background, borderColor: border },
+        StyleSheet.absoluteFill,
+        { borderRadius: 26, overflow: 'hidden' },
       ]}
     >
-      <View style={styles.miniHeader}>
-        <Text style={[styles.miniLabel, { color: minorSoft }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <MaterialIcons name={icon} size={12} color={iconColor} />
-      </View>
-      <Text style={[styles.miniValue, { color: accent }]} numberOfLines={1}>
-        {value}
-      </Text>
-      {sub ? (
-        <Text style={[styles.miniSub, { color: minor }]} numberOfLines={1}>
-          {sub}
-        </Text>
-      ) : null}
+      {specs.map((spec, i) => (
+        <Particle key={i} spec={spec} color={color} wave={wave} />
+      ))}
     </View>
   )
 }
 
+function Particle({
+  spec,
+  color,
+  wave,
+}: {
+  spec: ParticleSpec
+  color: string
+  wave: SharedValue<number>
+}) {
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    // Per-particle phase offset → looping 0..1 t value.
+    const t = (wave.value + spec.phase) % 1
+    // Bell-curve opacity: 0 at endpoints, peak at t=0.5.
+    // Math.sin(πt) gives 0 → 1 → 0.
+    const opacity = spec.maxOpacity * Math.sin(t * Math.PI)
+    return {
+      transform: [
+        { translateX: spec.driftX * t },
+        { translateY: spec.driftY * t },
+      ],
+      opacity,
+    }
+  })
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: spec.x,
+          top: spec.y,
+          width: spec.size,
+          height: spec.size,
+          borderRadius: spec.size / 2,
+          backgroundColor: color,
+        },
+        animatedStyle,
+      ]}
+    />
+  )
+}
+
+// ─── HintIconBadge ─────────────────────────────────────────────────
+
+/**
+ * The smart hint's leading icon badge. Subtle scale breath signals
+ * that the hint is "thinking" — a live computed insight, not a
+ * static label.
+ */
+function HintIconBadge({
+  icon,
+  color,
+  breath,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap
+  color: string
+  breath: ReturnType<typeof useSharedValue<number>>
+}) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(breath.value, [0, 1], [1, 1.06]) }],
+  }))
+
+  return (
+    <Animated.View
+      style={[
+        styles.hintIconBadge,
+        {
+          backgroundColor: 'rgba(255,255,255,0.10)',
+          borderColor: 'rgba(255,255,255,0.18)',
+        },
+        animatedStyle,
+      ]}
+    >
+      <MaterialIcons name={icon} size={14} color={color} />
+    </Animated.View>
+  )
+}
+
+// ─── PaceBar ───────────────────────────────────────────────────────
+
+/**
+ * Horizontal track with three layered indicators:
+ *   1. Track — dark inset surface for depth.
+ *   2. Fill — sheen-gradient (fillSheen → fillColor) from 0% to
+ *      `spentPct`; a pulsing dot at the leading edge marks the
+ *      "current spend" point with a soft glow.
+ *   3. Marker — vertical line at `pacePct` extending above + below
+ *      the track, topped with a floating "AHORA · HH:MM" chip with
+ *      a downward triangle arrow that visually hooks into the bar.
+ *
+ * The eye reads the bar in one beat: filled length vs marker line.
+ * The gap between them = delta vs ritmo del día.
+ */
+function PaceBar({
+  spentPct,
+  pacePct,
+  chipAnchorPct,
+  fillColor,
+  fillSheen,
+  trackBg,
+  trackBorder,
+  markerColor,
+  markerChipBg,
+  markerChipBorder,
+  markerLabel,
+  spentMoneyText,
+  spentPctText,
+  spentHasMoney,
+  textPrimary,
+  textBody,
+  textHint,
+  shimmer,
+  sonar,
+  fillProgress,
+  markerHalo,
+  ahoraFloat,
+}: {
+  spentPct: number
+  pacePct: number
+  chipAnchorPct: number
+  fillColor: string
+  fillSheen: string
+  trackBg: string
+  trackBorder: string
+  markerColor: string
+  markerChipBg: string
+  markerChipBorder: string
+  markerLabel: string
+  spentMoneyText: string
+  spentPctText: string
+  spentHasMoney: boolean
+  textPrimary: string
+  textBody: string
+  textHint: string
+  shimmer: ReturnType<typeof useSharedValue<number>>
+  sonar: ReturnType<typeof useSharedValue<number>>
+  fillProgress: ReturnType<typeof useSharedValue<number>>
+  markerHalo: ReturnType<typeof useSharedValue<number>>
+  ahoraFloat: ReturnType<typeof useSharedValue<number>>
+}) {
+  // Shimmer band: a thin highlight that travels left → right inside
+  // the fill. Width is 25% of the fill; the translateX maps the
+  // shimmer 0→1 to a journey from -25% to spentPct% relative to the
+  // fill's left edge. Because the band lives INSIDE the fill (which
+  // is itself clipped to spentPct), the shimmer only renders on the
+  // filled portion — it never leaks past the leading edge.
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(shimmer.value, [0, 1], [-40, 240]) },
+    ],
+    opacity: interpolate(shimmer.value, [0, 0.15, 0.5, 0.85, 1], [0, 0.55, 0.7, 0.4, 0]),
+  }))
+
+  // Sonar rings — two staggered ring sprites at the leading-edge dot
+  // expanding + fading on a loop. Drives "this is the live point."
+  const sonarRingA = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(sonar.value, [0, 1], [0.4, 2.6]) }],
+    opacity: interpolate(sonar.value, [0, 0.05, 0.5, 1], [0, 0.7, 0.18, 0]),
+  }))
+  const sonarRingB = useAnimatedStyle(() => {
+    const v = (sonar.value + 0.5) % 1
+    return {
+      transform: [{ scale: interpolate(v, [0, 1], [0.4, 2.6]) }],
+      opacity: interpolate(v, [0, 0.05, 0.5, 1], [0, 0.5, 0.12, 0]),
+    }
+  })
+
+  // Fill bar grows from 0 to spentPct on mount; re-animates on data
+  // updates. The leading-edge indicator follows the same shared
+  // value so it stays visually pinned to the fill's right edge.
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${fillProgress.value}%`,
+  }))
+  const leadingEdgeStyle = useAnimatedStyle(() => ({
+    left: `${fillProgress.value}%`,
+    opacity: interpolate(fillProgress.value, [0, 2, 6], [0, 0.4, 1]),
+  }))
+
+  // Marker halo — breathes around the marker line, emphasizing the
+  // current-time mark without competing with the fill animation.
+  const markerHaloStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scaleX: interpolate(markerHalo.value, [0, 1], [0.7, 1.4]) },
+      { scaleY: interpolate(markerHalo.value, [0, 1], [0.85, 1.15]) },
+    ],
+    opacity: interpolate(markerHalo.value, [0, 1], [0.2, 0.55]),
+  }))
+
+  // AHORA chip subtle float — ±1.5pt translateY on a 5s cycle.
+  const ahoraChipStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(ahoraFloat.value, [0, 1], [0, -2]) },
+    ],
+  }))
+
+  return (
+    <View style={styles.paceContainer}>
+      {/* Floating "AHORA" chip with arrow, anchored above the marker */}
+      <View pointerEvents="none" style={styles.paceChipRow}>
+        <Animated.View
+          style={[
+            styles.paceChipAnchor,
+            { left: `${chipAnchorPct}%` },
+            ahoraChipStyle,
+          ]}
+        >
+          <View
+            style={[
+              styles.paceChip,
+              { backgroundColor: markerChipBg, borderColor: markerChipBorder },
+            ]}
+          >
+            <Text
+              style={[styles.paceChipText, { color: markerColor }]}
+              numberOfLines={1}
+            >
+              {markerLabel}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.paceChipArrow,
+              { borderTopColor: markerChipBg },
+            ]}
+          />
+        </Animated.View>
+      </View>
+
+      {/* Track + fill + marker line */}
+      <View style={styles.paceTrackOuter}>
+        <View
+          style={[
+            styles.paceTrack,
+            { backgroundColor: trackBg, borderColor: trackBorder },
+          ]}
+        >
+          <Animated.View
+            style={[styles.paceFill, fillStyle]}
+            pointerEvents="none"
+          >
+            <LinearGradient
+              colors={[fillSheen, fillColor]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Subtle inner top highlight (sheen) */}
+            <View
+              style={[
+                styles.paceFillSheen,
+                { backgroundColor: 'rgba(255,255,255,0.18)' },
+              ]}
+            />
+            {/* Animated shimmer band traveling left → right */}
+            <Animated.View
+              style={[styles.paceShimmer, shimmerStyle]}
+              pointerEvents="none"
+            >
+              <LinearGradient
+                colors={[
+                  'rgba(255,255,255,0)',
+                  'rgba(255,255,255,0.7)',
+                  'rgba(255,255,255,0)',
+                ]}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
+          </Animated.View>
+        </View>
+
+        {/* Pulsing leading-edge indicator — follows the fill's
+            animated edge so it stays pinned to the right border of
+            the spent portion as the fill grows on mount. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.paceLeadingEdge, leadingEdgeStyle]}
+        >
+          {/* Sonar rings — two staggered expansions */}
+          <Animated.View
+            style={[
+              styles.paceSonarRing,
+              { borderColor: hexAlpha(fillColor, 0.65) },
+              sonarRingA,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.paceSonarRing,
+              { borderColor: hexAlpha(fillColor, 0.55) },
+              sonarRingB,
+            ]}
+          />
+          {/* Static glow halo + the dot itself */}
+          <View
+            style={[
+              styles.paceLeadingGlow,
+              { backgroundColor: hexAlpha(fillColor, 0.35) },
+            ]}
+          />
+          <View
+            style={[
+              styles.paceLeadingDot,
+              { backgroundColor: fillColor, borderColor: 'rgba(255,255,255,0.85)' },
+            ]}
+          />
+        </Animated.View>
+
+        {/* Marker halo — soft pulse behind the marker line. Lives
+            below the line in the z-order so the line stays sharp on
+            top of the breathing glow. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.paceMarkerHalo,
+            {
+              left: `${pacePct}%`,
+              backgroundColor: hexAlpha(markerColor, 0.45),
+            },
+            markerHaloStyle,
+          ]}
+        />
+
+        {/* Marker line — extends above and below the track */}
+        <View
+          pointerEvents="none"
+          style={[
+            styles.paceMarkerLine,
+            { left: `${pacePct}%`, backgroundColor: markerColor },
+          ]}
+        />
+      </View>
+
+      {/* Combined label below the bar */}
+      <View style={styles.paceLabelRow}>
+        <View
+          style={[
+            styles.paceDot,
+            {
+              backgroundColor: spentHasMoney ? fillColor : 'transparent',
+              borderColor: spentHasMoney ? 'transparent' : textHint,
+              borderWidth: spentHasMoney ? 0 : 1.5,
+            },
+          ]}
+        />
+        <Text
+          style={[
+            styles.paceLabelMain,
+            { color: spentHasMoney ? textPrimary : textBody },
+          ]}
+        >
+          {spentMoneyText}
+        </Text>
+        <Text style={[styles.paceLabelSep, { color: textHint }]}>·</Text>
+        <Text style={[styles.paceLabelMuted, { color: textBody }]}>
+          {spentPctText}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+// ─── StatChip ──────────────────────────────────────────────────────
+
+/**
+ * Card-tile stat — three rows stacked left-aligned: icon (small,
+ * decorative), value (dominant, tabular), caption (uppercase, full
+ * width). Each row gets its own line, so captions never compete with
+ * the icon for horizontal space and never truncate.
+ *
+ * Used by the HOY card's bottom stats strip ("Racha", "Bajo cupo",
+ * "Al cobro"). The icon hue carries category identity (warm /
+ * mint / peach), the value is the headline, the caption labels what
+ * the value means.
+ */
 function StatChip({
   icon,
   iconColor,
@@ -586,32 +1091,21 @@ function StatChip({
         { backgroundColor: background, borderColor: border },
       ]}
     >
-      <MaterialIcons name={icon} size={15} color={iconColor} />
-      <View style={styles.statChipBody}>
-        <Text style={[styles.statChipLabel, { color: text }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <Text style={[styles.statChipCaption, { color: minor }]} numberOfLines={1}>
-          {caption}
-        </Text>
-      </View>
+      <MaterialIcons name={icon} size={16} color={iconColor} />
+      <Text style={[styles.statChipLabel, { color: text }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text
+        style={[styles.statChipCaption, { color: minor }]}
+        numberOfLines={1}
+      >
+        {caption}
+      </Text>
     </View>
   )
 }
 
-/** Hex `#RRGGBB` (or `#RGB`) → `rgba(r, g, b, a)`. Used to derive
- *  translucent tints from the tone hex without dragging in a util. */
-function withAlpha(hex: string, alpha: number): string {
-  const h = hex.replace('#', '')
-  const expanded =
-    h.length === 3
-      ? h.split('').map((c) => c + c).join('')
-      : h
-  const r = parseInt(expanded.slice(0, 2), 16)
-  const g = parseInt(expanded.slice(2, 4), 16)
-  const b = parseInt(expanded.slice(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+// ─── Styles ────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   card: {
@@ -621,14 +1115,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(199,238,156,0.14)',
     overflow: 'hidden',
   },
-  toneBlob: {
-    position: 'absolute',
-    top: -90,
-    right: -90,
-    width: 240,
-    height: 240,
-    borderRadius: 240,
-  },
   topHighlight: {
     position: 'absolute',
     top: 0,
@@ -637,6 +1123,8 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.10)',
   },
+
+  // Header
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -655,131 +1143,256 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
+    borderWidth: 1,
   },
   statusPillText: {
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
-  body: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 14,
-  },
-  gaugeRoot: {
-    position: 'relative',
-  },
-  gaugeCenter: {
-    position: 'absolute',
-    inset: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  gaugeEyebrow: {
-    fontSize: 9,
-    letterSpacing: 1.4,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  gaugeAmount: {
-    fontSize: 27,
-    fontWeight: '800',
-    letterSpacing: -1,
-    lineHeight: 30,
-    marginTop: 3,
-    fontVariant: ['tabular-nums'],
-  },
-  gaugeFooter: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  miniStack: {
-    flex: 1,
-    flexDirection: 'column',
-    gap: 8,
-    alignSelf: 'stretch',
-  },
-  miniPanel: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  miniHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  miniLabel: {
-    flex: 1,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    fontWeight: '700',
-  },
-  miniValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
-  },
-  miniSub: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(246,251,239,0.10)',
+
+  // Hero stat
+  heroStat: {
     marginTop: 16,
-    marginBottom: 12,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
+  heroEyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.6,
+    fontWeight: '800',
   },
-  statChip: {
-    flex: 1,
+  amountRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-end',
+    gap: 10,
+    marginTop: 4,
+  },
+  heroAmount: {
+    fontSize: 38,
+    fontWeight: '800',
+    letterSpacing: -1.4,
+    lineHeight: 40,
+    fontVariant: ['tabular-nums'],
+  },
+  deltaTag: {
     paddingHorizontal: 10,
-    paddingVertical: 9,
+    paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
+    marginBottom: 4, // align bottom roughly with marquee baseline
+    gap: 1,
   },
-  statChipBody: {
-    flex: 1,
-    minWidth: 0,
+  deltaTagAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  statChipLabel: {
+  deltaTagAmount: {
     fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.1,
+    fontVariant: ['tabular-nums'],
+  },
+  deltaTagCaption: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    textAlign: 'center',
+  },
+  heroSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+
+  // Pace bar
+  paceContainer: {
+    marginTop: 24, // extra room for the floating chip above the bar
+  },
+  paceChipRow: {
+    height: 32, // reserves vertical space for the chip + arrow
+    position: 'relative',
+  },
+  paceChipAnchor: {
+    position: 'absolute',
+    bottom: 0,
+    width: 110,
+    marginLeft: -55, // half of width — centers the chip on the anchor pct
+    alignItems: 'center',
+  },
+  paceChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  paceChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    fontVariant: ['tabular-nums'],
+  },
+  paceChipArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+  paceTrackOuter: {
+    height: 22, // accommodates the 14pt track + marker overhang
+    justifyContent: 'center',
+    position: 'relative',
+    marginTop: 4,
+  },
+  paceTrack: {
+    height: 14,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  paceFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 8,
+    minWidth: 4,
+  },
+  paceFillSheen: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 4,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  paceShimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 80,
+    borderRadius: 8,
+  },
+  paceSonarRing: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+  },
+  paceLeadingEdge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 14,
+    marginLeft: -7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paceLeadingGlow: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  paceLeadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+  paceMarkerLine: {
+    position: 'absolute',
+    top: -3,
+    bottom: -3,
+    width: 3,
+    borderRadius: 2,
+    marginLeft: -1.5,
+  },
+  paceMarkerHalo: {
+    position: 'absolute',
+    top: -8,
+    bottom: -8,
+    width: 14,
+    borderRadius: 8,
+    marginLeft: -7,
+  },
+  paceLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  paceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  paceLabelMain: {
+    fontSize: 12.5,
     fontWeight: '800',
     letterSpacing: -0.2,
     fontVariant: ['tabular-nums'],
   },
-  statChipCaption: {
-    fontSize: 9,
+  paceLabelSep: {
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginTop: 1,
   },
+  paceLabelMuted: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+
+  // Stats row
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  statChipFlex: {
+    flex: 1,
+  },
+  statChip: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statChipLabel: {
+    fontSize: 19,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  statChipCaption: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+
+  // Hint
   hintRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingLeft: 14,
+    paddingLeft: 12, // 3pt stripe + 9pt breathing room before badge
     paddingRight: 12,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
     marginTop: 10,
@@ -792,10 +1405,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 3,
   },
+  hintIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
   hintText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 17,
+    lineHeight: 18,
   },
 })

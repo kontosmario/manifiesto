@@ -1,12 +1,14 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useRouter } from 'expo-router'
 import type { FijoHikeAlert } from '@/features/fijos/fijos-aggregates.model'
 import {
   dismissHike,
   isHikeDismissed,
   useDismissedHikes,
 } from '@/features/fijos/use-hike-dismiss-store'
+import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -29,6 +31,10 @@ interface FijosSmartAlertsProps {
   hikes: FijoHikeAlert[]
   onOpenZombies?: () => void
   onOpenHike?: (fixedExpenseId: string) => void
+  /** Advisor signals from `useControlV2Data`. Filtered internally to
+   *  the fijos domain (`stress-week`, `fijos-ratio`) so the rail
+   *  surfaces them next to zombie + hike alerts. */
+  advisorSignals?: ControlAdvisorTask[]
 }
 
 /**
@@ -41,9 +47,39 @@ export function FijosSmartAlerts({
   hikes,
   onOpenZombies,
   onOpenHike,
+  advisorSignals = [],
 }: FijosSmartAlertsProps) {
+  const router = useRouter()
   const dismissedHikes = useDismissedHikes()
   const alerts: SmartAlert[] = []
+
+  // Advisor signals tied to the fijos domain go first — they're the
+  // "big picture" context (semana cargada, ratio fijos/sueldo) that
+  // frames the more granular zombie/hike alerts below.
+  const stressWeek = advisorSignals.find((s) => s.id === 'stress-week')
+  if (stressWeek) {
+    alerts.push({
+      id: stressWeek.id,
+      icon: '📅',
+      title: stressWeek.title,
+      body: stressWeek.body.split('.')[0] ?? stressWeek.body,
+      action: 'Ver',
+      tint: '#E8B85F',
+      onPress: () => router.push('/(app)/(tabs)/fixed-expenses'),
+    })
+  }
+  const fijosRatio = advisorSignals.find((s) => s.id === 'fijos-ratio')
+  if (fijosRatio) {
+    alerts.push({
+      id: fijosRatio.id,
+      icon: '⚖️',
+      title: fijosRatio.title,
+      body: fijosRatio.body.split('.')[0] ?? fijosRatio.body,
+      action: 'Ver',
+      tint: fijosRatio.urgency === 'alta' ? '#E88A70' : '#E8B85F',
+    })
+  }
+
   if (zombieCount > 0) {
     alerts.push({
       id: 'zombies',

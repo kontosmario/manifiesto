@@ -1,512 +1,728 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { formatMoney, formatMoneyShort } from '@/utils/money'
-import { useAppTheme } from '@/theme/theme-provider'
-import { controlV2Tokens } from './control-v2-tokens'
+import { formatMoneyShort } from '@/utils/money'
 import { useDismissedIds } from '@/features/insights/control-dismiss-store'
+import {
+  TYPE_TONES,
+  bubbleHeadline,
+  bubbleIntro,
+  bubbleType,
+} from './asesor-bubble-meta'
+import { iconForSignal } from './asesor-signal-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 
 interface ControlV2AsesorCardProps {
   tareas: ControlAdvisorTask[]
-  onTaskPress?: (task: ControlAdvisorTask) => void
 }
 
+// ─── Tokens ───────────────────────────────────────────────────────────────
+
+const SHELL_GRADIENT = ['#0F2A1E', '#1F6B43'] as const
+const STAR_COLOR = '#C7EE9C'
+const ASSISTANT_GRADIENT = ['#C7EE9C', '#2E9A5F'] as const
+const STATUS_DOT = '#6FE09A'
+const TEXT_PRIMARY = '#F6FBEF'
+const TEXT_ACCENT = '#C7EE9C'
+const TEXT_SECONDARY = 'rgba(246,251,239,0.70)'
+const TEXT_TERTIARY = 'rgba(199,238,156,0.55)'
+const HAIRLINE = 'rgba(199,238,156,0.12)'
+const STRIP_BG = 'rgba(0,0,0,0.18)'
+const COUNT_PILL_BG = 'rgba(199,238,156,0.15)'
+const COUNT_PILL_BORDER = 'rgba(199,238,156,0.22)'
+const BUBBLE_BG = '#FFFBF2'
+const BUBBLE_TEXT = '#0F2A1E'
+const BUBBLE_BODY = '#3E5A4A'
+
 /**
- * Advisor card — three task suggestions with urgency ribbon,
- * copy, monetary impact, and CTA. Below the tasks, a summary
- * banner with the projected month-end outcome.
+ * Asistente Financiero — compact "Home card" entry point.
+ *
+ * Visual: dark forest panel with a twinkling-stars ambient background,
+ * a chat-style lead bubble for the most urgent signal, and a small
+ * constellation strip that previews the rest. Tapping anywhere opens
+ * the full conversation screen (`/asistente`).
+ *
+ * The ALL-cards grid + per-row swipe + per-row CTA pattern lives now
+ * in the dedicated chat screen. From Control we only show the teaser.
  */
 export function ControlV2AsesorCard({
   tareas,
-  onTaskPress,
 }: ControlV2AsesorCardProps) {
-  const { theme } = useAppTheme()
-  const muted = theme.colors.textMuted
-  const deepText = theme.colors.text
-  // Hide celebratory cards the user already dismissed today.
   const dismissed = useDismissedIds()
-  const visible = tareas.filter((t) => {
-    if (t.action?.kind === 'dismiss') return !dismissed.has(t.action.dismissId)
-    return !dismissed.has(t.id)
-  })
+  const router = useRouter()
+  const visible = tareas.filter(
+    (t) =>
+      !dismissed.has(
+        t.action?.kind === 'dismiss' ? t.action.dismissId : t.id,
+      ),
+  )
   const totalImpact = visible.reduce((s, t) => s + t.impactRaw, 0)
-  if (visible.length === 0) return null
+  const renderNothing = tareas.length === 0
+  const allDismissed = !renderNothing && visible.length === 0
+  const formatHero = useCallback((n: number) => formatMoneyShort(n), [])
+
+  const openChat = useCallback(() => {
+    void triggerHaptic('selection')
+    router.push('/(app)/asistente' as never)
+  }, [router])
+
+  if (renderNothing) return null
+
+  // Lead = most urgent. We reuse the ranking already done by the
+  // signal builder (signals come pre-sorted by score). The first
+  // visible task is the highest priority right now.
+  const lead = visible[0]
+  const ideaCount = visible.length
 
   return (
-    <RiseView delay={420}>
-      <View style={styles.wrap}>
-        <View style={styles.brandRow}>
-          <LinearGradient
-            colors={[controlV2Tokens.good.tint, controlV2Tokens.good.solid]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.brandBadge}
-          >
-            <Text style={styles.brandBadgeGlyph}>✨</Text>
-          </LinearGradient>
-          <View style={styles.flex}>
-            <Text style={[styles.brandLabel, { color: controlV2Tokens.good.light }]}>
-              ASISTENTE FINANCIERO
-            </Text>
-            <Text style={[styles.brandSub, { color: muted }]}>
-              Lee tus gastos, tu sueldo y tu historial · {visible.length}{' '}
-              {visible.length === 1 ? 'idea' : 'ideas'} para esta semana
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRow}>
-          <View style={styles.flex}>
-            <Text style={[styles.eyebrow, { color: muted }]}>
-              QUÉ HACER ESTA SEMANA
-            </Text>
-            <Text style={[styles.subhead, { color: deepText }]}>
-              Haciendo esto, ganás{' '}
-              <Text style={{ color: controlV2Tokens.good.light }}>
-                +{formatMoney(totalImpact)} por mes
-              </Text>
-            </Text>
-          </View>
-          <LinearGradient
-            colors={[controlV2Tokens.good.tint, controlV2Tokens.good.solid]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.countPill}
-          >
-            <Text style={styles.countPillText}>{tareas.length} IDEAS</Text>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.taskList}>
-          {visible.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onPress={() => {
-                void triggerHaptic('selection')
-                onTaskPress?.(task)
-              }}
-            />
-          ))}
-        </View>
-
+    <RiseView delay={260} style={styles.outer}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir asistente — ${ideaCount} ${ideaCount === 1 ? 'sugerencia' : 'sugerencias'}`}
+        onPress={openChat}
+      >
         <LinearGradient
-          colors={
-            theme.isDark
-              ? (['#13221B', '#0E1A15'] as const)
-              : (['#FFFBF2', '#F6F1E4'] as const)
-          }
+          colors={SHELL_GRADIENT}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[
-            styles.summary,
-            {
-              borderColor: theme.isDark ? '#1F332A' : '#EFE8D9',
-            },
-          ]}
+          style={styles.shell}
         >
-          <Text style={styles.summaryEmoji}>🌱</Text>
-          <Text
-            style={[
-              styles.summaryEyebrow,
-              { color: controlV2Tokens.good.tint },
-            ]}
-          >
-            AL CERRAR EL MES
-          </Text>
-          <Text style={[styles.summaryHeadline, { color: deepText }]}>
-            Si seguís así, vas a guardar{' '}
-            <Text style={{ color: controlV2Tokens.good.tint }}>
-              {formatMoneyShort(480_000)}
-            </Text>{' '}
-            más que el mes pasado.
-          </Text>
-          <Text style={[styles.summaryBody, { color: muted }]}>
-            El mes pasado cerraste con {formatMoney(1_440_000)}. Este mes
-            apuntás a {formatMoney(1_920_000)}.
-          </Text>
+          <TwinklingStars count={14} />
+
+          <View style={styles.header}>
+            <AssistantAvatar size={34} dotSize={10} />
+            <View style={styles.headerText}>
+              <Text style={styles.brandLabel}>ASISTENTE</Text>
+              <Text style={styles.headerSub}>
+                {allDismissed
+                  ? 'Al día por ahora'
+                  : `${ideaCount} ${ideaCount === 1 ? 'cosa' : 'cosas'} para vos`}
+              </Text>
+            </View>
+            {!allDismissed ? (
+              <View style={styles.impactPill}>
+                <Text style={styles.impactPillSign}>+</Text>
+                <CountUpText
+                  value={totalImpact}
+                  duration={1400}
+                  format={formatHero}
+                  style={styles.impactPillValue}
+                  accessibilityLabel={`Impacto total ${formatMoneyShort(totalImpact)} por mes`}
+                />
+              </View>
+            ) : (
+              <View style={[styles.impactPill, styles.impactPillDone]}>
+                <MaterialIcons name="check" size={12} color={STATUS_DOT} />
+              </View>
+            )}
+          </View>
+
+          {allDismissed ? (
+            <EmptyLeadBubble />
+          ) : (
+            <LeadBubble task={lead!} />
+          )}
+
+          <ConstellationStrip
+            signals={visible}
+            allDismissed={allDismissed}
+            onOpen={openChat}
+          />
         </LinearGradient>
-      </View>
+      </Pressable>
     </RiseView>
   )
 }
 
-function TaskCard({
-  task,
-  onPress,
+// ─── Assistant Avatar ─────────────────────────────────────────────────────
+
+function AssistantAvatar({ size, dotSize }: { size: number; dotSize: number }) {
+  const reduced = useReducedMotion()
+  const pulse = useSharedValue(0)
+  useLoopAnimation(
+    () => {
+      if (reduced) return
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1200, easing: Easing.out(Easing.quad) }),
+          withTiming(0, { duration: 1200, easing: Easing.out(Easing.quad) }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [pulse],
+    [reduced],
+  )
+  const aRing = useAnimatedStyle(() => ({
+    opacity: 0.55 - pulse.value * 0.55,
+    transform: [{ scale: 1 + pulse.value * 0.6 }],
+  }))
+  return (
+    <View style={{ width: size + 4, height: size + 4 }}>
+      <LinearGradient
+        colors={ASSISTANT_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.avatar,
+          { width: size, height: size, borderRadius: size / 2 },
+        ]}
+      >
+        <MaterialIcons name="auto-awesome" size={size * 0.5} color="#0F2A1E" />
+      </LinearGradient>
+      <Animated.View
+        style={[
+          styles.avatarDot,
+          {
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotSize / 2,
+            backgroundColor: STATUS_DOT,
+            right: -1,
+            bottom: -1,
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.avatarDotRing,
+          {
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotSize / 2,
+            borderColor: STATUS_DOT,
+            right: -1,
+            bottom: -1,
+          },
+          aRing,
+        ]}
+        pointerEvents="none"
+      />
+    </View>
+  )
+}
+
+// ─── Twinkling Stars ──────────────────────────────────────────────────────
+
+function TwinklingStars({ count }: { count: number }) {
+  // Deterministic positions so we don't re-randomize on each render.
+  // 14 stars is enough to read as "ambient" without compositor cost.
+  const reduced = useReducedMotion()
+  const phase = useSharedValue(0)
+  useLoopAnimation(
+    () => {
+      if (reduced) return
+      phase.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [phase],
+    [reduced],
+  )
+  return (
+    <View style={styles.starsLayer} pointerEvents="none">
+      {Array.from({ length: count }).map((_, i) => {
+        const left = ((i * 73 + 7) % 100) / 100
+        const top = ((i * 41 + 11) % 100) / 100
+        const baseOpacity = 0.25 + (i % 4) * 0.08
+        const delay = (i % 6) * 0.16
+        return (
+          <TwinkleStar
+            key={i}
+            left={left}
+            top={top}
+            baseOpacity={baseOpacity}
+            phaseOffset={delay}
+            phase={phase}
+          />
+        )
+      })}
+    </View>
+  )
+}
+
+function TwinkleStar({
+  left,
+  top,
+  baseOpacity,
+  phaseOffset,
+  phase,
 }: {
-  task: ControlAdvisorTask
-  onPress: () => void
+  left: number
+  top: number
+  baseOpacity: number
+  phaseOffset: number
+  phase: { value: number }
 }) {
-  const { theme } = useAppTheme()
-  const [explainerOpen, setExplainerOpen] = useState(false)
-  const shellBg = theme.isDark ? '#13221B' : '#FFFBF2'
-  const shellBorder = theme.isDark ? '#1F332A' : '#EFE8D9'
-  const explainerBg = theme.isDark ? '#0E1A15' : '#F6F1E4'
-  const explainerBorder = theme.isDark ? '#1F332A' : '#EFE8D9'
-  const muted = theme.colors.textMuted
-  const deepText = theme.colors.text
-  const clr =
-    task.urgency === 'alta'
-      ? controlV2Tokens.warn.tint
-      : task.urgency === 'media'
-        ? controlV2Tokens.warn.solid
-        : controlV2Tokens.warn.light
-  const iconBg =
-    task.urgency === 'alta'
-      ? 'rgba(232,138,112,0.14)'
-      : task.urgency === 'media'
-        ? 'rgba(242,181,138,0.14)'
-        : 'rgba(241,214,144,0.14)'
-
-  const hasExplainer = Boolean(task.dummyExplanation)
-
+  const a = useAnimatedStyle(() => {
+    // Each star has a slight phase offset so they twinkle out-of-sync.
+    const v = (phase.value + phaseOffset) % 1
+    const wave = Math.sin(v * Math.PI)
+    return { opacity: baseOpacity + wave * 0.35 }
+  })
   return (
     <Animated.View
-      layout={LinearTransition.duration(220)}
       style={[
-        styles.taskCard,
-        { backgroundColor: shellBg, borderColor: shellBorder },
+        styles.star,
+        {
+          left: `${left * 100}%`,
+          top: `${top * 100}%`,
+          backgroundColor: STAR_COLOR,
+        },
+        a,
       ]}
-    >
-      <View style={[styles.urgencyStripe, { backgroundColor: clr }]} />
-      <View style={styles.taskRow}>
-        <View
-          style={[
-            styles.taskIcon,
-            { backgroundColor: iconBg, borderColor: `${clr}55` },
-          ]}
-        >
-          <Text style={styles.taskEmoji}>{task.emoji}</Text>
-        </View>
-        <View style={styles.flex}>
-          <Text style={[styles.taskTitle, { color: deepText }]}>
-            {task.title}
+    />
+  )
+}
+
+// ─── Lead Bubble ──────────────────────────────────────────────────────────
+
+function LeadBubble({ task }: { task: ControlAdvisorTask }) {
+  const type = bubbleType(task)
+  const tone = TYPE_TONES[type]
+  const isCritical = task.urgency === 'alta'
+  const intro = bubbleIntro(task)
+  const headline = bubbleHeadline(task)
+  const icon = iconForSignal(task.id)
+
+  return (
+    <View style={styles.leadWrap}>
+      <Text style={styles.leadIntro}>
+        {intro} · ahora
+      </Text>
+      <View
+        style={[
+          styles.leadBubble,
+          {
+            borderColor: tone.accent,
+            shadowColor: tone.accent,
+          },
+        ]}
+      >
+        <View style={styles.bubbleTop}>
+          <View
+            style={[
+              styles.bubbleIconTile,
+              { backgroundColor: tone.bg },
+            ]}
+          >
+            <MaterialIcons name={icon} size={13} color={tone.fg} />
+          </View>
+          <Text
+            style={[styles.bubbleHeadline, { color: tone.fg }]}
+            numberOfLines={1}
+          >
+            {headline.toUpperCase()}
           </Text>
-          <Text style={[styles.taskBody, { color: muted }]}>{task.body}</Text>
-
-          {hasExplainer ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                explainerOpen
-                  ? 'Ocultar explicación'
-                  : '¿Qué significa esto?'
-              }
-              accessibilityState={{ expanded: explainerOpen }}
-              onPress={() => {
-                void triggerHaptic('selection')
-                setExplainerOpen((v) => !v)
-              }}
-              style={styles.explainerToggle}
+          {isCritical ? (
+            <View
+              style={[styles.urgentBadge, { backgroundColor: tone.fg }]}
             >
-              <Text style={[styles.explainerToggleText, { color: muted }]}>
-                {explainerOpen ? '▾ Ocultar' : '▸ ¿Qué significa?'}
-              </Text>
-            </Pressable>
-          ) : null}
-
-          {explainerOpen && hasExplainer ? (
-            <Animated.View
-              entering={FadeIn.duration(160)}
-              exiting={FadeOut.duration(120)}
-              style={[
-                styles.explainerBox,
-                {
-                  backgroundColor: explainerBg,
-                  borderColor: explainerBorder,
-                },
-              ]}
-            >
-              <Text style={styles.explainerEmoji}>💡</Text>
-              <Text style={[styles.explainerText, { color: deepText }]}>
-                {task.dummyExplanation}
-              </Text>
-            </Animated.View>
-          ) : null}
-
-          {task.confidence < 0.7 ? (
-            <View style={styles.confidenceRow}>
-              <Text style={[styles.confidenceText, { color: muted }]}>
-                {`Según ${task.dataDays} ${task.dataDays === 1 ? 'día' : 'días'} de datos · se afina con el tiempo`}
-              </Text>
+              <Text style={styles.urgentBadgeText}>URGENTE</Text>
             </View>
           ) : null}
-
-          <View style={styles.taskFooter}>
-            <Text
-              style={[styles.taskImpact, { color: controlV2Tokens.good.light }]}
-            >
-              💰 {task.impact}
-            </Text>
-            {task.action?.kind === 'dismiss' ? (
-              // Awareness card: muted acknowledgement button — no arrow,
-              // no gradient. Just "got it", tap to collapse.
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${task.cta} — marcar como leído`}
-                onPress={onPress}
-                style={({ pressed }) => [
-                  styles.ackCta,
-                  {
-                    backgroundColor: pressed
-                      ? theme.isDark
-                        ? 'rgba(246,251,239,0.08)'
-                        : 'rgba(15,42,30,0.06)'
-                      : theme.isDark
-                        ? 'rgba(246,251,239,0.04)'
-                        : 'rgba(15,42,30,0.04)',
-                    borderColor: theme.isDark
-                      ? 'rgba(246,251,239,0.12)'
-                      : 'rgba(15,42,30,0.14)',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.ackCtaText,
-                    { color: theme.colors.textMuted },
-                  ]}
-                >
-                  {task.cta}
-                </Text>
-              </Pressable>
-            ) : (
-              // Real-action card: solid gradient with arrow — "go do
-              // something in the app".
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${task.cta} para ${task.title}`}
-                onPress={onPress}
-                style={styles.taskCtaWrap}
-              >
-                <LinearGradient
-                  colors={[
-                    controlV2Tokens.good.tint,
-                    controlV2Tokens.good.solid,
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.taskCta}
-                >
-                  <Text style={styles.taskCtaText}>{task.cta} →</Text>
-                </LinearGradient>
-              </Pressable>
-            )}
-          </View>
         </View>
+        <Text style={styles.bubbleTitle} numberOfLines={2}>
+          {task.title}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function EmptyLeadBubble() {
+  return (
+    <Animated.View entering={FadeIn.duration(200)} style={styles.leadWrap}>
+      <Text style={styles.leadIntro}>✓ Por ahora · sin novedades</Text>
+      <View
+        style={[
+          styles.leadBubble,
+          {
+            borderColor: 'rgba(199,238,156,0.35)',
+            shadowOpacity: 0,
+          },
+        ]}
+      >
+        <Text style={styles.bubbleTitle} numberOfLines={2}>
+          Revisaste todas las sugerencias.
+        </Text>
+        <Text style={styles.bubbleBody}>
+          Volverán a aparecer si los patrones persisten.
+        </Text>
       </View>
     </Animated.View>
   )
 }
 
+// ─── Constellation Strip ──────────────────────────────────────────────────
+
+function ConstellationStrip({
+  signals,
+  allDismissed,
+  onOpen,
+}: {
+  signals: ControlAdvisorTask[]
+  allDismissed: boolean
+  onOpen: () => void
+}) {
+  const overflow = Math.max(0, signals.length - 1)
+
+  return (
+    <View style={styles.strip}>
+      <View style={styles.stripHeader}>
+        <Text style={styles.stripEyebrow}>
+          {allDismissed
+            ? 'Esperando nuevas señales'
+            : overflow > 0
+              ? `Y +${overflow} ${overflow === 1 ? 'señal más' : 'señales más'}`
+              : 'Abrir chat completo'}
+        </Text>
+        <Pressable onPress={onOpen} hitSlop={8} style={styles.openCta}>
+          <Text style={styles.openCtaText}>Abrir chat</Text>
+          <MaterialIcons name="arrow-outward" size={12} color={TEXT_ACCENT} />
+        </Pressable>
+      </View>
+      <View style={styles.stripStars}>
+        {signals.length > 0 ? (
+          signals.map((s, i) => (
+            <SignalStar key={s.id} task={s} index={i} />
+          ))
+        ) : (
+          <Text style={styles.stripEmpty}>·  ·  ·</Text>
+        )}
+        <View style={styles.stripDots}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <View key={i} style={styles.stripDot} />
+          ))}
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function SignalStar({ task, index }: { task: ControlAdvisorTask; index: number }) {
+  const type = bubbleType(task)
+  const tone = TYPE_TONES[type]
+  const isCritical = task.urgency === 'alta'
+  // Star size by impact magnitude — communicates which signal carries
+  // the most weight without explanatory copy.
+  const size = 22 + (task.impactRaw > 100_000 ? 10 : task.impactRaw > 10_000 ? 4 : 0)
+  const icon = iconForSignal(task.id)
+
+  // Pulse ring for critical signals. Each star pulses with its own
+  // phase offset so they don't blink in unison.
+  const reduced = useReducedMotion()
+  const ring = useSharedValue(0)
+  useLoopAnimation(
+    () => {
+      if (reduced || !isCritical) return
+      ring.value = withDelay(
+        index * 200,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: 2000, easing: Easing.out(Easing.quad) }),
+            withTiming(0, { duration: 0 }),
+          ),
+          -1,
+          false,
+        ),
+      )
+    },
+    [ring],
+    [reduced, isCritical, index],
+  )
+  const aRing = useAnimatedStyle(() => ({
+    opacity: 0.55 - ring.value * 0.55,
+    transform: [{ scale: 1 + ring.value * 0.45 }],
+  }))
+
+  return (
+    <View
+      style={[
+        styles.starWrap,
+        { width: size + 4, height: size + 4 },
+      ]}
+    >
+      <LinearGradient
+        colors={[tone.accent, tone.fg]}
+        start={{ x: 0.3, y: 0.3 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1.5,
+          borderColor: 'rgba(246,251,239,0.30)',
+        }}
+      >
+        <MaterialIcons name={icon} size={size * 0.5} color="#0A1410" />
+      </LinearGradient>
+      {isCritical ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starRing,
+            {
+              width: size + 6,
+              height: size + 6,
+              borderRadius: (size + 6) / 2,
+              borderColor: tone.accent,
+            },
+            aRing,
+          ]}
+        />
+      ) : null}
+    </View>
+  )
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  wrap: {
-    gap: 12,
+  outer: {
+    marginVertical: 4,
   },
-  brandRow: {
+  shell: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(199,238,156,0.20)',
+  },
+  starsLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  star: {
+    position: 'absolute',
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+  },
+  // Header
+  header: {
+    paddingTop: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
+    gap: 10,
   },
-  brandBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  avatar: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brandBadgeGlyph: {
-    fontSize: 20,
-    lineHeight: 22,
+  avatarDot: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#0F2A1E',
+  },
+  avatarDotRing: {
+    position: 'absolute',
+    borderWidth: 2,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
   },
   brandLabel: {
     fontSize: 10,
-    letterSpacing: 1.8,
     fontWeight: '800',
+    letterSpacing: 1.6,
+    color: TEXT_ACCENT,
   },
-  brandSub: {
-    fontSize: 11,
+  headerSub: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
     marginTop: 2,
-    lineHeight: 14,
+    fontWeight: '600',
   },
-  headerRow: {
+  impactPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 2,
-  },
-  flex: {
-    flex: 1,
-  },
-  eyebrow: {
-    fontSize: 10,
-    letterSpacing: 1.6,
-    fontWeight: '700',
-  },
-  subhead: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  countPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 999,
-  },
-  countPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: '#0A1410',
-  },
-  taskList: {
-    gap: 10,
-  },
-  taskCard: {
-    borderRadius: 16,
+    backgroundColor: COUNT_PILL_BG,
     borderWidth: 1,
-    padding: 14,
-    paddingLeft: 18,
-    position: 'relative',
-    overflow: 'hidden',
+    borderColor: COUNT_PILL_BORDER,
   },
-  urgencyStripe: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 4,
-    opacity: 0.85,
+  impactPillDone: {
+    paddingHorizontal: 8,
   },
-  taskRow: {
+  impactPillSign: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: TEXT_ACCENT,
+    letterSpacing: 0.4,
+  },
+  impactPillValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: TEXT_ACCENT,
+    letterSpacing: 0.4,
+  },
+  // Lead bubble
+  leadWrap: {
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+  },
+  leadIntro: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: TEXT_TERTIARY,
+    marginBottom: 6,
+    paddingLeft: 4,
+    letterSpacing: 0.2,
+  },
+  leadBubble: {
+    backgroundColor: BUBBLE_BG,
+    borderWidth: 1.5,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  bubbleTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 6,
   },
-  taskIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  bubbleIconTile: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
-  taskEmoji: {
-    fontSize: 20,
+  bubbleHeadline: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    flexShrink: 1,
   },
-  taskTitle: {
+  urgentBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  urgentBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#FFFFFF',
+  },
+  bubbleTitle: {
     fontSize: 14,
     fontWeight: '800',
+    color: BUBBLE_TEXT,
     letterSpacing: -0.2,
-  },
-  taskBody: {
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  explainerToggle: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
-  },
-  explainerToggleText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  explainerBox: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  explainerEmoji: {
-    fontSize: 14,
     lineHeight: 18,
   },
-  explainerText: {
-    flex: 1,
+  bubbleBody: {
     fontSize: 12,
-    lineHeight: 17,
+    color: BUBBLE_BODY,
+    lineHeight: 16,
+    marginTop: 4,
     fontWeight: '500',
   },
-  confidenceRow: {
-    marginTop: 6,
+  // Constellation strip
+  strip: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderTopWidth: 1,
+    borderTopColor: HAIRLINE,
+    backgroundColor: STRIP_BG,
   },
-  confidenceText: {
-    fontSize: 10,
-    fontStyle: 'italic',
-    fontWeight: '500',
+  stripHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  taskFooter: {
+  stripEyebrow: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    color: TEXT_TERTIARY,
+    flexShrink: 1,
+  },
+  openCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  openCtaText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: TEXT_ACCENT,
+    letterSpacing: 0.2,
+  },
+  stripStars: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
   },
-  taskImpact: {
+  stripEmpty: {
+    fontSize: 12,
+    color: TEXT_TERTIARY,
+    fontWeight: '700',
+    letterSpacing: 4,
+  },
+  stripDots: {
     flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 6,
   },
-  taskCtaWrap: {
-    borderRadius: 999,
-    overflow: 'hidden',
+  stripDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(199,238,156,0.25)',
   },
-  taskCta: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  starWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  taskCtaText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0A1410',
-  },
-  ackCta: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  ackCtaText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  summary: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    overflow: 'hidden',
-    marginTop: 2,
-  },
-  summaryEmoji: {
+  starRing: {
     position: 'absolute',
-    top: -16,
-    right: -16,
-    fontSize: 72,
-    opacity: 0.12,
-  },
-  summaryEyebrow: {
-    fontSize: 10,
-    letterSpacing: 1.6,
-    fontWeight: '800',
-  },
-  summaryHeadline: {
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    lineHeight: 22,
-    marginTop: 4,
-  },
-  summaryBody: {
-    fontSize: 11,
-    marginTop: 6,
-    lineHeight: 16,
+    borderWidth: 1.2,
   },
 })

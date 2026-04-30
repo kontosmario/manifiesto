@@ -44,7 +44,12 @@ export function GastosFilterPill({
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      accessibilityLabel={label}
+      accessibilityLabel={
+        count != null
+          ? `${label}, ${count} ${count === 1 ? 'movimiento' : 'movimientos'}${active ? ', filtro activo' : ''}`
+          : `${label}${active ? ', filtro activo' : ''}`
+      }
+      accessibilityHint={active ? 'Doble tap para quitar el filtro' : 'Doble tap para filtrar por esta categoría'}
     >
       {emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null}
       <Text style={[styles.label, { color: fg, fontSize: small ? 11 : 12 }]}>{label}</Text>

@@ -1,6 +1,8 @@
+import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Svg, { Circle, Path, G } from 'react-native-svg'
 import { GreetingHeader } from '@/components/home/greeting-header'
+import { HomeAssistantButton } from '@/components/home/home-assistant-button'
 import { HomeCircleButton } from '@/components/home/home-circle-button'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -8,8 +10,12 @@ interface HomeHeaderProps {
   name: string
   hour?: number
   hasUnreadNotifications?: boolean
+  /** How many advisor suggestions are pending — drives the badge on
+   *  the assistant button. */
+  assistantPendingCount?: number
   onPressNotifications?: () => void
   onPressSettings?: () => void
+  onPressAssistant?: () => void
 }
 
 /**
@@ -19,12 +25,14 @@ interface HomeHeaderProps {
  * visually centered against the "Hola, Mario" line — matching the mock
  * spacing.
  */
-export function HomeHeader({
+function HomeHeaderImpl({
   name,
   hour,
   hasUnreadNotifications = false,
+  assistantPendingCount = 0,
   onPressNotifications,
   onPressSettings,
+  onPressAssistant,
 }: HomeHeaderProps) {
   const { theme } = useAppTheme()
   return (
@@ -33,6 +41,10 @@ export function HomeHeader({
         <GreetingHeader name={name} hour={hour} />
       </View>
       <View style={styles.actions}>
+        <HomeAssistantButton
+          onPress={onPressAssistant}
+          pendingCount={assistantPendingCount}
+        />
         <HomeCircleButton
           accessibilityLabel="Ir a notificaciones"
           onPress={onPressNotifications}
@@ -51,6 +63,8 @@ export function HomeHeader({
     </View>
   )
 }
+
+export const HomeHeader = memo(HomeHeaderImpl)
 
 const BellIcon = ({ color }: { color: string }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">

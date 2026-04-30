@@ -8,7 +8,9 @@ export function useSavingsGoal(familyId?: string) {
   return useQuery<SavingsGoal | null>({
     queryKey: savingsGoalQueryKey(familyId),
     enabled: Boolean(familyId),
-    staleTime: 60_000,
+    // Savings goal changes via mutation (which invalidates the key
+    // explicitly), so silent refetches add nothing. Bumped from 60s.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!familyId) return null
       return fetchActiveSavingsGoal(familyId)

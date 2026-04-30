@@ -138,37 +138,56 @@ export function useFamilyNotifications(
   })
 }
 
+function unreadNotificationsQueryFn(familyId: string | undefined, userId: string | undefined) {
+  return async (): Promise<number> => {
+    if (!familyId) return 0
+
+    let query = supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('family_id', familyId)
+      .is('read_at', null)
+
+    if (userId) {
+      query = query.or(`user_id.is.null,user_id.eq.${userId}`)
+    } else {
+      query = query.is('user_id', null)
+    }
+
+    const { count, error } = await query
+
+    if (error) {
+      if (isMissingNotificationsTableError(error)) {
+        return 0
+      }
+
+      throw error
+    }
+
+    return count ?? 0
+  }
+}
+
 export function useUnreadNotificationsCount(familyId?: string, userId?: string) {
   return useQuery<number>({
     queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
     enabled: Boolean(familyId),
-    queryFn: async () => {
-      if (!familyId) return 0
+    queryFn: unreadNotificationsQueryFn(familyId, userId),
+  })
+}
 
-      let query = supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('family_id', familyId)
-        .is('read_at', null)
-
-      if (userId) {
-        query = query.or(`user_id.is.null,user_id.eq.${userId}`)
-      } else {
-        query = query.is('user_id', null)
-      }
-
-      const { count, error } = await query
-
-      if (error) {
-        if (isMissingNotificationsTableError(error)) {
-          return 0
-        }
-
-        throw error
-      }
-
-      return count ?? 0
-    },
+/**
+ * Boolean projection of `useUnreadNotificationsCount`. Use this when
+ * the consumer only needs to know "are there ANY unread?" — narrowing
+ * the hook with `select` ensures the component re-renders only on
+ * `0 ↔ N` transitions, not every time the count changes (`3 → 5`).
+ */
+export function useHasUnreadNotifications(familyId?: string, userId?: string) {
+  return useQuery<number, Error, boolean>({
+    queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
+    enabled: Boolean(familyId),
+    queryFn: unreadNotificationsQueryFn(familyId, userId),
+    select: (count) => count > 0,
   })
 }
 

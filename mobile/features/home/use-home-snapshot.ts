@@ -13,7 +13,11 @@ import {
 } from '@/features/finance/family-finance.model'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
-import { type FixedExpensePaymentRow } from '@/features/fixed-expenses/fixed-expense-payment.model'
+import {
+  mapFixedExpensePaymentRow,
+  type FixedExpensePaymentRow,
+} from '@/features/fixed-expenses/fixed-expense-payment.model'
+import { fixedExpensePaymentsKey } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { categoriesQueryKey, type Category } from '@/features/categories/use-categories'
 import { familyMembersKey, type FamilyMemberRow } from '@/features/family/use-family-members'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
@@ -68,6 +72,11 @@ interface HomeSnapshotPayload {
   fixed_expense_payments: FixedExpensePaymentRow[]
   has_push_subscription: boolean
   period_month: string
+  /** Cycle window the payments slice was scoped against. Optional —
+   *  older snapshot RPCs don't return them, in which case the consumer
+   *  hook (`useFixedExpensePayments`) falls back to its own fetch. */
+  payments_cycle_start?: string | null
+  payments_cycle_end?: string | null
 }
 
 function toFixedExpenses(
@@ -148,7 +157,11 @@ function toFamilyMemberRows(
     }
     return {
       id: m.user_id,
-      name: m.display_name ?? '—',
+      // Empty string when display_name is missing — `Avatar` falls
+      // back to a person silhouette in that case. Previously this was
+      // '—' which rendered as a stranded em dash inside the colored
+      // circle (looked like a broken icon).
+      name: m.display_name ?? '',
       color: MEMBER_COLOR_POOL[i % MEMBER_COLOR_POOL.length]!,
       avatarSlug,
     }
@@ -244,10 +257,21 @@ function seedCaches(
 
   client.setQueryData(savingsGoalQueryKey(familyId), toSavingsGoal(payload.savings_goal))
 
-  // Fixed-expense payments are no longer seeded here — the consumer
-  // hook keys by pay-cycle window (start/end ISO), not by calendar
-  // period_month returned from the snapshot, so any seed would never
-  // match the hook's key. The hook issues a single fetch on mount.
+  // Seed `useFixedExpensePayments` IF the snapshot returns the cycle
+  // window it scoped the payments against. Older RPCs (pre
+  // 20260501020000) only return `period_month` (calendar) — in that
+  // case the hook keys never match and we skip the seed, fall back to
+  // the consumer's own fetch.
+  if (payload.payments_cycle_start && payload.payments_cycle_end) {
+    client.setQueryData(
+      fixedExpensePaymentsKey(
+        familyId,
+        payload.payments_cycle_start,
+        payload.payments_cycle_end,
+      ),
+      (payload.fixed_expense_payments ?? []).map(mapFixedExpensePaymentRow),
+    )
+  }
 }
 
 /**

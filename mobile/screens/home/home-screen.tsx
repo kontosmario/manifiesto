@@ -1,9 +1,16 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Alert, RefreshControl, StyleSheet } from 'react-native'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  RefreshControl,
+  StyleSheet,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native'
 import { useRouter } from 'expo-router'
 import { HomeDashboard } from '@/components/home/home-dashboard'
 import { brand } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
@@ -15,8 +22,13 @@ import {
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useMyProfile } from '@/features/profile/use-profile'
-import { useUnreadNotificationsCount } from '@/features/notifications/use-notifications'
+import { useHasUnreadNotifications } from '@/features/notifications/use-notifications'
+import { useHomeRealtime } from '@/features/home/use-home-realtime'
+import { useHomeTelemetry } from '@/features/home/use-home-telemetry'
+import { logHomeEvent } from '@/features/home/log-home-event'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { useDismissedIds } from '@/features/insights/control-dismiss-store'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -37,14 +49,58 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // refetch handle for pull-to-refresh.
   const snapshot = useHomeSnapshot(userId)
 
+  // Telemetry session: emits home.opened on mount, home.closed on
+  // unmount, and home.left_without_tap when no element gets tapped.
+  // Declared early so `handleRefresh` can correlate the refresh
+  // event to the same sessionId children will use.
+  const telemetry = useHomeTelemetry(familyId)
+
+  // Detect scroll-to-bottom once per session so analytics can compute
+  // scroll-depth proxy. The ref guard prevents repeat-firing on
+  // bounce-back scrolls.
+  const reachedBottomRef = useRef(false)
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (reachedBottomRef.current) return
+      if (!familyId) return
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+      const distanceFromBottom =
+        contentSize.height - (contentOffset.y + layoutMeasurement.height)
+      // 40pt buffer — pull-to-refresh and the bottom safe-area
+      // trigger close-but-not-exact bottoms; 40pt is wide enough to
+      // catch both without firing in mid-scroll.
+      if (distanceFromBottom <= 40 && contentSize.height > layoutMeasurement.height) {
+        reachedBottomRef.current = true
+        void logHomeEvent({
+          familyId,
+          event: 'home.scrolled_to_bottom',
+          context: { session_id: telemetry.sessionId },
+        })
+      }
+    },
+    [familyId, telemetry.sessionId],
+  )
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
+    if (familyId) {
+      void logHomeEvent({
+        familyId,
+        event: 'home.refreshed',
+        context: { session_id: telemetry.sessionId },
+      })
+    }
+    // Re-arm scroll-to-bottom detection: content can reflow after a
+    // refresh (new rows shrink/expand the height) and the user may
+    // legitimately reach the bottom again. Without this reset we'd
+    // undercount in dynamic-content sessions.
+    reachedBottomRef.current = false
     try {
       await snapshot.refetch()
     } finally {
       setIsRefreshing(false)
     }
-  }, [snapshot])
+  }, [snapshot, familyId, telemetry.sessionId])
 
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
@@ -53,8 +109,25 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const recentExpensesQuery = useRecentExpenses(familyId, 6)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
-  const unreadNotificationsQuery = useUnreadNotificationsCount(familyId, userId)
-  const unreadNotificationCount = unreadNotificationsQuery.data ?? 0
+  // Boolean projection — re-renders only on 0↔N transitions, not on
+  // every count delta. The header dot only needs the boolean.
+  const hasUnreadNotificationsQuery = useHasUnreadNotifications(familyId, userId)
+  const hasUnreadNotifications = hasUnreadNotificationsQuery.data ?? false
+
+  // Subscribe to live changes on expenses / fixed_expenses /
+  // savings_goals / notifications so a family member's edits flow
+  // into Home without the user having to pull-to-refresh.
+  useHomeRealtime(familyId)
+
+  // Assistant pending count — same source the Control card uses, so the
+  // badge stays in sync with what the user will see when they open the
+  // sheet. Filter dismissed in case some were swiped away from Control.
+  const { signals: assistantSignals } = useControlV2Data(familyId)
+  const assistantDismissed = useDismissedIds()
+  const assistantPendingCount = assistantSignals.filter((t) => {
+    const key = t.action?.kind === 'dismiss' ? t.action.dismissId : t.id
+    return !assistantDismissed.has(key)
+  }).length
 
   const categoryNameById = useMemo(
     () =>
@@ -87,7 +160,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // user's adjusted available cash for THIS cycle (engine override).
   // `startingBalance: null` = user kept the default monthly_income;
   // we still anchor the cycle so we don't re-prompt this period.
-  const confirmCycleStartingBalance = (startingBalance: number | null) => {
+  const confirmCycleStartingBalance = useCallback((startingBalance: number | null) => {
     setSalaryErrorMessage(null)
     // `cycleAnchorTarget` lands on `payCycle.start` in steady state
     // and pivots to `currentMonthPayDate` while the salary freeze is
@@ -127,9 +200,24 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         },
       },
     )
-  }
+  }, [
+    dashboard.cycleAnchorTarget,
+    dashboard.dailyBudgetBufferMode,
+    dashboard.dailyBudgetBufferValue,
+    dashboard.dailyBudgetCheckinHour,
+    dashboard.dailyBudgetNudgesEnabled,
+    dashboard.monthlyIncome,
+    dashboard.savingsGoal,
+    dashboard.familyFinanceQuery.data?.savings_goal_percent,
+    dashboard.usdExchangeRate,
+    dashboard.salaryPaymentDay,
+    dashboard.familyFinanceQuery.data?.last_salary_confirmed_at,
+    dashboard.familyFinanceQuery.data?.current_cycle_starting_balance,
+    dashboard.familyFinanceQuery.data?.current_cycle_anchor,
+    upsertFamilyFinanceMutation,
+  ])
 
-  const handleDeleteExpense = (expenseId: string) => {
+  const handleDeleteExpense = useCallback((expenseId: string) => {
     void triggerHaptic('warning')
     deleteExpenseMutation.mutate(expenseId, {
       onError: (error: unknown) => {
@@ -143,11 +231,21 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         void triggerHaptic('success')
       },
     })
-  }
+  }, [deleteExpenseMutation])
 
   return (
     <Screen
       contentContainerStyle={styles.screenContent}
+      onScroll={handleScroll}
+      scrollEventThrottle={250}
+      // Rendered behind the ScrollView (not inside it) so the auroras
+      // cover the full viewport and don't scroll with the content.
+      backgroundSlot={
+        <>
+          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
+          <AmbientBlobs />
+        </>
+      }
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -157,8 +255,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         />
       }
     >
-      {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-
       {shouldShowDashboardError ? (
         <ErrorState
           description={getErrorMessage(
@@ -177,13 +273,24 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           categoryNameById={categoryNameById}
           familyId={familyId}
           displayName={displayName}
-          hasUnreadNotifications={unreadNotificationCount > 0}
+          hasUnreadNotifications={hasUnreadNotifications}
+          assistantPendingCount={assistantPendingCount}
           onPressNotifications={() => router.push('/(app)/notifications')}
           onPressSettings={() => router.push('/(app)/settings')}
+          onPressAssistant={() => {
+            void triggerHaptic('selection')
+            router.push('/(app)/asistente')
+          }}
+          onPressConfigureIncome={() => {
+            void triggerHaptic('selection')
+            router.push('/(app)/settings')
+          }}
           isLoadingActivity={recentExpensesQuery.isLoading}
           activityError={activityError}
           onConfirmCycleStartingBalance={confirmCycleStartingBalance}
           onDeleteExpense={handleDeleteExpense}
+          telemetrySessionId={telemetry.sessionId}
+          onMarkTapped={telemetry.markTapped}
           pendingDeleteExpenseId={
             deleteExpenseMutation.isPending
               ? (deleteExpenseMutation.variables ?? null)

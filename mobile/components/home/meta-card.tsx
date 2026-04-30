@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
@@ -57,7 +57,7 @@ const ACCENT_GRADIENT: readonly [string, string, ...string[]] = ['#6FE09A', '#F2
  * don't accidentally drift away from the home screen while reading
  * progress; navigation to the goal config still lives in Settings.
  */
-export function MetaCard({
+function MetaCardImpl({
   goal,
   enableQuickAdd = false,
   suggestedAmount,
@@ -282,6 +282,8 @@ export function MetaCard({
     </RiseView>
   )
 }
+
+export const MetaCard = memo(MetaCardImpl)
 
 const styles = StyleSheet.create({
   card: {

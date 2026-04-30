@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { DescriptionRow } from '@/components/home/description-row'
@@ -8,6 +9,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import type { Category } from '@/features/categories/use-categories'
+import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -25,6 +27,9 @@ interface AddExpenseDashboardProps {
   /** When set, the new movement is back-dated to this day — hint
    *  the user via a pill so they know they're not adding to "today". */
   forDate?: Date | null
+  /** Optional advisor signals to surface a contextual banner above
+   *  the category rail (cap-breach, cat-accel, recovery-path). */
+  advisorSignals?: ControlAdvisorTask[]
   onRawPriceChange: (value: string) => void
   onAddQuickAmount: (delta: number) => void
   onClearAmount: () => void
@@ -46,6 +51,7 @@ export function AddExpenseDashboard({
   isBusy,
   submitErrorMessage,
   forDate,
+  advisorSignals,
   onRawPriceChange,
   onAddQuickAmount,
   onClearAmount,
@@ -133,6 +139,16 @@ export function AddExpenseDashboard({
           onSelect={handleSelectCategory}
         />
       </RiseView>
+
+      {advisorSignals && advisorSignals.length > 0 ? (
+        <AddExpenseAdvisorBanner
+          signals={advisorSignals}
+          selectedCategoryId={selectedCategoryId}
+          categoryNameById={
+            new Map(rankedCategories.map((c) => [c.id, c.name]))
+          }
+        />
+      ) : null}
 
       <RiseView delay={forDate ? 240 : 180}>
         <DescriptionRow

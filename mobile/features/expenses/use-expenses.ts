@@ -170,10 +170,47 @@ export function useDeleteExpense(familyId?: string) {
       }
       await deleteExpense(familyId, expenseId)
     },
-    onSuccess: async () => {
-      await invalidateFamilyBudgetData(queryClient, familyId, {
-        includeFixedExpenses: true,
-      })
+    // Optimistic update: drop the row from the local caches before the
+    // network round-trip so the swipe-to-delete feels instant. We
+    // snapshot the prior state in `onMutate` and restore it `onError`,
+    // and only do a surgical (not budget-wide) invalidation on settle —
+    // the dependent totals/aggregates are derived client-side from the
+    // expense list, so no extra fetch is needed.
+    onMutate: async (expenseId: string) => {
+      if (!familyId) return { snapshots: [] as Array<readonly [unknown, unknown]> }
+      const exactKeys: ReadonlyArray<readonly unknown[]> = [
+        expenseQueryKeys.family(familyId),
+        expenseQueryKeys.recent(familyId, 6),
+        expenseQueryKeys.recent(familyId, 3),
+        expenseQueryKeys.recentFamily(familyId),
+      ]
+      await Promise.all(
+        exactKeys.map((k) => queryClient.cancelQueries({ queryKey: k as readonly unknown[] })),
+      )
+      const snapshots = exactKeys.map(
+        (k) => [k, queryClient.getQueryData(k as readonly unknown[])] as const,
+      )
+      for (const k of exactKeys) {
+        queryClient.setQueryData<Expense[] | undefined>(
+          k as readonly unknown[],
+          (old) => (old ? old.filter((e) => e.id !== expenseId) : old),
+        )
+      }
+      return { snapshots }
+    },
+    onError: (_err, _expenseId, ctx) => {
+      const snapshots = ctx?.snapshots ?? []
+      for (const [k, data] of snapshots) {
+        queryClient.setQueryData(k as readonly unknown[], data)
+      }
+    },
+    onSettled: () => {
+      if (!familyId) return
+      // Surgical invalidation: only the rows that actually changed.
+      // Totals/aggregates derive from the expense list and recompute
+      // automatically from the updated cache.
+      queryClient.invalidateQueries({ queryKey: expenseQueryKeys.family(familyId) })
+      queryClient.invalidateQueries({ queryKey: expenseQueryKeys.recentFamily(familyId) })
     },
   })
 }

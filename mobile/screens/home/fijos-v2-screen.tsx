@@ -13,6 +13,7 @@ import { FijosTabs } from '@/components/fijos/fijos-tabs'
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
   useDeleteFixedExpense,
   useRecordFixedExpensePayment,
@@ -44,6 +45,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
   const deleteMutation = useDeleteFixedExpense(familyId)
+  // React Query cached — same source feeding the Control screen.
+  const { signals: advisorSignals } = useControlV2Data(familyId)
 
   const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
@@ -111,9 +114,13 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const sectionLayout = LinearTransition.duration(260)
 
   return (
-    <Screen contentContainerStyle={styles.screenContent}>
+    <Screen
+      contentContainerStyle={styles.screenContent}
+      // Rendered behind the ScrollView (not inside it) so the auroras
+      // cover the full viewport and don't scroll with the content.
+      backgroundSlot={<AmbientBlobs />}
+    >
       <View style={styles.stack}>
-        <AmbientBlobs />
         <Animated.View layout={sectionLayout}>
           <FijosHeader onPressAdd={handlePressAdd} />
         </Animated.View>
@@ -135,6 +142,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
           <FijosSmartAlerts
             zombieCount={controller.summary.zombies.length}
             hikes={controller.summary.hikes}
+            advisorSignals={advisorSignals}
             onOpenZombies={() => controller.setTab('zombis')}
             onOpenHike={handleEdit}
           />

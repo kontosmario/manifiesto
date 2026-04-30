@@ -7,8 +7,38 @@ import {
   tabBarUiStyles,
 } from '@/components/navigation/app-tabs-ui'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
+import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
 import { useAppTheme } from '@/theme/theme-provider'
+
+/**
+ * Control tab icon — sibling of `TabBarIcon` that overlays an unread
+ * dot when the advisor has high-priority signals the user hasn't
+ * seen since the last visit. Rendered as a dedicated component so the
+ * `useAdvisorBadge` hook (which depends on auth + family + advisor
+ * data) only mounts once per tab render.
+ */
+function InsightsTabIcon({
+  color,
+  focused,
+  size,
+}: {
+  color: string
+  focused: boolean
+  size: number
+}) {
+  const { show } = useAdvisorBadge()
+  return (
+    <TabBarIcon
+      color={color}
+      fallback="insights"
+      focused={focused}
+      name="chart.line.uptrend.xyaxis"
+      size={size}
+      showAlert={show}
+    />
+  )
+}
 
 export function AppTabs() {
   const { theme } = useAppTheme()
@@ -76,13 +106,7 @@ export function AppTabs() {
         options={{
           title: 'Control',
           tabBarIcon: ({ color, focused, size }) => (
-            <TabBarIcon
-              color={color}
-              fallback="insights"
-              focused={focused}
-              name="chart.line.uptrend.xyaxis"
-              size={size}
-            />
+            <InsightsTabIcon color={color} focused={focused} size={size} />
           ),
         }}
       />

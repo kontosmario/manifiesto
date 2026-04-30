@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useAppTheme } from '@/theme/theme-provider'
 
-export function AmbientBlobs() {
+export const AmbientBlobs = memo(function AmbientBlobs() {
   const { theme } = useAppTheme()
   const a = useSharedValue(0)
   const b = useSharedValue(0)
@@ -37,7 +38,7 @@ export function AmbientBlobs() {
       <Animated.View style={[styles.blob, { top: 1000, right: -60, width: 260, height: 260, backgroundColor: theme.colors.auroraC, opacity: 0.35 }, cStyle]} />
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   blob: { position: 'absolute', borderRadius: 9999 },

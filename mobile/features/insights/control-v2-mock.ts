@@ -98,6 +98,14 @@ export interface ControlAdvisorTask {
   impact: string
   /** Raw monthly savings (ARS) — used to compute the total impact banner. */
   impactRaw: number
+  /**
+   * Time horizon of `impactRaw`. Drives `annualizedImpact()` for ranking
+   * so a one-shot $50k zombie sub doesn't out-rank a $30k/mes velocity warning.
+   *  - 'monthly' (default): impactRaw is monthly recurring → ×12 for annual
+   *  - 'oneTime': impactRaw is a one-shot recovery (e.g. cycle excedente, suba) → ×1
+   *  - 'cycle': impactRaw scoped to current cycle (28-31d) → ×(365/cycleDays)
+   */
+  impactScope?: 'monthly' | 'oneTime' | 'cycle'
   cta: string
   urgency: 'alta' | 'media' | 'baja'
   /**
@@ -125,6 +133,12 @@ export interface ControlAdvisorTask {
   confidence: number
   /** Closed days of data feeding this signal (excludes today). */
   dataDays: number
+  /**
+   * Constituent signal ids when this is a super-signal (composition).
+   * `undefined` for atomic signals. The UI can render the bullets as
+   * sub-items so the user sees the underlying findings at a glance.
+   */
+  composedOf?: string[]
 }
 
 export const CONTROL_MOCK: ControlMockData = {
@@ -469,10 +483,15 @@ export function computeControlView(d: ControlMockData): ControlView {
   })
 
   // 10. VS PREVIOUS MONTH
+  // Clamp the delta % to ±999 so a tiny prior cycle ($1k) projecting to
+  // a normal one ($50k) doesn't render "+4900% vs mes pasado", which
+  // is technically true but useless to the user. Anything ≥1000% gets
+  // capped — the signed value still communicates direction + extremity.
   const mpTotal = d.mesPasado.gastoTotal
   const proyectadoMes = gastoProyectadoMes
-  const vsMesDeltaPct =
+  const rawDeltaPct =
     mpTotal > 0 ? ((proyectadoMes - mpTotal) / mpTotal) * 100 : 0
+  const vsMesDeltaPct = Math.max(-999, Math.min(999, rawDeltaPct))
   const vsMesAhorro = mpTotal - proyectadoMes
   const vsMesDiasBajoCupo = diasGanadores - d.mesPasado.diasBajoCupo
   const vsMesMejor = proyectadoMes < mpTotal

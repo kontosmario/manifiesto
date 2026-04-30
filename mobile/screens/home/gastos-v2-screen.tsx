@@ -1,88 +1,126 @@
-import { Alert, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+  type SectionListData,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { LinearTransition } from 'react-native-reanimated'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
+import { OfflinePill } from '@/components/ui/offline-pill'
 import { Screen } from '@/components/ui/screen'
+import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
+import { GastoRow } from '@/components/gastos/gasto-row'
+import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { GastosSmartFilter } from '@/components/gastos/gastos-smart-filter'
-import { GastosMovimientos } from '@/components/gastos/gastos-movimientos'
 import { StreakFlameIcon } from '@/components/gastos/streak-flame-icon'
 import { StreakSheet } from '@/components/gastos/streak-sheet'
-import { useDeleteExpense } from '@/features/expenses/use-expenses'
+import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
 import { useFamilyMembers } from '@/features/family/use-family-members'
-import {
-  useGastosController,
-  type GastosDateRange,
-} from '@/features/gastos/use-gastos-controller'
-import { useLocalSearchParams } from 'expo-router'
-import { useStreak } from '@/features/streaks/use-streak'
+import { useGastosController } from '@/features/gastos/use-gastos-controller'
+import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
+import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
+import { logScreenEvent } from '@/features/telemetry/log-screen-event'
+import { useControlV2Data } from '@/features/insights/use-control-v2-data'
+import { useStreak, type StreakData } from '@/features/streaks/use-streak'
+import type { GastosGroup } from '@/features/gastos/gastos-aggregates.model'
+import { brand } from '@/theme/palette'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
+import { formatMoney } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
+import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosV2ScreenProps {
   familyId: string
   userId: string
 }
 
-/**
- * New Gastos screen — V1 Cuaderno port. Work in progress: ships the
- * header + hero card first and will grow to include insights row,
- * month calendar, smart filter and the grouped movements list.
- */
+const STREAK_DEFAULTS: StreakData = Object.freeze({
+  currentStreak: 0,
+  longestStreak: 0,
+  totalDaysLogged: 0,
+  hasLoggedToday: false,
+  hasMarkedNoExpenseToday: false,
+  freezeTokens: 0,
+  weekActivity: Object.freeze([false, false, false, false, false, false, false]) as unknown as boolean[],
+  isBroken: false,
+})
+
+interface MovimientosSection {
+  title: string
+  day: number
+  total: number
+  data: Expense[]
+}
+
 export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   const router = useRouter()
-  // Asistente Financiero deep-links: the URL may carry an initial
-  // filter preset (category, price band, date range, or a focused
-  // expense id). We seed the controller with those values once so the
-  // screen opens already filtered.
-  const params = useLocalSearchParams<{
-    categoryId?: string
-    priceMax?: string
-    priceMin?: string
-    dateRange?: string
-    focusExpenseId?: string
-  }>()
+  const { theme } = useAppTheme()
+  const safeAreaInsets = useSafeAreaInsets()
+  // Replicate Screen's bottom-padding logic for tab screens — without
+  // this, the SectionList scroll-surface ends ~120pt above the tab
+  // bar (cuando no hay paddingBottom propio) y el área visible se
+  // achata. Agregamos el padding en el contentContainerStyle del list
+  // para que el contenido pueda scrollearse hasta el borde del tab bar.
+  const tabBarBottomPadding = safeAreaInsets.bottom + 96
+
+  // Asistente Financiero deep-links: solo `categoryId` se sigue
+  // parseando. El smart filter (priceMin/priceMax/dateRange) fue
+  // descartado en la arquitectura v2 — las búsquedas por fecha viven
+  // en el calendario y `selectedDay` dispara su propia query.
+  const params = useLocalSearchParams<{ categoryId?: string }>()
   const initialCategoryId =
     typeof params.categoryId === 'string' && params.categoryId.length > 0
       ? params.categoryId
       : null
-  const initialSmartFilter = {
-    priceMax: toFiniteNumber(params.priceMax),
-    priceMin: toFiniteNumber(params.priceMin),
-    dateRange: toDateRange(params.dateRange),
-    focusExpenseId:
-      typeof params.focusExpenseId === 'string' &&
-      params.focusExpenseId.length > 0
-        ? params.focusExpenseId
-        : undefined,
-  }
   const controller = useGastosController(familyId, {
     initialCategoryId,
-    initialSmartFilter,
   })
+
+  useGastosRealtime(familyId)
+  const telemetry = useGastosTelemetry(familyId)
+  const trackTap = useCallback(
+    (elementId: string, slot: string, destinationRoute?: string) => {
+      telemetry.markTapped()
+      void logScreenEvent({
+        familyId,
+        event: 'gastos.element_tapped',
+        elementId,
+        slot,
+        context: {
+          session_id: telemetry.sessionId,
+          destination_route: destinationRoute ?? null,
+        },
+      })
+    },
+    [familyId, telemetry],
+  )
+
   const membersQuery = useFamilyMembers(familyId)
+  const familyMembers = membersQuery.data ?? []
   const deleteExpenseMutation = useDeleteExpense(familyId)
   const streakQuery = useStreak(familyId, userId)
-  const streakData = streakQuery.data ?? {
-    currentStreak: 0,
-    longestStreak: 0,
-    totalDaysLogged: 0,
-    hasLoggedToday: false,
-    hasMarkedNoExpenseToday: false,
-    freezeTokens: 0,
-    weekActivity: new Array(7).fill(false),
-    isBroken: false,
-  }
+  const streakData = streakQuery.data ?? STREAK_DEFAULTS
   const [streakSheetVisible, setStreakSheetVisible] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleDelete = useCallback(
     (expenseId: string) => {
       void triggerHaptic('warning')
+      trackTap('gasto_row_delete', 'list')
       deleteExpenseMutation.mutate(expenseId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
@@ -91,11 +129,9 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
         onSuccess: () => void triggerHaptic('success'),
       })
     },
-    [deleteExpenseMutation],
+    [deleteExpenseMutation, trackTap],
   )
 
-  // Per-category movement counts across the month (respecting the day
-  // filter) — used by the smart filter pills + "Ver todas" sheet.
   const expenseCountByCategoryId = useMemo(() => {
     const map = new Map<string, number>()
     for (const e of controller.filteredExpenses) {
@@ -107,43 +143,259 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
     () => Array.from(controller.categoriesById.values()),
     [controller.categoriesById],
   )
+  // Defer the heavy intelligence + notifications queries past first
+  // paint — the chip is below the fold and tolerates a ~600ms wait
+  // without UX cost (audit §3.4 / item 18).
+  const { signals: advisorSignals } = useControlV2Data(familyId, undefined, {
+    defer: true,
+  })
+  const categoryNameById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of controller.categoriesById.values()) {
+      m.set(c.id, c.name)
+    }
+    return m
+  }, [controller.categoriesById])
 
-  const handlePressAdd = () => {
+  const cycleDates = useMemo(() => {
+    const out: Date[] = []
+    for (let i = 0; i < controller.cycleDays; i++) {
+      out.push(
+        new Date(
+          controller.cycleStart.getFullYear(),
+          controller.cycleStart.getMonth(),
+          controller.cycleStart.getDate() + i,
+        ),
+      )
+    }
+    return out
+  }, [controller.cycleStart, controller.cycleDays])
+  const navBounds = useMemo(
+    () => getCycleNavBounds(controller.selectedDay, cycleDates, controller.today),
+    [controller.selectedDay, cycleDates, controller.today],
+  )
+  const handlePrevDay = useCallback(() => {
+    controller.setSelectedDay(stepCycleDay(controller.selectedDay, cycleDates, controller.today, -1))
+  }, [controller, cycleDates])
+  const handleNextDay = useCallback(() => {
+    controller.setSelectedDay(stepCycleDay(controller.selectedDay, cycleDates, controller.today, 1))
+  }, [controller, cycleDates])
+
+  const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
+    trackTap('add_expense_cta', 'movements_empty', '/(app)/(tabs)/add')
     router.push('/(app)/(tabs)/add')
-  }
-  const handlePressStreak = () => {
+  }, [router, trackTap])
+  const handlePressStreak = useCallback(() => {
     void triggerHaptic('selection')
+    trackTap('streak_flame', 'header')
     setStreakSheetVisible(true)
-  }
+  }, [trackTap])
+  const handleRegisterForgotten = useCallback(
+    (date: Date) => {
+      void triggerHaptic('light')
+      trackTap('calendar_register_forgotten', 'calendar', '/(app)/add-expense')
+      const y = date.getFullYear()
+      const m = `${date.getMonth() + 1}`.padStart(2, '0')
+      const d = `${date.getDate()}`.padStart(2, '0')
+      router.push({
+        pathname: '/(app)/add-expense',
+        params: { date: `${y}-${m}-${d}` },
+      })
+    },
+    [router, trackTap],
+  )
+  const handleClearFilters = useCallback(() => {
+    void triggerHaptic('selection')
+    trackTap('clear_filters', 'filters')
+    controller.clearAll()
+  }, [controller, trackTap])
+  const handleSelectCategory = useCallback(
+    (id: string | null) => {
+      if (id !== controller.selectedCategoryId) {
+        trackTap('filter_pill', 'filters')
+      }
+      controller.setSelectedCategoryId(id)
+    },
+    [controller, trackTap],
+  )
+  const handleSelectDay = useCallback(
+    (day: number | null) => {
+      if (day !== controller.selectedDay) {
+        trackTap('calendar_day', 'calendar')
+      }
+      controller.setSelectedDay(day)
+    },
+    [controller, trackTap],
+  )
+  const handleAdvisorPress = useCallback(() => {
+    trackTap('advisor_chip', 'movements', '/(app)/(tabs)/insights')
+    router.push('/(app)/(tabs)/insights')
+  }, [router, trackTap])
 
-  if (controller.error && controller.filteredExpenses.length === 0) {
-    return (
-      <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
-        <ErrorState
-          description={getErrorMessage(controller.error, errorMessages.server)}
-          title="No pudimos cargar tus gastos"
-        />
-      </Screen>
-    )
-  }
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    void logScreenEvent({
+      familyId,
+      event: 'gastos.refreshed',
+      context: { session_id: telemetry.sessionId },
+    })
+    try {
+      await controller.refetchAll()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [controller, familyId, telemetry.sessionId])
 
-  // Each section in the stack gets `layout={LinearTransition}` so when
-  // one section grows or shrinks (e.g. the hero when top-categories
-  // change on a day-filter switch), the siblings below glide to their
-  // new Y-position instead of snapping.
+  // Map controller groups → SectionList sections (audit §2.3 — list
+  // virtualizada). Each day = one section, sin movimientos = empty
+  // section that won't render rows.
+  const sections = useMemo<MovimientosSection[]>(
+    () =>
+      controller.groups.map((g) => ({
+        title: g.label,
+        day: g.day,
+        total: g.total,
+        data: g.items,
+      })),
+    [controller.groups],
+  )
+
+  const renderItem = useCallback(
+    ({ item }: { item: Expense }) => {
+      const cat = controller.categoriesById.get(item.category_id)
+      const who = familyMembers.find((m) => m.id === item.created_by)
+      const actions: SwipeAction[] = [
+        {
+          label: 'Eliminar',
+          tone: 'danger',
+          icon: 'delete',
+          onPress: () => handleDelete(item.id),
+        },
+      ]
+      const a11yLabel = composeRowA11yLabel({
+        title: item.description || cat?.name || 'Gasto',
+        categoryName: cat?.name ?? 'Sin categoría',
+        whoName: who?.name ?? 'Alguien',
+        amount: Math.abs(Number(item.price ?? 0)),
+        iso: item.created_at,
+      })
+      const isPending =
+        deleteExpenseMutation.isPending &&
+        deleteExpenseMutation.variables === item.id
+      return (
+        <View style={styles.rowWrap}>
+          <SwipeableRow
+            accessibilityLabel={a11yLabel}
+            accessibilityHint="Desliza a la izquierda para eliminar"
+            accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+            onAccessibilityAction={(event) => {
+              if (event.nativeEvent.actionName === 'delete') {
+                handleDelete(item.id)
+              }
+            }}
+            rightActions={actions}
+            isProcessing={isPending}
+          >
+            <GastoRow
+              title={item.description || cat?.name || 'Gasto'}
+              categoryName={cat?.name ?? 'Sin categoría'}
+              categoryColor={cat?.color ?? theme.colors.textMuted}
+              whoName={who?.name ?? 'Alguien'}
+              whoColor={who?.color ?? '#2E7D5B'}
+              amount={-Math.abs(Number(item.price ?? 0))}
+              time={formatTime(item.created_at)}
+            />
+          </SwipeableRow>
+        </View>
+      )
+    },
+    [
+      controller.categoriesById,
+      familyMembers,
+      handleDelete,
+      deleteExpenseMutation,
+      theme.colors.textMuted,
+    ],
+  )
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: SectionListData<Expense, MovimientosSection> }) => (
+      <View style={[styles.groupHeader, { backgroundColor: theme.colors.background }]}>
+        <View>
+          <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
+            {section.title}
+          </Text>
+          <Text style={[styles.groupMeta, { color: theme.colors.textSoft }]}>
+            {section.data.length} movimiento{section.data.length === 1 ? '' : 's'}
+          </Text>
+        </View>
+        <Text style={[styles.groupTotal, { color: theme.colors.text }]}>
+          -{formatMoney(section.total)}
+        </Text>
+      </View>
+    ),
+    [theme.colors.background, theme.colors.text, theme.colors.textSoft],
+  )
+
+  const keyExtractor = useCallback((item: Expense) => item.id, [])
+
+  // Empty state — three variants. Rendered as ListEmptyComponent of
+  // the SectionList when `sections` is empty (no day groups passed).
+  const emptyState = useMemo(() => {
+    if (controller.expenses.length === 0) {
+      return {
+        kind: 'global' as const,
+        primary: 'Cargá tu primer gasto',
+        secondary: 'Empezá el ciclo registrando uno',
+        actionLabel: 'Registrar gasto',
+        onAction: handlePressAdd,
+        iconName: 'add-circle-outline' as const,
+      }
+    }
+    if (controller.filteredExpenses.length === 0 && controller.hasAnyFilter) {
+      return {
+        kind: 'filtered' as const,
+        primary: 'No hay movimientos para este filtro',
+        secondary: 'Probá quitando algún filtro para ver más',
+        actionLabel: 'Limpiar filtros',
+        onAction: handleClearFilters,
+        iconName: 'filter-alt-off' as const,
+      }
+    }
+    if (controller.filteredExpenses.length === 0) {
+      return {
+        kind: 'cycle' as const,
+        primary: 'Aún sin gastos en este ciclo',
+        secondary: 'Cuando cargues uno, lo vas a ver acá',
+        actionLabel: undefined,
+        onAction: undefined,
+        iconName: 'hourglass-empty' as const,
+      }
+    }
+    return null
+  }, [
+    controller.expenses.length,
+    controller.filteredExpenses.length,
+    controller.hasAnyFilter,
+    handleClearFilters,
+    handlePressAdd,
+  ])
+
   const sectionLayout = LinearTransition.duration(260)
 
-  return (
-    <Screen contentContainerStyle={styles.screenContent}>
-      <View style={styles.stack}>
-        <AmbientBlobs />
+  // Chrome shown above the virtualized list — composed once and
+  // memoized so SectionList doesn't unmount it on every data update.
+  const ListHeader = useMemo(
+    () => (
+      <View style={styles.headerStack}>
         <Animated.View layout={sectionLayout}>
           <GastosHeader
             subtitle={`Ciclo ${controller.cycleLabel}`}
             rightSlot={<StreakFlameIcon data={streakData} onPress={handlePressStreak} />}
           />
         </Animated.View>
+        <OfflinePill />
         <Animated.View layout={sectionLayout}>
           <GastosHeroCard
             totalVisible={controller.filteredTotal}
@@ -151,6 +403,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             topCategories={controller.topCategories}
             averageDaily={controller.averageDaily}
             averageDailyBars={controller.recentDailyBars}
+            averageWindowDays={controller.cycleDaysElapsed}
           />
         </Animated.View>
         <Animated.View layout={sectionLayout}>
@@ -172,49 +425,13 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
                 : 0
             }
             cycleLabel={controller.cycleLabel}
-            onSelectDay={controller.setSelectedDay}
+            onSelectDay={handleSelectDay}
             onClearDay={controller.clearDay}
-            onPrevDay={() =>
-              controller.setSelectedDay(
-                stepCycleDay(
-                  controller.selectedDay,
-                  controller.cycleStart,
-                  controller.cycleDays,
-                  controller.today,
-                  -1,
-                ),
-              )
-            }
-            onNextDay={() =>
-              controller.setSelectedDay(
-                stepCycleDay(
-                  controller.selectedDay,
-                  controller.cycleStart,
-                  controller.cycleDays,
-                  controller.today,
-                  1,
-                ),
-              )
-            }
-            {...getCycleNavBounds(
-              controller.selectedDay,
-              controller.cycleStart,
-              controller.cycleDays,
-              controller.today,
-            )}
-            onRegisterForgottenExpense={(date) => {
-              void triggerHaptic('light')
-              // Format as local YYYY-MM-DD (no timezone drift) so the
-              // add-expense screen parses it as the exact day the user
-              // tapped, regardless of UTC offset.
-              const y = date.getFullYear()
-              const m = `${date.getMonth() + 1}`.padStart(2, '0')
-              const d = `${date.getDate()}`.padStart(2, '0')
-              router.push({
-                pathname: '/(app)/add-expense',
-                params: { date: `${y}-${m}-${d}` },
-              })
-            }}
+            onPrevDay={handlePrevDay}
+            onNextDay={handleNextDay}
+            canGoPrev={navBounds.canGoPrev}
+            canGoNext={navBounds.canGoNext}
+            onRegisterForgottenExpense={handleRegisterForgotten}
           />
         </Animated.View>
         <Animated.View layout={sectionLayout}>
@@ -223,24 +440,233 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             expenseCountByCategoryId={expenseCountByCategoryId}
             totalCount={controller.filteredExpenses.length}
             selectedCategoryId={controller.selectedCategoryId}
-            onSelect={controller.setSelectedCategoryId}
+            onSelect={handleSelectCategory}
           />
         </Animated.View>
+        {controller.hasAnyFilter ? (
+          <Animated.View layout={sectionLayout}>
+            <Pressable
+              onPress={handleClearFilters}
+              accessibilityRole="button"
+              accessibilityLabel="Limpiar todos los filtros activos"
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.clearFiltersBtn,
+                {
+                  backgroundColor: theme.colors.creamSoft,
+                  borderColor: theme.colors.line,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <MaterialIcons name="filter-alt-off" size={14} color={theme.colors.textMuted} />
+              <Text style={[styles.clearFiltersText, { color: theme.colors.textMuted }]}>
+                Limpiar filtros
+              </Text>
+            </Pressable>
+          </Animated.View>
+        ) : null}
         <Animated.View layout={sectionLayout}>
-          <GastosMovimientos
-            groups={controller.groups}
-            categoriesById={controller.categoriesById}
-            familyMembers={membersQuery.data ?? []}
-            onDelete={handleDelete}
-            pendingExpenseId={
-              deleteExpenseMutation.isPending
-                ? (deleteExpenseMutation.variables ?? null)
-                : null
-            }
+          <GastosAdvisorChip
+            signals={advisorSignals}
+            selectedCategoryId={controller.selectedCategoryId}
+            categoryNameById={categoryNameById}
+            onPress={handleAdvisorPress}
           />
         </Animated.View>
-        <View style={styles.bottomSpacer} />
+        <View style={styles.movimientosTitleRow}>
+          <Text style={[styles.movimientosTitle, { color: theme.colors.text }]}>
+            Movimientos
+          </Text>
+          {sections.length > 0 ? (
+            <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
+              ‹ Desliza para acciones
+            </Text>
+          ) : null}
+        </View>
       </View>
+    ),
+    [
+      sectionLayout,
+      sections.length,
+      streakData,
+      handlePressStreak,
+      controller.cycleLabel,
+      controller.filteredTotal,
+      controller.summaryChip,
+      controller.topCategories,
+      controller.averageDaily,
+      controller.recentDailyBars,
+      controller.cycleDaysElapsed,
+      controller.dayMoods,
+      controller.cycleStart,
+      controller.cycleDays,
+      controller.today,
+      controller.selectedDay,
+      controller.dailySpend,
+      controller.selectedCategoryId,
+      controller.filteredExpenses.length,
+      controller.hasAnyFilter,
+      controller.clearDay,
+      handleSelectDay,
+      handlePrevDay,
+      handleNextDay,
+      navBounds,
+      handleRegisterForgotten,
+      categoriesList,
+      expenseCountByCategoryId,
+      handleSelectCategory,
+      handleClearFilters,
+      advisorSignals,
+      categoryNameById,
+      handleAdvisorPress,
+      theme,
+    ],
+  )
+
+  // ── Hard error ───────────────────────────────────────────────────
+  if (
+    controller.error &&
+    controller.filteredExpenses.length === 0 &&
+    controller.expenses.length === 0
+  ) {
+    return (
+      <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
+        <ErrorState
+          description={getErrorMessage(controller.error, errorMessages.server)}
+          title="No pudimos cargar tus gastos"
+          onAction={() => {
+            void controller.refetchAll()
+          }}
+        />
+      </Screen>
+    )
+  }
+
+  return (
+    <Screen scrollable={false} contentContainerStyle={styles.screenContent}>
+      {/* Mounted as a Screen-level sibling (not inside the SectionList
+          header) so the absolute-positioned blobs fill the whole canvas
+          instead of getting clipped to the ListHeaderComponent cell. */}
+      <AmbientBlobs />
+      <SectionList<Expense, MovimientosSection>
+        sections={sections}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          emptyState ? (
+            <View
+              style={[
+                styles.emptyCard,
+                {
+                  backgroundColor: theme.colors.creamCard,
+                  borderColor: theme.colors.line,
+                },
+              ]}
+              accessibilityRole="text"
+              accessibilityLabel={`${emptyState.primary}. ${emptyState.secondary ?? ''}`}
+            >
+              <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primarySurface }]}>
+                <MaterialIcons name={emptyState.iconName} size={20} color={theme.colors.primary} />
+              </View>
+              <View style={styles.emptyText}>
+                <Text style={[styles.emptyPrimary, { color: theme.colors.text }]}>
+                  {emptyState.primary}
+                </Text>
+                {emptyState.secondary ? (
+                  <Text
+                    style={[styles.emptySecondary, { color: theme.colors.textMuted }]}
+                    maxFontSizeMultiplier={1.4}
+                  >
+                    {emptyState.secondary}
+                  </Text>
+                ) : null}
+              </View>
+              {emptyState.actionLabel && emptyState.onAction ? (
+                <Pressable
+                  onPress={emptyState.onAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={emptyState.actionLabel}
+                  hitSlop={6}
+                  style={({ pressed }) => [
+                    styles.emptyAction,
+                    {
+                      backgroundColor: theme.colors.primarySurface,
+                      borderColor: theme.colors.line,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.emptyActionText, { color: theme.colors.primary }]}>
+                    {emptyState.actionLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          <View style={styles.listFooter}>
+            {controller.isFetchingNextPage ? (
+              <View
+                style={styles.loadingMoreRow}
+                accessibilityRole="text"
+                accessibilityLabel="Cargando más movimientos"
+              >
+                <ActivityIndicator size="small" color={theme.colors.textMuted} />
+                <Text style={[styles.loadingMoreText, { color: theme.colors.textMuted }]}>
+                  Cargando más días…
+                </Text>
+              </View>
+            ) : null}
+            {!controller.hasNextPage && controller.expenses.length > 0 ? (
+              <Text
+                style={[styles.endOfList, { color: theme.colors.textMuted }]}
+                accessibilityRole="text"
+              >
+                — Fin del ciclo —
+              </Text>
+            ) : null}
+          </View>
+        }
+        // Virtual scroll: dispara la siguiente página cuando el
+        // usuario está al ~50% del último viewport. RN llama una sola
+        // vez por umbral cruzado.
+        onEndReached={() => {
+          void controller.fetchNextPage()
+        }}
+        onEndReachedThreshold={0.5}
+        stickySectionHeadersEnabled={false}
+        // Virtualization knobs — tuned for typical mobile lists.
+        // `windowSize` 9 = ~9 viewports of buffered content.
+        // `removeClippedSubviews` mounts/unmounts off-screen rows on
+        // Android (no-op on iOS but doesn't hurt).
+        windowSize={9}
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: tabBarBottomPadding },
+        ]}
+        // SafeArea is already handled by `<Screen>`'s SafeAreaView.
+        // Setting `never` prevents the SectionList from adding extra
+        // top inset on iOS, que duplica el espacio entre la barra de
+        // navegación y el contenido.
+        contentInsetAdjustmentBehavior="never"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={brand.bright}
+            colors={[brand.deep]}
+          />
+        }
+      />
 
       <StreakSheet
         familyId={familyId}
@@ -255,116 +681,152 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  screenContent: { paddingTop: 14 },
-  stack: { gap: 10 },
-  bottomSpacer: { height: 24 },
+  // `paddingBottom: 0` overrides Screen's default bottomPadding (the
+  // ~120pt that pushes content above the tab bar). En non-scrollable
+  // mode ese padding va al contenedor padre y achata el área del
+  // SectionList. Lo movemos al `contentContainerStyle` del list así el
+  // usuario puede scrollear hasta el borde del tab bar.
+  screenContent: { paddingTop: 14, paddingBottom: 0 },
+  listContent: {
+    paddingHorizontal: 0,
+  },
+  headerStack: { gap: 10, marginBottom: 8 },
+  rowWrap: { paddingTop: 6 },
+  groupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingHorizontal: 2,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  groupLabel: { fontSize: 14, fontWeight: '700' },
+  groupMeta: { fontSize: 11 },
+  groupTotal: { fontSize: 14, fontWeight: '800' },
+  movimientosTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 4,
+  },
+  movimientosTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  swipeHint: { fontSize: 11 },
+  listFooter: { gap: 12, paddingVertical: 16, alignItems: 'center' },
+  loadingMoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  endOfList: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+  },
+  clearFiltersBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: 6,
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: { flex: 1, gap: 2 },
+  emptyPrimary: { fontSize: 14, fontWeight: '700' },
+  emptySecondary: { fontSize: 12, lineHeight: 16 },
+  emptyAction: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  emptyActionText: { fontSize: 12, fontWeight: '700' },
 })
 
-/** Offset (0-indexed) of the first day of the cycle when the calendar
- *  starts on Monday. JS Date.getDay returns 0=Sun..6=Sat; we shift
- *  so 0=Mon..6=Sun. */
 function getMondayFirstOffset(cycleStart: Date): number {
-  const jsDow = cycleStart.getDay() // 0=Sun..6=Sat
+  const jsDow = cycleStart.getDay()
   return (jsDow + 6) % 7
 }
 
-/**
- * Moves the selected calendar day forward or backward one position
- * within the cycle window, CLAMPED at both edges:
- *   · backward stops at the cycle start
- *   · forward stops at the earlier of (cycle end - 1, today)
- * Returns the new calendar day-of-month, or the same `selected` when
- * already at a boundary (no-op).
- */
 function stepCycleDay(
   selected: number | null,
-  cycleStart: Date,
-  cycleDays: number,
+  cycleDates: Date[],
   today: Date,
   direction: 1 | -1,
 ): number | null {
   if (selected == null) return null
-  const cycleDates: Date[] = []
-  for (let i = 0; i < cycleDays; i++) {
-    cycleDates.push(
-      new Date(
-        cycleStart.getFullYear(),
-        cycleStart.getMonth(),
-        cycleStart.getDate() + i,
-      ),
-    )
-  }
   const idx = cycleDates.findIndex((d) => d.getDate() === selected)
-  if (idx === -1) return cycleDates[0].getDate()
-  const todayMs = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  ).getTime()
+  if (idx === -1) return cycleDates[0]?.getDate() ?? null
+  const todayMs = startOfLocalDay(today).getTime()
   const target = idx + direction
-  if (target < 0 || target >= cycleDays) return selected
+  if (target < 0 || target >= cycleDates.length) return selected
   const targetDate = cycleDates[target]
   if (!targetDate) return selected
-  // Forward direction can't cross today (no future days).
   if (direction === 1 && targetDate.getTime() > todayMs) return selected
   return targetDate.getDate()
 }
 
-/**
- * Returns whether prev / next chevrons should be enabled given the
- * current selection. The calendar uses these to disable the chevron
- * controls so users can't try to drift off the cycle window or into
- * the future.
- */
 function getCycleNavBounds(
   selected: number | null,
-  cycleStart: Date,
-  cycleDays: number,
+  cycleDates: Date[],
   today: Date,
 ): { canGoPrev: boolean; canGoNext: boolean } {
   if (selected == null) return { canGoPrev: false, canGoNext: false }
-  const cycleDates: Date[] = []
-  for (let i = 0; i < cycleDays; i++) {
-    cycleDates.push(
-      new Date(
-        cycleStart.getFullYear(),
-        cycleStart.getMonth(),
-        cycleStart.getDate() + i,
-      ),
-    )
-  }
   const idx = cycleDates.findIndex((d) => d.getDate() === selected)
   if (idx === -1) return { canGoPrev: false, canGoNext: false }
-  const todayMs = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  ).getTime()
+  const todayMs = startOfLocalDay(today).getTime()
   const canGoPrev = idx > 0
   const nextDate = cycleDates[idx + 1]
   const canGoNext = Boolean(nextDate) && nextDate!.getTime() <= todayMs
   return { canGoPrev, canGoNext }
 }
 
-function toFiniteNumber(raw: string | string[] | undefined): number | undefined {
-  if (typeof raw !== 'string') return undefined
-  const n = Number(raw)
-  return Number.isFinite(n) ? n : undefined
+function startOfLocalDay(d: Date): Date {
+  const out = new Date(d)
+  out.setHours(0, 0, 0, 0)
+  return out
 }
 
-function toDateRange(
-  raw: string | string[] | undefined,
-): GastosDateRange | undefined {
-  if (typeof raw !== 'string') return undefined
-  switch (raw) {
-    case 'today':
-    case 'last-7':
-    case 'first-3-days':
-    case 'last-3-days':
-    case 'nights':
-    case 'all':
-      return raw
-    default:
-      return undefined
-  }
+function formatTime(iso: string): string {
+  const d = new Date(iso)
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
+
+function composeRowA11yLabel(args: {
+  title: string
+  categoryName: string
+  whoName: string
+  amount: number
+  iso: string
+}): string {
+  const time = formatTime(args.iso)
+  return `${args.title}, ${args.amount} pesos en ${args.categoryName}, cargado por ${args.whoName} a las ${time}.`
 }

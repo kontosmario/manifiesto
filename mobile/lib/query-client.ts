@@ -1,4 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
+import type { PersistedClient } from '@tanstack/react-query-persist-client'
 
 /**
  * Global React Query client for the app.
@@ -50,6 +53,13 @@ const queryCache = new QueryCache({
   },
 })
 
+// `gcTime` is renamed from React Query v4's `cacheTime`. We bump it
+// to 24h so persisted queries don't get garbage-collected before the
+// persister has a chance to restore them on cold start. Stale data is
+// still revalidated by `staleTime` policies — `gcTime` only controls
+// when the cache entry is *removed*, not when it's considered fresh.
+const PERSIST_GC_TIME_MS = 24 * 60 * 60 * 1000 // 24h
+
 export const queryClient = new QueryClient({
   queryCache,
   mutationCache,
@@ -57,6 +67,7 @@ export const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 30_000,
+      gcTime: PERSIST_GC_TIME_MS,
       refetchOnWindowFocus: false,
     },
     mutations: {
@@ -64,3 +75,81 @@ export const queryClient = new QueryClient({
     },
   },
 })
+
+/**
+ * AsyncStorage persister for React Query.
+ *
+ * Cold start UX:
+ *   - On app launch, the persister reads the saved cache and hydrates
+ *     `queryClient` synchronously enough that the first render shows
+ *     last-session data instead of skeletons.
+ *   - In the background, queries with stale data refetch. Users see
+ *     a transition rather than a blank wait.
+ *
+ * `buster` is bumped any time the cache shape changes incompatibly
+ * (e.g., adding a required column to `Expense` would orphan old
+ * entries). Bumping invalidates all persisted entries forcing a
+ * fresh fetch on next launch.
+ */
+// v2 (2026-04-30): excluded `auth` / `family` / `profile` from
+// dehydration to fix the P0001 "No session" / stuck-on-join-screen
+// race. Bump invalidates any persisted cache that may contain the
+// stale `family=null` from a previous broken-auth session.
+export const QUERY_CACHE_BUSTER = 'manifiesto-cache-v2'
+
+export const queryPersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  // Throttle writes so a flurry of mutations doesn't hammer disk
+  // (default 1000ms is fine; we set explicitly for clarity).
+  throttleTime: 1000,
+  key: 'react-query-cache',
+})
+
+export const queryPersistOptions = {
+  maxAge: PERSIST_GC_TIME_MS,
+  buster: QUERY_CACHE_BUSTER,
+  // Don't persist mutations — they're transient by design and
+  // restoring a half-finished mutation across launches risks duplicate
+  // writes. Persist only query data.
+  dehydrateOptions: {
+    shouldDehydrateMutation: (): boolean => false,
+    // Skip queries that error'd or were never resolved — replaying
+    // an error state on cold start is worse than triggering a fresh
+    // fetch.
+    //
+    // Also skip the auth session query AND the entry-gate queries
+    // (`family`, `profile`):
+    //
+    // - Persisting `['auth', ...]` lets React Query serve a userId
+    //   synchronously on cold start, but the Supabase client loads its
+    //   JWT from AsyncStorage *async*. The gap caused `home_snapshot()`
+    //   to fire before the JWT was attached → PostgREST received an
+    //   unauthenticated request → SQL raised `P0001 No session`.
+    //   Forcing the auth queryFn to run means `userId` only resolves
+    //   AFTER `supabase.auth.getSession()` returns, by which point the
+    //   JWT is attached to outgoing requests.
+    //
+    // - Persisting `['family', userId]` / `['profile', userId]` is
+    //   dangerous because `AppEntryGate` (mounted at `/`) decides
+    //   between `/home`, `/onboarding`, and `/(auth)/join` based on
+    //   their values. If a previous session was RLS-denied (e.g. due
+    //   to the JWT race above), the queries resolved as `success` with
+    //   `data === null`. Rehydrating that null on next cold start
+    //   ships the user straight to the join screen even though they
+    //   actually belong to a family. They're cheap to refetch and gate
+    //   routing, so we always go to the network.
+    shouldDehydrateQuery: (query: {
+      queryKey: readonly unknown[]
+      state: { status: string }
+    }) => {
+      if (query.state.status !== 'success') return false
+      const root = query.queryKey[0]
+      if (root === 'auth' || root === 'family' || root === 'profile') return false
+      return true
+    },
+  },
+} as const
+
+// Type re-export so consumers (e.g., advanced cache surgery) don't
+// need to know which sub-package owns the type.
+export type { PersistedClient }
