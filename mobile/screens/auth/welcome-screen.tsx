@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { hideAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { authTokens } from '@/theme/palette'
@@ -145,28 +146,31 @@ function AuroraLayer({
   const t1 = useSharedValue(0)
   const t2 = useSharedValue(0)
 
-  useEffect(() => {
-    if (reduced) return
-    t1.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-        withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    )
-    t2.value = withDelay(
-      900,
-      withRepeat(
+  // useLoopAnimation parks the loops on blur/unmount + reduced motion.
+  useLoopAnimation(
+    () => {
+      t1.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
         ),
         -1,
         false,
-      ),
-    )
-  }, [reduced, t1, t2])
+      )
+      t2.value = withDelay(
+        900,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
+            withTiming(0, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
+          ),
+          -1,
+          false,
+        ),
+      )
+    },
+    [t1, t2],
+  )
 
   const blob1Style = useAnimatedStyle(() => ({
     transform: [
@@ -294,25 +298,29 @@ function Particle({
 }) {
   const t = useSharedValue(0)
 
-  useEffect(() => {
-    t.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, {
-            duration: duration / 2,
-            easing: Easing.inOut(Easing.quad),
-          }),
-          withTiming(0, {
-            duration: duration / 2,
-            easing: Easing.inOut(Easing.quad),
-          }),
+  useLoopAnimation(
+    () => {
+      t.value = withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1, {
+              duration: duration / 2,
+              easing: Easing.inOut(Easing.quad),
+            }),
+            withTiming(0, {
+              duration: duration / 2,
+              easing: Easing.inOut(Easing.quad),
+            }),
+          ),
+          -1,
+          false,
         ),
-        -1,
-        false,
-      ),
-    )
-  }, [t, duration, delay])
+      )
+    },
+    [t],
+    [duration, delay],
+  )
 
   const style = useAnimatedStyle(() => ({
     transform: [

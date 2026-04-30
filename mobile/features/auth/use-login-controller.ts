@@ -9,7 +9,6 @@ import { buildAuthHelperCopy, type AuthMode } from '@/features/auth/auth-flow'
 import {
   buildAuthViewportMetrics,
 } from '@/features/auth/auth-layout'
-import { useAuthEntranceAnimation } from '@/features/auth/use-auth-entrance-animation'
 import { usePasswordSignIn, usePasswordSignUp } from '@/features/auth/use-auth-actions'
 import { useAuthBiometricController } from '@/features/auth/use-auth-biometric-controller'
 import { useAuthKeyboardController } from '@/features/auth/use-auth-keyboard-controller'
@@ -58,25 +57,15 @@ export function useLoginController() {
     availableContentHeight,
     emailInputRef,
     keyboardHeight,
-    keyboardShift,
     nameInputRef,
     passwordInputRef,
     isKeyboardVisible,
     actions: keyboardActions,
   } = keyboardController
-  const { animation, playEntrance, stopAnimations } = useAuthEntranceAnimation({
-    isReducedMotionEnabled,
-    mode,
-  })
-  const {
-    heroOpacity,
-    heroScale,
-    heroTranslateY,
-    modeContentOpacity,
-    modeContentTranslateY,
-    panelOpacity,
-    panelTranslateY,
-  } = animation
+  // Entrance animation hook removed (2026-04-30): the values returned
+  // (heroOpacity / panelOpacity / etc.) were never consumed by any
+  // rendered screen. The dead code path is gone — see commit history
+  // if you need the previous implementation.
   const handleSignedInTransition = useCallback(() => {
     showAuthTransitionSplash()
     router.replace('/')
@@ -157,13 +146,9 @@ export function useLoginController() {
 
   useFocusEffect(
     useCallback(() => {
-      playEntrance()
       resetAutoBiometricAttempt()
       void refreshBiometricState()
-      return () => {
-        stopAnimations()
-      }
-    }, [playEntrance, refreshBiometricState, resetAutoBiometricAttempt, stopAnimations]),
+    }, [refreshBiometricState, resetAutoBiometricAttempt]),
   )
 
   const updateMode = useCallback(
@@ -178,16 +163,11 @@ export function useLoginController() {
   )
 
   return {
-    animation: {
-      heroOpacity,
-      heroScale,
-      heroTranslateY,
-      keyboardShift,
-      modeContentOpacity,
-      modeContentTranslateY,
-      panelOpacity,
-      panelTranslateY,
-    },
+    // `animation` field removed (2026-04-30): every value it exposed
+    // (heroOpacity / panelOpacity / modeContent* / keyboardShift) was
+    // dead code — never plumbed into any JSX style. The hooks that
+    // produced them (useAuthEntranceAnimation + the timing animation
+    // inside useAuthKeyboardController) were also deleted.
     biometricState,
     containerMinHeight,
     contentGap,

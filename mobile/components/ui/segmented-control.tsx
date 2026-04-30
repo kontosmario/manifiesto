@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
+  cancelAnimation,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -33,8 +34,15 @@ export function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
+  // Items share `flex: 1`, so every segment renders at the same width.
+  // We measure that width once and keep it static — animating only
+  // `translateX` instead of `width` keeps the pill on the compositor
+  // (transform-only) and avoids triggering a layout pass on every
+  // frame on Android. `pillStaticWidth` is plain React state so the
+  // <Animated.View>'s `width` prop is set declaratively, not driven
+  // by a SharedValue.
   const pillX = useSharedValue(0)
-  const pillWidth = useSharedValue(0)
+  const [pillStaticWidth, setPillStaticWidth] = useState(0)
   const layoutsRef = useRef<Array<{ x: number; width: number } | undefined>>([])
 
   const handleLayout = (index: number) => (event: LayoutChangeEvent) => {
@@ -44,7 +52,7 @@ export function SegmentedControl<T extends string>({
     if (activeIndex === index) {
       // first layout while active — snap immediately
       pillX.value = x
-      pillWidth.value = width
+      if (pillStaticWidth !== width) setPillStaticWidth(width)
     }
   }
 
@@ -52,17 +60,23 @@ export function SegmentedControl<T extends string>({
     const activeIndex = options.findIndex((o) => o.value === value)
     const layout = layoutsRef.current[activeIndex]
     if (!layout) return
+    if (pillStaticWidth !== layout.width) setPillStaticWidth(layout.width)
     if (reduceMotion) {
       pillX.value = layout.x
-      pillWidth.value = layout.width
     } else {
       pillX.value = withSpring(layout.x, motionSprings.press)
-      pillWidth.value = withSpring(layout.width, motionSprings.press)
     }
-  }, [value, reduceMotion, options, pillX, pillWidth])
+  }, [value, reduceMotion, options, pillX, pillStaticWidth])
+
+  // Cancel any in-flight pill movement on unmount so the worklet
+  // driver doesn't outlive the component.
+  useEffect(() => {
+    return () => {
+      cancelAnimation(pillX)
+    }
+  }, [pillX])
 
   const pillStyle = useAnimatedStyle(() => ({
-    width: pillWidth.value,
     transform: [{ translateX: pillX.value }],
   }))
 
@@ -80,7 +94,11 @@ export function SegmentedControl<T extends string>({
         style={[
           styles.pill,
           buildElevationStyle(theme, 'segmentedActive'),
-          { backgroundColor: theme.colors.surface, pointerEvents: 'none' },
+          {
+            backgroundColor: theme.colors.surface,
+            pointerEvents: 'none',
+            width: pillStaticWidth,
+          },
           pillStyle,
         ]}
       />

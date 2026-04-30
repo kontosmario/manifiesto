@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -84,6 +85,12 @@ export function HomeHeroCard({
       -1,
       false,
     )
+    return () => {
+      // Stop the pulse on unmount or when payday confirms — leaving
+      // the worklet driver alive after the component is gone leaks
+      // a UI-runtime allocation per mount cycle.
+      cancelAnimation(pulseScale)
+    }
   }, [data.paydayPending, reduceMotion, pulseScale])
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],

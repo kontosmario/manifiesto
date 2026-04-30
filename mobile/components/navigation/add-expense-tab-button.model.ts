@@ -14,6 +14,7 @@ import {
   type AnimatedStyle,
   type DerivedValue,
 } from 'react-native-reanimated'
+import { decorativeDurations } from '@/lib/motion'
 
 // Reanimated v4's `useAnimatedStyle` returns a `DefaultStyle` union
 // (ViewStyle | TextStyle | ImageStyle) that TypeScript won't accept as
@@ -45,10 +46,12 @@ export function useAddExpenseButtonBreath(isReducedMotionEnabled: boolean) {
       breath.value = 0
       return
     }
+    // 2800ms breath cycle (1400ms inhale + 1400ms exhale) = decorativeDurations.breath.
+    const halfCycle = decorativeDurations.breath / 2
     breath.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: halfCycle, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: halfCycle, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       false,

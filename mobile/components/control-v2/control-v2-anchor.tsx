@@ -2,6 +2,7 @@ import { useEffect, type PropsWithChildren } from 'react'
 import { View, type LayoutChangeEvent, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -49,6 +50,12 @@ export function ControlV2Anchor({
       ),
       withTiming(0, { duration: 260, easing: Easing.in(Easing.cubic) }),
     )
+    // The pulse is bounded (~1s total), but if the user navigates
+    // away mid-pulse the worklet driver should be torn down to free
+    // the UI runtime allocation.
+    return () => {
+      cancelAnimation(pulse)
+    }
   }, [pulsingSection, section, pulse])
 
   const animatedStyle = useAnimatedStyle(() => ({

@@ -219,27 +219,55 @@ export function FernLogo({
     } as Record<string, unknown>
   })
 
+  // Inline initial props matching the worklet's value at progress=0.
+  // First-paint protection: without these, the SVG renders ONCE with
+  // its default props (no opacity attr → opacity 1, no transform →
+  // scale 1) before Reanimated's `animatedProps` apply on frame 2.
+  // On native this caused a visible "placeholder" flash of the fully-
+  // drawn fern, then a snap to invisible/scaled-down, then the
+  // animation. Web didn't show this because the browser merges styles
+  // before first paint; cold-start on native didn't either because
+  // the JS thread is saturated long enough that Reanimated catches
+  // up before the first frame paints. Post-login (JS warm) made the
+  // flicker visible. The inline values below are overridden by
+  // `animatedProps` on every subsequent frame, so the animation
+  // itself is unchanged.
+  //
+  // When NOT animated (reduced motion or `animate=false`), the worklet
+  // sits at the final state (opacity 1, scale 1) — which matches the
+  // SVG defaults, so no inline override needed.
+  const initialBigLeaf = isAnimated
+    ? { opacity: 0, transform: 'translate(380,200) scale(0.6) translate(-380,-200)' }
+    : null
+  const initialSmallLeaf = isAnimated
+    ? { opacity: 0, transform: 'translate(90,210) scale(0.6) translate(-90,-210)' }
+    : null
+  const initialStructure = isAnimated ? { opacity: 0 } : null
+  const initialPill = isAnimated
+    ? { opacity: 0, transform: 'translate(200,365) scale(0.6) translate(-200,-365)' }
+    : null
+
   return (
     <View style={{ width: size, height }}>
       <Svg width={size} height={height} viewBox={vb}>
         {/* Big leaf */}
-        <AnimatedG animatedProps={bigLeafProps}>
+        <AnimatedG {...initialBigLeaf} animatedProps={bigLeafProps}>
           <Path d={D_BIG_LEAF} fill={c.leafA} />
         </AnimatedG>
 
         {/* Small leaf */}
-        <AnimatedG animatedProps={smallLeafProps}>
+        <AnimatedG {...initialSmallLeaf} animatedProps={smallLeafProps}>
           <Path d={D_SMALL_LEAF} fill={c.leafB} />
         </AnimatedG>
 
         {/* Structure (bowl + integrated stem + branch detail) */}
-        <AnimatedG animatedProps={structureProps}>
+        <AnimatedG {...initialStructure} animatedProps={structureProps}>
           <Path d={D_STRUCTURE} fill={c.structure} />
           <Path d={D_INNER} fill={c.structure} />
         </AnimatedG>
 
         {/* Bottom pill — small vertical capsule under the stem */}
-        <AnimatedG animatedProps={pillProps}>
+        <AnimatedG {...initialPill} animatedProps={pillProps}>
           <Path d={D_PILL} fill={c.structure} />
         </AnimatedG>
       </Svg>

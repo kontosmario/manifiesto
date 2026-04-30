@@ -13,6 +13,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
+import { decorativeDurations } from '@/lib/motion'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { authTokens } from '@/theme/palette'
 
@@ -165,28 +167,49 @@ function AuroraLayer({
   const t1 = useSharedValue(0)
   const t2 = useSharedValue(0)
 
-  useEffect(() => {
-    if (reduced) return
-    t1.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-        withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    )
-    t2.value = withDelay(
-      900,
-      withRepeat(
+  // useUnboundedLoopAnimation (NOT useLoopAnimation): the splash is
+  // mounted as a sibling of the <Stack> in root-layout-shell.tsx —
+  // it lives OUTSIDE the NavigationContainer. Using the focus-bound
+  // variant here would call useIsFocused() from outside any screen
+  // and short-circuit `start()` on native (returns false when there's
+  // no NavigationContext), leaving the loops frozen. Web works because
+  // React Navigation's web fallback defaults isFocused to true outside
+  // screens — that asymmetry is precisely why this variant exists.
+  useUnboundedLoopAnimation(
+    () => {
+      // The first blob breathes a touch faster (7000ms half-cycle ≈
+      // 14000ms total ≈ 1.55x ambient) while the second uses the
+      // canonical ambient cadence. Two slightly off-tempo loops give
+      // a richer "alive" feel than two synced ones — keep the 7000
+      // literal here on purpose.
+      t1.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
         ),
         -1,
         false,
-      ),
-    )
-  }, [reduced, t1, t2])
+      )
+      t2.value = withDelay(
+        900,
+        withRepeat(
+          withSequence(
+            withTiming(1, {
+              duration: decorativeDurations.ambient,
+              easing: Easing.inOut(Easing.quad),
+            }),
+            withTiming(0, {
+              duration: decorativeDurations.ambient,
+              easing: Easing.inOut(Easing.quad),
+            }),
+          ),
+          -1,
+          false,
+        ),
+      )
+    },
+    [t1, t2],
+  )
 
   const blob1Style = useAnimatedStyle(() => ({
     transform: [
@@ -316,25 +339,32 @@ function Particle({
 }) {
   const t = useSharedValue(0)
 
-  useEffect(() => {
-    t.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, {
-            duration: duration / 2,
-            easing: Easing.inOut(Easing.quad),
-          }),
-          withTiming(0, {
-            duration: duration / 2,
-            easing: Easing.inOut(Easing.quad),
-          }),
+  // useUnboundedLoopAnimation: this Particle renders inside the splash
+  // tree, which is outside the NavigationContainer (see comment on the
+  // BackgroundBlobs hook above for the full reasoning).
+  useUnboundedLoopAnimation(
+    () => {
+      t.value = withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1, {
+              duration: duration / 2,
+              easing: Easing.inOut(Easing.quad),
+            }),
+            withTiming(0, {
+              duration: duration / 2,
+              easing: Easing.inOut(Easing.quad),
+            }),
+          ),
+          -1,
+          false,
         ),
-        -1,
-        false,
-      ),
-    )
-  }, [t, duration, delay])
+      )
+    },
+    [t],
+    [duration, delay],
+  )
 
   const style = useAnimatedStyle(() => ({
     transform: [

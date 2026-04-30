@@ -15,6 +15,7 @@ import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
+  cancelAnimation,
   interpolateColor,
   useAnimatedStyle,
   useReducedMotion,
@@ -877,6 +878,11 @@ function CalendarDropImpact({
       -1,
       false,
     )
+    return () => {
+      // Modal can be closed mid-pulse; cancel the worklet driver so
+      // it doesn't keep running on the UI runtime after unmount.
+      cancelAnimation(pulse)
+    }
   }, [day, reduceMotion, pulse])
 
   // Keep borderWidth fixed (set in styles.calendarCard) and only

@@ -8,6 +8,7 @@ export default defineConfig({
       'react-native-reanimated': resolve(__dirname, 'tests/stubs/react-native-reanimated.ts'),
       'react-native': resolve(__dirname, 'tests/stubs/react-native.ts'),
       'expo-secure-store': resolve(__dirname, 'tests/stubs/expo-secure-store.ts'),
+      '@react-navigation/native': resolve(__dirname, 'tests/stubs/react-navigation-native.ts'),
     },
   },
   test: {

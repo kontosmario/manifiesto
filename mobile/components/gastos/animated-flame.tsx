@@ -1,7 +1,14 @@
-import { useEffect, useRef } from 'react'
-import { Animated, Easing, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -49,149 +56,206 @@ const PATH_FLAME =
   'M9.13 15l-.53-.77a1.85 1.85 0 0 0-.28-2.54 3.51 3.51 0 0 1-1.19-2c-1.56 2.23-.75 3.46 0 4.55l-.55.76A4.4 4.4 0 0 1 3 10.46S2.79 8.3 5.28 6.19c0 0 2.82-2.61 1.84-4.54L7.83 1a6.57 6.57 0 0 1 2.61 6.94 2.57 2.57 0 0 0 .56-.81l.87-.07c.07.12 1.84 2.93.89 5.3A4.72 4.72 0 0 1 9.13 15zm-2-6.95l.87.39a3 3 0 0 0 .92 2.48 2.64 2.64 0 0 1 1 2.8A3.241 3.241 0 0 0 11.8 12a4.87 4.87 0 0 0-.41-3.63 1.85 1.85 0 0 1-1.84.86l-.35-.68a5.31 5.31 0 0 0-.89-5.8C8.17 4.87 6 6.83 5.93 6.94 3.86 8.7 4 10.33 4 10.4a3.47 3.47 0 0 0 1.59 3.14C5 12.14 5 10.46 7.16 8.05h-.03z'
 
 // ─────────────────────────────────────────────────────────────
-// Animation hooks
+// Animation hooks (Reanimated v4 — UI-thread worklets)
 // ─────────────────────────────────────────────────────────────
+//
+// Migrated from RN core `Animated` to Reanimated v4 so the flame
+// drives every frame on the UI runtime (no JS↔native bridge calls)
+// and integrates with `useLoopAnimation`, which auto-cancels every
+// `withRepeat` chain on blur/unmount and respects reduced motion.
 
-function useBreath(status: FlameStatus) {
-  const scaleX = useRef(new Animated.Value(1)).current
-  const scaleY = useRef(new Animated.Value(1)).current
-  const translateY = useRef(new Animated.Value(0)).current
+interface BreathValues {
+  scaleX: ReturnType<typeof useSharedValue<number>>
+  scaleY: ReturnType<typeof useSharedValue<number>>
+  translateY: ReturnType<typeof useSharedValue<number>>
+}
 
-  useEffect(() => {
-    if (status === 'broken') {
-      scaleX.setValue(1)
-      scaleY.setValue(1)
-      translateY.setValue(0)
-      return
-    }
-    const duration = status === 'active' ? 2800 : 1600
-    const sx = status === 'active' ? 1.04 : 1.06
-    const sy = status === 'active' ? 1.07 : 1.09
-    const ty = status === 'active' ? -3 : -4
+function useBreath(status: FlameStatus): BreathValues {
+  const scaleX = useSharedValue(1)
+  const scaleY = useSharedValue(1)
+  const translateY = useSharedValue(0)
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: sx, duration: duration * 0.4, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: sy, duration: duration * 0.4, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: ty, duration: duration * 0.4, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: 0.97, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: 1.03, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: -1, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: 1, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: 1, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: 0, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [status, scaleX, scaleY, translateY])
+  useLoopAnimation(
+    () => {
+      if (status === 'broken') {
+        scaleX.value = 1
+        scaleY.value = 1
+        translateY.value = 0
+        return
+      }
+      const duration = status === 'active' ? 2800 : 1600
+      const sx = status === 'active' ? 1.04 : 1.06
+      const sy = status === 'active' ? 1.07 : 1.09
+      const ty = status === 'active' ? -3 : -4
+      const ease = Easing.inOut(Easing.ease)
+
+      const step = (v: number, ms: number) =>
+        withTiming(v, { duration: ms, easing: ease })
+
+      scaleX.value = withRepeat(
+        withSequence(
+          step(sx, duration * 0.4),
+          step(0.97, duration * 0.3),
+          step(1, duration * 0.3),
+        ),
+        -1,
+        false,
+      )
+      scaleY.value = withRepeat(
+        withSequence(
+          step(sy, duration * 0.4),
+          step(1.03, duration * 0.3),
+          step(1, duration * 0.3),
+        ),
+        -1,
+        false,
+      )
+      translateY.value = withRepeat(
+        withSequence(
+          step(ty, duration * 0.4),
+          step(-1, duration * 0.3),
+          step(0, duration * 0.3),
+        ),
+        -1,
+        false,
+      )
+    },
+    [scaleX, scaleY, translateY],
+    [status],
+  )
 
   return { scaleX, scaleY, translateY }
 }
 
 function useFlicker(status: FlameStatus) {
-  const opacity = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    if (status !== 'at_risk') {
-      opacity.setValue(status === 'broken' ? 0.55 : 1)
-      return
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.75, duration: 180, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 1, duration: 360, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 0.6, duration: 150, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 0.95, duration: 300, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 0.7, duration: 120, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: USE_NATIVE_DRIVER }),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [status, opacity])
+  const opacity = useSharedValue(1)
+
+  useLoopAnimation(
+    () => {
+      if (status !== 'at_risk') {
+        opacity.value = status === 'broken' ? 0.55 : 1
+        return
+      }
+      // Irregular flicker pattern — six steps with mixed timings.
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.75, { duration: 180 }),
+          withTiming(1, { duration: 360 }),
+          withTiming(0.6, { duration: 150 }),
+          withTiming(0.95, { duration: 300 }),
+          withTiming(0.7, { duration: 120 }),
+          withTiming(1, { duration: 500 }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [opacity],
+    [status],
+  )
+
   return opacity
 }
 
-function useInnerDance(status: FlameStatus) {
-  const scaleX = useRef(new Animated.Value(1)).current
-  const scaleY = useRef(new Animated.Value(1)).current
-  const translateY = useRef(new Animated.Value(0)).current
-  useEffect(() => {
-    if (status === 'broken') return
-    const duration = status === 'active' ? 2800 : 1300
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: 1.08, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: 0.94, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: 2, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: 0.93, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: 1.06, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: -2, duration: duration * 0.3, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scaleX, { toValue: 1, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(scaleY, { toValue: 1, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-          Animated.timing(translateY, { toValue: 0, duration: duration * 0.35, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        ]),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [status, scaleX, scaleY, translateY])
+function useInnerDance(status: FlameStatus): BreathValues {
+  const scaleX = useSharedValue(1)
+  const scaleY = useSharedValue(1)
+  const translateY = useSharedValue(0)
+
+  useLoopAnimation(
+    () => {
+      if (status === 'broken') {
+        scaleX.value = 1
+        scaleY.value = 1
+        translateY.value = 0
+        return
+      }
+      const duration = status === 'active' ? 2800 : 1300
+      const ease = Easing.inOut(Easing.ease)
+      const step = (v: number, ms: number) =>
+        withTiming(v, { duration: ms, easing: ease })
+
+      scaleX.value = withRepeat(
+        withSequence(
+          step(1.08, duration * 0.35),
+          step(0.93, duration * 0.3),
+          step(1, duration * 0.35),
+        ),
+        -1,
+        false,
+      )
+      scaleY.value = withRepeat(
+        withSequence(
+          step(0.94, duration * 0.35),
+          step(1.06, duration * 0.3),
+          step(1, duration * 0.35),
+        ),
+        -1,
+        false,
+      )
+      translateY.value = withRepeat(
+        withSequence(
+          step(2, duration * 0.35),
+          step(-2, duration * 0.3),
+          step(0, duration * 0.35),
+        ),
+        -1,
+        false,
+      )
+    },
+    [scaleX, scaleY, translateY],
+    [status],
+  )
+
   return { scaleX, scaleY, translateY }
 }
 
 function usePulseRing(status: FlameStatus) {
-  const scale = useRef(new Animated.Value(1)).current
-  const opacity = useRef(new Animated.Value(0.6)).current
-  useEffect(() => {
-    if (status === 'broken') {
-      scale.setValue(1)
-      opacity.setValue(0)
-      return
-    }
-    const duration = status === 'active' ? 2400 : 1400
-    const loop = Animated.loop(
-      Animated.parallel([
-        Animated.timing(scale, { toValue: 1.2, duration, easing: Easing.out(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 0, duration, easing: Easing.out(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-      ]),
-    )
-    loop.start()
-    return () => {
-      loop.stop()
-      scale.setValue(1)
-      opacity.setValue(0.6)
-    }
-  }, [status, scale, opacity])
+  const scale = useSharedValue(1)
+  const opacity = useSharedValue(0.6)
+
+  useLoopAnimation(
+    () => {
+      if (status === 'broken') {
+        scale.value = 1
+        opacity.value = 0
+        return
+      }
+      const duration = status === 'active' ? 2400 : 1400
+      const ease = Easing.out(Easing.ease)
+      scale.value = withRepeat(withTiming(1.2, { duration, easing: ease }), -1, false)
+      opacity.value = withRepeat(withTiming(0, { duration, easing: ease }), -1, false)
+    },
+    [scale, opacity],
+    [status],
+  )
+
   return { scale, opacity }
 }
 
 function useDimPulse(status: FlameStatus) {
-  const opacity = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    if (status !== 'broken') {
-      opacity.setValue(1)
-      return
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.55, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(opacity, { toValue: 0.35, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER }),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [status, opacity])
+  const opacity = useSharedValue(1)
+
+  useLoopAnimation(
+    () => {
+      if (status !== 'broken') {
+        opacity.value = 1
+        return
+      }
+      const ease = Easing.inOut(Easing.ease)
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.55, { duration: 2000, easing: ease }),
+          withTiming(0.35, { duration: 2000, easing: ease }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [opacity],
+    [status],
+  )
+
   return opacity
 }
 
@@ -218,31 +282,30 @@ function FlameSVG({
   palette: FlamePalette
   width: number
   height: number
-  flicker: Animated.Value
-  innerDance: { scaleX: Animated.Value; scaleY: Animated.Value; translateY: Animated.Value }
-  dimPulse: Animated.Value
+  flicker: ReturnType<typeof useSharedValue<number>>
+  innerDance: BreathValues
+  dimPulse: ReturnType<typeof useSharedValue<number>>
 }) {
+  const dimStyle = useAnimatedStyle(() => ({ opacity: dimPulse.value }))
+  const flickerStyle = useAnimatedStyle(() => ({ opacity: flicker.value }))
+  const innerStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scaleX: innerDance.scaleX.value },
+      { scaleY: innerDance.scaleY.value },
+      { translateY: innerDance.translateY.value },
+    ],
+  }))
+
   return (
-    <Animated.View style={{ opacity: dimPulse }}>
-      <Animated.View style={{ opacity: flicker }}>
+    <Animated.View style={dimStyle}>
+      <Animated.View style={flickerStyle}>
         <Svg viewBox="0 0 16 16" width={width} height={height}>
           <Path d={PATH_FLAME} fill={palette.outerBase} />
           <Path d={PATH_FLAME} fill={palette.outer} opacity={0.92} />
         </Svg>
       </Animated.View>
 
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            transform: [
-              { scaleX: innerDance.scaleX },
-              { scaleY: innerDance.scaleY },
-              { translateY: innerDance.translateY },
-            ],
-          },
-        ]}
-      >
+      <Animated.View style={[StyleSheet.absoluteFill, innerStyle]}>
         <Svg viewBox="0 0 16 16" width={width} height={height}>
           <Path d={PATH_FLAME} fill={palette.inner} opacity={0.7} />
           <Path d={PATH_FLAME} fill={palette.core} opacity={0.75} />
@@ -265,6 +328,18 @@ export function AnimatedFlame({ status, size = 42 }: AnimatedFlameProps) {
   const ring = usePulseRing(status)
   const dimPulse = useDimPulse(status)
 
+  const ringStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ring.scale.value }],
+    opacity: ring.opacity.value,
+  }))
+  const flameWrapStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scaleX: breath.scaleX.value },
+      { scaleY: breath.scaleY.value },
+      { translateY: breath.translateY.value },
+    ],
+  }))
+
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Animated.View
@@ -276,9 +351,8 @@ export function AnimatedFlame({ status, size = 42 }: AnimatedFlameProps) {
             height: size * 0.95,
             borderRadius: size * 0.475,
             backgroundColor: palette.ring,
-            transform: [{ scale: ring.scale }],
-            opacity: ring.opacity,
           },
+          ringStyle,
         ]}
       />
       <Animated.View
@@ -287,12 +361,8 @@ export function AnimatedFlame({ status, size = 42 }: AnimatedFlameProps) {
           {
             width: size,
             height: size,
-            transform: [
-              { scaleX: breath.scaleX },
-              { scaleY: breath.scaleY },
-              { translateY: breath.translateY },
-            ],
           },
+          flameWrapStyle,
         ]}
       >
         <FlameSVG

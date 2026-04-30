@@ -1,7 +1,6 @@
-import { Animated, Easing, Keyboard, Platform, TextInput } from 'react-native'
+import { Keyboard, Platform, TextInput } from 'react-native'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthMode } from '@/features/auth/auth-flow'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import {
   computeAuthKeyboardShiftTarget,
   type FocusedAuthField,
@@ -24,8 +23,11 @@ export function useAuthKeyboardController({
   const emailInputRef = useRef<TextInput | null>(null)
   const passwordInputRef = useRef<TextInput | null>(null)
   const focusedFieldBaseBottomRef = useRef(0)
-  const keyboardAnimationDurationRef = useRef(260)
-  const [keyboardShift] = useState(() => new Animated.Value(0))
+  // `keyboardShift` Animated.Value removed (2026-04-30): exposed by
+  // the hook but never plumbed into a JSX transform. The actual
+  // keyboard avoidance is handled by `KeyboardAvoidingView` in
+  // <Screen> + the auth-specific viewport math (handleViewportLayout
+  // / availableContentHeight). No animation driver needed.
 
   const getFieldRef = useCallback((field: FocusedAuthField) => {
     switch (field) {
@@ -98,11 +100,10 @@ export function useAuthKeyboardController({
       captureFieldBaseBottom(field)
 
       if (keyboardHeight && keyboardScreenY > 0) {
-        keyboardAnimationDurationRef.current = isReducedMotionEnabled ? 0 : 220
         measureFocusedFieldShift(field, keyboardScreenY)
       }
     },
-    [captureFieldBaseBottom, isReducedMotionEnabled, keyboardHeight, keyboardScreenY, measureFocusedFieldShift],
+    [captureFieldBaseBottom, keyboardHeight, keyboardScreenY, measureFocusedFieldShift],
   )
 
   const handleFieldBlur = useCallback((field: FocusedAuthField) => {
@@ -128,30 +129,12 @@ export function useAuthKeyboardController({
         return
       }
 
-      keyboardAnimationDurationRef.current =
-        event.duration && event.duration > 0
-          ? event.duration
-          : isReducedMotionEnabled
-            ? 0
-            : 240
       setKeyboardHeight(event.endCoordinates.height)
       setKeyboardScreenY(event.endCoordinates.screenY)
       measureFocusedFieldShift(focusedField, event.endCoordinates.screenY)
     }
 
-    const handleKeyboardHide = (event?: {
-      duration?: number
-      endCoordinates: {
-        height: number
-        screenY: number
-      }
-    }) => {
-      keyboardAnimationDurationRef.current =
-        event?.duration && event.duration > 0
-          ? event.duration
-          : isReducedMotionEnabled
-            ? 0
-            : 220
+    const handleKeyboardHide = () => {
       setKeyboardHeight(0)
       setKeyboardScreenY(0)
       setKeyboardShiftTarget(0)
@@ -162,30 +145,13 @@ export function useAuthKeyboardController({
       Keyboard.addListener('keyboardWillShow', handleKeyboardShow),
       Keyboard.addListener('keyboardDidShow', handleKeyboardShow),
       Keyboard.addListener('keyboardWillHide', handleKeyboardHide),
-      Keyboard.addListener('keyboardDidHide', () => {
-        handleKeyboardHide()
-      }),
+      Keyboard.addListener('keyboardDidHide', handleKeyboardHide),
     ]
 
     return () => {
       keyboardListeners.forEach((listener) => listener.remove())
     }
-  }, [focusedField, isReducedMotionEnabled, measureFocusedFieldShift])
-
-  useEffect(() => {
-    const animation = Animated.timing(keyboardShift, {
-      toValue: -keyboardShiftTarget,
-      duration: keyboardAnimationDurationRef.current,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: USE_NATIVE_DRIVER,
-    })
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
-  }, [keyboardHeight, keyboardShift, keyboardShiftTarget, mode])
+  }, [focusedField, measureFocusedFieldShift])
 
   const dismissKeyboard = useCallback(() => {
     if (!keyboardHeight) {
@@ -211,7 +177,6 @@ export function useAuthKeyboardController({
     availableContentHeight,
     emailInputRef,
     keyboardHeight,
-    keyboardShift,
     nameInputRef,
     passwordInputRef,
     isKeyboardVisible: keyboardHeight > 0,

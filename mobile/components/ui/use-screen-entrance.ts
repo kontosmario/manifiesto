@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react'
-import { Animated, Easing } from 'react-native'
+import { useEffect } from 'react'
+import {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 
 interface UseScreenEntranceOptions {
   reducedMotion: boolean
@@ -13,83 +20,71 @@ interface UseScreenEntranceOptions {
 // etc.) made the underlying screen reset to opacity 0 and slide in
 // again — visible as a "re-render" flash. Mounts still animate, but
 // re-focuses of an already-mounted screen are now instant.
+//
+// Migrated to Reanimated v4 (was using legacy `Animated` API). Keeps
+// the same staggered "header rises first, then content" choreography
+// using shared values + worklet-based styles. The timing/spring values
+// come from `motion/tokens` so the rest of the app stays in lockstep.
 export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
-  const [headerOpacity] = useState(() =>
-    new Animated.Value(reducedMotion ? 1 : 0),
-  )
-  const [headerTranslateY] = useState(() =>
-    new Animated.Value(reducedMotion ? 0 : 10),
-  )
-  const [contentOpacity] = useState(() =>
-    new Animated.Value(reducedMotion ? 1 : 0),
-  )
-  const [contentTranslateY] = useState(() =>
-    new Animated.Value(reducedMotion ? 0 : 18),
-  )
+  const headerOpacity = useSharedValue(reducedMotion ? 1 : 0)
+  const headerTranslateY = useSharedValue(reducedMotion ? 0 : 10)
+  const contentOpacity = useSharedValue(reducedMotion ? 1 : 0)
+  const contentTranslateY = useSharedValue(reducedMotion ? 0 : 18)
 
   useEffect(() => {
     if (reducedMotion) {
-      headerOpacity.setValue(1)
-      headerTranslateY.setValue(0)
-      contentOpacity.setValue(1)
-      contentTranslateY.setValue(0)
+      headerOpacity.value = 1
+      headerTranslateY.value = 0
+      contentOpacity.value = 1
+      contentTranslateY.value = 0
       return
     }
 
-    const headerAnimation = Animated.parallel([
-      Animated.timing(headerOpacity, {
-        toValue: 1,
+    // Header rises first; content follows after `motionStagger.listItem`
+    // so the header reads as "leading" and the body as "settling in".
+    headerOpacity.value = withTiming(1, {
+      duration: motionDurations.standard,
+      easing: Easing.out(Easing.cubic),
+    })
+    headerTranslateY.value = withSpring(0, motionSprings.enter)
+
+    contentOpacity.value = withDelay(
+      motionStagger.listItem,
+      withTiming(1, {
         duration: motionDurations.standard,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: USE_NATIVE_DRIVER,
       }),
-      Animated.spring(headerTranslateY, {
-        toValue: 0,
-        damping: motionSprings.enter.damping,
-        stiffness: motionSprings.enter.stiffness,
-        mass: motionSprings.enter.mass,
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-    ])
-
-    const contentAnimation = Animated.parallel([
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: motionDurations.standard,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-      Animated.spring(contentTranslateY, {
-        toValue: 0,
-        damping: motionSprings.enter.damping,
-        stiffness: motionSprings.enter.stiffness,
-        mass: motionSprings.enter.mass,
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-    ])
-
-    const animation = Animated.stagger(motionStagger.listItem, [
-      headerAnimation,
-      contentAnimation,
-    ])
-    animation.start()
+    )
+    contentTranslateY.value = withDelay(
+      motionStagger.listItem,
+      withSpring(0, motionSprings.enter),
+    )
 
     return () => {
-      animation.stop()
+      // Cancel any in-flight animations if the screen unmounts mid-rise
+      // (rare — usually mount runs to completion — but prevents leaked
+      // worklet drivers when navigating away during the stagger window).
+      cancelAnimation(headerOpacity)
+      cancelAnimation(headerTranslateY)
+      cancelAnimation(contentOpacity)
+      cancelAnimation(contentTranslateY)
     }
     // Intentionally mount-only: we don't want this to replay on focus,
     // theme changes, or reduced-motion toggles mid-session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return {
-    contentAnimatedStyle: {
-      opacity: contentOpacity,
-      transform: [{ translateY: contentTranslateY }],
-    } as const,
-    headerAnimatedStyle: {
-      opacity: headerOpacity,
-      transform: [{ translateY: headerTranslateY }],
-    } as const,
-  }
+  // Worklet styles — read SharedValue.value inside the worklet so the
+  // UI runtime drives the per-frame updates without crossing to JS.
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }))
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }))
+
+  return { contentAnimatedStyle, headerAnimatedStyle }
 }

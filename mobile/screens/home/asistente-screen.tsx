@@ -16,6 +16,7 @@ import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -39,6 +40,7 @@ const SVG_FILL = {
   bottom: 0,
 }
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { motionDurations } from '@/lib/motion'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoneyShort } from '@/utils/money'
@@ -597,17 +599,30 @@ function AnimatedBoard({
   // expanded (240). Padding also relaxes when expanded so 1.6×-scaled
   // nodes near the corners stay inside the rounded frame and the
   // delta labels below the bottom row don't get clipped.
+  //
+  // Note on the anti-pattern: animating `height`/`padding` triggers a
+  // layout pass per frame. We accept the cost here because (a) it's
+  // a one-shot 320ms toggle, not a per-frame gesture, and (b) the
+  // child constellation nodes scale 1.6× independently — using
+  // `transform: scaleY` on the container would double-scale them. We
+  // mitigate by canceling in-flight tweens on unmount.
   const reduced = useReducedMotion()
   const h = useSharedValue(expanded ? 240 : 140)
   const p = useSharedValue(expanded ? 12 : 0)
   useEffect(() => {
     const cfg = {
-      duration: reduced ? 0 : 320,
+      duration: reduced ? 0 : motionDurations.deliberate,
       easing: Easing.bezier(0.2, 0.8, 0.2, 1),
     }
     h.value = withTiming(expanded ? 240 : 140, cfg)
     p.value = withTiming(expanded ? 12 : 0, cfg)
   }, [expanded, reduced, h, p])
+  useEffect(() => {
+    return () => {
+      cancelAnimation(h)
+      cancelAnimation(p)
+    }
+  }, [h, p])
   const a = useAnimatedStyle(() => ({
     height: h.value,
     paddingHorizontal: p.value,

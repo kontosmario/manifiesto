@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 import { type ViewStyle } from 'react-native'
-import Animated, { useSharedValue, useAnimatedStyle, withDelay, withTiming, Easing } from 'react-native-reanimated'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import Animated, { Keyframe, ReduceMotion } from 'react-native-reanimated'
 
 interface RiseViewProps {
   delay?: number
@@ -11,15 +10,53 @@ interface RiseViewProps {
   children: React.ReactNode
 }
 
-export function RiseView({ delay = 0, duration = 700, translateY = 14, style, children }: RiseViewProps) {
-  const reduced = useReducedMotion()
-  const y = useSharedValue(reduced ? 0 : translateY)
-  const opacity = useSharedValue(reduced ? 1 : 0)
-  useEffect(() => {
-    if (reduced) return
-    y.value = withDelay(delay, withTiming(0, { duration, easing: Easing.out(Easing.cubic) }))
-    opacity.value = withDelay(delay, withTiming(1, { duration }))
-  }, [delay, duration, reduced, y, opacity])
-  const animated = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }], opacity: opacity.value }))
-  return <Animated.View style={[style, animated]}>{children}</Animated.View>
+/**
+ * Staggered fade-in + rise primitive used across the app for content
+ * entrances (logo splash, dashboard cards, list sections, etc.).
+ *
+ * Why a Keyframe entering animation, not useSharedValue + useEffect
+ * -----------------------------------------------------------------
+ * The previous implementation ran a manual `withTiming` inside a
+ * `useEffect` after applying initial values via `useSharedValue`.
+ * That pattern works correctly on web (CSS animations resolve the
+ * initial style on first paint) but caused a one-frame flash on
+ * native: the View paints with its default style first (no transform,
+ * opacity 1 → visible at final position), THEN Reanimated mounts the
+ * worklet style and snaps to the start state, THEN the effect fires
+ * withTiming and animates back. User-visible result: a "placeholder"
+ * of the final state appears for ~16ms before the entrance plays.
+ *
+ * Reanimated layout animations (`entering={...}`) are applied by the
+ * native layout coordinator BEFORE the first paint, so the start
+ * state is honored synchronously — no flash. Keyframe lets us
+ * combine opacity + translateY in one declarative animation, with
+ * `translateY` as a runtime prop (so different RiseViews can rise
+ * from different distances).
+ */
+export function RiseView({
+  delay = 0,
+  duration = 700,
+  translateY = 14,
+  style,
+  children,
+}: RiseViewProps) {
+  const entering = useMemo(
+    () =>
+      new Keyframe({
+        0: { opacity: 0, transform: [{ translateY }] },
+        100: { opacity: 1, transform: [{ translateY: 0 }] },
+      })
+        .duration(duration)
+        .delay(delay)
+        // ReduceMotion.System: when the OS setting is on, the entrance
+        // is skipped and the View renders at its final state directly.
+        .reduceMotion(ReduceMotion.System),
+    [duration, delay, translateY],
+  )
+
+  return (
+    <Animated.View entering={entering} style={style}>
+      {children}
+    </Animated.View>
+  )
 }

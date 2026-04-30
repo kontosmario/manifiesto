@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
   Easing,
   LinearTransition,
@@ -216,17 +216,28 @@ function ProgressBar({ porcentaje, accent }: { porcentaje: number; accent: strin
   const fillStyle = useAnimatedStyle(() => ({
     transform: [{ scaleX: progress.value }],
   }))
-  // Dot rides the end of the fill. Track width is 100%, so a
-  // translateX of `progress * trackWidthPx` would need the track width.
-  // Using percentage transforms instead keeps it resolution-free.
+  // Dot rides the end of the fill. Previously this animated `left: %`
+  // which forces a per-frame layout pass on Android. We now measure
+  // the track once via onLayout and convert progress (0..1) into a
+  // pixel translateX — pure compositor work.
+  const [trackWidthPx, setTrackWidthPx] = useState(0)
+  const handleTrackLayout = (event: LayoutChangeEvent) => {
+    const w = event.nativeEvent.layout.width
+    if (w > 0 && w !== trackWidthPx) setTrackWidthPx(w)
+  }
   const dotStyle = useAnimatedStyle(() => ({
-    left: `${progress.value * 100}%`,
-    transform: [{ translateX: -7 }, { scale: dotScale.value }],
+    transform: [
+      { translateX: progress.value * trackWidthPx - 7 },
+      { scale: dotScale.value },
+    ],
     opacity: dotGlow.value,
   }))
 
   return (
-    <View style={[styles.progressTrack, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+    <View
+      onLayout={handleTrackLayout}
+      style={[styles.progressTrack, { backgroundColor: 'rgba(255,255,255,0.12)' }]}
+    >
       <Animated.View
         style={[
           styles.progressFill,
@@ -361,6 +372,7 @@ const styles = StyleSheet.create({
   progressDot: {
     position: 'absolute',
     top: -3,
+    left: 0,
     width: 14,
     height: 14,
     borderRadius: 7,

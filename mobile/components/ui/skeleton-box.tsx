@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { type DimensionValue, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -9,6 +8,8 @@ import Animated, {
   useReducedMotion,
   Easing,
 } from 'react-native-reanimated'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { decorativeDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SkeletonBoxProps {
@@ -28,17 +29,21 @@ export function SkeletonBox({
   const reduceMotion = useReducedMotion()
   const progress = useSharedValue(0)
 
-  useEffect(() => {
-    if (reduceMotion) {
-      progress.value = 0.5
-      return
-    }
-    progress.value = withRepeat(
-      withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      false,
-    )
-  }, [progress, reduceMotion])
+  // useLoopAnimation handles cancelAnimation on blur/unmount and the
+  // reduced-motion fallback (parks at rest). We just describe the loop.
+  useLoopAnimation(
+    () => {
+      progress.value = withRepeat(
+        withTiming(1, {
+          duration: decorativeDurations.shimmer,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        false,
+      )
+    },
+    [progress],
+  )
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: reduceMotion

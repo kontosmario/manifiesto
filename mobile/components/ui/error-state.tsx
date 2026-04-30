@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
@@ -7,9 +6,9 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-  useReducedMotion,
 } from 'react-native-reanimated'
 import { AppButton } from '@/components/ui/button'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -27,23 +26,21 @@ export function ErrorState({
   onAction,
 }: ErrorStateProps) {
   const { theme } = useAppTheme()
-  const reduceMotion = useReducedMotion()
   const pulse = useSharedValue(1)
 
-  useEffect(() => {
-    if (reduceMotion) {
-      pulse.value = 1
-      return
-    }
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 800 }),
-        withTiming(1, { duration: 800 }),
-      ),
-      -1,
-      false,
-    )
-  }, [reduceMotion, pulse])
+  useLoopAnimation(
+    () => {
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.04, { duration: 800 }),
+          withTiming(1, { duration: 800 }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [pulse],
+  )
 
   const iconAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],

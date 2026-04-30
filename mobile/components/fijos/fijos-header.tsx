@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
@@ -10,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijosHeaderProps {
@@ -27,7 +26,6 @@ export function FijosHeader({
   onPressAdd,
 }: FijosHeaderProps) {
   const { theme } = useAppTheme()
-  const reduced = useReducedMotion()
 
   // Two staggered halo rings ping outward — sonar style. Each ring
   // animates scale 1 → 1.55 + opacity 0.45 → 0 in 1800ms, with the
@@ -42,21 +40,26 @@ export function FijosHeader({
   // staggered by half a cycle keep the loop visually unbroken.
   // Linear matters: with an out-cubic curve the ring "hangs" near
   // peak for seconds and looks like the animation stopped.
-  useEffect(() => {
-    if (reduced) return
-    const loop = (sv: typeof haloA, delay = 0) => {
-      sv.value = withDelay(
-        delay,
-        withRepeat(
-          withTiming(1, { duration: 3600, easing: Easing.linear }),
-          -1,
-          false,
-        ),
-      )
-    }
-    loop(haloA, 0)
-    loop(haloB, 1800)
-  }, [reduced, haloA, haloB])
+  //
+  // useLoopAnimation handles cancelAnimation on blur/unmount + the
+  // reduced-motion fallback (parks both halos at 0).
+  useLoopAnimation(
+    () => {
+      const loop = (sv: typeof haloA, delay = 0) => {
+        sv.value = withDelay(
+          delay,
+          withRepeat(
+            withTiming(1, { duration: 3600, easing: Easing.linear }),
+            -1,
+            false,
+          ),
+        )
+      }
+      loop(haloA, 0)
+      loop(haloB, 1800)
+    },
+    [haloA, haloB],
+  )
 
   const haloStyleA = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + haloA.value * 0.32 }],

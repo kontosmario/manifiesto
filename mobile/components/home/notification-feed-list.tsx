@@ -7,7 +7,8 @@ import {
   Text,
   View,
 } from 'react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated'
+import { motionDurations, motionStagger } from '@/lib/motion'
 import { useRouter } from 'expo-router'
 import type { AvatarSlug } from '@/assets/avatars'
 import { Avatar } from '@/components/ui/avatar'
@@ -143,13 +144,22 @@ export function NotificationFeedList({
           <View style={[styles.sectionUnderline, { backgroundColor: theme.colors.line }]} />
         </View>
       )}
-      renderItem={({ item }) => {
+      renderItem={({ item, index }) => {
         const author = item.created_by ? memberById.get(item.created_by) ?? null : null
         const isUnread = !item.read_at
         const readActionLabel = isUnread ? 'Leído' : 'No leído'
         const readActionIcon = isUnread ? 'visibility' : 'visibility-off'
+        // Stagger entry by 40ms per row, capped at index 8 → 320ms
+        // total. Long lists (50+) finish quickly without dragging the
+        // first paint.
+        const staggerDelay = Math.min(index, 8) * motionStagger.listItem
         return (
-          <Animated.View layout={LinearTransition.duration(240)}>
+          <Animated.View
+            entering={FadeIn.delay(staggerDelay)
+              .duration(motionDurations.enterTab)
+              .reduceMotion(ReduceMotion.System)}
+            layout={LinearTransition.duration(240)}
+          >
             <SwipeableRow
               accessibilityHint={`Desliza para marcar como ${readActionLabel.toLowerCase()}`}
               borderRadius={16}

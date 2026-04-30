@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
+  FadeIn,
+  Keyframe,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -11,6 +14,8 @@ import Animated, {
 } from 'react-native-reanimated'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
+import { decorativeDurations } from '@/lib/motion'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -30,50 +35,60 @@ export function AuthLaunchSplashContent({ showWhisper = true }: AuthLaunchSplash
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
 
-  // Brand mark breath: subtle 2-3% scale loop
+  // Brand mark breath: subtle 2-3% scale loop. We use the unbounded
+  // variant because this content renders inside the splash overlay
+  // which is mounted OUTSIDE the NavigationContainer (sibling of the
+  // <Stack> in root-layout-shell.tsx). The focus-bound
+  // `useLoopAnimation` would short-circuit on native (no nav context
+  // → useIsFocused returns false → loops never start). On web the
+  // same code "just works" because React Navigation's web fallback
+  // defaults isFocused to true outside screens.
   const breath = useSharedValue(1)
-  useEffect(() => {
-    if (reduced) return
-    breath.value = withDelay(
-      700,
-      withRepeat(
-        withSequence(
-          withTiming(1.025, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
-          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+  useUnboundedLoopAnimation(
+    () => {
+      // 2800ms full breath cycle = decorativeDurations.breath.
+      const halfCycle = decorativeDurations.breath / 2
+      breath.value = withDelay(
+        700,
+        withRepeat(
+          withSequence(
+            withTiming(1.025, { duration: halfCycle, easing: Easing.inOut(Easing.quad) }),
+            withTiming(1, { duration: halfCycle, easing: Easing.inOut(Easing.quad) }),
+          ),
+          -1,
+          false,
         ),
-        -1,
-        false,
-      ),
-    )
-  }, [breath, reduced])
+      )
+    },
+    [breath],
+  )
   const breathStyle = useAnimatedStyle(() => ({ transform: [{ scale: breath.value }] }))
 
-  // Shimmer progress bar: 0 -> 1 over ~2000ms easeOut, then stays.
-  const progress = useSharedValue(reduced ? 1 : 0)
-  useEffect(() => {
-    if (reduced) {
-      progress.value = 1
-      return
-    }
-    progress.value = withDelay(
-      360,
-      withTiming(1, { duration: 2000, easing: Easing.out(Easing.cubic) }),
-    )
-  }, [progress, reduced])
-  const progressFillStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: progress.value }],
-  }))
+  // Shimmer progress bar entrance: scaleX 0 → 1 over 2000ms, delayed
+  // 360ms after mount. Uses a Keyframe `entering` animation so the
+  // first paint already has the start state (scaleX 0) — the previous
+  // useEffect-based pattern flashed the bar at full width for 1
+  // frame before snapping to 0 and animating, on native only.
+  const progressEntering = useMemo(
+    () =>
+      new Keyframe({
+        0: { transform: [{ scaleX: 0 }] },
+        100: { transform: [{ scaleX: 1 }] },
+      })
+        .duration(2000)
+        .delay(360)
+        .reduceMotion(ReduceMotion.System),
+    [],
+  )
 
-  // Whisper line fades in after the bar lands.
-  const whisper = useSharedValue(reduced ? 1 : 0)
-  useEffect(() => {
-    if (reduced) {
-      whisper.value = 1
-      return
-    }
-    whisper.value = withDelay(2200, withTiming(1, { duration: 360 }))
-  }, [whisper, reduced])
-  const whisperStyle = useAnimatedStyle(() => ({ opacity: whisper.value }))
+  // Whisper line fades in after the bar lands. Same first-frame flash
+  // story — replaced manual useSharedValue + useEffect with a built-in
+  // FadeIn entering, applied before first paint.
+  const whisperEntering = useMemo(
+    () =>
+      FadeIn.duration(360).delay(2200).reduceMotion(ReduceMotion.System),
+    [],
+  )
 
   return (
     <View style={styles.content} pointerEvents="none">
@@ -121,10 +136,10 @@ export function AuthLaunchSplashContent({ showWhisper = true }: AuthLaunchSplash
           ]}
         >
           <Animated.View
+            entering={progressEntering}
             style={[
               styles.progressFill,
               { backgroundColor: theme.colors.heroAccent },
-              progressFillStyle,
             ]}
           />
         </View>
@@ -132,7 +147,8 @@ export function AuthLaunchSplashContent({ showWhisper = true }: AuthLaunchSplash
 
       {showWhisper ? (
         <Animated.Text
-          style={[styles.whisper, { color: theme.colors.heroMuted2 }, whisperStyle]}
+          entering={whisperEntering}
+          style={[styles.whisper, { color: theme.colors.heroMuted2 }]}
         >
           Cargando tu espacio…
         </Animated.Text>

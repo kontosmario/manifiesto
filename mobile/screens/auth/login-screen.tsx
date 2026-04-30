@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -219,6 +220,14 @@ export function LoginScreen() {
       ringOpacity.value = withTiming(0, { duration: 200 })
       ringScale.value = withTiming(1, { duration: 200 })
       haloScale.value = withTiming(1, { duration: 600 })
+    }
+    return () => {
+      // Cancel in-flight tweens (especially the scanning ringScale
+      // repeat) so the worklet drivers are torn down if the user
+      // navigates away mid-scan.
+      cancelAnimation(ringOpacity)
+      cancelAnimation(ringScale)
+      cancelAnimation(haloScale)
     }
   }, [reduced, status, ringOpacity, ringScale, haloScale])
 

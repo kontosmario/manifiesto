@@ -6,6 +6,48 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
+import { motionDurations } from '@/lib/motion'
+
+// ─── Navigation timing tokens ────────────────────────────────────
+// Single source of truth for stack/modal animation pacing. Values
+// match the curves prototyped in `docs/transitions-preview.html`.
+//
+// Note: `@react-navigation/native-stack` (which expo-router wraps)
+// only honors `animationDuration` on Android — iOS uses the platform
+// curves baked into UIKit. We still set it for consistency and so
+// Android matches the same pacing as iOS visually. The
+// `'ios_from_right'` animation type pins both platforms to the same
+// horizontal slide instead of the platform default.
+//
+// ─── Architectural decision (2026-04-30) ─────────────────────────
+// We deliberately stay on `@react-navigation/native-stack` and do
+// NOT migrate to the JS-based `@react-navigation/stack` to get
+// custom interpolators (parallax + scale on the outgoing screen,
+// per-curve fine-tuning). Rationale:
+//   1. Native-stack runs the transition off the JS thread on both
+//      iOS (UIKit) and Android (Fragment transitions). The JS stack
+//      drives every frame from the bridge — measurable jank on
+//      lower-end Android, especially when Reanimated worklets are
+//      already saturating the UI thread (which we use heavily).
+//   2. Native-stack inherits the OS swipe-back gesture for free,
+//      including the predictive back behavior on Android 14+. JS
+//      stack reimplements it with PanResponder — buggier under
+//      RNGH-heavy screens (we have many: Gastos, Fijos, modales).
+//   3. The remaining UX gap (a parallax fade on the previous screen
+//      during push) is small. The unified `ios_from_right` +
+//      `motionDurations.enterStack` on both platforms already gives
+//      a clean, consistent slide that matches the rest of the
+//      motion language.
+//   4. ModalContentEntrance (see `mobile/components/ui/modal-content-
+//      entrance.tsx`) handles the modal-specific layered fade we
+//      wanted, without touching the navigation primitive.
+//
+// Don't reintroduce a JS-stack PR without re-evaluating these four
+// points. The trade-off is intentional, not an oversight.
+const STACK_PUSH_ANIMATION =
+  Platform.OS === 'ios' ? ('default' as const) : ('ios_from_right' as const)
+const MODAL_ANIMATION =
+  Platform.OS === 'ios' ? ('default' as const) : ('slide_from_bottom' as const)
 
 export function AppStackShell() {
   // Fire the single snapshot RPC at the app-shell level, before any
@@ -40,7 +82,8 @@ export function AppStackShell() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+          animation: STACK_PUSH_ANIMATION,
+          animationDuration: motionDurations.enterStack,
           animationMatchesGesture: true,
           freezeOnBlur: true,
           fullScreenGestureEnabled: false,
@@ -52,7 +95,8 @@ export function AppStackShell() {
           name="onboarding"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureEnabled: false,
             fullScreenGestureEnabled: false,
           }}
@@ -61,7 +105,8 @@ export function AppStackShell() {
           name="add-expense"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -69,7 +114,8 @@ export function AppStackShell() {
           name="add-fixed-expense"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -77,7 +123,8 @@ export function AppStackShell() {
           name="household-setup"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -85,7 +132,8 @@ export function AppStackShell() {
           name="expense-filters"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -93,7 +141,8 @@ export function AppStackShell() {
           name="expense-categories"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -101,7 +150,8 @@ export function AppStackShell() {
           name="asistente"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />
@@ -109,7 +159,8 @@ export function AppStackShell() {
           name="coach/[signalId]"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
             gestureDirection: 'vertical',
           }}
         />

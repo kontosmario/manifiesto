@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
+import { ModalContentEntrance } from '@/components/ui/modal-content-entrance'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { getIsAuthTransitionSplashVisible } from '@/lib/auth-transition-splash'
@@ -31,5 +32,9 @@ export default function OnboardingRoute() {
     return <Redirect href="/(app)/(tabs)/home" />
   }
 
-  return <OnboardingScreen userId={userId} />
+  return (
+    <ModalContentEntrance style={{ flex: 1 }}>
+      <OnboardingScreen userId={userId} />
+    </ModalContentEntrance>
+  )
 }

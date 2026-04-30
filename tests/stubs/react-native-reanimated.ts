@@ -83,9 +83,17 @@ export function withRepeat<T>(animation: T, _count?: number, _reverse?: boolean)
   return animation
 }
 
+export function cancelAnimation(_sv: unknown): void {
+  return
+}
+
 export function runOnJS<F extends (...args: unknown[]) => unknown>(fn: F): F {
   return fn
 }
+
+// Type-only re-export used by hooks/components that consume shared values
+// generically. The underlying implementation is just the stubbed object.
+export type SharedValue<T> = { value: T }
 
 export function interpolate(
   value: number,

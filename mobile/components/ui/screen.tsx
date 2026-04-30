@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import {
-  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   type ViewStyle,
   type ScrollViewProps,
 } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useSegments } from 'expo-router'
 import { ModalGrabHandle } from '@/components/ui/modal-grab-handle'
@@ -93,10 +93,15 @@ export function Screen({
   const { contentAnimatedStyle, headerAnimatedStyle } = useScreenEntrance({
     reducedMotion: isReducedMotionEnabled,
   })
-  // Subtle fade-in on tab switches (180ms, 0.92 → 1). No-op on mount
-  // or stack pops. Tab screens opt in automatically via `isTabScreen`.
-  const tabFocusOpacity = useTabFocusFade()
-  const tabFocusStyle = isTabScreen ? { opacity: tabFocusOpacity } : null
+  // Directional reveal on tab switches: opacity floor → 1 + a small
+  // translateX shift in the direction of the tab order so the user
+  // feels lateral movement between sections (Inicio → Gastos slides
+  // in from the right; Gastos → Inicio from the left). No-op on
+  // mount or stack pops. Tab screens opt in automatically via
+  // `isTabScreen`. The hook returns a single Reanimated worklet style
+  // that combines opacity + translateX in one animated pass.
+  const tabFocusMotion = useTabFocusFade()
+  const tabFocusStyle = isTabScreen ? tabFocusMotion.style : null
 
   // When a ModalCard is open on top, suspend the Screen's keyboard
   // avoidance so the content behind the sheet doesn't jump up when

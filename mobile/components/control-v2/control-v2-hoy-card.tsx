@@ -828,6 +828,14 @@ function PaceBar({
   markerHalo: ReturnType<typeof useSharedValue<number>>
   ahoraFloat: ReturnType<typeof useSharedValue<number>>
 }) {
+  // Measure the track once via onLayout so leading-edge translateX
+  // can be computed from a pixel value rather than animating `left:%`.
+  const [trackWidthPx, setTrackWidthPx] = useState(0)
+  const handleTrackLayout = (event: LayoutChangeEvent) => {
+    const w = event.nativeEvent.layout.width
+    if (w > 0 && w !== trackWidthPx) setTrackWidthPx(w)
+  }
+
   // Shimmer band: a thin highlight that travels left → right inside
   // the fill. Width is 25% of the fill; the translateX maps the
   // shimmer 0→1 to a journey from -25% to spentPct% relative to the
@@ -858,11 +866,17 @@ function PaceBar({
   // Fill bar grows from 0 to spentPct on mount; re-animates on data
   // updates. The leading-edge indicator follows the same shared
   // value so it stays visually pinned to the fill's right edge.
+  //
+  // Migrated from `width: %` and `left: %` (which trigger per-frame
+  // layout passes on Android) to compositor-only transforms. The
+  // fill is laid out at full track width and animated via `scaleX`
+  // anchored to the left; the leading edge uses `translateX` against
+  // the measured track width.
   const fillStyle = useAnimatedStyle(() => ({
-    width: `${fillProgress.value}%`,
+    transform: [{ scaleX: fillProgress.value / 100 }],
   }))
   const leadingEdgeStyle = useAnimatedStyle(() => ({
-    left: `${fillProgress.value}%`,
+    transform: [{ translateX: (fillProgress.value / 100) * trackWidthPx }],
     opacity: interpolate(fillProgress.value, [0, 2, 6], [0, 0.4, 1]),
   }))
 
@@ -919,6 +933,7 @@ function PaceBar({
       {/* Track + fill + marker line */}
       <View style={styles.paceTrackOuter}>
         <View
+          onLayout={handleTrackLayout}
           style={[
             styles.paceTrack,
             { backgroundColor: trackBg, borderColor: trackBorder },
@@ -1262,8 +1277,11 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
+    // Lay out at full track width and animate via `scaleX` (compositor)
+    // instead of `width:%` (per-frame layout pass on Android).
+    width: '100%',
+    transformOrigin: 'left' as const,
     borderRadius: 8,
-    minWidth: 4,
   },
   paceFillSheen: {
     position: 'absolute',
@@ -1293,7 +1311,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
+    left: 0,
     width: 14,
+    // -7 centers the 14pt indicator on the fill's right edge; the
+    // animated `translateX` (in the worklet style) then rides it
+    // along the track based on `fillProgress`.
     marginLeft: -7,
     alignItems: 'center',
     justifyContent: 'center',

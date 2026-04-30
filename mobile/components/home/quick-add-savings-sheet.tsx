@@ -157,8 +157,12 @@ export function QuickAddSavingsSheet({
     [trackWidthShared, fillRatio],
   )
 
+  // Use `transform: scaleX` instead of `width: %` so the fill bar
+  // animates on the compositor (transform-only, no per-frame layout
+  // pass). The fill view is laid out at full track width (`width:
+  // '100%'` in styles.fill) and the X scale shrinks it from the left.
   const fillStyle = useAnimatedStyle(() => ({
-    width: `${fillRatio.value * 100}%`,
+    transform: [{ scaleX: fillRatio.value }],
   }))
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [
@@ -410,6 +414,12 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
+    // Lay out at the full track width so the animated `scaleX` shrinks
+    // from 1.0 → ratio without animating layout. Origin pinned to the
+    // left edge so the bar fills toward the right (matches the thumb
+    // travel direction).
+    width: '100%',
+    transformOrigin: 'left' as const,
     borderRadius: 999,
     overflow: 'hidden',
   },

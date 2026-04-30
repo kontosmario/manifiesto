@@ -1,9 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient'
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useEffect, useState } from 'react'
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
+import { motionSprings } from '@/lib/motion'
 import { authPalette } from '@/theme/auth-theme'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
@@ -31,7 +37,7 @@ export function AuthSegmentedControl<T extends string>({
   value: T
 }) {
   const [trackWidth, setTrackWidth] = useState(0)
-  const [indicatorTranslateX] = useState(() => new Animated.Value(0))
+  const indicatorTranslateX = useSharedValue(0)
   const activeIndex = Math.max(0, options.findIndex((option) => option.value === value))
   const indicatorInset = compact ? 6 : dense ? 3 : 4
   const segmentGap = compact ? 8 : 0
@@ -44,23 +50,24 @@ export function AuthSegmentedControl<T extends string>({
     const nextOffset = segmentWidth > 0 ? activeIndex * (segmentWidth + segmentGap) : 0
 
     if (reducedMotion || trackWidth <= 0) {
-      indicatorTranslateX.setValue(nextOffset)
+      indicatorTranslateX.value = nextOffset
       return
     }
 
-    const animation = Animated.spring(indicatorTranslateX, {
-      toValue: nextOffset,
-      tension: 58,
-      friction: 9,
-      useNativeDriver: USE_NATIVE_DRIVER,
-    })
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
+    indicatorTranslateX.value = withSpring(nextOffset, motionSprings.press)
   }, [activeIndex, indicatorTranslateX, reducedMotion, segmentGap, segmentWidth, trackWidth])
+
+  // Cancel the spring on unmount so the worklet driver doesn't outlive
+  // the component.
+  useEffect(() => {
+    return () => {
+      cancelAnimation(indicatorTranslateX)
+    }
+  }, [indicatorTranslateX])
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorTranslateX.value }],
+  }))
 
   return (
     <View
@@ -81,9 +88,9 @@ export function AuthSegmentedControl<T extends string>({
             {
               pointerEvents: 'none',
               left: indicatorInset,
-              transform: [{ translateX: indicatorTranslateX }],
               width: segmentWidth,
             },
+            indicatorStyle,
           ]}
         >
           <LinearGradient

@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react'
 import {
-  Animated,
-  Easing,
   StyleSheet,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
+import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { withAlpha } from '@/theme/color-utils'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SkeletonBlockProps {
@@ -18,6 +22,9 @@ interface SkeletonBlockProps {
   width?: number | `${number}%`
 }
 
+// Skeleton shimmer block. Migrated from RN core `Animated` to
+// Reanimated v4 (UI-thread loop) so the pulse runs on the compositor
+// and pauses automatically on blur/unmount via `useLoopAnimation`.
 export function SkeletonBlock({
   height,
   radius = 14,
@@ -25,38 +32,24 @@ export function SkeletonBlock({
   width = '100%',
 }: SkeletonBlockProps) {
   const { theme } = useAppTheme()
-  const reduceMotion = useReducedMotion()
-  const [pulse] = useState(() => new Animated.Value(0.72))
+  const pulse = useSharedValue(0.72)
 
-  useEffect(() => {
-    if (reduceMotion) {
-      pulse.setValue(1)
-      return
-    }
+  useLoopAnimation(
+    () => {
+      const ease = Easing.inOut(Easing.quad)
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 820, easing: ease }),
+          withTiming(0.72, { duration: 820, easing: ease }),
+        ),
+        -1,
+        false,
+      )
+    },
+    [pulse],
+  )
 
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 820,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.72,
-          duration: 820,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-      ]),
-    )
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
-  }, [pulse, reduceMotion])
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   return (
     <Animated.View
@@ -69,9 +62,9 @@ export function SkeletonBlock({
           ),
           borderRadius: radius,
           height,
-          opacity: pulse,
           width,
         },
+        pulseStyle,
         style,
       ]}
     />

@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 import { RequireAuth } from '@/components/guards'
+import { ModalContentEntrance } from '@/components/ui/modal-content-entrance'
 import { AddFijoV2Screen } from '@/screens/home/add-fijo-v2-screen'
 
 export default function AddFixedExpenseRoute() {
@@ -23,15 +24,17 @@ export default function AddFixedExpenseRoute() {
       ? params.description
       : undefined
   return (
-    <RequireAuth>
-      {({ familyId }) => (
-        <AddFijoV2Screen
-          familyId={familyId}
-          fixedExpenseId={fixedExpenseId}
-          prefillAmount={prefillAmount}
-          prefillDescription={prefillDescription}
-        />
-      )}
-    </RequireAuth>
+    <ModalContentEntrance style={{ flex: 1 }}>
+      <RequireAuth>
+        {({ familyId }) => (
+          <AddFijoV2Screen
+            familyId={familyId}
+            fixedExpenseId={fixedExpenseId}
+            prefillAmount={prefillAmount}
+            prefillDescription={prefillDescription}
+          />
+        )}
+      </RequireAuth>
+    </ModalContentEntrance>
   )
 }

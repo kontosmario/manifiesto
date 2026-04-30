@@ -6,6 +6,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -42,7 +43,13 @@ export function FijoCategoryGroups({
   return (
     <View style={styles.stack}>
       {groups.map((group, gi) => (
-        <RiseView key={group.categoryId} delay={Math.min(60 + gi * 20, 200)}>
+        // Stagger entry by `motionStagger.listItem` (40ms) per group
+        // for a cascading reveal. Capped at 200ms total so long lists
+        // don't have a noticeably slow finish.
+        <RiseView
+          key={group.categoryId}
+          delay={Math.min(60 + gi * motionStagger.listItem, 240)}
+        >
           <CategoryGroup
             group={group}
             todayDay={todayDay}

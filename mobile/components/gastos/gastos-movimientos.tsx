@@ -4,6 +4,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import type { GastosGroup, CategoryLite } from '@/features/gastos/gastos-aggregates.model'
+import { motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -135,7 +136,14 @@ export function GastosMovimientos({
 
       <View style={styles.groups}>
         {groups.map((group, gi) => (
-          <RiseView key={`${group.label}-${gi}`} delay={Math.min(60 + gi * 20, 200)}>
+          // Stagger by `motionStagger.listItem` (40ms) per group with a
+          // base of 60ms — the first group lands fast, subsequent ones
+          // cascade in a clear visual rhythm. Cap at 240ms (8 groups)
+          // so long lists don't have a noticeably slow finish.
+          <RiseView
+            key={`${group.label}-${gi}`}
+            delay={Math.min(60 + gi * motionStagger.listItem, 240)}
+          >
             <View style={styles.group}>
               <View style={styles.groupHeader}>
                 <View>
