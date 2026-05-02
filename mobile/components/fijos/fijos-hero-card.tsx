@@ -17,8 +17,10 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
+import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
+import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijosHeroCardProps {
@@ -72,6 +74,9 @@ export function FijosHeroCard({
             delayMs={1000}
             periodMs={4200}
           />
+          {/* Twinkling firefly field — same shared-wave technique
+              as the Home and Gastos hero cards. */}
+          <CardParticles count={12} accentColor={authTokens.peach} />
 
           <View style={styles.header}>
             <View style={styles.headerLeft}>

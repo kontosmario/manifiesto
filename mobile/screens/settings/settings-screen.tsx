@@ -43,6 +43,12 @@ import {
 } from '@/features/push/use-push-notifications'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import {
+  hideAuthTransitionSplash,
+  markAuthTransitionLoaded,
+  reportAuthTransitionError,
+  showAuthTransitionSplash,
+} from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
@@ -334,6 +340,44 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
     ])
   }, [router, showError])
 
+  // Dev-only triggers for the warm post-login splash (mounted as the
+  // transition overlay in root-layout-shell). Lets us iterate on
+  // animations + error UIs without going through a full
+  // logout/login + airplane-mode round-trip.
+
+  // Success preview: opens the splash, simulates a 5s slow request,
+  // then marks loaded. The state machine enforces the 3000ms minimum
+  // anyway, so even if you bumped this lower, the entrance would
+  // still play through.
+  const handlePreviewTransitionSplash = useCallback(() => {
+    void triggerHaptic('selection')
+    showAuthTransitionSplash()
+    setTimeout(() => {
+      markAuthTransitionLoaded()
+    }, 5000)
+  }, [])
+
+  // Error preview: opens the splash, simulates a 1.5s request, then
+  // reports a network failure so the fallback UI surfaces. Tap the
+  // "Reintentar" button on the fallback to dismiss + re-show the
+  // animation (in real flow this would also kick the underlying
+  // refetch).
+  const handlePreviewTransitionError = useCallback(() => {
+    void triggerHaptic('warning')
+    showAuthTransitionSplash()
+    setTimeout(() => {
+      reportAuthTransitionError('network')
+    }, 1500)
+  }, [])
+
+  // Force-hide preview: exposes the legacy `hideAuthTransitionSplash`
+  // as a dev escape hatch in case a state gets stuck (shouldn't happen
+  // in normal flow, but useful to recover from a misfired test).
+  const handleForceHideTransitionSplash = useCallback(() => {
+    void triggerHaptic('selection')
+    hideAuthTransitionSplash()
+  }, [])
+
   // ── Values shown on rows ──────────────────────────────────────
   const incomeValue =
     financeSnapshot.monthlyIncome > 0
@@ -616,7 +660,39 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
               </SettingsGroup>
             </RiseView>
 
-            {/* 7. CUENTA */}
+            {/* 7. DESARROLLO — solo en builds de desarrollo. Permite
+                disparar animaciones específicas sin tener que repetir
+                el flow completo (login/logout, etc). */}
+            {__DEV__ ? (
+              <RiseView delay={320}>
+                <SettingsGroup
+                  footer="Solo visibles en desarrollo. Útil para iterar animaciones."
+                  title="Desarrollo"
+                >
+                  <SettingsRow
+                    helper="Muestra el splash, simula carga 5s, transiciona a la home cuando la animación termina."
+                    icon="auto-awesome"
+                    label="Probar splash · success"
+                    onPress={handlePreviewTransitionSplash}
+                  />
+                  <SettingsRow
+                    helper="Muestra el splash 1.5s, después dispara el fallback de error de red con botón de reintento."
+                    icon="cloud-off"
+                    label="Probar splash · error de red"
+                    onPress={handlePreviewTransitionError}
+                  />
+                  <SettingsRow
+                    helper="Force-hide para recuperar de un estado pegado."
+                    icon="cancel"
+                    isLast
+                    label="Forzar cierre del splash"
+                    onPress={handleForceHideTransitionSplash}
+                  />
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
+
+            {/* 8. CUENTA */}
             <RiseView delay={320}>
               <SettingsGroup title="Cuenta">
                 <SettingsRow

@@ -133,6 +133,21 @@ function buildCycleRangeLabel(
   return `${startStr} – ${endStr}`
 }
 
+/**
+ * Days in a closed cycle, derived from `[period_start, period_end)`
+ * (period_end is exclusive). Falls back to 30 when either bound is
+ * unparseable so prior-cycle averages don't blow up on bad data.
+ */
+function lastCycleDays(periodStart: string, periodEnd: string): number {
+  const start = parseISODate(periodStart)
+  const end = parseISODate(periodEnd)
+  if (!start || !end) return 30
+  const startMs = new Date(start.year, start.month - 1, start.day).getTime()
+  const endMs = new Date(end.year, end.month - 1, end.day).getTime()
+  const days = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000))
+  return days > 0 ? days : 30
+}
+
 export function buildControlDataFromSnapshot(
   args: BuildControlDataArgs,
 ): ControlMockData {
@@ -279,7 +294,7 @@ export function buildControlDataFromSnapshot(
         diasBajoCupo: countDaysBelowCupo(last.daily_totals, cupoDiario),
         promedioDiario:
           (last.total_variable_spent ?? 0) /
-          Math.max(1, last.expenses_count > 0 ? 30 : 30),
+          Math.max(1, lastCycleDays(last.period_start, last.period_end)),
         topCat: lastTopCat,
         mood: normaliseMood(last.mood),
         savingsDelta: Number(last.savings_delta ?? 0),

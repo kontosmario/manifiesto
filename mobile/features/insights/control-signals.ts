@@ -378,9 +378,17 @@ function fuseSignals(
     )
     if (dominanceKey) {
       const dominance = byId.get(dominanceKey)!
+      // Pull the % straight from the dominance title (always shaped
+      // like "<cat>: NN% del gasto…"). If the parse fails, drop the
+      // share-sentence rather than silently invent "40%" — lying with
+      // a fake number was the original bug.
+      const sharePct = dominance.title.match(/(\d+)%/)?.[1]
+      const sharePhrase = sharePct
+        ? ` Además, ya concentra el ${sharePct}% del gasto del mes — punto de apalancamiento alto.`
+        : ''
       const merged: ControlAdvisorTask = {
         ...catAccel,
-        body: `${catAccel.body} Además, ya concentra el ${dominance.title.match(/\d+%/)?.[0] ?? '40%'} del gasto del mes — punto de apalancamiento alto.`,
+        body: `${catAccel.body}${sharePhrase}`,
         urgency: 'media',
         impactRaw: catAccel.impactRaw + Math.round(dominance.impactRaw * 0.5),
         confidence: Math.max(catAccel.confidence, dominance.confidence),
@@ -741,7 +749,17 @@ function buildVelocityWarning(
   const v = args.velocity
   if (!v) return null
   if (v.stress_level === 'calm') return null
-  const over = v.forecast_close_amount - args.view.gastoProyectadoMes
+  // Compare the cycle-close forecast against the cycle's *budget*
+  // (libreMes = cupoDiario × diasMes), NOT against `gastoProyectadoMes`.
+  // The previous version subtracted two projections that came from
+  // different definitions of "the cycle" (backend = calendar month,
+  // frontend = pay cycle), so `over` had no coherent economic meaning
+  // and could surface absurd "Frenar: −$4M" deltas. The correct
+  // overshoot is `forecast − presupuesto del ciclo`.
+  const libreMes =
+    args.cupoDiario *
+    (args.view.diasRestantes + args.view.detalleDias.length)
+  const over = v.forecast_close_amount - libreMes
   const urgency: ControlAdvisorTask['urgency'] =
     v.stress_level === 'critical'
       ? 'alta'
@@ -858,9 +876,13 @@ function buildCategoryAcceleration(
     impactRaw: Math.round(delta),
     cta: 'Ver gastos',
     urgency: 'media',
+    // 1 prior summary is weak evidence but the signal already gates on
+    // `historicalAvg > 0`, so floor the summaries multiplier at 0.5
+    // — otherwise rampOneCycle(14) × rampSummaries(1) = 0.33 falls
+    // below MIN_CONFIDENCE and a fully-populated cycle gets dropped.
     confidence:
       rampOneCycle(args.view.detalleDias.length) *
-      rampSummaries(args.summaries.length),
+      Math.max(0.5, rampSummaries(args.summaries.length)),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
       'Compara el gasto actual en una categoría contra su promedio histórico. Una suba marcada puede ser puntual (un evento único) o el inicio de un cambio de hábito. Detectarla a tiempo ayuda a ajustar antes de que afecte el cierre.',
@@ -962,6 +984,12 @@ function buildCategoryReductionWin(
   if (args.summaries.length === 0) return null
   const byCategory = groupExpensesByCategory(args.expenses, args.categoriesExpense)
   if (byCategory.length === 0) return null
+  // Scale the noise floor to income: 0.5% of monthly income with an
+  // absolute floor of $1.000 so we don't fire on rounding-level
+  // savings. Hardcoding $5.000 used to silence small-budget users
+  // (where $5k is meaningful) and over-fire for high earners (where
+  // $5k is noise). For ingresoMes=0 we keep the absolute floor.
+  const minDelta = Math.max(1000, args.ingresoMes * 0.005)
   let bestWin: { name: string; now: number; avg: number; delta: number } | null = null
   for (const c of byCategory) {
     const avg = avgCategoryFromSummaries(args.summaries, c.name)
@@ -969,7 +997,7 @@ function buildCategoryReductionWin(
     const ratio = c.amount / avg
     if (ratio > 0.7) continue
     const delta = avg - c.amount
-    if (delta < 5000) continue
+    if (delta < minDelta) continue
     if (!bestWin || delta > bestWin.delta) {
       bestWin = { name: c.name, now: c.amount, avg, delta }
     }
@@ -986,9 +1014,13 @@ function buildCategoryReductionWin(
     impactRaw: Math.round(bestWin.delta),
     cta: 'Entendido',
     urgency: 'baja',
+    // Floor the summaries multiplier at 0.5 — see cat-accel above.
+    // The signal already gates on at least one prior summary with a
+    // non-zero category avg; the multiplier shouldn't suppress the
+    // signal entirely on a fully closed first cycle.
     confidence:
       rampOneCycle(args.view.detalleDias.length) *
-      rampSummaries(args.summaries.length),
+      Math.max(0.5, rampSummaries(args.summaries.length)),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
       'Detecta categorías donde el gasto del mes está claramente por debajo del promedio histórico. Mostrar el equivalente anual ayuda a sostener el cambio en el tiempo.',
@@ -1076,28 +1108,50 @@ function buildUndetectedSubscription(
 ): ControlAdvisorTask | null {
   const discretionary = args.expenses.filter((e) => !e.commitment_id)
   if (discretionary.length < 4) return null
-  // Bucket by amount rounded to 50 (tighter than before — was 100).
-  const buckets = new Map<number, Array<{ day: number; desc: string }>>()
-  for (const e of discretionary) {
-    const bucket = Math.round(Number(e.price ?? 0) / 50) * 50
-    if (bucket < 1000) continue
-    const day = new Date(e.created_at).getDate()
-    const arr = buckets.get(bucket) ?? []
-    arr.push({ day, desc: e.description ?? '' })
-    buckets.set(bucket, arr)
+  // Group by *relative* tolerance (±5%) instead of fixed-width buckets.
+  // Fixed $50 buckets miss obvious matches like $900 vs $950 (5% apart
+  // but split across buckets) and miss anything below the old $1000
+  // floor (Spotify/Apple Music sit at $700-$900). We anchor each
+  // bucket on the first matching price and accept anything within
+  // ±5% — looser than 50/100 grouping at low magnitudes, tighter at
+  // high ones, which matches how subscription pricing actually works.
+  interface Bucket {
+    anchor: number
+    entries: Array<{ amount: number; day: number; desc: string }>
   }
-  // Look for an amount that appears ≥2 times on different days.
-  for (const [amount, entries] of buckets.entries()) {
+  const buckets: Bucket[] = []
+  for (const e of discretionary) {
+    const amount = Number(e.price ?? 0)
+    if (amount < 500) continue
+    const day = new Date(e.created_at).getDate()
+    const desc = e.description ?? ''
+    const bucket = buckets.find(
+      (b) => Math.abs(amount - b.anchor) / b.anchor <= 0.05,
+    )
+    if (bucket) {
+      bucket.entries.push({ amount, day, desc })
+    } else {
+      buckets.push({ anchor: amount, entries: [{ amount, day, desc }] })
+    }
+  }
+  // Look for a bucket that fires ≥2 times on different days. Use the
+  // bucket's median amount as the canonical price so a slightly noisy
+  // run (e.g. $895 + $905 + $900) reports the typical value, not a
+  // tail observation.
+  for (const { entries } of buckets) {
     if (entries.length < 2) continue
     const uniqueDays = new Set(entries.map((e) => e.day)).size
     if (uniqueDays < 2) continue
+    const sorted = [...entries].sort((a, b) => a.amount - b.amount)
+    const median = sorted[Math.floor(sorted.length / 2)]!.amount
+    const amount = Math.round(median)
     const desc = entries.find((e) => e.desc)?.desc ?? ''
     return {
       id: `undetected-sub-${amount}`,
       emoji: '🔁',
       cat: 'Suscripciones',
       title: `Posible suscripción no registrada: ${fmt(amount)}`,
-      body: `Encontramos ${entries.length} gastos por el mismo monto${desc ? ` ("${desc.slice(0, 40)}")` : ''}. Si se repite todos los meses, mejor registrarlo como gasto fijo para hacer seguimiento.`,
+      body: `Encontramos ${entries.length} gastos por un monto similar${desc ? ` ("${desc.slice(0, 40)}")` : ''}. Si se repite todos los meses, mejor registrarlo como gasto fijo para hacer seguimiento.`,
       impact: `Mejor seguimiento mensual`,
       // Monthly magnitude (ranking convention: every signal's
       // impactRaw is in MONTHLY equivalent so the score formula

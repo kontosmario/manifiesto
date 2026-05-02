@@ -17,9 +17,11 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { HeroAurora } from '@/components/home/hero-aurora'
+import { CardParticles } from '@/components/ui/card-particles'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
+import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface HomeHeroCardProps {
@@ -131,6 +133,11 @@ export function HomeHeroCard({
           delayMs={1000}
           periodMs={4200}
         />
+        {/* Particle field — twinkling fireflies layered over the
+            gradient + aurora + shine, under the content. Single shared
+            wave + per-particle phase offset → 1 worklet for the whole
+            field (see card-particles.tsx for the rationale). */}
+        <CardParticles count={12} accentColor={authTokens.peach} />
 
         {!data.incomeConfigured ? (
           // Setup state — no monthly income on file. Showing "$0

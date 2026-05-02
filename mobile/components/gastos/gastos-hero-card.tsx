@@ -6,7 +6,9 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CategoryWeightsList, type CategoryWeight } from '@/components/gastos/category-weights-list'
 import { GastosAverageBars } from '@/components/gastos/gastos-average-bars'
+import { CardParticles } from '@/components/ui/card-particles'
 import { formatMoney } from '@/utils/money'
+import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosHeroCardProps {
@@ -61,6 +63,10 @@ export function GastosHeroCard({
             delayMs={1000}
             periodMs={4200}
           />
+          {/* Twinkling firefly field, layered over background, under
+              the content. See `card-particles.tsx` for the
+              shared-wave + per-particle-phase technique. */}
+          <CardParticles count={9} accentColor={authTokens.peach} />
 
           <View style={styles.topRow}>
             <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>TOTAL VISIBLE</Text>

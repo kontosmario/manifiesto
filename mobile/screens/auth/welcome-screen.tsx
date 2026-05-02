@@ -7,21 +7,20 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
+import {
+  AuroraLayer,
+  ParticleLayer,
+} from '@/components/auth/auth-launch-splash'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { hideAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { authTokens } from '@/theme/palette'
 
 interface WelcomeScreenProps {
@@ -29,16 +28,6 @@ interface WelcomeScreenProps {
   onLogin: () => void
 }
 
-// 8 floating particles. Position deterministically by index so layout is
-// stable, but vary delays/durations so the drift looks organic.
-const PARTICLES = Array.from({ length: 8 }, (_, i) => ({
-  key: i,
-  leftPct: (i * 13 + 8) % 90,
-  topPct: (i * 19 + 15) % 80,
-  duration: 10000 + (i % 4) * 2000,
-  delay: i * 700,
-  color: i % 3 === 0 ? authTokens.peach : '#C7EE9C',
-}))
 
 /**
  * Welcome screen — the first thing an unauthenticated visitor sees in the
@@ -67,7 +56,10 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
   // stays visible forever on the welcome screen because no guard
   // wraps this route to clear the flag.
   useEffect(() => {
-    hideAuthTransitionSplash()
+    // Welcome rendered means we've reached a destination — let the
+    // splash module decide whether to hide now (min visible elapsed)
+    // or buffer until it does.
+    markAuthTransitionLoaded()
   }, [])
 
   return (
@@ -128,218 +120,6 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// Aurora — 2 large translucent radial blobs that breathe slowly.
-// We use plain Views with translucent fills + heavy borderRadius
-// rather than expo-blur: the breathing translate/scale sells the
-// "soft cloud" look at this size and avoids the blur perf cost.
-// ─────────────────────────────────────────────────────────────
-function AuroraLayer({
-  width,
-  height,
-  reduced,
-}: {
-  width: number
-  height: number
-  reduced: boolean
-}) {
-  const t1 = useSharedValue(0)
-  const t2 = useSharedValue(0)
-
-  // useLoopAnimation parks the loops on blur/unmount + reduced motion.
-  useLoopAnimation(
-    () => {
-      t1.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-        ),
-        -1,
-        false,
-      )
-      t2.value = withDelay(
-        900,
-        withRepeat(
-          withSequence(
-            withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
-            withTiming(0, { duration: 9000, easing: Easing.inOut(Easing.quad) }),
-          ),
-          -1,
-          false,
-        ),
-      )
-    },
-    [t1, t2],
-  )
-
-  const blob1Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: t1.value * 20 },
-      { translateY: t1.value * 30 },
-      { scale: 1 + t1.value * 0.15 },
-    ],
-  }))
-  const blob2Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -t2.value * 25 },
-      { translateY: -t2.value * 20 },
-      { scale: 1 + t2.value * 0.1 },
-    ],
-  }))
-
-  const blob1Size = 280
-  const blob2Size = 300
-
-  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Animated.View
-        style={[
-          styles.auroraBlob,
-          {
-            width: blob1Size,
-            height: blob1Size,
-            borderRadius: blob1Size / 2,
-            top: -height * 0.1,
-            left: -width * 0.15,
-            backgroundColor: 'rgba(199,238,156,0.18)',
-          },
-          blob1Style,
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.auroraBlob,
-          {
-            width: blob2Size,
-            height: blob2Size,
-            borderRadius: blob2Size / 2,
-            bottom: height * 0.2,
-            right: -width * 0.2,
-            backgroundColor: 'rgba(242,181,138,0.16)',
-          },
-          blob2Style,
-        ]}
-      />
-    </View>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────
-// Particles — 8 small dots that drift up/down on a long sine.
-// ─────────────────────────────────────────────────────────────
-function ParticleLayer({
-  width,
-  height,
-  reduced,
-}: {
-  width: number
-  height: number
-  reduced: boolean
-}) {
-  const particles = useMemo(
-    () =>
-      PARTICLES.map((p) => ({
-        ...p,
-        left: (p.leftPct / 100) * width,
-        top: (p.topPct / 100) * height,
-      })),
-    [width, height],
-  )
-
-  if (reduced) {
-    return (
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        {particles.map((p) => (
-          <View
-            key={p.key}
-            style={[
-              styles.particle,
-              {
-                left: p.left,
-                top: p.top,
-                backgroundColor: p.color,
-                opacity: 0.4,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    )
-  }
-
-  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {particles.map((p) => (
-        <Particle
-          key={p.key}
-          left={p.left}
-          top={p.top}
-          color={p.color}
-          duration={p.duration}
-          delay={p.delay}
-        />
-      ))}
-    </View>
-  )
-}
-
-function Particle({
-  left,
-  top,
-  color,
-  duration,
-  delay,
-}: {
-  left: number
-  top: number
-  color: string
-  duration: number
-  delay: number
-}) {
-  const t = useSharedValue(0)
-
-  useLoopAnimation(
-    () => {
-      t.value = withDelay(
-        delay,
-        withRepeat(
-          withSequence(
-            withTiming(1, {
-              duration: duration / 2,
-              easing: Easing.inOut(Easing.quad),
-            }),
-            withTiming(0, {
-              duration: duration / 2,
-              easing: Easing.inOut(Easing.quad),
-            }),
-          ),
-          -1,
-          false,
-        ),
-      )
-    },
-    [t],
-    [duration, delay],
-  )
-
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: -30 * t.value },
-      { translateX: 10 * t.value },
-    ],
-    opacity: 0.3 + t.value * 0.4,
-  }))
-
-  return (
-    <Animated.View
-      style={[
-        styles.particle,
-        { left, top, backgroundColor: color },
-        style,
-      ]}
-    />
-  )
-}
 
 // ─────────────────────────────────────────────────────────────
 // CTAs
@@ -509,15 +289,6 @@ const styles = StyleSheet.create({
   fineprintLink: {
     textDecorationLine: 'underline',
     color: 'rgba(255,251,242,0.38)',
-  },
-  auroraBlob: {
-    position: 'absolute',
-  },
-  particle: {
-    position: 'absolute',
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
   },
 })
 

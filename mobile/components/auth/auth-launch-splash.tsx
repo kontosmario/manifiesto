@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import Animated, {
   Easing,
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -14,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
-import { decorativeDurations } from '@/lib/motion'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { authTokens } from '@/theme/palette'
 
@@ -29,15 +29,18 @@ interface AuthLaunchSplashProps {
 const HIDE_DELAY_MS = 2000
 const EXIT_MS = 220
 
-// Particle field cloned from the welcome screen so the splash uses the
-// same drift pattern. Same indices, deltas and palette = identical
-// distribution on screen → no visible jump on splash → welcome.
-const PARTICLES = Array.from({ length: 8 }, (_, i) => ({
+// Particle field — 24 fireflies sprinkled across the canvas. The
+// distribution formulas (i * 13 + 8 mod 90, i * 19 + 15 mod 80) give
+// a quasi-random spread without any actual randomness, so the layout
+// is deterministic across mounts. Each particle has a unique
+// duration + delay so the field never twinkles in sync.
+const PARTICLE_COUNT = 24
+const PARTICLES = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
   key: i,
   leftPct: (i * 13 + 8) % 90,
   topPct: (i * 19 + 15) % 80,
-  duration: 10000 + (i % 4) * 2000,
-  delay: i * 700,
+  duration: 8000 + (i % 5) * 1800,
+  delay: i * 450,
   color: i % 3 === 0 ? authTokens.peach : '#C7EE9C',
 }))
 
@@ -152,54 +155,167 @@ export function AuthLaunchSplash({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Aurora — cloned from welcome-screen.tsx so the splash
-// breathes identically and the transition stays visually stable.
+// Aurora — two large soft circles that twinkle in randomized
+// positions. Each blob lives within a fixed `zone` (top half vs
+// bottom half of the canvas) so they NEVER overlap, regardless of
+// where the random pick lands. Within its zone, the position is
+// re-rolled every time the blob's opacity bottoms out — so each
+// fade-in cycle places the blob at a fresh, unpredictable spot.
+//
 // ─────────────────────────────────────────────────────────────
-function AuroraLayer({
+interface AuroraZone {
+  /** Inclusive % bounds for the random position pick. */
+  leftMin: number
+  leftMax: number
+  topMin: number
+  topMax: number
+}
+
+interface AuroraBlobConfig {
+  key: number
+  zone: AuroraZone
+  size: number
+  color: string
+  duration: number
+  delay: number
+}
+
+// Top half + bottom half. Vertical separation is the no-overlap
+// guarantee — the zones share NO y-range, so the bounding boxes
+// can't intersect even if both blobs randomize to the same x.
+const ZONE_TOP: AuroraZone = { leftMin: 12, leftMax: 88, topMin: 8, topMax: 32 }
+const ZONE_BOTTOM: AuroraZone = { leftMin: 12, leftMax: 88, topMin: 62, topMax: 90 }
+
+const AURORA_BLOBS: AuroraBlobConfig[] = [
+  {
+    key: 0,
+    zone: ZONE_TOP,
+    size: 280,
+    color: 'rgba(242,181,138,0.18)', // peach
+    duration: 11000,
+    delay: 0,
+  },
+  {
+    key: 1,
+    zone: ZONE_BOTTOM,
+    size: 300,
+    color: 'rgba(199,238,156,0.16)', // soft green
+    duration: 13000,
+    delay: 5500,
+  },
+]
+
+interface AuroraPosition {
+  leftPct: number
+  topPct: number
+}
+
+function pickPositionInZone(zone: AuroraZone): AuroraPosition {
+  return {
+    leftPct: zone.leftMin + Math.random() * (zone.leftMax - zone.leftMin),
+    topPct: zone.topMin + Math.random() * (zone.topMax - zone.topMin),
+  }
+}
+
+// Module-level static positions — picked ONCE when this module first
+// loads (at app launch) and reused across every `<AuroraLayer
+// randomize={false}>` mount throughout the session. This is what
+// makes the cold-start splash and the welcome screen show the blobs
+// in the SAME positions: both consume these constants. The warm
+// transition splash bypasses these by passing `randomize={true}`,
+// which switches each blob to per-cycle re-rolls inside its zone.
+const STATIC_AURORA_POSITIONS: Record<number, AuroraPosition> = {
+  0: pickPositionInZone(ZONE_TOP),
+  1: pickPositionInZone(ZONE_BOTTOM),
+}
+
+export function AuroraLayer({
   width,
   height,
   reduced,
+  /**
+   * - `false` (default): blobs sit at fixed positions for the lifetime
+   *   of the app session (picked once at module load, shared by every
+   *   AuroraLayer mount). Used by the cold-start splash and the
+   *   welcome screen so the splash → welcome handoff is seamless.
+   * - `true`: each blob re-rolls its position within its zone every
+   *   time it fades out. Used by the warm post-login transition splash
+   *   so the bridge feels alive and unpredictable.
+   */
+  randomize = false,
 }: {
   width: number
   height: number
   reduced: boolean
+  randomize?: boolean
 }) {
-  const t1 = useSharedValue(0)
-  const t2 = useSharedValue(0)
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {AURORA_BLOBS.map((blob) => (
+        <AuroraBlob
+          key={blob.key}
+          config={blob}
+          parentWidth={width}
+          parentHeight={height}
+          reduced={reduced}
+          randomize={randomize}
+        />
+      ))}
+    </View>
+  )
+}
 
-  // useUnboundedLoopAnimation (NOT useLoopAnimation): the splash is
-  // mounted as a sibling of the <Stack> in root-layout-shell.tsx —
-  // it lives OUTSIDE the NavigationContainer. Using the focus-bound
-  // variant here would call useIsFocused() from outside any screen
-  // and short-circuit `start()` on native (returns false when there's
-  // no NavigationContext), leaving the loops frozen. Web works because
-  // React Navigation's web fallback defaults isFocused to true outside
-  // screens — that asymmetry is precisely why this variant exists.
+function AuroraBlob({
+  config,
+  parentWidth,
+  parentHeight,
+  reduced: _reduced,
+  randomize,
+}: {
+  config: AuroraBlobConfig
+  parentWidth: number
+  parentHeight: number
+  reduced: boolean
+  randomize: boolean
+}) {
+  const t = useSharedValue(0)
+  // Initial position:
+  //  - randomize=true: random pick within the zone, will be re-rolled
+  //    on every fade-out (see useAnimatedReaction below).
+  //  - randomize=false: fixed module-level position so the blob lands
+  //    at the same coords for every static mount (cold-start splash
+  //    + welcome screen agree on layout).
+  const [position, setPosition] = useState<AuroraPosition>(() =>
+    randomize
+      ? pickPositionInZone(config.zone)
+      : STATIC_AURORA_POSITIONS[config.key] ??
+        pickPositionInZone(config.zone),
+  )
+  // JS-thread reroll callback. Worklets can't call `pickPositionInZone`
+  // directly (it isn't a worklet — passing it as a runOnJS arg
+  // crashes the UI runtime, see project memory). The worklet just
+  // signals "reroll now"; this JS callback does the Math.random +
+  // setState. No-op when `randomize` is false.
+  const rerollPosition = useCallback(() => {
+    setPosition(pickPositionInZone(config.zone))
+  }, [config.zone])
+
+  // useUnboundedLoopAnimation handles unmount cleanup + reduced motion
+  // (parks at 0 = invisible). The splash lives outside the
+  // NavigationContainer, so the focus-bound `useLoopAnimation` would
+  // never start the loops here.
   useUnboundedLoopAnimation(
     () => {
-      // The first blob breathes a touch faster (7000ms half-cycle ≈
-      // 14000ms total ≈ 1.55x ambient) while the second uses the
-      // canonical ambient cadence. Two slightly off-tempo loops give
-      // a richer "alive" feel than two synced ones — keep the 7000
-      // literal here on purpose.
-      t1.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: 7000, easing: Easing.inOut(Easing.quad) }),
-        ),
-        -1,
-        false,
-      )
-      t2.value = withDelay(
-        900,
+      t.value = withDelay(
+        config.delay,
         withRepeat(
           withSequence(
             withTiming(1, {
-              duration: decorativeDurations.ambient,
+              duration: config.duration / 2,
               easing: Easing.inOut(Easing.quad),
             }),
             withTiming(0, {
-              duration: decorativeDurations.ambient,
+              duration: config.duration / 2,
               easing: Easing.inOut(Easing.quad),
             }),
           ),
@@ -208,58 +324,61 @@ function AuroraLayer({
         ),
       )
     },
-    [t1, t2],
+    [t],
+    [config.duration, config.delay],
   )
 
-  const blob1Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: t1.value * 20 },
-      { translateY: t1.value * 30 },
-      { scale: 1 + t1.value * 0.15 },
-    ],
-  }))
-  const blob2Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -t2.value * 25 },
-      { translateY: -t2.value * 20 },
-      { scale: 1 + t2.value * 0.1 },
-    ],
-  }))
+  // Re-roll the position every time the blob fades out — ONLY when
+  // `randomize` is true. The bell-curve opacity (sin(t * π)) hits ~0
+  // twice per full t cycle: once at t=0, once at t=1. We track "is
+  // the blob currently visible above threshold" and fire the reroll
+  // on the falling edge (true → false). Worklet calls a stable JS
+  // callback (rerollPosition); never invokes a JS function inline,
+  // which would crash the UI runtime.
+  useAnimatedReaction(
+    () => randomize && Math.sin(t.value * Math.PI) > 0.04,
+    (visible, prev) => {
+      'worklet'
+      if (prev === true && visible === false) {
+        runOnJS(rerollPosition)()
+      }
+    },
+    [rerollPosition, randomize],
+  )
 
-  const blob1Size = 280
-  const blob2Size = 300
+  const style = useAnimatedStyle(() => {
+    'worklet'
+    const phase = t.value * Math.PI
+    return {
+      // Bell-curve opacity: invisible at the extremes, peak at the
+      // middle. Alpha is baked into the rgba color per blob.
+      opacity: Math.sin(phase),
+      // Subtle scale breath during the twinkle so the blob looks
+      // alive rather than just a flat fade.
+      transform: [{ scale: 0.9 + Math.sin(phase) * 0.18 }],
+    }
+  })
+
+  // Position is centered on the configured % (subtract half size to
+  // convert center → top-left for absolute positioning).
+  const left = (position.leftPct / 100) * parentWidth - config.size / 2
+  const top = (position.topPct / 100) * parentHeight - config.size / 2
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Animated.View
-        style={[
-          styles.auroraBlob,
-          {
-            width: blob1Size,
-            height: blob1Size,
-            borderRadius: blob1Size / 2,
-            top: -height * 0.1,
-            left: -width * 0.15,
-            backgroundColor: 'rgba(199,238,156,0.18)',
-          },
-          blob1Style,
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.auroraBlob,
-          {
-            width: blob2Size,
-            height: blob2Size,
-            borderRadius: blob2Size / 2,
-            bottom: height * 0.2,
-            right: -width * 0.2,
-            backgroundColor: 'rgba(242,181,138,0.16)',
-          },
-          blob2Style,
-        ]}
-      />
-    </View>
+    <Animated.View
+      style={[
+        styles.auroraBlob,
+        {
+          width: config.size,
+          height: config.size,
+          borderRadius: config.size / 2,
+          left,
+          top,
+          backgroundColor: config.color,
+        },
+        style,
+      ]}
+    />
   )
 }
 
@@ -268,7 +387,7 @@ function AuroraLayer({
 // indices/positions/colors so the field doesn't visibly jump
 // when the splash hands off to welcome.
 // ─────────────────────────────────────────────────────────────
-function ParticleLayer({
+export function ParticleLayer({
   width,
   height,
   reduced,
@@ -366,13 +485,28 @@ function Particle({
     [duration, delay],
   )
 
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: -30 * t.value },
-      { translateX: 10 * t.value },
-    ],
-    opacity: 0.3 + t.value * 0.4,
-  }))
+  // Lissajous-style organic drift — see welcome-screen.tsx Particle
+  // for the rationale. Same envelope (~26pt vertical, ~8pt lateral)
+  // and same per-particle desync (duration + delay) so the splash
+  // and welcome screen feel like the same particle field.
+  //
+  // Opacity uses a bell curve `sin(t * π)` so each particle is
+  // INVISIBLE at the extremes of its cycle (t=0 and t=1) and peaks
+  // in the middle — giving a firefly twinkle: the particle appears,
+  // shines briefly, and fades out, then re-emerges later. Combined
+  // with the 8 particles' different durations + delays, the effect
+  // feels random rather than synchronised.
+  const style = useAnimatedStyle(() => {
+    'worklet'
+    const phase = t.value * Math.PI
+    return {
+      transform: [
+        { translateY: -Math.sin(phase) * 26 },
+        { translateX: Math.sin(phase * 2) * 8 },
+      ],
+      opacity: Math.sin(phase) * 0.7,
+    }
+  })
 
   return (
     <Animated.View

@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
+import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { AppProviders } from '@/providers/app-providers'
@@ -26,7 +27,12 @@ export function RootLayoutShell() {
   const [isLaunchSplashVisible, setLaunchSplashVisible] = useState(
     () => !hasShownAppLaunchSplash,
   )
-  const isAuthTransitionVisible = useAuthTransitionSplash()
+  const authTransition = useAuthTransitionSplash()
+  // Splash overlay shows for any phase that isn't 'hidden' — including
+  // the error state, which renders the fallback UI inside the splash
+  // canvas. The phase value is also passed down so the inner content
+  // can swap between WarmFernLogo and the error fallback.
+  const isAuthTransitionVisible = authTransition.phase !== 'hidden'
 
   const handleLaunchSplashComplete = useCallback(() => {
     hasShownAppLaunchSplash = true
@@ -70,7 +76,11 @@ export function RootLayoutShell() {
             continuous brand surface across redirects — no skeleton
             flashes, no FernLogo entrance replay, no remount cost.
           */}
-          <TransitionOverlay visible={isAuthTransitionVisible} />
+          <TransitionOverlay
+            visible={isAuthTransitionVisible}
+            phase={authTransition.phase}
+            errorKind={authTransition.errorKind}
+          />
         </View>
       </AppProviders>
     </RootErrorBoundary>
@@ -79,9 +89,11 @@ export function RootLayoutShell() {
 
 interface TransitionOverlayProps {
   visible: boolean
+  phase: import('@/lib/auth-transition-splash').AuthTransitionPhase
+  errorKind?: import('@/lib/auth-transition-splash').AuthTransitionErrorKind
 }
 
-function TransitionOverlay({ visible }: TransitionOverlayProps) {
+function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps) {
   // Track whether we should keep the overlay mounted while fading
   // out. We mount it as soon as `visible` flips true and only
   // unmount once the fade-out completes — that way the overlay can
@@ -128,7 +140,12 @@ function TransitionOverlay({ visible }: TransitionOverlayProps) {
       // overlay disappears entirely.
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      <AuthLaunchSplash persistent />
+      {/* Post-login bridge uses the warm variant (single fern,
+          contemplative breath) — not the cold-start AuthLaunchSplash
+          (which mirrors the welcome screen for the launch handoff).
+          The splash receives `phase` so it can swap to an error
+          fallback when a request fails / times out. */}
+      <AuthTransitionSplash phase={phase} errorKind={errorKind} />
     </Animated.View>
   )
 }

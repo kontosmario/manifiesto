@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { Stack } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
@@ -6,6 +7,11 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
+import { useOnlineStatus } from '@/hooks/use-online-status'
+import {
+  getIsAuthTransitionSplashVisible,
+  reportAuthTransitionError,
+} from '@/lib/auth-transition-splash'
 import { motionDurations } from '@/lib/motion'
 
 // ─── Navigation timing tokens ────────────────────────────────────
@@ -57,6 +63,7 @@ export function AppStackShell() {
   const session = useAuthSession()
   const userId = session.data?.user.id
   const snapshot = useHomeSnapshot(userId)
+  const isOnline = useOnlineStatus()
   // Mirror the active user's email + display name + avatar to a
   // SecureStore-backed cache so the login screen can show a
   // personalized hero on next launch.
@@ -66,6 +73,25 @@ export function AppStackShell() {
   // expense belongs to, so this sync is what makes the per-user day
   // boundary work in practice (instead of a hardcoded BA default).
   useTimezoneSync()
+
+  // Bridge home_snapshot errors to the auth transition splash so the
+  // user sees a "no internet" fallback instead of the splash hanging
+  // forever. We classify by NetInfo first (offline trumps everything),
+  // then fall back to the message text from the snapshot error.
+  useEffect(() => {
+    if (!snapshot.isError) return
+    if (!getIsAuthTransitionSplashVisible()) return
+    if (!isOnline) {
+      reportAuthTransitionError('network')
+      return
+    }
+    const message = String(snapshot.error?.message ?? '').toLowerCase()
+    if (message.includes('network') || message.includes('fetch')) {
+      reportAuthTransitionError('network')
+    } else {
+      reportAuthTransitionError('unknown')
+    }
+  }, [snapshot.isError, snapshot.error, isOnline])
 
   // If the user is authenticated, block the whole app tree until the
   // snapshot is seeded. Everything downstream (RequireAuth, tabs,

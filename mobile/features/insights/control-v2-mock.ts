@@ -432,7 +432,13 @@ export function computeControlView(d: ControlMockData): ControlView {
   const noSpendCount = d.diasSinGastar.length
 
   // 6. FIXED COVERAGE
-  const coberturaFijos = Math.ceil((d.fijosMes / d.ingresoMes) * d.diasMes)
+  // Guard ingresoMes > 0 so a synthetic scenario with zero income
+  // (or a real user that hasn't filled it in) doesn't propagate
+  // Infinity into `coberturaFijos` and downstream `fijosRatio`/score.
+  const coberturaFijos =
+    d.ingresoMes > 0
+      ? Math.ceil((d.fijosMes / d.ingresoMes) * d.diasMes)
+      : 0
   const diasLibres = d.diasMes - coberturaFijos
 
   // 7. MOMENTUM
@@ -454,7 +460,9 @@ export function computeControlView(d: ControlMockData): ControlView {
   const sRacha = (Math.min(racha, 7) / 7) * 20
   const sMomentum = momentum <= 1 ? 20 : Math.max(0, 20 - (momentum - 1) * 40)
   const sNoSpend = (Math.min(noSpendCount, 5) / 5) * 10
-  const fijosRatio = d.fijosMes / d.ingresoMes
+  // ingresoMes=0 → fijosRatio=NaN → sFijos=NaN → score=NaN. Default
+  // ratio to 0 when there's no income so the score stays a number.
+  const fijosRatio = d.ingresoMes > 0 ? d.fijosMes / d.ingresoMes : 0
   const sFijos = Math.max(0, (1 - fijosRatio) / 0.5) * 10
   const score = Math.round(sBajoCupo + sRacha + sMomentum + sNoSpend + sFijos)
   const scoreLabel =

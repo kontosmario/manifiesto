@@ -25,6 +25,10 @@ interface AdvisorResponse {
 export const controlAdvisorQueryKey = (familyId?: string) =>
   ['control-advisor', familyId ?? null] as const
 
+/**
+ * @deprecated Dormant — the live Control screen consumes signals
+ * directly from `useControlV2Data`. Kept for future LLM-pass work.
+ */
 export function useControlAdvisor(
   familyId: string,
   options: { enabled?: boolean } = {},

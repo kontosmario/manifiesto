@@ -10,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
+const AnimatedPath = Animated.createAnimatedComponent(Path)
+
 const AnimatedG = Animated.createAnimatedComponent(G)
 
 type Palette = 'dark' | 'light' | 'mono-dark' | 'mono-light' | 'duotone'
@@ -209,6 +211,27 @@ export function FernLogo({
   const structureProps = useAnimatedProps(() => ({
     opacity: structureProgress.value,
   }))
+  // Path-drawing overlay for the structure: a stroke that draws the
+  // silhouette outline of `D_STRUCTURE` ahead of the fill fade-in.
+  // Visual effect: as the bowl + stem appear, you see the contour
+  // line trace itself first (during the first ~60% of the structure
+  // phase), then it fades as the solid fill takes over (last ~40%).
+  // STROKE_PATH_LENGTH is a generous overshoot — the actual path
+  // length is well below this; SVG dasharray accepts any value ≥
+  // path-length and behaves correctly. We avoid `getTotalLength()`
+  // because it's not exposed by react-native-svg.
+  const STROKE_PATH_LENGTH = 2000
+  const structureStrokeProps = useAnimatedProps(() => {
+    const p = structureProgress.value
+    // Phase 1 (0 → 0.6): stroke draws (dashoffset full → 0).
+    const drawPhase = Math.min(1, p / 0.6)
+    // Phase 2 (0.6 → 1): stroke fades out as fill takes over.
+    const settlePhase = Math.max(0, (p - 0.6) / 0.4)
+    return {
+      strokeDashoffset: STROKE_PATH_LENGTH * (1 - drawPhase),
+      strokeOpacity: 1 - settlePhase,
+    } as Record<string, unknown>
+  })
   const pillProps = useAnimatedProps(() => {
     const ox = 200
     const oy = 365
@@ -218,6 +241,7 @@ export function FernLogo({
       transform: `translate(${ox}, ${oy}) scale(${s}) translate(${-ox}, ${-oy})`,
     } as Record<string, unknown>
   })
+
 
   // Inline initial props matching the worklet's value at progress=0.
   // First-paint protection: without these, the SVG renders ONCE with
@@ -260,10 +284,33 @@ export function FernLogo({
           <Path d={D_SMALL_LEAF} fill={c.leafB} />
         </AnimatedG>
 
-        {/* Structure (bowl + integrated stem + branch detail) */}
+        {/* Structure (bowl + integrated stem + branch detail).
+            The group's wrapper opacity (structureProps) handles the
+            overall fade-in. Inside, we layer the solid fill UNDER an
+            animated stroke overlay that path-draws the silhouette
+            during the first 60% of the phase, then fades as the fill
+            takes over. The stroke is `fill="none"` so it doesn't
+            double the silhouette — just traces the contour.
+            For non-animated mounts (reduced motion or animate=false),
+            the stroke overlay sits at strokeDashoffset=0 and
+            strokeOpacity=0, so it's invisible — the fill alone
+            renders, identical to the previous behavior. */}
         <AnimatedG {...initialStructure} animatedProps={structureProps}>
           <Path d={D_STRUCTURE} fill={c.structure} />
           <Path d={D_INNER} fill={c.structure} />
+          {isAnimated ? (
+            <AnimatedPath
+              d={D_STRUCTURE}
+              fill="none"
+              stroke={c.structure}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={STROKE_PATH_LENGTH}
+              strokeDashoffset={STROKE_PATH_LENGTH}
+              animatedProps={structureStrokeProps}
+            />
+          ) : null}
         </AnimatedG>
 
         {/* Bottom pill — small vertical capsule under the stem */}

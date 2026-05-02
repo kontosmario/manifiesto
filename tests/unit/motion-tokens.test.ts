@@ -62,6 +62,7 @@ describe('motion tokens', () => {
     expect(motionEasings.decelerate).toBeTypeOf('function')
     expect(motionEasings.enterSmooth).toBeTypeOf('function')
     expect(motionEasings.exitStandard).toBeTypeOf('function')
+    expect(motionEasings.warm).toBeTypeOf('function')
     expect(motionStagger.listItem).toBe(40)
     expect(motionStagger.section).toBe(60)
   })

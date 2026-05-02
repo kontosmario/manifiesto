@@ -69,6 +69,12 @@ export const motionEasings = {
   // Universal exit curve: ease-in for natural deceleration into the
   // off-screen edge. Used by stack pop and modal close.
   exitStandard: Easing.bezier(0.4, 0.0, 1.0, 1.0),
+  // Symmetric inOut, anti-pop. Both extremes of the curve are slow;
+  // the middle accelerates. Used for contemplative entrances where
+  // the animation has to breathe (e.g. warm post-login splash) rather
+  // than proclaim. The cold-start splash uses `enterSmooth` instead —
+  // that one has a fast take-off, this one has none.
+  warm: Easing.bezier(0.45, 0.0, 0.55, 1.0),
 } as const
 
 export const motionStagger = {

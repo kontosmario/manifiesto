@@ -1,62 +1,150 @@
 import { useSyncExternalStore } from 'react'
 
-// Reactive store for the auth-transition splash overlay. Exposed as
-// imperative `show/hide` actions (called from controllers, mutations,
-// etc.) plus a `useAuthTransitionSplash()` hook so React components
-// can subscribe.
+// Reactive store for the auth-transition splash overlay.
 //
-// Why this exists: previously each loading gate (AppEntryGate,
-// RequireAuth, /(app)/onboarding) rendered its own splash via
-// BlockingScreenView and called `hideAuthTransitionSplash()` from a
-// `useEffect` once its local query resolved. Across a multi-step
-// navigation (login → / → /(app)/onboarding) that fired the splash
-// entrance animation 2-3 times, with brief flashes of skeleton or
-// blank screen between routes.
+// State machine
+// =============
 //
-// The new model is a single splash mounted at the root layout,
-// animated via opacity so it can fade in/out without remounting.
-// Hide is debounced so a quick show → hide → show sequence stays
-// "show" (no flicker).
+//   hidden  ─show─►  showing  ─markLoaded (min elapsed)─►  hidden
+//                       │      ─markLoaded (min not yet)─► success-pending
+//                       │      ─reportError─►  error
+//                       │      ─[MAX_VISIBLE_MS safety]─►  error(timeout)
+//   success-pending  ─[min elapses]─►  hidden
+//   error  ─hide─►  hidden  (used by retry / dismiss)
+//
+// The animation should NEVER be cut short by a fast response: even if
+// the destination data loads in 800ms, we hold the splash for at
+// least `MIN_VISIBLE_MS` so the warm fern entrance plays to
+// completion (~2.4s). Conversely, if the request hangs forever, the
+// `MAX_VISIBLE_MS` safety promotes the splash to `error(timeout)` so
+// the user gets a "no internet" fallback instead of a stuck splash.
 
-let visible = false
+export type AuthTransitionPhase =
+  | 'hidden'
+  | 'showing'
+  | 'success-pending'
+  | 'error'
+
+export type AuthTransitionErrorKind = 'network' | 'timeout' | 'unknown'
+
+export interface AuthTransitionState {
+  phase: AuthTransitionPhase
+  errorKind?: AuthTransitionErrorKind
+}
+
+// 3000ms = WarmFernLogo entrance (2400ms) + small margin so the
+// idle breath has a beat before dismissing. Keeps fast responses
+// from clipping the animation mid-flight.
+const MIN_VISIBLE_MS = 3000
+
+// 15000ms = generous upper bound. If neither `markAuthTransitionLoaded`
+// nor `reportAuthTransitionError` fires within this window, we assume
+// the request is hung (no internet, slow backend, etc.) and surface
+// the timeout error so the user can retry instead of staring at a
+// spinner forever.
+const MAX_VISIBLE_MS = 15000
+
+let state: AuthTransitionState = { phase: 'hidden' }
+let showStartedAt = 0
 let pendingHideTimer: ReturnType<typeof setTimeout> | null = null
+let safetyTimer: ReturnType<typeof setTimeout> | null = null
 const listeners = new Set<() => void>()
-
-const HIDE_DEBOUNCE_MS = 320
 
 function notify() {
   for (const listener of listeners) listener()
 }
 
-function clearHideTimer() {
+function clearAllTimers() {
   if (pendingHideTimer) {
     clearTimeout(pendingHideTimer)
     pendingHideTimer = null
   }
+  if (safetyTimer) {
+    clearTimeout(safetyTimer)
+    safetyTimer = null
+  }
 }
 
-export function showAuthTransitionSplash() {
-  clearHideTimer()
-  if (visible) return
-  visible = true
+function setStateAndNotify(next: AuthTransitionState) {
+  state = next
   notify()
 }
 
-export function hideAuthTransitionSplash() {
-  if (!visible) return
-  // Debounced hide: if a `show` call lands within the window, the
-  // pending hide is cancelled. Smooths over the chain of redirects
-  // each clearing their own loading state in quick succession.
-  clearHideTimer()
+/**
+ * Open the splash. Starts the min-visible timer + the max-safety
+ * timer. Subsequent calls while already showing are a no-op (the
+ * existing timers keep running).
+ */
+export function showAuthTransitionSplash() {
+  if (state.phase === 'showing' || state.phase === 'success-pending') return
+  clearAllTimers()
+  showStartedAt = Date.now()
+  safetyTimer = setTimeout(() => {
+    safetyTimer = null
+    // Only promote to timeout if still mid-flight. If success or
+    // explicit error already arrived, the timer was cleared.
+    if (state.phase === 'showing') {
+      setStateAndNotify({ phase: 'error', errorKind: 'timeout' })
+    }
+  }, MAX_VISIBLE_MS)
+  setStateAndNotify({ phase: 'showing' })
+}
+
+/**
+ * Report that the destination has finished loading successfully.
+ * Replaces the old "hide on isLoading=false" pattern. The splash
+ * actually hides only after the min-visible window elapses — fast
+ * responses get held back so the animation completes naturally.
+ */
+export function markAuthTransitionLoaded() {
+  if (state.phase !== 'showing') return
+  const elapsed = Date.now() - showStartedAt
+  if (elapsed >= MIN_VISIBLE_MS) {
+    clearAllTimers()
+    setStateAndNotify({ phase: 'hidden' })
+    return
+  }
+  // Min not yet reached: stay visible until it does.
+  setStateAndNotify({ phase: 'success-pending' })
+  if (safetyTimer) {
+    clearTimeout(safetyTimer)
+    safetyTimer = null
+  }
   pendingHideTimer = setTimeout(() => {
     pendingHideTimer = null
-    visible = false
-    notify()
-  }, HIDE_DEBOUNCE_MS)
+    if (state.phase === 'success-pending') {
+      setStateAndNotify({ phase: 'hidden' })
+    }
+  }, MIN_VISIBLE_MS - elapsed)
+}
+
+/**
+ * Report a load failure. Promotes the splash to `error` so the UI
+ * can render the fallback (no-internet message + retry). Idempotent
+ * once in error.
+ */
+export function reportAuthTransitionError(
+  kind: AuthTransitionErrorKind = 'unknown',
+) {
+  if (state.phase === 'hidden') return
+  if (state.phase === 'error') return
+  clearAllTimers()
+  setStateAndNotify({ phase: 'error', errorKind: kind })
+}
+
+/**
+ * Force-hide the splash regardless of phase. Called by the retry
+ * flow (dismiss the error UI), the preview button in settings, and
+ * legacy call sites that need to silence the splash unconditionally.
+ */
+export function hideAuthTransitionSplash() {
+  if (state.phase === 'hidden') return
+  clearAllTimers()
+  setStateAndNotify({ phase: 'hidden' })
 }
 
 export function getIsAuthTransitionSplashVisible() {
-  return visible
+  return state.phase !== 'hidden'
 }
 
 function subscribe(listener: () => void) {
@@ -67,12 +155,12 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot() {
-  return visible
+  return state
 }
 
 /**
- * Subscribe to splash visibility from a React component. Returns the
- * current `visible` boolean and re-renders on changes.
+ * Subscribe to splash state from a React component. Returns the full
+ * state object (`{ phase, errorKind? }`) and re-renders on changes.
  */
 export function useAuthTransitionSplash() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
