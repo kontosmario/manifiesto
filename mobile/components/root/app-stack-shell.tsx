@@ -10,8 +10,10 @@ import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import {
   getIsAuthTransitionSplashVisible,
+  markAuthTransitionLoaded,
   reportAuthTransitionError,
 } from '@/lib/auth-transition-splash'
+import { shouldDismissAuthTransition } from '@/lib/auth-transition-dismiss-gate'
 import { motionDurations } from '@/lib/motion'
 
 // ─── Navigation timing tokens ────────────────────────────────────
@@ -92,6 +94,25 @@ export function AppStackShell() {
       reportAuthTransitionError('unknown')
     }
   }, [snapshot.isError, snapshot.error, isOnline])
+
+  // Dismiss the post-signup / post-login splash as soon as the snapshot
+  // resolves successfully. This is the success counterpart of the
+  // error bridge above: without it, a freshly signed-up user (no
+  // family yet) lands here, the snapshot succeeds with `family: null`,
+  // the stack renders the onboarding route — but the splash overlay
+  // sits on top until the 15s safety timer fires and surfaces
+  // "La conexión está demorando".
+  const splashVisible = getIsAuthTransitionSplashVisible()
+  useEffect(() => {
+    if (
+      shouldDismissAuthTransition({
+        isLoading: !snapshot.isSuccess,
+        splashVisible,
+      })
+    ) {
+      markAuthTransitionLoaded()
+    }
+  }, [snapshot.isSuccess, splashVisible])
 
   // If the user is authenticated, block the whole app tree until the
   // snapshot is seeded. Everything downstream (RequireAuth, tabs,
