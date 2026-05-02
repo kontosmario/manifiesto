@@ -52,7 +52,7 @@ const DOW_FULL = [
  */
 export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const router = useRouter()
-  const { data, view, signals, usingMock } = useControlV2Data(familyId)
+  const { data, view, signals, noConfig } = useControlV2Data(familyId)
   const financeQuery = useFamilyFinance(familyId)
   const expensesQuery = useExpenses(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
@@ -136,10 +136,13 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     data.ingresoMes - data.fijosMes - data.libreMes,
   )
 
-  if (usingMock) {
-    // Cuenta nueva o configuración a medio hacer: el mock dataset
-    // pintaría números de otro usuario. Renderizamos un empty state
-    // que explica por qué no hay datos y guía al próximo paso.
+  if (noConfig) {
+    // Onboarding inicial pendiente: sin `monthly_income` no podemos
+    // calcular un cupo diario, así que la pantalla pinta el empty
+    // state guiando a configurar el ingreso. Una vez configurado,
+    // dejamos pasar aún sin gastos: el adapter calcula `cupoDiario`
+    // y las cards que requieren historial muestran su propio
+    // placeholder ("Día X de N").
     return (
       <Screen contentContainerStyle={styles.screen} scrollable={false}>
         {/* Mounted at the Screen level (outside the ScrollView) so the

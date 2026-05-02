@@ -47,6 +47,7 @@ import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
+import { classifyControlMode } from '@/features/insights/control-v2-mode'
 
 // ─── Module-level memoization across hook invocations ──────────────
 //
@@ -81,8 +82,15 @@ export interface ControlV2ViewModel {
    *  when the user is still using the mock dataset. */
   forecast: Forecast7Day | null
   isLoading: boolean
-  /** True when we fell back to the mock dataset (no real data yet). */
+  /** True when the user is brand-new or hasn't logged any expense yet —
+   *  drives `signals = []` and the asistente "first-time" copy. */
   usingMock: boolean
+  /** True only when `monthly_income` is missing (initial onboarding
+   *  not finished). Drives the CONTROL screen's global empty state.
+   *  When false but `usingMock` is true, the user has finished
+   *  onboarding and CONTROL renders the real cards (with per-card
+   *  placeholders for the ones that need historical data). */
+  noConfig: boolean
 }
 
 export interface UseControlV2DataOptions {
@@ -159,10 +167,10 @@ export function useControlV2Data(
     }),
   )
 
-  const usingMock =
-    !finance ||
-    finance.monthly_income <= 0 ||
-    expenses.length === 0
+  const { usingMock, noConfig } = classifyControlMode({
+    finance,
+    expensesCount: expenses.length,
+  })
 
   const { cycle: payCycle, isSalaryPendingConfirmation } = usePayCycle(familyId)
   const dismissedHikes = useDismissedHikes()
@@ -170,8 +178,14 @@ export function useControlV2Data(
   // `singleEntryMemoize`. With three Home-tree invocations sharing the
   // same React Query data identities, the second and third invocations
   // hit cache and the heavy compute only runs once per render cycle.
+  // Gate the dev fixture on `noConfig` (income missing) instead of the
+  // broader `usingMock`. Once the user finishes onboarding (income
+  // configured), the adapter computes a real `data` shape from the
+  // empty/sparse expense set — `cupoDiario` is meaningful, and the
+  // per-card `<ControlV2Placeholder>` handles the cards that still
+  // need historical data.
   const data = useMemo<ControlMockData>(() => {
-    if (usingMock || !finance) return CONTROL_MOCK
+    if (noConfig || !finance) return CONTROL_MOCK
     return memoizedBuildData({
       expenses,
       fixedExpenses,
@@ -179,7 +193,7 @@ export function useControlV2Data(
       summaries,
       payCycle,
     })
-  }, [usingMock, expenses, fixedExpenses, finance, summaries, payCycle])
+  }, [noConfig, expenses, fixedExpenses, finance, summaries, payCycle])
 
   const view = useMemo<ControlView>(() => memoizedComputeView(data), [data])
 
@@ -270,7 +284,7 @@ export function useControlV2Data(
     categoriesQuery.isLoading ||
     intelligenceQuery.isLoading
 
-  return { data, view, signals, forecast, isLoading, usingMock }
+  return { data, view, signals, forecast, isLoading, usingMock, noConfig }
 }
 
 // ─── Intelligence slice (summaries + limits + velocity) ─────────────
