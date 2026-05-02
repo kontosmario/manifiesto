@@ -1,15 +1,18 @@
-// Control v2 — mock dataset and pure math layer.
+// Control v2 — type contracts, pure math layer, and a dev fixture.
 //
-// PHASE 1 (now): this file hard-codes a realistic dataset + a single
-// `computeControlView` function so we can build the UI without waiting
-// for backend wiring. Every number in the mock has a clear meaning —
-// income, fixed, month length, current day/time, daily spend history —
-// so when we connect real data in PHASE 2 we swap the `CONTROL_MOCK`
-// source and keep every visualization intact.
+// `ControlMockData`, `ControlAdvisorTask`, `computeControlView` are the
+// runtime contract consumed by the Control v2 screen.
 //
-// PHASE 2 plan: replace `CONTROL_MOCK` with the output of
-// `useControlSnapshot(familyId)` + historical expenses query. The
-// shape of `ControlView` is the contract the UI will consume.
+// `CONTROL_MOCK` is a dev-only fixture: realistic numbers used by
+// Storybook and historical UI iteration. It is NEVER served to real
+// users at runtime. `useControlV2Data` returns the mock `data` shape
+// (so downstream components keep their non-null types) but `signals`
+// is gated through `resolveControlSignals` and stays empty for new
+// accounts. See `control-v2-empty-fallback.ts` for the gate, and
+// `control-v2-screen.tsx` (`if (usingMock)`) for the empty state.
+//
+// If you find yourself reading the values below in a UI test for a
+// brand-new user, that is a regression — file a bug.
 
 export interface ControlMockData {
   /** Monthly take-home income (ARS). */
