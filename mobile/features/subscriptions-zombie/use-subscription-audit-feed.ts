@@ -20,6 +20,65 @@ interface RawData {
   members: FamilyMemberRow[]
 }
 
+interface FixedExpenseDbRow {
+  id: string
+  family_id: string
+  name: string
+  amount: number | string
+  kind: string
+  status: string
+  frequency: string
+  category_id: string | null
+  next_due_on: string | null
+  last_paid_at: string | null
+  created_at: string
+  // Supabase types nested selects as arrays even for to-one relations.
+  categories: { name: string; scope: string }[] | { name: string; scope: string } | null
+}
+
+interface UsageAuditDbRow {
+  id: string
+  fixed_expense_id: string
+  family_id: string
+  user_id: string
+  period: string
+  level: 'mucho' | 'a_veces' | 'casi_nunca'
+  created_at: string
+}
+
+interface ActionIntentDbRow {
+  id: string
+  fixed_expense_id: string
+  family_id: string
+  user_id: string | null
+  intent: 'cancel' | 'pause' | 'downgrade'
+  declared_at: string
+  resolved_at: string | null
+  resolution: 'completed' | 'abandoned' | null
+  notes: string | null
+}
+
+interface PaymentDbRow {
+  id: string
+  fixed_expense_id: string
+  payment_period: string
+  amount: number | string
+  created_at: string
+}
+
+interface FamilyMemberDbRow {
+  user_id: string
+  profiles:
+    | { display_name: string | null }[]
+    | { display_name: string | null }
+    | null
+}
+
+function pickOne<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null) return null
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
+
 interface FeedResult {
   data: EngineResult | undefined
   raw: RawData | undefined
@@ -70,24 +129,27 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
 
       return {
         fixedExpenses: (fijos.data ?? []).map(
-          (r: any): FixedExpenseRow => ({
-            id: r.id,
-            familyId: r.family_id,
-            name: r.name,
-            amount: Number(r.amount),
-            kind: r.kind,
-            status: r.status,
-            frequency: r.frequency,
-            categoryId: r.category_id,
-            categoryName: r.categories?.name ?? null,
-            categoryScope: r.categories?.scope ?? null,
-            nextDueOn: r.next_due_on,
-            lastPaidAt: r.last_paid_at,
-            createdAt: r.created_at,
-          }),
+          (r: FixedExpenseDbRow): FixedExpenseRow => {
+            const cat = pickOne(r.categories)
+            return {
+              id: r.id,
+              familyId: r.family_id,
+              name: r.name,
+              amount: Number(r.amount),
+              kind: r.kind,
+              status: r.status,
+              frequency: r.frequency,
+              categoryId: r.category_id,
+              categoryName: cat?.name ?? null,
+              categoryScope: cat?.scope ?? null,
+              nextDueOn: r.next_due_on,
+              lastPaidAt: r.last_paid_at,
+              createdAt: r.created_at,
+            }
+          },
         ),
         audits: (audits.data ?? []).map(
-          (a: any): UsageAuditRecord => ({
+          (a: UsageAuditDbRow): UsageAuditRecord => ({
             id: a.id,
             fixedExpenseId: a.fixed_expense_id,
             familyId: a.family_id,
@@ -98,7 +160,7 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           }),
         ),
         intents: (intents.data ?? []).map(
-          (i: any): ActionIntentRecord => ({
+          (i: ActionIntentDbRow): ActionIntentRecord => ({
             id: i.id,
             fixedExpenseId: i.fixed_expense_id,
             familyId: i.family_id,
@@ -111,7 +173,7 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           }),
         ),
         payments: (payments.data ?? []).map(
-          (p: any): PaymentRow => ({
+          (p: PaymentDbRow): PaymentRow => ({
             id: p.id,
             fixedExpenseId: p.fixed_expense_id,
             paymentPeriod: p.payment_period,
@@ -120,10 +182,13 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           }),
         ),
         members: (members.data ?? []).map(
-          (m: any): FamilyMemberRow => ({
-            userId: m.user_id,
-            name: m.profiles?.display_name ?? '',
-          }),
+          (m: FamilyMemberDbRow): FamilyMemberRow => {
+            const profile = pickOne(m.profiles)
+            return {
+              userId: m.user_id,
+              name: profile?.display_name ?? '',
+            }
+          },
         ),
       }
     },

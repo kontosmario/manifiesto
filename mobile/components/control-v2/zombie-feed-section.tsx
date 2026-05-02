@@ -119,7 +119,7 @@ export function ZombieFeedSection({ familyId, userId }: Props) {
         ) {
           const monthsObserved = Math.max(
             Math.floor(
-              (Date.now() - Date.parse(fijo.createdAt)) / (1000 * 60 * 60 * 24 * 30),
+              (now.getTime() - Date.parse(fijo.createdAt)) / (1000 * 60 * 60 * 24 * 30),
             ),
             1,
           )
