@@ -71,6 +71,7 @@ import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-a
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
+import { ZombieFeedSection } from '@/components/control-v2/zombie-feed-section'
 
 interface AsistenteScreenProps {
   familyId: string
@@ -339,8 +340,9 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                 </Animated.View>
               ))
             )}
-
           </View>
+
+          <ZombieFeedSection familyId={familyId} userId={userId} />
         </ScrollView>
       </LinearGradient>
     </ControlAnchorsContext.Provider>
