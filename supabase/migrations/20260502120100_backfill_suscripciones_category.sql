@@ -2,14 +2,13 @@
 -- bootstrap_family() seeds it for new families (since 20260423151925), but families
 -- created before that migration may be missing it.
 
-insert into public.categories (id, family_id, name, color, scope, created_at, updated_at)
+insert into public.categories (id, family_id, name, color, scope, created_at)
 select
   gen_random_uuid(),
   f.id,
   'Suscripciones',
   '#C9A6E0',
   'fixed_expense',
-  now(),
   now()
 from public.families f
 where not exists (
