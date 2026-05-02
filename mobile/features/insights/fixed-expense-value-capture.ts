@@ -1,18 +1,11 @@
 // Downstream value capture for fixed-expense mutations.
 //
-// The dispatcher path used to optimistically log `cancelled_zombie` /
-// `renegotiated_hike` the moment a user tapped the CTA — but that
-// over-counted (the user might just peek at the editor and back out).
-// This module closes the loop honestly: only when the underlying
-// `fixed_expense` is actually deleted (zombie) or its amount actually
-// drops (hike), we cross-reference the recent advisor alerts and log
-// real counterfactual value.
-//
-// Cross-reference: we look for `kind='zombie_alert'` /
-// `kind='price_hike'` notifications attached to this fixed_expense_id
-// within the last 30 days. If found, the deletion / reduction is
-// causally attributed to the advisor and recorded in
-// `advisor_value_log` (non-estimated, evidence-bearing).
+// Today this module only covers `renegotiated_hike` (a real amount
+// drop attributable to a recent `kind='price_hike'` advisor alert).
+// The legacy `captureZombieDeletion` was removed when the zombie
+// detection moved to the family-transparent audit flow — value capture
+// for cancellations now happens via the intent resolution path in
+// `mobile/features/subscriptions-zombie/use-resolve-subscription-intent.ts`.
 
 import type { QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -20,7 +13,7 @@ import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-q
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { logAdvisorValue } from '@/features/insights/log-advisor-value'
 
-interface ZombieAlertRow {
+interface AdvisorAlertRow {
   id: string
   metadata: Record<string, unknown> | null
   created_at: string
@@ -43,8 +36,8 @@ function readFixedFromCache(
 async function findRecentAdvisorAlert(
   familyId: string,
   fixedExpenseId: string,
-  kind: 'zombie_alert' | 'price_hike',
-): Promise<ZombieAlertRow | null> {
+  kind: 'price_hike',
+): Promise<AdvisorAlertRow | null> {
   const cutoff = new Date(
     Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString()
@@ -58,7 +51,7 @@ async function findRecentAdvisorAlert(
       .order('created_at', { ascending: false })
       .limit(20)
     if (error) return null
-    const rows = (data ?? []) as ZombieAlertRow[]
+    const rows = (data ?? []) as AdvisorAlertRow[]
     return (
       rows.find(
         (r) =>
@@ -70,44 +63,6 @@ async function findRecentAdvisorAlert(
   } catch {
     return null
   }
-}
-
-export async function captureZombieDeletion(args: {
-  queryClient: QueryClient
-  familyId: string
-  fixedExpenseId: string
-}): Promise<void> {
-  const fixed = readFixedFromCache(
-    args.queryClient,
-    args.familyId,
-    args.fixedExpenseId,
-  )
-  // Without the cached row we can't reconstruct the monthly amount,
-  // so we degrade silently — better no log than a wrong one.
-  if (!fixed) return
-  const monthlyAmount = Number(fixed.amount ?? 0)
-  if (monthlyAmount <= 0) return
-  const alert = await findRecentAdvisorAlert(
-    args.familyId,
-    args.fixedExpenseId,
-    'zombie_alert',
-  )
-  if (!alert) return // delete wasn't attributable to a zombie signal
-  void logAdvisorValue({
-    familyId: args.familyId,
-    signalId: `zombie-${args.fixedExpenseId}`,
-    actionTaken: 'cancelled_zombie',
-    valueSaved: monthlyAmount,
-    horizonMonths: 12,
-    evidence: {
-      fixedExpenseId: args.fixedExpenseId,
-      fixedExpenseName: fixed.name,
-      monthlyAmount,
-      sourceAlertId: alert.id,
-      sourceAlertCreatedAt: alert.created_at,
-    },
-    isEstimated: false,
-  })
 }
 
 export async function captureHikeReduction(args: {

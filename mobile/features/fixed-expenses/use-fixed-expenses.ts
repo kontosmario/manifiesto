@@ -12,10 +12,7 @@ import {
   type UpsertFixedExpenseInput,
 } from '@/features/fixed-expenses/fixed-expense-repository'
 import { sendFamilyPush } from '@/lib/send-family-push'
-import {
-  captureHikeReduction,
-  captureZombieDeletion,
-} from '@/features/insights/fixed-expense-value-capture'
+import { captureHikeReduction } from '@/features/insights/fixed-expense-value-capture'
 import {
   type FixedExpense,
   type FixedExpenseStatus,
@@ -171,19 +168,10 @@ export function useDeleteFixedExpense(familyId?: string) {
       }
       await deleteFixedExpense(familyId, fixedExpenseId)
     },
-    onSuccess: async (_data, fixedExpenseId) => {
-      // Counterfactual value capture: if a recent `zombie_alert` was
-      // attached to this fixed expense, attribute the deletion to the
-      // advisor and log it. Runs BEFORE invalidation so the helper can
-      // still read the row from cache.
-      if (familyId) {
-        void captureZombieDeletion({
-          queryClient,
-          familyId,
-          fixedExpenseId,
-        })
-      }
-
+    onSuccess: async (_data, _fixedExpenseId) => {
+      // Zombie cancellations now flow through the audit/intent path in
+      // `subscriptions-zombie` and log value via the resolution RPC, so
+      // the legacy zombie value capture is no longer fired here.
       await invalidateFamilyBudgetData(queryClient, familyId, {
         includeFixedExpenses: true,
         includeNotifications: true,

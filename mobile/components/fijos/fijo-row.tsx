@@ -104,11 +104,8 @@ export function FijoRow({
               >
                 <Text style={styles.iconText}>{emoji}</Text>
               </View>
-              {item.isZombie ? (
-                <View style={styles.zombieBadge}>
-                  <Text style={styles.zombieBadgeText}>🧟</Text>
-                </View>
-              ) : null}
+              {/* Zombie badge removed — auditing moved to the family-transparent
+                  audit flow in the Asistente. Cards no longer flag zombies inline. */}
             </View>
 
             <View style={styles.body}>

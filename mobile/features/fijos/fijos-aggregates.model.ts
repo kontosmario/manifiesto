@@ -53,34 +53,14 @@ export interface FijosCycleSummary {
   daysRemaining: number
 }
 
-const ZOMBIE_INACTIVITY_DAYS = 60
-const ZOMBIE_MAX_AMOUNT = 15000
 const HIKE_MIN_DELTA_PCT = 5
 
-/**
- * Zombie detection — cheap recurring subscription (≤ ARS 15k) that
- * hasn't been paid in the last 60 days. Matches the V1 Cuaderno copy
- * ("Sin uso en 60 días. Podés revisar.") without needing a dedicated
- * usage signal.
- */
-function isLikelyZombie(input: {
-  item: FixedExpense
-  daysSinceLastPaid: number | null
-  today: Date
-}): boolean {
-  const { item, daysSinceLastPaid, today } = input
-  const amount = Number(item.amount ?? 0)
-  if (amount <= 0 || amount > ZOMBIE_MAX_AMOUNT) return false
-  if (item.kind !== 'recurring') return false
-  if (item.status !== 'active') return false
-
-  const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0
-  const ageDays = createdAt > 0 ? (today.getTime() - createdAt) / 86_400_000 : Infinity
-  if (ageDays < ZOMBIE_INACTIVITY_DAYS) return false
-
-  if (daysSinceLastPaid == null) return true
-  return daysSinceLastPaid >= ZOMBIE_INACTIVITY_DAYS
-}
+// Legacy zombie heuristic removed in favor of the family-transparent
+// audit flow surfaced in the Asesor (asistente). Detection now lives in
+// `mobile/features/subscriptions-zombie/subscription-audit-engine.ts`.
+// `FijoItem.isZombie` and `FijosCycleSummary.zombies` are kept as no-ops
+// (always false / empty) so consumers don't break — to be removed when
+// all UI surfaces migrate.
 
 /**
  * Translates next_due_on + last_paid_at + today into a fresh status:
@@ -174,7 +154,7 @@ export function summarizeFijos(input: {
         dayOfMonth,
         daysUntilDue: daysUntilDue(dayOfMonth, todayDay, cycleDays),
         computedStatus: computeItemStatus({ item: i, paidThisPeriod, today }),
-        isZombie: isLikelyZombie({ item: i, daysSinceLastPaid, today }),
+        isZombie: false,
         daysSinceLastPaid,
         priceHistory,
         trendDeltaPct,
@@ -198,7 +178,7 @@ export function summarizeFijos(input: {
     .slice()
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
     .slice(0, 3)
-  const zombies = enriched.filter((i) => i.isZombie)
+  const zombies: FijoItem[] = []
   const hikes = detectHikes({ items: enriched, categoriesById })
   const daysToNextPayment = upcoming[0] ? upcoming[0].daysUntilDue : null
   const daysRemaining = Math.max(0, cycleDays - cycleDayIndex)

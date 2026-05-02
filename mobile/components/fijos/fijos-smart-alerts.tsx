@@ -80,17 +80,10 @@ export function FijosSmartAlerts({
     })
   }
 
-  if (zombieCount > 0) {
-    alerts.push({
-      id: 'zombies',
-      icon: '🧟',
-      title: `${zombieCount} ${zombieCount === 1 ? 'suscripción zombi' : 'suscripciones zombi'}`,
-      body: 'Sin uso en 60 días. Podés revisar.',
-      action: 'Ver',
-      tint: '#C9A6E0',
-      onPress: onOpenZombies,
-    })
-  }
+  // Legacy zombie alert removed — the family-transparent audit flow now
+  // surfaces subscription auditing in the Asistente. `zombieCount` is
+  // kept in the props shape only for backward compatibility with the
+  // controller; it should always be 0 going forward.
   // Hide hikes the user already acknowledged at the current price.
   // If the price changes again later, the stored `dismissedAtPrice`
   // won't match the new `currentPrice` and the alert re-surfaces.
