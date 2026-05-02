@@ -49,6 +49,7 @@ import { useControlActionDispatcher } from '@/features/insights/use-control-acti
 import { useBlockSignalFamily } from '@/features/insights/use-signal-blocklist'
 import { signalFamilyOf } from '@/features/insights/signal-family'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
+import { selectAsistenteEmptyCopy } from '@/features/insights/asistente-empty-copy'
 import {
   dismissCard,
   useDismissedIds,
@@ -107,7 +108,7 @@ const STRIP_BORDER = 'rgba(199,238,156,0.12)'
 export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { signals, data, forecast } = useControlV2Data(familyId, userId)
+  const { signals, data, forecast, usingMock } = useControlV2Data(familyId, userId)
   const valueSummaryQuery = useAdvisorValueSummary(userId, familyId)
   const dismissed = useDismissedIds()
   const [expanded, setExpanded] = useState(false)
@@ -319,7 +320,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
 
           <View style={styles.chatBody}>
             {visible.length === 0 ? (
-              <EmptyState />
+              <EmptyState usingMock={usingMock} />
             ) : (
               visible.map((task, i) => (
                 <Animated.View
@@ -1050,7 +1051,8 @@ function ChatMessage({
 
 // ─── Empty State ──────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ usingMock }: { usingMock: boolean }) {
+  const copy = selectAsistenteEmptyCopy({ usingMock })
   return (
     <Animated.View
       entering={FadeIn.duration(220)}
@@ -1059,11 +1061,8 @@ function EmptyState() {
       <View style={styles.emptyCheck}>
         <MaterialIcons name="check" size={20} color="#0F2A1E" />
       </View>
-      <Text style={styles.emptyTitle}>Revisaste todas las sugerencias</Text>
-      <Text style={styles.emptyBody}>
-        El asistente sigue mirando tus números. Si los patrones persisten,
-        las sugerencias volverán a aparecer.
-      </Text>
+      <Text style={styles.emptyTitle}>{copy.title}</Text>
+      <Text style={styles.emptyBody}>{copy.body}</Text>
     </Animated.View>
   )
 }
