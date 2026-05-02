@@ -46,6 +46,7 @@ import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
 import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
 
 // ─── Module-level memoization across hook invocations ──────────────
 //
@@ -214,7 +215,7 @@ export function useControlV2Data(
   }, [usingMock, view, fixedExpenses])
 
   const signals = useMemo<ControlAdvisorTask[]>(() => {
-    if (usingMock) return CONTROL_MOCK.tareas
+    if (usingMock) return resolveControlSignals({ usingMock: true, computedSignals: [] })
     return memoizedBuildSignals({
       view,
       expenses,
