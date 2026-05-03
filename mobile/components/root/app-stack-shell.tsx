@@ -167,6 +167,15 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="add-income"
+          options={{
+            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+            animation: MODAL_ANIMATION,
+            animationDuration: motionDurations.enterModal,
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
           name="household-setup"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',

@@ -7,8 +7,10 @@ import {
 } from '@/features/fijos/fijos-aggregates.model'
 import { useMonthlyExpenseComparison } from '@/features/home/use-monthly-expense-comparison'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
+import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 import {
   isHikeDismissed,
   useDismissedHikes,
@@ -121,6 +123,15 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const categoriesQuery = useCategories(familyId, 'fixed_expense')
   const comparisonQuery = useMonthlyExpenseComparison(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
+  // One-time income events that fall inside the current pay cycle —
+  // bumps `availableToday` and `projectedClose` so the user sees the
+  // saldo positivo extra reflected immediately.
+  const cycleIncomeQuery = useCycleIncomeEventsTotal(
+    familyId,
+    formatLocalDateKey(dashboard.payCycle.start),
+    formatLocalDateKey(dashboard.payCycle.end),
+  )
+  const cycleExtraIncome = cycleIncomeQuery.data ?? 0
 
   const today = dashboard.todayDate
   const fixedExpenses = dashboard.fixedExpensesQuery.data ?? []
@@ -180,8 +191,13 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     const daysRemaining = Math.max(1, cycleTotalDays - cycleDay)
 
     // "Disponible hoy" = plata discrecional restante del ciclo
-    // (dashboard.totalAvailable ya excluye fijos y ahorro).
-    const availableToday = Math.max(0, Math.round(dashboard.totalAvailable))
+    // (dashboard.totalAvailable ya excluye fijos y ahorro). Le sumamos
+    // los `income_events` del ciclo (transferencias, bonos, regalos)
+    // para que el saldo positivo extra impacte de inmediato.
+    const availableToday = Math.max(
+      0,
+      Math.round(dashboard.totalAvailable + cycleExtraIncome),
+    )
     // Cupo diario BASE — misma definición que Control adapter y
     // Daily Budget Engine:
     //   libreMes = ingresoEfectivo − fijos − ahorro destinado del mes
@@ -204,7 +220,10 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     const avgDailySpend = dashboard.variableSpentInCurrentCycle / Math.max(1, cycleDay)
     const projectedTotalSpend = avgDailySpend * cycleTotalDays
     const projectedClose = Math.round(
-      dashboard.effectiveCycleIncome - dashboard.fixedExpensesMonthlyTotal - projectedTotalSpend,
+      dashboard.effectiveCycleIncome
+        + cycleExtraIncome
+        - dashboard.fixedExpensesMonthlyTotal
+        - projectedTotalSpend,
     )
 
     // When `isSalaryPendingConfirmation` is true the cycle is frozen
@@ -297,6 +316,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.fixedExpensesMonthlyTotal,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
+    cycleExtraIncome,
     expenses,
     comparisonQuery.data,
     fijosSummary,

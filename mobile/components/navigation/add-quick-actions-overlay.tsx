@@ -21,7 +21,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
-  key: 'expense' | 'fixed' | 'goal'
+  key: 'expense' | 'fixed' | 'income'
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void

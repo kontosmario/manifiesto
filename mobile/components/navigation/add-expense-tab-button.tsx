@@ -77,10 +77,10 @@ export function AddExpenseTabButton({
 
   const quickActions: QuickAction[] = [
     {
-      key: 'goal',
-      label: 'Meta de ahorro',
-      icon: 'flag',
-      onPress: () => router.push('/(app)/savings-goal'),
+      key: 'income',
+      label: 'Ingreso',
+      icon: 'trending-up',
+      onPress: () => router.push('/(app)/add-income'),
     },
     {
       key: 'fixed',
