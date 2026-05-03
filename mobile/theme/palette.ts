@@ -189,7 +189,7 @@ const lightColors: ThemeColors = {
   warning:            '#C27A0A',
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
-  heroGradient:       ['#244235', '#1F590D', '#7C2B0E', '#297811'],  // V1: forest → primary-900 → accent-800 (coral) → primary-800
+  heroGradient:       ['#244235', '#1F590D', '#297811', '#297811'],  // V1: forest → primary-900 → primary-800 (terminate, AA-safe for cream)
   heroAccent:         '#A6EF8F',  // V1 — primary-300
   heroMuted:          'rgba(242,234,211,0.78)',  // V1 — cream alpha
   heroMuted2:         'rgba(242,234,211,0.55)',
@@ -231,7 +231,7 @@ const darkColors: ThemeColors = {
   warning:            '#F3BA57',
   danger:             '#F06A6A',
   overlay:            'rgba(0,0,0,0.52)',
-  heroGradient:       ['#244235', '#1F590D', '#5C200A', '#297811'],  // V1 dark: forest → primary-900 → accent-900 (coral deep) → primary-800
+  heroGradient:       ['#244235', '#1F590D', '#297811', '#297811'],  // V1 dark: forest → primary-900 → primary-800 (terminate, AA-safe for cream)
   heroAccent:         '#A6EF8F',  // V1 — primary-300
   heroMuted:          'rgba(242,234,211,0.78)',
   heroMuted2:         'rgba(242,234,211,0.55)',
