@@ -291,27 +291,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           <View style={styles.grabHandleArea} pointerEvents="none">
             <View style={styles.grabHandle} />
           </View>
-          <TopBar count={visible.length} totalImpact={totalImpact} />
-
-          {forecast && visible.length > 0 ? (
-            <ForecastStrip forecast={forecast} />
-          ) : null}
-
-          {visible.length > 0 ? (
-            <ConstellationHeader
-              signals={visible}
-              active={active}
-              onTap={handleStarTap}
-              expanded={expanded}
-              setExpanded={setExpanded}
-              diaActual={data.diaActual}
-              diasMes={data.diasMes}
-            />
-          ) : null}
-
-          {valueSummaryQuery.data ? (
-            <TrustReceiptStrip summary={valueSummaryQuery.data} />
-          ) : null}
+          <Header count={visible.length} totalImpact={totalImpact} />
 
           <View style={styles.chatBody}>
             {visible.length === 0 ? (
@@ -351,101 +331,48 @@ function dismissKeyFor(task: ControlAdvisorTask): string {
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────
 
-function TopBar({
+function Header({
   count,
   totalImpact,
 }: {
   count: number
   totalImpact: number
 }) {
-  // No close button — the screen is a bottom sheet and dismisses with
-  // the system swipe-down gesture (the grab handle above telegraphs
-  // it). Layout: avatar on the left, identity column on the right.
-  // The identity column has title + impact pill on top row and the
-  // status line on a second row, so the status gets the full width.
+  // Minimal header: just the title and an aggregate "potencial / mes"
+  // pill. The bottom-sheet grab handle above already identifies the
+  // screen; the avatar + pulse dot in the previous TopBar were
+  // decoration that competed with the actual signal cards below.
+  //
+  // Subtitle wording is intentionally hedged ("acciones que pueden")
+  // because the totalImpact is an upper-bound estimate — summing
+  // signals with mixed scopes (cycle / monthly / oneTime) is a soft
+  // projection, not a guaranteed cashflow.
   return (
-    <View style={styles.topBar}>
-      <View style={styles.identityAvatarWrap}>
-        <LinearGradient
-          colors={ASSISTANT_GRADIENT}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.identityAvatar}
-        >
-          <MaterialIcons name="auto-awesome" size={22} color="#0F2A1E" />
-        </LinearGradient>
-        <PulseDot size={12} />
-      </View>
-      <View style={styles.identityText}>
-        <View style={styles.identityTopRow}>
-          <Text style={styles.identityTitle} numberOfLines={1}>
-            Asistente
-          </Text>
-          {totalImpact > 0 ? (
-            <View style={styles.totalPill}>
-              <Text style={styles.totalPillText}>
-                +{formatMoneyShort(totalImpact)}/mes
-              </Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.identityStatusText} numberOfLines={1}>
-          {count > 0
-            ? `Mirando tus números · ${count} ${count === 1 ? 'cosa' : 'cosas'} para vos`
-            : 'Al día por ahora'}
+    <View style={styles.header}>
+      <View style={styles.headerTopRow}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          Asistente
         </Text>
+        {totalImpact > 0 ? (
+          <View style={styles.headerPill}>
+            <MaterialIcons
+              name="trending-up"
+              size={12}
+              color="#C7EE9C"
+            />
+            <Text style={styles.headerPillValue}>
+              +{formatMoneyShort(totalImpact)}
+            </Text>
+            <Text style={styles.headerPillSuffix}>/mes potencial</Text>
+          </View>
+        ) : null}
       </View>
+      <Text style={styles.headerSubtitle} numberOfLines={1}>
+        {count > 0
+          ? `${count} ${count === 1 ? 'acción' : 'acciones'} que pueden mover la aguja`
+          : 'Al día por ahora'}
+      </Text>
     </View>
-  )
-}
-
-function PulseDot({ size }: { size: number }) {
-  const reduced = useReducedMotion()
-  const pulse = useSharedValue(0)
-  useLoopAnimation(
-    () => {
-      if (reduced) return
-      pulse.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 1200, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: 1200, easing: Easing.out(Easing.quad) }),
-        ),
-        -1,
-        false,
-      )
-    },
-    [pulse],
-    [reduced],
-  )
-  const aRing = useAnimatedStyle(() => ({
-    opacity: 0.55 - pulse.value * 0.55,
-    transform: [{ scale: 1 + pulse.value * 0.6 }],
-  }))
-  return (
-    <>
-      <View
-        style={[
-          styles.pulseDot,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-        ]}
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.pulseDotRing,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-          aRing,
-        ]}
-      />
-    </>
   )
 }
 
@@ -1148,78 +1075,56 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(199,238,156,0.45)',
   },
-  // Top bar — single identity row (no close button; sheet dismisses
-  // via system swipe-down gesture).
-  topBar: {
-    paddingHorizontal: 18,
+  // Header — minimal title row + aggregate impact pill, then a
+  // hedged subtitle. No avatar, no pulse dot, no two-row layout.
+  header: {
+    paddingHorizontal: 14,
     paddingTop: 4,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    paddingBottom: 14,
+    gap: 6,
   },
-  identityAvatarWrap: {
-    width: 48,
-    height: 48,
-  },
-  identityAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  identityText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  identityTopRow: {
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
-  pulseDot: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    backgroundColor: STATUS_DOT,
-    borderWidth: 2,
-    borderColor: '#0F2A1E',
-  },
-  pulseDotRing: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    borderWidth: 2,
-    borderColor: STATUS_DOT,
-  },
-  identityTitle: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 26,
     fontWeight: '800',
     color: TEXT_PRIMARY,
-    letterSpacing: -0.4,
+    letterSpacing: -0.8,
     flexShrink: 1,
   },
-  identityStatusText: {
-    fontSize: 11,
-    color: TEXT_TERTIARY,
-    fontWeight: '600',
-  },
-  totalPill: {
+  headerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: COUNT_PILL_BG,
     borderWidth: 1,
     borderColor: COUNT_PILL_BORDER,
   },
-  totalPillText: {
-    fontSize: 12,
+  headerPillValue: {
+    fontSize: 13,
     fontWeight: '800',
     color: TEXT_ACCENT,
-    letterSpacing: 0.3,
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
+  },
+  headerPillSuffix: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(199,238,156,0.70)',
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: TEXT_SECONDARY,
+    paddingLeft: 2,
   },
   // Map / Constellation
   mapWrap: {
