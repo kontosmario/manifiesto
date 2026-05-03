@@ -48,19 +48,19 @@ import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import { ZombieFeedSection } from '@/components/control-v2/zombie-feed-section'
+import {
+  useAsistenteTheme,
+  type AsistenteTokens,
+} from '@/features/insights/asistente-theme'
 
 interface AsistenteScreenProps {
   familyId: string
   userId: string
 }
 
-const SHELL_GRADIENT = ['#0F2A1E', '#143B2A', '#0A1410'] as const
-const STAR_COLOR = '#C7EE9C'
-const TEXT_PRIMARY = '#F6FBEF'
-const TEXT_ACCENT = '#C7EE9C'
-const TEXT_SECONDARY = 'rgba(246,251,239,0.70)'
-const COUNT_PILL_BG = 'rgba(199,238,156,0.14)'
-const COUNT_PILL_BORDER = 'rgba(199,238,156,0.20)'
+// All theme-dependent colors come from `useAsistenteTheme()` and are
+// applied inline. The few palette constants the screen needs from the
+// brand audit (peach accent, etc.) live in `asistente-theme.ts`.
 
 /**
  * Asistente Financiero — full conversation screen.
@@ -77,6 +77,7 @@ const COUNT_PILL_BORDER = 'rgba(199,238,156,0.20)'
 export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const t = useAsistenteTheme()
   const { signals, usingMock } = useControlV2Data(familyId, userId)
   const dismissed = useDismissedIds()
   const [expanded, setExpanded] = useState(false)
@@ -243,12 +244,12 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
       <LinearGradient
-        colors={SHELL_GRADIENT}
+        colors={t.shellGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.root}
       >
-        <TwinklingStars count={18} />
+        <TwinklingStars count={18} starColor={t.starColor} opacityScale={t.starOpacityScale} />
 
         <ScrollView
           ref={scrollRef}
@@ -264,11 +265,11 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           <View style={styles.grabHandleArea} pointerEvents="none">
             <View style={styles.grabHandle} />
           </View>
-          <Header count={visible.length} totalImpact={totalImpact} />
+          <Header count={visible.length} totalImpact={totalImpact} t={t} />
 
           <View style={styles.cardsList}>
             {visible.length === 0 ? (
-              <EmptyState usingMock={usingMock} />
+              <EmptyState usingMock={usingMock} t={t} />
             ) : (
               visible.map((task, i) => (
                 <Animated.View
@@ -285,6 +286,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                     onLongPressBubble={() => handleLongPress(task)}
                     onAction={() => handleAction(task)}
                     onDismiss={() => handleDismiss(task)}
+                    t={t}
                   />
                 </Animated.View>
               ))
@@ -307,40 +309,43 @@ function dismissKeyFor(task: ControlAdvisorTask): string {
 function Header({
   count,
   totalImpact,
+  t,
 }: {
   count: number
   totalImpact: number
+  t: AsistenteTokens
 }) {
-  // Minimal header: just the title and an aggregate "potencial / mes"
-  // pill. The bottom-sheet grab handle above already identifies the
-  // screen; the avatar + pulse dot in the previous TopBar were
-  // decoration that competed with the actual signal cards below.
-  //
-  // Subtitle wording is intentionally hedged ("acciones que pueden")
-  // because the totalImpact is an upper-bound estimate — summing
-  // signals with mixed scopes (cycle / monthly / oneTime) is a soft
-  // projection, not a guaranteed cashflow.
+  // Minimal header: title + aggregate "potencial / mes" pill. All
+  // theme-dependent colors come from `t` (the asistente token set);
+  // styles below carry only the layout/typography that doesn't change
+  // between light and dark.
   return (
     <View style={styles.header}>
       <View style={styles.headerTopRow}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, { color: t.headerTitle }]} numberOfLines={1}>
           Asistente
         </Text>
         {totalImpact > 0 ? (
-          <View style={styles.headerPill}>
-            <MaterialIcons
-              name="trending-up"
-              size={12}
-              color="#C7EE9C"
-            />
-            <Text style={styles.headerPillValue}>
+          <View
+            style={[
+              styles.headerPill,
+              { backgroundColor: t.pillBg, borderColor: t.pillBorder },
+            ]}
+          >
+            <MaterialIcons name="trending-up" size={12} color={t.pillIcon} />
+            <Text style={[styles.headerPillValue, { color: t.pillValue }]}>
               +{formatMoneyShort(totalImpact)}
             </Text>
-            <Text style={styles.headerPillSuffix}>/mes potencial</Text>
+            <Text style={[styles.headerPillSuffix, { color: t.pillSuffix }]}>
+              /mes potencial
+            </Text>
           </View>
         ) : null}
       </View>
-      <Text style={styles.headerSubtitle} numberOfLines={1}>
+      <Text
+        style={[styles.headerSubtitle, { color: t.headerSubtitle }]}
+        numberOfLines={1}
+      >
         {count > 0
           ? `${count} ${count === 1 ? 'acción' : 'acciones'} que pueden mover la aguja`
           : 'Al día por ahora'}
@@ -356,6 +361,7 @@ function InsightCard({
   onLongPressBubble,
   onAction,
   onDismiss,
+  t,
 }: {
   task: ControlAdvisorTask
   isActive: boolean
@@ -363,6 +369,7 @@ function InsightCard({
   onLongPressBubble: () => void
   onAction: () => void
   onDismiss: () => void
+  t: AsistenteTokens
 }) {
   const type = bubbleType(task)
   const tone = TYPE_TONES[type]
@@ -370,34 +377,29 @@ function InsightCard({
   const icon = iconForSignal(task.id)
   const ctaLabel = resolveCtaLabel(task.cta, task.action)
   const isDismissAction = task.action?.kind === 'dismiss'
-  // Impact text color follows the signal type — `warning` (red flags
-  // like price hikes / drains) reads in peach, everything else in
-  // forest green. Keeps the impact line legible on the cream surface
-  // without a distracting pill chip.
-  const impactColor = type === 'warning' ? '#C25A3E' : '#2E7D5B'
+  // Impact line picks the brand-aligned positive/warning color from
+  // the active theme. The deep variants pass AA on light cards; the
+  // mint/peach pair passes AAA on dark cards.
+  const impactColor =
+    type === 'warning' ? t.impactWarning : t.impactPositive
 
   return (
     <View style={styles.message}>
       {/*
-        Card surface contains BOTH the visual content (head/body/impact)
-        AND the action buttons. The buttons are styled as forest-on-cream
-        (rgba alphas of forest), so they MUST sit on cream — when they
-        lived outside the card on the dark forest shell the bg/text
-        rendered at ~1:1 contrast (literally invisible). Splitting the
-        Pressable into two sibling regions inside the same cream View
-        avoids gesture conflicts: tap-area on top expands the card,
-        the button row below handles its own taps.
+        Card surface contains BOTH the visual content and the action
+        buttons. Buttons sit on the card surface so the theme-aware
+        button colors render with the right contrast in both modes.
       */}
       <View
         style={[
           styles.bubble,
           {
             borderColor: isActive
-              ? tone.accent
+              ? t.cardBorderActive
               : isCritical
                 ? `${tone.accent}AA`
-                : 'rgba(15,42,30,0.16)',
-            backgroundColor: '#FFFBF2',
+                : t.cardBorder,
+            backgroundColor: t.cardBg,
             shadowColor: tone.accent,
             shadowOpacity: isActive ? 0.28 : 0.12,
             shadowRadius: isActive ? 16 : 8,
@@ -420,12 +422,18 @@ function InsightCard({
             >
               <MaterialIcons name={icon} size={18} color={tone.fg} />
             </View>
-            <Text style={styles.bubbleTitle} numberOfLines={2}>
+            <Text
+              style={[styles.bubbleTitle, { color: t.cardTitle }]}
+              numberOfLines={2}
+            >
               {task.title}
             </Text>
           </View>
 
-          <Text style={styles.bubbleBody} numberOfLines={4}>
+          <Text
+            style={[styles.bubbleBody, { color: t.cardBody }]}
+            numberOfLines={4}
+          >
             {task.body}
           </Text>
 
@@ -444,13 +452,20 @@ function InsightCard({
             onPress={onAction}
             style={({ pressed }) => [
               styles.replyCta,
-              { opacity: pressed ? 0.92 : 1 },
+              {
+                backgroundColor: t.ctaBg,
+                shadowColor: t.ctaShadow,
+                opacity: pressed ? 0.92 : 1,
+              },
             ]}
           >
-            <Text style={styles.replyCtaText} numberOfLines={1}>
+            <Text
+              style={[styles.replyCtaText, { color: t.ctaText }]}
+              numberOfLines={1}
+            >
               {ctaLabel}
             </Text>
-            <MaterialIcons name="arrow-forward" size={14} color="#FFFBF2" />
+            <MaterialIcons name="arrow-forward" size={14} color={t.ctaText} />
           </Pressable>
           {!isDismissAction ? (
             <Pressable
@@ -460,10 +475,16 @@ function InsightCard({
               hitSlop={4}
               style={({ pressed }) => [
                 styles.replySeen,
-                { opacity: pressed ? 0.7 : 1 },
+                {
+                  backgroundColor: t.vistoBg,
+                  borderColor: t.vistoBorder,
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
             >
-              <Text style={styles.replySeenText}>Visto</Text>
+              <Text style={[styles.replySeenText, { color: t.vistoText }]}>
+                Visto
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -474,25 +495,43 @@ function InsightCard({
 
 // ─── Empty State ──────────────────────────────────────────────────────────
 
-function EmptyState({ usingMock }: { usingMock: boolean }) {
+function EmptyState({
+  usingMock,
+  t,
+}: {
+  usingMock: boolean
+  t: AsistenteTokens
+}) {
   const copy = selectAsistenteEmptyCopy({ usingMock })
   return (
     <Animated.View
       entering={FadeIn.duration(220)}
       style={styles.emptyState}
     >
-      <View style={styles.emptyCheck}>
-        <MaterialIcons name="check" size={20} color="#0F2A1E" />
+      <View style={[styles.emptyCheck, { backgroundColor: t.pillIcon }]}>
+        <MaterialIcons name="check" size={20} color={t.ctaText} />
       </View>
-      <Text style={styles.emptyTitle}>{copy.title}</Text>
-      <Text style={styles.emptyBody}>{copy.body}</Text>
+      <Text style={[styles.emptyTitle, { color: t.headerTitle }]}>
+        {copy.title}
+      </Text>
+      <Text style={[styles.emptyBody, { color: t.headerSubtitle }]}>
+        {copy.body}
+      </Text>
     </Animated.View>
   )
 }
 
 // ─── Twinkling Stars ──────────────────────────────────────────────────────
 
-function TwinklingStars({ count }: { count: number }) {
+function TwinklingStars({
+  count,
+  starColor,
+  opacityScale,
+}: {
+  count: number
+  starColor: string
+  opacityScale: number
+}) {
   const reduced = useReducedMotion()
   const phase = useSharedValue(0)
   useLoopAnimation(
@@ -516,7 +555,7 @@ function TwinklingStars({ count }: { count: number }) {
         const left = ((i * 73 + i * 17) % 100) / 100
         const top = ((i * 41 + 7) % 100) / 100
         const sz = 1 + (i % 3)
-        const baseOpacity = 0.18 + (i % 5) * 0.06
+        const baseOpacity = (0.18 + (i % 5) * 0.06) * opacityScale
         const offset = (i % 6) * 0.16
         return (
           <BgStar
@@ -527,6 +566,7 @@ function TwinklingStars({ count }: { count: number }) {
             baseOpacity={baseOpacity}
             phaseOffset={offset}
             phase={phase}
+            color={starColor}
           />
         )
       })}
@@ -541,6 +581,7 @@ function BgStar({
   baseOpacity,
   phaseOffset,
   phase,
+  color,
 }: {
   left: number
   top: number
@@ -548,6 +589,7 @@ function BgStar({
   baseOpacity: number
   phaseOffset: number
   phase: { value: number }
+  color: string
 }) {
   const a = useAnimatedStyle(() => {
     const v = (phase.value + phaseOffset) % 1
@@ -564,7 +606,7 @@ function BgStar({
           width: size,
           height: size,
           borderRadius: size,
-          backgroundColor: STAR_COLOR,
+          backgroundColor: color,
         },
         a,
       ]}
@@ -653,10 +695,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  // Header — layout/typography only. Colors come from `t` and are
+  // applied inline at the call site.
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: TEXT_PRIMARY,
     letterSpacing: -0.8,
     flexShrink: 1,
   },
@@ -667,27 +710,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: COUNT_PILL_BG,
     borderWidth: 1,
-    borderColor: COUNT_PILL_BORDER,
   },
   headerPillValue: {
     fontSize: 13,
     fontWeight: '800',
-    color: TEXT_ACCENT,
     letterSpacing: -0.2,
     fontVariant: ['tabular-nums'],
   },
   headerPillSuffix: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(199,238,156,0.70)',
     letterSpacing: 0.2,
   },
   headerSubtitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: TEXT_SECONDARY,
     paddingLeft: 2,
   },
   // Cards
@@ -725,13 +763,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F2A1E',
     letterSpacing: -0.4,
     lineHeight: 22,
   },
   bubbleBody: {
     fontSize: 14,
-    color: 'rgba(15,42,30,0.78)',
     lineHeight: 20,
     fontWeight: '500',
   },
@@ -742,10 +778,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     paddingTop: 2,
   },
-  // Primary action + Visto. Live INSIDE the cream card so the
-  // forest-tinted button colors (rgba alphas of #0F2A1E) render on
-  // the cream surface — outside the card they were over the dark
-  // forest shell and rendered at ~1:1 contrast (invisible).
+  // Action row sits inside the card so the theme-aware button colors
+  // render on the card surface (instead of on the shell, where the
+  // forest-tinted alphas would collapse to ~1:1 contrast).
   replies: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -762,8 +797,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     minHeight: 44,
     borderRadius: 999,
-    backgroundColor: '#0E3A26',
-    shadowColor: '#0E3A26',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 6,
@@ -773,25 +806,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.1,
-    color: '#FFFBF2',
   },
   replySeen: {
     paddingHorizontal: 18,
     paddingVertical: 12,
     minHeight: 44,
     borderRadius: 999,
-    backgroundColor: 'rgba(15,42,30,0.07)',
     borderWidth: 1,
-    // Border alpha bumped 0.10 → 0.18 so the pill is identifiable on
-    // the cream surface (WCAG 1.4.11 non-text contrast).
-    borderColor: 'rgba(15,42,30,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   replySeenText: {
     fontSize: 14,
     fontWeight: '700',
-    color: 'rgba(15,42,30,0.72)',
     letterSpacing: -0.1,
   },
   // Empty state
@@ -805,20 +832,17 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: TEXT_ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: TEXT_PRIMARY,
     letterSpacing: -0.3,
     textAlign: 'center',
   },
   emptyBody: {
     fontSize: 12,
-    color: TEXT_SECONDARY,
     lineHeight: 17,
     textAlign: 'center',
     fontWeight: '500',
