@@ -208,7 +208,7 @@ const lightColors: ThemeColors = {
   auroraB:            'rgba(242,167,140,0.28)',  // V1 — accent-300 alpha
   auroraC:            'rgba(119,231,85,0.22)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.1)',
-  ringBg:             '#F6EFE3',
+  ringBg:             '#FAF7F0',  // V1 — paper foundation (matches eventual V1 canvas)
   pageBg:             '#EFF5E8',
 }
 
@@ -250,7 +250,7 @@ const darkColors: ThemeColors = {
   auroraB:            'rgba(242,167,140,0.22)',  // V1 — accent-300 alpha
   auroraC:            'rgba(119,231,85,0.18)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.06)',
-  ringBg:             '#0A1410',
+  ringBg:             '#12211A',  // V1 — surface-950 (matches eventual V1 canvas)
   pageBg:             '#0A1410',
 }
 
