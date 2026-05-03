@@ -41,15 +41,18 @@ export function PaydayPillV2({ daysUntilPayday, isPending = false, onPress }: Pa
     styles.pill,
     showsAccent
       ? {
-          backgroundColor: 'rgba(232,151,106,0.14)',
-          borderColor: 'rgba(232,151,106,0.45)',
+          backgroundColor: 'rgba(242,167,140,0.14)',
+          borderColor: 'rgba(242,167,140,0.45)',
         }
       : {
           backgroundColor: theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
   ]
-  const labelColor = showsAccent ? '#C25A3E' : theme.colors.text
+  // V1 accent label: dark coral on light bg, soft coral on dark bg.
+  // Both clear AA on the accent-300@0.14 chip surface in their mode.
+  const accentLabel = theme.isDark ? '#F8D1C3' : '#B84014'
+  const labelColor = showsAccent ? accentLabel : theme.colors.text
   const dotColor = showsAccent ? theme.colors.peach : theme.colors.textMuted
 
   const content = (

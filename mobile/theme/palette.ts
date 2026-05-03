@@ -213,8 +213,8 @@ const lightColors: ThemeColors = {
 }
 
 const darkColors: ThemeColors = {
-  canvas:             '#0A1A12',
-  background:         '#0A1A12',
+  canvas:             '#12211A',  // V1 — surface-950 (less OLED-black, forest-tinted dark)
+  background:         '#12211A',
   backgroundElevated: '#102018',
   surface:            '#102018',
   surfaceMuted:       '#0F2E1F',
@@ -251,7 +251,7 @@ const darkColors: ThemeColors = {
   auroraC:            'rgba(119,231,85,0.18)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.06)',
   ringBg:             '#12211A',  // V1 — surface-950 (matches eventual V1 canvas)
-  pageBg:             '#0A1410',
+  pageBg:             '#12211A',  // V1 — surface-950 (matches canvas)
 }
 
 /**
