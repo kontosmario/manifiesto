@@ -10,10 +10,10 @@ import Animated, {
   useAnimatedProps,
   withDelay,
   withTiming,
-  Easing,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
@@ -38,7 +38,7 @@ export function HeroSparkline({ data, width = 320, height = 58, color, fillColor
       return
     }
     progress.value = length
-    progress.value = withDelay(delayMs, withTiming(0, { duration: 1400, easing: Easing.out(Easing.cubic) }))
+    progress.value = withDelay(delayMs, withTiming(0, { duration: decorativeDurations.bloom, easing: motionEasings.decelerate }))
   }, [length, delayMs, reduced, progress])
 
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: progress.value }))

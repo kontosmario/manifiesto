@@ -33,6 +33,7 @@ export function useAddExpenseButtonBurst(isReducedMotionEnabled: boolean) {
   const triggerBurst = () => {
     if (isReducedMotionEnabled) return
     burst.value = 0
+    // @motion-allow: 520ms FAB burst-ring ping; sits between slow (480) and paintExit (600) for satisfying-but-quick feedback
     burst.value = withTiming(1, {
       duration: 520,
       easing: Easing.out(Easing.cubic),

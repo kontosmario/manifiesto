@@ -45,6 +45,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
  *   useUnboundedLoopAnimation(
  *     () => {
  *       t.value = withRepeat(
+ *         // @motion-allow: JSDoc example illustrating callsite shape; not real code
  *         withTiming(1, { duration: 2000 }),
  *         -1,
  *         true,

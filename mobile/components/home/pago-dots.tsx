@@ -44,6 +44,7 @@ function Dot({
   const opacity = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {
     if (reduced) return
+    // @motion-allow: 400ms staggered dot fade-in; sits between deliberate (320) and slow (480) for readable progression
     opacity.value = withDelay(delay, withTiming(1, { duration: 400 }))
   }, [delay, reduced, opacity])
   const a = useAnimatedStyle(() => ({ opacity: opacity.value }))

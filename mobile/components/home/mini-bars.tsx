@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
-import Animated, { useSharedValue, useAnimatedStyle, withDelay, withTiming, Easing } from 'react-native-reanimated'
+import Animated, { useSharedValue, useAnimatedStyle, withDelay, withTiming } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface MiniBarsProps {
   values: number[]   // 0..1 each
@@ -26,7 +27,7 @@ function Bar({ value, color, height, width, delay }: { value: number; color: str
   const scale = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {
     if (reduced) return
-    scale.value = withDelay(delay, withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }))
+    scale.value = withDelay(delay, withTiming(1, { duration: decorativeDurations.paintExit, easing: motionEasings.decelerate }))
   }, [delay, reduced, scale])
   const a = useAnimatedStyle(() => ({ transform: [{ scaleY: scale.value }] }))
   const h = Math.max(2, Math.min(1, value) * height)

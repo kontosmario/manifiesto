@@ -33,6 +33,7 @@ import { useLoginController } from '@/features/auth/use-login-controller'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
 import { triggerHaptic } from '@/lib/haptics'
+import { decorativeDurations, motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { getLastUserProfile, type LastUserProfile } from '@/lib/last-user-cache'
 import { authTokens } from '@/theme/palette'
 import type { ThemeColors } from '@/theme/palette'
@@ -206,20 +207,22 @@ export function LoginScreen() {
       return
     }
     if (status === 'scanning') {
-      ringOpacity.value = withTiming(1, { duration: 200 })
+      ringOpacity.value = withTiming(1, { duration: motionDurations.exitStack })
       ringScale.value = withRepeat(
         withSequence(
-          withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          // @motion-allow: 700ms scan-pulse half-cycle; sits between paintExit (600) and skeleton-style 820 for biometric scan rhythm
+          withTiming(1.08, { duration: 700, easing: motionEasings.warm }),
+          // @motion-allow: 700ms scan-pulse half-cycle; sits between paintExit (600) and skeleton-style 820 for biometric scan rhythm
+          withTiming(1, { duration: 700, easing: motionEasings.warm }),
         ),
         -1,
         false,
       )
-      haloScale.value = withTiming(1.3, { duration: 1200, easing: Easing.out(Easing.ease) })
+      haloScale.value = withTiming(1.3, { duration: decorativeDurations.pulse, easing: motionEasings.decelerate })
     } else {
-      ringOpacity.value = withTiming(0, { duration: 200 })
-      ringScale.value = withTiming(1, { duration: 200 })
-      haloScale.value = withTiming(1, { duration: 600 })
+      ringOpacity.value = withTiming(0, { duration: motionDurations.exitStack })
+      ringScale.value = withTiming(1, { duration: motionDurations.exitStack })
+      haloScale.value = withTiming(1, { duration: decorativeDurations.paintExit })
     }
     return () => {
       // Cancel in-flight tweens (especially the scanning ringScale

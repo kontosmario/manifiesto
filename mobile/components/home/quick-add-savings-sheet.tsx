@@ -5,7 +5,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -13,6 +12,7 @@ import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface QuickAddSavingsSheetProps {
   visible: boolean
@@ -81,9 +81,10 @@ export function QuickAddSavingsSheet({
     if (!visible) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset on open
     setAmount(maxAmount)
+    // @motion-allow: 360ms initial fill on sheet open; slightly slower than deliberate (320) for an unhurried setup feel
     fillRatio.value = withTiming(1, {
       duration: 360,
-      easing: Easing.out(Easing.cubic),
+      easing: motionEasings.decelerate,
     })
   }, [visible, maxAmount, fillRatio])
 
@@ -114,8 +115,8 @@ export function QuickAddSavingsSheet({
   // the user expects from a thumb tracking their finger.
   const animateRatio = (ratio: number) => {
     fillRatio.value = withTiming(ratio, {
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
+      duration: motionDurations.standard,
+      easing: motionEasings.decelerate,
     })
   }
 

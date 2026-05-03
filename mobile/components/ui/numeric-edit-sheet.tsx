@@ -181,10 +181,8 @@ export function NumericEditSheet({
             translateY.value = withSpring(
               screenHeight,
               {
+                ...motionSprings.sheetDismiss,
                 velocity: Math.max(event.velocityY, 800),
-                damping: 32,
-                stiffness: 240,
-                mass: 0.9,
               },
               (finished) => {
                 if (finished) runOnJS(handleDragDismissed)()

@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { decorativeDurations } from '@/lib/motion/tokens'
 import { formatMoneyShort } from '@/utils/money'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
 import { useControlActionDispatcher } from '@/features/insights/use-control-action-dispatcher'
@@ -539,8 +540,8 @@ function TwinklingStars({
       if (reduced) return
       phase.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,

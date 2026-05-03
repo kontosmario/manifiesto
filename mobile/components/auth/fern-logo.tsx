@@ -9,6 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { decorativeDurations } from '@/lib/motion/tokens'
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
@@ -179,10 +180,10 @@ export function FernLogo({
     structureProgress.value = 0
     pillProgress.value = 0
 
-    bigLeafProgress.value = withDelay(delay, withTiming(1, { duration: 1400, easing: easeOutSoft }))
-    smallLeafProgress.value = withDelay(delay + 200, withTiming(1, { duration: 1400, easing: easeOutSoft }))
-    structureProgress.value = withDelay(delay + 400, withTiming(1, { duration: 1100, easing: easeInOut }))
-    pillProgress.value = withDelay(delay + 900, withTiming(1, { duration: 600, easing: easeInOut }))
+    bigLeafProgress.value = withDelay(delay, withTiming(1, { duration: decorativeDurations.bloom, easing: easeOutSoft }))
+    smallLeafProgress.value = withDelay(delay + 200, withTiming(1, { duration: decorativeDurations.bloom, easing: easeOutSoft }))
+    structureProgress.value = withDelay(delay + 400, withTiming(1, { duration: decorativeDurations.paintSettle, easing: easeInOut }))
+    pillProgress.value = withDelay(delay + 900, withTiming(1, { duration: decorativeDurations.paintExit, easing: easeInOut }))
   }, [isAnimated, delay, bigLeafProgress, smallLeafProgress, structureProgress, pillProgress])
 
   // For react-native-svg, animated transforms must be applied via animatedProps

@@ -39,7 +39,9 @@ export function SkeletonBlock({
       const ease = Easing.inOut(Easing.quad)
       pulse.value = withRepeat(
         withSequence(
+          // @motion-allow: 820ms skeleton shimmer half-cycle; calmer than pulse (1200) so loaders don't compete with content
           withTiming(1, { duration: 820, easing: ease }),
+          // @motion-allow: 820ms skeleton shimmer half-cycle; calmer than pulse (1200) so loaders don't compete with content
           withTiming(0.72, { duration: 820, easing: ease }),
         ),
         -1,

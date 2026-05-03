@@ -28,6 +28,7 @@ import {
 } from './asesor-bubble-meta'
 import { iconForSignal } from './asesor-signal-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface ControlV2AsesorCardProps {
   tareas: ControlAdvisorTask[]
@@ -162,8 +163,8 @@ function AssistantAvatar({ size, dotSize }: { size: number; dotSize: number }) {
       if (reduced) return
       pulse.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 1200, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: 1200, easing: Easing.out(Easing.quad) }),
+          withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.decelerate }),
+          withTiming(0, { duration: decorativeDurations.pulse, easing: motionEasings.decelerate }),
         ),
         -1,
         false,
@@ -233,8 +234,8 @@ function TwinklingStars({ count }: { count: number }) {
       if (reduced) return
       phase.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,
@@ -444,7 +445,9 @@ function SignalStar({ task, index }: { task: ControlAdvisorTask; index: number }
         index * 200,
         withRepeat(
           withSequence(
-            withTiming(1, { duration: 2000, easing: Easing.out(Easing.quad) }),
+            // @motion-allow: 2000ms critical signal sonar pulse — between halo (1800) and pulseSlow (2400) by design
+            withTiming(1, { duration: 2000, easing: motionEasings.decelerate }),
+            // @motion-allow: instant 0ms reset of the sonar ring at end of each cycle
             withTiming(0, { duration: 0 }),
           ),
           -1,

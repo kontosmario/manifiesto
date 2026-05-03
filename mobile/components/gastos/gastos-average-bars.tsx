@@ -1,13 +1,13 @@
 import { useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface GastosAverageBarsProps {
   values: number[] // 0..1, one per day
@@ -71,7 +71,7 @@ function Bar({
     if (reduced) return
     scale.value = withDelay(
       delay,
-      withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }),
+      withTiming(1, { duration: decorativeDurations.paintExit, easing: motionEasings.decelerate }),
     )
   }, [delay, reduced, scale])
   const style = useAnimatedStyle(() => ({

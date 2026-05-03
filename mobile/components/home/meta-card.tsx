@@ -90,6 +90,7 @@ function MetaCardImpl({
     }
     fillScaleX.value = withDelay(
       500,
+      // @motion-allow: 1300ms one-shot meta-card fill; sits between pulse (1200) and bloom (1400) by design for slow reveal
       withTiming(pct / 100, {
         duration: 1300,
         easing: Easing.bezier(0.2, 0.9, 0.2, 1),

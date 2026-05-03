@@ -874,7 +874,9 @@ function CalendarDropImpact({
     // timing felt mechanical and the color jumped at each boundary.
     pulse.value = withRepeat(
       withSequence(
+        // @motion-allow: 950ms breathing pulse half-cycle with sin in/out for organic day-picker rhythm
         withTiming(1, { duration: 950, easing: Easing.inOut(Easing.sin) }),
+        // @motion-allow: 950ms breathing pulse half-cycle with sin in/out for organic day-picker rhythm
         withTiming(0, { duration: 950, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,

@@ -22,6 +22,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { authTokens } from '@/theme/palette'
+import { motionDurations } from '@/lib/motion/tokens'
 
 interface WelcomeScreenProps {
   onCreate: () => void
@@ -134,9 +135,10 @@ function PrimaryCta({ label, onPress }: { label: string; onPress: () => void }) 
       accessibilityLabel={label}
       onPress={onPress}
       onPressIn={() => {
-        scale.value = withTiming(0.98, { duration: 120 })
+        scale.value = withTiming(0.98, { duration: motionDurations.micro })
       }}
       onPressOut={() => {
+        // @motion-allow: 160ms press-out scale; sits between micro (120) and quick (180) for snappy release
         scale.value = withTiming(1, { duration: 160 })
       }}
       hitSlop={8}
@@ -175,9 +177,10 @@ function SecondaryCta({
       accessibilityLabel={label}
       onPress={onPress}
       onPressIn={() => {
-        opacity.value = withTiming(0.6, { duration: 120 })
+        opacity.value = withTiming(0.6, { duration: motionDurations.micro })
       }}
       onPressOut={() => {
+        // @motion-allow: 160ms press-out opacity; sits between micro (120) and quick (180) for snappy release
         opacity.value = withTiming(1, { duration: 160 })
       }}
       hitSlop={8}

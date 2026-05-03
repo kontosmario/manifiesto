@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -188,10 +187,8 @@ export function StreakSheet({
         event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
       if (shouldDismiss) {
         translateY.value = withSpring(SCREEN_H, {
+          ...motionSprings.sheetDismiss,
           velocity: Math.max(event.velocityY, 800),
-          damping: 32,
-          stiffness: 240,
-          mass: 0.9,
         })
         backdropOpacity.value = withTiming(0, { duration: motionDurations.quick })
         runOnJS(onClose)()
@@ -566,9 +563,10 @@ function LevelProgress({ derived, tone }: { derived: StreakDerived; tone: Status
   const { theme } = useAppTheme()
   const progress = useSharedValue(0)
   useEffect(() => {
+    // @motion-allow: 900ms one-shot level-progress fill; deliberately faster than pulse (1200) to feel responsive after sheet open
     progress.value = withTiming(Math.min(Math.max(derived.progressPct, 0), 1), {
       duration: 900,
-      easing: Easing.out(Easing.cubic),
+      easing: motionEasings.decelerate,
     })
   }, [derived.progressPct, progress])
   // scaleX on a full-width fill avoids JS-thread width interpolation.

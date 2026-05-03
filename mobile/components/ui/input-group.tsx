@@ -26,10 +26,15 @@ export function InputGroup({ label, helper, error, required, children }: InputGr
   useEffect(() => {
     if (!error || reduceMotion) return
     shake.value = withSequence(
+      // @motion-allow: 60ms shake step; deliberately faster than micro (120) for sharp error-shake reaction
       withTiming(-4, { duration: 60 }),
+      // @motion-allow: 60ms shake step; deliberately faster than micro (120) for sharp error-shake reaction
       withTiming(4, { duration: 60 }),
+      // @motion-allow: 60ms shake step; deliberately faster than micro (120) for sharp error-shake reaction
       withTiming(-3, { duration: 60 }),
+      // @motion-allow: 60ms shake step; deliberately faster than micro (120) for sharp error-shake reaction
       withTiming(3, { duration: 60 }),
+      // @motion-allow: 60ms shake step; deliberately faster than micro (120) for sharp error-shake reaction
       withTiming(0, { duration: 60 }),
     )
   }, [error, reduceMotion, shake])

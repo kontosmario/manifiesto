@@ -41,6 +41,16 @@ export const decorativeDurations = {
   shimmer:  1400,
   /** Ambient blob drift — large background gradient breath. */
   ambient:  9000,
+  /** Cinematic paint-in (logo leaves, single-shot reveals). */
+  bloom:    1400,
+  /** Slow pulse half-cycle (asesor halo, hoy-card glow). */
+  pulse:    1200,
+  /** Extra-slow pulse half-cycle (in/out sin loops). */
+  pulseSlow: 2400,
+  /** Hero structural fade (logo skeleton, slow paint settle). */
+  paintSettle: 1100,
+  /** Tail / exit fade for cinematic intros (logo pill, hero finish). */
+  paintExit: 600,
 } as const
 
 export type DecorativeDurationKey = keyof typeof decorativeDurations
@@ -62,6 +72,17 @@ export const motionSprings = {
   // retract into the FAB without a wobble.
   radialEnter: { damping: 14, stiffness: 160, mass: 0.9 },
   radialExit:  { damping: 24, stiffness: 180, mass: 0.8 },
+  // Gesture-driven sheet dismiss. Stiff and well-damped so the sheet
+  // lands at its destination (off-screen) without overshoot when the
+  // user flicks. Callers merge `velocity: Math.max(event.velocityY,
+  // <floor>)` so the spring continues the gesture's terminal velocity
+  // instead of restarting from zero — that's the bit that makes
+  // drag-to-dismiss feel continuous instead of hand-off.
+  sheetDismiss: { damping: 32, stiffness: 240, mass: 0.9 },
+  // Tab icon focus state — softer than `tabShift` (which animates the
+  // pill indicator). Lighter mass + lower stiffness gives the icon a
+  // subtle pop as it becomes active, not a snap.
+  tabIcon: { damping: 16, stiffness: 180, mass: 0.7 },
 } as const
 
 export type MotionSpringKey = keyof typeof motionSprings

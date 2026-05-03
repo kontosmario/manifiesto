@@ -143,11 +143,17 @@ function useFlicker(status: FlameStatus) {
       // Irregular flicker pattern — six steps with mixed timings.
       opacity.value = withRepeat(
         withSequence(
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(0.75, { duration: 180 }),
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(1, { duration: 360 }),
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(0.6, { duration: 150 }),
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(0.95, { duration: 300 }),
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(0.7, { duration: 120 }),
+          // @motion-allow: irregular flame-flicker pattern, intentional non-uniform durations
           withTiming(1, { duration: 500 }),
         ),
         -1,
@@ -249,7 +255,9 @@ function useDimPulse(status: FlameStatus) {
       const ease = Easing.inOut(Easing.ease)
       opacity.value = withRepeat(
         withSequence(
+          // @motion-allow: 2000ms broken-flame dim pulse half-cycle; reads slower than pulseSlow (2400) by design
           withTiming(0.55, { duration: 2000, easing: ease }),
+          // @motion-allow: 2000ms broken-flame dim pulse half-cycle; reads slower than pulseSlow (2400) by design
           withTiming(0.35, { duration: 2000, easing: ease }),
         ),
         -1,

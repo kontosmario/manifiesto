@@ -173,10 +173,8 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
         translateY.value = withSpring(
           screenHeight,
           {
+            ...motionSprings.sheetDismiss,
             velocity: Math.max(event.velocityY, 900),
-            damping: 30,
-            stiffness: 220,
-            mass: 0.9,
           },
           (finished) => {
             if (finished) runOnJS(handleDragDismissed)()

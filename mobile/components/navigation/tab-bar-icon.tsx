@@ -10,6 +10,7 @@ import Animated, {
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { useAppTheme } from '@/theme/theme-provider'
+import { motionSprings } from '@/lib/motion/tokens'
 
 /**
  * V1 modernized tab icon.
@@ -36,11 +37,7 @@ function useFocusProgress(focused: boolean) {
       progress.value = target
       return
     }
-    progress.value = withSpring(target, {
-      damping: 16,
-      stiffness: 180,
-      mass: 0.7,
-    })
+    progress.value = withSpring(target, motionSprings.tabIcon)
   }, [focused, progress, reduceMotion])
 
   return progress

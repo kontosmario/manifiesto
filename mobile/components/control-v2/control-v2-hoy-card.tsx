@@ -31,6 +31,7 @@ import {
   hexAlpha,
   type SemanticState,
 } from '@/theme/state-tokens'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface ControlV2HoyCardProps {
   cupoDiario: number
@@ -240,7 +241,9 @@ export function ControlV2HoyCard({
     () => {
       shimmer.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
+          // @motion-allow: 3200ms slow shimmer sweep on hoy-card; shimmer token (1400) reads too aggressive here
+          withTiming(1, { duration: 3200, easing: motionEasings.warm }),
+          // @motion-allow: instant 0ms reset of shimmer position at end of sweep
           withTiming(0, { duration: 0 }),
         ),
         -1,
@@ -248,7 +251,8 @@ export function ControlV2HoyCard({
       )
       sonar.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 2400, easing: Easing.out(Easing.ease) }),
+          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: motionEasings.decelerate }),
+          // @motion-allow: instant 0ms reset of sonar at end of cycle
           withTiming(0, { duration: 0 }),
         ),
         -1,
@@ -261,7 +265,8 @@ export function ControlV2HoyCard({
       // and velocity match across the wrap.
       particleWave.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 9000, easing: Easing.linear }),
+          withTiming(1, { duration: decorativeDurations.ambient, easing: Easing.linear }),
+          // @motion-allow: instant 0ms reset of particle wave at end of cycle
           withTiming(0, { duration: 0 }),
         ),
         -1,
@@ -270,8 +275,8 @@ export function ControlV2HoyCard({
       // Marker halo — 3.6s breath.
       markerHalo.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: decorativeDurations.halo, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: decorativeDurations.halo, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,
@@ -279,8 +284,8 @@ export function ControlV2HoyCard({
       // AHORA chip subtle float — 5s, ±1.5pt translateY.
       ahoraFloat.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,
@@ -288,8 +293,8 @@ export function ControlV2HoyCard({
       // Hint icon badge breath — 5s, scale 1.0 ↔ 1.06.
       hintBreath.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,
@@ -309,7 +314,8 @@ export function ControlV2HoyCard({
     }
     fillProgress.value = withDelay(
       220,
-      withTiming(spentPct, { duration: 1000, easing: Easing.out(Easing.cubic) }),
+      // @motion-allow: 1000ms fill-bar growth; deliberately slower than pulse (1200) for smooth value-tracking feel
+      withTiming(spentPct, { duration: 1000, easing: motionEasings.decelerate }),
     )
   }, [spentPct, fillProgress, reducedMotion])
 

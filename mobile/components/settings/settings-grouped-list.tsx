@@ -18,6 +18,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { radii } from '@/theme/palette'
+import { motionDurations } from '@/lib/motion/tokens'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
 
@@ -69,12 +70,13 @@ function useRowScale() {
   const onPressIn = () => {
     if (reduced) return
     // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+    // @motion-allow: 90ms press-in scale; faster than micro (120) for instant tactile feel on tap
     scale.value = withTiming(0.97, { duration: 90 })
   }
   const onPressOut = () => {
     if (reduced) return
     // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
-    scale.value = withTiming(1, { duration: 140 })
+    scale.value = withTiming(1, { duration: motionDurations.exitTab })
   }
   return { style, onPressIn, onPressOut }
 }

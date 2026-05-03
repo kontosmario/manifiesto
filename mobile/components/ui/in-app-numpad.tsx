@@ -212,10 +212,8 @@ export function InAppNumpad({
         event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
       if (shouldDismiss) {
         translateY.value = withSpring(screenHeight, {
+          ...motionSprings.sheetDismiss,
           velocity: Math.max(event.velocityY, 800),
-          damping: 32,
-          stiffness: 240,
-          mass: 0.9,
         })
         runOnJS(onDismiss)()
       } else {

@@ -93,6 +93,7 @@ function AnimatedBar({
     if (reduced) return
     scale.value = withDelay(
       delay,
+      // @motion-allow: 1000ms category-bar growth on stagger-in; deliberately slower than pulse (1200) for staggered reveal
       withTiming(1, { duration: 1000, easing: Easing.bezier(0.2, 0.9, 0.2, 1) }),
     )
   }, [delay, reduced, scale])

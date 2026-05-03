@@ -49,6 +49,7 @@ export function FijosHeader({
         sv.value = withDelay(
           delay,
           withRepeat(
+            // @motion-allow: 3.6s linear sonar sweep; staggered by half-cycle (1800ms) for an unbroken halo loop
             withTiming(1, { duration: 3600, easing: Easing.linear }),
             -1,
             false,

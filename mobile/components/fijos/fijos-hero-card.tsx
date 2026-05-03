@@ -22,6 +22,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface FijosHeroCardProps {
   mes?: string
@@ -189,21 +190,23 @@ function ProgressBar({ porcentaje, accent }: { porcentaje: number; accent: strin
     }
     progress.value = withDelay(
       80,
+      // @motion-allow: 900ms one-shot progress fill on hero; deliberately faster than pulse (1200) for snappy intro
       withTiming(clampPct(porcentaje), {
         duration: 900,
-        easing: Easing.out(Easing.cubic),
+        easing: motionEasings.decelerate,
       }),
     )
     dotScale.value = withDelay(
       680,
+      // @motion-allow: bouncy first-paint celebration on Fijos hero, intentionally idiosyncratic
       withSpring(1, { damping: 11, stiffness: 180, mass: 0.7 }),
     )
     dotGlow.value = withDelay(
       900,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.55, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
+          withTiming(0.55, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
         ),
         -1,
         true,

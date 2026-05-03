@@ -32,7 +32,9 @@ export function ErrorState({
     () => {
       pulse.value = withRepeat(
         withSequence(
+          // @motion-allow: 800ms error-state pulse half-cycle; deliberately calmer than pulse (1200) for empathy on error
           withTiming(1.04, { duration: 800 }),
+          // @motion-allow: 800ms error-state pulse half-cycle; deliberately calmer than pulse (1200) for empathy on error
           withTiming(1, { duration: 800 }),
         ),
         -1,

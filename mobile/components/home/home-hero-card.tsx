@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
-  Easing,
   cancelAnimation,
   useAnimatedStyle,
   useReducedMotion,
@@ -23,6 +22,7 @@ import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helper
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { useAppTheme } from '@/theme/theme-provider'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface HomeHeroCardProps {
   data: HomeHeroMetrics
@@ -81,8 +81,8 @@ export function HomeHeroCard({
     }
     pulseScale.value = withRepeat(
       withSequence(
-        withTiming(1.04, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.04, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
+        withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
       ),
       -1,
       false,
