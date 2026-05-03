@@ -3,11 +3,15 @@ import { supabase } from '@/lib/supabase'
 
 export interface FamilyInfo {
   familyId: string
-  familyCode: string
 }
 
 export const familyQueryKey = (userId?: string) => ['family', userId] as const
 
+/**
+ * Fetches the family the user belongs to. Returns just `familyId`
+ * — there's no persistent shareable family code anymore. To invite
+ * someone, generate a single-use invite via `useCreateFamilyInvite`.
+ */
 export function useFamily(userId?: string) {
   return useQuery<FamilyInfo | null>({
     queryKey: familyQueryKey(userId),
@@ -31,19 +35,8 @@ export function useFamily(userId?: string) {
         return null
       }
 
-      const familyResponse = await supabase
-        .from('families')
-        .select('code')
-        .eq('id', membershipResponse.data.family_id)
-        .single()
-
-      if (familyResponse.error) {
-        throw familyResponse.error
-      }
-
       return {
-        familyId: membershipResponse.data.family_id,
-        familyCode: familyResponse.data.code,
+        familyId: membershipResponse.data.family_id as string,
       }
     },
   })

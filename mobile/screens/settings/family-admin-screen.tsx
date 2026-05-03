@@ -32,7 +32,8 @@ import { getErrorMessage } from '@/utils/error-message'
 
 interface FamilyAdminScreenProps {
   userId: string
-  familyCode: string
+  // Legacy familyCode prop removed — household identity now travels
+  // via familyId; invites are generated per-share via Settings.
 }
 
 const MONEY_FORMATTER = new Intl.NumberFormat('es-AR', {
@@ -85,7 +86,7 @@ function roleLabel(role: FamilyMemberStats['role']): string {
   return 'Miembro'
 }
 
-export function FamilyAdminScreen({ userId, familyCode }: FamilyAdminScreenProps) {
+export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   const { theme } = useAppTheme()
   const router = useRouter()
   const statsQuery = useFamilyMemberStats()
@@ -360,23 +361,6 @@ export function FamilyAdminScreen({ userId, familyCode }: FamilyAdminScreenProps
                 style={[
                   styles.heroPill,
                   {
-                    backgroundColor: theme.colors.primarySurface,
-                    borderColor: theme.colors.line,
-                  },
-                ]}
-              >
-                <MaterialIcons name="tag" size={14} color={theme.colors.primaryStrong} />
-                <Text
-                  style={[styles.heroPillText, { color: theme.colors.primaryStrong }]}
-                  numberOfLines={1}
-                >
-                  {familyCode}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.heroPill,
-                  {
                     backgroundColor: theme.colors.creamSoft,
                     borderColor: theme.colors.line,
                   },
@@ -392,7 +376,7 @@ export function FamilyAdminScreen({ userId, familyCode }: FamilyAdminScreenProps
         </RiseView>
       </View>
     ),
-    [familyCode, handleBack, theme, totalMembers],
+    [handleBack, theme, totalMembers],
   )
 
   if (statsQuery.isError && !statsQuery.data) {

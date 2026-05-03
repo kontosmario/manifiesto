@@ -12,7 +12,6 @@ export interface OnboardingDraft {
   avatarSlug: AvatarSlug
   familyMode: 'none' | 'created' | 'joined'
   familyId: string | null
-  familyCode: string | null
   monthlyIncomeRaw: string
   salaryPaymentDay: number
   savingsGoalPercent: number
@@ -41,7 +40,7 @@ type Action =
   | { type: 'back' }
   | { type: 'setDisplayName'; value: string }
   | { type: 'setAvatar'; slug: AvatarSlug }
-  | { type: 'setFamily'; mode: 'created' | 'joined'; familyId: string; familyCode: string }
+  | { type: 'setFamily'; mode: 'created' | 'joined'; familyId: string }
   | { type: 'setMonthlyIncome'; value: string }
   | { type: 'setSalaryDay'; value: number }
   | { type: 'setSavingsPercent'; value: number }
@@ -59,7 +58,6 @@ function createInitialDraft(): OnboardingDraft {
     avatarSlug: randomAvatarSlug(),
     familyMode: 'none',
     familyId: null,
-    familyCode: null,
     monthlyIncomeRaw: '',
     salaryPaymentDay: 1,
     savingsGoalPercent: 20,
@@ -95,7 +93,6 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
         ...state,
         familyMode: action.mode,
         familyId: action.familyId,
-        familyCode: action.familyCode,
       }
     case 'setMonthlyIncome':
       return { ...state, monthlyIncomeRaw: action.value }
@@ -130,7 +127,6 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
         pendingFamily: action.value,
         familyMode: action.value ? 'joined' : state.familyMode,
         familyId: action.value ? action.value.family_id : null,
-        familyCode: action.value ? action.value.family_code : null,
         contributesIncome: null,
         monthlyIncomeRaw: '',
       }
@@ -152,8 +148,8 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
       back: () => dispatch({ type: 'back' }),
       setDisplayName: (value: string) => dispatch({ type: 'setDisplayName', value }),
       setAvatar: (slug: AvatarSlug) => dispatch({ type: 'setAvatar', slug }),
-      setFamily: (mode: 'created' | 'joined', familyId: string, familyCode: string) =>
-        dispatch({ type: 'setFamily', mode, familyId, familyCode }),
+      setFamily: (mode: 'created' | 'joined', familyId: string) =>
+        dispatch({ type: 'setFamily', mode, familyId }),
       setMonthlyIncome: (value: string) => dispatch({ type: 'setMonthlyIncome', value }),
       setSalaryDay: (value: number) => dispatch({ type: 'setSalaryDay', value }),
       setSavingsPercent: (value: number) => dispatch({ type: 'setSavingsPercent', value }),

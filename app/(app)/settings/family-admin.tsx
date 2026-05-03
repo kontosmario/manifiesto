@@ -7,10 +7,9 @@ import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 interface GuardedProps {
   userId: string
   familyId: string
-  familyCode: string
 }
 
-function OwnerGuarded({ userId, familyId, familyCode }: GuardedProps) {
+function OwnerGuarded({ userId, familyId }: GuardedProps) {
   const roleQuery = useMyFamilyRole(userId, familyId)
 
   if (roleQuery.isLoading) {
@@ -22,14 +21,14 @@ function OwnerGuarded({ userId, familyId, familyCode }: GuardedProps) {
     return <Redirect href="/(app)/settings" />
   }
 
-  return <FamilyAdminScreen userId={userId} familyCode={familyCode} />
+  return <FamilyAdminScreen userId={userId} />
 }
 
 export default function FamilyAdminRoute() {
   return (
     <RequireAuth>
-      {({ userId, familyId, familyCode }) => (
-        <OwnerGuarded userId={userId} familyId={familyId} familyCode={familyCode} />
+      {({ userId, familyId }) => (
+        <OwnerGuarded userId={userId} familyId={familyId} />
       )}
     </RequireAuth>
   )

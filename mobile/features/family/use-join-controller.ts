@@ -1,10 +1,23 @@
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useAuthSession } from '@/features/auth/use-auth-session'
-import { useBootstrapFamily, useJoinFamily } from '@/features/family/use-family-actions'
+import {
+  useBootstrapFamily,
+  useConsumeFamilyInvite,
+} from '@/features/family/use-family-actions'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 
+/**
+ * Standalone /(auth)/join flow — used when the user has a session
+ * but no family (e.g. account created via deep link, abandoned
+ * onboarding, etc.). The full onboarding wizard handles the same
+ * branching with contribution toggle / family summary; this is the
+ * minimal path for users who just want to bootstrap or join.
+ *
+ * Joining here doesn't capture a contribution amount — the user
+ * lands at $0 and can update their contribution from Settings later.
+ */
 export function useJoinController() {
   const router = useRouter()
   const { data: session } = useAuthSession()
@@ -13,23 +26,30 @@ export function useJoinController() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const bootstrapMutation = useBootstrapFamily(userId)
-  const joinMutation = useJoinFamily(userId)
-  const isLoading = bootstrapMutation.isPending || joinMutation.isPending
-  const canJoinWithCode = code.trim().length >= 6
+  const consumeMutation = useConsumeFamilyInvite(userId)
+  const isLoading = bootstrapMutation.isPending || consumeMutation.isPending
+  // Invite codes are 8 chars. Accept ≥4 to be tolerant of older
+  // codes typed in the standalone flow.
+  const canJoinWithCode = code.trim().length >= 4
   const clearError = () => setErrorMessage(null)
 
   const joinWithCode = () => {
     setErrorMessage(null)
-    joinMutation.mutate(code, {
-      onError: (error: unknown) => {
-        void triggerHaptic('error')
-        setErrorMessage(getErrorMessage(error, 'No se pudo unir a la familia con ese código.'))
+    consumeMutation.mutate(
+      { code, monthlyIncomeContribution: null },
+      {
+        onError: (error: unknown) => {
+          void triggerHaptic('error')
+          setErrorMessage(
+            getErrorMessage(error, 'No se pudo unir a la familia con ese código.'),
+          )
+        },
+        onSuccess: () => {
+          void triggerHaptic('success')
+          router.replace('/')
+        },
       },
-      onSuccess: () => {
-        void triggerHaptic('success')
-        router.replace('/')
-      },
-    })
+    )
   }
 
   const createFamily = () => {
@@ -52,7 +72,7 @@ export function useJoinController() {
     code,
     errorMessage,
     isLoading,
-    joinMutation,
+    joinMutation: consumeMutation,
     actions: {
       clearError,
       createFamily,

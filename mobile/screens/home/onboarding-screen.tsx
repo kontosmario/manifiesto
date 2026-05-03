@@ -661,7 +661,6 @@ function renderStep(
           userId={ctx.userId}
           familyMode={state.familyMode}
           familyId={state.familyId}
-          familyCode={state.familyCode}
           onFamilyReady={actions.setFamily}
           onJoinPeek={actions.setPendingFamily}
           isRejoin={ctx.isRejoin}

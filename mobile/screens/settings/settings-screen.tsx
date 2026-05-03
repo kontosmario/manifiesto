@@ -61,12 +61,12 @@ import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 interface SettingsScreenProps {
   userId: string
   familyId: string
-  familyCode: string
+  // Legacy familyCode prop removed — invites generate ephemeral codes now.
 }
 
 const DISABLED_HINT = 'Solo el dueño puede editar'
 
-export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenProps) {
+export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const router = useRouter()
   const { preference, setPreference, theme } = useAppTheme()
   const { data: session } = useAuthSession()

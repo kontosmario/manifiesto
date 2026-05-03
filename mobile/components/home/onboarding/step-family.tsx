@@ -18,11 +18,10 @@ interface StepFamilyProps {
   userId: string
   familyMode: 'none' | 'created' | 'joined'
   familyId: string | null
-  familyCode: string | null
   /** Fired when the user CREATES a family — actually persists the
    *  membership immediately because there's nothing to preview /
    *  confirm later. */
-  onFamilyReady: (mode: 'created' | 'joined', familyId: string, familyCode: string) => void
+  onFamilyReady: (mode: 'created' | 'joined', familyId: string) => void
   /** Fired when the user enters a valid JOIN code. The peek result
    *  is stored in onboarding state; the actual `family_members`
    *  insert is deferred to step 5 (Confirmar y unirme). The user is
@@ -37,7 +36,7 @@ type Panel = 'root' | 'create' | 'join'
 export function StepFamily({
   userId,
   familyMode,
-  familyCode,
+  familyId,
   onFamilyReady,
   onJoinPeek,
   isRejoin = false,
@@ -54,14 +53,14 @@ export function StepFamily({
   const [codeInput, setCodeInput] = useState('')
 
   const busy = bootstrap.isPending || peek.isPending
-  const alreadyDone = familyMode !== 'none' && familyCode
+  const alreadyDone = familyMode !== 'none' && Boolean(familyId)
 
   const handleCreate = async () => {
     void triggerHaptic('selection')
     try {
       const result = await bootstrap.mutateAsync()
       void triggerHaptic('success')
-      onFamilyReady('created', result.family_id, result.family_code)
+      onFamilyReady('created', result.family_id)
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
@@ -133,15 +132,9 @@ export function StepFamily({
             <Text style={[styles.confirmTitle, { color: theme.colors.text }]}>
               {familyMode === 'created' ? '¡Tu familia ya está creada!' : '¡Listo, te sumaste!'}
             </Text>
-            <Text style={[styles.confirmMeta, { color: theme.colors.textMuted }]}>
-              Código:{' '}
-              <Text style={{ color: theme.colors.text, fontWeight: '800', letterSpacing: 2 }}>
-                {familyCode}
-              </Text>
-            </Text>
             {familyMode === 'created' ? (
               <Text style={[styles.confirmHint, { color: theme.colors.textMuted }]}>
-                Compartí el código para que otros se sumen.
+                Cuando quieras invitar a alguien, generá un código desde Ajustes.
               </Text>
             ) : null}
           </View>

@@ -7,12 +7,10 @@ import { notificationQueryKeys } from '@/features/notifications/notification-que
 import { profileQueryKey } from '@/features/profile/use-profile'
 import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications'
 import { supabase } from '@/lib/supabase'
-import { generateFamilyCode } from '@/utils/generate-family-code'
 import { familyQueryKey } from '@/features/family/use-family'
 
 interface FamilyRpcResult {
   family_id: string
-  family_code: string
 }
 
 function pickRpcResult(data: unknown): FamilyRpcResult {
@@ -32,9 +30,7 @@ export function useBootstrapFamily(userId?: string) {
         throw new Error('No hay sesión activa para crear la familia.')
       }
 
-      const { data, error } = await supabase.rpc('bootstrap_family', {
-        p_preferred_code: generateFamilyCode(6),
-      })
+      const { data, error } = await supabase.rpc('bootstrap_family')
 
       if (error) {
         throw error
@@ -172,72 +168,6 @@ export interface FamilyPeek {
     goal_amount: number
     current_amount: number
   } | null
-}
-
-export function usePeekFamilyByCode() {
-  return useMutation({
-    mutationFn: async (rawCode: string) => {
-      const normalized = rawCode.trim().toUpperCase()
-      if (!normalized) {
-        throw new Error('Ingresá un código de familia válido.')
-      }
-      const { data, error } = await supabase.rpc('peek_family_by_code', {
-        p_code: normalized,
-      })
-      if (error) throw error
-      if (!data) throw new Error('No se pudo consultar la familia.')
-      return data as FamilyPeek
-    },
-  })
-}
-
-export interface JoinFamilyInput {
-  code: string
-  /** Optional monthly income contribution (ARS). When provided and
-   *  > 0, recorded on the joiner's `family_members` row and added to
-   *  the cached `family_finance.monthly_income` via DB trigger. Pass
-   *  `null` or `undefined` to skip (member doesn't contribute). */
-  monthlyIncomeContribution?: number | null
-}
-
-export function useJoinFamily(userId?: string) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (input: JoinFamilyInput | string) => {
-      if (!userId) {
-        throw new Error('No hay sesión activa para unirse a la familia.')
-      }
-
-      // Backwards-compat: legacy callers passed just the code string.
-      const code = typeof input === 'string' ? input : input.code
-      const contribution =
-        typeof input === 'string' ? null : (input.monthlyIncomeContribution ?? null)
-
-      const normalizedCode = code.trim().toUpperCase()
-      if (!normalizedCode) {
-        throw new Error('Ingresá un código de familia válido.')
-      }
-
-      const { data, error } = await supabase.rpc('join_family_by_code', {
-        p_code: normalizedCode,
-        p_contribution: contribution,
-      })
-
-      if (error) {
-        throw error
-      }
-
-      return pickRpcResult(data)
-    },
-    onSuccess: async (result) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
-        queryClient.invalidateQueries({ queryKey: categoriesQueryKey(result.family_id) }),
-        queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
-      ])
-    },
-  })
 }
 
 /**

@@ -14,7 +14,6 @@ interface RequireAuthProps {
   children: (input: {
     userId: string
     familyId: string
-    familyCode: string
   }) => ReactNode
 }
 
@@ -63,7 +62,6 @@ export function RequireAuth({ children }: RequireAuthProps) {
   return children({
     userId,
     familyId: family.familyId,
-    familyCode: family.familyCode,
   })
 }
 

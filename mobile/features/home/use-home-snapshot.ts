@@ -51,13 +51,13 @@ interface RawNotificationSlice {
 // `fixed_expenses` arrives as raw rows; we pass through `asFixedExpense`
 // before seeding to match what the existing hooks expect.
 //
-// `family` is the raw RPC shape (`{ familyId, code }`) — NOT the
-// client's `FamilyInfo` (`{ familyId, familyCode }`). We normalize
-// inside `seedCaches` before writing to the React Query cache so
-// downstream consumers (`useFamily`) read the right shape.
+// `family` is the raw RPC shape — the persistent family code was
+// removed in 20260507000400; the snapshot now returns only
+// `{ familyId }`. The client's `FamilyInfo` matches this shape
+// exactly, but we keep the explicit mapper for symmetry / future
+// shape evolution.
 interface RawFamilySlice {
   familyId: string
-  code: string
 }
 
 interface HomeSnapshotPayload {
@@ -212,7 +212,7 @@ function toFamilyFinance(raw: FinanceStoragePayload | null): FamilyFinance {
  */
 function toFamilyInfo(raw: RawFamilySlice | null): FamilyInfo | null {
   if (!raw) return null
-  return { familyId: raw.familyId, familyCode: raw.code }
+  return { familyId: raw.familyId }
 }
 
 function seedCaches(
