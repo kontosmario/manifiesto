@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -91,6 +98,29 @@ export function CategoryHorizontalRail({
     scrollRef.current.scrollTo({ x, animated: true })
   }, [selectedColumnIndex, tileWidth, staticGrid])
 
+  // Measure the rail's own container width (not the screen width) so
+  // we don't have to guess what padding the parent <Screen> applies.
+  // First render uses the prop default; after onLayout fires the real
+  // width takes over and tiles snap to fill exactly.
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null)
+  const handleStaticLayout = useCallback((e: LayoutChangeEvent) => {
+    setMeasuredWidth(e.nativeEvent.layout.width)
+  }, [])
+  const staticTileWidth = useMemo(() => {
+    if (!staticGrid || measuredWidth == null) return tileWidth
+    // measuredWidth is the staticContent View's width. Subtract its
+    // own paddingHorizontal (4 + 4 = 8) and the gaps between
+    // columns, then divide by column count.
+    const STATIC_INNER_PADDING = 8
+    const totalGap = Math.max(0, columns.length - 1) * STATIC_TILE_GAP
+    const available = measuredWidth - STATIC_INNER_PADDING - totalGap
+    if (columns.length === 0 || available <= 0) return tileWidth
+    const computed = Math.floor(available / columns.length)
+    // Clamp at the default tile width (don't shrink past readable
+    // size — let the parent overflow instead) and the iPad cap.
+    return Math.max(tileWidth, Math.min(computed, 110))
+  }, [staticGrid, measuredWidth, tileWidth, columns.length])
+
   const columnTiles = (
     <>
       {columns.map((column, columnIndex) => (
@@ -120,7 +150,10 @@ export function CategoryHorizontalRail({
         {label}
       </Text>
       {staticGrid ? (
-        <View style={[styles.staticContent, { gap: STATIC_TILE_GAP }]}>
+        <View
+          onLayout={handleStaticLayout}
+          style={[styles.staticContent, { gap: STATIC_TILE_GAP }]}
+        >
           {columns.map((column, columnIndex) => (
             <View key={columnIndex} style={[styles.column, { gap: STATIC_TILE_GAP }]}>
               {column.map((category) => (
@@ -129,7 +162,7 @@ export function CategoryHorizontalRail({
                   category={category}
                   selected={category.id === selectedCategoryId}
                   iconResolver={iconResolver}
-                  width={tileWidth}
+                  width={staticTileWidth}
                   height={tileHeight}
                   onPress={() => {
                     void triggerHaptic('selection')
@@ -251,11 +284,11 @@ const styles = StyleSheet.create({
     gap: TILE_GAP,
     paddingVertical: 4,
   },
-  // Static grid: same paddings as the scroll variant, but rendered in
-  // a flex row with explicit `gap` (set inline at the call site so it
-  // matches the gap the upstream `computeFillTileWidth` math used).
-  // Uniform gaps between every column — `space-between` left tiny
-  // edge gaps + huge middle ones depending on tile-width rounding.
+  // Static grid: same paddings as the scroll variant, but rendered
+  // as a flex row with explicit `gap`. The tile width is measured
+  // and computed inside the component (see `staticTileWidth`) so it
+  // adapts to whatever horizontal space the parent gives us — no
+  // assumption about screen padding leaks into the API.
   staticContent: {
     paddingHorizontal: 4,
     paddingVertical: 4,
