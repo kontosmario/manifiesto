@@ -4,9 +4,9 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 export type ResolvedThemeMode = 'light' | 'dark'
 
 export const brand = {
-  deep:         '#0F2E1F',
-  bright:       '#7AD8A3',
-  surfaceSoft:  'rgba(122,216,163,0.12)',
+  deep:         '#329315',                   // V1 primary-700 (was old splash forest)
+  bright:       '#A6EF8F',                   // V1 primary-300 (was old splash mint)
+  surfaceSoft:  'rgba(166,239,143,0.12)',    // V1 primary-300 alpha (was rgba(122,216,163,…))
 } as const
 
 /**

@@ -1,91 +1,68 @@
-import { StyleSheet, type ViewStyle } from 'react-native'
-import Animated, { type AnimatedStyle } from 'react-native-reanimated'
+import { StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { radii, type AppTheme } from '@/theme/palette'
 import { AppSymbol } from '@/components/ui/app-symbol'
 
-type ViewAnimatedStyle = AnimatedStyle<ViewStyle>
-
 interface AddExpenseTabButtonFaceProps {
-  /** Reanimated style driving opacity for the green boost layer. */
-  colorBoostStyle: ViewAnimatedStyle
-  /** Reanimated style driving opacity for the white shine layer. */
-  shineBoostStyle: ViewAnimatedStyle
-  /** Reanimated style driving the icon rotation during press. */
-  iconRotateStyle: ViewAnimatedStyle
-  /** Kept for API compat — unused after dropping the CSS boxShadow. */
-  pressed?: boolean
   theme: AppTheme
 }
 
-export function AddExpenseTabButtonFace({
-  colorBoostStyle,
-  shineBoostStyle,
-  iconRotateStyle,
-  theme,
-}: AddExpenseTabButtonFaceProps) {
+/**
+ * The visible face of the FAB — a 66pt circle with a subtle V1 mint
+ * gradient and a centered "+" glyph. No more decorative motion layers
+ * (color boost, shine boost, icon rotation). The press feedback now
+ * comes from the parent's scale + burst ring only.
+ */
+export function AddExpenseTabButtonFace({ theme }: AddExpenseTabButtonFaceProps) {
   return (
     <LinearGradient
+      // V1 primary scale gradient — saturated mint, on-brand.
+      // Light gradient lives in primary-800/900 range so white "+"
+      // clears AA across the entire surface (was failing at primary-600).
+      // Dark gradient in primary-200/400 so surface-950 "+" reads AAA.
+      //   Light: primary-700 → primary-800 → primary-900
+      //          (#329315 → #297811 → #1F590D)
+      //   Dark:  primary-200 → primary-300 → primary-400
+      //          (#D1F7C5 → #A6EF8F → #77E755)
       colors={
-        theme.isDark ? ['#77F3A8', '#38D67A', '#169D57'] : ['#63F0A0', '#29D27A', '#15AB60']
+        theme.isDark
+          ? ['#D1F7C5', '#A6EF8F', '#77E755']
+          : ['#329315', '#297811', '#1F590D']
       }
       end={{ x: 1, y: 1 }}
       start={{ x: 0.12, y: 0 }}
       style={[
         styles.addButton,
         {
-          borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
-          // `boxShadow` was deliberately removed here — on iOS Expo Go
-          // the CSS-style shadow rendered as a solid green square
-          // behind the FAB. Shadow lives on a wrapper without
-          // `overflow: 'hidden'` in the parent button component
-          // (classic shadowColor/offset/opacity/radius props).
+          // The 4pt ring acts as the "cutout" against the tab bar
+          // background — uses the bar's bg color so the FAB reads as
+          // notched into the bar rather than floating disconnected.
+          borderColor: theme.colors.creamCard,
         },
       ]}
     >
+      {/* Subtle gloss — a single static white-alpha gradient at the
+          top so the surface reads as a polished pill, not flat. */}
       <LinearGradient
         colors={
           theme.isDark
-            ? ['rgba(255, 255, 255, 0.26)', 'rgba(255, 255, 255, 0.05)', 'transparent']
-            : ['rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0.14)', 'transparent']
+            ? ['rgba(255, 255, 255, 0.18)', 'transparent']
+            : ['rgba(255, 255, 255, 0.32)', 'transparent']
         }
-        end={{ x: 0.85, y: 1 }}
-        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.5, y: 0.55 }}
+        start={{ x: 0.5, y: 0 }}
         style={styles.addButtonGloss}
+        pointerEvents="none"
       />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.addButtonColorBoost, colorBoostStyle]}
-      >
-        <LinearGradient
-          colors={
-            theme.isDark
-              ? ['rgba(214, 255, 227, 0.34)', 'rgba(107, 255, 165, 0.24)', 'rgba(0, 0, 0, 0)']
-              : ['rgba(244, 255, 248, 0.38)', 'rgba(116, 255, 180, 0.24)', 'rgba(0, 0, 0, 0)']
-          }
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0.12, y: 0.08 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.addButtonShineBoost, shineBoostStyle]}
-      >
-        <LinearGradient
-          colors={
-            theme.isDark
-              ? ['rgba(255, 255, 255, 0.28)', 'rgba(255, 255, 255, 0.04)', 'transparent']
-              : ['rgba(255, 255, 255, 0.46)', 'rgba(255, 255, 255, 0.08)', 'transparent']
-          }
-          end={{ x: 0.84, y: 1 }}
-          start={{ x: 0.16, y: 0 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
-      <Animated.View style={iconRotateStyle}>
-        <AppSymbol color="#FFFFFF" fallback="add" name="plus" size={28} type="monochrome" />
-      </Animated.View>
+      <AppSymbol
+        // Light: white "+" on primary-600/800 = AAA contrast.
+        // Dark:  surface-950 "+" on primary-300 = AAA contrast.
+        color={theme.isDark ? '#12211A' : '#FFFFFF'}
+        fallback="add"
+        name="plus"
+        size={28}
+        type="monochrome"
+      />
     </LinearGradient>
   )
 }
@@ -104,15 +81,4 @@ const styles = StyleSheet.create({
   addButtonGloss: {
     ...StyleSheet.absoluteFillObject,
   },
-  addButtonColorBoost: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
-  addButtonShineBoost: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
 })
-

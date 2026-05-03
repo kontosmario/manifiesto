@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react'
 import {
   type PressableProps,
   type PressableStateCallbackType,
@@ -6,23 +7,34 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { AddExpenseGlowMesh } from '@/components/navigation/add-expense-glow-mesh'
 import { AddExpenseTabButtonFace } from '@/components/navigation/add-expense-tab-button-face'
 import {
-  ADD_BUTTON_GLOW_SIZE,
-  useAddExpenseButtonBreath,
-  useAddExpenseButtonBurst,
-  useAddExpenseButtonGlow,
-  useAddExpenseButtonIconRotation,
-} from '@/components/navigation/add-expense-tab-button.model'
+  AddQuickActionsOverlay,
+  type QuickAction,
+} from '@/components/navigation/add-quick-actions-overlay'
+import { useAddExpenseButtonBurst } from '@/components/navigation/add-expense-tab-button.model'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { brand } from '@/theme/palette'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
 
+/**
+ * Center-stage FAB for "Agregar gasto".
+ *
+ * Two interactions:
+ *   · Tap (haptic light) → opens the add-expense form (most common
+ *     action, kept frictionless)
+ *   · Long-press (haptic medium) → opens a Speed Dial with 3 quick
+ *     actions: Gasto / Fijo / Meta
+ *
+ * Motion:
+ *   · scale 0.93 on press, immediate visual feedback
+ *   · burst ring expands + fades on tap release (300ms ease-out)
+ *   · no idle motion — the FAB stays calm; visual prominence comes
+ *     from the elevated mint shadow + cutout border ring
+ */
 export function AddExpenseTabButton({
   accessibilityState,
   onPress: forwardedOnPress,
@@ -36,114 +48,110 @@ export function AddExpenseTabButton({
   const router = useRouter()
   const { theme } = useAppTheme()
   const isReducedMotionEnabled = useReducedMotion()
-  const pressScale = usePressScale({
-    pressedScale: 0.93,
-  })
-  const {
-    animateGlowTo,
-    glowMeshStyle,
-    colorBoostStyle,
-    shineBoostStyle,
-    intensityShared,
-  } = useAddExpenseButtonGlow(isReducedMotionEnabled)
-  const { breathHaloStyle } = useAddExpenseButtonBreath(isReducedMotionEnabled)
+  const pressScale = usePressScale({ pressedScale: 0.93 })
   const { burstRingStyle, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
-  const { iconRotateStyle, animateRotationTo } = useAddExpenseButtonIconRotation(isReducedMotionEnabled)
+  const [quickActionsVisible, setQuickActionsVisible] = useState(false)
   void forwardedOnPress
 
   const resolveForwardedStyle = (state: PressableStateCallbackType) =>
     typeof style === 'function' ? style(state) : style
 
+  const handlePress = useCallback(() => {
+    void triggerHaptic('light')
+    triggerBurst()
+    router.push('/(app)/add-expense')
+  }, [router, triggerBurst])
+
+  const handleLongPress = useCallback(() => {
+    void triggerHaptic('medium')
+    setQuickActionsVisible(true)
+  }, [])
+
+  const quickActions: QuickAction[] = [
+    {
+      key: 'goal',
+      label: 'Meta de ahorro',
+      icon: 'flag',
+      onPress: () => router.push('/(app)/savings-goal'),
+    },
+    {
+      key: 'fixed',
+      label: 'Gasto fijo',
+      icon: 'event-repeat',
+      onPress: () => router.push('/(app)/add-fixed-expense'),
+    },
+    {
+      key: 'expense',
+      label: 'Gasto',
+      icon: 'add',
+      onPress: () => router.push('/(app)/add-expense'),
+    },
+  ]
+
   return (
-    <Pressable
-      accessibilityLabel="Agregar gasto"
-      accessibilityRole="button"
-      accessibilityState={accessibilityState}
-      android_ripple={{
-        borderless: false,
-        color: withAlpha('#FFFFFF', 0.2),
-        radius: 40,
-      }}
-      hitSlop={DEFAULT_HIT_SLOP}
-      onPress={() => {
-        void triggerHaptic('medium')
-        triggerBurst()
-        router.push('/(app)/add-expense')
-      }}
-      onPressIn={(event) => {
-        pressScale.onPressIn()
-        animateGlowTo(1)
-        animateRotationTo(1)
-        onPressIn?.(event)
-      }}
-      onPressOut={(event) => {
-        pressScale.onPressOut()
-        animateGlowTo(0)
-        animateRotationTo(0)
-        onPressOut?.(event)
-      }}
-      pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
-      style={(state) => [
-        resolveForwardedStyle(state),
-        styles.addButtonWrap,
-        {
-          opacity: state.pressed ? 0.96 : 1,
-        },
-      ]}
-      {...pressableProps}
-    >
-      {({ pressed }) => (
-        <>
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.addButtonGlowMeshWrap, glowMeshStyle]}
-          >
-            <AddExpenseGlowMesh intensity={intensityShared} isDark={theme.isDark} />
-          </Animated.View>
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.breathHalo,
-              { backgroundColor: withAlpha(brand.bright, 0.22) },
-              breathHaloStyle,
-            ]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.burstRing,
-              { borderColor: withAlpha(brand.bright, 0.9) },
-              burstRingStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              pressScale.animatedStyle,
-              // Shadow on a wrapper without `overflow: 'hidden'` so iOS
-              // can paint the drop-shadow outside bounds. Classic
-              // shadow* props instead of CSS `boxShadow` — more reliable
-              // across Expo Go SDK versions and plays nicely with the
-              // circular FAB shape.
-              {
-                shadowColor: theme.isDark ? '#62F49C' : '#31DB82',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: theme.isDark ? 0.34 : 0.22,
-                shadowRadius: 18,
-                elevation: 12,
-              },
-            ]}
-          >
-            <AddExpenseTabButtonFace
-              colorBoostStyle={colorBoostStyle}
-              shineBoostStyle={shineBoostStyle}
-              iconRotateStyle={iconRotateStyle}
-              pressed={pressed}
-              theme={theme}
-            />
-          </Animated.View>
-        </>
-      )}
-    </Pressable>
+    <>
+      <Pressable
+        accessibilityLabel="Agregar gasto"
+        accessibilityHint="Mantené presionado para más acciones"
+        accessibilityRole="button"
+        accessibilityState={accessibilityState}
+        android_ripple={{
+          borderless: false,
+          color: withAlpha('#FFFFFF', 0.2),
+          radius: 40,
+        }}
+        delayLongPress={350}
+        hitSlop={DEFAULT_HIT_SLOP}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        onPressIn={(event) => {
+          pressScale.onPressIn()
+          onPressIn?.(event)
+        }}
+        onPressOut={(event) => {
+          pressScale.onPressOut()
+          onPressOut?.(event)
+        }}
+        pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
+        style={(state) => [
+          resolveForwardedStyle(state),
+          styles.addButtonWrap,
+          {
+            opacity: state.pressed ? 0.96 : 1,
+          },
+        ]}
+        {...pressableProps}
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.burstRing,
+            { borderColor: withAlpha(theme.brand.bright, 0.9) },
+            burstRingStyle,
+          ]}
+        />
+        <Animated.View
+          style={[
+            pressScale.animatedStyle,
+            {
+              shadowColor: theme.isDark ? '#A6EF8F' : '#297811',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: theme.isDark ? 0.34 : 0.30,
+              shadowRadius: 12,
+              elevation: 12,
+            },
+          ]}
+        >
+          <AddExpenseTabButtonFace theme={theme} />
+        </Animated.View>
+      </Pressable>
+
+      <AddQuickActionsOverlay
+        visible={quickActionsVisible}
+        onDismiss={() => setQuickActionsVisible(false)}
+        actions={quickActions}
+      />
+    </>
   )
 }
 
@@ -154,20 +162,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     top: -18,
     position: 'relative',
-  },
-  addButtonGlowMeshWrap: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: ADD_BUTTON_GLOW_SIZE,
-    height: ADD_BUTTON_GLOW_SIZE,
-    top: -118,
-  },
-  breathHalo: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: 82,
-    height: 82,
-    borderRadius: 41,
   },
   burstRing: {
     position: 'absolute',

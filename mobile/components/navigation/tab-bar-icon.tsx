@@ -10,7 +10,21 @@ import Animated, {
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { useAppTheme } from '@/theme/theme-provider'
-import { brand, radii } from '@/theme/palette'
+
+/**
+ * V1 modernized tab icon.
+ *
+ * Active state visual model (post-2026-05-04 nav audit):
+ *   · No pill background behind the icon (dropped Material 2 pattern)
+ *   · Icon color shifts from `textMuted` to `primary`
+ *   · A 4×4 brand dot sits above the icon as the focus indicator
+ *     (Cash App / Revolut convention — calmer than a pill)
+ *   · Label bolds via tab-label.tsx (separate component)
+ *
+ * Idle state is visually quiet — only the icon is colored, no
+ * decoration. Combined with `tab-label.tsx`, the active tab reads:
+ * primary-coloured icon + dot above + bold label.
+ */
 
 function useFocusProgress(focused: boolean) {
   const reduceMotion = useReducedMotion()
@@ -22,10 +36,6 @@ function useFocusProgress(focused: boolean) {
       progress.value = target
       return
     }
-    // Reanimated v3 runs on the UI thread on native and compiles to
-    // CSS animations on web — same code path, smooth motion on both
-    // Expo Go (device) and Expo Web without the `useNativeDriver`
-    // branch we used to need.
     progress.value = withSpring(target, {
       damping: 16,
       stiffness: 180,
@@ -47,53 +57,31 @@ function TabIconFrame({
 }) {
   const { theme } = useAppTheme()
   const progress = useFocusProgress(focused)
-  const pillBackground = theme.isDark ? brand.bright : brand.deep
 
+  // Active focus dot above the icon. Fades + scales in on focus,
+  // out on blur.
   const dotAnimatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [
-      { scale: interpolate(progress.value, [0, 1], [0, 1]) },
-    ],
-  }))
-
-  const frameAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(progress.value, [0, 1], [0.94, 1]) },
-    ],
-  }))
-
-  const pillAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0, 1]) }],
   }))
 
   return (
     <View style={styles.iconSlot}>
-      {/* Signature brand dot floating above the pill on the active tab */}
+      {/* V1 primary focus dot — the only active-state ornament. */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.signatureDot,
-          { backgroundColor: brand.bright },
+          styles.focusDot,
+          { backgroundColor: theme.colors.primary },
           dotAnimatedStyle,
         ]}
       />
 
-      <Animated.View style={[styles.iconFrame, frameAnimatedStyle]}>
-        {/* Branded pill — fades in when active, sits flat for a confident look. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            styles.pillShape,
-            { backgroundColor: pillBackground },
-            pillAnimatedStyle,
-          ]}
-        />
-        <View style={styles.iconCenter}>{children}</View>
-      </Animated.View>
+      <View style={styles.iconCenter}>{children}</View>
 
-      {/* Unread-alert dot — sibling of the frame so the frame's
-          overflow:hidden doesn't clip it. Suppressed while focused. */}
+      {/* Unread alert (Control tab when advisor has new high-priority
+          signals). Suppressed while focused — user is already on the
+          tab. */}
       {showAlert && !focused ? (
         <View
           pointerEvents="none"
@@ -123,15 +111,13 @@ export function TabBarIcon({
   focused: boolean
   name: string
   size: number
-  /** When true, render a small unread-alert dot (top-right of the
-   *  icon frame). Suppressed automatically while focused — the user
-   *  is already on this tab. */
   showAlert?: boolean
 }) {
   const { theme } = useAppTheme()
-  const activeIconColor = theme.isDark ? brand.deep : '#FFFFFF'
-  const idleIconColor = theme.colors.textMuted
-  const resolvedColor = focused ? activeIconColor : idleIconColor
+  // Active uses V1 primary directly (primary-800 light, primary-300
+  // dark — both AA on the tab bar background). Idle uses textMuted
+  // (V1 surface-700 light, primary-300 dark).
+  const resolvedColor = focused ? theme.colors.primary : theme.colors.textMuted
   void color
 
   return (
@@ -140,7 +126,7 @@ export function TabBarIcon({
         color={resolvedColor}
         fallback={fallback}
         name={name}
-        size={focused ? size - 1 : size - 2}
+        size={size}
       />
     </TabIconFrame>
   )
@@ -151,23 +137,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  signatureDot: {
+  focusDot: {
     position: 'absolute',
-    top: -8,
+    top: -7,
     width: 4,
     height: 4,
     borderRadius: 2,
-  },
-  iconFrame: {
-    width: 50,
-    height: 34,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  pillShape: {
-    borderRadius: radii.pill,
   },
   iconCenter: {
     width: 28,

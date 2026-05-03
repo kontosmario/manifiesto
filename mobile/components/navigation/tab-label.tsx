@@ -1,7 +1,11 @@
 import { StyleSheet, Text } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
-import { brand } from '@/theme/palette'
 
+/**
+ * Tab label — bold + V1 primary when focused, muted otherwise.
+ * Pairs with `tab-bar-icon.tsx`'s focus dot for the full active state
+ * visual (color-only + bold + dot above icon).
+ */
 export function TabLabel({
   children,
   focused,
@@ -10,11 +14,10 @@ export function TabLabel({
   focused: boolean
 }) {
   const { theme } = useAppTheme()
-
-  // Active label anchors on the Manifiesto brand green — the same family as the
-  // active pill and the home hero accent. Inactive uses the standard muted tone.
-  const focusedColor = theme.isDark ? brand.bright : brand.deep
-  const color = focused ? focusedColor : theme.colors.textMuted
+  // V1 primary directly — same hex the icon uses when active so the
+  // tab reads as a coherent "primary group". textMuted for idle keeps
+  // the label legible without competing with the active tab.
+  const color = focused ? theme.colors.primary : theme.colors.textMuted
 
   return (
     <Text
