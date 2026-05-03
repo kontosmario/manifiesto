@@ -1,15 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
   Alert,
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { ModalCard } from '@/components/ui/modal-card'
 import { SectionHeader } from '@/components/ui/section-header'
 import { Screen } from '@/components/ui/screen'
 import { SettingsRow, SettingsSwitchRow } from '@/components/settings/settings-primitives'
@@ -255,76 +254,52 @@ export function NotificationsPreferencesScreen() {
         </RiseView>
       </View>
 
-      <Modal
-        animationType="fade"
-        transparent
+      <ModalCard
         visible={pickerSlot !== null}
-        onRequestClose={closePicker}
+        title={pickerTitle}
+        onClose={closePicker}
       >
-        <Pressable
-          style={[styles.modalBackdrop, { backgroundColor: theme.isDark ? 'rgba(0,0,0,0.55)' : 'rgba(15,42,30,0.35)' }]}
-          onPress={closePicker}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={[
-              styles.modalCard,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{pickerTitle}</Text>
-              <Pressable onPress={closePicker} hitSlop={10} accessibilityLabel="Cerrar">
-                <MaterialIcons name="close" size={20} color={theme.colors.textMuted} />
+        <View style={styles.hourList}>
+          {Array.from({ length: 24 }).map((_, hour) => {
+            const selected = hour === currentPickerValue
+            return (
+              <Pressable
+                key={hour}
+                onPress={() => handlePickHour(hour)}
+                style={({ pressed }) => [
+                  styles.hourRow,
+                  {
+                    backgroundColor: selected ? theme.colors.primary : 'transparent',
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.hourLabel,
+                    {
+                      color: selected
+                        ? theme.isDark
+                          ? '#12211A'
+                          : theme.colors.creamCard
+                        : theme.colors.text,
+                    },
+                  ]}
+                >
+                  {formatHour(hour)}
+                </Text>
+                {selected ? (
+                  <MaterialIcons
+                    name="check"
+                    size={18}
+                    color={theme.isDark ? '#12211A' : theme.colors.creamCard}
+                  />
+                ) : null}
               </Pressable>
-            </View>
-            <ScrollView
-              style={styles.hourList}
-              contentContainerStyle={styles.hourListContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {Array.from({ length: 24 }).map((_, hour) => {
-                const selected = hour === currentPickerValue
-                return (
-                  <Pressable
-                    key={hour}
-                    onPress={() => handlePickHour(hour)}
-                    style={({ pressed }) => [
-                      styles.hourRow,
-                      {
-                        backgroundColor: selected ? theme.colors.primary : 'transparent',
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.hourLabel,
-                        {
-                          color: selected
-                            ? theme.isDark
-                              ? '#12211A'
-                              : theme.colors.creamCard
-                            : theme.colors.text,
-                        },
-                      ]}
-                    >
-                      {formatHour(hour)}
-                    </Text>
-                    {selected ? (
-                      <MaterialIcons
-                        name="check"
-                        size={18}
-                        color={theme.isDark ? '#12211A' : theme.colors.creamCard}
-                      />
-                    ) : null}
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            )
+          })}
+        </View>
+      </ModalCard>
     </Screen>
   )
 }
@@ -340,38 +315,9 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
   },
-  modalBackdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 360,
-    maxHeight: '70%',
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
   hourList: {
-    maxHeight: 360,
-  },
-  hourListContent: {
-    paddingVertical: 8,
     gap: 2,
+    paddingVertical: 4,
   },
   hourRow: {
     flexDirection: 'row',
