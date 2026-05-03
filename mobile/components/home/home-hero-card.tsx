@@ -22,7 +22,6 @@ import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
-import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface HomeHeroCardProps {
@@ -57,7 +56,7 @@ export function HomeHeroCard({
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const projPositive = data.projectedClose >= 0
-  const projColor = projPositive ? theme.colors.heroAccent : '#F2B58A'
+  const projColor = projPositive ? theme.colors.heroAccent : '#F2A78C'
 
   // Day chip swaps to a warning state when the user hasn't confirmed
   // their cobro after payday. The neutral "día N de M" copy is
@@ -121,7 +120,7 @@ export function HomeHeroCard({
         colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={[styles.card, { borderColor: 'rgba(199,238,156,0.12)' }]}
+        style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
         accessible
         accessibilityRole="summary"
         accessibilityLabel={a11yLabel}
@@ -138,7 +137,7 @@ export function HomeHeroCard({
             gradient + aurora + shine, under the content. Single shared
             wave + per-particle phase offset → 1 worklet for the whole
             field (see card-particles.tsx for the rationale). */}
-        <CardParticles count={12} accentColor={authTokens.peach} />
+        <CardParticles count={12} accentColor="#F2A78C" />
 
         {!data.incomeConfigured ? (
           // Setup state — no monthly income on file. Showing "$0
@@ -193,8 +192,8 @@ export function HomeHeroCard({
                 style={[
                   styles.setupCta,
                   {
-                    backgroundColor: 'rgba(199,238,156,0.16)',
-                    borderColor: 'rgba(199,238,156,0.35)',
+                    backgroundColor: 'rgba(166,239,143,0.16)',
+                    borderColor: 'rgba(166,239,143,0.35)',
                   },
                 ]}
               >
@@ -244,14 +243,14 @@ export function HomeHeroCard({
                   styles.dayChip,
                   styles.dayChipPending,
                   {
-                    backgroundColor: 'rgba(232,151,106,0.18)',
-                    borderColor: 'rgba(232,151,106,0.55)',
+                    backgroundColor: 'rgba(242,167,140,0.18)',
+                    borderColor: 'rgba(242,167,140,0.55)',
                   },
                   pulseStyle,
                 ]}
               >
-                <BreatheDot size={6} color="#F2B58A" glow="#F2B58A" />
-                <Text style={[styles.dayChipText, { color: '#F2B58A' }]}>
+                <BreatheDot size={6} color="#F2A78C" glow="#F2A78C" />
+                <Text style={[styles.dayChipText, { color: '#F2A78C' }]}>
                   {dayChipLabel}
                 </Text>
               </Animated.View>
@@ -336,12 +335,12 @@ export function HomeHeroCard({
                     styles.savingsChip,
                     savingsChip.kind === 'consumed'
                       ? {
-                          backgroundColor: 'rgba(232,151,106,0.16)',
-                          borderColor: 'rgba(232,151,106,0.45)',
+                          backgroundColor: 'rgba(242,167,140,0.16)',
+                          borderColor: 'rgba(242,167,140,0.45)',
                         }
                       : {
-                          backgroundColor: 'rgba(199,238,156,0.10)',
-                          borderColor: 'rgba(199,238,156,0.28)',
+                          backgroundColor: 'rgba(166,239,143,0.10)',
+                          borderColor: 'rgba(166,239,143,0.28)',
                         },
                   ]}
                 >
@@ -349,7 +348,7 @@ export function HomeHeroCard({
                     name={savingsChip.kind === 'consumed' ? 'warning-amber' : 'savings'}
                     size={13}
                     color={
-                      savingsChip.kind === 'consumed' ? '#F2B58A' : theme.colors.heroAccent
+                      savingsChip.kind === 'consumed' ? '#F2A78C' : theme.colors.heroAccent
                     }
                   />
                   <Text
@@ -358,7 +357,7 @@ export function HomeHeroCard({
                       {
                         color:
                           savingsChip.kind === 'consumed'
-                            ? '#F2B58A'
+                            ? '#F2A78C'
                             : savingsChip.kind === 'partial'
                               ? theme.colors.heroMuted
                               : theme.colors.heroAccent,
@@ -382,8 +381,8 @@ export function HomeHeroCard({
               style={[
                 styles.tile,
                 {
-                  backgroundColor: 'rgba(199,238,156,0.10)',
-                  borderColor: 'rgba(199,238,156,0.22)',
+                  backgroundColor: 'rgba(166,239,143,0.10)',
+                  borderColor: 'rgba(166,239,143,0.22)',
                 },
               ]}
             >
@@ -448,7 +447,7 @@ export function HomeHeroCard({
                         size={11}
                         color={
                           projectedCloseTrend > 0
-                            ? '#F2B58A'
+                            ? '#F2A78C'
                             : projectedCloseTrend < 0
                               ? theme.colors.heroAccent
                               : theme.colors.heroMuted2
@@ -460,7 +459,7 @@ export function HomeHeroCard({
                           {
                             color:
                               projectedCloseTrend > 0
-                                ? '#F2B58A'
+                                ? '#F2A78C'
                                 : projectedCloseTrend < 0
                                   ? theme.colors.heroAccent
                                   : theme.colors.heroMuted2,

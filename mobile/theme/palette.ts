@@ -189,11 +189,11 @@ const lightColors: ThemeColors = {
   warning:            '#C27A0A',
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
-  heroGradient:       ['#0A2E1E', '#0E3A26', '#1B6B42', '#2DA15E'],
-  heroAccent:         '#C7EE9C',
-  heroMuted:          'rgba(255,255,255,0.78)',
-  heroMuted2:         'rgba(255,255,255,0.55)',
-  heroText:           '#F6FBEF',
+  heroGradient:       ['#244235', '#297811', '#329315', '#49D61F'],  // V1: surface-900 → primary-800/700/500
+  heroAccent:         '#A6EF8F',  // V1 — primary-300
+  heroMuted:          'rgba(242,234,211,0.78)',  // V1 — cream alpha
+  heroMuted2:         'rgba(242,234,211,0.55)',
+  heroText:           '#F2EAD3',  // V1 — cream foundation
   cream:              '#F6EFE3',
   creamSoft:          '#FAF4EA',
   creamCard:          '#FFFBF2',
@@ -204,9 +204,9 @@ const lightColors: ThemeColors = {
   peachBand:          '#FADFC8',
   greenBand:          '#D6EFBA',
   redBand:            '#F5C6B6',
-  auroraA:            'rgba(199,238,156,0.35)',
-  auroraB:            'rgba(247,181,138,0.28)',
-  auroraC:            'rgba(141,214,106,0.22)',
+  auroraA:            'rgba(166,239,143,0.35)',  // V1 — primary-300 alpha
+  auroraB:            'rgba(242,167,140,0.28)',  // V1 — accent-300 alpha
+  auroraC:            'rgba(119,231,85,0.22)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.1)',
   ringBg:             '#F6EFE3',
   pageBg:             '#EFF5E8',
@@ -231,11 +231,11 @@ const darkColors: ThemeColors = {
   warning:            '#F3BA57',
   danger:             '#F06A6A',
   overlay:            'rgba(0,0,0,0.52)',
-  heroGradient:       ['#133827', '#1F6B43', '#2E9A5F', '#2E9A5F'],
-  heroAccent:         '#C7EE9C',
-  heroMuted:          'rgba(246,251,239,0.78)',
-  heroMuted2:         'rgba(246,251,239,0.55)',
-  heroText:           '#F6FBEF',
+  heroGradient:       ['#244235', '#305A47', '#297811', '#329315'],  // V1: surface-900 → surface-800 → primary-800/700
+  heroAccent:         '#A6EF8F',  // V1 — primary-300
+  heroMuted:          'rgba(242,234,211,0.78)',
+  heroMuted2:         'rgba(242,234,211,0.55)',
+  heroText:           '#F2EAD3',  // V1 — cream foundation
   cream:              '#0A1410',
   creamSoft:          '#0E1A15',
   creamCard:          '#305A47',  // V1 — surface-800 (cards readable on dark forest)
@@ -246,9 +246,9 @@ const darkColors: ThemeColors = {
   peachBand:          '#3A2A22',
   greenBand:          '#1E3A28',
   redBand:            '#3A241E',
-  auroraA:            'rgba(199,238,156,0.25)',
-  auroraB:            'rgba(232,151,106,0.22)',
-  auroraC:            'rgba(141,214,106,0.18)',
+  auroraA:            'rgba(166,239,143,0.25)',  // V1 — primary-300 alpha
+  auroraB:            'rgba(242,167,140,0.22)',  // V1 — accent-300 alpha
+  auroraC:            'rgba(119,231,85,0.18)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.06)',
   ringBg:             '#0A1410',
   pageBg:             '#0A1410',
