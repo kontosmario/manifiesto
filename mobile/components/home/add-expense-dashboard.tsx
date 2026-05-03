@@ -156,6 +156,7 @@ export function AddExpenseDashboard({
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
           tileWidth={categoryTileWidth}
+          staticGrid
         />
       </RiseView>
 

@@ -35,6 +35,12 @@ interface CategoryHorizontalRailProps {
   tileWidth?: number
   /** Per-tile height in points. Defaults to 68. */
   tileHeight?: number
+  /** When true, render the columns inside a static View that
+   *  distributes them across the available width with no horizontal
+   *  scroll. Use from screens where the catalog is small enough to
+   *  always fit (add-expense after the fixed-only filter). When false
+   *  (default) the columns sit inside a horizontal ScrollView. */
+  staticGrid?: boolean
 }
 
 const DEFAULT_TILE_WIDTH = 60
@@ -51,6 +57,7 @@ export function CategoryHorizontalRail({
   label = 'Categoría',
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
+  staticGrid = false,
 }: CategoryHorizontalRailProps) {
   const { theme } = useAppTheme()
   const scrollRef = useRef<ScrollView>(null)
@@ -67,44 +74,55 @@ export function CategoryHorizontalRail({
   const selectedColumnIndex = selectedIndex >= 0 ? Math.floor(selectedIndex / rows) : -1
 
   useEffect(() => {
+    if (staticGrid) return
     if (selectedColumnIndex < 0 || !scrollRef.current) return
     const x = Math.max(0, selectedColumnIndex * (tileWidth + TILE_GAP) - tileWidth)
     scrollRef.current.scrollTo({ x, animated: true })
-  }, [selectedColumnIndex, tileWidth])
+  }, [selectedColumnIndex, tileWidth, staticGrid])
+
+  const columnTiles = (
+    <>
+      {columns.map((column, columnIndex) => (
+        <View key={columnIndex} style={styles.column}>
+          {column.map((category) => (
+            <CategoryTile
+              key={category.id}
+              category={category}
+              selected={category.id === selectedCategoryId}
+              iconResolver={iconResolver}
+              width={tileWidth}
+              height={tileHeight}
+              onPress={() => {
+                void triggerHaptic('selection')
+                onSelect(category.id)
+              }}
+            />
+          ))}
+        </View>
+      ))}
+    </>
+  )
 
   return (
     <View style={styles.root}>
       <Text style={[typography.eyebrow, { color: theme.colors.textMuted, paddingHorizontal: 4 }]}>
         {label}
       </Text>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-        snapToInterval={tileWidth + TILE_GAP}
-        snapToAlignment="start"
-      >
-        {columns.map((column, columnIndex) => (
-          <View key={columnIndex} style={styles.column}>
-            {column.map((category) => (
-              <CategoryTile
-                key={category.id}
-                category={category}
-                selected={category.id === selectedCategoryId}
-                iconResolver={iconResolver}
-                width={tileWidth}
-                height={tileHeight}
-                onPress={() => {
-                  void triggerHaptic('selection')
-                  onSelect(category.id)
-                }}
-              />
-            ))}
-          </View>
-        ))}
-      </ScrollView>
+      {staticGrid ? (
+        <View style={styles.staticContent}>{columnTiles}</View>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          decelerationRate="fast"
+          snapToInterval={tileWidth + TILE_GAP}
+          snapToAlignment="start"
+        >
+          {columnTiles}
+        </ScrollView>
+      )}
     </View>
   )
 }
@@ -202,6 +220,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     gap: TILE_GAP,
     paddingVertical: 4,
+  },
+  // Static grid: same paddings as the scroll variant, but rendered in
+  // a flex row that distributes the columns across the available
+  // width with `space-between`. The tile width itself is computed
+  // upstream (see `computeFillTileWidth`) so the columns hit the
+  // edges without overflow.
+  staticContent: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   column: {
     gap: TILE_GAP,
