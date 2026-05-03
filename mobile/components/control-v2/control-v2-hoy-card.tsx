@@ -255,8 +255,10 @@ export function ControlV2HoyCard({
         false,
       )
       // Single shared wave that drives the particle field. 9s linear
-      // sweep, looped with instant reset. Each particle reads
-      // `(wave + phase) % 1` so the field cascades organically.
+      // sweep, looped with instant reset. The instant 1→0 snap is
+      // visually invisible because every Particle worklet uses sin/cos
+      // at integer frequency multipliers of `wave * 2π` — both position
+      // and velocity match across the wrap.
       particleWave.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 9000, easing: Easing.linear }),
@@ -594,21 +596,40 @@ interface ParticleSpec {
   y: number
   /** Particle radius in px. Mixed sizes feel organic. */
   size: number
-  /** Total horizontal drift across one cycle (px, can be negative). */
-  driftX: number
-  /** Total vertical drift across one cycle (px). Negative = upward. */
-  driftY: number
-  /** Maximum opacity at the bell-curve peak. */
-  maxOpacity: number
-  /** Phase offset 0–1 — where in the cycle this particle starts. */
-  phase: number
+  /** Integer frequency multiplier for x motion. */
+  fx: 1 | 2
+  /** Integer frequency multiplier for y motion. */
+  fy: 1 | 2
+  /** Integer frequency multiplier for brightness flicker. */
+  fb: 1 | 2 | 3
+  /** Phase offset for x sine (radians). */
+  phaseX: number
+  phaseY: number
+  phaseB: number
+  /** Per-particle motion amplitudes (px). */
+  ampX: number
+  ampY: number
+  /** Brightness ceiling at the flicker peak. */
+  brightCeil: number
 }
 
 const PARTICLE_COUNT = 18
 
+// Brightness floor + peak tuned for the dark hero gradient. Floor > 0
+// so each ember keeps a faint glow at all times (firefly behaviour;
+// audit feedback was "deben fluir naturalmente como luciernagas").
+const BRIGHT_FLOOR = 0.18
+const BRIGHT_PEAK = 0.92
+
 /**
  * Deterministic seeded layout — same particle distribution on every
  * mount so it doesn't visually "shuffle" on re-renders.
+ *
+ * Motion model: each particle uses sin/cos at integer frequency
+ * multipliers of the shared `wave * 2π`. Because integer × 2π wraps
+ * exactly at wave=1→0, both position AND velocity match across the
+ * loop boundary — no visible "salto a su posición" the way the old
+ * `drift * t` ramp produced.
  */
 function buildParticleSpecs(width: number, height: number): ParticleSpec[] {
   const specs: ParticleSpec[] = []
@@ -617,17 +638,24 @@ function buildParticleSpecs(width: number, height: number): ParticleSpec[] {
     seed = (seed * 1664525 + 1013904223) >>> 0
     return (seed & 0xfffffff) / 0xfffffff
   }
+  const TWO_PI = Math.PI * 2
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     specs.push({
       x: rand() * width,
-      // Spawn slightly below the visible area so the upward drift
-      // brings them into view as they fade in.
       y: 12 + rand() * (height - 24),
-      size: 1.5 + rand() * 2.0,
-      driftX: (rand() * 2 - 1) * 16,
-      driftY: -(24 + rand() * 48), // upward 24–72pt
-      maxOpacity: 0.32 + rand() * 0.42,
-      phase: rand(),
+      size: 1.8 + rand() * 2.2,
+      fx: (i % 3 === 0 ? 2 : 1) as 1 | 2,
+      fy: (i % 2 === 0 ? 1 : 2) as 1 | 2,
+      fb: (1 + (i % 3)) as 1 | 2 | 3,
+      phaseX: rand() * TWO_PI,
+      phaseY: rand() * TWO_PI,
+      phaseB: rand() * TWO_PI,
+      // Slightly larger than the previous linear-drift amplitudes —
+      // sin motion stays inside ±amp while linear drifted up to full
+      // `driftY`, so we widen here to keep the visible motion range.
+      ampX: 10 + rand() * 12,
+      ampY: 14 + rand() * 18,
+      brightCeil: Math.min(BRIGHT_PEAK, BRIGHT_FLOOR + 0.55 + rand() * 0.25),
     })
   }
   return specs
@@ -698,19 +726,25 @@ function Particle({
 }) {
   const animatedStyle = useAnimatedStyle(() => {
     'worklet'
-    // Per-particle phase offset → looping 0..1 t value.
-    const t = (wave.value + spec.phase) % 1
-    // Bell-curve opacity: 0 at endpoints, peak at t=0.5.
-    // Math.sin(πt) gives 0 → 1 → 0.
-    const opacity = spec.maxOpacity * Math.sin(t * Math.PI)
+    const angle = wave.value * 2 * Math.PI
+    const tx = Math.sin(angle * spec.fx + spec.phaseX) * spec.ampX
+    const ty = Math.cos(angle * spec.fy + spec.phaseY) * spec.ampY
+    // Brightness flicker — independent frequency from motion so the
+    // ember reads as breathing, not strobing in lockstep.
+    const flicker01 = (Math.sin(angle * spec.fb + spec.phaseB) + 1) / 2
+    const opacity =
+      BRIGHT_FLOOR + flicker01 * (spec.brightCeil - BRIGHT_FLOOR)
     return {
-      transform: [
-        { translateX: spec.driftX * t },
-        { translateY: spec.driftY * t },
-      ],
+      transform: [{ translateX: tx }, { translateY: ty }],
       opacity,
     }
   })
+
+  // Soft halo so each ember reads as a point of light — bumped per
+  // request to "que brillen un poco más". Halo radius scales with the
+  // particle so larger embers naturally glow stronger.
+  const glowRadius = spec.size * 2.6
+  const glow = `0px 0px ${glowRadius.toFixed(1)}px ${color}`
 
   return (
     <Animated.View
@@ -723,6 +757,7 @@ function Particle({
           height: spec.size,
           borderRadius: spec.size / 2,
           backgroundColor: color,
+          boxShadow: glow,
         },
         animatedStyle,
       ]}
