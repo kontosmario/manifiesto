@@ -344,12 +344,15 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   // the SectionList when `sections` is empty (no day groups passed).
   const emptyState = useMemo(() => {
     if (controller.expenses.length === 0) {
+      // No empty-state CTA here on purpose — the home Variables band
+      // and the Add tab already cover "register the first expense".
+      // Surfacing the same button a third time was redundant.
       return {
         kind: 'global' as const,
         primary: 'Cargá tu primer gasto',
         secondary: 'Empezá el ciclo registrando uno',
-        actionLabel: 'Registrar gasto',
-        onAction: handlePressAdd,
+        actionLabel: undefined,
+        onAction: undefined,
         iconName: 'add-circle-outline' as const,
       }
     }
@@ -379,7 +382,6 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
     controller.filteredExpenses.length,
     controller.hasAnyFilter,
     handleClearFilters,
-    handlePressAdd,
   ])
 
   const sectionLayout = LinearTransition.duration(260)
