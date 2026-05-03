@@ -44,9 +44,9 @@ export function FijoRow({
   const statusLabel =
     status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'
   const statusColor =
-    status === 'paid' ? '#2E7D5B' : status === 'overdue' ? '#C03A2A' : '#A3452A'
+    status === 'paid' ? '#297811' : status === 'overdue' ? '#973511' : '#973511'
   const statusBg =
-    status === 'paid' ? '#DDEFE3' : status === 'overdue' ? '#F5C6B6' : '#FADFC8'
+    status === 'paid' ? '#EAFBE4' : status === 'overdue' ? '#F8D1C3' : '#FCEAE3'
 
   const diffDays = item.dayOfMonth - todayDay
   const dueLabel =
@@ -83,7 +83,7 @@ export function FijoRow({
             styles.card,
             {
               backgroundColor: theme.colors.creamCard,
-              shadowColor: '#0F2A1E',
+              shadowColor: '#12211A',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: open ? 0.18 : 0,
               shadowRadius: 10,
@@ -202,8 +202,8 @@ export function FijoRow({
 
 function TrendBadge({ deltaPct }: { deltaPct: number }) {
   const up = deltaPct > 0
-  const bg = up ? 'rgba(232,151,106,0.18)' : 'rgba(46,125,91,0.16)'
-  const fg = up ? '#C25A3E' : '#2E7D5B'
+  const bg = up ? 'rgba(242,167,140,0.18)' : 'rgba(166,239,143,0.16)'
+  const fg = up ? '#B84014' : '#297811'
   return (
     <View style={[styles.trendBadge, { backgroundColor: bg }]}>
       <Text style={[styles.trendBadgeText, { color: fg }]}>

@@ -65,7 +65,7 @@ export function FijosHeroCard({
           colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
-          style={[styles.card, { borderColor: 'rgba(199,238,156,0.12)' }]}
+          style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
         >
           <ShineOverlay
             width={430}
@@ -112,7 +112,7 @@ export function FijosHeroCard({
               <CountUpText
                 value={montoPendiente}
                 format={(n) => formatMoney(n)}
-                style={[styles.montoPendiente, { color: '#F2B58A' }]}
+                style={[styles.montoPendiente, { color: '#F2A78C' }]}
               />
             </View>
           </View>
@@ -133,7 +133,7 @@ export function FijosHeroCard({
               value={cantidadPagados}
               sublabel="gastos listos"
               accent={theme.colors.heroAccent}
-              accentBg="rgba(199,238,156,0.10)"
+              accentBg="rgba(166,239,143,0.10)"
               icon="check"
             />
             <StatCard
@@ -141,7 +141,7 @@ export function FijosHeroCard({
               value={cantidadPendientes}
               sublabel="pendientes"
               accent="#F2B58A"
-              accentBg="rgba(242,181,138,0.12)"
+              accentBg="rgba(242,167,140,0.12)"
               icon="warning"
             />
           </View>
@@ -254,7 +254,7 @@ function ProgressBar({ porcentaje, accent }: { porcentaje: number; accent: strin
         style={[
           styles.progressDot,
           {
-            backgroundColor: '#F6FBEF',
+            backgroundColor: '#F2EAD3',
             borderColor: accent,
             shadowColor: accent,
             shadowOffset: { width: 0, height: 0 },
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   iconText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#0A1410',
+    color: '#12211A',
   },
   statLabel: {
     fontSize: 10,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
-    color: '#F6FBEF',
+    color: '#F2EAD3',
     lineHeight: 28,
   },
   statSublabel: {

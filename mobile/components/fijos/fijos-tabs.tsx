@@ -20,9 +20,9 @@ interface TabDef {
 export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
   const tabs: TabDef[] = [
     { id: 'todos', label: 'Todos', count: counts.todos },
-    { id: 'pendientes', label: 'Pendientes', count: counts.pendientes, dot: '#E8976A' },
-    { id: 'pagados', label: 'Pagados', count: counts.pagados, dot: '#8DD66A' },
-    { id: 'zombis', label: 'Zombi', count: counts.zombis, dot: '#C9A6E0' },
+    { id: 'pendientes', label: 'Pendientes', count: counts.pendientes, dot: '#EC7A51' },  // V1 accent-400
+    { id: 'pagados', label: 'Pagados', count: counts.pagados, dot: '#49D61F' },  // V1 primary-500
+    { id: 'zombis', label: 'Zombi', count: counts.zombis, dot: '#C9A6E0' },  // plum (intentional, distinct from brand)
   ]
   return (
     <RiseView delay={120}>
@@ -48,20 +48,20 @@ function TabPill({ tab, active, onPress }: { tab: TabDef; active: boolean; onPre
   //  · Inactive     → creamCard / dark surface, themed label + muted count.
   const fg = active
     ? theme.isDark
-      ? '#0A1410'
+      ? '#12211A'  // V1 surface-950
       : theme.colors.creamCard
     : theme.colors.text
   const countBg = active
     ? theme.isDark
-      ? 'rgba(10,20,16,0.15)'
-      : 'rgba(246,251,239,0.1)'
+      ? 'rgba(18,33,26,0.15)'  // V1 surface-950 alpha
+      : 'rgba(242,234,211,0.1)'  // V1 cream alpha
     : theme.isDark
-      ? '#0E1A15'
+      ? '#12211A'  // V1 surface-950
       : theme.colors.pageBg
   const countFg = active
     ? theme.isDark
-      ? 'rgba(10,20,16,0.65)'
-      : 'rgba(246,251,239,0.55)'
+      ? 'rgba(18,33,26,0.65)'
+      : 'rgba(242,234,211,0.55)'
     : theme.colors.textMuted
 
   const content = (
@@ -83,7 +83,7 @@ function TabPill({ tab, active, onPress }: { tab: TabDef; active: boolean; onPre
         accessibilityLabel={tab.label}
       >
         <LinearGradient
-          colors={['#C7EE9C', '#8DD66A'] as unknown as readonly [string, string, ...string[]]}
+          colors={['#A6EF8F', '#49D61F'] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.pill, styles.pillActiveDark]}
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   pillActiveDark: {
     borderWidth: 0,
-    boxShadow: '0px 8px 20px -8px rgba(141,214,106,0.55)',
+    boxShadow: '0px 8px 20px -8px rgba(73,214,31,0.55)',
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
   label: { fontSize: 13, fontWeight: '700' },

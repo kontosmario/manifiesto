@@ -68,10 +68,10 @@ function UpcomingCard({
   // and a deep warm brown in dark mode, so the strip reads the same in
   // either theme. Non-urgent cards fall back to the surface tokens.
   const urgentGradient: readonly [string, string] = theme.isDark
-    ? ['#4A201A', '#3A2A22']
-    : ['#FADFC8', '#F5C6B6']
-  const urgentBorder = theme.isDark ? '#E88A70' : '#F2B58A'
-  const urgentLabelColor = theme.isDark ? '#F2B58A' : '#A3452A'
+    ? ['#5C200A', '#2E1005']  // V1 accent-900 → accent-950
+    : ['#FCEAE3', '#F8D1C3']  // V1 accent-100 → accent-200
+  const urgentBorder = '#EC7A51'  // V1 accent-400 (uniform)
+  const urgentLabelColor = theme.isDark ? '#F8D1C3' : '#973511'  // V1 accent-200 / accent-700
 
   const content = (
     <>

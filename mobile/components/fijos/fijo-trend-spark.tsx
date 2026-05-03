@@ -23,7 +23,7 @@ export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSpa
   const diff = last - first
   const pctChange = first > 0 ? (diff / first) * 100 : 0
   const stroke =
-    pctChange >= 1.5 ? '#C25A3E' : pctChange <= -1.5 ? '#2E7D5B' : '#8A8A8A'
+    pctChange >= 1.5 ? '#B84014' : pctChange <= -1.5 ? '#297811' : '#8A8A8A'
 
   const min = Math.min(...points)
   const max = Math.max(...points)

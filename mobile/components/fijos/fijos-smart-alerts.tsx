@@ -64,7 +64,7 @@ export function FijosSmartAlerts({
       title: stressWeek.title,
       body: stressWeek.body.split('.')[0] ?? stressWeek.body,
       action: 'Ver',
-      tint: '#E8B85F',
+      tint: '#F3BA57',
       onPress: () => router.push('/(app)/(tabs)/fixed-expenses'),
     })
   }
@@ -76,7 +76,7 @@ export function FijosSmartAlerts({
       title: fijosRatio.title,
       body: fijosRatio.body.split('.')[0] ?? fijosRatio.body,
       action: 'Ver',
-      tint: fijosRatio.urgency === 'alta' ? '#E88A70' : '#E8B85F',
+      tint: fijosRatio.urgency === 'alta' ? '#EC7A51' : '#F3BA57',
     })
   }
 
@@ -97,7 +97,7 @@ export function FijosSmartAlerts({
       title: `${h.name}`,
       body: `Subió ${h.deltaPct}% vs. ${formatMoney(h.previousPrice)}`,
       action: 'Ver',
-      tint: h.category?.color ?? '#E8976A',
+      tint: h.category?.color ?? '#EC7A51',
       onPress: onOpenHike ? () => onOpenHike(h.fixedExpenseId) : undefined,
       onDismiss: () => {
         void triggerHaptic('light')
