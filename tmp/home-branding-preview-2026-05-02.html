@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home · Branding migration preview · 2026-05-02</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #f4f4ef;
+    color: #1a1a1a;
+    line-height: 1.5;
+    padding: 32px 24px 80px;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.4px; }
+  h2 { font-size: 18px; margin: 36px 0 12px; letter-spacing: -0.2px; border-bottom: 1px solid #e0e0d8; padding-bottom: 6px; }
+  h3 { font-size: 14px; margin: 20px 0 8px; letter-spacing: 0.2px; text-transform: uppercase; color: #5a5a52; }
+  p, li { font-size: 13px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: #ebebe2; padding: 1px 5px; border-radius: 3px; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  /* context header */
+  .context { background: #fff; border: 1px solid #e0e0d8; border-radius: 10px; padding: 18px 22px; }
+  .context ul { margin: 6px 0 0 0; padding-left: 18px; }
+  .context li { margin: 3px 0; }
+
+  /* mockups grid */
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0 8px; }
+  .pair { background: #fff; border: 1px solid #e0e0d8; border-radius: 14px; padding: 18px; }
+  .pair-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .pair-head .badge { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #888; }
+  .pair-head .badge.before { color: #b94a3a; }
+  .pair-head .badge.after { color: #2c7a3a; }
+  .row-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* phone frame */
+  .phone {
+    border-radius: 36px;
+    border: 1px solid rgba(0,0,0,0.18);
+    aspect-ratio: 9 / 19.5;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 18px 40px -22px rgba(0,0,0,0.4);
+  }
+  .phone-inner { position: absolute; inset: 0; padding: 38px 14px 18px; overflow: hidden; }
+  .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 90px; height: 22px; border-radius: 14px; background: rgba(0,0,0,0.35); }
+
+  /* Home composition (replicates real layout coarsely) */
+  .home-stack { display: flex; flex-direction: column; gap: 10px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 4px; }
+  .greeting { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; }
+  .greeting .name { font-size: 18px; display: block; font-weight: 800; letter-spacing: -0.4px; margin-top: 2px; }
+  .actions { display: flex; gap: 6px; margin-top: 12px; align-items: center; }
+  .circle-btn { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; position: relative; font-size: 14px; }
+  .circle-btn .dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 999px; }
+  .assistant-btn { padding: 6px 9px; border-radius: 999px; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; }
+
+  /* family strip */
+  .family-strip { display: flex; align-items: center; gap: 6px; padding: 4px; }
+  .avatar { width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+  .payday-pill { margin-left: auto; padding: 4px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid; display: flex; align-items: center; gap: 4px; }
+  .payday-pill .pulse { width: 5px; height: 5px; border-radius: 999px; }
+
+  /* hero card */
+  .hero-card { padding: 14px 14px 12px; border-radius: 18px; border: 1px solid; position: relative; overflow: hidden; }
+  .hero-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .hero-label { font-size: 9px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
+  .hero-label .breathe { width: 6px; height: 6px; border-radius: 999px; }
+  .hero-day-chip { font-size: 8.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid; }
+  .hero-amount { font-size: 28px; font-weight: 900; letter-spacing: -1.2px; line-height: 1; margin: 8px 0 8px; }
+  .savings-chip { font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 999px; border: 1px solid; display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; }
+  .tiles-row { display: flex; gap: 6px; margin-top: 9px; }
+  .tile { flex: 1; padding: 9px 8px; border-radius: 10px; border: 1px solid; }
+  .tile-label { font-size: 8.5px; font-weight: 700; }
+  .tile-value { font-size: 13px; font-weight: 800; letter-spacing: -0.3px; margin-top: 2px; }
+  .tile-sub { font-size: 8.5px; margin-top: 1px; }
+
+  /* month summary */
+  .month-card { padding: 12px; border-radius: 16px; border: 1px solid; display: flex; gap: 10px; }
+  .month-section { flex: 1; }
+  .ms-label { font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .ms-value { font-size: 16px; font-weight: 900; margin-top: 2px; letter-spacing: -0.4px; }
+  .ms-band { margin-top: 7px; padding: 5px 7px; border-radius: 8px; font-size: 9px; display: flex; align-items: center; gap: 5px; }
+  .ms-band-icon { width: 14px; height: 14px; border-radius: 4px; }
+
+  /* meta card */
+  .meta-card { padding: 12px; border-radius: 16px; border: 1px solid; }
+  .meta-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .meta-title { font-size: 12px; font-weight: 800; }
+  .meta-amt { font-size: 16px; font-weight: 900; letter-spacing: -0.4px; }
+  .meta-track { height: 8px; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .meta-fill { height: 100%; }
+
+  /* activity */
+  .activity-head { display: flex; justify-content: space-between; padding: 4px 2px 0; }
+  .activity-label { font-size: 9px; font-weight: 800; letter-spacing: 1.6px; }
+  .activity-link { font-size: 11px; font-weight: 700; }
+  .activity-row { display: flex; gap: 8px; align-items: center; padding: 8px 6px; border-bottom: 1px solid; }
+  .activity-row:last-child { border-bottom: none; }
+  .who-pill { width: 22px; height: 22px; border-radius: 999px; font-size: 9px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; }
+  .activity-text { flex: 1; font-size: 11px; font-weight: 600; }
+  .activity-amt { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  /* fab */
+  .fab { position: absolute; right: 14px; bottom: 18px; width: 50px; height: 50px; border-radius: 999px; box-shadow: 0 10px 22px -8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; border: 1px solid #e0e0d8; border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #ececdf; vertical-align: top; }
+  th { background: #f0efe6; font-weight: 700; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; }
+  tr:last-child td { border-bottom: none; }
+  td.path { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #2a4d2a; }
+  td.before { color: #a04138; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+  td.after  { color: #2c7a3a; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+  .risk { font-weight: 700; padding: 2px 7px; border-radius: 4px; font-size: 10px; }
+  .risk.low  { color: #2c7a3a; background: #e1f0e3; }
+  .risk.med  { color: #8a6418; background: #f3e8ce; }
+  .risk.high { color: #a04138; background: #f7d7d2; }
+
+  .grade { font-weight: 700; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
+  .grade.aaa { color: #fff; background: #2c7a3a; }
+  .grade.aa  { color: #fff; background: #4a8c4a; }
+  .grade.aaUI { color: #1a1a1a; background: #c4dfa3; }
+  .grade.fail { color: #fff; background: #a04138; }
+
+  /* diff */
+  .diff-summary { background: #fff; border: 1px solid #e0e0d8; border-radius: 10px; padding: 18px 22px; }
+  .diff-summary .stats { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; }
+  .diff-summary .stat { background: #f4f4ef; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; }
+  .diff-summary .stat .num { font-size: 22px; font-weight: 900; color: #2c7a3a; display: block; letter-spacing: -0.6px; }
+
+  /* corrections */
+  .corrections { background: #fffbe9; border: 1px solid #e8d57a; border-radius: 10px; padding: 18px 22px; }
+  .corrections h2 { color: #5a4500; border-color: #e8d57a; margin-top: 0; }
+  .corrections ol { padding-left: 22px; margin: 0; }
+  .corrections li { margin: 14px 0; }
+  .corrections .q { font-weight: 700; }
+  .corrections .default { font-style: italic; color: #6b5a25; display: block; margin-top: 4px; font-weight: 500; }
+  .corrections .opts { margin: 6px 0 0; padding-left: 0; list-style: none; font-size: 12px; }
+  .corrections .opts li { margin: 3px 0; padding-left: 14px; position: relative; }
+  .corrections .opts li::before { content: "·"; position: absolute; left: 4px; color: #a87d18; font-weight: 900; }
+
+  /* keep dark phone background fully covered */
+  .phone-bg { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="context">
+  <h1>Home · Migración de branding · preview before/after</h1>
+  <p style="margin: 4px 0 12px; color: #555;">Comunicación de impacto — no es pixel-perfect del render nativo. Sirve para ver claro la diferencia de tokens aplicados al view real.</p>
+  <ul>
+    <li><strong>Doc fuente:</strong> <code>docs/PENDIENTES A IMPLEMENTAR/branding-splash-alignment-2026-05-02.md</code></li>
+    <li><strong>Vista objetivo:</strong> Home / Inicio (composición efectiva renderizada por <code>HomeDashboard</code>)</li>
+    <li><strong>Theme source:</strong> <code>mobile/theme/palette.ts</code> · <strong>hook:</strong> <code>useAppTheme()</code></li>
+    <li><strong>Archivos en alcance (verificados):</strong>
+      <ul>
+        <li><code>mobile/theme/palette.ts</code> (theme source — Fase 1 + Fase 2 del doc)</li>
+        <li><code>mobile/screens/home/home-screen.tsx</code> (RefreshControl consume <code>brand.bright</code> y <code>brand.deep</code> directos)</li>
+        <li><code>mobile/components/home/home-header.tsx</code> · <code>greeting-header.tsx</code> · <code>home-circle-button.tsx</code> · <code>home-assistant-button.tsx</code></li>
+        <li><code>mobile/components/home/family-strip.tsx</code> · <code>payday-pill-v2.tsx</code></li>
+        <li><code>mobile/components/home/home-hero-card.tsx</code> · <code>hero-aurora.tsx</code> · <code>ambient-blobs.tsx</code></li>
+        <li><code>mobile/components/home/month-summary-card.tsx</code></li>
+        <li><code>mobile/components/home/meta-card.tsx</code> · <code>meta-empty-card.tsx</code></li>
+        <li><code>mobile/components/home/home-activity-section.tsx</code> · <code>activity-row-v2.tsx</code> · <code>who-paid-avatar.tsx</code></li>
+      </ul>
+    </li>
+    <li><strong>Fuera de alcance verificado en Home:</strong> <code>financial-summary-radial.*</code> y <code>daily-budget-ring.*</code> NO se rendean en Home (viven en Gastos / Control). Quedan como riesgo de Fase 2 sólo cuando se aborden esas vistas.</li>
+    <li><strong>No tocar:</strong> <code>mobile/theme/auth-theme.ts</code>; charts/canvas; tipografía / radii / shadows.</li>
+  </ul>
+</header>
+
+<h2>1 · Mockups Home before / after</h2>
+<p style="font-size: 12px; color: #5a5a52; margin: 0 0 12px;">Mismos componentes, mismos datos dummy. Izquierda = tokens actuales de <code>palette.ts</code> hoy. Derecha = tokens del doc (Fase 1 + Fase 2 + el bell-badge de Fase 3 ya pintado para que se vea el coral operativo).</p>
+
+<!-- LIGHT MODE -->
+<div class="pair">
+  <div class="pair-head"><div class="badge">Light mode</div><div style="font-size: 10px; color: #888;">canvas + cream paper</div></div>
+  <div class="row-pair">
+    <!-- BEFORE LIGHT -->
+    <div>
+      <div class="pair-head"><span class="badge before">Before</span><span style="font-size: 10px; color: #aaa;">brand.deep #0F2E1F · peach #F2B58A</span></div>
+      <div class="phone" style="background: #F4F2ED;">
+        <div class="notch"></div>
+        <!-- ambient backdrop hint -->
+        <div class="phone-bg" style="background:
+          radial-gradient(60% 40% at 30% 18%, rgba(199,238,156,0.35), transparent 60%),
+          radial-gradient(50% 35% at 80% 10%, rgba(247,181,138,0.28), transparent 65%),
+          #F4F2ED;"></div>
+        <div class="phone-inner home-stack">
+          <div class="header-row">
+            <div class="greeting" style="color: #6B7566;">BUENAS,<span class="name" style="color: #0F2E1F;">Mario</span></div>
+            <div class="actions">
+              <div class="assistant-btn" style="background: rgba(199,238,156,0.22); border: 1px solid rgba(199,238,156,0.32); color: #0F2A1E;">⚡ 2</div>
+              <div class="circle-btn" style="background: #FFFFFF; color: #0F2E1F; border: 1px solid rgba(15,46,31,0.08);">🔔<span class="dot" style="background: #F2B58A;"></span></div>
+              <div class="circle-btn" style="background: #FFFFFF; color: #0F2E1F; border: 1px solid rgba(15,46,31,0.08);">⚙</div>
+            </div>
+          </div>
+          <div class="family-strip">
+            <div class="avatar" style="background: #0F2E1F;">M</div>
+            <div class="avatar" style="background: #5BA77A;">A</div>
+            <div class="payday-pill" style="background: rgba(232,151,106,0.14); border-color: rgba(232,151,106,0.45); color: #C25A3E;">
+              <span class="pulse" style="background: #C25A3E;"></span>+2 días sin cobrar
+            </div>
+          </div>
+          <div class="hero-card" style="background: linear-gradient(135deg, #0A2E1E 0%, #0E3A26 35%, #1B6B42 70%, #2DA15E 100%); border-color: rgba(199,238,156,0.12); color: #F6FBEF;">
+            <div class="hero-label-row">
+              <div class="hero-label" style="color: #C7EE9C;"><span class="breathe" style="background: #C7EE9C; box-shadow: 0 0 6px #C7EE9C;"></span>DISPONIBLE</div>
+              <div class="hero-day-chip" style="background: rgba(232,151,106,0.18); border-color: rgba(232,151,106,0.55); color: #F2B58A;">+2 sin cobrar</div>
+            </div>
+            <div class="hero-amount" style="color: #F6FBEF;">$ 184.300</div>
+            <div class="savings-chip" style="background: rgba(199,238,156,0.10); border-color: rgba(199,238,156,0.28); color: #C7EE9C;">💰 Apartando $ 60.000</div>
+            <div class="tiles-row">
+              <div class="tile" style="background: rgba(199,238,156,0.10); border-color: rgba(199,238,156,0.22);">
+                <div class="tile-label" style="color: #C7EE9C;">Podés gastar por día</div>
+                <div class="tile-value" style="color: #F6FBEF;">$ 12.300</div>
+                <div class="tile-sub" style="color: rgba(255,255,255,0.55);">hasta fin de ciclo</div>
+              </div>
+              <div class="tile" style="background: rgba(246,251,239,0.05); border-color: rgba(255,255,255,0.08);">
+                <div class="tile-label" style="color: rgba(255,255,255,0.55);">Vas a cerrar con</div>
+                <div class="tile-value" style="color: #C7EE9C;">+$ 24.500</div>
+                <div class="tile-sub" style="color: rgba(255,255,255,0.55);">si seguís este ritmo</div>
+              </div>
+            </div>
+          </div>
+          <div class="month-card" style="background: #FFFFFF; border-color: rgba(15,46,31,0.08); color: #0F2E1F;">
+            <div class="month-section">
+              <div class="ms-label" style="color: #C25A3E;">VARIABLES</div>
+              <div class="ms-value">$ 91.200</div>
+              <div class="ms-band" style="background: rgba(232,151,106,0.16); color: #C25A3E;"><span class="ms-band-icon" style="background: rgba(232,151,106,0.22);"></span>Más en Comida</div>
+            </div>
+            <div class="month-section">
+              <div class="ms-label" style="color: #2E7D5B;">FIJOS</div>
+              <div class="ms-value">$ 124.800</div>
+              <div class="ms-band" style="background: rgba(110,224,154,0.12); color: #2E7D5B;"><span class="ms-band-icon" style="background: rgba(110,224,154,0.20);"></span>Todos pagados</div>
+            </div>
+          </div>
+          <div class="meta-card" style="background: #FFFBF2; border-color: rgba(15,46,31,0.08); color: #0F2E1F;">
+            <div class="meta-head">
+              <div class="meta-title">Vacaciones Brasil</div>
+              <div class="meta-amt">$ 320 / 800k</div>
+            </div>
+            <div class="meta-track" style="background: rgba(15,42,30,0.08);"><div class="meta-fill" style="width: 40%; background: linear-gradient(90deg, #6FE09A 0%, #F2B58A 100%);"></div></div>
+          </div>
+          <div class="activity-head">
+            <div class="activity-label" style="color: #6B7566;">ACTIVIDAD</div>
+            <div class="activity-link" style="color: #0A2016;">Ver todos</div>
+          </div>
+          <div style="background: #FFFFFF; border-radius: 12px; border: 1px solid rgba(15,46,31,0.08);">
+            <div class="activity-row" style="border-color: rgba(15,46,31,0.06);">
+              <div class="who-pill" style="background: #2E7D5B;">M</div>
+              <div class="activity-text" style="color: #0F2E1F;">Café · Santo Tostado</div>
+              <div class="activity-amt" style="color: #0F2E1F;">$ 1.840</div>
+            </div>
+            <div class="activity-row" style="border-color: rgba(15,46,31,0.06);">
+              <div class="who-pill" style="background: #5BA77A;">A</div>
+              <div class="activity-text" style="color: #0F2E1F;">Verdulería</div>
+              <div class="activity-amt" style="color: #0F2E1F;">$ 6.420</div>
+            </div>
+          </div>
+          <div class="fab" style="background: #0F2E1F; color: #FFFFFF;">＋</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER LIGHT -->
+    <div>
+      <div class="pair-head"><span class="badge after">After</span><span style="font-size: 10px; color: #aaa;">primary-700 #40792F · accent-600 #AF441D · paper #FAF7F0</span></div>
+      <div class="phone" style="background: #FAF7F0;">
+        <div class="notch"></div>
+        <div class="phone-bg" style="background:
+          radial-gradient(60% 40% at 30% 18%, rgba(168,216,154,0.35), transparent 60%),
+          radial-gradient(50% 35% at 80% 10%, rgba(233,172,150,0.28), transparent 65%),
+          #FAF7F0;"></div>
+        <div class="phone-inner home-stack">
+          <div class="header-row">
+            <div class="greeting" style="color: #40792F;">BUENAS,<span class="name" style="color: #12211A;">Mario</span></div>
+            <div class="actions">
+              <div class="assistant-btn" style="background: #EDF5EA; border: 1px solid #B2D9A6; color: #27491D;">⚡ 2</div>
+              <div class="circle-btn" style="background: #FFFFFF; color: #12211A; border: 1px solid #D5E6DF;">🔔<span class="dot" style="background: #AF441D;"></span></div>
+              <div class="circle-btn" style="background: #FFFFFF; color: #12211A; border: 1px solid #D5E6DF;">⚙</div>
+            </div>
+          </div>
+          <div class="family-strip">
+            <div class="avatar" style="background: #40792F;">M</div>
+            <div class="avatar" style="background: #88C775;">A</div>
+            <div class="payday-pill" style="background: #F9ECE7; border-color: #F2D4CA; color: #913818;">
+              <span class="pulse" style="background: #AF441D;"></span>+2 días sin cobrar
+            </div>
+          </div>
+          <div class="hero-card" style="background: linear-gradient(135deg, #27491D 0%, #356327 35%, #40792F 70%, #5EB045 100%); border-color: rgba(178,217,166,0.12); color: #F2EAD3;">
+            <div class="hero-label-row">
+              <div class="hero-label" style="color: #B2D9A6;"><span class="breathe" style="background: #B2D9A6; box-shadow: 0 0 6px #B2D9A6;"></span>DISPONIBLE</div>
+              <div class="hero-day-chip" style="background: rgba(233,172,150,0.18); border-color: rgba(233,172,150,0.55); color: #E9AC96;">+2 sin cobrar</div>
+            </div>
+            <div class="hero-amount" style="color: #F2EAD3;">$ 184.300</div>
+            <div class="savings-chip" style="background: rgba(178,217,166,0.10); border-color: rgba(178,217,166,0.28); color: #B2D9A6;">💰 Apartando $ 60.000</div>
+            <div class="tiles-row">
+              <div class="tile" style="background: rgba(178,217,166,0.10); border-color: rgba(178,217,166,0.22);">
+                <div class="tile-label" style="color: #B2D9A6;">Podés gastar por día</div>
+                <div class="tile-value" style="color: #F2EAD3;">$ 12.300</div>
+                <div class="tile-sub" style="color: rgba(242,234,211,0.6);">hasta fin de ciclo</div>
+              </div>
+              <div class="tile" style="background: rgba(242,234,211,0.05); border-color: rgba(242,234,211,0.10);">
+                <div class="tile-label" style="color: rgba(242,234,211,0.6);">Vas a cerrar con</div>
+                <div class="tile-value" style="color: #B2D9A6;">+$ 24.500</div>
+                <div class="tile-sub" style="color: rgba(242,234,211,0.6);">si seguís este ritmo</div>
+              </div>
+            </div>
+          </div>
+          <div class="month-card" style="background: #FFFFFF; border-color: #D5E6DF; color: #12211A;">
+            <div class="month-section">
+              <div class="ms-label" style="color: #913818;">VARIABLES</div>
+              <div class="ms-value">$ 91.200</div>
+              <div class="ms-band" style="background: #F9ECE7; color: #913818;"><span class="ms-band-icon" style="background: #F2D4CA;"></span>Más en Comida</div>
+            </div>
+            <div class="month-section">
+              <div class="ms-label" style="color: #40792F;">FIJOS</div>
+              <div class="ms-value">$ 124.800</div>
+              <div class="ms-band" style="background: #EDF5EA; color: #40792F;"><span class="ms-band-icon" style="background: #D7EAD2;"></span>Todos pagados</div>
+            </div>
+          </div>
+          <div class="meta-card" style="background: #FFFBF2; border-color: #D5E6DF; color: #12211A;">
+            <div class="meta-head">
+              <div class="meta-title">Vacaciones Brasil</div>
+              <div class="meta-amt">$ 320 / 800k</div>
+            </div>
+            <div class="meta-track" style="background: #EDF5EA;"><div class="meta-fill" style="width: 40%; background: linear-gradient(90deg, #88C775 0%, #E9AC96 100%);"></div></div>
+          </div>
+          <div class="activity-head">
+            <div class="activity-label" style="color: #40792F;">ACTIVIDAD</div>
+            <div class="activity-link" style="color: #356327;">Ver todos</div>
+          </div>
+          <div style="background: #FFFFFF; border-radius: 12px; border: 1px solid #D5E6DF;">
+            <div class="activity-row" style="border-color: #ECF3F0;">
+              <div class="who-pill" style="background: #40792F;">M</div>
+              <div class="activity-text" style="color: #12211A;">Café · Santo Tostado</div>
+              <div class="activity-amt" style="color: #12211A;">$ 1.840</div>
+            </div>
+            <div class="activity-row" style="border-color: #ECF3F0;">
+              <div class="who-pill" style="background: #88C775;">A</div>
+              <div class="activity-text" style="color: #12211A;">Verdulería</div>
+              <div class="activity-amt" style="color: #12211A;">$ 6.420</div>
+            </div>
+          </div>
+          <div class="fab" style="background: #40792F; color: #FFFFFF;">＋</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DARK MODE -->
+<div class="pair" style="margin-top: 18px;">
+  <div class="pair-head"><div class="badge">Dark mode</div><div style="font-size: 10px; color: #888;">surface forest + cream foreground</div></div>
+  <div class="row-pair">
+    <!-- BEFORE DARK -->
+    <div>
+      <div class="pair-head"><span class="badge before">Before</span><span style="font-size: 10px; color: #aaa;">brand.bright #7AD8A3 · canvas #0A1A12</span></div>
+      <div class="phone" style="background: #0A1A12;">
+        <div class="notch"></div>
+        <div class="phone-bg" style="background:
+          radial-gradient(60% 40% at 30% 18%, rgba(199,238,156,0.25), transparent 60%),
+          radial-gradient(50% 35% at 80% 10%, rgba(232,151,106,0.22), transparent 65%),
+          #0A1A12;"></div>
+        <div class="phone-inner home-stack">
+          <div class="header-row">
+            <div class="greeting" style="color: #B8C9BE;">BUENAS,<span class="name" style="color: #F8FBF8;">Mario</span></div>
+            <div class="actions">
+              <div class="assistant-btn" style="background: rgba(199,238,156,0.22); border: 1px solid rgba(199,238,156,0.32); color: #0F2A1E;">⚡ 2</div>
+              <div class="circle-btn" style="background: #102018; color: #F8FBF8; border: 1px solid rgba(255,255,255,0.06);">🔔<span class="dot" style="background: #E8976A;"></span></div>
+              <div class="circle-btn" style="background: #102018; color: #F8FBF8; border: 1px solid rgba(255,255,255,0.06);">⚙</div>
+            </div>
+          </div>
+          <div class="family-strip">
+            <div class="avatar" style="background: #7AD8A3; color: #0F2E1F;">M</div>
+            <div class="avatar" style="background: #5BA77A;">A</div>
+            <div class="payday-pill" style="background: rgba(232,151,106,0.14); border-color: rgba(232,151,106,0.45); color: #E8976A;">
+              <span class="pulse" style="background: #E8976A;"></span>+2 días sin cobrar
+            </div>
+          </div>
+          <div class="hero-card" style="background: linear-gradient(135deg, #133827 0%, #1F6B43 40%, #2E9A5F 100%); border-color: rgba(199,238,156,0.12); color: #F6FBEF;">
+            <div class="hero-label-row">
+              <div class="hero-label" style="color: #C7EE9C;"><span class="breathe" style="background: #C7EE9C; box-shadow: 0 0 6px #C7EE9C;"></span>DISPONIBLE</div>
+              <div class="hero-day-chip" style="background: rgba(232,151,106,0.18); border-color: rgba(232,151,106,0.55); color: #F2B58A;">+2 sin cobrar</div>
+            </div>
+            <div class="hero-amount" style="color: #F6FBEF;">$ 184.300</div>
+            <div class="savings-chip" style="background: rgba(199,238,156,0.10); border-color: rgba(199,238,156,0.28); color: #C7EE9C;">💰 Apartando $ 60.000</div>
+            <div class="tiles-row">
+              <div class="tile" style="background: rgba(199,238,156,0.10); border-color: rgba(199,238,156,0.22);">
+                <div class="tile-label" style="color: #C7EE9C;">Podés gastar por día</div>
+                <div class="tile-value" style="color: #F6FBEF;">$ 12.300</div>
+                <div class="tile-sub" style="color: rgba(246,251,239,0.55);">hasta fin de ciclo</div>
+              </div>
+              <div class="tile" style="background: rgba(246,251,239,0.05); border-color: rgba(255,255,255,0.08);">
+                <div class="tile-label" style="color: rgba(246,251,239,0.55);">Vas a cerrar con</div>
+                <div class="tile-value" style="color: #C7EE9C;">+$ 24.500</div>
+                <div class="tile-sub" style="color: rgba(246,251,239,0.55);">si seguís este ritmo</div>
+              </div>
+            </div>
+          </div>
+          <div class="month-card" style="background: #102018; border-color: rgba(255,255,255,0.06); color: #F8FBF8;">
+            <div class="month-section">
+              <div class="ms-label" style="color: #F2B58A;">VARIABLES</div>
+              <div class="ms-value">$ 91.200</div>
+              <div class="ms-band" style="background: rgba(242,181,138,0.16); color: #F2B58A;"><span class="ms-band-icon" style="background: rgba(242,181,138,0.26);"></span>Más en Comida</div>
+            </div>
+            <div class="month-section">
+              <div class="ms-label" style="color: #9EE0B2;">FIJOS</div>
+              <div class="ms-value">$ 124.800</div>
+              <div class="ms-band" style="background: rgba(158,224,178,0.12); color: #9EE0B2;"><span class="ms-band-icon" style="background: rgba(158,224,178,0.22);"></span>Todos pagados</div>
+            </div>
+          </div>
+          <div class="meta-card" style="background: #13221B; border-color: rgba(255,255,255,0.06); color: #F8FBF8;">
+            <div class="meta-head">
+              <div class="meta-title">Vacaciones Brasil</div>
+              <div class="meta-amt">$ 320 / 800k</div>
+            </div>
+            <div class="meta-track" style="background: rgba(255,255,255,0.08);"><div class="meta-fill" style="width: 40%; background: linear-gradient(90deg, #6FE09A 0%, #F2B58A 100%);"></div></div>
+          </div>
+          <div class="activity-head">
+            <div class="activity-label" style="color: #B8C9BE;">ACTIVIDAD</div>
+            <div class="activity-link" style="color: #9AE8BD;">Ver todos</div>
+          </div>
+          <div style="background: #102018; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div class="activity-row" style="border-color: rgba(255,255,255,0.04);">
+              <div class="who-pill" style="background: #2E7D5B;">M</div>
+              <div class="activity-text" style="color: #F8FBF8;">Café · Santo Tostado</div>
+              <div class="activity-amt" style="color: #F8FBF8;">$ 1.840</div>
+            </div>
+            <div class="activity-row" style="border-color: rgba(255,255,255,0.04);">
+              <div class="who-pill" style="background: #5BA77A;">A</div>
+              <div class="activity-text" style="color: #F8FBF8;">Verdulería</div>
+              <div class="activity-amt" style="color: #F8FBF8;">$ 6.420</div>
+            </div>
+          </div>
+          <div class="fab" style="background: #7AD8A3; color: #0F2E1F;">＋</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER DARK -->
+    <div>
+      <div class="pair-head"><span class="badge after">After</span><span style="font-size: 10px; color: #aaa;">primary-300 #B2D9A6 · accent-300 #E9AC96 · canvas surface-950 #12211A</span></div>
+      <div class="phone" style="background: #12211A;">
+        <div class="notch"></div>
+        <div class="phone-bg" style="background:
+          radial-gradient(60% 40% at 30% 18%, rgba(178,217,166,0.25), transparent 60%),
+          radial-gradient(50% 35% at 80% 10%, rgba(233,172,150,0.22), transparent 65%),
+          #12211A;"></div>
+        <div class="phone-inner home-stack">
+          <div class="header-row">
+            <div class="greeting" style="color: #B2D9A6;">BUENAS,<span class="name" style="color: #F2EAD3;">Mario</span></div>
+            <div class="actions">
+              <div class="assistant-btn" style="background: rgba(178,217,166,0.18); border: 1px solid rgba(178,217,166,0.32); color: #F2EAD3;">⚡ 2</div>
+              <div class="circle-btn" style="background: #305A47; color: #F2EAD3; border: 1px solid rgba(59,109,87,0.6);">🔔<span class="dot" style="background: #E9AC96;"></span></div>
+              <div class="circle-btn" style="background: #305A47; color: #F2EAD3; border: 1px solid rgba(59,109,87,0.6);">⚙</div>
+            </div>
+          </div>
+          <div class="family-strip">
+            <div class="avatar" style="background: #B2D9A6; color: #12211A;">M</div>
+            <div class="avatar" style="background: #88C775; color: #12211A;">A</div>
+            <div class="payday-pill" style="background: rgba(233,172,150,0.16); border-color: rgba(233,172,150,0.45); color: #E9AC96;">
+              <span class="pulse" style="background: #E9AC96;"></span>+2 días sin cobrar
+            </div>
+          </div>
+          <div class="hero-card" style="background: linear-gradient(135deg, #244235 0%, #305A47 35%, #3B6D57 70%, #40792F 100%); border-color: rgba(178,217,166,0.12); color: #F2EAD3;">
+            <div class="hero-label-row">
+              <div class="hero-label" style="color: #B2D9A6;"><span class="breathe" style="background: #B2D9A6; box-shadow: 0 0 6px #B2D9A6;"></span>DISPONIBLE</div>
+              <div class="hero-day-chip" style="background: rgba(233,172,150,0.18); border-color: rgba(233,172,150,0.55); color: #E9AC96;">+2 sin cobrar</div>
+            </div>
+            <div class="hero-amount" style="color: #F2EAD3;">$ 184.300</div>
+            <div class="savings-chip" style="background: rgba(178,217,166,0.10); border-color: rgba(178,217,166,0.28); color: #B2D9A6;">💰 Apartando $ 60.000</div>
+            <div class="tiles-row">
+              <div class="tile" style="background: rgba(178,217,166,0.10); border-color: rgba(178,217,166,0.22);">
+                <div class="tile-label" style="color: #B2D9A6;">Podés gastar por día</div>
+                <div class="tile-value" style="color: #F2EAD3;">$ 12.300</div>
+                <div class="tile-sub" style="color: rgba(242,234,211,0.6);">hasta fin de ciclo</div>
+              </div>
+              <div class="tile" style="background: rgba(242,234,211,0.05); border-color: rgba(242,234,211,0.10);">
+                <div class="tile-label" style="color: rgba(242,234,211,0.6);">Vas a cerrar con</div>
+                <div class="tile-value" style="color: #B2D9A6;">+$ 24.500</div>
+                <div class="tile-sub" style="color: rgba(242,234,211,0.6);">si seguís este ritmo</div>
+              </div>
+            </div>
+          </div>
+          <div class="month-card" style="background: #305A47; border-color: rgba(59,109,87,0.5); color: #F2EAD3;">
+            <div class="month-section">
+              <div class="ms-label" style="color: #E9AC96;">VARIABLES</div>
+              <div class="ms-value">$ 91.200</div>
+              <div class="ms-band" style="background: rgba(233,172,150,0.18); color: #E9AC96;"><span class="ms-band-icon" style="background: rgba(233,172,150,0.30);"></span>Más en Comida</div>
+            </div>
+            <div class="month-section">
+              <div class="ms-label" style="color: #B2D9A6;">FIJOS</div>
+              <div class="ms-value">$ 124.800</div>
+              <div class="ms-band" style="background: rgba(178,217,166,0.14); color: #B2D9A6;"><span class="ms-band-icon" style="background: rgba(178,217,166,0.24);"></span>Todos pagados</div>
+            </div>
+          </div>
+          <div class="meta-card" style="background: #244235; border-color: rgba(59,109,87,0.5); color: #F2EAD3;">
+            <div class="meta-head">
+              <div class="meta-title">Vacaciones Brasil</div>
+              <div class="meta-amt">$ 320 / 800k</div>
+            </div>
+            <div class="meta-track" style="background: rgba(178,217,166,0.10);"><div class="meta-fill" style="width: 40%; background: linear-gradient(90deg, #B2D9A6 0%, #E9AC96 100%);"></div></div>
+          </div>
+          <div class="activity-head">
+            <div class="activity-label" style="color: #B2D9A6;">ACTIVIDAD</div>
+            <div class="activity-link" style="color: #D7EAD2;">Ver todos</div>
+          </div>
+          <div style="background: #305A47; border-radius: 12px; border: 1px solid rgba(59,109,87,0.5);">
+            <div class="activity-row" style="border-color: rgba(178,217,166,0.06);">
+              <div class="who-pill" style="background: #B2D9A6; color: #12211A;">M</div>
+              <div class="activity-text" style="color: #F2EAD3;">Café · Santo Tostado</div>
+              <div class="activity-amt" style="color: #F2EAD3;">$ 1.840</div>
+            </div>
+            <div class="activity-row" style="border-color: rgba(178,217,166,0.06);">
+              <div class="who-pill" style="background: #88C775; color: #12211A;">A</div>
+              <div class="activity-text" style="color: #F2EAD3;">Verdulería</div>
+              <div class="activity-amt" style="color: #F2EAD3;">$ 6.420</div>
+            </div>
+          </div>
+          <div class="fab" style="background: #B2D9A6; color: #12211A;">＋</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>2 · Migración por archivo</h2>
+<p style="font-size: 12px; color: #5a5a52; margin: 0 0 12px;">Solo archivos del árbol Home, agrupados por path real verificado. Riesgo bajo = el cambio fluye automáticamente desde <code>palette.ts</code>; medio = hex/rgba locales que hay que reescribir; alto = atmosféricos / chart-like donde la estética puede romperse.</p>
+
+<table>
+<thead><tr><th>Archivo</th><th>Antes</th><th>Después</th><th>Riesgo</th><th>Nota</th></tr></thead>
+<tbody>
+<tr>
+  <td class="path">mobile/theme/palette.ts</td>
+  <td class="before">brand.deep #0F2E1F · brand.bright #7AD8A3</td>
+  <td class="after">brand.deep #40792F · brand.bright #B2D9A6 + scales primary/accent/surface</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Fase 1 del doc · cambio aditivo. Después reescribir lightColors/darkColors per §3.</td>
+</tr>
+<tr>
+  <td class="path">mobile/theme/palette.ts <em>(ThemeColors)</em></td>
+  <td class="before">sin <code>accent</code> · sin <code>accentSurface</code></td>
+  <td class="after">+ <code>accent</code>, <code>accentSurface</code>, <code>borderAccent</code> en interface</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Fase 3 requiere agregarlos al tipo ANTES de consumirlos. No tocar el resto.</td>
+</tr>
+<tr>
+  <td class="path">mobile/screens/home/home-screen.tsx</td>
+  <td class="before">tintColor=brand.bright · colors=[brand.deep] (RefreshControl)</td>
+  <td class="after">misma referencia, hex nuevos via Fase 1</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Sin edit local — fluye automáticamente.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/home-header.tsx</td>
+  <td class="before">badgeColor={theme.colors.peach}</td>
+  <td class="after">badgeColor={theme.colors.accent}</td>
+  <td><span class="risk med">medio</span></td>
+  <td>Fase 3: bell badge usa accent (no peach legacy). Decisión semántica — confirmar.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/home-circle-button.tsx</td>
+  <td class="before">boxShadow 'rgba(15,42,30,0.08)' (literal brand.deep alpha)</td>
+  <td class="after">withAlpha(theme.colors.text, 0.08) ó token nuevo</td>
+  <td><span class="risk med">medio</span></td>
+  <td>StyleSheet.create no acepta tema dinámico → mover el shadow a estilo inline o constante derivada.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/home-assistant-button.tsx</td>
+  <td class="before">ACCENT '#C7EE9C' · color '#0F2A1E' · rgba(199,238,156,…) literales</td>
+  <td class="after">theme.colors.heroAccent · theme.colors.primaryStrong · withAlpha(heroAccent, X)</td>
+  <td><span class="risk med">medio</span></td>
+  <td>Tiene gradiente / glass propio. El menta nuevo puede leerse "más oliva" — verificar en device.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/greeting-header.tsx</td>
+  <td class="before">'#F2B58A' (sun) · '#E08E63' (sunset) · '#6B3A4F' (moon plum)</td>
+  <td class="after">theme.colors.accent (sun) · accent-500 (sunset) · accent-900 (moon)</td>
+  <td><span class="risk med">medio</span></td>
+  <td>Sun/moon icon hex literal. ¿Son time-of-day decoración? El plum #6B3A4F NO está en accentScale — preguntar.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/family-strip.tsx</td>
+  <td class="before">consume theme.colors.* (sin hex literal directo)</td>
+  <td class="after">sin cambio de código — tokens cambian via Fase 2</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Fluye solo. Validar visual del payday pill con accent nuevo.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/payday-pill-v2.tsx</td>
+  <td class="before">'rgba(232,151,106,0.14)' bg · 'rgba(232,151,106,0.45)' border · '#C25A3E' label</td>
+  <td class="after">theme.colors.accentSurface bg · theme.colors.borderAccent · theme.colors.accent</td>
+  <td><span class="risk med">medio</span></td>
+  <td>Patrón "warning warm" actual en peach legacy → coral operativo.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/home-hero-card.tsx</td>
+  <td class="before">15+ literales: rgba(199,238,156,…), rgba(232,151,106,…), '#F2B58A', 'rgba(255,255,255,0.08)' tiles</td>
+  <td class="after">heroAccent + accent (con withAlpha) · sustituir #F2B58A por theme.colors.accent en estados warning</td>
+  <td><span class="risk high">alto</span></td>
+  <td>Este es el componente con más hex local. La identidad del hero depende de estos valores.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/hero-aurora.tsx</td>
+  <td class="before">tint '#FFFFFF' literal (luz)</td>
+  <td class="after">sin cambio — el aurora se compone de auroraA/B/C ya tematizados</td>
+  <td><span class="risk med">medio</span></td>
+  <td>El nuevo menta puede dar atmósfera más fría/herbal. Riesgo estético, no funcional.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/ambient-blobs.tsx</td>
+  <td class="before">consume theme.colors.aurora*</td>
+  <td class="after">sin cambio de código · auroraA/B/C tendrán nuevos hex via Fase 2</td>
+  <td><span class="risk med">medio</span></td>
+  <td>Mismo riesgo estético que hero-aurora.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/month-summary-card.tsx</td>
+  <td class="before">10+ ramas con '#F2B58A','#C25A3E','#9EE0B2','#2E7D5B' + rgba(232,151,106,…), rgba(110,224,154,…)</td>
+  <td class="after">accent-* / primary-* tokens · withAlpha(accent, X) y withAlpha(primary, X)</td>
+  <td><span class="risk high">alto</span></td>
+  <td>Bands "Más en…" / "Todos pagados" tienen color semántico. #9EE0B2 (label dark "verde sano") y #2E7D5B (label light) NO están en primaryScale literal → preguntar.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/meta-card.tsx</td>
+  <td class="before">ACCENT_GRADIENT ['#6FE09A','#F2B58A'] · rgba(122,216,163,0.X) · rgba(28,126,58,0.X)</td>
+  <td class="after">[primary-300, accent-300] · withAlpha(primary, X) · withAlpha(primary-700, X)</td>
+  <td><span class="risk high">alto</span></td>
+  <td>Track gradient mezcla primary + accent. La fill bar es identidad del card de meta — confirmar dirección.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/meta-empty-card.tsx</td>
+  <td class="before">a verificar (consume theme)</td>
+  <td class="after">sin cambio si solo consume tokens</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Pendiente lectura completa.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/home-activity-section.tsx</td>
+  <td class="before">whoColor fallback '#2E7D5B' literal</td>
+  <td class="after">theme.colors.primary fallback</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Solo cuando member no tiene avatar_color asignado.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/activity-row-v2.tsx</td>
+  <td class="before">consume tokens via theme</td>
+  <td class="after">sin cambio</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Los swipe actions ya usan withAlpha(#FFFFFF) y theme.</td>
+</tr>
+<tr>
+  <td class="path">mobile/components/home/who-paid-avatar.tsx</td>
+  <td class="before">consume avatar color del member</td>
+  <td class="after">sin cambio (color por member, no por theme)</td>
+  <td><span class="risk low">bajo</span></td>
+  <td>Identidad de persona, no de marca.</td>
+</tr>
+</tbody>
+</table>
+
+<h2>3 · Verificación WCAG · solo combinaciones que renderea Home</h2>
+<table>
+<thead><tr><th>Combinación</th><th>Foreground</th><th>Background</th><th>Ratio</th><th>Grade</th><th>Light/Dark</th></tr></thead>
+<tbody>
+<tr><td>Body text · activity row</td><td class="after">#12211A</td><td class="after">#FAF7F0</td><td>15.60</td><td><span class="grade aaa">AAA</span></td><td>Light</td></tr>
+<tr><td>Body text · activity row</td><td class="after">#F2EAD3</td><td class="after">#12211A</td><td>13.90</td><td><span class="grade aaa">AAA</span></td><td>Dark</td></tr>
+<tr><td>Hero amount sobre gradient end</td><td class="after">#F2EAD3</td><td class="after">#5EB045 (primary-500)</td><td>~3.10</td><td><span class="grade aaUI">AA UI</span></td><td>Light · borderline; ojo si el gradient termina muy claro</td></tr>
+<tr><td>Hero amount sobre gradient end</td><td class="after">#F2EAD3</td><td class="after">#40792F (primary-700)</td><td>5.42</td><td><span class="grade aa">AA</span></td><td>Dark · ok</td></tr>
+<tr><td>Hero label "DISPONIBLE"</td><td class="after">#B2D9A6 (primary-300)</td><td class="after">#27491D (primary-900)</td><td>7.85</td><td><span class="grade aaa">AAA</span></td><td>Light</td></tr>
+<tr><td>Hero label "DISPONIBLE"</td><td class="after">#B2D9A6 (primary-300)</td><td class="after">#244235 (surface-900)</td><td>5.78</td><td><span class="grade aa">AA</span></td><td>Dark</td></tr>
+<tr><td>Muted text · "BUENAS,"</td><td class="after">#40792F (primary-700)</td><td class="after">#FAF7F0</td><td>5.10</td><td><span class="grade aa">AA</span></td><td>Light</td></tr>
+<tr><td>Muted text · "BUENAS,"</td><td class="after">#B2D9A6 (primary-300)</td><td class="after">#12211A</td><td>10.63</td><td><span class="grade aaa">AAA</span></td><td>Dark</td></tr>
+<tr><td>FAB primary CTA</td><td class="after">#FFFFFF</td><td class="after">#40792F (primary-700)</td><td>5.26</td><td><span class="grade aa">AA</span></td><td>Light · per doc §4 fix</td></tr>
+<tr><td>FAB primary CTA</td><td class="after">#12211A</td><td class="after">#B2D9A6 (primary-300)</td><td>10.63</td><td><span class="grade aaa">AAA</span></td><td>Dark</td></tr>
+<tr><td>Bell badge dot</td><td class="after">— (UI element)</td><td class="after">#AF441D (accent-600) sobre #FFFFFF surface</td><td>5.73</td><td><span class="grade aa">AA</span></td><td>Light</td></tr>
+<tr><td>Bell badge dot</td><td class="after">— (UI element)</td><td class="after">#E9AC96 (accent-300) sobre #305A47</td><td>4.03</td><td><span class="grade aaUI">AA UI</span></td><td>Dark · per doc §4 fix (no usar accent-500)</td></tr>
+<tr><td>Activity link "Ver todos"</td><td class="after">#356327 (primary-800)</td><td class="after">#FAF7F0</td><td>7.21</td><td><span class="grade aaa">AAA</span></td><td>Light</td></tr>
+<tr><td>Activity link "Ver todos"</td><td class="after">#D7EAD2 (primary-200)</td><td class="after">#12211A</td><td>13.20</td><td><span class="grade aaa">AAA</span></td><td>Dark</td></tr>
+<tr><td>Payday pill label</td><td class="after">#913818 (accent-700)</td><td class="after">#F9ECE7 (accent-100)</td><td>6.52</td><td><span class="grade aaa">AAA</span></td><td>Light</td></tr>
+<tr><td>Payday pill label</td><td class="after">#E9AC96 (accent-300)</td><td class="after">#244235 (surface-900)</td><td>4.61</td><td><span class="grade aa">AA</span></td><td>Dark</td></tr>
+<tr><td>Month summary band "Más en…"</td><td class="after">#913818 (accent-700)</td><td class="after">#F9ECE7 (accent-100)</td><td>6.52</td><td><span class="grade aaa">AAA</span></td><td>Light</td></tr>
+<tr><td>Month summary band "Todos pagados"</td><td class="after">#40792F (primary-700)</td><td class="after">#EDF5EA (primary-100)</td><td>5.18</td><td><span class="grade aa">AA</span></td><td>Light</td></tr>
+</tbody>
+</table>
+
+<h2>4 · Diff resumen</h2>
+<div class="diff-summary">
+  <div class="stats">
+    <div class="stat"><span class="num">15</span>archivos en alcance</div>
+    <div class="stat"><span class="num">~85</span>reemplazos hex / rgba estimados</div>
+    <div class="stat"><span class="num">3</span>tokens nuevos en <code>ThemeColors</code></div>
+    <div class="stat"><span class="num">5</span>hex sin target claro</div>
+    <div class="stat"><span class="num">3</span>archivos de riesgo alto</div>
+  </div>
+  <h3>Hex sueltos sin target claro (responder en bloque de correcciones)</h3>
+  <ul style="font-size: 12px; margin: 0; padding-left: 18px;">
+    <li><code>greeting-header.tsx:64</code> — <code>#6B3A4F</code> (moon plum). No existe en <code>accentScale</code>. ¿Mantener literal? ¿Mapear a <code>accent-900 #58220E</code>?</li>
+    <li><code>month-summary-card.tsx:109,124</code> — <code>#9EE0B2</code> dark label "verde sano". Más claro que <code>primary-300 #B2D9A6</code> (ligeramente). ¿Adoptar primary-300 o crear shade extra?</li>
+    <li><code>month-summary-card.tsx:120</code> — <code>#2E7D5B</code> light label "verde sano". Está fuera de la escala (chroma diferente al primary derivado de #A8D89A). ¿Adoptar <code>primary-700 #40792F</code> sin pérdida de identidad?</li>
+    <li><code>home-assistant-button.tsx:117</code> — <code>#0F2A1E</code> texto del CTA. ¿Es <code>primary-foreground</code> dark (<code>surface-950 #12211A</code>) o <code>primary-900 #27491D</code>?</li>
+    <li><code>home-circle-button.tsx:66</code> — <code>rgba(15,42,30,0.08)</code> shadow. La fórmula es brand.deep@8% — ¿queda igual con primary-700@8% (<code>rgba(64,121,47,0.08)</code>) o preferís <code>text@8%</code>?</li>
+  </ul>
+</div>
+
+<h2 style="border-color: #e8d57a; color: #5a4500;">5 · Bloque de correcciones · responder antes de aplicar</h2>
+<div class="corrections">
+  <p style="margin-top: 0;">Las preguntas vienen ordenadas por impacto (1 → 6). La respuesta sugerida (default) está en cursiva.</p>
+  <ol>
+    <li>
+      <span class="q">1. ¿Confirmás que <code>primary-700 #40792F</code> reemplaza <code>brand.deep #0F2E1F</code> como CTA primario light, en vez de mantener el deep histórico?</span>
+      <span class="default">Default sugerido: SÍ — el doc §4 lo marca como bloqueante por contraste (5.26:1 AA). El hex queda más vivo / menos forest.</span>
+    </li>
+    <li>
+      <span class="q">2. ¿Adopto el coral en el bell badge (<code>home-header.tsx</code>) ahora junto con la migración de palette, o lo dejo para una segunda PR de "Fase 3 · accent operativo"?</span>
+      <span class="default">Default sugerido: AHORA — sin esto, el preview side-by-side no muestra el "antes coral / después coral" promised por el doc. Total cost: 1 línea + nuevo token <code>accent</code>.</span>
+      <ul class="opts">
+        <li>Variante A (sugerida): pintar bell con <code>accent-600/300</code> ya en este sprint.</li>
+        <li>Variante B: dejar peach legacy hasta Fase 3 separada.</li>
+      </ul>
+    </li>
+    <li>
+      <span class="q">3. ¿Qué hago con los 5 hex sueltos del diff resumen (§4)?</span>
+      <span class="default">Default sugerido (item por item):</span>
+      <ul class="opts">
+        <li><code>#6B3A4F</code> moon plum → <strong>mantener literal</strong> (es identidad de icono nocturno; no es color de marca).</li>
+        <li><code>#9EE0B2</code> dark verde sano → <strong>adoptar <code>primary-300 #B2D9A6</code></strong>; deferencia 0.4° de hue, imperceptible.</li>
+        <li><code>#2E7D5B</code> light verde sano → <strong>adoptar <code>primary-700 #40792F</code></strong>; pasa AA sobre primary-100.</li>
+        <li><code>#0F2A1E</code> texto CTA assistant → <strong>adoptar <code>surface-950 #12211A</code></strong> (alias de <code>colors.text</code> dark).</li>
+        <li>Shadow brand.deep@8% → <strong>adoptar <code>withAlpha(colors.text, 0.08)</code></strong>; conserva el peso visual.</li>
+      </ul>
+    </li>
+    <li>
+      <span class="q">4. ¿Agrego los tokens nuevos <code>accent</code>, <code>accentSurface</code>, <code>borderAccent</code> a <code>ThemeColors</code> en el mismo PR de Fase 1, o los meto recién en Fase 3?</span>
+      <span class="default">Default sugerido: en Fase 1 — el tipo se extiende y los valores quedan asignados; ningún consumidor los usa todavía. Cero impacto runtime, máxima predictibilidad.</span>
+    </li>
+    <li>
+      <span class="q">5. <code>heroGradient</code> light: el doc dice "primary-900 → primary-700 → primary-500". Necesita 4 stops. ¿Uso <code>[primary-900, primary-800, primary-700, primary-500]</code> o <code>[primary-900, primary-700, primary-500, primary-400]</code> para preservar el sentido de "deep → vivo" del actual?</span>
+      <span class="default">Default sugerido: <code>[#27491D, #356327, #40792F, #5EB045]</code>. La última stop más clara que primary-500 puede generar washout en el hero amount cream.</span>
+    </li>
+    <li>
+      <span class="q">6. <code>meta-card</code> ACCENT_GRADIENT: ¿la dirección queda <code>primary-300 → accent-300</code> (verde→coral) tanto en light como en dark?</span>
+      <span class="default">Default sugerido: SÍ. Mantiene la lectura "vas hacia el premio" (verde productivo → coral cálido). El gradient actual (#6FE09A → #F2B58A) tiene la misma narrativa, solo cambian los hex.</span>
+    </li>
+  </ol>
+</div>
+
+<h2>6 · Próximo paso</h2>
+<p style="font-size: 13px;">Cuando me pases <strong>"aplicá"</strong> o <strong>"ajustá X"</strong> con respuestas a las preguntas, avanzo al paso 5 de la skill (apply edits, theme-source primero) y después corro <code>./scripts/npmw run validate</code>. Si querés ver alguna combinación más en el WCAG check o un mockup del estado <em>setup</em> del hero (sin ingreso configurado), pedímelo y lo agrego antes.</p>
+
+</div>
+</body>
+</html>

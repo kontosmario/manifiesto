@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Asistente — preview simplificado</title>
+    <style>
+      :root {
+        /* Tokens copiados 1:1 de mobile/theme/palette.ts y asistente-screen.tsx */
+        --shell-1: #0f2a1e;
+        --shell-2: #143b2a;
+        --shell-3: #0a1410;
+        --cream-card: #fffbf2;
+        --cream: #f6efe3;
+        --peach: #f2b58a;
+        --peach-deep: #c25a3e;
+        --leaf: #c7ee9c;
+        --leaf-deep: #2e9a5f;
+        --forest: #0e3a26;
+        --text: #0f2a1e;
+        --text-muted: rgba(15, 42, 30, 0.6);
+        --hero-text: #fffbf2;
+        --hero-muted: rgba(255, 251, 242, 0.65);
+        --hero-muted-2: rgba(255, 251, 242, 0.42);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "SF Pro Text",
+          "Inter",
+          system-ui,
+          sans-serif;
+        background: #cfc5b3;
+        color: var(--text);
+        padding: 32px 16px 64px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page-title {
+        text-align: center;
+        font-size: 14px;
+        letter-spacing: 1.6px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(15, 42, 30, 0.6);
+        margin: 0 0 24px;
+      }
+
+      .stage {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 420px));
+        gap: 32px;
+        justify-content: center;
+        align-items: start;
+      }
+
+      .frame {
+        width: 100%;
+        max-width: 420px;
+        aspect-ratio: 393 / 852;
+        border-radius: 56px;
+        background: linear-gradient(
+          180deg,
+          var(--shell-1) 0%,
+          var(--shell-2) 30%,
+          var(--shell-3) 100%
+        );
+        padding: 20px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+          0 30px 60px rgba(15, 42, 30, 0.35),
+          0 8px 22px rgba(15, 42, 30, 0.25),
+          inset 0 0 0 6px rgba(255, 251, 242, 0.04);
+      }
+
+      .frame__notch {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 110px;
+        height: 32px;
+        border-radius: 999px;
+        background: #000;
+        z-index: 5;
+      }
+
+      .frame__handle {
+        align-self: center;
+        width: 38px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 251, 242, 0.22);
+        margin-top: 18px;
+      }
+
+      .frame__label {
+        position: absolute;
+        bottom: 14px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 10px;
+        letter-spacing: 1.4px;
+        font-weight: 700;
+        color: rgba(255, 251, 242, 0.45);
+        text-transform: uppercase;
+      }
+
+      /* ─── Header simplificado ─── */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 8px 8px;
+      }
+
+      .header__title {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.8px;
+        color: var(--hero-text);
+      }
+
+      .progress-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(199, 238, 156, 0.12);
+        border: 1px solid rgba(199, 238, 156, 0.32);
+      }
+
+      .progress-pill__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--leaf);
+      }
+
+      .progress-pill__text {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: var(--leaf);
+      }
+
+      /* Impact pill — aggregate "+$X/mes potencial" en el header */
+      .impact-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px;
+        border-radius: 999px;
+        background: rgba(199, 238, 156, 0.16);
+        border: 1px solid rgba(199, 238, 156, 0.42);
+      }
+
+      .impact-pill__icon {
+        font-size: 12px;
+        line-height: 1;
+        color: var(--leaf);
+      }
+
+      .impact-pill__value {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--leaf);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.2px;
+      }
+
+      .impact-pill__suffix {
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(199, 238, 156, 0.7);
+        letter-spacing: 0.2px;
+        margin-left: -2px;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--hero-muted);
+        padding: 0 8px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+      }
+
+      /* ─── InsightCard ─── */
+      .card {
+        background: var(--cream-card);
+        border-radius: 22px;
+        padding: 18px 18px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        border: 1px solid rgba(15, 42, 30, 0.06);
+        box-shadow: 0 1px 0 rgba(15, 42, 30, 0.03);
+      }
+
+      .card__head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .card__icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .card__icon--momentum {
+        background: rgba(199, 238, 156, 0.32);
+      }
+
+      .card__icon--leak {
+        background: rgba(242, 181, 138, 0.28);
+      }
+
+      .card__icon--zombie {
+        background: rgba(122, 90, 160, 0.22);
+      }
+
+      .card__title {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.4px;
+        color: var(--text);
+        line-height: 1.2;
+        flex: 1;
+      }
+
+      .card__body {
+        font-size: 14px;
+        line-height: 1.45;
+        color: rgba(15, 42, 30, 0.78);
+        font-weight: 500;
+      }
+
+      .card__impact {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.2px;
+        color: var(--leaf-deep);
+        font-variant-numeric: tabular-nums;
+        padding-top: 4px;
+      }
+
+      .card__impact--negative {
+        color: var(--peach-deep);
+      }
+
+      .card__actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .btn {
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.1px;
+        border: none;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 12px 20px;
+        line-height: 1;
+        transition:
+          transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          background 160ms ease,
+          box-shadow 160ms ease;
+        min-height: 44px;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+        opacity: 0.92;
+      }
+
+      .btn--primary {
+        background: var(--forest);
+        color: var(--cream-card);
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow:
+          0 1px 0 rgba(255, 251, 242, 0.18) inset,
+          0 2px 6px rgba(15, 42, 30, 0.18);
+      }
+
+      .btn--primary:hover {
+        background: #1a4a32;
+      }
+
+      .btn--primary__arrow {
+        font-size: 16px;
+        line-height: 0;
+        margin-top: -1px;
+        transition: transform 160ms ease;
+      }
+
+      .btn--primary:hover .btn--primary__arrow {
+        transform: translateX(2px);
+      }
+
+      .btn--secondary {
+        background: rgba(15, 42, 30, 0.07);
+        color: rgba(15, 42, 30, 0.72);
+        border: 1px solid rgba(15, 42, 30, 0.1);
+        padding: 12px 18px;
+      }
+
+      .btn--secondary:hover {
+        background: rgba(15, 42, 30, 0.11);
+      }
+
+      /* ─── Comparativa BEFORE ─── */
+      .frame--before {
+        opacity: 0.94;
+      }
+
+      .frame__topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 4px 8px;
+      }
+
+      .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--leaf) 0%, var(--leaf-deep) 100%);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+
+      .avatar svg {
+        width: 22px;
+        height: 22px;
+        color: #0f2a1e;
+      }
+
+      .topbar__id {
+        flex: 1;
+      }
+
+      .topbar__title {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--hero-text);
+        letter-spacing: -0.6px;
+      }
+
+      .topbar__subtitle {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--hero-muted);
+        margin-top: 2px;
+      }
+
+      .topbar__pill {
+        background: rgba(199, 238, 156, 0.16);
+        border: 1px solid rgba(199, 238, 156, 0.4);
+        color: var(--leaf);
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .strip {
+        background: rgba(255, 251, 242, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 14px 16px;
+      }
+
+      .strip__eyebrow {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.6px;
+        color: var(--hero-muted);
+        text-transform: uppercase;
+      }
+
+      .sparkline {
+        height: 60px;
+        margin: 10px -4px 8px;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(199, 238, 156, 0.18) 0%,
+            rgba(199, 238, 156, 0) 80%
+          );
+        border-radius: 8px;
+        position: relative;
+      }
+
+      .sparkline svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .strip__foot {
+        font-size: 11px;
+        color: var(--hero-muted);
+        margin-top: 4px;
+      }
+
+      .map {
+        background: rgba(255, 251, 242, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 18px;
+        padding: 16px;
+        position: relative;
+      }
+
+      .map__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .map__eyebrow {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.6px;
+        color: var(--leaf);
+      }
+
+      .map__day {
+        font-size: 11px;
+        color: var(--hero-muted);
+      }
+
+      .map__stage {
+        height: 130px;
+        background: rgba(0, 0, 0, 0.18);
+        border-radius: 14px;
+        position: relative;
+      }
+
+      .map__star {
+        position: absolute;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 251, 242, 0.06);
+        border: 1px solid rgba(199, 238, 156, 0.45);
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+      }
+
+      .map__star--center {
+        width: 50px;
+        height: 50px;
+        background: rgba(199, 238, 156, 0.32);
+        border-color: var(--leaf);
+        font-size: 18px;
+      }
+
+      .map__hint {
+        position: absolute;
+        right: 12px;
+        bottom: 8px;
+        font-size: 10px;
+        color: var(--hero-muted-2);
+      }
+
+      /* Card BEFORE — versión recargada */
+      .card-old__pretitle {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--leaf-deep);
+        letter-spacing: 0.5px;
+      }
+
+      .card-old__eyebrow {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.6px;
+        color: rgba(15, 42, 30, 0.55);
+        text-transform: uppercase;
+      }
+
+      .card-old__impactPill {
+        background: rgba(15, 42, 30, 0.05);
+        border: 1px solid rgba(15, 42, 30, 0.08);
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card-old__impactLabel {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.4px;
+        color: rgba(15, 42, 30, 0.55);
+      }
+
+      .card-old__impactValue {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .card-old__foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        color: rgba(15, 42, 30, 0.55);
+      }
+
+      .dots {
+        display: flex;
+        gap: 3px;
+      }
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--leaf-deep);
+      }
+
+      .dot--off {
+        background: rgba(15, 42, 30, 0.18);
+      }
+
+      /* Notes column */
+      .notes {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 16px 4px;
+        font-size: 14px;
+        line-height: 1.55;
+        color: rgba(15, 42, 30, 0.78);
+      }
+
+      .notes h3 {
+        margin: 24px 0 8px;
+        font-size: 13px;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: rgba(15, 42, 30, 0.5);
+      }
+
+      .notes ul {
+        margin: 0 0 16px;
+        padding-left: 18px;
+      }
+
+      .notes li {
+        margin-bottom: 4px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .stat {
+        background: rgba(15, 42, 30, 0.06);
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+
+      .stat__label {
+        font-size: 10px;
+        letter-spacing: 1.4px;
+        font-weight: 700;
+        color: rgba(15, 42, 30, 0.5);
+        text-transform: uppercase;
+      }
+
+      .stat__value {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="page-title">Asistente · antes vs después</h1>
+
+    <div class="stage">
+      <!-- ════════════════════════ ANTES ════════════════════════ -->
+      <div>
+        <p class="page-title" style="opacity: 0.7; margin-bottom: 12px">
+          Hoy
+        </p>
+        <div class="frame frame--before">
+          <span class="frame__notch"></span>
+          <span class="frame__handle"></span>
+
+          <div class="frame__topbar">
+            <div class="avatar">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 2l1.4 4.6L18 8l-4.6 1.4L12 14l-1.4-4.6L6 8l4.6-1.4z"
+                />
+              </svg>
+            </div>
+            <div class="topbar__id">
+              <div class="topbar__title">Asistente</div>
+              <div class="topbar__subtitle">
+                Mirando tus números · 3 cosas para vos
+              </div>
+            </div>
+            <span class="topbar__pill">+$1.9M/mes</span>
+          </div>
+
+          <div class="strip">
+            <div class="strip__eyebrow">PRÓXIMOS 7 DÍAS</div>
+            <div class="sparkline">
+              <svg viewBox="0 0 320 60" preserveAspectRatio="none">
+                <path
+                  d="M0,40 L45,30 L90,38 L135,18 L180,28 L225,15 L270,32 L320,42"
+                  fill="none"
+                  stroke="#C7EE9C"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M0,38 L45,42 L90,28 L135,32 L180,18 L225,30 L270,22 L320,38"
+                  fill="none"
+                  stroke="rgba(242,181,138,0.55)"
+                  stroke-dasharray="4 4"
+                  stroke-width="1.4"
+                />
+                <line
+                  x1="0"
+                  y1="38"
+                  x2="320"
+                  y2="38"
+                  stroke="rgba(199,238,156,0.45)"
+                  stroke-width="1"
+                />
+              </svg>
+            </div>
+            <div class="strip__foot">Proyección base: $527k en la semana</div>
+          </div>
+
+          <div class="map">
+            <div class="map__head">
+              <div class="map__eyebrow">MAPA DEL CICLO · día 13/30</div>
+              <span style="color: var(--hero-muted-2); font-size: 12px">⤢</span>
+            </div>
+            <div class="map__stage">
+              <span class="map__star" style="left: 14%; top: 35%">📅</span>
+              <span class="map__star map__star--center" style="left: 46%; top: 30%"
+                >🚀</span
+              >
+              <span class="map__star" style="right: 14%; top: 30%">↻</span>
+              <span class="map__hint">Tocá un punto</span>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 6px">
+            <div class="card-old__pretitle">Patrón observado · ahora</div>
+            <div class="card__head">
+              <div class="card__icon card__icon--momentum">🚀</div>
+              <div style="flex: 1">
+                <div class="card-old__eyebrow">MOMENTUM</div>
+                <div class="card__title" style="margin-top: 2px">
+                  Momentum positivo
+                </div>
+              </div>
+            </div>
+            <div class="card__body">
+              Llevás racha sostenida, el ciclo proyecta sobrante, y hay
+              categorías a favor. Es el momento de capitalizar.
+            </div>
+            <div class="card-old__impactPill">
+              <div class="card-old__impactLabel">IMPACTO MEN…</div>
+              <div class="card-old__impactValue">+$1.676.000 a favor</div>
+            </div>
+            <div class="card-old__foot">
+              <div class="dots">
+                <span class="dot"></span><span class="dot"></span
+                ><span class="dot"></span>
+              </div>
+              <span>Datos en vivo · 12d de datos</span>
+            </div>
+            <div class="card__actions">
+              <button class="btn btn--primary">Capitalizar</button>
+              <button class="btn btn--ghost">Visto</button>
+            </div>
+          </div>
+
+          <span class="frame__label">Antes</span>
+        </div>
+      </div>
+
+      <!-- ════════════════════════ DESPUÉS ════════════════════════ -->
+      <div>
+        <p class="page-title" style="opacity: 0.7; margin-bottom: 12px">
+          Propuesta
+        </p>
+        <div class="frame">
+          <span class="frame__notch"></span>
+          <span class="frame__handle"></span>
+
+          <div class="header">
+            <div class="header__title">Asistente</div>
+            <div class="impact-pill">
+              <span class="impact-pill__icon">↗</span>
+              <span class="impact-pill__value">+$1.9M</span>
+              <span class="impact-pill__suffix">/mes potencial</span>
+            </div>
+          </div>
+          <div class="subtitle">3 acciones que pueden mover la aguja este ciclo</div>
+
+          <!-- InsightCard 1: Momentum -->
+          <div class="card">
+            <div class="card__head">
+              <div class="card__icon card__icon--momentum">🚀</div>
+              <div class="card__title">Momentum positivo</div>
+            </div>
+            <div class="card__body">
+              Llevás racha sostenida, el ciclo proyecta sobrante, y hay
+              categorías a favor.
+            </div>
+            <div class="card__impact">+$1.676.000 a favor en el ciclo</div>
+            <div class="card__actions">
+              <button class="btn btn--primary">
+                Capitalizar
+                <span class="btn--primary__arrow">→</span>
+              </button>
+              <button class="btn btn--secondary">Visto</button>
+            </div>
+          </div>
+
+          <!-- InsightCard 2: Drenaje -->
+          <div class="card">
+            <div class="card__head">
+              <div class="card__icon card__icon--leak">💧</div>
+              <div class="card__title">Drenaje invisible</div>
+            </div>
+            <div class="card__body">
+              23 compras chicas suman $58.400 — el 14% del gasto del mes pasa
+              desapercibido.
+            </div>
+            <div class="card__impact card__impact--negative">
+              −$210.240 / año estimado
+            </div>
+            <div class="card__actions">
+              <button class="btn btn--primary">
+                Auditar
+                <span class="btn--primary__arrow">→</span>
+              </button>
+              <button class="btn btn--secondary">Visto</button>
+            </div>
+          </div>
+
+          <!-- InsightCard 3: Suscripción zombie -->
+          <div class="card">
+            <div class="card__head">
+              <div class="card__icon card__icon--zombie">⚡</div>
+              <div class="card__title">La luz subió 14%</div>
+            </div>
+            <div class="card__body">
+              Edenor pasó de $28.000 a $32.500. Hay planes más baratos.
+            </div>
+            <div class="card__impact card__impact--negative">
+              −$3.200 / mes
+            </div>
+            <div class="card__actions">
+              <button class="btn btn--primary">
+                Ver opciones
+                <span class="btn--primary__arrow">→</span>
+              </button>
+              <button class="btn btn--secondary">Visto</button>
+            </div>
+          </div>
+
+          <span class="frame__label">Propuesta — más simple</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Lo que cambia</h3>
+      <ul>
+        <li><b>Header simple</b>: título "Asistente" + pill agregada con el potencial mensual de las acciones (mismo concepto que tenías antes, ahora con copy más honesto: "+$1.9M/mes potencial").</li>
+        <li><b>ForecastStrip + MapaDelCiclo eliminados</b>: decoración de baja densidad informativa.</li>
+        <li><b>Card sin eyebrow ni timestamp</b>: el icono + título alcanza para identificar el insight.</li>
+        <li><b>Impacto en línea</b>: número en color semántico (verde / peach), no en una pill recargada.</li>
+        <li><b>Botones claramente tappables</b>: primary con arrow → animado + sombra suave; "Visto" con fondo gris en lugar de texto plano. Ambos ≥44pt.</li>
+      </ul>
+
+      <h3>Métricas</h3>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat__label">Componentes verticales</div>
+          <div class="stat__value">5 → 2</div>
+        </div>
+        <div class="stat">
+          <div class="stat__label">Pixels por card</div>
+          <div class="stat__value">−40%</div>
+        </div>
+        <div class="stat">
+          <div class="stat__label">Capas por insight</div>
+          <div class="stat__value">4 → 3</div>
+        </div>
+        <div class="stat">
+          <div class="stat__label">CTAs visibles 1ra vista</div>
+          <div class="stat__value">~6 → 3</div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
