@@ -378,28 +378,38 @@ function InsightCard({
 
   return (
     <View style={styles.message}>
-      <Pressable
-        onPress={onPressBubble}
-        onLongPress={onLongPressBubble}
-        delayLongPress={350}
-        accessibilityRole="button"
-        accessibilityLabel={`${task.title}. Mantené presionado para opciones.`}
+      {/*
+        Card surface contains BOTH the visual content (head/body/impact)
+        AND the action buttons. The buttons are styled as forest-on-cream
+        (rgba alphas of forest), so they MUST sit on cream — when they
+        lived outside the card on the dark forest shell the bg/text
+        rendered at ~1:1 contrast (literally invisible). Splitting the
+        Pressable into two sibling regions inside the same cream View
+        avoids gesture conflicts: tap-area on top expands the card,
+        the button row below handles its own taps.
+      */}
+      <View
+        style={[
+          styles.bubble,
+          {
+            borderColor: isActive
+              ? tone.accent
+              : isCritical
+                ? `${tone.accent}AA`
+                : 'rgba(15,42,30,0.16)',
+            backgroundColor: '#FFFBF2',
+            shadowColor: tone.accent,
+            shadowOpacity: isActive ? 0.28 : 0.12,
+            shadowRadius: isActive ? 16 : 8,
+          },
+        ]}
       >
-        <View
-          style={[
-            styles.bubble,
-            {
-              borderColor: isActive
-                ? tone.accent
-                : isCritical
-                  ? `${tone.accent}AA`
-                  : 'rgba(15,42,30,0.10)',
-              backgroundColor: '#FFFBF2',
-              shadowColor: tone.accent,
-              shadowOpacity: isActive ? 0.28 : 0.12,
-              shadowRadius: isActive ? 16 : 8,
-            },
-          ]}
+        <Pressable
+          onPress={onPressBubble}
+          onLongPress={onLongPressBubble}
+          delayLongPress={350}
+          accessibilityRole="button"
+          accessibilityLabel={`${task.title}. Mantené presionado para opciones.`}
         >
           <View style={styles.bubbleHead}>
             <View
@@ -425,39 +435,38 @@ function InsightCard({
           >
             {task.impact}
           </Text>
-        </View>
-      </Pressable>
-
-      {/* Primary action + Visto */}
-      <View style={styles.replies}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${ctaLabel} para ${task.title}`}
-          onPress={onAction}
-          style={({ pressed }) => [
-            styles.replyCta,
-            { opacity: pressed ? 0.92 : 1 },
-          ]}
-        >
-          <Text style={styles.replyCtaText} numberOfLines={1}>
-            {ctaLabel}
-          </Text>
-          <MaterialIcons name="arrow-forward" size={14} color="#FFFBF2" />
         </Pressable>
-        {!isDismissAction ? (
+
+        <View style={styles.replies}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Marcar como visto"
-            onPress={onDismiss}
-            hitSlop={4}
+            accessibilityLabel={`${ctaLabel} para ${task.title}`}
+            onPress={onAction}
             style={({ pressed }) => [
-              styles.replySeen,
-              { opacity: pressed ? 0.7 : 1 },
+              styles.replyCta,
+              { opacity: pressed ? 0.92 : 1 },
             ]}
           >
-            <Text style={styles.replySeenText}>Visto</Text>
+            <Text style={styles.replyCtaText} numberOfLines={1}>
+              {ctaLabel}
+            </Text>
+            <MaterialIcons name="arrow-forward" size={14} color="#FFFBF2" />
           </Pressable>
-        ) : null}
+          {!isDismissAction ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Marcar como visto"
+              onPress={onDismiss}
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.replySeen,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Text style={styles.replySeenText}>Visto</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   )
@@ -733,15 +742,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     paddingTop: 2,
   },
-  // Primary action + Visto. Placed below the card so the touch
-  // surface stays distinct from the card's tap-to-expand.
+  // Primary action + Visto. Live INSIDE the cream card so the
+  // forest-tinted button colors (rgba alphas of #0F2A1E) render on
+  // the cream surface — outside the card they were over the dark
+  // forest shell and rendered at ~1:1 contrast (invisible).
   replies: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
-    paddingRight: 4,
+    marginTop: 6,
   },
   replyCta: {
     flexDirection: 'row',
@@ -772,7 +782,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(15,42,30,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(15,42,30,0.10)',
+    // Border alpha bumped 0.10 → 0.18 so the pill is identifiable on
+    // the cream surface (WCAG 1.4.11 non-text contrast).
+    borderColor: 'rgba(15,42,30,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
