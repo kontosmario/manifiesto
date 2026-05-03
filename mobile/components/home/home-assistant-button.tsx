@@ -13,10 +13,10 @@ interface HomeAssistantButtonProps {
 // preserved in both via the same hue at different lightness.
 const ICON_MINT_LIGHT = '#297811'  // primary-800 (5.37:1 on creamCard light)
 const ICON_MINT_DARK = '#A6EF8F'   // primary-300 (5.73:1 on creamCard dark)
-// V1 accent-300 — soft peach (not fire-red) for the count badge bg.
-// Dark text on top reads as subtle/informational, not warning. Same
-// hex as the bell badge so the two badges in the header rhyme.
-const BADGE_BG = '#F2A78C'
+// V1 accent-700 — burgundy/burnt-coral. Same hue as accent-600 but
+// at l=33% reads as deep warm, not fire-red. Cream text on top hits
+// 6.07:1 AA in both modes. Same hex as the bell badge.
+const BADGE_BG = '#973511'
 
 /**
  * Header button that opens the Asistente sheet. Adopts the same chrome
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#12211A',  // V1 surface-950 — AAA on accent-300 peach (11.47:1)
+    color: '#FFFBF2',  // V1 cream — AA on accent-700 burgundy (6.07:1)
     letterSpacing: -0.2,
   },
 })

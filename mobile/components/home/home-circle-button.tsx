@@ -35,9 +35,10 @@ export function HomeCircleButton({
   style,
 }: HomeCircleButtonProps) {
   const { theme } = useAppTheme()
-  // V1 accent-300 — soft peach (not fire-red). Dark text on top is
-  // AAA in both modes (11.47:1) and reads as subtle, not warning.
-  const dotColor = badgeColor ?? '#F2A78C'
+  // V1 accent-700 — burgundy/burnt-coral (h=16 l=33%). Reads as deep
+  // warm rather than fire-red. Cream text on top hits 6.07:1 AA in
+  // both modes — light number, not dark, no warning vibe.
+  const dotColor = badgeColor ?? '#973511'
   const showCount = badgeCount != null && badgeCount > 0
   const countLabel = showCount
     ? badgeCount > 99
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#12211A',  // V1 surface-950 — AAA on accent-300 peach (11.47:1)
+    color: '#FFFBF2',  // V1 cream — AA on accent-700 burgundy (6.07:1)
     letterSpacing: -0.2,
   },
   // Legacy dot — kept for consumers without a numeric count.
