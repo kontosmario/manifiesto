@@ -38,6 +38,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 export function AddExpenseTabButton({
   accessibilityState,
   onPress: forwardedOnPress,
+  onLongPress: forwardedOnLongPress,
   onPressIn,
   onPressOut,
   style,
@@ -51,7 +52,14 @@ export function AddExpenseTabButton({
   const pressScale = usePressScale({ pressedScale: 0.93 })
   const { burstRingStyle, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
   const [quickActionsVisible, setQuickActionsVisible] = useState(false)
+  // expo-router passes its own onPress + onLongPress through tabBarButton
+  // props. We discard them — our handlers below define the actual
+  // behavior (tap → add-expense, long-press → speed dial). If we
+  // didn't extract them, the trailing `{...pressableProps}` spread
+  // would silently override our handlers, which is exactly what was
+  // happening before this fix (long-press never triggered the menu).
   void forwardedOnPress
+  void forwardedOnLongPress
 
   const resolveForwardedStyle = (state: PressableStateCallbackType) =>
     typeof style === 'function' ? style(state) : style
