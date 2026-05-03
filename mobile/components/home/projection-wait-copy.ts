@@ -20,8 +20,12 @@ export function formatProjectionWaitCopy(
   daysRemaining: number,
 ): ProjectionWaitCopy {
   const days = Math.max(1, Math.trunc(daysRemaining))
-  const detail =
-    days === 1 ? 'falta 1 día' : `faltan ${days} días`
+  // Joined form ("Aún calculando · 2 días") must fit one line of the
+  // hero tile (~152px @ fontSize 11), otherwise the sub wraps and the
+  // tile grows taller than its sibling. Drop the "faltan" verb to
+  // shave the joined string under the 22-char ceiling guarded by the
+  // unit test.
+  const detail = days === 1 ? '1 día' : `${days} días`
   return {
     label: 'Aún calculando',
     detail,

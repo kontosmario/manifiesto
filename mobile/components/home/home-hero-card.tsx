@@ -494,7 +494,7 @@ export function HomeHeroCard({
                       </Text>
                       <Text
                         style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}
-                        numberOfLines={2}
+                        numberOfLines={1}
                       >
                         {`${wait.label} · ${wait.detail}`}
                       </Text>
@@ -647,6 +647,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
+    // Both side tiles must keep matching heights even when the
+    // projection tile renders the "Aún calculando · 2 días"
+    // placeholder (taller content than "hasta fin de ciclo"). The
+    // row already stretches each `RiseView` wrapper, so `flex: 1`
+    // here makes the tile background fill its wrapper end-to-end
+    // — without it the colored card stays at intrinsic content
+    // height while the wrapper stretches, leaving a visible gap.
+    // `minHeight` floors the row at the tallest expected single
+    // state so the equal-height contract holds even when *both*
+    // tiles use short copy.
+    flex: 1,
+    minHeight: 88,
   },
   tileLabel: {
     fontSize: 11,
