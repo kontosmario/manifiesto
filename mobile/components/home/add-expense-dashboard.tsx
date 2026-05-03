@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { Keyboard, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
+import { computeFillTileWidth } from '@/components/home/category-rail-fill-width'
 import { DescriptionRow } from '@/components/home/description-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -61,9 +62,26 @@ export function AddExpenseDashboard({
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
+  const { width: screenWidth } = useWindowDimensions()
   const [numpadVisible, setNumpadVisible] = useState(false)
 
   const canSubmit = hasValidAmount && Boolean(selectedCategoryId)
+
+  // Stretch each category tile so the rail fills the available
+  // viewport width when the catalog fits in one screen. Without this,
+  // the filtered 12-category list (3 rows × 4 columns × 60pt) leaves
+  // ~96pt of empty space on the right of a 393pt phone. The helper
+  // falls back to the default 60pt when content overflows so the rail
+  // keeps its horizontal-scroll behavior for larger catalogs.
+  const categoryTileWidth = computeFillTileWidth({
+    categoriesCount: rankedCategories.length,
+    rows: 3,
+    screenWidth,
+    gap: 8,
+    sidePadding: 8,
+    defaultTileWidth: 60,
+    maxTileWidth: 110,
+  })
 
   // Any tap on a non-description control should release the
   // description input's focus and close the keyboard. Same pattern
@@ -137,6 +155,7 @@ export function AddExpenseDashboard({
           categories={rankedCategories}
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
+          tileWidth={categoryTileWidth}
         />
       </RiseView>
 
