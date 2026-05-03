@@ -303,7 +303,7 @@ export function NotificationsPreferencesScreen() {
                         {
                           color: selected
                             ? theme.isDark
-                              ? '#0A1410'
+                              ? '#12211A'
                               : theme.colors.creamCard
                             : theme.colors.text,
                         },
@@ -315,7 +315,7 @@ export function NotificationsPreferencesScreen() {
                       <MaterialIcons
                         name="check"
                         size={18}
-                        color={theme.isDark ? '#0A1410' : theme.colors.creamCard}
+                        color={theme.isDark ? '#12211A' : theme.colors.creamCard}
                       />
                     ) : null}
                   </Pressable>

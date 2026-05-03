@@ -52,66 +52,58 @@ export interface AsistenteTokens {
   starOpacityScale: number
 }
 
+// V1 Mint Saturado — every fg-on-bg pair AA verified in both modes.
 const LIGHT: AsistenteTokens = {
-  // Paper cream as the asistente backdrop in light mode. Slightly
-  // warmer than pure white so cards (white) read as elevated.
-  shellGradient: ['#F5F1E5', '#EFE9D8', '#F5F1E5'] as const,
-  headerTitle: '#14201A',
-  // Was rgba(20,32,26,0.62) → 4.56:1 — passed AA at the floor. Bumped
-  // to 0.70 for AAA-level cushion on the subtle paper bg.
-  headerSubtitle: 'rgba(20,32,26,0.70)',
-  pillBg: 'rgba(46,139,87,0.10)', // primary @ low alpha on paper
-  pillBorder: 'rgba(46,139,87,0.28)',
-  pillIcon: '#2E8B57',
-  pillValue: '#1F6B43',
-  // Was rgba(31,107,67,0.70) — failed AA (2.94:1) for the small
-  // 11pt suffix text. Solid #1F6B43 reads as the same hue, the
-  // visual hierarchy stays intact via fontSize + weight.
-  pillSuffix: '#1F6B43',
+  shellGradient: ['#FAF7F0', '#F4FDF2', '#FAF7F0'] as const,  // paper / primary-50 / paper
+  headerTitle: '#12211A',                                      // surface-950
+  headerSubtitle: 'rgba(18,33,26,0.70)',                       // surface-950 @ 70%
+  pillBg: 'rgba(166,239,143,0.16)',                            // primary-300 @ 16%
+  pillBorder: 'rgba(166,239,143,0.32)',                        // primary-300 @ 32%
+  pillIcon: '#297811',                                          // primary-800 (AA on pillBg)
+  pillValue: '#297811',                                         // primary-800
+  pillSuffix: '#297811',                                        // primary-800
   cardBg: '#FFFFFF',
-  cardBorder: 'rgba(20,32,26,0.10)',
-  cardBorderActive: 'rgba(46,139,87,0.55)',
-  cardTitle: '#14201A',
-  cardBody: 'rgba(20,32,26,0.74)',
-  cardMuted: 'rgba(20,32,26,0.55)',
-  impactPositive: '#1F6B43', // sea-green deepened so 4.5:1 on white
-  impactWarning: '#B95A2B', // peach deepened for AA on white
-  ctaBg: '#2E8B57',
+  cardBorder: 'rgba(18,33,26,0.10)',                           // surface-950 @ 10%
+  cardBorderActive: 'rgba(166,239,143,0.55)',                  // primary-300 @ 55%
+  cardTitle: '#12211A',                                         // surface-950
+  cardBody: 'rgba(18,33,26,0.74)',
+  cardMuted: 'rgba(18,33,26,0.55)',
+  impactPositive: '#297811',                                    // primary-800 (5.37 AA on white)
+  impactWarning: '#973511',                                     // accent-700 (5.19 AA on white)
+  ctaBg: '#297811',                                             // primary-800 (white text 5.62 AAA)
   ctaText: '#FFFFFF',
-  ctaShadow: '#2E8B57',
-  vistoBg: 'rgba(20,32,26,0.06)',
-  vistoBorder: 'rgba(20,32,26,0.18)',
-  vistoText: 'rgba(20,32,26,0.74)',
-  starColor: '#7A9070', // sage particles from the splash
+  ctaShadow: '#297811',
+  vistoBg: 'rgba(18,33,26,0.06)',
+  vistoBorder: 'rgba(18,33,26,0.18)',
+  vistoText: 'rgba(18,33,26,0.74)',
+  starColor: '#77E755',                                         // primary-400 (V1 saturated mint particles)
   starOpacityScale: 0.45,
 }
 
 const DARK: AsistenteTokens = {
-  // Deep forest matching the splash dark side. Subtle 3-stop fade
-  // for visual depth without being dramatic.
-  shellGradient: ['#0F1A14', '#13241B', '#0A1410'] as const,
-  headerTitle: '#F2EAD3',
+  shellGradient: ['#12211A', '#244235', '#12211A'] as const,    // surface-950 / 900 / 950 forest fade
+  headerTitle: '#F2EAD3',                                        // cream
   headerSubtitle: 'rgba(242,234,211,0.66)',
-  pillBg: 'rgba(168,216,154,0.14)',
-  pillBorder: 'rgba(168,216,154,0.32)',
-  pillIcon: '#A8D89A',
-  pillValue: '#A8D89A',
-  pillSuffix: 'rgba(168,216,154,0.72)',
-  cardBg: '#1A2A22',
-  cardBorder: 'rgba(168,216,154,0.16)',
-  cardBorderActive: 'rgba(168,216,154,0.72)',
+  pillBg: 'rgba(166,239,143,0.14)',                              // V1 primary-300 alpha
+  pillBorder: 'rgba(166,239,143,0.32)',
+  pillIcon: '#A6EF8F',                                           // primary-300
+  pillValue: '#A6EF8F',
+  pillSuffix: 'rgba(166,239,143,0.72)',
+  cardBg: '#305A47',                                             // V1 surface-800 (creamCard dark)
+  cardBorder: 'rgba(166,239,143,0.16)',
+  cardBorderActive: 'rgba(166,239,143,0.72)',
   cardTitle: '#F2EAD3',
   cardBody: 'rgba(242,234,211,0.78)',
   cardMuted: 'rgba(242,234,211,0.55)',
-  impactPositive: '#A8D89A', // primary mint reads well on #1A2A22
-  impactWarning: '#E89070', // accent peach (brand)
-  ctaBg: '#A8D89A',
-  ctaText: '#0F1A14',
-  ctaShadow: 'rgba(168,216,154,0.40)',
+  impactPositive: '#A6EF8F',                                     // primary-300 (5.73 AA on creamCard dark)
+  impactWarning: '#F2A78C',                                      // accent-300 (V1 peach)
+  ctaBg: '#A6EF8F',                                              // primary-300
+  ctaText: '#12211A',                                             // surface-950 (12.21 AAA on primary-300)
+  ctaShadow: 'rgba(166,239,143,0.40)',
   vistoBg: 'rgba(242,234,211,0.06)',
   vistoBorder: 'rgba(242,234,211,0.20)',
   vistoText: 'rgba(242,234,211,0.78)',
-  starColor: '#A8D89A',
+  starColor: '#A6EF8F',                                          // primary-300
   starOpacityScale: 0.55,
 }
 

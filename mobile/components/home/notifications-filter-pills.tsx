@@ -67,22 +67,22 @@ function FilterPill({
   const { theme } = useAppTheme()
   const fg = active
     ? theme.isDark
-      ? '#0A1410'
+      ? '#12211A'  // V1 surface-950
       : theme.colors.creamCard
     : theme.colors.text
 
   const countBg = active
     ? theme.isDark
-      ? 'rgba(10,20,16,0.18)'
-      : 'rgba(246,251,239,0.14)'
+      ? 'rgba(18,33,26,0.18)'    // surface-950 alpha
+      : 'rgba(242,234,211,0.14)' // V1 cream alpha
     : theme.isDark
-      ? '#0E1A15'
+      ? '#12211A'                // V1 surface-950
       : theme.colors.pageBg
 
   const countFg = active
     ? theme.isDark
-      ? 'rgba(10,20,16,0.65)'
-      : 'rgba(246,251,239,0.6)'
+      ? 'rgba(18,33,26,0.65)'
+      : 'rgba(242,234,211,0.6)'
     : theme.colors.textMuted
 
   const content = (
@@ -105,7 +105,7 @@ function FilterPill({
         accessibilityLabel={label}
       >
         <LinearGradient
-          colors={['#C7EE9C', '#8DD66A'] as unknown as readonly [string, string, ...string[]]}
+          colors={['#A6EF8F', '#49D61F'] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.pill, styles.pillActiveDark]}
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   pillActiveDark: {
     borderWidth: 0,
-    boxShadow: '0px 8px 20px -8px rgba(141,214,106,0.55)',
+    boxShadow: '0px 8px 20px -8px rgba(73,214,31,0.55)',
   },
   label: {
     fontSize: 13,

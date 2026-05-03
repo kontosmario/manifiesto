@@ -47,7 +47,7 @@ export function NotificationsHero({
         colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={[styles.card, { borderColor: 'rgba(199,238,156,0.12)' }]}
+        style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
       >
         <ShineOverlay
           width={420}
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   markAllText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0A1410',
+    color: '#12211A',
     letterSpacing: -0.2,
   },
 })

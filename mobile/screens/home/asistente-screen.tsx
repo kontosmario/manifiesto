@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   forecastChipText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#F2C58A',
+    color: '#F2A78C',
     letterSpacing: 0.4,
   },
   forecastFootnote: {
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(199,238,156,0.45)',
+    backgroundColor: 'rgba(166,239,143,0.45)',
   },
   // Header — minimal title row + aggregate impact pill, then a
   // hedged subtitle. No avatar, no pulse dot, no two-row layout.
