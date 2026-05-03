@@ -16,7 +16,7 @@ function category(overrides: Partial<Category>): Category {
 }
 
 describe('filterVariableExpenseCategories', () => {
-  it('removes the fixed-only categories (Alquiler, Servicios, Suscripciones, Impuestos, Educación) from the picker', () => {
+  it('removes the fixed-only categories (Alquiler, Servicios, Suscripciones, Impuestos, Educación, Salud) from the picker', () => {
     const input = [
       category({ name: 'Mercado' }),
       category({ name: 'Alquiler' }),
@@ -25,6 +25,7 @@ describe('filterVariableExpenseCategories', () => {
       category({ name: 'Suscripciones' }),
       category({ name: 'Impuestos' }),
       category({ name: 'Educación' }),
+      category({ name: 'Salud' }),
       category({ name: 'Ocio' }),
     ]
     const result = filterVariableExpenseCategories(input)

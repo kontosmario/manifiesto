@@ -31,6 +31,7 @@ const FIXED_ONLY_CATEGORY_NAMES = new Set<string>([
   'suscripciones',
   'impuestos',
   'educacion',
+  'salud',
 ])
 
 function normalize(name: string): string {
