@@ -209,7 +209,7 @@ const lightColors: ThemeColors = {
   auroraC:            'rgba(119,231,85,0.22)',   // V1 — primary-400 alpha
   shineOverlay:       'rgba(255,255,255,0.1)',
   ringBg:             '#FAF7F0',  // V1 — paper foundation (matches eventual V1 canvas)
-  pageBg:             '#EFF5E8',
+  pageBg:             '#F4FDF2',  // V1 — primary-50 (faint mint paper)
 }
 
 const darkColors: ThemeColors = {

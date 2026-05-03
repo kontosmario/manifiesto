@@ -22,10 +22,10 @@ export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
   // orange/red echoes the sheet hero, so the header tells the user the
   // same story even before they open the streak.
   const atRiskRamp = {
-    calm: { bg: 'rgba(76,175,80,0.12)', border: 'rgba(76,175,80,0.35)' },
-    gentle: { bg: 'rgba(232,198,106,0.16)', border: 'rgba(232,198,106,0.42)' },
-    urgent: { bg: 'rgba(240,160,96,0.16)', border: 'rgba(240,160,96,0.45)' },
-    critical: { bg: 'rgba(224,85,85,0.16)', border: 'rgba(224,85,85,0.45)' },
+    calm: { bg: 'rgba(73,214,31,0.12)', border: 'rgba(73,214,31,0.35)' },
+    gentle: { bg: 'rgba(243,186,87,0.16)', border: 'rgba(243,186,87,0.42)' },
+    urgent: { bg: 'rgba(236,122,81,0.16)', border: 'rgba(236,122,81,0.45)' },
+    critical: { bg: 'rgba(240,106,106,0.16)', border: 'rgba(240,106,106,0.45)' },
   } as const
   const atRiskRampStyle =
     derived.status === 'at_risk' && derived.atRiskIntensity
@@ -33,14 +33,14 @@ export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
       : null
 
   const bgByStatus = {
-    active: 'rgba(76,175,80,0.12)',
-    at_risk: atRiskRampStyle?.bg ?? 'rgba(240,160,96,0.14)',
-    broken: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)',
+    active: 'rgba(73,214,31,0.12)',
+    at_risk: atRiskRampStyle?.bg ?? 'rgba(236,122,81,0.14)',
+    broken: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(18,33,26,0.04)',
   } as const
   const borderByStatus = {
-    active: 'rgba(76,175,80,0.35)',
-    at_risk: atRiskRampStyle?.border ?? 'rgba(240,160,96,0.45)',
-    broken: theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,42,30,0.12)',
+    active: 'rgba(73,214,31,0.35)',
+    at_risk: atRiskRampStyle?.border ?? 'rgba(236,122,81,0.45)',
+    broken: theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(18,33,26,0.12)',
   } as const
   const badgeText = derived.status === 'broken' ? '0' : String(data.currentStreak)
   // Borde + texto del badge usan tokens del tema en vez de hex

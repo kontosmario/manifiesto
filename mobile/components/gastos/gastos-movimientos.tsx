@@ -202,7 +202,7 @@ export function GastosMovimientos({
                         categoryName={cat?.name ?? 'Sin categoría'}
                         categoryColor={cat?.color ?? theme.colors.textMuted}
                         whoName={who?.name ?? 'Alguien'}
-                        whoColor={who?.color ?? '#2E7D5B'}
+                        whoColor={who?.color ?? '#329315'}
                         amount={-Math.abs(Number(expense.price ?? 0))}
                         time={formatTime(expense.created_at)}
                       />

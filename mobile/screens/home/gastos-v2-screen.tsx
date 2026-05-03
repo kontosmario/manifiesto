@@ -35,7 +35,6 @@ import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { useStreak, type StreakData } from '@/features/streaks/use-streak'
 import type { GastosGroup } from '@/features/gastos/gastos-aggregates.model'
-import { brand } from '@/theme/palette'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { formatMoney } from '@/utils/money'
@@ -301,7 +300,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               categoryName={cat?.name ?? 'Sin categoría'}
               categoryColor={cat?.color ?? theme.colors.textMuted}
               whoName={who?.name ?? 'Alguien'}
-              whoColor={who?.color ?? '#2E7D5B'}
+              whoColor={who?.color ?? '#329315'}
               amount={-Math.abs(Number(item.price ?? 0))}
               time={formatTime(item.created_at)}
             />
@@ -662,8 +661,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={brand.bright}
-            colors={[brand.deep]}
+            tintColor="#A6EF8F"
+            colors={['#297811']}
           />
         }
       />

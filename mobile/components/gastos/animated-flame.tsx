@@ -28,20 +28,24 @@ interface AnimatedFlameProps {
 // ─────────────────────────────────────────────────────────────
 
 export const FLAME_PALETTE = {
+  // V1 active flame — primary mint family from saturated to pastel.
   active: {
-    outer: '#4caf50',
-    outerBase: '#2e7d32',
-    inner: '#81c784',
-    core: '#c8e6c9',
-    ring: 'rgba(76,175,80,0.18)',
+    outer: '#3DB319',         // primary-600
+    outerBase: '#329315',     // primary-700
+    inner: '#77E755',         // primary-400
+    core: '#D1F7C5',          // primary-200
+    ring: 'rgba(73,214,31,0.18)',
   },
+  // V1 at-risk flame — accent coral family + butter core (kept) for
+  // the warm "running out of fuel" feel.
   at_risk: {
-    outer: '#f0a060',
-    outerBase: '#bf360c',
-    inner: '#ffcc80',
-    core: '#fff9c4',
-    ring: 'rgba(240,160,96,0.22)',
+    outer: '#EC7A51',         // accent-400
+    outerBase: '#973511',     // accent-700
+    inner: '#F8D1C3',         // accent-200
+    core: '#FFF9C4',          // butter — semantic warning yellow core
+    ring: 'rgba(236,122,81,0.22)',
   },
+  // Broken — neutral grey ramp (no brand colour, intentional).
   broken: {
     outer: '#5A5A5A',
     outerBase: '#3A3A3A',
