@@ -12,9 +12,11 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
+import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -33,16 +35,23 @@ interface AddQuickActionsOverlayProps {
   actions: QuickAction[]
 }
 
-/**
- * Speed Dial overlay — opens above the FAB on long-press. 3 stacked
- * mini-actions slide up with a 60ms stagger so the eye reads top-to-
- * bottom. Tap on any: dismiss + run action. Tap on the scrim or on
- * the back button: dismiss with a short downward animation.
- *
- * Built as a `Modal` (not a Sheet) so the actions feel anchored to
- * the FAB, not pulled from the bottom of the screen — closer to the
- * Material 3 Speed Dial / Apple Reminders quick-add pattern.
- */
+// ─── Fan layout ─────────────────────────────────────────────────
+// 3 actions emerge from the FAB center as a 60° fan arc, anchored
+// to the FAB so the menu reads as something unfurling FROM the
+// button, not floating beside it.
+//
+// Angles measured from horizontal (counter-clockwise), 90° = up.
+// Index 0 = leftmost, index 2 = rightmost. Order matches the
+// `actions` prop, so the caller controls the L→R sequence.
+const FAN_ANGLES_DEG = [135, 90, 45]
+const FAN_RADIUS = 120 // distance from FAB center to each mini-FAB center
+const ACTION_SIZE = 56
+const LABEL_WIDTH = 96 // wide enough for "Gasto fijo" on one line
+// FAB center from screen bottom: tab bar bottom (14) + tab bar
+// half height (44) + FAB lift (18) ≈ 76. Bumped a touch so the
+// petals don't overlap the FAB face itself.
+const ANCHOR_BOTTOM = 76
+
 export function AddQuickActionsOverlay({
   visible,
   onDismiss,
@@ -57,14 +66,28 @@ export function AddQuickActionsOverlay({
       progress.value = visible ? 1 : 0
       return
     }
-    progress.value = withTiming(visible ? 1 : 0, {
-      duration: visible ? 220 : 160,
-      easing: Easing.out(Easing.cubic),
-    })
+    if (visible) {
+      // Spring entrance — gives the fan an organic unfurl with a
+      // touch of bounce as petals settle. Damping kept above 12 so
+      // the bounce stays subtle (not toy-like).
+      progress.value = withSpring(1, {
+        damping: 14,
+        stiffness: 160,
+        mass: 0.9,
+      })
+    } else {
+      // Cubic ease-in collapse — petals accelerate as they're sucked
+      // back into the FAB. Shorter than the entrance (~75%) so the
+      // dismiss feels responsive, not laggy.
+      progress.value = withTiming(0, {
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+      })
+    }
   }, [visible, progress, reduced])
 
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: progress.value * 0.5, // 50% scrim at peak — Material modal scrim guideline
+    opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
   }))
 
   return (
@@ -75,44 +98,55 @@ export function AddQuickActionsOverlay({
       statusBarTranslucent
       animationType="none"
     >
-      {/* Scrim — dismisses on tap */}
+      {/* Blurred scrim — feels closer to iOS Control Center / a
+          system sheet than a flat black overlay. Tap dismisses. */}
       <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss}>
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: '#000' },
-            scrimStyle,
-          ]}
-        />
+        <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
+          <BlurView
+            intensity={32}
+            tint={theme.isDark ? 'dark' : 'systemChromeMaterialDark'}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Extra dim layer so the petals stay legible even when
+              the underlying screen is bright. */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: '#06120C', opacity: 0.42 },
+            ]}
+          />
+        </Animated.View>
       </Pressable>
 
-      {/* Anchor — positioned just above the tab bar so the actions
-          read as emerging from the FAB. Bottom inset accommodates
-          the bar height (~88pt) + FAB lift (-18pt) + safe area. */}
-      <View style={styles.anchor} pointerEvents="box-none">
-        {actions.map((action, index) => (
-          <ActionRow
-            key={action.key}
-            action={action}
-            index={index}
-            progress={progress}
-            reduced={reduced}
-            onSelect={() => {
-              void triggerHaptic('selection')
-              onDismiss()
-              // Run the action after the dismiss starts so the user
-              // sees the menu close before the next screen pushes.
-              requestAnimationFrame(action.onPress)
-            }}
-            theme={theme}
-          />
-        ))}
+      {/* Anchor — single zero-size point at the FAB center. Each
+          petal is `position: absolute` and translated outward from
+          this origin, so the layout is genuinely radial. */}
+      <View style={styles.anchorWrap} pointerEvents="box-none">
+        <View style={styles.anchorPoint} pointerEvents="box-none">
+          {actions.map((action, index) => (
+            <ActionPetal
+              key={action.key}
+              action={action}
+              index={index}
+              progress={progress}
+              reduced={reduced}
+              onSelect={() => {
+                void triggerHaptic('selection')
+                onDismiss()
+                // Run the action after the dismiss starts so the user
+                // sees the petals collapse before the next screen pushes.
+                requestAnimationFrame(action.onPress)
+              }}
+              theme={theme}
+            />
+          ))}
+        </View>
       </View>
     </Modal>
   )
 }
 
-function ActionRow({
+function ActionPetal({
   action,
   index,
   progress,
@@ -127,120 +161,125 @@ function ActionRow({
   onSelect: () => void
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
-  // Stagger the row entrance by reading the SAME `progress` shared
-  // value but mapping it through a per-row sub-window. The bottom
-  // row (index 2 = closest to the FAB) animates over progress 0.0→0.7,
-  // the middle over 0.15→0.85, the top over 0.30→1.0. So as `progress`
-  // sweeps 0→1 the rows enter bottom→top with overlap.
-  //
-  // Why this beats the previous useSharedValue + useEffect approach:
-  // SharedValue refs don't trigger React re-renders, so a useEffect
-  // that depended on `progress` only ran once (at mount, when
-  // progress.value was 0) and the staggered timer animated to 0
-  // forever. Reading progress.value directly inside useAnimatedStyle
-  // re-runs on the UI thread on every progress tick, no React
-  // dependency to wire up.
-  const reverseIndex = 2 - index
-  const start = reverseIndex * 0.15 // 0 / 0.15 / 0.30
-  const end = start + 0.7
-  const staggeredStyle = useAnimatedStyle(() => {
+  const angleRad = (FAN_ANGLES_DEG[index] * Math.PI) / 180
+  const targetX = FAN_RADIUS * Math.cos(angleRad)
+  // Screen-y grows downward, so "up" is negative.
+  const targetY = -FAN_RADIUS * Math.sin(angleRad)
+
+  // Stagger the unfurl so the petals read sequentially L→R rather
+  // than all popping at once. 80ms per step is enough to register
+  // without slowing the open down.
+  const stagger = 0.08
+  const start = index * stagger
+  const end = Math.min(1, start + 0.7)
+
+  const petalStyle = useAnimatedStyle(() => {
     const t = progress.value
     if (reduced) {
       return {
         opacity: t,
-        transform: [{ translateY: 0 }],
+        transform: [
+          { translateX: targetX * t },
+          { translateY: targetY * t },
+        ],
       }
     }
+    const local = interpolate(t, [start, end], [0, 1], Extrapolation.CLAMP)
     const opacity = interpolate(
-      t,
-      [start, end],
-      [0, 1],
+      local,
+      [0, 0.4, 1],
+      [0, 0.9, 1],
       Extrapolation.CLAMP,
     )
-    const translate = interpolate(
-      t,
-      [start, end],
-      [16, 0],
+    // Slight overshoot at 0.7 → settles at 1. Reads as a tiny pop
+    // when the petal arrives at its final position.
+    const scale = interpolate(
+      local,
+      [0, 0.7, 1],
+      [0.32, 1.06, 1],
       Extrapolation.CLAMP,
     )
     return {
       opacity,
-      transform: [{ translateY: translate }],
+      transform: [
+        { translateX: targetX * local },
+        { translateY: targetY * local },
+        { scale },
+      ],
     }
   })
 
   return (
-    <Animated.View style={[styles.row, staggeredStyle]}>
-      <View style={[styles.label, { backgroundColor: theme.colors.creamCard }]}>
-        <Text
-          style={{
-            color: theme.colors.text,
-            fontSize: 13,
-            fontWeight: '700',
-            letterSpacing: 0.2,
-          }}
-        >
-          {action.label}
-        </Text>
-      </View>
+    <Animated.View style={[styles.petal, petalStyle]} pointerEvents="box-none">
       <Pressable
         accessibilityLabel={action.label}
         accessibilityRole="button"
         onPress={onSelect}
         style={({ pressed }) => [
-          styles.miniFab,
+          styles.petalCircle,
           {
             backgroundColor: theme.colors.primary,
             opacity: pressed ? 0.92 : 1,
             shadowColor: theme.colors.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: theme.isDark ? 0.30 : 0.26,
-            shadowRadius: 8,
-            elevation: 8,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: theme.isDark ? 0.42 : 0.34,
+            shadowRadius: 14,
+            elevation: 12,
           },
         ]}
-        hitSlop={8}
+        hitSlop={6}
       >
         <MaterialIcons
           name={action.icon}
-          size={20}
-          color={theme.isDark ? '#12211A' : '#FFFFFF'}
+          size={26}
+          color={theme.isDark ? '#0E1B14' : '#FFFFFF'}
         />
       </Pressable>
+      <Text
+        style={styles.petalLabel}
+        numberOfLines={1}
+      >
+        {action.label}
+      </Text>
     </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  anchor: {
+  anchorWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  anchorPoint: {
     position: 'absolute',
-    right: 0,
-    bottom: 110, // tab bar (~88) + FAB lift (-18) + breathing room
-    paddingHorizontal: 20,
-    gap: 14,
-    alignItems: 'flex-end',
+    bottom: ANCHOR_BOTTOM,
+    left: '50%',
+    width: 0,
+    height: 0,
   },
-  row: {
-    flexDirection: 'row',
+  petal: {
+    position: 'absolute',
     alignItems: 'center',
-    gap: 10,
+    // Center the petal+label container on the anchor point.
+    left: -LABEL_WIDTH / 2,
+    top: -ACTION_SIZE / 2,
+    width: LABEL_WIDTH,
   },
-  label: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    // Subtle elevation — pairs with the mini-FAB but doesn't compete.
-    shadowColor: '#12211A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  miniFab: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  petalCircle: {
+    width: ACTION_SIZE,
+    height: ACTION_SIZE,
+    borderRadius: ACTION_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  petalLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 })
