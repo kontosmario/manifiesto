@@ -259,8 +259,8 @@ export function HomeHeroCard({
                 style={[
                   styles.dayChip,
                   {
-                    backgroundColor: 'rgba(242,167,140,0.10)',
-                    borderColor: 'rgba(242,167,140,0.22)',
+                    backgroundColor: 'rgba(242,167,140,0.20)',
+                    borderColor: 'rgba(242,167,140,0.45)',
                   },
                 ]}
               >
@@ -304,8 +304,8 @@ export function HomeHeroCard({
                   style={[
                     styles.adjustedChip,
                     {
-                      backgroundColor: 'rgba(242,167,140,0.10)',
-                      borderColor: 'rgba(242,167,140,0.22)',
+                      backgroundColor: 'rgba(242,167,140,0.20)',
+                      borderColor: 'rgba(242,167,140,0.45)',
                     },
                   ]}
                 >
@@ -339,8 +339,8 @@ export function HomeHeroCard({
                           borderColor: 'rgba(242,167,140,0.45)',
                         }
                       : {
-                          backgroundColor: 'rgba(166,239,143,0.10)',
-                          borderColor: 'rgba(242,167,140,0.30)',
+                          backgroundColor: 'rgba(166,239,143,0.16)',
+                          borderColor: 'rgba(242,167,140,0.50)',
                         },
                   ]}
                 >
