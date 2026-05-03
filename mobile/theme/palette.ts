@@ -9,6 +9,74 @@ export const brand = {
   surfaceSoft:  'rgba(122,216,163,0.12)',
 } as const
 
+/**
+ * V1 "Mint Saturado" scales — generated 2026-05-03 from the variations
+ * preview (`tmp/branding-color-variations-2026-05-03.html`). Computed
+ * from seeds:
+ *
+ *   primary  hsl(106, 75%, …)  — saturated mint, herbal carácter
+ *   accent   hsl( 16, 80%, …)  — coral signal-orange
+ *   surface  hsl(153, 30%, …)  — forest neutral
+ *
+ * Saturation is FULL across the entire ladder (no 0.80–0.95 reduction
+ * for tints) — that's what makes the V1 palette read as "vivo" instead
+ * of pastel.
+ *
+ * Phase 1: scales are exposed as exports only. `brand`, `lightColors`
+ * and `darkColors` are NOT touched yet — components will migrate one
+ * by one (Home first), with palette tokens flipped per-component as
+ * needed. Once Home is fully on V1, we audit and consolidate.
+ */
+export const primaryScale = {
+  50:  '#F4FDF2',
+  100: '#EAFBE4',
+  200: '#D1F7C5',
+  300: '#A6EF8F',
+  400: '#77E755',
+  500: '#49D61F',
+  600: '#3DB319',
+  700: '#329315',
+  800: '#297811',
+  900: '#1F590D',
+  950: '#0F2D06',
+} as const
+
+export const accentScale = {
+  50:  '#FDF4F1',
+  100: '#FCEAE3',
+  200: '#F8D1C3',
+  300: '#F2A78C',
+  400: '#EC7A51',
+  500: '#DC4D18',
+  600: '#B84014',
+  700: '#973511',
+  800: '#7C2B0E',
+  900: '#5C200A',
+  950: '#2E1005',
+} as const
+
+export const surfaceScale = {
+  50:  '#F5FAF8',
+  100: '#EBF4F0',
+  200: '#D4E8DF',
+  300: '#ACD2C1',
+  400: '#81BBA1',
+  500: '#569F7E',
+  600: '#478569',
+  700: '#3B6D57',
+  800: '#305A47',
+  900: '#244235',
+  950: '#12211A',
+} as const
+
+/** Cream foundation — wordmark cream from the splash. Used as
+ *  foreground in dark mode and as warm paper accent in light mode. */
+export const cream = {
+  base:    '#F2EAD3',
+  paper:   '#FAF7F0',
+  paperBg: '#F4FDF2',
+} as const
+
 export interface ThemeColors {
   canvas: string
   background: string          // alias of canvas — kept for backward compat during migration
