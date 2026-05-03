@@ -8,10 +8,10 @@ import {
 } from 'react-native'
 import Animated, {
   Easing,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
@@ -127,33 +127,47 @@ function ActionRow({
   onSelect: () => void
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
-  // 60ms stagger top→bottom so the closest item to the FAB enters
-  // last. Bottom row (index 2) appears first, top row (index 0) last.
+  // Stagger the row entrance by reading the SAME `progress` shared
+  // value but mapping it through a per-row sub-window. The bottom
+  // row (index 2 = closest to the FAB) animates over progress 0.0→0.7,
+  // the middle over 0.15→0.85, the top over 0.30→1.0. So as `progress`
+  // sweeps 0→1 the rows enter bottom→top with overlap.
+  //
+  // Why this beats the previous useSharedValue + useEffect approach:
+  // SharedValue refs don't trigger React re-renders, so a useEffect
+  // that depended on `progress` only ran once (at mount, when
+  // progress.value was 0) and the staggered timer animated to 0
+  // forever. Reading progress.value directly inside useAnimatedStyle
+  // re-runs on the UI thread on every progress tick, no React
+  // dependency to wire up.
   const reverseIndex = 2 - index
-  const delay = reduced ? 0 : reverseIndex * 60
-
-  // Each row owns its own animated value so the stagger works
-  // correctly — `withDelay` on the shared `progress` would race
-  // across siblings.
-  const ownProgress = useSharedValue(0)
-  useEffect(() => {
+  const start = reverseIndex * 0.15 // 0 / 0.15 / 0.30
+  const end = start + 0.7
+  const staggeredStyle = useAnimatedStyle(() => {
+    const t = progress.value
     if (reduced) {
-      ownProgress.value = progress.value
-      return
+      return {
+        opacity: t,
+        transform: [{ translateY: 0 }],
+      }
     }
-    ownProgress.value = withDelay(
-      delay,
-      withTiming(progress.value, {
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-      }),
+    const opacity = interpolate(
+      t,
+      [start, end],
+      [0, 1],
+      Extrapolation.CLAMP,
     )
-  }, [progress, ownProgress, delay, reduced])
-
-  const staggeredStyle = useAnimatedStyle(() => ({
-    opacity: ownProgress.value,
-    transform: [{ translateY: interpolate(ownProgress.value, [0, 1], [16, 0]) }],
-  }))
+    const translate = interpolate(
+      t,
+      [start, end],
+      [16, 0],
+      Extrapolation.CLAMP,
+    )
+    return {
+      opacity,
+      transform: [{ translateY: translate }],
+    }
+  })
 
   return (
     <Animated.View style={[styles.row, staggeredStyle]}>
