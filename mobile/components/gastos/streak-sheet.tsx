@@ -393,17 +393,17 @@ function getStatusTone(
   switch (status) {
     case 'active':
       return {
-        fg: isDark ? '#9EE0B2' : '#2E7D5B',
-        soft: isDark ? 'rgba(158,224,178,0.72)' : 'rgba(46,125,91,0.72)',
-        heroWash: isDark ? 'rgba(76,175,80,0.22)' : 'rgba(76,175,80,0.18)',
-        cardBg: isDark ? 'rgba(76,175,80,0.10)' : 'rgba(76,175,80,0.08)',
-        cardBorder: isDark ? 'rgba(76,175,80,0.28)' : 'rgba(76,175,80,0.24)',
+        fg: isDark ? '#A6EF8F' : '#297811',
+        soft: isDark ? 'rgba(166,239,143,0.72)' : 'rgba(41,120,17,0.72)',
+        heroWash: isDark ? 'rgba(73,214,31,0.22)' : 'rgba(73,214,31,0.18)',
+        cardBg: isDark ? 'rgba(73,214,31,0.10)' : 'rgba(73,214,31,0.08)',
+        cardBorder: isDark ? 'rgba(73,214,31,0.28)' : 'rgba(73,214,31,0.24)',
       }
     case 'at_risk':
       return getAtRiskTone(intensity ?? 'calm', isDark)
     case 'broken':
       return {
-        fg: isDark ? '#B8C9BE' : '#6B7566',
+        fg: isDark ? '#D4E8DF' : '#3B6D57',
         soft: isDark ? 'rgba(184,201,190,0.72)' : 'rgba(107,117,102,0.72)',
         heroWash: isDark ? 'rgba(138,138,138,0.18)' : 'rgba(138,138,138,0.12)',
         cardBg: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
@@ -425,29 +425,29 @@ function getAtRiskTone(intensity: AtRiskIntensity, isDark: boolean): StatusTone 
     case 'calm':
       // Green — passes WCAG AA on cream/canvas in both themes.
       return {
-        fg: isDark ? '#9EE0B2' : '#2E7D5B',
-        soft: isDark ? 'rgba(158,224,178,0.72)' : 'rgba(46,125,91,0.72)',
-        heroWash: isDark ? 'rgba(76,175,80,0.22)' : 'rgba(76,175,80,0.18)',
-        cardBg: isDark ? 'rgba(76,175,80,0.10)' : 'rgba(76,175,80,0.08)',
-        cardBorder: isDark ? 'rgba(76,175,80,0.28)' : 'rgba(76,175,80,0.24)',
+        fg: isDark ? '#A6EF8F' : '#297811',
+        soft: isDark ? 'rgba(166,239,143,0.72)' : 'rgba(41,120,17,0.72)',
+        heroWash: isDark ? 'rgba(73,214,31,0.22)' : 'rgba(73,214,31,0.18)',
+        cardBg: isDark ? 'rgba(73,214,31,0.10)' : 'rgba(73,214,31,0.08)',
+        cardBorder: isDark ? 'rgba(73,214,31,0.28)' : 'rgba(73,214,31,0.24)',
       }
     case 'gentle':
       // Amber/yellow — desaturated in dark mode so it doesn't glow.
       return {
-        fg: isDark ? '#E8C66A' : '#A57400',
-        soft: isDark ? 'rgba(232,198,106,0.72)' : 'rgba(165,116,0,0.72)',
-        heroWash: isDark ? 'rgba(232,198,106,0.22)' : 'rgba(232,198,106,0.20)',
-        cardBg: isDark ? 'rgba(232,198,106,0.12)' : 'rgba(232,198,106,0.14)',
-        cardBorder: isDark ? 'rgba(232,198,106,0.32)' : 'rgba(232,198,106,0.36)',
+        fg: isDark ? '#F3BA57' : '#9A5E04',
+        soft: isDark ? 'rgba(243,186,87,0.72)' : 'rgba(154,94,4,0.72)',
+        heroWash: isDark ? 'rgba(243,186,87,0.22)' : 'rgba(243,186,87,0.20)',
+        cardBg: isDark ? 'rgba(243,186,87,0.12)' : 'rgba(243,186,87,0.14)',
+        cardBorder: isDark ? 'rgba(243,186,87,0.32)' : 'rgba(243,186,87,0.36)',
       }
     case 'urgent':
       // Orange — original at_risk tone; afternoon/evening alert.
       return {
-        fg: isDark ? '#F2B58A' : '#C25A3E',
-        soft: isDark ? 'rgba(242,181,138,0.72)' : 'rgba(194,90,62,0.72)',
-        heroWash: isDark ? 'rgba(232,151,106,0.28)' : 'rgba(232,151,106,0.22)',
-        cardBg: isDark ? 'rgba(232,151,106,0.12)' : 'rgba(232,151,106,0.10)',
-        cardBorder: isDark ? 'rgba(232,151,106,0.35)' : 'rgba(232,151,106,0.32)',
+        fg: isDark ? '#F8D1C3' : '#B84014',
+        soft: isDark ? 'rgba(248,209,195,0.72)' : 'rgba(184,64,20,0.72)',
+        heroWash: isDark ? 'rgba(242,167,140,0.28)' : 'rgba(242,167,140,0.22)',
+        cardBg: isDark ? 'rgba(242,167,140,0.12)' : 'rgba(242,167,140,0.10)',
+        cardBorder: isDark ? 'rgba(242,167,140,0.35)' : 'rgba(242,167,140,0.32)',
       }
     case 'critical':
       // Red — final stretch before midnight. Higher saturation in
@@ -651,7 +651,7 @@ function WeekActivity({
                         color: logged
                           ? theme.isDark
                             ? '#0A1410'
-                            : '#F6FBEF'
+                            : '#F2EAD3'
                           : isToday
                             ? tone.fg
                             : theme.colors.textMuted,

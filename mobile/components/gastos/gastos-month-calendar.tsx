@@ -199,8 +199,8 @@ function GridMode({
       <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>TU MES EN UN VISTAZO</Text>
           <View style={styles.legend}>
-            <LegendDot color="#6FE09A" label="bien" theme={theme} />
-            <LegendDot color="#F2B58A" label="alerta" theme={theme} />
+            <LegendDot color="#49D61F" label="bien" theme={theme} />
+            <LegendDot color="#EC7A51" label="alerta" theme={theme} />
             <LegendDot color="#D96A4F" label="exceso" theme={theme} />
           </View>
         </View>
