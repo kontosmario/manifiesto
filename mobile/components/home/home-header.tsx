@@ -9,7 +9,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface HomeHeaderProps {
   name: string
   hour?: number
-  hasUnreadNotifications?: boolean
+  unreadNotificationsCount?: number
   /** How many advisor suggestions are pending — drives the badge on
    *  the assistant button. */
   assistantPendingCount?: number
@@ -28,7 +28,7 @@ interface HomeHeaderProps {
 function HomeHeaderImpl({
   name,
   hour,
-  hasUnreadNotifications = false,
+  unreadNotificationsCount = 0,
   assistantPendingCount = 0,
   onPressNotifications,
   onPressSettings,
@@ -48,7 +48,7 @@ function HomeHeaderImpl({
         <HomeCircleButton
           accessibilityLabel="Ir a notificaciones"
           onPress={onPressNotifications}
-          showBadge={hasUnreadNotifications}
+          badgeCount={unreadNotificationsCount}
           badgeColor={theme.colors.peach}
         >
           <BellIcon color={theme.colors.text} />

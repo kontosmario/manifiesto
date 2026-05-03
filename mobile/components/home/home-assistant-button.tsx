@@ -8,21 +8,29 @@ interface HomeAssistantButtonProps {
   pendingCount?: number
 }
 
-// V1 mint accent — primaryScale[300]. Matches the assistant's identity
-// inside the sheet and the new Mint Saturado brand baseline.
-const ACCENT = '#A6EF8F'
+// V1 mint sparkle — mode-aware so the "AI" glyph is legible on both
+// cream creamCard (light) and forest creamCard (dark). Mint identity
+// preserved in both via the same hue at different lightness.
+const ICON_MINT_LIGHT = '#297811'  // primary-800 (5.37:1 on creamCard light)
+const ICON_MINT_DARK = '#A6EF8F'   // primary-300 (5.73:1 on creamCard dark)
+// V1 accent-600 — solid dark coral for the count badge bg. Cream-on-coral
+// gives 5.38:1 AA in both light and dark modes.
+const BADGE_BG = '#B84014'
 
 /**
  * Header button that opens the Asistente sheet. Adopts the same chrome
- * as the bell + sliders (dark cream fill, 38×38, subtle shadow) so the
- * three buttons read as a set — but adds mint accents that distinguish
- * the assistant as the "AI feature":
- *  · 1px mint border at ~30% so the ring catches the eye
- *  · Mint sparkle glyph instead of the neutral text color
- *  · Mint-tinted soft shadow (vs. the dark shadow on the others)
+ * as the bell + sliders (cream fill, 38×38, lifted shadow) so the
+ * three buttons read as a set — but adds peach accents that
+ * distinguish the assistant as the "AI feature":
+ *  · 1.2px peach pulse ring at ~38% so the button telegraphs
+ *    "different / important" at a glance.
+ *  · Peach-tinted lifted shadow so the button doesn't get lost on
+ *    busy bgs (was a too-subtle mint glow before).
+ *  · Mint sparkle glyph as the "AI" mark; the chrome around it is
+ *    peach-keyed.
  *
- * A numeric peach badge appears top-right when there are pending
- * suggestions.
+ * A numeric coral badge appears top-right when there are pending
+ * suggestions — cream text on solid #B84014.
  */
 export function HomeAssistantButton({
   onPress,
@@ -53,14 +61,18 @@ export function HomeAssistantButton({
           "different". 1.2px keeps it crisp without dominating. */}
       <View style={styles.ring} pointerEvents="none" />
       <View style={styles.iconWrap}>
-        <MaterialIcons name="auto-awesome" size={18} color={ACCENT} />
+        <MaterialIcons
+          name="auto-awesome"
+          size={18}
+          color={theme.isDark ? ICON_MINT_DARK : ICON_MINT_LIGHT}
+        />
       </View>
       {showBadge ? (
         <View
           style={[
             styles.badge,
             {
-              backgroundColor: theme.colors.peach,
+              backgroundColor: BADGE_BG,
               borderColor: theme.colors.creamCard,
             },
           ]}
@@ -80,9 +92,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    // Mint-tinted shadow vs. the dark shadow on bell/sliders. Same
-    // depth, different hue — subliminal cue.
-    boxShadow: '0px 2px 8px rgba(166, 239, 143, 0.20)',
+    // Peach-tinted lifted shadow — gives the assistant button real
+    // presence on cream bg AND on dark forest bg. Stronger than the
+    // bell/settings shadow so the AI feature gets a literal "lift".
+    boxShadow: '0px 4px 14px rgba(184, 64, 20, 0.32)',
   },
   ring: {
     position: 'absolute',
@@ -91,8 +104,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 999,
-    borderWidth: 1.2,
-    borderColor: 'rgba(166, 239, 143, 0.32)',
+    borderWidth: 1.4,
+    borderColor: 'rgba(184, 64, 20, 0.38)',
   },
   iconWrap: {
     width: 22,
@@ -115,7 +128,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#12211A',
+    color: '#FFFBF2',  // V1 cream — AA on solid #B84014 in both modes
     letterSpacing: -0.2,
   },
 })

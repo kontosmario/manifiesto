@@ -22,7 +22,7 @@ import {
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useMyProfile } from '@/features/profile/use-profile'
-import { useHasUnreadNotifications } from '@/features/notifications/use-notifications'
+import { useUnreadNotificationsCount } from '@/features/notifications/use-notifications'
 import { useHomeRealtime } from '@/features/home/use-home-realtime'
 import { useHomeTelemetry } from '@/features/home/use-home-telemetry'
 import { logHomeEvent } from '@/features/home/log-home-event'
@@ -109,10 +109,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const recentExpensesQuery = useRecentExpenses(familyId, 6)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
-  // Boolean projection — re-renders only on 0↔N transitions, not on
-  // every count delta. The header dot only needs the boolean.
-  const hasUnreadNotificationsQuery = useHasUnreadNotifications(familyId, userId)
-  const hasUnreadNotifications = hasUnreadNotificationsQuery.data ?? false
+  // Numeric count drives the bell's count badge in the header. Re-renders
+  // on every count delta — acceptable since the badge text is the count.
+  const unreadNotificationsCountQuery = useUnreadNotificationsCount(familyId, userId)
+  const unreadNotificationsCount = unreadNotificationsCountQuery.data ?? 0
 
   // Subscribe to live changes on expenses / fixed_expenses /
   // savings_goals / notifications so a family member's edits flow
@@ -273,7 +273,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           categoryNameById={categoryNameById}
           familyId={familyId}
           displayName={displayName}
-          hasUnreadNotifications={hasUnreadNotifications}
+          unreadNotificationsCount={unreadNotificationsCount}
           assistantPendingCount={assistantPendingCount}
           onPressNotifications={() => router.push('/(app)/notifications')}
           onPressSettings={() => router.push('/(app)/settings')}

@@ -46,7 +46,7 @@ interface HomeDashboardProps {
   categoryNameById: Map<string, string>
   familyId: string
   displayName: string
-  hasUnreadNotifications?: boolean
+  unreadNotificationsCount?: number
   assistantPendingCount?: number
   onPressNotifications?: () => void
   onPressSettings?: () => void
@@ -81,7 +81,7 @@ export function HomeDashboard({
   categoryNameById,
   familyId,
   displayName,
-  hasUnreadNotifications = false,
+  unreadNotificationsCount = 0,
   assistantPendingCount = 0,
   onPressNotifications,
   onPressSettings,
@@ -468,7 +468,7 @@ export function HomeDashboard({
     <View style={styles.stack}>
       <HomeHeader
         name={displayName}
-        hasUnreadNotifications={hasUnreadNotifications}
+        unreadNotificationsCount={unreadNotificationsCount}
         assistantPendingCount={assistantPendingCount}
         onPressNotifications={handlePressNotifications}
         onPressSettings={handlePressSettings}
