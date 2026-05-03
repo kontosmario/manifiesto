@@ -138,6 +138,7 @@ export function iconForKind(kind: string): string {
     case 'meta':
       return '🎯'
     default:
+      if (kind === 'member_left') return '👋'
       return '🔔'
   }
 }
