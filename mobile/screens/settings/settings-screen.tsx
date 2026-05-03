@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
-import * as Clipboard from 'expo-clipboard'
 import { useRouter } from 'expo-router'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -17,7 +16,7 @@ import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-shee
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
-import { EditIncomeSheet } from '@/components/settings/sheets/edit-income-sheet'
+import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
 import { EditPaydaySheet } from '@/components/settings/sheets/edit-payday-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
 import { EditUsdRateSheet } from '@/components/settings/sheets/edit-usd-rate-sheet'
@@ -25,10 +24,11 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
-  useCreateFamilyInvite,
   useLeaveCurrentFamily,
+  useUpdateMyIncomeContribution,
 } from '@/features/family/use-family-actions'
 import { useFamilyMemberStats } from '@/features/family/use-family-admin'
+import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
 import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import {
   buildFamilyFinanceInput,
@@ -97,6 +97,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const enablePushMutation = useEnablePushNotifications()
   const hasPushSubscriptionQuery = useHasPushSubscription(familyId, userId)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
+  const familyMembersDetailQuery = useFamilyMembersDetail(familyId)
+  const updateMyContributionMutation = useUpdateMyIncomeContribution(userId, familyId)
+  const myContribution = useMemo(() => {
+    const me = (familyMembersDetailQuery.data ?? []).find(
+      (m) => m.userId === userId,
+    )
+    return me?.monthlyIncomeContribution ?? 0
+  }, [familyMembersDetailQuery.data, userId])
 
   const financeSnapshot = useMemo<FamilyFinanceInputSnapshot>(
     () => ({
@@ -208,14 +216,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     [showError, upsertFamilyFinanceMutation],
   )
 
-  const handleSaveIncome = useCallback(
+  const handleSaveMyContribution = useCallback(
     (value: number) => {
-      saveFinanceSnapshot(
-        { ...financeSnapshot, monthlyIncome: value },
-        () => setIncomeSheetOpen(false),
-      )
+      updateMyContributionMutation.mutate(value, {
+        onSuccess: () => {
+          void triggerHaptic('success')
+          setIncomeSheetOpen(false)
+        },
+        onError: (error: unknown) => {
+          void showError(error, 'No se pudo actualizar tu aporte.')
+        },
+      })
     },
-    [financeSnapshot, saveFinanceSnapshot],
+    [showError, updateMyContributionMutation],
   )
 
   const handleSavePayday = useCallback(
@@ -387,10 +400,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   }, [])
 
   // ── Values shown on rows ──────────────────────────────────────
-  const incomeValue =
+  const myContributionValue =
+    myContribution > 0
+      ? currencyFormatter.format(myContribution)
+      : familyMembersDetailQuery.isLoading
+        ? '…'
+        : 'Definir'
+  const householdTotalSubtitle =
     financeSnapshot.monthlyIncome > 0
-      ? currencyFormatter.format(financeSnapshot.monthlyIncome)
-      : 'Definir'
+      ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
+      : undefined
   const usdValue = currencyFormatter.format(financeSnapshot.usdExchangeRate)
   const savingsPercentValue = `${financeSnapshot.savingsGoalPercent}%`
   const bufferValueLabel =
@@ -524,12 +543,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 title="Hogar"
               >
                 <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
+                  helper={householdTotalSubtitle}
                   icon="attach-money"
-                  label="Ingreso mensual"
+                  label="Mi aporte mensual"
                   onPress={() => setIncomeSheetOpen(true)}
-                  value={incomeValue}
+                  value={myContributionValue}
                 />
                 <SettingsRow
                   disabled={!isOwner}
@@ -737,11 +755,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onSave={saveAvatar}
         visible={avatarSheetOpen}
       />
-      <EditIncomeSheet
-        currentValue={financeSnapshot.monthlyIncome}
-        isSaving={upsertFamilyFinanceMutation.isPending}
+      <EditMyContributionSheet
+        currentValue={myContribution}
+        householdTotal={financeSnapshot.monthlyIncome}
+        isSaving={updateMyContributionMutation.isPending}
         onClose={() => setIncomeSheetOpen(false)}
-        onSave={handleSaveIncome}
+        onSave={handleSaveMyContribution}
         visible={incomeSheetOpen}
       />
       <EditPaydaySheet

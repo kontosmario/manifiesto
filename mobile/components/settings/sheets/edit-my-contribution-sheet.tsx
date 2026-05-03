@@ -7,21 +7,23 @@ import {
   serializePrice,
 } from '@/utils/money'
 
-interface EditIncomeSheetProps {
+interface EditMyContributionSheetProps {
   visible: boolean
   currentValue: number
+  householdTotal: number
   isSaving: boolean
   onClose: () => void
   onSave: (nextValue: number) => void
 }
 
-export function EditIncomeSheet({
+export function EditMyContributionSheet({
   visible,
   currentValue,
+  householdTotal,
   isSaving,
   onClose,
   onSave,
-}: EditIncomeSheetProps) {
+}: EditMyContributionSheetProps) {
   const [draft, setDraft] = useState(() => serializePrice(currentValue))
 
   useEffect(() => {
@@ -32,27 +34,32 @@ export function EditIncomeSheet({
   }, [visible, currentValue])
 
   const parsed = useMemo(() => parsePrice(draft), [draft])
-  const isValid = Number.isFinite(parsed) && parsed > 0
+  // 0 is a valid contribution (member doesn't contribute income).
+  const isValid = Number.isFinite(parsed) && parsed >= 0
   const hasChanged = isValid && parsed !== currentValue
   const showError = !isValid && draft.length > 0
+
+  const projectedTotal = isValid
+    ? Math.max(0, householdTotal - currentValue + parsed)
+    : householdTotal
 
   return (
     <NumericEditSheet
       visible={visible}
-      title="Ingreso mensual"
-      subtitle="Es el ingreso mensual conjunto del hogar. Se usa para calcular ahorro, presupuesto y límites."
+      title="Mi aporte mensual"
+      subtitle="Es lo que vos aportás al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro."
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-      displayEyebrow="INGRESO MENSUAL"
+      displayEyebrow="MI APORTE"
       displayPlaceholder="$ 0"
       helper={
         isValid
-          ? `Se guardará como ${currencyFormatter.format(parsed)}.`
-          : 'Ingresá un monto mayor a cero.'
+          ? `Total del hogar: ${currencyFormatter.format(projectedTotal)}.`
+          : 'Ingresá un monto válido (puede ser 0).'
       }
-      errorText={showError ? 'El ingreso debe ser mayor a cero.' : undefined}
-      saveLabel="Guardar ingreso"
+      errorText={showError ? 'El aporte no puede ser negativo.' : undefined}
+      saveLabel="Guardar aporte"
       saveDisabled={!hasChanged}
       isSaving={isSaving}
       onSave={() => {
