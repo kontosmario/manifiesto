@@ -46,6 +46,7 @@ import {
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { resetAllTours } from '@/features/tours'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import {
   hideAuthTransitionSplash,
@@ -304,6 +305,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handleOpenShareInvite = useCallback(() => {
     void triggerHaptic('selection')
     setShareInviteSheetVisible(true)
+  }, [])
+
+  // Re-arm the per-screen guided tours so they auto-start the next
+  // time the user lands on Home / Gastos / Fijos / Control. Useful
+  // after a long break or for users who want a refresher.
+  const handleResetTours = useCallback(async () => {
+    void triggerHaptic('selection')
+    await resetAllTours()
+    void triggerHaptic('success')
+    Alert.alert(
+      'Listo',
+      'La próxima vez que abras Inicio, Gastos, Fijos y Control vas a ver el tutorial guiado.',
+    )
   }, [])
 
   // Owner-with-members destructive flow lives in a dedicated sheet so
@@ -645,9 +659,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               <SettingsGroup title="Asistente">
                 <SettingsRow
                   icon="auto-awesome"
-                  isLast
                   label="Preferencias del asistente"
                   onPress={() => router.push('/settings/asistente' as never)}
+                />
+                <SettingsRow
+                  helper="Vuelve a disparar los tutoriales guiados de Inicio, Gastos, Fijos y Control la próxima vez que entres a cada pantalla."
+                  icon="school"
+                  isLast
+                  label="Reactivar visitas guiadas"
+                  onPress={() => {
+                    void handleResetTours()
+                  }}
                 />
               </SettingsGroup>
             </RiseView>
