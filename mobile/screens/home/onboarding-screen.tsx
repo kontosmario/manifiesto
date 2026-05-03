@@ -35,7 +35,7 @@ import {
   type OnboardingStepId,
 } from '@/features/onboarding/use-onboarding-state'
 import { useFamilyFinance, useUpsertFamilyFinance } from '@/features/finance/use-family-finance'
-import { useJoinFamily } from '@/features/family/use-family-actions'
+import { useConsumeFamilyInvite } from '@/features/family/use-family-actions'
 import { buildFamilyFinanceInput } from '@/features/finance/use-family-finance'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useQueryClient } from '@tanstack/react-query'
@@ -121,7 +121,10 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const updateAvatar = useUpdateAvatarAnimal(userId)
   const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined)
   const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '')
-  const joinFamily = useJoinFamily(userId)
+  // Joiner finish: consume the single-use invite (creates the
+  // membership + marks the code used). Replaces the legacy
+  // `useJoinFamily` which used the persistent `families.code`.
+  const consumeInvite = useConsumeFamilyInvite(userId)
   const completeOnboarding = useCompleteOnboarding(userId)
 
   const [numpadTarget, setNumpadTarget] = useState<'income' | 'goal' | null>(null)
@@ -241,18 +244,18 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     setSubmitting(true)
     try {
       // Joiner path. The user previewed the family in step 3 via
-      // `peek_family_by_code` (no membership inserted) and is now
-      // confirming. Two-step finish:
-      //   1. join_family_by_code(code, contribution) → INSERTS the
-      //      membership and records the contribution in one shot.
-      //      The recompute trigger updates family_finance.monthly_income.
+      // `peek_family_invite` (no membership inserted, the invite
+      // is still active) and is now confirming. Two-step finish:
+      //   1. consume_family_invite(code, contribution) → INSERTS
+      //      the membership, records the contribution AND marks
+      //      the invite as used in one transactional step.
       //   2. completeOnboarding → flips profiles.onboarding_completed_at.
       // family_finance / savings_goal upserts are skipped — those
       // already exist for the family.
       if (state.familyMode === 'joined' && state.pendingFamily) {
         const contribution =
           state.contributesIncome === true ? monthlyIncome : 0
-        await joinFamily.mutateAsync({
+        await consumeInvite.mutateAsync({
           code: state.pendingFamily.family_code,
           monthlyIncomeContribution: contribution,
         })
@@ -340,7 +343,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     existingFinance,
     upsertFinance,
     upsertSavingsGoal,
-    joinFamily,
+    consumeInvite,
     completeOnboarding,
     router,
   ])

@@ -6,7 +6,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { TextField } from '@/components/ui/text-field'
 import {
   useBootstrapFamily,
-  usePeekFamilyByCode,
+  usePeekFamilyInvite,
   type FamilyPeek,
 } from '@/features/family/use-family-actions'
 import { errorMessages } from '@/lib/copy/states'
@@ -45,7 +45,9 @@ export function StepFamily({
 }: StepFamilyProps) {
   const { theme } = useAppTheme()
   const bootstrap = useBootstrapFamily(userId)
-  const peek = usePeekFamilyByCode()
+  // Single-use invite code lookup. Replaces the legacy
+  // peek_family_by_code which used the persistent `families.code`.
+  const peek = usePeekFamilyInvite()
   const [panel, setPanel] = useState<Panel>(() =>
     familyMode === 'created' ? 'create' : familyMode === 'joined' ? 'join' : 'root',
   )

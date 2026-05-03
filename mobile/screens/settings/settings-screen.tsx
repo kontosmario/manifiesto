@@ -23,7 +23,10 @@ import { EditUsdRateSheet } from '@/components/settings/sheets/edit-usd-rate-she
 import { MaterialIcons } from '@expo/vector-icons'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
-import { useLeaveCurrentFamily } from '@/features/family/use-family-actions'
+import {
+  useCreateFamilyInvite,
+  useLeaveCurrentFamily,
+} from '@/features/family/use-family-actions'
 import { useFamilyMemberStats } from '@/features/family/use-family-admin'
 import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import {
@@ -84,6 +87,7 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
       (m) => m.userId !== userId && m.role !== 'blocked' && m.blockedAt === null,
     ).length
   }, [memberStatsQuery.data, userId])
+  const totalMembers = (memberStatsQuery.data ?? []).length
   const savingsGoalQuery = useSavingsGoal(familyId)
 
   const updateDisplayNameMutation = useUpdateDisplayName(userId)
@@ -279,11 +283,32 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
     )
   }, [enablePushMutation, familyId, hasPushSubscriptionQuery, showError, userId])
 
-  const handleCopyFamilyCode = useCallback(async () => {
-    await Clipboard.setStringAsync(familyCode)
-    await triggerHaptic('success')
-    Alert.alert('Código copiado', `Compartí “${familyCode}” con tu familia para que se unan.`)
-  }, [familyCode])
+  // Single-use family invite codes. Each tap generates a fresh
+  // ephemeral code (7-day TTL on the server). The code is shown
+  // once via Alert + copied to the clipboard; once the joiner uses
+  // it, it's marked consumed and can't be reused. No permanent
+  // `families.code` exists anymore — this is the only path to add
+  // someone to the household.
+  const createInvite = useCreateFamilyInvite()
+  const handleGenerateFamilyInvite = useCallback(async () => {
+    try {
+      const result = await createInvite.mutateAsync()
+      await Clipboard.setStringAsync(result.code)
+      await triggerHaptic('success')
+      Alert.alert(
+        'Código de invitación copiado',
+        `Compartí "${result.code}" con la persona que querés que se sume.\n\n` +
+          'El código sirve para una sola persona y vence en 7 días. ' +
+          'Si necesitás invitar a otra persona, generá uno nuevo.',
+      )
+    } catch (error) {
+      void triggerHaptic('error')
+      Alert.alert(
+        'No pudimos generar el código',
+        getErrorMessage(error, 'Reintentá en un momento.'),
+      )
+    }
+  }, [createInvite])
 
   // Owner-with-members destructive flow lives in a dedicated sheet so
   // we can collect a typed-confirmation phrase. Anyone else (member,
@@ -448,7 +473,9 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
                   {displayName.trim() || 'Perfil sin nombre'}
                 </Text>
                 <Text style={[styles.heroSub, { color: theme.colors.textMuted }]}>
-                  Familia {familyCode}
+                  {totalMembers === 1
+                    ? 'Hogar individual'
+                    : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
                 </Text>
                 {isOwner ? (
                   <View
@@ -576,10 +603,10 @@ export function SettingsScreen({ userId, familyId, familyCode }: SettingsScreenP
             <RiseView delay={320}>
               <SettingsGroup title="Familia">
                 <SettingsRow
-                  icon="tag"
-                  label="Código de familia"
-                  onPress={handleCopyFamilyCode}
-                  value={familyCode}
+                  icon="person-add"
+                  label="Invitar a alguien"
+                  helper="Genera un código de un solo uso, válido por 7 días."
+                  onPress={handleGenerateFamilyInvite}
                 />
                 {isOwner ? (
                   <SettingsRow
