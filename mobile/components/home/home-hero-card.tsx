@@ -56,7 +56,7 @@ export function HomeHeroCard({
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const projPositive = data.projectedClose >= 0
-  const projColor = projPositive ? theme.colors.heroAccent : '#F2A78C'
+  const projColor = projPositive ? theme.colors.heroAccent : '#F8D1C3'
 
   // Day chip swaps to a warning state when the user hasn't confirmed
   // their cobro after payday. The neutral "día N de M" copy is
@@ -249,8 +249,8 @@ export function HomeHeroCard({
                   pulseStyle,
                 ]}
               >
-                <BreatheDot size={6} color="#F2A78C" glow="#F2A78C" />
-                <Text style={[styles.dayChipText, { color: '#F2A78C' }]}>
+                <BreatheDot size={6} color="#F2EAD3" glow="#F2A78C" />
+                <Text style={[styles.dayChipText, { color: '#F2EAD3' }]}>
                   {dayChipLabel}
                 </Text>
               </Animated.View>
@@ -348,7 +348,7 @@ export function HomeHeroCard({
                     name={savingsChip.kind === 'consumed' ? 'warning-amber' : 'savings'}
                     size={13}
                     color={
-                      savingsChip.kind === 'consumed' ? '#F2A78C' : theme.colors.heroAccent
+                      savingsChip.kind === 'consumed' ? '#F2EAD3' : theme.colors.heroAccent
                     }
                   />
                   <Text
@@ -357,7 +357,7 @@ export function HomeHeroCard({
                       {
                         color:
                           savingsChip.kind === 'consumed'
-                            ? '#F2A78C'
+                            ? '#F2EAD3'
                             : savingsChip.kind === 'partial'
                               ? theme.colors.heroMuted
                               : theme.colors.heroAccent,
@@ -447,7 +447,7 @@ export function HomeHeroCard({
                         size={11}
                         color={
                           projectedCloseTrend > 0
-                            ? '#F2A78C'
+                            ? '#F8D1C3'
                             : projectedCloseTrend < 0
                               ? theme.colors.heroAccent
                               : theme.colors.heroMuted2
@@ -459,7 +459,7 @@ export function HomeHeroCard({
                           {
                             color:
                               projectedCloseTrend > 0
-                                ? '#F2A78C'
+                                ? '#F8D1C3'
                                 : projectedCloseTrend < 0
                                   ? theme.colors.heroAccent
                                   : theme.colors.heroMuted2,
