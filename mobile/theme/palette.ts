@@ -181,11 +181,11 @@ const lightColors: ThemeColors = {
   borderStrong:       'rgba(15,46,31,0.15)',
   text:               '#12211A',  // V1 — surface-950
   textMuted:          '#3B6D57',  // V1 — surface-700 (neutral muted, AA on cream)
-  textSoft:           '#7A8A7D',
-  primary:            '#329315',  // V1 — primary-700 (was brand.deep #0F2E1F)
-  primaryStrong:      '#297811',  // V1 — primary-800
+  textSoft:           '#3B6D57',  // V1 — surface-700 (AA on cream; same hex as textMuted for now)
+  primary:            '#297811',  // V1 — primary-800 (AA-safe on creamCard 5.37:1)
+  primaryStrong:      '#1F590D',  // V1 — primary-900 (hierarchy below primary)
   primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
-  success:            '#3DB319',  // V1 — primary-600 (slightly brighter than primary; "fresh good")
+  success:            '#297811',  // V1 — primary-800 (AA on cream; collapsed to primary, AA over differentiation)
   warning:            '#C27A0A',
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
@@ -199,7 +199,7 @@ const lightColors: ThemeColors = {
   creamCard:          '#FFFBF2',
   line:               '#EFE8D9',
   lineSoft:           '#E9E1D3',
-  peach:              '#EC7A51',  // V1 — accent-400
+  peach:              '#B84014',  // V1 — accent-600 (AA on cream 5.38:1)
   peachSoft:          '#FADFC8',
   peachBand:          '#FADFC8',
   greenBand:          '#D6EFBA',
@@ -223,7 +223,7 @@ const darkColors: ThemeColors = {
   borderStrong:       'rgba(255,255,255,0.12)',
   text:               '#F2EAD3',  // V1 — cream foundation
   textMuted:          '#A6EF8F',  // V1 — primary-300 (branded muted on dark)
-  textSoft:           '#8BA797',
+  textSoft:           '#77E755',  // V1 — primary-400 (AA on creamCard dark 4.98:1)
   primary:            '#A6EF8F',  // V1 — primary-300 (was brand.bright #7AD8A3)
   primaryStrong:      '#D1F7C5',  // V1 — primary-200
   primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
@@ -241,7 +241,7 @@ const darkColors: ThemeColors = {
   creamCard:          '#305A47',  // V1 — surface-800 (cards readable on dark forest)
   line:               '#1F332A',
   lineSoft:           '#16261E',
-  peach:              '#F2A78C',  // V1 — accent-300
+  peach:              '#F8D1C3',  // V1 — accent-200 (AA on creamCard dark 5.56:1)
   peachSoft:          '#3A2A22',
   peachBand:          '#3A2A22',
   greenBand:          '#1E3A28',
