@@ -57,8 +57,6 @@ export interface FamilyMemberRow {
 export interface PaymentRow {
   id: string
   fixedExpenseId: string
-  paymentPeriod: string
-  amount: number
   createdAt: string
 }
 

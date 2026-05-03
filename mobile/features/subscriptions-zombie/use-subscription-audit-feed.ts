@@ -61,8 +61,6 @@ interface ActionIntentDbRow {
 interface PaymentDbRow {
   id: string
   fixed_expense_id: string
-  payment_period: string
-  amount: number | string
   created_at: string
 }
 
@@ -111,10 +109,12 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           .from('fixed_expense_action_intent')
           .select('*')
           .eq('family_id', familyId),
+        // `fixed_expense_payments` has no `family_id` column — scope via
+        // an inner join through `fixed_expenses` instead.
         supabase
           .from('fixed_expense_payments')
-          .select('id, fixed_expense_id, payment_period, amount, created_at')
-          .eq('family_id', familyId),
+          .select('id, fixed_expense_id, created_at, fixed_expenses!inner(family_id)')
+          .eq('fixed_expenses.family_id', familyId),
         supabase
           .from('family_members')
           .select('user_id, profiles(display_name)')
@@ -176,8 +176,6 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           (p: PaymentDbRow): PaymentRow => ({
             id: p.id,
             fixedExpenseId: p.fixed_expense_id,
-            paymentPeriod: p.payment_period,
-            amount: Number(p.amount),
             createdAt: p.created_at,
           }),
         ),
