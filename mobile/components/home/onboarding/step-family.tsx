@@ -4,7 +4,11 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { TextField } from '@/components/ui/text-field'
-import { useBootstrapFamily, useJoinFamily } from '@/features/family/use-family-actions'
+import {
+  useBootstrapFamily,
+  usePeekFamilyByCode,
+  type FamilyPeek,
+} from '@/features/family/use-family-actions'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import { triggerHaptic } from '@/lib/haptics'
@@ -15,7 +19,15 @@ interface StepFamilyProps {
   familyMode: 'none' | 'created' | 'joined'
   familyId: string | null
   familyCode: string | null
+  /** Fired when the user CREATES a family — actually persists the
+   *  membership immediately because there's nothing to preview /
+   *  confirm later. */
   onFamilyReady: (mode: 'created' | 'joined', familyId: string, familyCode: string) => void
+  /** Fired when the user enters a valid JOIN code. The peek result
+   *  is stored in onboarding state; the actual `family_members`
+   *  insert is deferred to step 5 (Confirmar y unirme). The user is
+   *  NOT a member yet at this point. */
+  onJoinPeek: (peek: FamilyPeek) => void
   isRejoin?: boolean
   closedByOwner?: boolean
 }
@@ -27,18 +39,19 @@ export function StepFamily({
   familyMode,
   familyCode,
   onFamilyReady,
+  onJoinPeek,
   isRejoin = false,
   closedByOwner = false,
 }: StepFamilyProps) {
   const { theme } = useAppTheme()
   const bootstrap = useBootstrapFamily(userId)
-  const join = useJoinFamily(userId)
+  const peek = usePeekFamilyByCode()
   const [panel, setPanel] = useState<Panel>(() =>
     familyMode === 'created' ? 'create' : familyMode === 'joined' ? 'join' : 'root',
   )
   const [codeInput, setCodeInput] = useState('')
 
-  const busy = bootstrap.isPending || join.isPending
+  const busy = bootstrap.isPending || peek.isPending
   const alreadyDone = familyMode !== 'none' && familyCode
 
   const handleCreate = async () => {
@@ -62,12 +75,14 @@ export function StepFamily({
     }
     void triggerHaptic('selection')
     try {
-      const result = await join.mutateAsync(trimmed)
+      // Look up the family WITHOUT inserting the membership. The
+      // actual join happens in step 5 when the user confirms.
+      const result = await peek.mutateAsync(trimmed)
       void triggerHaptic('success')
-      onFamilyReady('joined', result.family_id, result.family_code)
+      onJoinPeek(result)
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert('No pudimos unirte', getErrorMessage(error, errorMessages.server))
+      Alert.alert('No pudimos validar el código', getErrorMessage(error, errorMessages.server))
     }
   }
 

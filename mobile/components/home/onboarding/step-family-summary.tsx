@@ -1,58 +1,47 @@
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { formatMoneyShort, parsePrice } from '@/utils/money'
-import { useFamilyFinance } from '@/features/finance/use-family-finance'
-import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
-import { useExpenses } from '@/features/expenses/use-expenses'
-import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { useAppTheme } from '@/theme/theme-provider'
+import type { FamilyPeek } from '@/features/family/use-family-actions'
 
 interface StepFamilySummaryProps {
-  familyId: string
-  /** Auth user id — used to highlight "vos" in the members list and
-   *  to compute the "después de tu aporte" projection. */
-  userId: string
-  /** Current onboarding state — the user's pending contribution that
-   *  hasn't been written yet. Lets us show a live "tu aporte" pill
-   *  and the "total tras unirte" preview. */
+  /** Snapshot fetched in step 3 via `peek_family_by_code`. The user
+   *  is NOT a member yet — the actual `join_family_by_code` insert
+   *  happens when they tap "Confirmar y unirme" (handled by the
+   *  screen's primary CTA). All summary data here comes from this
+   *  read-only snapshot. */
+  pendingFamily: FamilyPeek
+  /** Joiner's pending choice + amount. Renders an extra "vos" row
+   *  in the members list with the contribution they're about to
+   *  bring in. */
   contributesIncome: boolean | null
   monthlyIncomeRaw: string
+  pendingDisplayName: string
+  pendingAvatarSlug: AvatarSlug | null
 }
 
 /**
- * Joiner-only step 5. Shows the family the user is about to confirm:
- * member roster with avatars + names + each one's contribution, the
- * household income total (and what it'll be after this user joins),
- * a quick cycle pulse (gastos del mes / fijos pendientes) and the
- * active goal if any.
- *
- * The CTA wording ("Confirmar y unirme") is owned by the screen's
- * primaryLabel, not this component — we only render the read-only
- * preview.
+ * Joiner-only step 5 — read-only family preview before the actual
+ * join. Renders the existing roster with avatars + names + each
+ * member's contribution, the household income total (and what it'll
+ * be after the joiner's contribution lands), a quick cycle pulse
+ * (variable spend this month / active fijos) and the active goal
+ * if any. The CTA wording ("Confirmar y unirme") is owned by the
+ * screen's primaryLabel.
  */
 export function StepFamilySummary({
-  familyId,
-  userId,
+  pendingFamily,
   contributesIncome,
   monthlyIncomeRaw,
+  pendingDisplayName,
+  pendingAvatarSlug,
 }: StepFamilySummaryProps) {
   const { theme } = useAppTheme()
-  const membersQuery = useFamilyMembersDetail(familyId)
-  const financeQuery = useFamilyFinance(familyId)
-  const expensesQuery = useExpenses(familyId)
-  const fixedExpensesQuery = useFixedExpenses(familyId)
-  const goalQuery = useSavingsGoal(familyId)
 
-  const isLoading =
-    membersQuery.isLoading ||
-    financeQuery.isLoading ||
-    expensesQuery.isLoading ||
-    fixedExpensesQuery.isLoading
-
-  const householdIncome = financeQuery.data?.monthly_income ?? 0
+  const householdIncome = pendingFamily.monthly_income
   const parsedContribution = parsePrice(monthlyIncomeRaw)
   const pendingContribution =
     contributesIncome === true &&
@@ -60,26 +49,9 @@ export function StepFamilySummary({
     parsedContribution > 0
       ? parsedContribution
       : 0
-  // The user is already a member at this step (`useJoinFamily` ran in
-  // step 3) but their contribution row is still 0 — the actual write
-  // happens on "Confirmar y unirme". So the "after" preview is just
-  // the current household total + the pending amount.
   const projectedTotal = householdIncome + pendingContribution
 
-  const expenses = expensesQuery.data ?? []
-  const variableExpenses = expenses.filter((e) => !e.commitment_id)
-  const cycleVariableTotal = variableExpenses.reduce(
-    (sum, e) => sum + Number(e.price ?? 0),
-    0,
-  )
-  const fixedExpenses = fixedExpensesQuery.data ?? []
-  // Pending = currently-active fijos (paused / completed / archived
-  // ones don't show up in the cycle anymore). Detailed cycle status
-  // lives in the Fijos screen — this is a lightweight pulse.
-  const activeFixedCount = fixedExpenses.filter(
-    (f) => f.status === 'active',
-  ).length
-  const goal = goalQuery.data ?? null
+  const activeGoal = pendingFamily.active_goal
 
   return (
     <View style={styles.stack}>
@@ -91,12 +63,6 @@ export function StepFamilySummary({
           Esto es lo que vas a encontrar al unirte. Confirmá si todo se ve bien.
         </Text>
       </RiseView>
-
-      {isLoading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.colors.primary} />
-        </View>
-      ) : null}
 
       <RiseView delay={80}>
         <View
@@ -115,16 +81,12 @@ export function StepFamilySummary({
             {formatMoneyShort(householdIncome)}
           </Text>
           {pendingContribution > 0 ? (
-            <Text
-              style={[styles.heroDelta, { color: theme.colors.primary }]}
-            >
+            <Text style={[styles.heroDelta, { color: theme.colors.primary }]}>
               + {formatMoneyShort(pendingContribution)} tu aporte ={' '}
               {formatMoneyShort(projectedTotal)}
             </Text>
           ) : contributesIncome === false ? (
-            <Text
-              style={[styles.heroDelta, { color: theme.colors.textMuted }]}
-            >
+            <Text style={[styles.heroDelta, { color: theme.colors.textMuted }]}>
               No vas a aportar al ingreso del hogar.
             </Text>
           ) : null}
@@ -136,11 +98,14 @@ export function StepFamilySummary({
           MIEMBROS
         </Text>
         <View style={styles.membersList}>
-          {(membersQuery.data ?? []).map((m) => {
-            const isYou = m.userId === userId
+          {pendingFamily.members.map((m) => {
+            const avatarSlug =
+              m.avatar_animal && isAvatarSlug(m.avatar_animal)
+                ? (m.avatar_animal as AvatarSlug)
+                : null
             return (
               <View
-                key={m.userId}
+                key={m.user_id}
                 style={[
                   styles.memberRow,
                   {
@@ -149,18 +114,22 @@ export function StepFamilySummary({
                   },
                 ]}
               >
-                {m.avatarSlug ? (
-                  <AvatarAnimal slug={m.avatarSlug} size={40} />
+                {avatarSlug ? (
+                  <AvatarAnimal slug={avatarSlug} size={40} />
                 ) : (
-                  <Avatar name={m.displayName || '?'} color={theme.colors.primary} size={40} />
+                  <Avatar
+                    name={m.display_name || '?'}
+                    color={theme.colors.primary}
+                    size={40}
+                  />
                 )}
                 <View style={styles.memberText}>
                   <Text
                     style={[styles.memberName, { color: theme.colors.text }]}
                     numberOfLines={1}
                   >
-                    {m.displayName || 'Sin nombre'}
-                    {isYou ? '  · vos' : ''}
+                    {m.display_name || 'Sin nombre'}
+                    {m.role === 'owner' ? '  · dueño' : ''}
                   </Text>
                   <Text
                     style={[
@@ -168,16 +137,56 @@ export function StepFamilySummary({
                       { color: theme.colors.textMuted },
                     ]}
                   >
-                    {m.monthlyIncomeContribution > 0
-                      ? `Aporta ${formatMoneyShort(m.monthlyIncomeContribution)} /mes`
-                      : isYou && pendingContribution > 0
-                        ? `Vas a aportar ${formatMoneyShort(pendingContribution)} /mes`
-                        : 'No aporta'}
+                    {m.monthly_income_contribution > 0
+                      ? `Aporta ${formatMoneyShort(m.monthly_income_contribution)} /mes`
+                      : 'No aporta'}
                   </Text>
                 </View>
               </View>
             )
           })}
+
+          {/* Pending self-row — the user previewed below the existing
+              members. Visually marked with a dashed border to telegraph
+              "todavía no estás dentro". */}
+          <View
+            style={[
+              styles.memberRow,
+              styles.memberRowPending,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.primary,
+              },
+            ]}
+          >
+            {pendingAvatarSlug ? (
+              <AvatarAnimal slug={pendingAvatarSlug} size={40} />
+            ) : (
+              <Avatar
+                name={pendingDisplayName || '?'}
+                color={theme.colors.primary}
+                size={40}
+              />
+            )}
+            <View style={styles.memberText}>
+              <Text
+                style={[styles.memberName, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                {pendingDisplayName || 'Vos'} · vos
+              </Text>
+              <Text
+                style={[
+                  styles.memberContribution,
+                  { color: theme.colors.primary },
+                ]}
+              >
+                {pendingContribution > 0
+                  ? `Vas a aportar ${formatMoneyShort(pendingContribution)} /mes`
+                  : 'No vas a aportar'}
+              </Text>
+            </View>
+          </View>
         </View>
       </RiseView>
 
@@ -188,16 +197,20 @@ export function StepFamilySummary({
         <View style={styles.cycleRow}>
           <CycleStat
             label="Gastos del mes"
-            value={formatMoneyShort(cycleVariableTotal)}
+            value={formatMoneyShort(pendingFamily.cycle_variable_spent)}
             theme={theme}
           />
           <CycleStat
-            label={activeFixedCount === 1 ? 'Fijo activo' : 'Fijos activos'}
-            value={String(activeFixedCount)}
+            label={
+              pendingFamily.active_fixed_count === 1
+                ? 'Fijo activo'
+                : 'Fijos activos'
+            }
+            value={String(pendingFamily.active_fixed_count)}
             theme={theme}
           />
         </View>
-        {goal && goal.isActive ? (
+        {activeGoal ? (
           <View
             style={[
               styles.goalCard,
@@ -211,11 +224,11 @@ export function StepFamilySummary({
               META ACTIVA
             </Text>
             <Text style={[styles.goalTitle, { color: theme.colors.text }]}>
-              {goal.title}
+              {activeGoal.title}
             </Text>
             <Text style={[styles.goalProgress, { color: theme.colors.textMuted }]}>
-              {formatMoneyShort(goal.currentAmount)} de{' '}
-              {formatMoneyShort(goal.goalAmount)}
+              {formatMoneyShort(activeGoal.current_amount)} de{' '}
+              {formatMoneyShort(activeGoal.goal_amount)}
             </Text>
           </View>
         ) : null}
@@ -255,7 +268,6 @@ const styles = StyleSheet.create({
   stack: { gap: 18 },
   title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 6, lineHeight: 18 },
-  loading: { paddingVertical: 16, alignItems: 'center' },
   card: {
     padding: 16,
     borderRadius: 16,
@@ -288,6 +300,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     gap: 12,
+  },
+  memberRowPending: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
   },
   memberText: { flex: 1, minWidth: 0, gap: 2 },
   memberName: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },

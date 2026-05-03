@@ -35,7 +35,7 @@ import {
   type OnboardingStepId,
 } from '@/features/onboarding/use-onboarding-state'
 import { useFamilyFinance, useUpsertFamilyFinance } from '@/features/finance/use-family-finance'
-import { useUpdateMyIncomeContribution } from '@/features/family/use-family-actions'
+import { useJoinFamily } from '@/features/family/use-family-actions'
 import { buildFamilyFinanceInput } from '@/features/finance/use-family-finance'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useQueryClient } from '@tanstack/react-query'
@@ -121,7 +121,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const updateAvatar = useUpdateAvatarAnimal(userId)
   const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined)
   const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '')
-  const updateContribution = useUpdateMyIncomeContribution(userId, state.familyId ?? undefined)
+  const joinFamily = useJoinFamily(userId)
   const completeOnboarding = useCompleteOnboarding(userId)
 
   const [numpadTarget, setNumpadTarget] = useState<'income' | 'goal' | null>(null)
@@ -159,7 +159,10 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       case 2:
         return true
       case 3:
-        return state.familyMode !== 'none' && !!state.familyId
+        // Creator: needs a real familyId (bootstrap inserts the row).
+        // Joiner: needs a valid pendingFamily snapshot from peek.
+        if (state.familyMode === 'joined') return !!state.pendingFamily
+        return state.familyMode === 'created' && !!state.familyId
       case 4:
         if (isJoiner) {
           // Joiner: needs to make an explicit choice. If they
@@ -237,15 +240,22 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     }
     setSubmitting(true)
     try {
-      // Joiner path: skip the family_finance upsert (the household
-      // already has its salary day, savings goal etc. configured by
-      // the creator). Only record the joiner's personal income
-      // contribution — the trigger updates `family_finance.monthly_income`
-      // automatically — then mark onboarding complete.
-      if (state.familyMode === 'joined') {
+      // Joiner path. The user previewed the family in step 3 via
+      // `peek_family_by_code` (no membership inserted) and is now
+      // confirming. Two-step finish:
+      //   1. join_family_by_code(code, contribution) → INSERTS the
+      //      membership and records the contribution in one shot.
+      //      The recompute trigger updates family_finance.monthly_income.
+      //   2. completeOnboarding → flips profiles.onboarding_completed_at.
+      // family_finance / savings_goal upserts are skipped — those
+      // already exist for the family.
+      if (state.familyMode === 'joined' && state.pendingFamily) {
         const contribution =
           state.contributesIncome === true ? monthlyIncome : 0
-        await updateContribution.mutateAsync(contribution)
+        await joinFamily.mutateAsync({
+          code: state.pendingFamily.family_code,
+          monthlyIncomeContribution: contribution,
+        })
         await completeOnboarding.mutateAsync()
         void triggerHaptic('success')
         showAuthTransitionSplash()
@@ -318,6 +328,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   }, [
     state.familyId,
     state.familyMode,
+    state.pendingFamily,
     state.contributesIncome,
     state.savingsGoalPercent,
     state.salaryPaymentDay,
@@ -329,7 +340,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     existingFinance,
     upsertFinance,
     upsertSavingsGoal,
-    updateContribution,
+    joinFamily,
     completeOnboarding,
     router,
   ])
@@ -649,6 +660,7 @@ function renderStep(
           familyId={state.familyId}
           familyCode={state.familyCode}
           onFamilyReady={actions.setFamily}
+          onJoinPeek={actions.setPendingFamily}
           isRejoin={ctx.isRejoin}
           closedByOwner={ctx.closedByOwner}
         />
@@ -679,14 +691,17 @@ function renderStep(
         />
       )
     case 5:
-      // Joiner step 5 = family summary + Confirmar y unirme.
-      if (state.familyMode === 'joined' && state.familyId) {
+      // Joiner step 5 = family summary + Confirmar y unirme. Reads
+      // from the pendingFamily snapshot fetched in step 3 — the
+      // user is NOT a member yet.
+      if (state.familyMode === 'joined' && state.pendingFamily) {
         return (
           <StepFamilySummary
-            familyId={state.familyId}
-            userId={ctx.userId}
+            pendingFamily={state.pendingFamily}
             contributesIncome={state.contributesIncome}
             monthlyIncomeRaw={state.monthlyIncomeRaw}
+            pendingDisplayName={state.displayName}
+            pendingAvatarSlug={state.avatarSlug}
           />
         )
       }

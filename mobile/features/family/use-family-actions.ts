@@ -53,6 +53,47 @@ export function useBootstrapFamily(userId?: string) {
   })
 }
 
+/** Read-only preview of a family looked up by code. Returned by
+ *  `usePeekFamilyByCode` and consumed by the onboarding wizard's
+ *  step 5 to render the family summary before the user commits. */
+export interface FamilyPeek {
+  family_id: string
+  family_code: string
+  monthly_income: number
+  members: Array<{
+    user_id: string
+    display_name: string
+    avatar_animal: string | null
+    monthly_income_contribution: number
+    role: string
+    is_blocked: boolean
+  }>
+  cycle_variable_spent: number
+  active_fixed_count: number
+  active_goal: {
+    title: string
+    goal_amount: number
+    current_amount: number
+  } | null
+}
+
+export function usePeekFamilyByCode() {
+  return useMutation({
+    mutationFn: async (rawCode: string) => {
+      const normalized = rawCode.trim().toUpperCase()
+      if (!normalized) {
+        throw new Error('Ingresá un código de familia válido.')
+      }
+      const { data, error } = await supabase.rpc('peek_family_by_code', {
+        p_code: normalized,
+      })
+      if (error) throw error
+      if (!data) throw new Error('No se pudo consultar la familia.')
+      return data as FamilyPeek
+    },
+  })
+}
+
 export interface JoinFamilyInput {
   code: string
   /** Optional monthly income contribution (ARS). When provided and

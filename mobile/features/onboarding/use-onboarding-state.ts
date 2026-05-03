@@ -1,6 +1,7 @@
 import { useMemo, useReducer } from 'react'
 import type { AvatarSlug } from '@/assets/avatars'
 import { randomAvatarSlug } from '@/assets/avatars'
+import type { FamilyPeek } from '@/features/family/use-family-actions'
 
 export type OnboardingStepId = 1 | 2 | 3 | 4 | 5
 export const ONBOARDING_TOTAL_STEPS = 5
@@ -25,6 +26,13 @@ export interface OnboardingDraft {
    *  trigger); `false` → no contribution recorded (e.g. child,
    *  unemployed partner). Ignored on the creator path. */
   contributesIncome: boolean | null
+  /** Joiner-only — preview of the family fetched in step 3 via
+   *  `peek_family_by_code`. Null until a valid code has been
+   *  validated. The actual `family_members` insert happens in step
+   *  5 when the user taps "Confirmar y unirme"; until then the user
+   *  is NOT a member, so we read all summary data from this snapshot
+   *  rather than from the live queries (which RLS would block). */
+  pendingFamily: FamilyPeek | null
 }
 
 type Action =
@@ -42,6 +50,7 @@ type Action =
   | { type: 'setFirstGoalTarget'; value: string }
   | { type: 'setFirstGoalMonths'; value: number }
   | { type: 'setContributesIncome'; value: boolean | null }
+  | { type: 'setPendingFamily'; value: FamilyPeek | null }
 
 function createInitialDraft(): OnboardingDraft {
   return {
@@ -59,6 +68,7 @@ function createInitialDraft(): OnboardingDraft {
     firstGoalTargetRaw: '',
     firstGoalMonths: 6,
     contributesIncome: null,
+    pendingFamily: null,
   }
 }
 
@@ -109,6 +119,21 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
       return action.value === false
         ? { ...state, contributesIncome: false, monthlyIncomeRaw: '' }
         : { ...state, contributesIncome: action.value }
+    case 'setPendingFamily':
+      // When the user picks a family in step 3 the previously-typed
+      // contribution amount might not apply (the new family could
+      // have a different income context). Clear `contributesIncome`
+      // so step 4 forces a fresh choice. Setting to `null` (e.g. on
+      // back-navigation) also clears.
+      return {
+        ...state,
+        pendingFamily: action.value,
+        familyMode: action.value ? 'joined' : state.familyMode,
+        familyId: action.value ? action.value.family_id : null,
+        familyCode: action.value ? action.value.family_code : null,
+        contributesIncome: null,
+        monthlyIncomeRaw: '',
+      }
     default:
       return state
   }
@@ -138,6 +163,8 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
       setFirstGoalMonths: (value: number) => dispatch({ type: 'setFirstGoalMonths', value }),
       setContributesIncome: (value: boolean | null) =>
         dispatch({ type: 'setContributesIncome', value }),
+      setPendingFamily: (value: FamilyPeek | null) =>
+        dispatch({ type: 'setPendingFamily', value }),
     }),
     [],
   )
