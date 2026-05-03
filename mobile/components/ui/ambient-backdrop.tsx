@@ -117,6 +117,7 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
       },
     ],
     home: [
+      // Top-right: V1 mint primary glow.
       {
         width: 220,
         height: 220,
@@ -124,13 +125,17 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
         right: -92,
         backgroundColor: withAlpha(theme.colors.primary, 0.045),
       },
+      // Mid-left: V1 coral glow (was success/green; switched to peach
+      // so the page background carries coral character instead of
+      // doubling up on green with the primary blob).
       {
         width: 190,
         height: 190,
         left: -98,
         top: 328,
-        backgroundColor: withAlpha(theme.colors.success, 0.035),
+        backgroundColor: withAlpha(theme.colors.peach, 0.04),
       },
+      // Bottom-right: warning yellow — kept for atmospheric warmth.
       {
         width: 140,
         height: 140,

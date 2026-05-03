@@ -182,10 +182,10 @@ const lightColors: ThemeColors = {
   text:               '#12211A',  // V1 — surface-950
   textMuted:          '#3B6D57',  // V1 — surface-700 (neutral muted, AA on cream)
   textSoft:           '#7A8A7D',
-  primary:            brand.deep,
-  primaryStrong:      '#0A2016',
-  primarySurface:     brand.surfaceSoft,
-  success:            '#1C7E3A',
+  primary:            '#329315',  // V1 — primary-700 (was brand.deep #0F2E1F)
+  primaryStrong:      '#297811',  // V1 — primary-800
+  primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
+  success:            '#3DB319',  // V1 — primary-600 (slightly brighter than primary; "fresh good")
   warning:            '#C27A0A',
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
@@ -224,10 +224,10 @@ const darkColors: ThemeColors = {
   text:               '#F2EAD3',  // V1 — cream foundation
   textMuted:          '#A6EF8F',  // V1 — primary-300 (branded muted on dark)
   textSoft:           '#8BA797',
-  primary:            brand.bright,
-  primaryStrong:      '#9AE8BD',
-  primarySurface:     brand.surfaceSoft,
-  success:            '#7AD8A3',
+  primary:            '#A6EF8F',  // V1 — primary-300 (was brand.bright #7AD8A3)
+  primaryStrong:      '#D1F7C5',  // V1 — primary-200
+  primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
+  success:            '#A6EF8F',  // V1 — primary-300 (matches primary on dark)
   warning:            '#F3BA57',
   danger:             '#F06A6A',
   overlay:            'rgba(0,0,0,0.52)',
