@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   FadeIn,
   ReduceMotion,
 } from 'react-native-reanimated'
+import NetInfo from '@react-native-community/netinfo'
 import {
   AuroraLayer,
   ParticleLayer,
@@ -12,7 +14,7 @@ import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import {
   hideAuthTransitionSplash,
-  showAuthTransitionSplash,
+  showAuthTransitionError,
   type AuthTransitionErrorKind,
   type AuthTransitionPhase,
 } from '@/lib/auth-transition-splash'
@@ -74,16 +76,33 @@ interface ErrorFallbackProps {
 }
 
 function ErrorFallback({ errorKind }: ErrorFallbackProps) {
-  const handleRetry = () => {
+  const [isChecking, setChecking] = useState(false)
+
+  const handleRetry = async () => {
+    if (isChecking) return
     void triggerHaptic('selection')
-    // Force-hide the splash, then immediately re-show it. The
-    // re-show resets the state machine to `showing` with a fresh
-    // showStartedAt + safety timer; whatever code triggered the
-    // original splash should also re-trigger the underlying refetch.
-    // For the home-snapshot bridge this is enough because mounting
-    // the gate components again replays the loading state.
-    hideAuthTransitionSplash()
-    showAuthTransitionSplash()
+    setChecking(true)
+    try {
+      // Ask NetInfo for a fresh probe instead of trusting the cached
+      // event listener — the user just tapped "Reintentar", they
+      // want a real check. If the network came back, dismiss the
+      // splash and let the underlying screen reveal. If it's still
+      // offline, re-emit the error so the fallback stays visible
+      // (and re-renders to give haptic + visual feedback that
+      // something happened).
+      const next = await NetInfo.fetch()
+      const online =
+        next.isConnected !== false && next.isInternetReachable !== false
+      if (online) {
+        hideAuthTransitionSplash()
+      } else {
+        showAuthTransitionError('network')
+      }
+    } catch {
+      showAuthTransitionError('network')
+    } finally {
+      setChecking(false)
+    }
   }
 
   // Most common case is "no internet" — a hung request, a NetInfo
@@ -117,13 +136,22 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Reintentar"
-        onPress={handleRetry}
+        accessibilityState={{ busy: isChecking }}
+        onPress={() => {
+          void handleRetry()
+        }}
+        disabled={isChecking}
         style={({ pressed }) => [
           styles.retryButton,
-          { backgroundColor: pressed ? '#FFFBF2DD' : '#FFFBF2' },
+          {
+            backgroundColor: pressed ? '#FFFBF2DD' : '#FFFBF2',
+            opacity: isChecking ? 0.7 : 1,
+          },
         ]}
       >
-        <Text style={styles.retryLabel}>Reintentar</Text>
+        <Text style={styles.retryLabel}>
+          {isChecking ? 'Reintentando…' : 'Reintentar'}
+        </Text>
       </Pressable>
     </Animated.View>
   )

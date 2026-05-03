@@ -11,7 +11,7 @@ import Animated, {
 import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
-import { GlobalOfflineBanner } from '@/components/root/global-offline-banner'
+import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { AppProviders } from '@/providers/app-providers'
@@ -60,14 +60,14 @@ export function RootLayoutShell() {
           </Stack>
 
           {/*
-            Global offline banner: floats over every screen and only
-            appears when NetInfo reports the device is offline.
-            Replaces the two inline `<OfflinePill />` calls that used
-            to live in home-dashboard and gastos — all surfaces now
-            share one indicator without each screen having to
-            remember to mount it.
+            Global connectivity watcher: when NetInfo reports the
+            device is offline, promotes the auth-transition splash
+            to its `error('network')` phase so the existing
+            full-screen fallback (with Reintentar button that probes
+            NetInfo before dismissing) becomes the offline experience
+            for the entire app. Renders nothing of its own.
           */}
-          <GlobalOfflineBanner />
+          <GlobalConnectivityWatcher />
 
           {/*
             Cold-start splash: shown ONCE per app launch, fades itself

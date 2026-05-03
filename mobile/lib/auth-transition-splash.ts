@@ -133,6 +133,23 @@ export function reportAuthTransitionError(
 }
 
 /**
+ * Force the splash into the `error` phase from any state (including
+ * `hidden`). Used by the global connectivity watcher: when NetInfo
+ * reports the device is offline we want the error fallback to take
+ * over the screen immediately, not transition through `showing`
+ * (which would start a 15s safety timer for nothing).
+ *
+ * Idempotent when already in `error` with the same kind.
+ */
+export function showAuthTransitionError(
+  kind: AuthTransitionErrorKind = 'unknown',
+) {
+  if (state.phase === 'error' && state.errorKind === kind) return
+  clearAllTimers()
+  setStateAndNotify({ phase: 'error', errorKind: kind })
+}
+
+/**
  * Force-hide the splash regardless of phase. Called by the retry
  * flow (dismiss the error UI), the preview button in settings, and
  * legacy call sites that need to silence the splash unconditionally.
