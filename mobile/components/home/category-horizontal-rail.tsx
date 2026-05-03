@@ -46,6 +46,10 @@ interface CategoryHorizontalRailProps {
 const DEFAULT_TILE_WIDTH = 60
 const DEFAULT_TILE_HEIGHT = 68
 const TILE_GAP = 8
+// Wider gap for the static grid — without horizontal overflow to use
+// as breathing room, tiles end up visually adjacent at 8pt. 12pt
+// keeps them comfortably separated on a 4-column layout.
+export const STATIC_TILE_GAP = 12
 const BADGE_SIZE = 30
 
 export function CategoryHorizontalRail({
@@ -109,7 +113,26 @@ export function CategoryHorizontalRail({
         {label}
       </Text>
       {staticGrid ? (
-        <View style={styles.staticContent}>{columnTiles}</View>
+        <View style={[styles.staticContent, { gap: STATIC_TILE_GAP }]}>
+          {columns.map((column, columnIndex) => (
+            <View key={columnIndex} style={[styles.column, { gap: STATIC_TILE_GAP }]}>
+              {column.map((category) => (
+                <CategoryTile
+                  key={category.id}
+                  category={category}
+                  selected={category.id === selectedCategoryId}
+                  iconResolver={iconResolver}
+                  width={tileWidth}
+                  height={tileHeight}
+                  onPress={() => {
+                    void triggerHaptic('selection')
+                    onSelect(category.id)
+                  }}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -222,15 +245,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   // Static grid: same paddings as the scroll variant, but rendered in
-  // a flex row that distributes the columns across the available
-  // width with `space-between`. The tile width itself is computed
-  // upstream (see `computeFillTileWidth`) so the columns hit the
-  // edges without overflow.
+  // a flex row with explicit `gap` (set inline at the call site so it
+  // matches the gap the upstream `computeFillTileWidth` math used).
+  // Uniform gaps between every column — `space-between` left tiny
+  // edge gaps + huge middle ones depending on tile-width rounding.
   staticContent: {
     paddingHorizontal: 4,
     paddingVertical: 4,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   column: {

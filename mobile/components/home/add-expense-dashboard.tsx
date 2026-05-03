@@ -4,6 +4,7 @@ import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-b
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { computeFillTileWidth } from '@/components/home/category-rail-fill-width'
+import { STATIC_TILE_GAP } from '@/components/home/category-horizontal-rail'
 import { DescriptionRow } from '@/components/home/description-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -77,7 +78,7 @@ export function AddExpenseDashboard({
     categoriesCount: rankedCategories.length,
     rows: 3,
     screenWidth,
-    gap: 8,
+    gap: STATIC_TILE_GAP,
     sidePadding: 8,
     defaultTileWidth: 60,
     maxTileWidth: 110,
