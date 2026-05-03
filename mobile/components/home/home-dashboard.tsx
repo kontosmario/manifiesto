@@ -11,6 +11,7 @@ import {
   computeTopCategoryFallback,
 } from '@/components/home/home-top-category-helpers'
 import { computeNextFixed } from '@/components/home/home-next-fixed-helpers'
+import { computeNextFixedFallback } from '@/components/home/home-next-fixed-fallback'
 import { computeSavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { useTrackElement } from '@/features/home/use-track-element'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
@@ -407,6 +408,24 @@ export function HomeDashboard({
     [router, nextFixedTracker, onMarkTapped],
   )
 
+  // Empty-state band for the Fijos panel — symmetric counterpart to
+  // the Variables `topCategoryFallback`. Renders only when the user
+  // has no fijos at all (the "all paid" band covers the everything-paid
+  // case, the próximo-fijo chip covers active fijos).
+  const nextFixedFallback = useMemo(
+    () =>
+      computeNextFixedFallback({
+        fixedCount: homeMetrics.monthSummary.fixedCount,
+        hasNextFixed: nextFixed != null,
+      }),
+    [homeMetrics.monthSummary.fixedCount, nextFixed],
+  )
+  const handleNextFixedFallbackPress = useCallback(() => {
+    onMarkTapped?.()
+    void triggerHaptic('selection')
+    router.push('/(app)/add-fixed-expense')
+  }, [router, onMarkTapped])
+
   // Sprint 3 — Forecast trend (renders inside the hero card via
   // HomeHeroCard's `projectedCloseTrend` prop). Tracker fires when
   // the trend is actually rendered (projection reliable AND
@@ -476,6 +495,8 @@ export function HomeDashboard({
         onPressTopCategoryFallback={handleTopCategoryFallbackPress}
         nextFixed={nextFixed}
         onPressNextFixed={handleNextFixedPress}
+        nextFixedFallback={nextFixedFallback}
+        onPressNextFixedFallback={handleNextFixedFallbackPress}
       />
       {savingsGoalQuery.data ? (
         <MetaCard

@@ -12,6 +12,7 @@ import {
   formatDaysUntilDue,
   type NextFixedResult,
 } from '@/components/home/home-next-fixed-helpers'
+import type { NextFixedFallback } from '@/components/home/home-next-fixed-fallback'
 import { pickMaterialIconForCategory } from '@/features/gastos/category-icons'
 import { formatMoneyShort } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -42,6 +43,15 @@ interface MonthSummaryCardProps {
   nextFixed: NextFixedResult | null
   /** Tap on the Próximo fijo band → fijos screen focused on that row. */
   onPressNextFixed: (fixedExpenseId: string) => void
+  /** Fallback for the Fijos band when neither `nextFixed` nor the
+   *  "all paid" state apply (i.e. the user hasn't added any fijos
+   *  yet). Mirrors the Variables empty-state band so both panels
+   *  stay symmetric. */
+  nextFixedFallback: NextFixedFallback | null
+  /** Tap handler for the actionable `empty` Fijos fallback (opens
+   *  the add-fixed-expense flow). Ignored when `nextFixedFallback`
+   *  is null. */
+  onPressNextFixedFallback: () => void
 }
 
 interface PanelTone {
@@ -94,6 +104,8 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   onPressTopCategoryFallback,
   nextFixed,
   onPressNextFixed,
+  nextFixedFallback,
+  onPressNextFixedFallback,
 }: MonthSummaryCardProps) {
   const { theme } = useAppTheme()
   const allPaid = data.fixedCount > 0 && data.fixedPaid === data.fixedCount
@@ -292,7 +304,19 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                     a11yLabel: `Los ${data.fixedCount} gastos fijos del ciclo están pagados.`,
                     onPress: null,
                   }
-                : null
+                : nextFixedFallback
+                  ? {
+                      iconName: 'add-circle-outline',
+                      bandBg: fijosTone.bandBg,
+                      iconBg: fijosTone.bandIconBg,
+                      iconFg: fijosTone.bandIconFg,
+                      primary: nextFixedFallback.primary,
+                      secondary: nextFixedFallback.secondary,
+                      a11yLabel: `${nextFixedFallback.primary}. ${nextFixedFallback.secondary}`,
+                      a11yHint: 'Abre la pantalla para registrar un gasto fijo',
+                      onPress: onPressNextFixedFallback,
+                    }
+                  : null
           }
         />
       </View>

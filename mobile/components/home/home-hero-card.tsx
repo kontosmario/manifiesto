@@ -21,6 +21,7 @@ import { CardParticles } from '@/components/ui/card-particles'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
+import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -482,19 +483,24 @@ export function HomeHeroCard({
                 // wildly with each new expense, so we hide the number
                 // and tell the user we're still learning instead of
                 // misleading them with volatile data.
-                <>
-                  <Text
-                    style={[styles.tileValue, { color: theme.colors.heroMuted }]}
-                  >
-                    —
-                  </Text>
-                  <Text
-                    style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}
-                  >
-                    en {Math.max(1, 4 - data.cycleDay)}{' '}
-                    {4 - data.cycleDay === 1 ? 'día' : 'días'}
-                  </Text>
-                </>
+                (() => {
+                  const wait = formatProjectionWaitCopy(4 - data.cycleDay)
+                  return (
+                    <>
+                      <Text
+                        style={[styles.tileValue, { color: theme.colors.heroMuted }]}
+                      >
+                        —
+                      </Text>
+                      <Text
+                        style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}
+                        numberOfLines={2}
+                      >
+                        {`${wait.label} · ${wait.detail}`}
+                      </Text>
+                    </>
+                  )
+                })()
               )}
             </View>
           </RiseView>
