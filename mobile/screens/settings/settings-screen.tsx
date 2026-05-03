@@ -13,6 +13,7 @@ import {
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
+import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-sheet'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
@@ -283,32 +284,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     )
   }, [enablePushMutation, familyId, hasPushSubscriptionQuery, showError, userId])
 
-  // Single-use family invite codes. Each tap generates a fresh
-  // ephemeral code (7-day TTL on the server). The code is shown
-  // once via Alert + copied to the clipboard; once the joiner uses
-  // it, it's marked consumed and can't be reused. No permanent
-  // `families.code` exists anymore — this is the only path to add
-  // someone to the household.
-  const createInvite = useCreateFamilyInvite()
-  const handleGenerateFamilyInvite = useCallback(async () => {
-    try {
-      const result = await createInvite.mutateAsync()
-      await Clipboard.setStringAsync(result.code)
-      await triggerHaptic('success')
-      Alert.alert(
-        'Código de invitación copiado',
-        `Compartí "${result.code}" con la persona que querés que se sume.\n\n` +
-          'El código sirve para una sola persona y vence en 7 días. ' +
-          'Si necesitás invitar a otra persona, generá uno nuevo.',
-      )
-    } catch (error) {
-      void triggerHaptic('error')
-      Alert.alert(
-        'No pudimos generar el código',
-        getErrorMessage(error, 'Reintentá en un momento.'),
-      )
-    }
-  }, [createInvite])
+  // Invite sheet — generates a single-use 8-char code on open
+  // (server-side, with 10/min rate limit) and shows it big with
+  // copy + native share + regenerate actions.
+  const [shareInviteSheetVisible, setShareInviteSheetVisible] = useState(false)
+  const handleOpenShareInvite = useCallback(() => {
+    void triggerHaptic('selection')
+    setShareInviteSheetVisible(true)
+  }, [])
 
   // Owner-with-members destructive flow lives in a dedicated sheet so
   // we can collect a typed-confirmation phrase. Anyone else (member,
@@ -606,7 +589,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   icon="person-add"
                   label="Invitar a alguien"
                   helper="Genera un código de un solo uso, válido por 7 días."
-                  onPress={handleGenerateFamilyInvite}
+                  onPress={handleOpenShareInvite}
                 />
                 {isOwner ? (
                   <SettingsRow
@@ -736,6 +719,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       </View>
 
       {/* ── Sheets ────────────────────────────────────────────── */}
+      <ShareInviteSheet
+        visible={shareInviteSheetVisible}
+        onClose={() => setShareInviteSheetVisible(false)}
+      />
       <EditDisplayNameSheet
         currentName={displayName}
         isSaving={updateDisplayNameMutation.isPending}
