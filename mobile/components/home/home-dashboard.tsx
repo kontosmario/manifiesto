@@ -20,7 +20,6 @@ import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
-import { OfflinePill } from '@/components/ui/offline-pill'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
   classifyDashboardError,
@@ -475,7 +474,6 @@ export function HomeDashboard({
         onPressSettings={handlePressSettings}
         onPressAssistant={handlePressAssistant}
       />
-      <OfflinePill />
       <FamilyStrip
         members={membersQuery.data ?? []}
         daysUntilPayday={days}

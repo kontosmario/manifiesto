@@ -16,7 +16,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
-import { OfflinePill } from '@/components/ui/offline-pill'
 import { Screen } from '@/components/ui/screen'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
@@ -397,7 +396,6 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             rightSlot={<StreakFlameIcon data={streakData} onPress={handlePressStreak} />}
           />
         </Animated.View>
-        <OfflinePill />
         <Animated.View layout={sectionLayout}>
           <GastosHeroCard
             totalVisible={controller.filteredTotal}

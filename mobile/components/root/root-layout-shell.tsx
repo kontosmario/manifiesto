@@ -11,6 +11,7 @@ import Animated, {
 import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
+import { GlobalOfflineBanner } from '@/components/root/global-offline-banner'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { AppProviders } from '@/providers/app-providers'
@@ -57,6 +58,16 @@ export function RootLayoutShell() {
             <Stack.Screen name="index" />
             <Stack.Screen name="auth/callback" />
           </Stack>
+
+          {/*
+            Global offline banner: floats over every screen and only
+            appears when NetInfo reports the device is offline.
+            Replaces the two inline `<OfflinePill />` calls that used
+            to live in home-dashboard and gastos — all surfaces now
+            share one indicator without each screen having to
+            remember to mount it.
+          */}
+          <GlobalOfflineBanner />
 
           {/*
             Cold-start splash: shown ONCE per app launch, fades itself
