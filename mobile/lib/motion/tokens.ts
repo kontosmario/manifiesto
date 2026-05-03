@@ -67,11 +67,12 @@ export const motionSprings = {
   tabShift:  { damping: 26, stiffness: 340, mass: 0.9 },
   // Radial / fan menus (FAB speed-dial). Softer than `enter` so each
   // petal lands with a touch of bounce, signalling "I just unfurled
-  // from the FAB". The exit pair is critically damped (24 = 2·√(180·0.8))
-  // so progress lands cleanly at 0 without oscillating past — petals
-  // retract into the FAB without a wobble.
+  // from the FAB". The exit pair is intentionally a `withTiming`
+  // curve, not a spring — see `add-quick-actions-overlay.tsx` for
+  // why (Modal-unmount latency on critically-damped spring blocked
+  // the FAB underneath). Use `motionDurations.exitTab` +
+  // `motionEasings.exitStandard` for the radial dismiss.
   radialEnter: { damping: 14, stiffness: 160, mass: 0.9 },
-  radialExit:  { damping: 24, stiffness: 180, mass: 0.8 },
   // Gesture-driven sheet dismiss. Stiff and well-damped so the sheet
   // lands at its destination (off-screen) without overshoot when the
   // user flicks. Callers merge `velocity: Math.max(event.velocityY,

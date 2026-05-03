@@ -13,13 +13,19 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { motionSprings, motionStagger } from '@/lib/motion/tokens'
+import {
+  motionDurations,
+  motionEasings,
+  motionSprings,
+  motionStagger,
+} from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
@@ -95,22 +101,31 @@ export function AddQuickActionsOverlay({
       progress.value = 0
       setMounted(false)
     } else {
-      // `motionSprings.radialExit` — critically damped so the petals
-      // retract into the FAB without oscillating past zero, and a
-      // touch stiffer than the entrance so the dismiss feels
-      // purposeful. The per-petal interpolation windows below run
-      // in reverse on the descending progress, so the rightmost
-      // petal retracts first and the leftmost last — mirroring the
-      // L→R unfurl on entry.
+      // Timing-based exit, not a spring. Reasoning: a critically-
+      // damped spring landing at 0 only fires its `finished` callback
+      // once the value is within Reanimated's rest threshold (~5τ),
+      // which for the radialExit spring family was ~280ms. While
+      // that callback was pending, the native `<Modal>` remained
+      // mounted and OS-level captured all touches — the FAB
+      // underneath was un-tappable for the full window even though
+      // the petals were visually gone after ~150ms. That broke
+      // `interruptible` and `tap-feedback-speed` from the motion
+      // checklist.
       //
-      // The completion callback closes the loop with React: we keep
-      // the Modal mounted until the spring lands at 0, then hop back
-      // to JS to flip `mounted` and unmount. `finished` is false when
-      // a new animation interrupts (e.g. user re-opens mid-dismiss),
-      // so we only unmount on a clean landing.
-      progress.value = withSpring(
+      // Replace with a deterministic 140ms timing using the
+      // `exitStandard` curve (ease-in cubic). The petals still
+      // accelerate into the FAB origin — visually compatible with
+      // the spring entrance — but the Modal unmounts in a known,
+      // short window. The per-petal interpolation windows below
+      // still run in reverse on the descending progress, just
+      // compressed into the shorter total. Exit is now ~50% of the
+      // spring entrance, satisfying `exit-faster-than-enter`.
+      progress.value = withTiming(
         0,
-        motionSprings.radialExit,
+        {
+          duration: motionDurations.exitTab,
+          easing: motionEasings.exitStandard,
+        },
         (finished) => {
           if (finished) {
             runOnJS(setMounted)(false)
