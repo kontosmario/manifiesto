@@ -38,6 +38,7 @@ import type {
 } from '@/features/insights/control-v2-mock'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import type { ControlAction } from '@/features/insights/control-action'
+import { composeMomentumImpact } from '@/features/insights/momentum-impact'
 import type { UserBaselines } from '@/features/insights/user-baselines'
 import type { Forecast7Day } from '@/features/insights/forecast-engine'
 import type { CausalLink } from '@/features/insights/causal-engine'
@@ -482,16 +483,20 @@ function tryComposeSavingsMomentum(
   if (!streak || !positive || !reinforcer) return null
   const composedOf = [streak.id, positive.id, reinforcer.id]
   for (const id of composedOf) byId.delete(id)
-  const totalImpact = positive.impactRaw + reinforcer.impactRaw * 12
+  // Headline magnitude comes from the cycle-scoped excedente alone.
+  // See `momentum-impact.ts` for the rationale — folding the
+  // reinforcer's monthly figure (× 12 was the old behavior) inflated
+  // the number into fantasy ("+$770k a favor" for a healthy account).
+  const headline = composeMomentumImpact(positive, reinforcer)
   return {
     id: 'super-savings-momentum',
     emoji: '🚀',
     cat: 'Momentum',
     title: 'Momentum positivo',
     body: `Llevás racha sostenida, el ciclo proyecta sobrante, y hay categorías a favor. Es el momento de capitalizar: subir la meta o reasignar el excedente.`,
-    impact: `+${fmt(totalImpact)} a favor`,
-    impactRaw: Math.round(totalImpact),
-    impactScope: 'oneTime',
+    impact: headline.label,
+    impactRaw: headline.impactRaw,
+    impactScope: headline.impactScope,
     cta: 'Capitalizar',
     urgency: 'baja',
     confidence: Math.min(streak.confidence, positive.confidence, reinforcer.confidence),
