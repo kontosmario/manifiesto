@@ -400,7 +400,7 @@ export function AddFijoV2Screen({
                           <Text
                             style={[
                               styles.cuotaPillText,
-                              { color: on ? '#F6FBEF' : theme.colors.text },
+                              { color: on ? '#F2EAD3' : theme.colors.text },
                             ]}
                           >
                             {n}
@@ -556,13 +556,13 @@ export function AddFijoV2Screen({
                   {
                     backgroundColor: notify
                       ? theme.isDark
-                        ? 'rgba(199,238,156,0.18)'
-                        : '#DDEFE3'
+                        ? 'rgba(166,239,143,0.18)'  // V1 primary-300 alpha
+                        : '#EAFBE4'  // V1 primary-100
                       : theme.colors.creamCard,
                     borderColor: notify
                       ? theme.isDark
-                        ? 'rgba(199,238,156,0.5)'
-                        : '#8DD66A'
+                        ? 'rgba(166,239,143,0.5)'
+                        : '#49D61F'  // V1 primary-500
                       : theme.colors.line,
                   },
                 ]}
@@ -589,8 +589,8 @@ export function AddFijoV2Screen({
                     {
                       backgroundColor: notify
                         ? theme.isDark
-                          ? '#9EE0B2'
-                          : '#2E7D5B'
+                          ? '#A6EF8F'  // V1 primary-300
+                          : '#297811'  // V1 primary-800 (AA-safe text indicator)
                         : theme.colors.line,
                     },
                   ]}
@@ -795,11 +795,11 @@ function ImpactRow({
               {
                 color: theme.isDark
                   ? deltaPct > 0
-                    ? '#E88A70'
-                    : '#9EE0B2'
+                    ? '#F8D1C3'  // V1 accent-200
+                    : '#A6EF8F'  // V1 primary-300
                   : deltaPct > 0
-                    ? '#C25A3E'
-                    : '#2E7D5B',
+                    ? '#B84014'  // V1 accent-600
+                    : '#297811',  // V1 primary-800
               },
             ]}
           >
@@ -815,16 +815,18 @@ function ImpactRow({
 function HealthBadge({ pct }: { pct: number }) {
   const { theme } = useAppTheme()
   const tone: 'alto' | 'medio' | 'sano' = pct > 70 ? 'alto' : pct > 50 ? 'medio' : 'sano'
+  // V1 health badge palette — alto/medio/sano = high/mid/healthy fijos
+  // ratio. AA verified for fg-on-bg in both modes.
   const palette = theme.isDark
     ? {
-        alto: { bg: '#4A201A', fg: '#E88A70' },
-        medio: { bg: '#3A2A22', fg: '#F2B58A' },
-        sano: { bg: '#1F4F30', fg: '#9EE0B2' },
+        alto:  { bg: '#5C200A', fg: '#F8D1C3' },  // accent-900 / accent-200
+        medio: { bg: '#7C2B0E', fg: '#FCEAE3' },  // accent-800 / accent-100
+        sano:  { bg: '#244235', fg: '#A6EF8F' },  // surface-900 / primary-300
       }
     : {
-        alto: { bg: '#F5C6B6', fg: '#C03A2A' },
-        medio: { bg: '#FADFC8', fg: '#A3452A' },
-        sano: { bg: '#DDEFE3', fg: '#2E7D5B' },
+        alto:  { bg: '#F8D1C3', fg: '#5C200A' },  // accent-200 / accent-900 — AAA
+        medio: { bg: '#FCEAE3', fg: '#973511' },  // accent-100 / accent-700 — AA
+        sano:  { bg: '#EAFBE4', fg: '#297811' },  // primary-100 / primary-800 — AA
       }
   const { bg, fg } = palette[tone]
   const label = tone === 'alto' ? 'Alto' : tone === 'medio' ? 'Medio' : 'Sano'
@@ -1002,7 +1004,7 @@ function ImpactBar({ beforePct, afterPct }: { beforePct: number; afterPct: numbe
     >
       <View style={[styles.impactBarFill, { width: `${clampedBefore}%` }]}>
         <LinearGradient
-          colors={['#6FE09A', '#2E7D5B'] as unknown as readonly [string, string, ...string[]]}
+          colors={['#49D61F', '#297811'] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
@@ -1019,7 +1021,7 @@ function ImpactBar({ beforePct, afterPct }: { beforePct: number; afterPct: numbe
         ]}
       >
         <LinearGradient
-          colors={['#F2B58A', '#E8976A'] as unknown as readonly [string, string, ...string[]]}
+          colors={['#F2A78C', '#EC7A51'] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}

@@ -140,7 +140,7 @@ export function FijosHeroCard({
               label="Por pagar"
               value={cantidadPendientes}
               sublabel="pendientes"
-              accent="#F2B58A"
+              accent="#F2A78C"
               accentBg="rgba(242,167,140,0.12)"
               icon="warning"
             />
