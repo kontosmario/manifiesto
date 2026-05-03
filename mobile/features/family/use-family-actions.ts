@@ -53,22 +53,37 @@ export function useBootstrapFamily(userId?: string) {
   })
 }
 
+export interface JoinFamilyInput {
+  code: string
+  /** Optional monthly income contribution (ARS). When provided and
+   *  > 0, recorded on the joiner's `family_members` row and added to
+   *  the cached `family_finance.monthly_income` via DB trigger. Pass
+   *  `null` or `undefined` to skip (member doesn't contribute). */
+  monthlyIncomeContribution?: number | null
+}
+
 export function useJoinFamily(userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (rawCode: string) => {
+    mutationFn: async (input: JoinFamilyInput | string) => {
       if (!userId) {
         throw new Error('No hay sesión activa para unirse a la familia.')
       }
 
-      const normalizedCode = rawCode.trim().toUpperCase()
+      // Backwards-compat: legacy callers passed just the code string.
+      const code = typeof input === 'string' ? input : input.code
+      const contribution =
+        typeof input === 'string' ? null : (input.monthlyIncomeContribution ?? null)
+
+      const normalizedCode = code.trim().toUpperCase()
       if (!normalizedCode) {
         throw new Error('Ingresá un código de familia válido.')
       }
 
       const { data, error } = await supabase.rpc('join_family_by_code', {
         p_code: normalizedCode,
+        p_contribution: contribution,
       })
 
       if (error) {
@@ -82,6 +97,41 @@ export function useJoinFamily(userId?: string) {
         queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
         queryClient.invalidateQueries({ queryKey: categoriesQueryKey(result.family_id) }),
         queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
+      ])
+    },
+  })
+}
+
+/**
+ * Update the current user's `monthly_income_contribution`. Used from
+ * Settings when a member adjusts their own income — the trigger
+ * recomputes `family_finance.monthly_income` automatically.
+ */
+export function useUpdateMyIncomeContribution(
+  userId?: string,
+  familyId?: string,
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (amount: number) => {
+      if (!userId) {
+        throw new Error('No hay sesión activa para actualizar tu aporte.')
+      }
+      const safe = Math.max(0, Number.isFinite(amount) ? amount : 0)
+      const { error } = await supabase
+        .from('family_members')
+        .update({ monthly_income_contribution: safe })
+        .eq('user_id', userId)
+      if (error) throw error
+      return safe
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
+        familyId
+          ? queryClient.invalidateQueries({ queryKey: familyFinanceQueryKey(familyId) })
+          : Promise.resolve(),
       ])
     },
   })
