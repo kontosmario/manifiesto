@@ -7,13 +7,11 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  Easing,
   Extrapolation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
@@ -76,12 +74,19 @@ export function AddQuickActionsOverlay({
         mass: 0.9,
       })
     } else {
-      // Cubic ease-in collapse — petals accelerate as they're sucked
-      // back into the FAB. Shorter than the entrance (~75%) so the
-      // dismiss feels responsive, not laggy.
-      progress.value = withTiming(0, {
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
+      // Spring dismiss — same family of motion as the entrance so
+      // it feels like one continuous gesture. Critically damped
+      // (damping = 2·√(stiffness·mass) = 24) so the petals retract
+      // cleanly into the FAB without oscillating past zero, and a
+      // slightly stiffer spring than the enter so the dismiss feels
+      // purposeful instead of laggy. The per-petal interpolation
+      // windows below run in reverse on the descending progress, so
+      // the rightmost petal retracts first and the leftmost last —
+      // mirroring the L→R unfurl on entry.
+      progress.value = withSpring(0, {
+        damping: 24,
+        stiffness: 180,
+        mass: 0.8,
       })
     }
   }, [visible, progress, reduced])
