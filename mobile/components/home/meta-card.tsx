@@ -36,7 +36,10 @@ interface MetaCardProps {
   suggestedAmount?: number
 }
 
-const ACCENT_GRADIENT: readonly [string, string, ...string[]] = ['#6FE09A', '#F2B58A']
+// V1: vibrant mint (primary-400) → soft coral (accent-300). Same
+// "green→peach" identity as the original splash, restated in V1
+// saturated tones.
+const ACCENT_GRADIENT: readonly [string, string, ...string[]] = ['#77E755', '#F2A78C']
 
 /**
  * Meta (savings goal) card.
@@ -71,12 +74,12 @@ function MetaCardImpl({
   const isComplete = pct >= 100 && goal.currentAmount > 0
 
   const accentFg = theme.colors.success
-  const accentBorder = isDark ? 'rgba(122,216,163,0.42)' : 'rgba(28,126,58,0.32)'
-  const accentChipBg = isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)'
-  const accentChipBorder = isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)'
+  const accentBorder = isDark ? 'rgba(166,239,143,0.42)' : 'rgba(166,239,143,0.32)'
+  const accentChipBg = isDark ? 'rgba(166,239,143,0.16)' : 'rgba(166,239,143,0.10)'
+  const accentChipBorder = isDark ? 'rgba(166,239,143,0.34)' : 'rgba(166,239,143,0.26)'
   const trackBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,42,30,0.08)'
-  const actionBg = isDark ? 'rgba(122,216,163,0.20)' : 'rgba(28,126,58,0.12)'
-  const actionBorder = isDark ? 'rgba(122,216,163,0.42)' : 'rgba(28,126,58,0.30)'
+  const actionBg = isDark ? 'rgba(166,239,143,0.20)' : 'rgba(166,239,143,0.12)'
+  const actionBorder = isDark ? 'rgba(166,239,143,0.42)' : 'rgba(166,239,143,0.30)'
 
   // Horizontal progress fill — same animation curve users got used to.
   const fillScaleX = useSharedValue(reduced ? pct / 100 : 0)
