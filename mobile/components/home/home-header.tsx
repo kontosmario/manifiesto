@@ -49,7 +49,6 @@ function HomeHeaderImpl({
           accessibilityLabel="Ir a notificaciones"
           onPress={onPressNotifications}
           badgeCount={unreadNotificationsCount}
-          badgeColor={theme.colors.peach}
         >
           <BellIcon color={theme.colors.text} />
         </HomeCircleButton>
