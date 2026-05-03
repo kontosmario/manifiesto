@@ -1,15 +1,20 @@
 import {
-  Animated,
-  Easing,
   StyleSheet,
   Text,
   TextInput,
   View,
   type TextInputProps,
 } from 'react-native'
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { forwardRef, type ReactNode, useEffect, useState } from 'react'
-import { USE_NATIVE_DRIVER } from '@/lib/runtime-environment'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
 
@@ -32,56 +37,61 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
   ref,
 ) {
   const [isFocused, setFocused] = useState(false)
-  const [focusProgress] = useState(() => new Animated.Value(0))
+  // Reanimated SharedValue runs on the UI thread, matching the rest
+  // of the app's motion runtime. Previously this used RN's Animated
+  // (JS-driven unless useNativeDriver: true), which split the runtime
+  // and made focus animations un-interruptible by Reanimated worklets
+  // running elsewhere on screen.
+  const focusProgress = useSharedValue(0)
 
   useEffect(() => {
-    const animation = Animated.timing(focusProgress, {
-      toValue: isFocused ? 1 : 0,
-      duration: reducedMotion ? 0 : isFocused ? 180 : 140,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: USE_NATIVE_DRIVER,
+    const duration = reducedMotion
+      ? 0
+      : isFocused
+        ? motionDurations.quick   // 180ms enter
+        : motionDurations.micro   // 120ms exit (~67% of enter)
+    focusProgress.value = withTiming(isFocused ? 1 : 0, {
+      duration,
+      easing: motionEasings.decelerate,
     })
-
-    animation.start()
-
-    return () => {
-      animation.stop()
-    }
   }, [focusProgress, isFocused, reducedMotion])
+
+  const fillAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: focusProgress.value,
+    transform: [
+      {
+        scale: interpolate(
+          focusProgress.value,
+          [0, 1],
+          [0.985, 1],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }))
+
+  const outlineAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: focusProgress.value,
+  }))
 
   return (
     <View style={[styles.fieldBlock, dense && styles.fieldBlockDense]}>
       <Text style={[styles.fieldLabel, dense && styles.fieldLabelDense]}>{label}</Text>
       <View style={[styles.fieldShell, dense && styles.fieldShellDense]}>
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.fieldFocusFill,
             dense && styles.fieldFocusFillDense,
-            {
-              pointerEvents: 'none',
-              opacity: focusProgress,
-              transform: [
-                {
-                  scale: focusProgress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.985, 1],
-                  }),
-                },
-              ],
-            },
+            fillAnimatedStyle,
           ]}
         />
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.fieldFocusOutline,
             dense && styles.fieldFocusOutlineDense,
-            {
-              pointerEvents: 'none',
-              opacity: focusProgress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 1],
-              }),
-            },
+            outlineAnimatedStyle,
           ]}
         />
         <TextInput
