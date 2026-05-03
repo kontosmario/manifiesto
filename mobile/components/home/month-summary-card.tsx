@@ -114,11 +114,11 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   // default tint is mint (top-category is informational, not urgent).
   const variablesTone = useMemo<PanelTone>(
     () => ({
-      label: theme.isDark ? '#F2B58A' : '#C25A3E',
+      label: theme.isDark ? '#F8D1C3' : '#B84014',
       border: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)',
-      bandBg: theme.isDark ? 'rgba(158,224,178,0.12)' : 'rgba(110,224,154,0.12)',
-      bandIconBg: theme.isDark ? 'rgba(158,224,178,0.22)' : 'rgba(110,224,154,0.20)',
-      bandIconFg: theme.isDark ? '#9EE0B2' : '#2E7D5B',
+      bandBg: theme.isDark ? 'rgba(166,239,143,0.12)' : 'rgba(166,239,143,0.12)',
+      bandIconBg: theme.isDark ? 'rgba(166,239,143,0.22)' : 'rgba(166,239,143,0.20)',
+      bandIconFg: theme.isDark ? '#A6EF8F' : '#297811',
       pillBg: 'transparent',
       pillFg: 'transparent',
     }),
@@ -129,11 +129,11 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   // mint too, but flips to peach when the next fijo is imminent.
   const fijosTone = useMemo<PanelTone>(
     () => ({
-      label: theme.isDark ? '#9EE0B2' : '#2E7D5B',
+      label: theme.isDark ? '#A6EF8F' : '#297811',
       border: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)',
-      bandBg: theme.isDark ? 'rgba(158,224,178,0.12)' : 'rgba(110,224,154,0.12)',
-      bandIconBg: theme.isDark ? 'rgba(158,224,178,0.22)' : 'rgba(110,224,154,0.20)',
-      bandIconFg: theme.isDark ? '#9EE0B2' : '#2E7D5B',
+      bandBg: theme.isDark ? 'rgba(166,239,143,0.12)' : 'rgba(166,239,143,0.12)',
+      bandIconBg: theme.isDark ? 'rgba(166,239,143,0.22)' : 'rgba(166,239,143,0.20)',
+      bandIconFg: theme.isDark ? '#A6EF8F' : '#297811',
       pillBg: 'transparent',
       pillFg: 'transparent',
     }),
@@ -155,12 +155,12 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
     !variablesChip && variablesTrendPct
       ? trendUp
         ? {
-            bg: theme.isDark ? 'rgba(242,181,138,0.20)' : 'rgba(232,151,106,0.16)',
-            fg: theme.isDark ? '#F2B58A' : '#C25A3E',
+            bg: theme.isDark ? 'rgba(242,167,140,0.20)' : 'rgba(242,167,140,0.16)',
+            fg: theme.isDark ? '#F8D1C3' : '#B84014',
           }
         : {
-            bg: theme.isDark ? 'rgba(158,224,178,0.20)' : 'rgba(110,224,154,0.16)',
-            fg: theme.isDark ? '#9EE0B2' : '#2E7D5B',
+            bg: theme.isDark ? 'rgba(166,239,143,0.20)' : 'rgba(166,239,143,0.16)',
+            fg: theme.isDark ? '#A6EF8F' : '#297811',
           }
       : null
 
@@ -187,8 +187,8 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
         : null
   const fijosPillTone: PillTone | null = fijosPillText
     ? {
-        bg: theme.isDark ? 'rgba(242,181,138,0.20)' : 'rgba(232,151,106,0.16)',
-        fg: theme.isDark ? '#F2B58A' : '#C25A3E',
+        bg: theme.isDark ? 'rgba(242,167,140,0.20)' : 'rgba(242,167,140,0.16)',
+        fg: theme.isDark ? '#F8D1C3' : '#B84014',
       }
     : null
 
@@ -197,9 +197,9 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   const fijosBandTone =
     fijosChip && fijosChip.daysUntil <= 1
       ? {
-          bg: theme.isDark ? 'rgba(242,181,138,0.16)' : 'rgba(232,151,106,0.14)',
-          iconBg: theme.isDark ? 'rgba(242,181,138,0.26)' : 'rgba(232,151,106,0.22)',
-          iconFg: theme.isDark ? '#F2B58A' : '#C25A3E',
+          bg: theme.isDark ? 'rgba(242,167,140,0.16)' : 'rgba(242,167,140,0.14)',
+          iconBg: theme.isDark ? 'rgba(242,167,140,0.26)' : 'rgba(242,167,140,0.22)',
+          iconFg: theme.isDark ? '#F8D1C3' : '#B84014',
         }
       : {
           bg: fijosTone.bandBg,
