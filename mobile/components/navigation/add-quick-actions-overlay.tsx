@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Modal,
   Pressable,
@@ -67,6 +67,14 @@ export function AddQuickActionsOverlay({
   // before the spring had a chance to play — and the petals would
   // just vanish on scrim tap.
   const [mounted, setMounted] = useState(false)
+  // Set by the petal's onSelect right before triggering the dismiss
+  // so the next render's effect skips the spring and unmounts the
+  // overlay on the same frame. Selecting a petal hands the user's
+  // attention off to the new route's entrance animation; a slow
+  // retraction here would just compete with it. Tap-on-scrim still
+  // takes the spring path because there's no follow-up animation
+  // to absorb the user's focus.
+  const skipNextExitRef = useRef(false)
 
   useEffect(() => {
     if (reduced) {
@@ -80,6 +88,12 @@ export function AddQuickActionsOverlay({
       // `motionSprings.radialEnter` — soft enough that each petal
       // lands with a hint of bounce as it settles into the fan.
       progress.value = withSpring(1, motionSprings.radialEnter)
+    } else if (skipNextExitRef.current) {
+      // Petal selected — instant collapse so the next route's
+      // entrance has the stage to itself.
+      skipNextExitRef.current = false
+      progress.value = 0
+      setMounted(false)
     } else {
       // `motionSprings.radialExit` — critically damped so the petals
       // retract into the FAB without oscillating past zero, and a
@@ -152,10 +166,14 @@ export function AddQuickActionsOverlay({
               reduced={reduced}
               onSelect={() => {
                 void triggerHaptic('selection')
+                // Flip the skip flag *before* onDismiss so the effect
+                // triggered by the parent's setVisible(false) takes
+                // the instant-collapse branch instead of the spring.
+                skipNextExitRef.current = true
                 onDismiss()
-                // Run the action after the dismiss starts so the user
-                // sees the petals collapse before the next screen pushes.
-                requestAnimationFrame(action.onPress)
+                // Push the route synchronously — the modal/sheet's
+                // own entrance animation now owns the user's focus.
+                action.onPress()
               }}
               theme={theme}
             />
