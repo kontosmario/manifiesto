@@ -8,8 +8,9 @@ interface HomeAssistantButtonProps {
   pendingCount?: number
 }
 
-// Mint accent (matches the assistant's identity inside the sheet).
-const ACCENT = '#C7EE9C'
+// V1 mint accent — primaryScale[300]. Matches the assistant's identity
+// inside the sheet and the new Mint Saturado brand baseline.
+const ACCENT = '#A6EF8F'
 
 /**
  * Header button that opens the Asistente sheet. Adopts the same chrome
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     // Mint-tinted shadow vs. the dark shadow on bell/sliders. Same
     // depth, different hue — subliminal cue.
-    boxShadow: '0px 2px 8px rgba(199, 238, 156, 0.20)',
+    boxShadow: '0px 2px 8px rgba(166, 239, 143, 0.20)',
   },
   ring: {
     position: 'absolute',
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 999,
     borderWidth: 1.2,
-    borderColor: 'rgba(199, 238, 156, 0.32)',
+    borderColor: 'rgba(166, 239, 143, 0.32)',
   },
   iconWrap: {
     width: 22,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#0F2A1E',
+    color: '#12211A',
     letterSpacing: -0.2,
   },
 })

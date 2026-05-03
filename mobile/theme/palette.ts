@@ -179,8 +179,8 @@ const lightColors: ThemeColors = {
   surfaceStrong:      '#E4DFD3',
   border:             'rgba(15,46,31,0.08)',
   borderStrong:       'rgba(15,46,31,0.15)',
-  text:               '#0F2E1F',
-  textMuted:          '#6B7566',
+  text:               '#12211A',  // V1 — surface-950
+  textMuted:          '#3B6D57',  // V1 — surface-700 (neutral muted, AA on cream)
   textSoft:           '#7A8A7D',
   primary:            brand.deep,
   primaryStrong:      '#0A2016',
@@ -199,7 +199,7 @@ const lightColors: ThemeColors = {
   creamCard:          '#FFFBF2',
   line:               '#EFE8D9',
   lineSoft:           '#E9E1D3',
-  peach:              '#F2B58A',
+  peach:              '#EC7A51',  // V1 — accent-400
   peachSoft:          '#FADFC8',
   peachBand:          '#FADFC8',
   greenBand:          '#D6EFBA',
@@ -221,8 +221,8 @@ const darkColors: ThemeColors = {
   surfaceStrong:      '#17301F',
   border:             'rgba(255,255,255,0.06)',
   borderStrong:       'rgba(255,255,255,0.12)',
-  text:               '#F8FBF8',
-  textMuted:          '#B8C9BE',
+  text:               '#F2EAD3',  // V1 — cream foundation
+  textMuted:          '#A6EF8F',  // V1 — primary-300 (branded muted on dark)
   textSoft:           '#8BA797',
   primary:            brand.bright,
   primaryStrong:      '#9AE8BD',
@@ -238,10 +238,10 @@ const darkColors: ThemeColors = {
   heroText:           '#F6FBEF',
   cream:              '#0A1410',
   creamSoft:          '#0E1A15',
-  creamCard:          '#13221B',
+  creamCard:          '#305A47',  // V1 — surface-800 (cards readable on dark forest)
   line:               '#1F332A',
   lineSoft:           '#16261E',
-  peach:              '#E8976A',
+  peach:              '#F2A78C',  // V1 — accent-300
   peachSoft:          '#3A2A22',
   peachBand:          '#3A2A22',
   greenBand:          '#1E3A28',

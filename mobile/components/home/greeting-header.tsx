@@ -45,16 +45,16 @@ export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingH
 
 const SunIcon = () => (
   <Svg width={22} height={22} viewBox="0 0 24 24">
-    <Circle cx={12} cy={12} r={4} fill="#F2B58A" />
-    <G stroke="#F2B58A" strokeWidth={1.8} strokeLinecap="round">
+    <Circle cx={12} cy={12} r={4} fill="#F2A78C" />
+    <G stroke="#F2A78C" strokeWidth={1.8} strokeLinecap="round">
       <Path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" />
     </G>
   </Svg>
 )
 const SunLowIcon = () => (
   <Svg width={22} height={22} viewBox="0 0 24 24">
-    <Circle cx={12} cy={14} r={4} fill="#E08E63" />
-    <G stroke="#E08E63" strokeWidth={1.8} strokeLinecap="round">
+    <Circle cx={12} cy={14} r={4} fill="#EC7A51" />
+    <G stroke="#EC7A51" strokeWidth={1.8} strokeLinecap="round">
       <Path d="M4 18h16M12 7v2M6 9l1.4 1.4M18 9l-1.4 1.4" />
     </G>
   </Svg>
