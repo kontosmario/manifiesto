@@ -363,7 +363,15 @@ export function HomeDashboard({
   const handleTopCategoryFallbackPress = useCallback(() => {
     onMarkTapped?.()
     void triggerHaptic('selection')
-    router.push('/(app)/(tabs)/add')
+    // Direct push to the modal route (same pattern the Fijos empty
+    // band uses). Pushing to the `(tabs)/add` placeholder works
+    // functionally — that route is just a `<Redirect>` to
+    // `/(app)/add-expense` — but it briefly mounts the tab, then
+    // navigates again, which makes the empty-state CTA feel
+    // qualitatively different from "Cargá tu primer gasto fijo"
+    // (which goes straight to its modal). Skipping the redirect
+    // gives both bands the same modal presentation animation.
+    router.push('/(app)/add-expense')
   }, [router, onMarkTapped])
   const handleTopCategoryPress = useCallback(
     (categoryId: string) => {
