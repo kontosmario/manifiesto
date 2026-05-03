@@ -19,6 +19,12 @@ export interface OnboardingDraft {
   firstGoalTitle: string
   firstGoalTargetRaw: string
   firstGoalMonths: number
+  /** Joiner-only flag. `null` until the user makes a choice in step 4
+   *  of the joiner flow. `true` → the user contributes income (sums
+   *  to the household total via the `monthly_income_contribution`
+   *  trigger); `false` → no contribution recorded (e.g. child,
+   *  unemployed partner). Ignored on the creator path. */
+  contributesIncome: boolean | null
 }
 
 type Action =
@@ -35,6 +41,7 @@ type Action =
   | { type: 'setFirstGoalTitle'; value: string }
   | { type: 'setFirstGoalTarget'; value: string }
   | { type: 'setFirstGoalMonths'; value: number }
+  | { type: 'setContributesIncome'; value: boolean | null }
 
 function createInitialDraft(): OnboardingDraft {
   return {
@@ -51,6 +58,7 @@ function createInitialDraft(): OnboardingDraft {
     firstGoalTitle: '',
     firstGoalTargetRaw: '',
     firstGoalMonths: 6,
+    contributesIncome: null,
   }
 }
 
@@ -93,6 +101,14 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
       return { ...state, firstGoalTargetRaw: action.value }
     case 'setFirstGoalMonths':
       return { ...state, firstGoalMonths: action.value }
+    case 'setContributesIncome':
+      // When the joiner toggles off "aporta", clear the income they
+      // may have typed earlier so a stale value doesn't get written
+      // on submit. Toggling on doesn't reset because they may want
+      // to re-enter what they had.
+      return action.value === false
+        ? { ...state, contributesIncome: false, monthlyIncomeRaw: '' }
+        : { ...state, contributesIncome: action.value }
     default:
       return state
   }
@@ -120,6 +136,8 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
       setFirstGoalTitle: (value: string) => dispatch({ type: 'setFirstGoalTitle', value }),
       setFirstGoalTarget: (value: string) => dispatch({ type: 'setFirstGoalTarget', value }),
       setFirstGoalMonths: (value: number) => dispatch({ type: 'setFirstGoalMonths', value }),
+      setContributesIncome: (value: boolean | null) =>
+        dispatch({ type: 'setContributesIncome', value }),
     }),
     [],
   )

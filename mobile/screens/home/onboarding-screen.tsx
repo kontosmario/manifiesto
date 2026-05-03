@@ -22,7 +22,9 @@ import {
 } from '@/components/home/onboarding/step-chrome'
 import { StepAvatar } from '@/components/home/onboarding/step-avatar'
 import { StepFamily } from '@/components/home/onboarding/step-family'
+import { StepFamilySummary } from '@/components/home/onboarding/step-family-summary'
 import { StepIncome } from '@/components/home/onboarding/step-income'
+import { StepIncomeContribution } from '@/components/home/onboarding/step-income-contribution'
 import { StepSavings } from '@/components/home/onboarding/step-savings'
 import { StepWelcome } from '@/components/home/onboarding/step-welcome'
 import type { AvatarSlug } from '@/assets/avatars'
@@ -33,6 +35,7 @@ import {
   type OnboardingStepId,
 } from '@/features/onboarding/use-onboarding-state'
 import { useFamilyFinance, useUpsertFamilyFinance } from '@/features/finance/use-family-finance'
+import { useUpdateMyIncomeContribution } from '@/features/family/use-family-actions'
 import { buildFamilyFinanceInput } from '@/features/finance/use-family-finance'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useQueryClient } from '@tanstack/react-query'
@@ -118,6 +121,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const updateAvatar = useUpdateAvatarAnimal(userId)
   const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined)
   const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '')
+  const updateContribution = useUpdateMyIncomeContribution(userId, state.familyId ?? undefined)
   const completeOnboarding = useCompleteOnboarding(userId)
 
   const [numpadTarget, setNumpadTarget] = useState<'income' | 'goal' | null>(null)
@@ -146,6 +150,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
   })()
 
+  const isJoiner = state.familyMode === 'joined'
+
   const canContinue = (() => {
     switch (step) {
       case 1:
@@ -155,8 +161,19 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       case 3:
         return state.familyMode !== 'none' && !!state.familyId
       case 4:
+        if (isJoiner) {
+          // Joiner: needs to make an explicit choice. If they
+          // contribute, the amount must be > 0; if not, no amount
+          // needed.
+          if (state.contributesIncome === null) return false
+          if (state.contributesIncome === true) return monthlyIncome > 0
+          return true
+        }
         return monthlyIncome > 0 && state.salaryPaymentDay >= 1 && state.salaryPaymentDay <= 31
       case 5: {
+        // Joiner step 5 is the family summary — always ready to
+        // confirm.
+        if (isJoiner) return true
         if (!state.createFirstGoal) return true
         const parsedGoal = parsePrice(state.firstGoalTargetRaw)
         return (
@@ -220,6 +237,22 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     }
     setSubmitting(true)
     try {
+      // Joiner path: skip the family_finance upsert (the household
+      // already has its salary day, savings goal etc. configured by
+      // the creator). Only record the joiner's personal income
+      // contribution — the trigger updates `family_finance.monthly_income`
+      // automatically — then mark onboarding complete.
+      if (state.familyMode === 'joined') {
+        const contribution =
+          state.contributesIncome === true ? monthlyIncome : 0
+        await updateContribution.mutateAsync(contribution)
+        await completeOnboarding.mutateAsync()
+        void triggerHaptic('success')
+        showAuthTransitionSplash()
+        router.replace('/(app)/(tabs)/home')
+        return
+      }
+
       const baseSnapshot = {
         dailyBudgetBufferMode: existingFinance?.daily_budget_buffer_mode ?? 'none',
         dailyBudgetBufferValue: existingFinance?.daily_budget_buffer_value ?? 0,
@@ -284,6 +317,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     }
   }, [
     state.familyId,
+    state.familyMode,
+    state.contributesIncome,
     state.savingsGoalPercent,
     state.salaryPaymentDay,
     state.createFirstGoal,
@@ -294,6 +329,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     existingFinance,
     upsertFinance,
     upsertSavingsGoal,
+    updateContribution,
     completeOnboarding,
     router,
   ])
@@ -353,8 +389,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   ])
 
   const primaryLabel = (() => {
-    if (submitting) return 'Terminando…'
-    if (step === 5) return 'Terminar y empezar'
+    if (submitting) return isJoiner ? 'Confirmando…' : 'Terminando…'
+    if (step === 5) return isJoiner ? 'Confirmar y unirme' : 'Terminar y empezar'
     return 'Siguiente'
   })()
 
@@ -618,6 +654,20 @@ function renderStep(
         />
       )
     case 4:
+      // Branch: joiners get the contribution toggle, creators see the
+      // standard household-level income + salary day.
+      if (state.familyMode === 'joined') {
+        return (
+          <StepIncomeContribution
+            contributesIncome={state.contributesIncome}
+            monthlyIncomeRaw={state.monthlyIncomeRaw}
+            onChangeContributesIncome={actions.setContributesIncome}
+            onRequestNumpad={ctx.openIncomeNumpad}
+            isNumpadActive={ctx.numpadTarget === 'income'}
+            amountCardRef={ctx.setIncomeAmountCardRef}
+          />
+        )
+      }
       return (
         <StepIncome
           monthlyIncomeRaw={state.monthlyIncomeRaw}
@@ -629,6 +679,17 @@ function renderStep(
         />
       )
     case 5:
+      // Joiner step 5 = family summary + Confirmar y unirme.
+      if (state.familyMode === 'joined' && state.familyId) {
+        return (
+          <StepFamilySummary
+            familyId={state.familyId}
+            userId={ctx.userId}
+            contributesIncome={state.contributesIncome}
+            monthlyIncomeRaw={state.monthlyIncomeRaw}
+          />
+        )
+      }
       return (
         <StepSavings
           monthlyIncome={ctx.monthlyIncome}
