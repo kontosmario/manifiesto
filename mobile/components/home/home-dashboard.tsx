@@ -267,11 +267,6 @@ export function HomeDashboard({
     [familyId, telemetrySessionId, onMarkTapped],
   )
 
-  const handleAddExpense = useCallback(() => {
-    void triggerHaptic('light')
-    trackTap('activity_empty_cta', 'S7', '/(app)/(tabs)/add')
-    router.push('/(app)/(tabs)/add')
-  }, [router, trackTap])
   const handleViewGastos = useCallback(() => {
     trackTap('month_summary_variables', 'S5', '/(app)/(tabs)/expenses')
     router.push('/(app)/(tabs)/expenses')
@@ -540,7 +535,6 @@ export function HomeDashboard({
         onDelete={handleDeleteExpenseTracked}
         pendingExpenseId={pendingDeleteExpenseId ?? null}
         onRetry={handleActivityRetry}
-        onAddFirst={handleAddExpense}
       />
 
       <View style={styles.bottomSpacer} />

@@ -18,7 +18,6 @@ interface HomeActivitySectionProps {
   errorKind?: DashboardErrorKind
   onDelete: (expenseId: string) => void
   onRetry: () => void
-  onAddFirst: () => void
   /** Expense id currently being deleted (mutation in flight). */
   pendingExpenseId?: string | null
 }
@@ -37,7 +36,6 @@ function HomeActivitySectionImpl({
   errorKind,
   onDelete,
   onRetry,
-  onAddFirst,
   pendingExpenseId,
 }: HomeActivitySectionProps) {
   if (isLoading) {
@@ -60,7 +58,6 @@ function HomeActivitySectionImpl({
       <EmptyState
         icon="receipt-long"
         stateKey="expensesThisCycle"
-        action={{ label: 'Registrar primer gasto', onPress: onAddFirst }}
       />
     )
   }
