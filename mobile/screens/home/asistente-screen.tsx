@@ -56,12 +56,7 @@ import {
 } from '@/features/insights/control-dismiss-store'
 import {
   TYPE_TONES,
-  bubbleHeadline,
-  bubbleIntro,
   bubbleType,
-  confidenceDots,
-  confidenceLabel,
-  impactChipLabel,
   type BubbleType,
 } from '@/components/control-v2/asesor-bubble-meta'
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
@@ -890,20 +885,17 @@ function ChatMessage({
   const type = bubbleType(task)
   const tone = TYPE_TONES[type]
   const isCritical = task.urgency === 'alta'
-  const intro = bubbleIntro(task)
-  const headline = bubbleHeadline(task)
   const icon = iconForSignal(task.id)
-  const meta = getActionMeta(task.action)
   const ctaLabel = resolveCtaLabel(task.cta, task.action)
   const isDismissAction = task.action?.kind === 'dismiss'
+  // Impact text color follows the signal type — `warning` (red flags
+  // like price hikes / drains) reads in peach, everything else in
+  // forest green. Keeps the impact line legible on the cream surface
+  // without a distracting pill chip.
+  const impactColor = type === 'warning' ? '#C25A3E' : '#2E7D5B'
 
   return (
     <View style={styles.message}>
-      <View style={styles.messageIntroRow}>
-        <Text style={styles.messageIntro}>{intro}</Text>
-        <Text style={styles.messageStamp}>· ahora</Text>
-      </View>
-
       <Pressable
         onPress={onPressBubble}
         onLongPress={onLongPressBubble}
@@ -919,116 +911,56 @@ function ChatMessage({
                 ? tone.accent
                 : isCritical
                   ? `${tone.accent}AA`
-                  : 'rgba(15,42,30,0.12)',
+                  : 'rgba(15,42,30,0.10)',
               backgroundColor: '#FFFBF2',
               shadowColor: tone.accent,
-              shadowOpacity: isActive ? 0.32 : 0.18,
-              shadowRadius: isActive ? 16 : 10,
+              shadowOpacity: isActive ? 0.28 : 0.12,
+              shadowRadius: isActive ? 16 : 8,
             },
           ]}
         >
-          <View style={styles.bubbleTop}>
+          <View style={styles.bubbleHead}>
             <View
               style={[
                 styles.bubbleIconTile,
                 { backgroundColor: tone.bg },
               ]}
             >
-              <MaterialIcons name={icon} size={13} color={tone.fg} />
+              <MaterialIcons name={icon} size={18} color={tone.fg} />
             </View>
-            <Text
-              style={[styles.bubbleHeadline, { color: tone.fg }]}
-              numberOfLines={1}
-            >
-              {headline.toUpperCase()}
+            <Text style={styles.bubbleTitle} numberOfLines={2}>
+              {task.title}
             </Text>
-            {isCritical ? (
-              <View
-                style={[styles.urgentBadge, { backgroundColor: tone.fg }]}
-              >
-                <Text style={styles.urgentBadgeText}>URGENTE</Text>
-              </View>
-            ) : null}
           </View>
 
-          <Text style={styles.bubbleTitle} numberOfLines={3}>
-            {task.title}
-          </Text>
           <Text style={styles.bubbleBody} numberOfLines={4}>
             {task.body}
           </Text>
 
-          <View
-            style={[
-              styles.impactBar,
-              {
-                backgroundColor: tone.soft,
-                borderColor: tone.edge,
-              },
-            ]}
+          <Text
+            style={[styles.impactLine, { color: impactColor }]}
+            numberOfLines={1}
           >
-            <Text
-              style={[styles.impactBarLabel, { color: tone.fg }]}
-              numberOfLines={1}
-            >
-              {impactChipLabel(task)}
-            </Text>
-            <Text style={[styles.impactBarValue, { color: tone.fg }]}>
-              {task.impact}
-            </Text>
-          </View>
-
-          <View style={styles.bubbleFooter}>
-            <Text style={styles.confidenceDots}>
-              {confidenceDots(task.confidence)}
-            </Text>
-            <Text style={styles.confidenceLabel}>
-              {confidenceLabel(task.confidence)}
-            </Text>
-            {task.dataDays > 0 ? (
-              <>
-                <Text style={styles.confidenceSep}>·</Text>
-                <Text style={styles.confidenceBuilder}>
-                  {task.dataDays}d de datos
-                </Text>
-              </>
-            ) : null}
-          </View>
+            {task.impact}
+          </Text>
         </View>
       </Pressable>
 
-      {/* Quick replies (CTA + Visto) */}
+      {/* Primary action + Visto */}
       <View style={styles.replies}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${ctaLabel} para ${task.title}`}
           onPress={onAction}
           style={({ pressed }) => [
-            styles.replyCtaWrap,
-            { opacity: pressed ? 0.9 : 1 },
+            styles.replyCta,
+            { opacity: pressed ? 0.92 : 1 },
           ]}
         >
-          <LinearGradient
-            colors={[tone.accent, tone.fg]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.replyCta}
-          >
-            <Text
-              style={[
-                styles.replyCtaText,
-                { color: type === 'warning' ? '#0F2A1E' : '#FFFFFF' },
-              ]}
-              numberOfLines={1}
-            >
-              {ctaLabel}
-            </Text>
-            <MaterialIcons
-              name={meta.icon}
-              size={12}
-              color={type === 'warning' ? '#0F2A1E' : '#FFFFFF'}
-            />
-          </LinearGradient>
+          <Text style={styles.replyCtaText} numberOfLines={1}>
+            {ctaLabel}
+          </Text>
+          <MaterialIcons name="arrow-forward" size={14} color="#FFFBF2" />
         </Pressable>
         {!isDismissAction ? (
           <Pressable
@@ -1433,175 +1365,98 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 14,
   },
-  messageIntroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 6,
-    marginBottom: 4,
-  },
-  messageIntro: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: TEXT_TERTIARY,
-    letterSpacing: 0.2,
-  },
-  messageStamp: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: 'rgba(246,251,239,0.30)',
-  },
   bubble: {
-    borderWidth: 1.5,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderBottomRightRadius: 18,
-    borderBottomLeftRadius: 4,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    gap: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
-  bubbleTop: {
+  bubbleHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: 12,
   },
   bubbleIconTile: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bubbleHeadline: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.3,
-    flexShrink: 1,
-  },
-  urgentBadge: {
-    marginLeft: 'auto',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
-  urgentBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    color: '#FFFFFF',
+    flexShrink: 0,
   },
   bubbleTitle: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F2A1E',
-    letterSpacing: -0.2,
-    lineHeight: 19,
+    letterSpacing: -0.4,
+    lineHeight: 22,
   },
   bubbleBody: {
-    fontSize: 12,
-    color: '#3E5A4A',
-    lineHeight: 17,
-    marginTop: 6,
+    fontSize: 14,
+    color: 'rgba(15,42,30,0.78)',
+    lineHeight: 20,
     fontWeight: '500',
   },
-  impactBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: 11,
-  },
-  impactBarLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    flexShrink: 1,
-  },
-  impactBarValue: {
+  impactLine: {
     fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: -0.3,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
+    paddingTop: 2,
   },
-  bubbleFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    flexWrap: 'wrap',
-  },
-  confidenceDots: {
-    fontSize: 9,
-    color: '#9AA39D',
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  confidenceLabel: {
-    fontSize: 9,
-    color: '#9AA39D',
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  confidenceSep: {
-    fontSize: 9,
-    color: '#C9C0AB',
-  },
-  confidenceBuilder: {
-    fontSize: 9,
-    color: '#9AA39D',
-    fontWeight: '600',
-  },
-  // Replies
+  // Primary action + Visto. Placed below the card so the touch
+  // surface stays distinct from the card's tap-to-expand.
   replies: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 6,
-    marginTop: 6,
-    paddingRight: 6,
-    flexWrap: 'wrap',
-  },
-  replyCtaWrap: {
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 4,
-    overflow: 'hidden',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingRight: 4,
   },
   replyCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minHeight: 44,
+    borderRadius: 999,
+    backgroundColor: '#0E3A26',
+    shadowColor: '#0E3A26',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 2,
   },
   replyCtaText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     letterSpacing: -0.1,
+    color: '#FFFBF2',
   },
   replySeen: {
-    backgroundColor: 'rgba(255,251,242,0.12)',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    minHeight: 44,
+    borderRadius: 999,
+    backgroundColor: 'rgba(15,42,30,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(246,251,239,0.18)',
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 4,
+    borderColor: 'rgba(15,42,30,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   replySeenText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
-    color: TEXT_SECONDARY,
+    color: 'rgba(15,42,30,0.72)',
+    letterSpacing: -0.1,
   },
   // Empty state
   emptyState: {
