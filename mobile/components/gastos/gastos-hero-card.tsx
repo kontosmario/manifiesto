@@ -123,7 +123,7 @@ export function GastosHeroCard({
                   items={topCategories}
                   textColor={theme.colors.heroText}
                   mutedColor={theme.colors.heroMuted2}
-                  trackColor="rgba(246,251,239,0.12)"
+                  trackColor="rgba(242,234,211,0.12)"
                 />
               </View>
             </Animated.View>
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(199,238,156,0.12)',
+    borderColor: 'rgba(166,239,143,0.12)',
   },
   topRow: {
     flexDirection: 'row',

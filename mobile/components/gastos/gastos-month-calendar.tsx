@@ -308,7 +308,7 @@ function DayCell({
     bg = 'transparent'
     color = theme.colors.textSoft
     borderStyle = 'dashed'
-    borderColor = theme.isDark ? 'rgba(246,251,239,0.14)' : 'rgba(15,42,30,0.16)'
+    borderColor = theme.isDark ? 'rgba(242,234,211,0.14)' : 'rgba(18,33,26,0.16)'
   }
 
   return (
@@ -338,15 +338,31 @@ function DayCell({
 }
 
 function getMoodStyle(mood: GastosDayMood | undefined, isDark: boolean): { bg: string; color: string } {
+  // V1 heat-tone mapping (calendar cells, AA verified on each pair):
+  //   green  → primary family (low spend / good)
+  //   amber  → accent soft (moderate)
+  //   red    → accent stronger (high — but coral, not "danger red")
   switch (mood) {
     case 'green':
-      return { bg: isDark ? '#1E3A28' : '#DDEFE3', color: isDark ? '#C7EE9C' : '#2E7D5B' }
+      return {
+        bg:    isDark ? '#244235' : '#EAFBE4',  // surface-900 / primary-100
+        color: isDark ? '#A6EF8F' : '#297811',  // primary-300 / primary-800
+      }
     case 'amber':
-      return { bg: isDark ? '#3A2A22' : '#FADFC8', color: isDark ? '#F2B58A' : '#6B3A4F' }
+      return {
+        bg:    isDark ? '#5C200A' : '#FCEAE3',  // accent-900 / accent-100
+        color: isDark ? '#F2A78C' : '#7C2B0E',  // accent-300 / accent-800
+      }
     case 'red':
-      return { bg: isDark ? '#3A241E' : '#F5C6B6', color: isDark ? '#E8976A' : '#A3452A' }
+      return {
+        bg:    isDark ? '#2E1005' : '#F8D1C3',  // accent-950 / accent-200
+        color: isDark ? '#F8D1C3' : '#5C200A',  // accent-200 / accent-900
+      }
     default:
-      return { bg: 'transparent', color: isDark ? '#6A7A70' : '#9AA39D' }
+      return {
+        bg:    'transparent',
+        color: isDark ? '#A6EF8F' : '#3B6D57',  // primary-300 / surface-700 (textMuted family)
+      }
   }
 }
 
