@@ -13,9 +13,10 @@ interface HomeAssistantButtonProps {
 // preserved in both via the same hue at different lightness.
 const ICON_MINT_LIGHT = '#297811'  // primary-800 (5.37:1 on creamCard light)
 const ICON_MINT_DARK = '#A6EF8F'   // primary-300 (5.73:1 on creamCard dark)
-// V1 accent-600 — solid dark coral for the count badge bg. Cream-on-coral
-// gives 5.38:1 AA in both light and dark modes.
-const BADGE_BG = '#B84014'
+// V1 accent-300 — soft peach (not fire-red) for the count badge bg.
+// Dark text on top reads as subtle/informational, not warning. Same
+// hex as the bell badge so the two badges in the header rhyme.
+const BADGE_BG = '#F2A78C'
 
 /**
  * Header button that opens the Asistente sheet. Adopts the same chrome
@@ -92,10 +93,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    // Peach-tinted lifted shadow — gives the assistant button real
-    // presence on cream bg AND on dark forest bg. Stronger than the
-    // bell/settings shadow so the AI feature gets a literal "lift".
-    boxShadow: '0px 4px 14px rgba(184, 64, 20, 0.32)',
+    // Soft peach (accent-300) lifted shadow — gives the assistant
+    // button real presence on cream bg AND on dark forest bg, without
+    // looking like a fire/warning button. Same family as the badge.
+    boxShadow: '0px 4px 14px rgba(242, 167, 140, 0.40)',
   },
   ring: {
     position: 'absolute',
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 999,
     borderWidth: 1.4,
-    borderColor: 'rgba(184, 64, 20, 0.38)',
+    borderColor: 'rgba(242, 167, 140, 0.50)',
   },
   iconWrap: {
     width: 22,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#FFFBF2',  // V1 cream — AA on solid #B84014 in both modes
+    color: '#12211A',  // V1 surface-950 — AAA on accent-300 peach (11.47:1)
     letterSpacing: -0.2,
   },
 })
