@@ -66,10 +66,7 @@ interface PaymentDbRow {
 
 interface FamilyMemberDbRow {
   user_id: string
-  profiles:
-    | { display_name: string | null }[]
-    | { display_name: string | null }
-    | null
+  display_name: string | null
 }
 
 function pickOne<T>(value: T | T[] | null | undefined): T | null {
@@ -115,10 +112,41 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           .from('fixed_expense_payments')
           .select('id, fixed_expense_id, created_at, fixed_expenses!inner(family_id)')
           .eq('fixed_expenses.family_id', familyId),
-        supabase
-          .from('family_members')
-          .select('user_id, profiles(display_name)')
-          .eq('family_id', familyId),
+        // `family_members → profiles` has no PostgREST-discoverable
+        // FK (the join lives at the auth.users level), so the canonical
+        // pattern in this codebase is two queries: fetch member ids,
+        // then resolve display names from `profiles` by id. See
+        // `use-family-members-detail.ts` for the same shape.
+        (async (): Promise<{
+          data: FamilyMemberDbRow[] | null
+          error: Error | null
+        }> => {
+          const m = await supabase
+            .from('family_members')
+            .select('user_id')
+            .eq('family_id', familyId)
+          if (m.error) return { data: null, error: m.error }
+          const ids = (m.data ?? []).map((r) => r.user_id as string)
+          if (ids.length === 0) return { data: [], error: null }
+          const p = await supabase
+            .from('profiles')
+            .select('id, display_name')
+            .in('id', ids)
+          if (p.error) return { data: null, error: p.error }
+          const nameById = new Map<string, string | null>(
+            (p.data ?? []).map((row) => [
+              row.id as string,
+              typeof row.display_name === 'string' ? row.display_name : null,
+            ]),
+          )
+          return {
+            data: ids.map((user_id) => ({
+              user_id,
+              display_name: nameById.get(user_id) ?? null,
+            })),
+            error: null,
+          }
+        })(),
       ])
 
       if (fijos.error) throw fijos.error
@@ -180,13 +208,10 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
           }),
         ),
         members: (members.data ?? []).map(
-          (m: FamilyMemberDbRow): FamilyMemberRow => {
-            const profile = pickOne(m.profiles)
-            return {
-              userId: m.user_id,
-              name: profile?.display_name ?? '',
-            }
-          },
+          (m: FamilyMemberDbRow): FamilyMemberRow => ({
+            userId: m.user_id,
+            name: m.display_name ?? '',
+          }),
         ),
       }
     },
