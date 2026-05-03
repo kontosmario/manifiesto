@@ -19,6 +19,7 @@ import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionSprings, motionStagger } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
@@ -76,33 +77,26 @@ export function AddQuickActionsOverlay({
     }
     if (visible) {
       setMounted(true)
-      // Spring entrance — gives the fan an organic unfurl with a
-      // touch of bounce as petals settle. Damping kept above 12 so
-      // the bounce stays subtle (not toy-like).
-      progress.value = withSpring(1, {
-        damping: 14,
-        stiffness: 160,
-        mass: 0.9,
-      })
+      // `motionSprings.radialEnter` — soft enough that each petal
+      // lands with a hint of bounce as it settles into the fan.
+      progress.value = withSpring(1, motionSprings.radialEnter)
     } else {
-      // Spring dismiss — same family of motion as the entrance so
-      // it feels like one continuous gesture. Critically damped
-      // (damping = 2·√(stiffness·mass) = 24) so the petals retract
-      // cleanly into the FAB without oscillating past zero, and a
-      // slightly stiffer spring than the enter so the dismiss feels
-      // purposeful instead of laggy. The per-petal interpolation
-      // windows below run in reverse on the descending progress, so
-      // the rightmost petal retracts first and the leftmost last —
-      // mirroring the L→R unfurl on entry.
+      // `motionSprings.radialExit` — critically damped so the petals
+      // retract into the FAB without oscillating past zero, and a
+      // touch stiffer than the entrance so the dismiss feels
+      // purposeful. The per-petal interpolation windows below run
+      // in reverse on the descending progress, so the rightmost
+      // petal retracts first and the leftmost last — mirroring the
+      // L→R unfurl on entry.
       //
-      // The completion callback is what closes the loop with React:
-      // we keep the Modal mounted until the spring lands at 0, then
-      // hop back to JS to flip `mounted` and unmount. `finished` is
-      // false when a new animation interrupts (e.g. user re-opens
-      // mid-dismiss), so we only unmount on a clean landing.
+      // The completion callback closes the loop with React: we keep
+      // the Modal mounted until the spring lands at 0, then hop back
+      // to JS to flip `mounted` and unmount. `finished` is false when
+      // a new animation interrupts (e.g. user re-opens mid-dismiss),
+      // so we only unmount on a clean landing.
       progress.value = withSpring(
         0,
-        { damping: 24, stiffness: 180, mass: 0.8 },
+        motionSprings.radialExit,
         (finished) => {
           if (finished) {
             runOnJS(setMounted)(false)
@@ -193,10 +187,10 @@ function ActionPetal({
   const targetY = -FAN_RADIUS * Math.sin(angleRad)
 
   // Stagger the unfurl so the petals read sequentially L→R rather
-  // than all popping at once. 80ms per step is enough to register
-  // without slowing the open down.
-  const stagger = 0.08
-  const start = index * stagger
+  // than all popping at once. The token is unitless (a fraction of
+  // `progress`), so the petals' interpolation windows shift in lock-
+  // step with the parent spring instead of using wall-clock delays.
+  const start = index * motionStagger.fanProgress
   const end = Math.min(1, start + 0.7)
 
   const petalStyle = useAnimatedStyle(() => {

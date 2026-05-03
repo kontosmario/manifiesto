@@ -55,6 +55,13 @@ export const motionSprings = {
   // Tab content shift — barely-overshooting spring that matches the
   // pill indicator's motion profile. Stiff enough to feel snappy.
   tabShift:  { damping: 26, stiffness: 340, mass: 0.9 },
+  // Radial / fan menus (FAB speed-dial). Softer than `enter` so each
+  // petal lands with a touch of bounce, signalling "I just unfurled
+  // from the FAB". The exit pair is critically damped (24 = 2·√(180·0.8))
+  // so progress lands cleanly at 0 without oscillating past — petals
+  // retract into the FAB without a wobble.
+  radialEnter: { damping: 14, stiffness: 160, mass: 0.9 },
+  radialExit:  { damping: 24, stiffness: 180, mass: 0.8 },
 } as const
 
 export type MotionSpringKey = keyof typeof motionSprings
@@ -80,4 +87,10 @@ export const motionEasings = {
 export const motionStagger = {
   listItem: 40,
   section:  60,
+  // Per-petal entry offset for radial / fan menus. Unitless: a fraction
+  // of the parent `progress` (0 → 1) used as the start of each petal's
+  // interpolation window. With 3 petals at 0.08 spacing, the windows
+  // are [0, 0.7] / [0.08, 0.78] / [0.16, 0.86] — enough overlap to read
+  // as a single unfurl, enough offset to read as L→R sequence.
+  fanProgress: 0.08,
 } as const
