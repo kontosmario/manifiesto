@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
+import { AmountCard } from '@/components/home/amount-card'
+import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
+import { DescriptionRow } from '@/components/home/description-row'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { NumpadField } from '@/components/ui/numpad-field'
+import { Chip } from '@/components/ui/chip'
+import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { Screen } from '@/components/ui/screen'
 import {
   useCreateIncomeEvent,
@@ -13,12 +17,9 @@ import {
 } from '@/features/income/use-income-events'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
+import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
-import {
-  currencyFormatter,
-  formatPriceInputValue,
-  parsePrice,
-} from '@/utils/money'
+import { parsePrice } from '@/utils/money'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -30,60 +31,98 @@ interface AddIncomeScreenProps {
 interface KindMeta {
   key: IncomeEventKind
   label: string
-  hint: string
   icon: keyof typeof MaterialIcons.glyphMap
 }
 
 // Four constrained kinds — keeps server-side analytics tractable
-// while covering the realistic user mental model. Open-text
-// `description` field captures the rest ("Mariana cena de cumple",
-// "Aguinaldo Q1", etc.).
+// while covering the realistic mental model. Open-text `description`
+// captures the rest.
 const KINDS: KindMeta[] = [
-  { key: 'transfer', label: 'Transferencia',  hint: 'Te mandó alguien', icon: 'swap-horiz' },
-  { key: 'bonus',    label: 'Bono',           hint: 'Aguinaldo, premio', icon: 'workspace-premium' },
-  { key: 'gift',     label: 'Regalo',         hint: 'Cumple, ocasión',   icon: 'card-giftcard' },
-  { key: 'other',    label: 'Otro',           hint: 'Algo extra',         icon: 'attach-money' },
+  { key: 'transfer', label: 'Transferencia',  icon: 'swap-horiz' },
+  { key: 'bonus',    label: 'Bono',           icon: 'workspace-premium' },
+  { key: 'gift',     label: 'Regalo',         icon: 'card-giftcard' },
+  { key: 'other',    label: 'Otro',           icon: 'attach-money' },
 ]
 
-const SUGGESTED_AMOUNTS = [5000, 15000, 30000, 50000, 100000]
+const SUGGESTED_DELTAS = [5000, 15000, 30000, 50000, 100000]
+
+const QUICK_DESCRIPTIONS = [
+  'Transferencia',
+  'Aguinaldo',
+  'Bono trabajo',
+  'Regalo cumple',
+  'Freelance',
+  'Reintegro',
+]
 
 /**
- * One-time positive income capture. Single-step form: amount → kind
- * → optional description → date (default today). Lands in
- * `public.income_events`, sums into the cycle's "disponible" via
- * `useHomeMetrics` so the user actually sees the saldo bump.
+ * "Agregar ingreso" — visually mirrors `AddExpenseDashboard`. Same
+ * stack: AmountCard (opens InAppNumpad) → SuggestedAmountStrip →
+ * kind picker (4 tiles, same shape as category tiles) → description
+ * row → optional date chips → submit footer.
+ *
+ * Persists to `public.income_events`; the cycle's `availableToday`
+ * picks it up via `useCycleIncomeEventsTotal` in `useHomeMetrics`.
  */
 export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const headerPalette = buildScreenHeaderPalette(theme)
+
   const [rawAmount, setRawAmount] = useState('')
   const [kind, setKind] = useState<IncomeEventKind>('transfer')
   const [description, setDescription] = useState('')
-  // Day offset from today: 0 = hoy, 1 = ayer, 2 = anteayer. Three
-  // chips cover the realistic backdating window for one-time income
-  // (older events the user adds days/weeks later are an edge case
-  // we'll address when someone asks).
   const [dayOffset, setDayOffset] = useState<0 | 1 | 2>(0)
+  const [numpadVisible, setNumpadVisible] = useState(false)
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null)
+
+  const createMutation = useCreateIncomeEvent()
+  const parsedAmount = useMemo(() => parsePrice(rawAmount), [rawAmount])
+  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
+  const canSubmit = hasValidAmount && Boolean(kind)
+
   const eventDate = useMemo(() => {
     const d = new Date()
     d.setDate(d.getDate() - dayOffset)
     return d
   }, [dayOffset])
 
-  const createMutation = useCreateIncomeEvent()
-  const headerPalette = buildScreenHeaderPalette(theme)
-
-  const parsedAmount = useMemo(() => parsePrice(rawAmount), [rawAmount])
-  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
-
-  const handleAddSuggested = (delta: number) => {
+  // Same pattern as AddExpenseDashboard: any tap on a non-text
+  // control closes the keyboard so the form feels coherent.
+  const handleOpenNumpad = () => {
+    Keyboard.dismiss()
+    setNumpadVisible(true)
+  }
+  const handleAddQuickAmount = (delta: number) => {
+    Keyboard.dismiss()
     void triggerHaptic('selection')
     const next = (Number.isFinite(parsedAmount) ? parsedAmount : 0) + delta
     setRawAmount(String(Math.round(next)))
   }
+  const handleClearAmount = () => {
+    Keyboard.dismiss()
+    setRawAmount('')
+  }
+  const handleSelectKind = (next: IncomeEventKind) => {
+    Keyboard.dismiss()
+    void triggerHaptic('selection')
+    setKind(next)
+  }
+  const handleSelectDescriptionSuggestion = (value: string) => {
+    Keyboard.dismiss()
+    void triggerHaptic('selection')
+    setDescription(value)
+  }
+  const handleSelectDayOffset = (offset: 0 | 1 | 2) => {
+    Keyboard.dismiss()
+    void triggerHaptic('selection')
+    setDayOffset(offset)
+  }
 
   const handleSubmit = () => {
-    if (!hasValidAmount) return
+    if (!canSubmit) return
+    Keyboard.dismiss()
+    setSubmitErrorMessage(null)
     void triggerHaptic('medium')
     createMutation.mutate(
       {
@@ -100,10 +139,9 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         },
         onError: (err: unknown) => {
           void triggerHaptic('error')
-          Alert.alert(
-            'No pudimos guardar',
-            getErrorMessage(err, 'Reintentá en un momento.'),
-          )
+          const msg = getErrorMessage(err, 'Reintentá en un momento.')
+          setSubmitErrorMessage(msg)
+          Alert.alert('No pudimos guardar', msg)
         },
       },
     )
@@ -119,114 +157,108 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
     >
       {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
 
-      {/* Hero copy — sets the tone, distinguishes from "agregar gasto" */}
-      <RiseView>
-        <View
-          style={[
-            styles.intro,
-            { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-          ]}
-        >
-          <View style={styles.introIconWrap}>
-            <MaterialIcons
-              name="trending-up"
-              size={20}
-              color={theme.colors.primary}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.introTitle, { color: theme.colors.text }]}>
-              Saldo positivo extra
-            </Text>
-            <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
-              Una transferencia, un bono, un regalo. Suma al disponible del ciclo
-              actual sin tocar tu sueldo configurado.
-            </Text>
-          </View>
-        </View>
-      </RiseView>
+      <View style={styles.stack}>
+        {/* Date pill — only when backdating (mirrors the forDate pill
+            on AddExpenseDashboard). Today is the default, no pill. */}
+        {dayOffset !== 0 ? (
+          <RiseView>
+            <View
+              style={[
+                styles.forDatePill,
+                {
+                  backgroundColor: theme.colors.creamSoft,
+                  borderColor: theme.colors.line,
+                },
+              ]}
+            >
+              <Text style={[styles.forDatePillLabel, { color: theme.colors.textMuted }]}>
+                REGISTRANDO PARA
+              </Text>
+              <Text style={[styles.forDatePillValue, { color: theme.colors.text }]}>
+                {dayOffset === 1 ? 'ayer' : 'anteayer'}
+              </Text>
+            </View>
+          </RiseView>
+        ) : null}
 
-      {/* Amount */}
-      <RiseView delay={60}>
-        <View style={styles.section}>
-          <NumpadField
-            label="Monto"
-            value={rawAmount}
-            onChangeRawValue={setRawAmount}
-            formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-            placeholder="$ 0"
-            doneLabel="Listo"
-            autoOpen
-            helper={
-              hasValidAmount
-                ? `Se suma al disponible: ${currencyFormatter.format(parsedAmount)}`
-                : 'Ingresá el monto recibido.'
-            }
+        <RiseView delay={dayOffset !== 0 ? 60 : 0}>
+          <AmountCard
+            amount={parsedAmount}
+            isActive={numpadVisible}
+            onPress={handleOpenNumpad}
+            label="Monto del ingreso"
           />
-          <View style={styles.suggestedRow}>
-            {SUGGESTED_AMOUNTS.map((delta) => (
-              <Pressable
-                key={delta}
-                onPress={() => handleAddSuggested(delta)}
-                style={({ pressed }) => [
-                  styles.suggestedChip,
-                  {
-                    backgroundColor: theme.colors.creamCard,
-                    borderColor: theme.colors.line,
-                    opacity: pressed ? 0.85 : 1,
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Sumar ${currencyFormatter.format(delta)}`}
-              >
-                <Text style={[styles.suggestedText, { color: theme.colors.text }]}>
-                  +{delta >= 1000 ? `${delta / 1000}k` : delta}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </RiseView>
+        </RiseView>
 
-      {/* Kind picker */}
-      <RiseView delay={120}>
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textMuted }]}>
-            ¿DE DÓNDE?
-          </Text>
-          <View style={styles.kindGrid}>
-            {KINDS.map((k) => {
-              const selected = kind === k.key
-              return (
-                <Pressable
-                  key={k.key}
-                  onPress={() => {
-                    void triggerHaptic('selection')
-                    setKind(k.key)
-                  }}
-                  style={({ pressed }) => [
-                    styles.kindChip,
-                    {
-                      backgroundColor: selected
-                        ? theme.colors.primarySurface
-                        : theme.colors.creamCard,
-                      borderColor: selected
-                        ? theme.colors.primary
-                        : theme.colors.line,
-                      opacity: pressed ? 0.92 : 1,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${k.label}: ${k.hint}`}
-                >
-                  <MaterialIcons
-                    name={k.icon}
-                    size={18}
-                    color={selected ? theme.colors.primary : theme.colors.textMuted}
-                  />
-                  <View style={styles.kindTextWrap}>
+        <RiseView delay={dayOffset !== 0 ? 120 : 60}>
+          <SuggestedAmountStrip
+            amounts={SUGGESTED_DELTAS}
+            currentAmount={parsedAmount}
+            onAdd={handleAddQuickAmount}
+            onClear={handleClearAmount}
+          />
+        </RiseView>
+
+        {/* Kind picker — 2×2 grid mirroring the category tile look:
+            rounded 14, creamCard bg idle, primary surface + border
+            when selected, icon centered with label below. */}
+        <RiseView delay={dayOffset !== 0 ? 180 : 120}>
+          <View>
+            <Text
+              style={[
+                styles.sectionLabel,
+                { color: theme.colors.textMuted },
+              ]}
+            >
+              ¿De dónde?
+            </Text>
+            <View style={styles.kindGrid}>
+              {KINDS.map((k) => {
+                const selected = kind === k.key
+                return (
+                  <Pressable
+                    key={k.key}
+                    onPress={() => handleSelectKind(k.key)}
+                    style={({ pressed }) => [
+                      styles.kindTile,
+                      {
+                        backgroundColor: selected
+                          ? theme.colors.primarySurface
+                          : theme.colors.creamCard,
+                        borderColor: selected
+                          ? theme.colors.primary
+                          : theme.colors.line,
+                        opacity: pressed ? 0.92 : 1,
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={k.label}
+                  >
+                    <View
+                      style={[
+                        styles.kindIconBadge,
+                        {
+                          backgroundColor: selected
+                            ? theme.colors.primary
+                            : theme.colors.creamSoft,
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name={k.icon}
+                        size={20}
+                        color={
+                          selected
+                            ? theme.isDark
+                              ? '#12211A'
+                              : '#FFFFFF'
+                            : theme.colors.textMuted
+                        }
+                      />
+                    </View>
                     <Text
+                      numberOfLines={1}
                       style={[
                         styles.kindLabel,
                         {
@@ -236,108 +268,81 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                     >
                       {k.label}
                     </Text>
-                    <Text
-                      style={[styles.kindHint, { color: theme.colors.textMuted }]}
-                    >
-                      {k.hint}
-                    </Text>
-                  </View>
-                </Pressable>
-              )
-            })}
+                  </Pressable>
+                )
+              })}
+            </View>
           </View>
-        </View>
-      </RiseView>
+        </RiseView>
 
-      {/* Description */}
-      <RiseView delay={180}>
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textMuted }]}>
-            DETALLE (OPCIONAL)
-          </Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Ej: Mariana cena cumple, freelance noviembre"
-            placeholderTextColor={theme.colors.textMuted}
-            style={[
-              styles.descInput,
-              {
-                backgroundColor: theme.colors.creamCard,
-                borderColor: theme.colors.line,
-                color: theme.colors.text,
-              },
-            ]}
-            maxLength={120}
-            returnKeyType="done"
+        <RiseView delay={dayOffset !== 0 ? 240 : 180}>
+          <DescriptionRow
+            description={description}
+            onChange={setDescription}
+            quickSuggestions={QUICK_DESCRIPTIONS}
+            onSelectSuggestion={handleSelectDescriptionSuggestion}
           />
-        </View>
-      </RiseView>
+        </RiseView>
 
-      {/* Date — 3 quick chips. Older events are an edge case we'll
-          surface a full picker for if/when it comes up. */}
-      <RiseView delay={240}>
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textMuted }]}>
-            ¿CUÁNDO?
-          </Text>
-          <View style={styles.dateChipsRow}>
-            {([
-              { offset: 0, label: 'Hoy' },
-              { offset: 1, label: 'Ayer' },
-              { offset: 2, label: 'Anteayer' },
-            ] as const).map(({ offset, label }) => {
-              const selected = dayOffset === offset
-              return (
-                <Pressable
+        {/* Date chips — same look as suggested-amount-strip chips,
+            inline so the user can backdate without leaving the flow. */}
+        <RiseView delay={dayOffset !== 0 ? 300 : 240}>
+          <View>
+            <Text
+              style={[
+                styles.sectionLabel,
+                { color: theme.colors.textMuted },
+              ]}
+            >
+              ¿Cuándo?
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.dayRow}
+            >
+              {([
+                { offset: 0, label: 'Hoy' },
+                { offset: 1, label: 'Ayer' },
+                { offset: 2, label: 'Anteayer' },
+              ] as const).map(({ offset, label }) => (
+                <Chip
                   key={offset}
-                  onPress={() => {
-                    void triggerHaptic('selection')
-                    setDayOffset(offset)
-                  }}
-                  style={({ pressed }) => [
-                    styles.dateChip,
-                    {
-                      backgroundColor: selected
-                        ? theme.colors.primarySurface
-                        : theme.colors.creamCard,
-                      borderColor: selected
-                        ? theme.colors.primary
-                        : theme.colors.line,
-                      opacity: pressed ? 0.92 : 1,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                >
-                  <Text
-                    style={[
-                      styles.dateChipText,
-                      { color: selected ? theme.colors.primary : theme.colors.text },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              )
-            })}
+                  label={label}
+                  isActive={dayOffset === offset}
+                  onPress={() => handleSelectDayOffset(offset)}
+                />
+              ))}
+            </ScrollView>
           </View>
-        </View>
-      </RiseView>
+        </RiseView>
 
-      {/* Submit */}
-      <RiseView delay={300}>
-        <View style={styles.submitWrap}>
-          <AppButton
-            label={hasValidAmount ? 'Guardar ingreso' : 'Ingresá un monto'}
-            onPress={handleSubmit}
-            disabled={!hasValidAmount}
-            loading={createMutation.isPending}
-          />
-        </View>
-      </RiseView>
+        {submitErrorMessage ? (
+          <Text style={[typography.caption, styles.error, { color: theme.colors.danger }]}>
+            {submitErrorMessage}
+          </Text>
+        ) : null}
 
-      <View style={styles.bottomSpacer} />
+        <RiseView delay={dayOffset !== 0 ? 360 : 300}>
+          <View style={[styles.footer, { borderTopColor: theme.colors.line }]}>
+            <AppButton
+              label="Guardar ingreso"
+              variant="primary"
+              loading={createMutation.isPending}
+              disabled={!canSubmit}
+              onPress={handleSubmit}
+            />
+          </View>
+        </RiseView>
+      </View>
+
+      <InAppNumpad
+        visible={numpadVisible}
+        rawValue={rawAmount}
+        onChangeRawValue={setRawAmount}
+        onDismiss={() => setNumpadVisible(false)}
+      />
     </Screen>
   )
 }
@@ -346,112 +351,74 @@ const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
   },
-  intro: {
+  stack: {
+    gap: 16,
+  },
+  forDatePill: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    marginBottom: 18,
-  },
-  introIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(166,239,143,0.12)',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  introTitle: {
-    fontSize: 15,
+  forDatePillLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  forDatePillValue: {
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.2,
-  },
-  introBody: {
-    fontSize: 13,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  section: {
-    marginBottom: 18,
-    gap: 10,
+    textTransform: 'capitalize',
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 1.4,
-  },
-  suggestedRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  suggestedChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  suggestedText: {
-    fontSize: 12,
-    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
   kindGrid: {
-    gap: 8,
-  },
-  kindChip: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  kindTile: {
+    width: '48%',
+    minHeight: 76,
     borderRadius: 14,
     borderWidth: 1,
-    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  kindTextWrap: {
-    flex: 1,
+  kindIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   kindLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  kindHint: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  descInput: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    fontSize: 14,
-    minHeight: 48,
-  },
-  dateChipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dateChip: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
+  dayRow: {
+    gap: 6,
+    paddingRight: 4,
     alignItems: 'center',
-    minHeight: 48,
-    justifyContent: 'center',
   },
-  dateChipText: {
-    fontSize: 13,
-    fontWeight: '700',
+  error: {
+    paddingHorizontal: 4,
   },
-  submitWrap: {
-    marginTop: 8,
-  },
-  bottomSpacer: {
-    height: 60,
+  footer: {
+    paddingTop: 8,
   },
 })
