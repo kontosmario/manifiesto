@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Platform,
@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native'
 import { useRouter } from 'expo-router'
@@ -16,10 +15,8 @@ import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -27,20 +24,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Line } from 'react-native-svg'
-
-// Explicit absolute-fill style — SVG props don't accept the
-// `AbsoluteFillStyle` type returned by `StyleSheet.absoluteFillObject`,
-// so we pass an inline object that matches the same intent.
-const SVG_FILL = {
-  position: 'absolute' as const,
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-}
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
-import { motionDurations } from '@/lib/motion'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoneyShort } from '@/utils/money'
@@ -57,12 +41,8 @@ import {
 import {
   TYPE_TONES,
   bubbleType,
-  type BubbleType,
 } from '@/components/control-v2/asesor-bubble-meta'
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
-import { ForecastSparkline } from '@/components/control-v2/forecast-sparkline'
-import { TrustReceiptStrip } from '@/components/control-v2/trust-receipt-strip'
-import { useAdvisorValueSummary } from '@/features/insights/use-advisor-value-summary'
 import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-action-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
@@ -76,17 +56,11 @@ interface AsistenteScreenProps {
 
 const SHELL_GRADIENT = ['#0F2A1E', '#143B2A', '#0A1410'] as const
 const STAR_COLOR = '#C7EE9C'
-const ASSISTANT_GRADIENT = ['#C7EE9C', '#2E9A5F'] as const
-const STATUS_DOT = '#6FE09A'
 const TEXT_PRIMARY = '#F6FBEF'
 const TEXT_ACCENT = '#C7EE9C'
 const TEXT_SECONDARY = 'rgba(246,251,239,0.70)'
-const TEXT_TERTIARY = 'rgba(199,238,156,0.55)'
-const TEXT_MUTED = 'rgba(246,251,239,0.45)'
 const COUNT_PILL_BG = 'rgba(199,238,156,0.14)'
 const COUNT_PILL_BORDER = 'rgba(199,238,156,0.20)'
-const STRIP_BG = 'rgba(0,0,0,0.25)'
-const STRIP_BORDER = 'rgba(199,238,156,0.12)'
 
 /**
  * Asistente Financiero — full conversation screen.
@@ -103,8 +77,7 @@ const STRIP_BORDER = 'rgba(199,238,156,0.12)'
 export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { signals, data, forecast, usingMock } = useControlV2Data(familyId, userId)
-  const valueSummaryQuery = useAdvisorValueSummary(userId, familyId)
+  const { signals, usingMock } = useControlV2Data(familyId, userId)
   const dismissed = useDismissedIds()
   const [expanded, setExpanded] = useState(false)
 
@@ -293,7 +266,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           </View>
           <Header count={visible.length} totalImpact={totalImpact} />
 
-          <View style={styles.chatBody}>
+          <View style={styles.cardsList}>
             {visible.length === 0 ? (
               <EmptyState usingMock={usingMock} />
             ) : (
@@ -305,7 +278,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                   exiting={FadeOut.duration(140)}
                   onLayout={onMessageLayout(task.id)}
                 >
-                  <ChatMessage
+                  <InsightCard
                     task={task}
                     isActive={i === active}
                     onPressBubble={() => setActive(i)}
@@ -376,425 +349,7 @@ function Header({
   )
 }
 
-// ─── Forecast strip ───────────────────────────────────────────────────────
-
-function ForecastStrip({ forecast }: { forecast: NonNullable<ReturnType<typeof useControlV2Data>['forecast']> }) {
-  const { width: windowWidth } = useWindowDimensions()
-  const inflectionCount = forecast.inflectionDays.length
-  // The chart consumes the full content width minus the strip's
-  // horizontal padding (16 each side).
-  const chartWidth = Math.max(160, windowWidth - 32 - 16)
-  return (
-    <View style={styles.forecastStrip}>
-      <View style={styles.forecastHeaderRow}>
-        <Text style={styles.forecastEyebrow}>Próximos 7 días</Text>
-        {inflectionCount > 0 ? (
-          <View style={styles.forecastChip}>
-            <Text style={styles.forecastChipText}>
-              {inflectionCount} {inflectionCount === 1 ? 'evento' : 'eventos'}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-      <ForecastSparkline forecast={forecast} width={chartWidth} />
-      <Text style={styles.forecastFootnote}>
-        {`Proyección base: ${formatMoneyShort(forecast.baseline.totalProjected)} en la semana`}
-      </Text>
-    </View>
-  )
-}
-
-// ─── Constellation Header ─────────────────────────────────────────────────
-
-// Fixed slot positions for the constellation. Signals are placed in
-// score order — the highest-priority one anchors the center.
-const CONSTELLATION_SLOTS: Array<{ x: number; y: number; r: number }> = [
-  { x: 50, y: 48, r: 40 }, // center
-  { x: 18, y: 28, r: 28 }, // NW
-  { x: 80, y: 26, r: 34 }, // NE
-  { x: 78, y: 72, r: 24 }, // SE
-  { x: 22, y: 76, r: 20 }, // SW
-]
-
-// Connection lines between constellation nodes (by index pairs).
-const CONSTELLATION_EDGES: Array<[number, number]> = [
-  [0, 1],
-  [0, 2],
-  [0, 3],
-  [0, 4],
-  [1, 2],
-  [2, 3],
-]
-
-function ConstellationHeader({
-  signals,
-  active,
-  onTap,
-  expanded,
-  setExpanded,
-  diaActual,
-  diasMes,
-}: {
-  signals: ControlAdvisorTask[]
-  active: number
-  onTap: (i: number) => void
-  expanded: boolean
-  setExpanded: (v: boolean) => void
-  diaActual: number
-  diasMes: number
-}) {
-  return (
-    <View style={styles.mapWrap}>
-      <View style={styles.mapHeader}>
-        <View style={styles.mapHeaderLeft}>
-          <Text style={styles.mapEyebrow}>MAPA DEL CICLO</Text>
-          <Text style={styles.mapDay}>
-            · día {diaActual} / {diasMes}
-          </Text>
-        </View>
-        <Pressable
-          onPress={() => {
-            void triggerHaptic('selection')
-            setExpanded(!expanded)
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={expanded ? 'Contraer mapa' : 'Expandir mapa'}
-          accessibilityState={{ expanded }}
-          style={styles.toggleExpand}
-          hitSlop={8}
-        >
-          <MaterialIcons
-            name={expanded ? 'close-fullscreen' : 'open-in-full'}
-            size={14}
-            color={TEXT_TERTIARY}
-          />
-        </Pressable>
-      </View>
-
-      <AnimatedBoard expanded={expanded}>
-        <ConstellationBoard
-          signals={signals}
-          active={active}
-          onTap={onTap}
-          expanded={expanded}
-        />
-      </AnimatedBoard>
-
-      <View style={styles.legendRow}>
-        <View style={styles.legendChips}>
-          {(
-            [
-              { type: 'critical' as BubbleType, label: 'urgente' },
-              { type: 'warning' as BubbleType, label: 'aviso' },
-              { type: 'positive' as BubbleType, label: 'a favor' },
-            ]
-          ).map((l) => {
-            const tone = TYPE_TONES[l.type]
-            const count = signals.filter((s) => bubbleType(s) === l.type)
-              .length
-            if (count === 0) return null
-            return (
-              <View key={l.type} style={styles.legendChip}>
-                <View
-                  style={[styles.legendDot, { backgroundColor: tone.accent }]}
-                />
-                <Text style={styles.legendText}>
-                  {count} {l.label}
-                </Text>
-              </View>
-            )
-          })}
-        </View>
-        <Text style={styles.legendHint}>Tocá un punto</Text>
-      </View>
-    </View>
-  )
-}
-
-// ─── Animated Board container ─────────────────────────────────────────────
-
-function AnimatedBoard({
-  expanded,
-  children,
-}: {
-  expanded: boolean
-  children: React.ReactNode
-}) {
-  // Smoothly animate the board's height between collapsed (140) and
-  // expanded (240). Padding also relaxes when expanded so 1.6×-scaled
-  // nodes near the corners stay inside the rounded frame and the
-  // delta labels below the bottom row don't get clipped.
-  //
-  // Note on the anti-pattern: animating `height`/`padding` triggers a
-  // layout pass per frame. We accept the cost here because (a) it's
-  // a one-shot 320ms toggle, not a per-frame gesture, and (b) the
-  // child constellation nodes scale 1.6× independently — using
-  // `transform: scaleY` on the container would double-scale them. We
-  // mitigate by canceling in-flight tweens on unmount.
-  const reduced = useReducedMotion()
-  const h = useSharedValue(expanded ? 240 : 140)
-  const p = useSharedValue(expanded ? 12 : 0)
-  useEffect(() => {
-    const cfg = {
-      duration: reduced ? 0 : motionDurations.deliberate,
-      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
-    }
-    h.value = withTiming(expanded ? 240 : 140, cfg)
-    p.value = withTiming(expanded ? 12 : 0, cfg)
-  }, [expanded, reduced, h, p])
-  useEffect(() => {
-    return () => {
-      cancelAnimation(h)
-      cancelAnimation(p)
-    }
-  }, [h, p])
-  const a = useAnimatedStyle(() => ({
-    height: h.value,
-    paddingHorizontal: p.value,
-    paddingVertical: p.value,
-  }))
-  return (
-    <Animated.View
-      style={[
-        styles.board,
-        { backgroundColor: 'rgba(46,154,95,0.06)' },
-        a,
-      ]}
-    >
-      {children}
-    </Animated.View>
-  )
-}
-
-// ─── Constellation Board (Mapa) ───────────────────────────────────────────
-
-function ConstellationBoard({
-  signals,
-  active,
-  onTap,
-  expanded,
-}: {
-  signals: ControlAdvisorTask[]
-  active: number
-  onTap: (i: number) => void
-  expanded: boolean
-}) {
-  // Place up to 5 signals into the fixed slots. With <5, we leave the
-  // unused slots empty rather than crowding the center.
-  const placed = signals
-    .slice(0, CONSTELLATION_SLOTS.length)
-    .map((sig, i) => ({ ...CONSTELLATION_SLOTS[i]!, sig, index: i }))
-
-  return (
-    <View style={StyleSheet.absoluteFillObject}>
-      {/* Connection lines via SVG (viewBox 100×100 stretches to fill) */}
-      <Svg
-        style={[SVG_FILL]}
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        pointerEvents="none"
-      >
-        {CONSTELLATION_EDGES.map(([a, b], i) => {
-          const A = placed[a]
-          const B = placed[b]
-          if (!A || !B) return null
-          const isActiveEdge = active === a || active === b
-          return (
-            <Line
-              key={i}
-              x1={A.x}
-              y1={A.y}
-              x2={B.x}
-              y2={B.y}
-              stroke={
-                isActiveEdge
-                  ? 'rgba(199,238,156,0.55)'
-                  : 'rgba(199,238,156,0.18)'
-              }
-              strokeWidth={0.18}
-              strokeDasharray="0.6 0.6"
-            />
-          )
-        })}
-      </Svg>
-
-      {/* Nodes positioned absolutely by % */}
-      {placed.map((n) => (
-        <ConstellationNode
-          key={n.sig.id}
-          slot={n}
-          isActive={active === n.index}
-          expanded={expanded}
-          onPress={() => onTap(n.index)}
-        />
-      ))}
-    </View>
-  )
-}
-
-function ConstellationNode({
-  slot,
-  isActive,
-  expanded,
-  onPress,
-}: {
-  slot: { x: number; y: number; r: number; sig: ControlAdvisorTask; index: number }
-  isActive: boolean
-  expanded: boolean
-  onPress: () => void
-}) {
-  const { sig } = slot
-  const type = bubbleType(sig)
-  const tone = TYPE_TONES[type]
-  const isCritical = sig.urgency === 'alta'
-  // Layout box stays at the base diameter so the wrapper anchor never
-  // shifts when the node grows visually (mirrors the web design's
-  // `transform: translate(-50%, -50%)` which is independent of size).
-  const baseR = slot.r
-  const icon = iconForSignal(sig.id)
-  const reduced = useReducedMotion()
-
-  // Smooth grow on expand — apply via `transform: scale()` so the node
-  // tile + its icon scale together without changing layout. The
-  // wrapper width/height stay at baseR.
-  const scale = useSharedValue(expanded ? 1.6 : 1)
-  useEffect(() => {
-    scale.value = withTiming(expanded ? 1.6 : 1, {
-      duration: reduced ? 0 : 320,
-      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
-    })
-  }, [expanded, reduced, scale])
-  const aTile = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }))
-
-  // Pulse ring for critical nodes (skipped under reduced-motion).
-  const ring = useSharedValue(0)
-  useLoopAnimation(
-    () => {
-      if (reduced || !isCritical) return
-      ring.value = withDelay(
-        slot.index * 200,
-        withRepeat(
-          withSequence(
-            withTiming(1, { duration: 2000, easing: Easing.out(Easing.quad) }),
-            withTiming(0, { duration: 0 }),
-          ),
-          -1,
-          false,
-        ),
-      )
-    },
-    [ring],
-    [reduced, isCritical, slot.index],
-  )
-  const aRing = useAnimatedStyle(() => ({
-    opacity: 0.55 - ring.value * 0.55,
-    transform: [{ scale: 1 + ring.value * 0.5 }],
-  }))
-
-  // Render the node centered at slot.x/y. The anchor (-baseR/2 on both
-  // axes) is fixed because the wrapper itself is baseR×baseR — the
-  // visual scale of children doesn't move it.
-  return (
-    <View
-      pointerEvents="box-none"
-      style={[
-        styles.nodeAbs,
-        {
-          left: `${slot.x}%`,
-          top: `${slot.y}%`,
-          width: baseR,
-          height: baseR,
-          marginLeft: -baseR / 2,
-          marginTop: -baseR / 2,
-        },
-      ]}
-    >
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={sig.title}
-        accessibilityState={{ selected: isActive }}
-        style={styles.nodeWrap}
-      >
-        <Animated.View style={aTile}>
-          <LinearGradient
-            colors={[tone.accent, tone.fg]}
-            start={{ x: 0.3, y: 0.3 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: baseR,
-              height: baseR,
-              borderRadius: baseR / 2,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: isActive ? 2.5 : 1.5,
-              borderColor: isActive ? '#F6FBEF' : 'rgba(246,251,239,0.35)',
-            }}
-          >
-            <MaterialIcons name={icon} size={baseR * 0.42} color="#0A1410" />
-          </LinearGradient>
-          {isCritical ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.nodeRing,
-                {
-                  width: baseR + 6,
-                  height: baseR + 6,
-                  borderRadius: (baseR + 6) / 2,
-                  borderColor: tone.accent,
-                  top: -3,
-                  left: -3,
-                },
-                aRing,
-              ]}
-            />
-          ) : null}
-          {isActive ? (
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: -6,
-                left: -6,
-                width: baseR + 12,
-                height: baseR + 12,
-                borderRadius: (baseR + 12) / 2,
-                borderWidth: 4,
-                borderColor: 'rgba(246,251,239,0.10)',
-              }}
-            />
-          ) : null}
-        </Animated.View>
-      </Pressable>
-
-      {/* Delta label — absolute-positioned below the node, centered.
-          Visible only when expanded; entrance fades in so the layout
-          doesn't pop. The label sits OUTSIDE the layout box (top:
-          100%) so it never displaces the avatar's anchor. */}
-      {expanded ? (
-        <Animated.View
-          entering={FadeIn.duration(220)}
-          exiting={FadeOut.duration(140)}
-          pointerEvents="none"
-          style={styles.nodeLabelWrap}
-        >
-          <View style={styles.nodeLabel}>
-            <Text style={styles.nodeLabelText} numberOfLines={1}>
-              {sig.impact}
-            </Text>
-          </View>
-        </Animated.View>
-      ) : null}
-    </View>
-  )
-}
-
-// ─── Chat Message ─────────────────────────────────────────────────────────
-
-function ChatMessage({
+function InsightCard({
   task,
   isActive,
   onPressBubble,
@@ -1126,144 +681,8 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     paddingLeft: 2,
   },
-  // Map / Constellation
-  mapWrap: {
-    marginHorizontal: 18,
-    marginBottom: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: STRIP_BG,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: STRIP_BORDER,
-  },
-  mapHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  mapHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 1,
-  },
-  mapEyebrow: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.6,
-    color: TEXT_TERTIARY,
-  },
-  mapDay: {
-    fontSize: 9,
-    color: 'rgba(246,251,239,0.35)',
-    letterSpacing: 0.2,
-  },
-  // Expand button (toggles board height 140 ↔ 240)
-  toggleExpand: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.30)',
-    borderWidth: 1,
-    borderColor: 'rgba(199,238,156,0.12)',
-  },
-  // Board (Mapa or Radar canvas)
-  board: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  // Constellation node positioning
-  nodeAbs: {
-    position: 'absolute',
-    // Width / height are set inline (= baseR) so the layout box stays
-    // pinned to the slot's anchor regardless of the avatar's visual
-    // scale. Children that need to escape this box use position:
-    // absolute (label + halo).
-  },
-  nodeWrap: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  nodeRing: {
-    position: 'absolute',
-    borderWidth: 1.5,
-  },
-  // Label wrapper — sits below the avatar without displacing its anchor.
-  // `top: '100%'` puts the wrapper just below the avatar's bottom edge;
-  // `left: 0, right: 0` + alignItems center makes the label centered on
-  // the avatar's horizontal midpoint. Stays inside the board's overflow
-  // because the board grows to 240 + has paddingVertical when expanded.
-  nodeLabelWrap: {
-    position: 'absolute',
-    top: '100%',
-    left: -40,
-    right: -40,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  nodeLabel: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-  },
-  nodeLabelText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: TEXT_PRIMARY,
-    letterSpacing: 0.3,
-  },
-  // Legend
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 10,
-  },
-  legendChips: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-    flexShrink: 1,
-  },
-  legendChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.30)',
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  legendText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: TEXT_SECONDARY,
-    letterSpacing: 0.3,
-  },
-  legendHint: {
-    fontSize: 9,
-    color: TEXT_MUTED,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  // Chat
-  chatBody: {
+  // Cards
+  cardsList: {
     paddingHorizontal: 16,
     paddingTop: 4,
   },
