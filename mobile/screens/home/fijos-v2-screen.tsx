@@ -11,6 +11,12 @@ import { FijosSmartAlerts } from '@/components/fijos/fijos-smart-alerts'
 import { FijosUpcomingStrip } from '@/components/fijos/fijos-upcoming-strip'
 import { FijosTabs } from '@/components/fijos/fijos-tabs'
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
+import {
+  FIJOS_TOUR,
+  FIJOS_TOUR_STEPS,
+  TourStep,
+  useScreenTour,
+} from '@/features/tours'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
@@ -33,6 +39,8 @@ interface FijosV2ScreenProps {
  */
 export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const router = useRouter()
+  // Auto-start the Fijos guided tour on first visit. No-op once seen.
+  useScreenTour(FIJOS_TOUR)
   const controller = useFijosController(familyId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categoriesById = useMemo(() => {
@@ -124,20 +132,26 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
         <Animated.View layout={sectionLayout}>
           <FijosHeader onPressAdd={handlePressAdd} />
         </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <FijosHeroCard
-            mes={controller.cycleLabel}
-            diasRestantes={controller.summary.daysRemaining}
-            totalFijos={controller.summary.total}
-            montoPagado={controller.summary.paidAmount}
-            cantidadPagados={controller.summary.paidItems.length}
-            cantidadPendientes={
-              controller.summary.pendingItems.length + controller.summary.overdueItems.length
-            }
-            dineroLibre={controller.freeAfterFijos}
-            porcentajeSueldo={controller.pctOfIncome}
-          />
-        </Animated.View>
+        <TourStep
+          tour={FIJOS_TOUR}
+          order={FIJOS_TOUR_STEPS.hero.order}
+          text={FIJOS_TOUR_STEPS.hero.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <FijosHeroCard
+              mes={controller.cycleLabel}
+              diasRestantes={controller.summary.daysRemaining}
+              totalFijos={controller.summary.total}
+              montoPagado={controller.summary.paidAmount}
+              cantidadPagados={controller.summary.paidItems.length}
+              cantidadPendientes={
+                controller.summary.pendingItems.length + controller.summary.overdueItems.length
+              }
+              dineroLibre={controller.freeAfterFijos}
+              porcentajeSueldo={controller.pctOfIncome}
+            />
+          </Animated.View>
+        </TourStep>
         <Animated.View layout={sectionLayout}>
           <FijosSmartAlerts
             zombieCount={controller.summary.zombies.length}
@@ -147,13 +161,19 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             onOpenHike={handleEdit}
           />
         </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <FijosUpcomingStrip
-            upcoming={controller.summary.upcoming}
-            todayDay={controller.summary.todayDay}
-            categoriesById={categoriesById}
-          />
-        </Animated.View>
+        <TourStep
+          tour={FIJOS_TOUR}
+          order={FIJOS_TOUR_STEPS.calendar.order}
+          text={FIJOS_TOUR_STEPS.calendar.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <FijosUpcomingStrip
+              upcoming={controller.summary.upcoming}
+              todayDay={controller.summary.todayDay}
+              categoriesById={categoriesById}
+            />
+          </Animated.View>
+        </TourStep>
         <Animated.View layout={sectionLayout}>
           <FijosTabs
             tab={controller.tab}
@@ -167,18 +187,24 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             }}
           />
         </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <FijoCategoryGroups
-            groups={controller.groups}
-            todayDay={controller.summary.todayDay}
-            onMarkPaid={handleMarkPaid}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            pendingFixedExpenseId={
-              deleteMutation.isPending ? (deleteMutation.variables ?? null) : null
-            }
-          />
-        </Animated.View>
+        <TourStep
+          tour={FIJOS_TOUR}
+          order={FIJOS_TOUR_STEPS.list.order}
+          text={FIJOS_TOUR_STEPS.list.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <FijoCategoryGroups
+              groups={controller.groups}
+              todayDay={controller.summary.todayDay}
+              onMarkPaid={handleMarkPaid}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              pendingFixedExpenseId={
+                deleteMutation.isPending ? (deleteMutation.variables ?? null) : null
+              }
+            />
+          </Animated.View>
+        </TourStep>
         <View style={styles.bottomSpacer} />
       </View>
     </Screen>

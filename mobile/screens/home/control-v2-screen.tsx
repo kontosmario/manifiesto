@@ -24,6 +24,12 @@ import { ControlAnchorsContext } from '@/features/insights/control-section-ancho
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
 import { markControlVisited } from '@/features/insights/control-visit-store'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
+import {
+  CONTROL_TOUR,
+  CONTROL_TOUR_STEPS,
+  TourStep,
+  useScreenTour,
+} from '@/features/tours'
 import { triggerHaptic } from '@/lib/haptics'
 
 interface ControlV2ScreenProps {
@@ -52,6 +58,8 @@ const DOW_FULL = [
  */
 export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const router = useRouter()
+  // Auto-start the Control guided tour on first visit. No-op once seen.
+  useScreenTour(CONTROL_TOUR)
   const { data, view, signals, noConfig } = useControlV2Data(familyId)
   const financeQuery = useFamilyFinance(familyId)
   const expensesQuery = useExpenses(familyId)
@@ -196,49 +204,69 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               scoreTone={view.scoreToneDark}
             />
 
-            <ControlV2Anchor section="hoy">
-              <ControlV2HoyCard
-                cupoDiario={data.cupoDiario}
-                gastoHoy={data.gastoHoy}
-                libreHoy={view.libreHoy}
-                delta={view.delta}
-                estaOk={view.estaOk}
-                horaF={view.horaF}
-                horaActual={data.horaActual}
-                minActual={data.minActual}
-                diaLabel={dayLabel}
-                racha={view.racha}
-                diasGanadores={view.diasGanadores}
-                closedDays={view.closedDays}
-                diasRestantes={view.diasRestantes}
-                proximoSueldoEnDias={data.proximoSueldoEnDias}
-                momentum={view.momentum}
-                noSpendCount={view.noSpendCount}
-                alreadyExhausted={view.alreadyExhausted}
-              />
-            </ControlV2Anchor>
+            <TourStep
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.hoy.order}
+              text={CONTROL_TOUR_STEPS.hoy.text}
+            >
+              <ControlV2Anchor section="hoy">
+                <ControlV2HoyCard
+                  cupoDiario={data.cupoDiario}
+                  gastoHoy={data.gastoHoy}
+                  libreHoy={view.libreHoy}
+                  delta={view.delta}
+                  estaOk={view.estaOk}
+                  horaF={view.horaF}
+                  horaActual={data.horaActual}
+                  minActual={data.minActual}
+                  diaLabel={dayLabel}
+                  racha={view.racha}
+                  diasGanadores={view.diasGanadores}
+                  closedDays={view.closedDays}
+                  diasRestantes={view.diasRestantes}
+                  proximoSueldoEnDias={data.proximoSueldoEnDias}
+                  momentum={view.momentum}
+                  noSpendCount={view.noSpendCount}
+                  alreadyExhausted={view.alreadyExhausted}
+                />
+              </ControlV2Anchor>
+            </TourStep>
 
             {signals.length > 0 ? (
-              <ControlV2AsesorCard tareas={signals} />
+              <TourStep
+                tour={CONTROL_TOUR}
+                order={CONTROL_TOUR_STEPS.asesor.order}
+                text={CONTROL_TOUR_STEPS.asesor.text}
+              >
+                <View collapsable={false}>
+                  <ControlV2AsesorCard tareas={signals} />
+                </View>
+              </TourStep>
             ) : null}
 
-            <ControlV2Anchor section="alcanza">
-              <ControlV2AlcanzaCard
-                alcanzaElMes={view.alcanzaElMes}
-                alreadyExhausted={view.alreadyExhausted}
-                hasReliableProjection={view.hasReliableProjection}
-                closedDays={view.closedDays}
-                diaAgotamiento={view.diaAgotamiento}
-                diaActual={data.diaActual}
-                diasMes={data.diasMes}
-                sobrantePresupuestadoMes={view.sobrantePresupuestadoMes}
-                cupoDiario={data.cupoDiario}
-                pacePromedio={view.promedioDiario}
-                restanteMes={view.restanteMes}
-                diasRestantes={view.diasRestantes}
-                cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
-              />
-            </ControlV2Anchor>
+            <TourStep
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.alcanza.order}
+              text={CONTROL_TOUR_STEPS.alcanza.text}
+            >
+              <ControlV2Anchor section="alcanza">
+                <ControlV2AlcanzaCard
+                  alcanzaElMes={view.alcanzaElMes}
+                  alreadyExhausted={view.alreadyExhausted}
+                  hasReliableProjection={view.hasReliableProjection}
+                  closedDays={view.closedDays}
+                  diaAgotamiento={view.diaAgotamiento}
+                  diaActual={data.diaActual}
+                  diasMes={data.diasMes}
+                  sobrantePresupuestadoMes={view.sobrantePresupuestadoMes}
+                  cupoDiario={data.cupoDiario}
+                  pacePromedio={view.promedioDiario}
+                  restanteMes={view.restanteMes}
+                  diasRestantes={view.diasRestantes}
+                  cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
+                />
+              </ControlV2Anchor>
+            </TourStep>
 
             <ControlV2Anchor section="alcancia">
               <ControlV2AlcanciaCard

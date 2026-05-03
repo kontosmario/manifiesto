@@ -26,6 +26,12 @@ import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { GastosSmartFilter } from '@/components/gastos/gastos-smart-filter'
 import { StreakFlameIcon } from '@/components/gastos/streak-flame-icon'
 import { StreakSheet } from '@/components/gastos/streak-sheet'
+import {
+  GASTOS_TOUR,
+  GASTOS_TOUR_STEPS,
+  TourStep,
+  useScreenTour,
+} from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
@@ -68,6 +74,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
   const safeAreaInsets = useSafeAreaInsets()
+  // Auto-start the Gastos guided tour on first visit. No-op once seen.
+  useScreenTour(GASTOS_TOUR)
   // Replicate Screen's bottom-padding logic for tab screens — without
   // this, the SectionList scroll-surface ends ~120pt above the tab
   // bar (cuando no hay paddingBottom propio) y el área visible se
@@ -395,53 +403,71 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             rightSlot={<StreakFlameIcon data={streakData} onPress={handlePressStreak} />}
           />
         </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <GastosHeroCard
-            totalVisible={controller.filteredTotal}
-            summaryChip={controller.summaryChip}
-            topCategories={controller.topCategories}
-            averageDaily={controller.averageDaily}
-            averageDailyBars={controller.recentDailyBars}
-            averageWindowDays={controller.cycleDaysElapsed}
-          />
-        </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <GastosMonthCalendar
-            dayMoods={controller.dayMoods}
-            todayDay={controller.today.getDate()}
-            cycleStart={controller.cycleStart}
-            cycleDays={controller.cycleDays}
-            firstWeekdayOffset={getMondayFirstOffset(controller.cycleStart)}
-            selectedDay={controller.selectedDay}
-            selectedDayTotal={
-              controller.selectedDay != null
-                ? (controller.dailySpend[controller.selectedDay]?.total ?? 0)
-                : 0
-            }
-            selectedDayCount={
-              controller.selectedDay != null
-                ? (controller.dailySpend[controller.selectedDay]?.count ?? 0)
-                : 0
-            }
-            cycleLabel={controller.cycleLabel}
-            onSelectDay={handleSelectDay}
-            onClearDay={controller.clearDay}
-            onPrevDay={handlePrevDay}
-            onNextDay={handleNextDay}
-            canGoPrev={navBounds.canGoPrev}
-            canGoNext={navBounds.canGoNext}
-            onRegisterForgottenExpense={handleRegisterForgotten}
-          />
-        </Animated.View>
-        <Animated.View layout={sectionLayout}>
-          <GastosSmartFilter
-            categories={categoriesList}
-            expenseCountByCategoryId={expenseCountByCategoryId}
-            totalCount={controller.filteredExpenses.length}
-            selectedCategoryId={controller.selectedCategoryId}
-            onSelect={handleSelectCategory}
-          />
-        </Animated.View>
+        <TourStep
+          tour={GASTOS_TOUR}
+          order={GASTOS_TOUR_STEPS.hero.order}
+          text={GASTOS_TOUR_STEPS.hero.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <GastosHeroCard
+              totalVisible={controller.filteredTotal}
+              summaryChip={controller.summaryChip}
+              topCategories={controller.topCategories}
+              averageDaily={controller.averageDaily}
+              averageDailyBars={controller.recentDailyBars}
+              averageWindowDays={controller.cycleDaysElapsed}
+            />
+          </Animated.View>
+        </TourStep>
+        <TourStep
+          tour={GASTOS_TOUR}
+          order={GASTOS_TOUR_STEPS.calendar.order}
+          text={GASTOS_TOUR_STEPS.calendar.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <GastosMonthCalendar
+              dayMoods={controller.dayMoods}
+              todayDay={controller.today.getDate()}
+              cycleStart={controller.cycleStart}
+              cycleDays={controller.cycleDays}
+              firstWeekdayOffset={getMondayFirstOffset(controller.cycleStart)}
+              selectedDay={controller.selectedDay}
+              selectedDayTotal={
+                controller.selectedDay != null
+                  ? (controller.dailySpend[controller.selectedDay]?.total ?? 0)
+                  : 0
+              }
+              selectedDayCount={
+                controller.selectedDay != null
+                  ? (controller.dailySpend[controller.selectedDay]?.count ?? 0)
+                  : 0
+              }
+              cycleLabel={controller.cycleLabel}
+              onSelectDay={handleSelectDay}
+              onClearDay={controller.clearDay}
+              onPrevDay={handlePrevDay}
+              onNextDay={handleNextDay}
+              canGoPrev={navBounds.canGoPrev}
+              canGoNext={navBounds.canGoNext}
+              onRegisterForgottenExpense={handleRegisterForgotten}
+            />
+          </Animated.View>
+        </TourStep>
+        <TourStep
+          tour={GASTOS_TOUR}
+          order={GASTOS_TOUR_STEPS.filters.order}
+          text={GASTOS_TOUR_STEPS.filters.text}
+        >
+          <Animated.View layout={sectionLayout}>
+            <GastosSmartFilter
+              categories={categoriesList}
+              expenseCountByCategoryId={expenseCountByCategoryId}
+              totalCount={controller.filteredExpenses.length}
+              selectedCategoryId={controller.selectedCategoryId}
+              onSelect={handleSelectCategory}
+            />
+          </Animated.View>
+        </TourStep>
         {controller.hasAnyFilter ? (
           <Animated.View layout={sectionLayout}>
             <Pressable
