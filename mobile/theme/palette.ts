@@ -201,7 +201,7 @@ const lightColors: ThemeColors = {
   lineSoft:           '#E9E1D3',
   peach:              '#B84014',  // V1 — accent-600 (AA on cream 5.38:1)
   peachSoft:          '#FADFC8',
-  peachBand:          '#FADFC8',
+  peachBand:          '#F8D1C3',  // V1 — accent-200 (icon tile bg, soft warm pastel)
   greenBand:          '#D6EFBA',
   redBand:            '#F5C6B6',
   auroraA:            'rgba(166,239,143,0.35)',  // V1 — primary-300 alpha
@@ -243,7 +243,7 @@ const darkColors: ThemeColors = {
   lineSoft:           '#16261E',
   peach:              '#F8D1C3',  // V1 — accent-200 (AA on creamCard dark 5.56:1)
   peachSoft:          '#3A2A22',
-  peachBand:          '#3A2A22',
+  peachBand:          '#5C200A',  // V1 — accent-900 (deep warm icon tile on dark creamCard)
   greenBand:          '#1E3A28',
   redBand:            '#3A241E',
   auroraA:            'rgba(166,239,143,0.25)',  // V1 — primary-300 alpha

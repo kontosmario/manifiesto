@@ -84,7 +84,7 @@ function HomeActivitySectionImpl({
               title={expense.description || categoryName}
               category={categoryName}
               whoName={findName(familyMembers, expense.created_by) ?? 'Alguien'}
-              whoColor={findColor(familyMembers, expense.created_by) ?? '#2E7D5B'}
+              whoColor={findColor(familyMembers, expense.created_by) ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
               delay={400 + index * 60}
             />
