@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Modal,
   Pressable,
@@ -9,6 +9,7 @@ import {
 import Animated, {
   Extrapolation,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -58,13 +59,23 @@ export function AddQuickActionsOverlay({
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
+  // `mounted` decouples the Modal's lifecycle from the parent's
+  // `visible` prop so the dismiss spring has something to animate
+  // against. If we bound `<Modal visible={visible}>` directly, the
+  // Modal would unmount the moment the parent flipped the prop —
+  // before the spring had a chance to play — and the petals would
+  // just vanish on scrim tap.
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     if (reduced) {
+      // Reduced-motion users skip the choreography in both directions.
+      setMounted(visible)
       progress.value = visible ? 1 : 0
       return
     }
     if (visible) {
+      setMounted(true)
       // Spring entrance — gives the fan an organic unfurl with a
       // touch of bounce as petals settle. Damping kept above 12 so
       // the bounce stays subtle (not toy-like).
@@ -83,11 +94,21 @@ export function AddQuickActionsOverlay({
       // windows below run in reverse on the descending progress, so
       // the rightmost petal retracts first and the leftmost last —
       // mirroring the L→R unfurl on entry.
-      progress.value = withSpring(0, {
-        damping: 24,
-        stiffness: 180,
-        mass: 0.8,
-      })
+      //
+      // The completion callback is what closes the loop with React:
+      // we keep the Modal mounted until the spring lands at 0, then
+      // hop back to JS to flip `mounted` and unmount. `finished` is
+      // false when a new animation interrupts (e.g. user re-opens
+      // mid-dismiss), so we only unmount on a clean landing.
+      progress.value = withSpring(
+        0,
+        { damping: 24, stiffness: 180, mass: 0.8 },
+        (finished) => {
+          if (finished) {
+            runOnJS(setMounted)(false)
+          }
+        },
+      )
     }
   }, [visible, progress, reduced])
 
@@ -98,7 +119,7 @@ export function AddQuickActionsOverlay({
   return (
     <Modal
       transparent
-      visible={visible}
+      visible={mounted}
       onRequestClose={onDismiss}
       statusBarTranslucent
       animationType="none"
