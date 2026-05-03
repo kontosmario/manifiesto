@@ -50,9 +50,19 @@ interface RawNotificationSlice {
 // Raw RPC payload — keys mirror the snake_case columns the RPC builds.
 // `fixed_expenses` arrives as raw rows; we pass through `asFixedExpense`
 // before seeding to match what the existing hooks expect.
+//
+// `family` is the raw RPC shape (`{ familyId, code }`) — NOT the
+// client's `FamilyInfo` (`{ familyId, familyCode }`). We normalize
+// inside `seedCaches` before writing to the React Query cache so
+// downstream consumers (`useFamily`) read the right shape.
+interface RawFamilySlice {
+  familyId: string
+  code: string
+}
+
 interface HomeSnapshotPayload {
   profile: Profile | null
-  family: FamilyInfo | null
+  family: RawFamilySlice | null
   family_finance: FinanceStoragePayload | null
   fixed_expenses: Array<Record<string, unknown>>
   expenses: Expense[]
@@ -200,6 +210,11 @@ function toFamilyFinance(raw: FinanceStoragePayload | null): FamilyFinance {
  * all the downstream hooks read from cache and skip their own
  * queries because the cache entry is fresh (within staleTime).
  */
+function toFamilyInfo(raw: RawFamilySlice | null): FamilyInfo | null {
+  if (!raw) return null
+  return { familyId: raw.familyId, familyCode: raw.code }
+}
+
 function seedCaches(
   client: QueryClient,
   payload: HomeSnapshotPayload,
@@ -207,7 +222,10 @@ function seedCaches(
   familyId: string,
 ): void {
   client.setQueryData(profileQueryKey(userId), payload.profile ?? null)
-  client.setQueryData(familyQueryKey(userId), payload.family ?? null)
+  // The RPC returns `{ familyId, code }`; the client's `useFamily`
+  // expects `{ familyId, familyCode }`. Normalize before seeding so
+  // consumers read the right shape on the cache hit.
+  client.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
 
   client.setQueryData(
     familyFinanceQueryKey(familyId),
@@ -304,7 +322,7 @@ export function useHomeSnapshot(userId?: string) {
         // No family yet — still seed profile + family (as null) so
         // RequireAuth can redirect without refetching.
         queryClient.setQueryData(profileQueryKey(userId), payload.profile ?? null)
-        queryClient.setQueryData(familyQueryKey(userId), payload.family ?? null)
+        queryClient.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
       }
       return payload
     },
