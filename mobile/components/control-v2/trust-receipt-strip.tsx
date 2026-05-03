@@ -47,7 +47,7 @@ export const TrustReceiptStrip = memo(function TrustReceiptStrip({
       style={styles.strip}
     >
       <View style={styles.iconWrap}>
-        <MaterialIcons name="favorite" size={16} color="#C7EE9C" />
+        <MaterialIcons name="favorite" size={16} color="#A6EF8F" />
       </View>
       <View style={styles.text}>
         <Text style={styles.headline}>{headline}</Text>

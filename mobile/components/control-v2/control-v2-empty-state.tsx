@@ -28,8 +28,8 @@ export function ControlV2EmptyState({
   onPressAddExpense,
 }: ControlV2EmptyStateProps) {
   const { theme } = useAppTheme()
-  const shellBg = theme.isDark ? '#13221B' : '#FFFBF2'
-  const shellBorder = theme.isDark ? '#1F332A' : '#EFE8D9'
+  const shellBg = theme.isDark ? '#305A47' : '#FFFBF2'  // V1 creamCard dark / kept light
+  const shellBorder = theme.isDark ? '#244235' : '#D5E6DF'  // V1 surface-900 / surface-200
   const accent = theme.colors.text
   const muted = theme.colors.textMuted
 

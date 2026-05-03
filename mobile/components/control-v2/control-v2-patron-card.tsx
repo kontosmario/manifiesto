@@ -140,8 +140,8 @@ export function ControlV2PatronCard({
 
   // Bar tones — peor warns, mejor sucede, neutral muted.
   const tones = {
-    peor: isDark ? '#F3BA57' : '#C27A0A',
-    mejor: isDark ? '#7AD8A3' : '#1C7E3A',
+    peor: theme.colors.warning,
+    mejor: theme.colors.success,
     neutral: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,42,30,0.14)',
     avgLine: isDark ? 'rgba(255,255,255,0.30)' : 'rgba(15,42,30,0.32)',
     todayMarker: theme.colors.text,

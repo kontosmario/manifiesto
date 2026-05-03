@@ -121,11 +121,11 @@ export function ControlV2CoberturaCard({
   // Segment tones — match the stats dot colors to the bar fill so
   // the eye maps "this slice" → "this row" without legend overhead.
   const fijosTone: SegmentTone = {
-    solid: isDark ? '#F3BA57' : '#C27A0A',
+    solid: theme.colors.warning,
     bg: isDark ? 'rgba(243,186,87,0.18)' : 'rgba(194,122,10,0.12)',
   }
   const ahorroTone: SegmentTone = {
-    solid: isDark ? '#7AD8A3' : '#1C7E3A',
+    solid: theme.colors.success,
     bg: isDark ? 'rgba(122,216,163,0.18)' : 'rgba(28,126,58,0.12)',
   }
   const libreTone: SegmentTone = {

@@ -222,8 +222,8 @@ export function ControlV2SemanaCard({
   // Bar fill colors — theme-aware semantic mapping.
   const barColors = {
     today: isDark ? '#AFCDE8' : '#6B9AD6',
-    over: isDark ? '#F3BA57' : '#C27A0A',
-    under: isDark ? '#7AD8A3' : '#1C7E3A',
+    over: theme.colors.warning,
+    under: theme.colors.success,
     noSpendDot: isDark ? 'rgba(122,216,163,0.65)' : 'rgba(28,126,58,0.55)',
   }
   const cupoLineColor = isDark

@@ -1,32 +1,37 @@
 // Shared color + text tokens for the Control v2 screen.
-// Kept separate from `theme/palette` so the Control visuals can
-// evolve without churning the global theme — if a token graduates,
-// we promote it up.
+//
+// V1 Mint Saturado migration: status tones now derive from the
+// canonical V1 scales (primaryScale / accentScale) instead of
+// duplicating splash hexes. The local export stays self-documenting
+// (good/warn/info naming) but values point at the global system.
+//
+// `info` is a local-only blue family — V1 has no info-blue scale yet.
+// If a second product surface needs blue, promote it to a global
+// scale instead of copying the literals here.
 
 export const controlV2Tokens = {
-  // Status tones — map directly onto the screenshot palette.
   good: {
-    solid: '#6FE09A',
-    solidDeep: '#2E7D5B',
-    tint: '#C7EE9C',
-    light: '#9EE0B2',
-    bg: 'rgba(199,238,156,0.18)',
-    border: 'rgba(199,238,156,0.35)',
-    glow: 'rgba(199,238,156,0.45)',
+    solid:     '#49D61F',  // V1 primary-500
+    solidDeep: '#329315',  // V1 primary-700
+    tint:      '#A6EF8F',  // V1 primary-300
+    light:     '#D1F7C5',  // V1 primary-200
+    bg:        'rgba(166,239,143,0.18)',  // primary-300 alpha
+    border:    'rgba(166,239,143,0.35)',
+    glow:      'rgba(166,239,143,0.45)',
   },
   warn: {
-    solid: '#F2B58A',
-    solidDeep: '#D96A4F',
-    tint: '#E88A70',
-    light: '#F1D690',
-    bg: 'rgba(242,181,138,0.18)',
-    border: 'rgba(242,181,138,0.35)',
-    glow: 'rgba(242,181,138,0.45)',
+    solid:     '#EC7A51',  // V1 accent-400
+    solidDeep: '#B84014',  // V1 accent-600
+    tint:      '#F2A78C',  // V1 accent-300
+    light:     '#F1D690',  // butter (kept — yellow warning core)
+    bg:        'rgba(242,167,140,0.18)',  // accent-300 alpha
+    border:    'rgba(242,167,140,0.35)',
+    glow:      'rgba(242,167,140,0.45)',
   },
   info: {
-    solid: '#8FB8E0',
+    solid:     '#8FB8E0',
     solidDeep: '#6B9AD6',
-    tint: '#AFCDE8',
+    tint:      '#AFCDE8',
   },
 } as const
 

@@ -124,7 +124,7 @@ export function ControlV2AlcanzaCard({
           icon: 'check-circle' as const,
           canonical: 'Saludable',
           stateLabel: 'Saldo holgado',
-          timelineFill: isDark ? '#7AD8A3' : '#1C7E3A',
+          timelineFill: theme.colors.success,
         }
       case 'warn':
         return {
@@ -143,7 +143,7 @@ export function ControlV2AlcanzaCard({
           icon: 'error-outline' as const,
           canonical: 'Atención',
           stateLabel: alcanzaElMes ? 'Saldo ajustado' : 'Saldo insuficiente',
-          timelineFill: isDark ? '#F3BA57' : '#C27A0A',
+          timelineFill: theme.colors.warning,
         }
       case 'critical':
         return {
@@ -162,7 +162,7 @@ export function ControlV2AlcanzaCard({
           icon: 'priority-high' as const,
           canonical: 'Crítico',
           stateLabel: 'Saldo agotado',
-          timelineFill: isDark ? '#E88A70' : '#C03A2A',
+          timelineFill: theme.colors.danger,
         }
     }
   })()
@@ -371,7 +371,7 @@ export function ControlV2AlcanzaCard({
                   styles.timelineGood,
                   {
                     width: `${todayPct}%`,
-                    backgroundColor: isDark ? '#7AD8A3' : '#1C7E3A',
+                    backgroundColor: theme.colors.success,
                   },
                 ]}
               />

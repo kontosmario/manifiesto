@@ -36,11 +36,17 @@ export interface BubbleTone {
 
 // ─── Type tones (LIGHT bubble surfaces against the dark panel) ────────────
 
+// V1 Mint Saturado tones — every fg-on-bg pair AA on the LIGHT
+// bubble surface (cream creamCard) and on the dark forest panel.
 export const TYPE_TONES: Record<BubbleType, BubbleTone> = {
-  critical: { fg: '#B33A1F', bg: '#FFE2D6', soft: '#FFF3EC', accent: '#D14E2A', edge: '#F0BFA8' },
-  warning:  { fg: '#9C6A12', bg: '#FCEAC4', soft: '#FFF7E6', accent: '#C28F1E', edge: '#EBD49A' },
-  positive: { fg: '#1C7E3A', bg: '#D4F0BF', soft: '#EBF8DD', accent: '#2E9A5F', edge: '#B7DD9A' },
-  insight:  { fg: '#3E5A4A', bg: '#E2EAE2', soft: '#F0F4EE', accent: '#5C7762', edge: '#C5D2C7' },
+  // accent-700 fg / accent-100 bg / accent-50 soft / accent-500 / accent-200
+  critical: { fg: '#973511', bg: '#FCEAE3', soft: '#FDF4F1', accent: '#DC4D18', edge: '#F8D1C3' },
+  // V1 warning-light fg + butter bg/soft/edge (yellow stays per branding spec)
+  warning:  { fg: '#9A5E04', bg: '#FCEAC4', soft: '#FFF7E6', accent: '#F3BA57', edge: '#EBD49A' },
+  // primary-800 fg / primary-200 bg / primary-100 soft / primary-500 / primary-300
+  positive: { fg: '#297811', bg: '#D1F7C5', soft: '#EAFBE4', accent: '#49D61F', edge: '#A6EF8F' },
+  // surface-700 fg / surface-200 bg / surface-100 soft / surface-500 / surface-300
+  insight:  { fg: '#3B6D57', bg: '#D4E8DF', soft: '#EBF4F0', accent: '#569F7E', edge: '#ACD2C1' },
 }
 
 // ─── Type derivation ──────────────────────────────────────────────────────

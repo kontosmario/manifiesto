@@ -75,7 +75,7 @@ export function ControlV2Anchor({
       <Animated.View
         style={[
           {
-            shadowColor: '#C7EE9C',
+            shadowColor: '#A6EF8F',
             shadowOffset: { width: 0, height: 0 },
             shadowRadius: 20,
             shadowOpacity: 0,

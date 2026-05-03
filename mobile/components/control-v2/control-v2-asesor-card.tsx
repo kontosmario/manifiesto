@@ -35,21 +35,22 @@ interface ControlV2AsesorCardProps {
 
 // ─── Tokens ───────────────────────────────────────────────────────────────
 
-const SHELL_GRADIENT = ['#0F2A1E', '#1F6B43'] as const
-const STAR_COLOR = '#C7EE9C'
-const ASSISTANT_GRADIENT = ['#C7EE9C', '#2E9A5F'] as const
-const STATUS_DOT = '#6FE09A'
-const TEXT_PRIMARY = '#F6FBEF'
-const TEXT_ACCENT = '#C7EE9C'
-const TEXT_SECONDARY = 'rgba(246,251,239,0.70)'
-const TEXT_TERTIARY = 'rgba(199,238,156,0.55)'
-const HAIRLINE = 'rgba(199,238,156,0.12)'
+// V1 Mint Saturado — asesor card chrome on the dark forest shell.
+const SHELL_GRADIENT = ['#12211A', '#244235'] as const  // surface-950 → surface-900
+const STAR_COLOR = '#A6EF8F'                             // primary-300
+const ASSISTANT_GRADIENT = ['#A6EF8F', '#329315'] as const  // primary-300 → primary-700
+const STATUS_DOT = '#49D61F'                             // primary-500
+const TEXT_PRIMARY = '#F2EAD3'                           // V1 cream
+const TEXT_ACCENT = '#A6EF8F'                            // primary-300
+const TEXT_SECONDARY = 'rgba(242,234,211,0.70)'          // cream alpha
+const TEXT_TERTIARY = 'rgba(166,239,143,0.55)'           // primary-300 alpha
+const HAIRLINE = 'rgba(166,239,143,0.12)'                // primary-300 alpha
 const STRIP_BG = 'rgba(0,0,0,0.18)'
-const COUNT_PILL_BG = 'rgba(199,238,156,0.15)'
-const COUNT_PILL_BORDER = 'rgba(199,238,156,0.22)'
-const BUBBLE_BG = '#FFFBF2'
-const BUBBLE_TEXT = '#0F2A1E'
-const BUBBLE_BODY = '#3E5A4A'
+const COUNT_PILL_BG = 'rgba(166,239,143,0.15)'
+const COUNT_PILL_BORDER = 'rgba(166,239,143,0.22)'
+const BUBBLE_BG = '#FFFBF2'                              // creamCard light
+const BUBBLE_TEXT = '#12211A'                            // surface-950 (AAA on cream bubble)
+const BUBBLE_BODY = '#3B6D57'                            // surface-700 (textMuted V1)
 
 /**
  * Asistente Financiero — compact "Home card" entry point.
@@ -186,7 +187,7 @@ function AssistantAvatar({ size, dotSize }: { size: number; dotSize: number }) {
           { width: size, height: size, borderRadius: size / 2 },
         ]}
       >
-        <MaterialIcons name="auto-awesome" size={size * 0.5} color="#0F2A1E" />
+        <MaterialIcons name="auto-awesome" size={size * 0.5} color="#12211A" />
       </LinearGradient>
       <Animated.View
         style={[
@@ -480,7 +481,7 @@ function SignalStar({ task, index }: { task: ControlAdvisorTask; index: number }
           borderColor: 'rgba(246,251,239,0.30)',
         }}
       >
-        <MaterialIcons name={icon} size={size * 0.5} color="#0A1410" />
+        <MaterialIcons name={icon} size={size * 0.5} color="#12211A" />
       </LinearGradient>
       {isCritical ? (
         <Animated.View
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
   avatarDot: {
     position: 'absolute',
     borderWidth: 2,
-    borderColor: '#0F2A1E',
+    borderColor: '#12211A',
   },
   avatarDotRing: {
     position: 'absolute',

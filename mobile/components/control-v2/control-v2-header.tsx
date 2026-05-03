@@ -22,7 +22,7 @@ export function ControlV2Header({
   scoreTone,
 }: ControlV2HeaderProps) {
   const { theme } = useAppTheme()
-  const trackColor = theme.isDark ? '#1F332A' : '#EFE8D9'
+  const trackColor = theme.isDark ? '#244235' : '#D5E6DF'  // V1 surface-900 / surface-200
   return (
     <RiseView>
       <View style={styles.root}>

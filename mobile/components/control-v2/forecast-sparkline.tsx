@@ -180,7 +180,7 @@ export const ForecastSparkline = memo(function ForecastSparkline({
             cy={m.y}
             r={2.6}
             fill={INFLECTION_COLOR}
-            stroke="#0F2A1E"
+            stroke="#12211A"
             strokeWidth={1}
           />
         ))}

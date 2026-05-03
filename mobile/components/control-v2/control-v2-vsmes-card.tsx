@@ -284,13 +284,7 @@ export function ControlV2VsMesCard({
   const closedBarColor = isDark
     ? 'rgba(255,255,255,0.20)'
     : 'rgba(15,42,30,0.20)'
-  const projBarColor = vsMesMejor
-    ? isDark
-      ? '#7AD8A3'
-      : '#1C7E3A'
-    : isDark
-      ? '#F3BA57'
-      : '#C27A0A'
+  const projBarColor = vsMesMejor ? theme.colors.success : theme.colors.warning
 
   // ── Top-category cross-cycle tier ───────────────────────────
   // We compare currentTopCatSpent vs the prev cycle's top-cat
