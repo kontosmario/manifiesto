@@ -19,7 +19,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
-import { parsePrice } from '@/utils/money'
+import { parsePrice, serializePrice } from '@/utils/money'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -79,6 +79,10 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const createMutation = useCreateIncomeEvent()
   const parsedAmount = useMemo(() => parsePrice(rawAmount), [rawAmount])
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
+  // AmountCard renders the number directly; an empty rawAmount makes
+  // parsePrice() return NaN which would show as "NaN" in the card.
+  // Mirror the add-expense controller and clamp to 0 when invalid.
+  const displayAmount = hasValidAmount ? parsedAmount : 0
   const canSubmit = hasValidAmount && Boolean(kind)
 
   const eventDate = useMemo(() => {
@@ -96,8 +100,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const handleAddQuickAmount = (delta: number) => {
     Keyboard.dismiss()
     void triggerHaptic('selection')
-    const next = (Number.isFinite(parsedAmount) ? parsedAmount : 0) + delta
-    setRawAmount(String(Math.round(next)))
+    setRawAmount(serializePrice(displayAmount + delta))
   }
   const handleClearAmount = () => {
     Keyboard.dismiss()
@@ -183,7 +186,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
 
         <RiseView delay={dayOffset !== 0 ? 60 : 0}>
           <AmountCard
-            amount={parsedAmount}
+            amount={displayAmount}
             isActive={numpadVisible}
             onPress={handleOpenNumpad}
             label="Monto del ingreso"
