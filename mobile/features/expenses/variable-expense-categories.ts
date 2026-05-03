@@ -22,18 +22,30 @@ import type { Category } from '@/features/categories/use-categories'
 /**
  * Canonical names of categories that are always recurring fijos and
  * therefore hidden from the variable-expense picker. Stored lowercase
- * for case-insensitive matching.
+ * AND diacritic-stripped so the match works whether the user typed
+ * "Educación" or "Educacion".
  */
 const FIXED_ONLY_CATEGORY_NAMES = new Set<string>([
   'alquiler',
   'servicios',
   'suscripciones',
+  'impuestos',
+  'educacion',
 ])
+
+function normalize(name: string): string {
+  return name
+    .normalize('NFD')
+    // Strip combining diacritics (NFD splits "á" → "a" + U+0301).
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase()
+}
 
 export function filterVariableExpenseCategories(
   categories: readonly Category[],
 ): Category[] {
   return categories.filter(
-    (c) => !FIXED_ONLY_CATEGORY_NAMES.has(c.name.trim().toLowerCase()),
+    (c) => !FIXED_ONLY_CATEGORY_NAMES.has(normalize(c.name)),
   )
 }

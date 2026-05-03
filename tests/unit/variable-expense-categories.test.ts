@@ -16,13 +16,15 @@ function category(overrides: Partial<Category>): Category {
 }
 
 describe('filterVariableExpenseCategories', () => {
-  it('removes the fixed-only categories (Alquiler, Servicios, Suscripciones) from the picker', () => {
+  it('removes the fixed-only categories (Alquiler, Servicios, Suscripciones, Impuestos, Educación) from the picker', () => {
     const input = [
       category({ name: 'Mercado' }),
       category({ name: 'Alquiler' }),
       category({ name: 'Transporte' }),
       category({ name: 'Servicios' }),
       category({ name: 'Suscripciones' }),
+      category({ name: 'Impuestos' }),
+      category({ name: 'Educación' }),
       category({ name: 'Ocio' }),
     ]
     const result = filterVariableExpenseCategories(input)
@@ -31,6 +33,15 @@ describe('filterVariableExpenseCategories', () => {
       'Transporte',
       'Ocio',
     ])
+  })
+
+  it('matches "Educacion" without the accent (typed without diacritic)', () => {
+    const input = [
+      category({ name: 'Educacion' }),
+      category({ name: 'Mercado' }),
+    ]
+    const result = filterVariableExpenseCategories(input)
+    expect(result.map((c) => c.name)).toEqual(['Mercado'])
   })
 
   it('matches case-insensitively and tolerates leading/trailing whitespace', () => {
