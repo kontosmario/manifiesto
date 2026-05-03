@@ -44,13 +44,20 @@ interface CategoryHorizontalRailProps {
 }
 
 const DEFAULT_TILE_WIDTH = 60
-const DEFAULT_TILE_HEIGHT = 68
+// Bumped from 68 → 76pt to improve aspect ratio against the wider
+// stretched tiles (~88pt) the static grid uses — the old 0.77 ratio
+// felt squat. 76pt keeps tiles comfortably under thumb without
+// inflating overall picker height beyond ~248pt for 3 rows.
+const DEFAULT_TILE_HEIGHT = 76
 const TILE_GAP = 8
 // Wider gap for the static grid — without horizontal overflow to use
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
 // keeps them comfortably separated on a 4-column layout.
 export const STATIC_TILE_GAP = 12
-const BADGE_SIZE = 30
+// Bumped from 30 → 34pt so the icon reads as the focal point of the
+// tile, not a small badge floating in whitespace. Pairs with the
+// taller tileHeight above.
+const BADGE_SIZE = 34
 
 export function CategoryHorizontalRail({
   categories,
@@ -262,7 +269,10 @@ const styles = StyleSheet.create({
     // width/height are applied inline so the rail can adapt per call site.
   },
   tile: {
-    paddingVertical: 6,
+    // 8/4 padding aligns the inner stack with the 4/8pt spacing
+    // rhythm used elsewhere in the app — was 6/4 before, which
+    // broke the cadence visible inside dense grids.
+    paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: radii.lg,
     alignItems: 'center',
@@ -277,15 +287,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
-    fontSize: 16,
-    lineHeight: 18,
+    // Bumped 16 → 18pt to match the larger badge (34pt) and keep
+    // the emoji visually filling the disc.
+    fontSize: 18,
+    lineHeight: 20,
     textAlign: 'center',
     includeFontPadding: false,
   },
   label: {
-    fontSize: 9.5,
+    // Bumped 9.5 → 11pt — the previous size was below the mobile
+    // legibility floor and looked cramped at default Dynamic Type.
+    // 11pt with weight 700 stays compact but reads cleanly.
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: -0.1,
+    letterSpacing: 0,
     textAlign: 'center',
     width: '100%',
   },
