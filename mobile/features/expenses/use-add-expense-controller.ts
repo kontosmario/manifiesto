@@ -5,6 +5,7 @@ import {
   useCategoryTemplates,
 } from '@/features/categories/use-category-templates'
 import { type Category, useCategories } from '@/features/categories/use-categories'
+import { filterVariableExpenseCategories } from '@/features/expenses/variable-expense-categories'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
 import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/home/add-expense-model'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
@@ -50,7 +51,14 @@ export function useAddExpenseController({
   const categoryTemplatesQuery = useCategoryTemplates()
   const expensesQuery = useExpenses(familyId)
   const createExpenseMutation = useCreateExpense(familyId, userId)
-  const categories = categoriesQuery.data ?? EMPTY_CATEGORIES
+  // Hide the fixed-only categories (Alquiler, Servicios, Suscripciones)
+  // from the variable-expense picker. The data layer keeps them at
+  // scope='expense' so the fijos add flow can still surface the full
+  // catalog; the filter is local to this controller.
+  const categories = useMemo(
+    () => filterVariableExpenseCategories(categoriesQuery.data ?? EMPTY_CATEGORIES),
+    [categoriesQuery.data],
+  )
   const categoryTemplates = categoryTemplatesQuery.data ?? EMPTY_CATEGORY_TEMPLATES
   // Suggestions and category ranking should only learn from MANUAL
   // gastos (the user's own typing patterns). Commitment payments are
