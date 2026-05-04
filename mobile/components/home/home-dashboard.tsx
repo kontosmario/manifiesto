@@ -20,7 +20,13 @@ import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
-import { HOME_TOUR, HOME_TOUR_STEPS, TourTarget, useScreenTour } from '@/features/tours'
+import {
+  HOME_TOUR,
+  HOME_TOUR_STEPS,
+  TourTarget,
+  useScreenTour,
+  useTourTargetRef,
+} from '@/features/tours'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
   classifyDashboardError,
@@ -105,6 +111,38 @@ export function HomeDashboard({
   // if the tour was already seen or globally disabled in Settings.
   useScreenTour(HOME_TOUR)
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
+
+  // ─── Tour targets that can't be wrapped via <TourTarget> ────────
+  // Some targets live inside leaf components (HomeHeader's actions
+  // row, the two halves of MonthSummaryCard) where wrapping
+  // children is awkward. `useTourTargetRef` registers the step with
+  // the tour context and returns a ref the component forwards to
+  // its native View — same lifecycle as <TourTarget>, no JSX wrap.
+  const headerActionsTourRef = useTourTargetRef(
+    HOME_TOUR,
+    HOME_TOUR_STEPS.headerActions.order,
+    {
+      text: HOME_TOUR_STEPS.headerActions.text,
+      // Pill-shaped highlight to match the icon row's natural shape.
+      highlight: { borderRadius: 24, padding: 8 },
+    },
+  )
+  const variablesTourRef = useTourTargetRef(
+    HOME_TOUR,
+    HOME_TOUR_STEPS.variables.order,
+    {
+      text: HOME_TOUR_STEPS.variables.text,
+      highlight: { borderRadius: 20, padding: 4 },
+    },
+  )
+  const fixedTourRef = useTourTargetRef(
+    HOME_TOUR,
+    HOME_TOUR_STEPS.fixed.order,
+    {
+      text: HOME_TOUR_STEPS.fixed.text,
+      highlight: { borderRadius: 20, padding: 4 },
+    },
+  )
 
   const paymentDay = dashboard.familyFinanceQuery.data?.salary_payment_day ?? null
   const lastConfirmedAt = dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null
@@ -477,11 +515,12 @@ export function HomeDashboard({
         onPressNotifications={handlePressNotifications}
         onPressSettings={handlePressSettings}
         onPressAssistant={handlePressAssistant}
+        actionsRef={headerActionsTourRef}
       />
       <TourTarget
         tour={HOME_TOUR}
-        order={HOME_TOUR_STEPS.payday.order}
-        text={HOME_TOUR_STEPS.payday.text}
+        order={HOME_TOUR_STEPS.familyStrip.order}
+        text={HOME_TOUR_STEPS.familyStrip.text}
       >
         <FamilyStrip
           members={membersQuery.data ?? []}
@@ -502,32 +541,39 @@ export function HomeDashboard({
           savingsChip={savingsChip}
         />
       </TourTarget>
-      <TourTarget
-        tour={HOME_TOUR}
-        order={HOME_TOUR_STEPS.monthSummary.order}
-        text={HOME_TOUR_STEPS.monthSummary.text}
-      >
-        <MonthSummaryCard
-          data={homeMetrics.monthSummary}
-          onPressVariable={handleViewGastos}
-          onPressFixed={handleViewFijos}
-          topCategory={topCategory}
-          onPressTopCategory={handleTopCategoryPress}
-          topCategoryFallback={topCategoryFallback}
-          onPressTopCategoryFallback={handleTopCategoryFallbackPress}
-          nextFixed={nextFixed}
-          onPressNextFixed={handleNextFixedPress}
-          nextFixedFallback={nextFixedFallback}
-          onPressNextFixedFallback={handleNextFixedFallbackPress}
-        />
-      </TourTarget>
+      {/* Variables + Fijos halves of MonthSummaryCard register as
+          two separate steps via the refs above. The card renders
+          unchanged — only the column wrappers carry the refs. */}
+      <MonthSummaryCard
+        data={homeMetrics.monthSummary}
+        onPressVariable={handleViewGastos}
+        onPressFixed={handleViewFijos}
+        topCategory={topCategory}
+        onPressTopCategory={handleTopCategoryPress}
+        topCategoryFallback={topCategoryFallback}
+        onPressTopCategoryFallback={handleTopCategoryFallbackPress}
+        nextFixed={nextFixed}
+        onPressNextFixed={handleNextFixedPress}
+        nextFixedFallback={nextFixedFallback}
+        onPressNextFixedFallback={handleNextFixedFallbackPress}
+        variableRef={variablesTourRef}
+        fixedRef={fixedTourRef}
+      />
       {savingsGoalQuery.data ? (
-        <MetaCard
-          goal={savingsGoalQuery.data}
-          enableQuickAdd
-          suggestedAmount={cycleVault}
-        />
+        <TourTarget
+          tour={HOME_TOUR}
+          order={HOME_TOUR_STEPS.meta.order}
+          text={HOME_TOUR_STEPS.meta.text}
+        >
+          <MetaCard
+            goal={savingsGoalQuery.data}
+            enableQuickAdd
+            suggestedAmount={cycleVault}
+          />
+        </TourTarget>
       ) : (
+        // No tour step when the user hasn't configured a goal yet —
+        // explaining a card they don't have would be confusing.
         <MetaEmptyCard />
       )}
 
@@ -546,16 +592,22 @@ export function HomeDashboard({
           </Pressable>
         ) : null}
       </View>
-      <HomeActivitySection
-        expenses={recentExpenses}
-        categoryNameById={categoryNameById}
-        familyMembers={membersQuery.data ?? []}
-        isLoading={isLoadingActivity}
-        errorKind={activityErrorKind}
-        onDelete={handleDeleteExpenseTracked}
-        pendingExpenseId={pendingDeleteExpenseId ?? null}
-        onRetry={handleActivityRetry}
-      />
+      <TourTarget
+        tour={HOME_TOUR}
+        order={HOME_TOUR_STEPS.activity.order}
+        text={HOME_TOUR_STEPS.activity.text}
+      >
+        <HomeActivitySection
+          expenses={recentExpenses}
+          categoryNameById={categoryNameById}
+          familyMembers={membersQuery.data ?? []}
+          isLoading={isLoadingActivity}
+          errorKind={activityErrorKind}
+          onDelete={handleDeleteExpenseTracked}
+          pendingExpenseId={pendingDeleteExpenseId ?? null}
+          onRetry={handleActivityRetry}
+        />
+      </TourTarget>
 
       <View style={styles.bottomSpacer} />
 

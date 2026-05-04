@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, type RefObject } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -52,6 +52,13 @@ interface MonthSummaryCardProps {
    *  the add-fixed-expense flow). Ignored when `nextFixedFallback`
    *  is null. */
   onPressNextFixedFallback: () => void
+  /**
+   * Refs for the guided-tour to highlight each half of the card as
+   * its own step. Optional — when omitted the card renders normally
+   * and the tour skips these targets.
+   */
+  variableRef?: RefObject<View | null>
+  fixedRef?: RefObject<View | null>
 }
 
 interface PanelTone {
@@ -106,6 +113,8 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   onPressNextFixed,
   nextFixedFallback,
   onPressNextFixedFallback,
+  variableRef,
+  fixedRef,
 }: MonthSummaryCardProps) {
   const { theme } = useAppTheme()
   const allPaid = data.fixedCount > 0 && data.fixedPaid === data.fixedCount
@@ -210,6 +219,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   return (
     <RiseView delay={220}>
       <View style={styles.grid}>
+        <View ref={variableRef} collapsable={false} style={styles.gridCol}>
         <SummaryPanel
           tone={variablesTone}
           label="VARIABLES"
@@ -266,7 +276,9 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                 : null
           }
         />
+        </View>
 
+        <View ref={fixedRef} collapsable={false} style={styles.gridCol}>
         <SummaryPanel
           tone={fijosTone}
           label="FIJOS"
@@ -319,6 +331,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                   : null
           }
         />
+        </View>
       </View>
     </RiseView>
   )
@@ -487,6 +500,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 10,
+  },
+  gridCol: {
+    // Each column wraps a SummaryPanel; the `flex: 1` keeps the
+    // two halves at equal width inside the row. Wrappers exist so
+    // the guided tour can target each half independently.
+    flex: 1,
   },
   panel: {
     flex: 1,

@@ -13,6 +13,11 @@ import {
   type QuickAction,
 } from '@/components/navigation/add-quick-actions-overlay'
 import { useAddExpenseButtonBurst } from '@/components/navigation/add-expense-tab-button.model'
+import {
+  HOME_TOUR,
+  HOME_TOUR_STEPS,
+  useTourTargetRef,
+} from '@/features/tours'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -52,6 +57,21 @@ export function AddExpenseTabButton({
   const pressScale = usePressScale({ pressedScale: 0.93 })
   const { burstRingStyle, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
   const [quickActionsVisible, setQuickActionsVisible] = useState(false)
+  // Register the FAB as the closing step of the Home guided tour.
+  // The button lives in the tab bar (shared chrome) but it's only
+  // taught from Home — when the Gastos / Fijos / Control tours run,
+  // this step doesn't participate (different tour key). Registers
+  // once for the lifetime of the tab bar; the FAB is circular so
+  // we override the highlight radius to match its 64pt face.
+  const fabTourRef = useTourTargetRef(HOME_TOUR, HOME_TOUR_STEPS.fab.order, {
+    text: HOME_TOUR_STEPS.fab.text,
+    highlight: {
+      borderRadius: 36,
+      padding: 4,
+      pulse: true,
+      pulseColor: theme.brand.bright,
+    },
+  })
   // expo-router passes its own onPress + onLongPress through tabBarButton
   // props. We discard them — our handlers below define the actual
   // behavior (tap → add-expense, long-press → speed dial). If we
@@ -99,6 +119,7 @@ export function AddExpenseTabButton({
   return (
     <>
       <Pressable
+        ref={fabTourRef}
         accessibilityLabel="Agregar gasto"
         accessibilityHint="Mantené presionado para más acciones"
         accessibilityRole="button"

@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type RefObject } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Svg, { Circle, Path, G } from 'react-native-svg'
 import { GreetingHeader } from '@/components/home/greeting-header'
@@ -16,6 +16,13 @@ interface HomeHeaderProps {
   onPressNotifications?: () => void
   onPressSettings?: () => void
   onPressAssistant?: () => void
+  /**
+   * Optional ref attached to the actions row (the three icons on
+   * the right). Used by the Home guided tour to highlight the
+   * cluster as a single step. The component owns the layout View;
+   * the ref forwards to it without changing anything else.
+   */
+  actionsRef?: RefObject<View | null>
 }
 
 /**
@@ -33,6 +40,7 @@ function HomeHeaderImpl({
   onPressNotifications,
   onPressSettings,
   onPressAssistant,
+  actionsRef,
 }: HomeHeaderProps) {
   const { theme } = useAppTheme()
   return (
@@ -40,7 +48,7 @@ function HomeHeaderImpl({
       <View style={styles.greetingSlot}>
         <GreetingHeader name={name} hour={hour} />
       </View>
-      <View style={styles.actions}>
+      <View ref={actionsRef} collapsable={false} style={styles.actions}>
         <HomeAssistantButton
           onPress={onPressAssistant}
           pendingCount={assistantPendingCount}
