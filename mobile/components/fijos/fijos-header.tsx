@@ -16,6 +16,12 @@ interface FijosHeaderProps {
   title?: string
   subtitle?: string
   onPressAdd?: () => void
+  /**
+   * Optional ref attached to the add-button stage (the circular
+   * Pressable + halo rings). Used by the Fijos guided tour to
+   * highlight the add affordance as a tour step.
+   */
+  addButtonRef?: React.RefObject<View | null>
 }
 
 const BUTTON_SIZE = 38
@@ -24,6 +30,7 @@ export function FijosHeader({
   title = 'Fijos',
   subtitle = 'Todo lo recurrente en un solo lugar',
   onPressAdd,
+  addButtonRef,
 }: FijosHeaderProps) {
   const { theme } = useAppTheme()
 
@@ -81,7 +88,11 @@ export function FijosHeader({
           ) : null}
         </View>
 
-        <View style={styles.addButtonStage}>
+        <View
+          ref={addButtonRef}
+          collapsable={false}
+          style={styles.addButtonStage}
+        >
           <Animated.View
             pointerEvents="none"
             style={[

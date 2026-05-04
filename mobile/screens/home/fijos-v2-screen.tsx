@@ -17,6 +17,7 @@ import {
   TourTarget,
   useRegisterTourScrollView,
   useScreenTour,
+  useTourTargetRef,
 } from '@/features/tours'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
@@ -47,6 +48,18 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const { onScroll: onTourScroll } = useRegisterTourScrollView(
     FIJOS_TOUR,
     tourScrollRef,
+  )
+  // The add-fijo button lives inside FijosHeader's right cluster.
+  // Ref-based registration so we don't have to refactor the header.
+  const addButtonTourRef = useTourTargetRef(
+    FIJOS_TOUR,
+    FIJOS_TOUR_STEPS.addButton.order,
+    {
+      text: FIJOS_TOUR_STEPS.addButton.text,
+      // The button is circular (38pt) — match its shape with a high
+      // radius and a soft pulse so it reads as "tappable here".
+      highlight: { borderRadius: 28, padding: 6, pulse: true },
+    },
   )
   const controller = useFijosController(familyId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
@@ -140,7 +153,10 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
     >
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>
-          <FijosHeader onPressAdd={handlePressAdd} />
+          <FijosHeader
+            onPressAdd={handlePressAdd}
+            addButtonRef={addButtonTourRef}
+          />
         </Animated.View>
         <TourTarget
           tour={FIJOS_TOUR}

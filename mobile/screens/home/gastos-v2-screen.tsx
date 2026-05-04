@@ -400,7 +400,16 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
         <Animated.View layout={sectionLayout}>
           <GastosHeader
             subtitle={`Ciclo ${controller.cycleLabel}`}
-            rightSlot={<StreakFlameIcon data={streakData} onPress={handlePressStreak} />}
+            rightSlot={
+              <TourTarget
+                tour={GASTOS_TOUR}
+                order={GASTOS_TOUR_STEPS.streak.order}
+                text={GASTOS_TOUR_STEPS.streak.text}
+                highlight={{ borderRadius: 999, padding: 4, pulse: true }}
+              >
+                <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
+              </TourTarget>
+            }
           />
         </Animated.View>
         <TourTarget
@@ -574,6 +583,21 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
           header) so the absolute-positioned blobs fill the whole canvas
           instead of getting clipped to the ListHeaderComponent cell. */}
       <AmbientBlobs />
+      {/* The TourTarget wraps the SectionList in a `<View
+          collapsable={false}>` so the activity-list tour step can
+          measure the whole feed region. The wrapper inherits flex:1
+          via `styles.activityListWrap` to preserve the list's
+          fill-the-rest layout. */}
+      <View
+        collapsable={false}
+        style={styles.activityListWrap}
+      >
+      <TourTarget
+        tour={GASTOS_TOUR}
+        order={GASTOS_TOUR_STEPS.list.order}
+        text={GASTOS_TOUR_STEPS.list.text}
+        highlight={{ borderRadius: 12, padding: 0 }}
+      >
       <SectionList<Expense, MovimientosSection>
         sections={sections}
         keyExtractor={keyExtractor}
@@ -692,6 +716,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
           />
         }
       />
+      </TourTarget>
+      </View>
 
       <StreakSheet
         familyId={familyId}
@@ -712,6 +738,13 @@ const styles = StyleSheet.create({
   // SectionList. Lo movemos al `contentContainerStyle` del list así el
   // usuario puede scrollear hasta el borde del tab bar.
   screenContent: { paddingTop: 14, paddingBottom: 0 },
+  activityListWrap: {
+    // Holds the SectionList for the guided-tour highlight target.
+    // flex:1 keeps the list filling the rest of the screen; without
+    // this the wrapper collapses and the list loses its scrollable
+    // area.
+    flex: 1,
+  },
   listContent: {
     paddingHorizontal: 0,
   },

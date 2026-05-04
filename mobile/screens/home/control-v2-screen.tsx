@@ -274,76 +274,106 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               </ControlV2Anchor>
             </TourTarget>
 
-            <ControlV2Anchor section="alcancia">
-              <ControlV2AlcanciaCard
-                familyId={familyId}
-                userId={userId}
-                goal={savingsGoalQuery.data ?? null}
-                vault={view.vault}
-                closedDays={view.closedDays}
-                diasGanadores={view.diasGanadores}
-                rachaBajoCupo={view.racha}
-                noSpendCount={view.noSpendCount}
-                diaActual={data.diaActual}
-              />
-            </ControlV2Anchor>
+            <TourTarget
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.alcancia.order}
+              text={CONTROL_TOUR_STEPS.alcancia.text}
+            >
+              <ControlV2Anchor section="alcancia">
+                <ControlV2AlcanciaCard
+                  familyId={familyId}
+                  userId={userId}
+                  goal={savingsGoalQuery.data ?? null}
+                  vault={view.vault}
+                  closedDays={view.closedDays}
+                  diasGanadores={view.diasGanadores}
+                  rachaBajoCupo={view.racha}
+                  noSpendCount={view.noSpendCount}
+                  diaActual={data.diaActual}
+                />
+              </ControlV2Anchor>
+            </TourTarget>
 
-            <ControlV2Anchor section="semana">
-              <ControlV2SemanaCard
-                last7={view.last7}
-                cupoDiario={data.cupoDiario}
-                avgU7={view.avgU7}
-                avgP7={view.avgP7}
-                momentum={view.momentum}
-                diasRestantes={view.diasRestantes}
-                diaActual={data.diaActual}
-              />
-            </ControlV2Anchor>
+            <TourTarget
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.semana.order}
+              text={CONTROL_TOUR_STEPS.semana.text}
+            >
+              <ControlV2Anchor section="semana">
+                <ControlV2SemanaCard
+                  last7={view.last7}
+                  cupoDiario={data.cupoDiario}
+                  avgU7={view.avgU7}
+                  avgP7={view.avgP7}
+                  momentum={view.momentum}
+                  diasRestantes={view.diasRestantes}
+                  diaActual={data.diaActual}
+                />
+              </ControlV2Anchor>
+            </TourTarget>
 
-            <ControlV2Anchor section="vsmes">
-              <ControlV2VsMesCard
-                hasPreviousMonth={data.hasPreviousMonth}
-                mesPasadoNombre={data.mesPasado.nombre}
-                mesPasadoTotal={data.mesPasado.gastoTotal}
-                mesPasadoDiasBajoCupo={data.mesPasado.diasBajoCupo}
-                mesPasadoTopCatLabel={data.mesPasado.topCat.label}
-                mesPasadoTopCatAmount={data.mesPasado.topCat.amount}
-                mesPasadoMood={data.mesPasado.mood}
-                mesPasadoSavingsDelta={data.mesPasado.savingsDelta}
-                mesPasadoTopExpense={data.mesPasado.topExpense}
-                currentTopCatSpent={data.mesPasado.currentTopCatSpent}
-                mesPasadoCycleRangeLabel={data.mesPasado.cycleRangeLabel}
-                proyectadoMes={view.proyectadoMes}
-                vsMesAhorro={view.vsMesAhorro}
-                vsMesDeltaPct={view.vsMesDeltaPct}
-                vsMesDiasBajoCupo={view.vsMesDiasBajoCupo}
-                vsMesMejor={view.vsMesMejor}
-                diasGanadores={view.diasGanadores}
-                diaActual={data.diaActual}
-              />
-            </ControlV2Anchor>
+            <TourTarget
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.vsMes.order}
+              text={CONTROL_TOUR_STEPS.vsMes.text}
+            >
+              <ControlV2Anchor section="vsmes">
+                <ControlV2VsMesCard
+                  hasPreviousMonth={data.hasPreviousMonth}
+                  mesPasadoNombre={data.mesPasado.nombre}
+                  mesPasadoTotal={data.mesPasado.gastoTotal}
+                  mesPasadoDiasBajoCupo={data.mesPasado.diasBajoCupo}
+                  mesPasadoTopCatLabel={data.mesPasado.topCat.label}
+                  mesPasadoTopCatAmount={data.mesPasado.topCat.amount}
+                  mesPasadoMood={data.mesPasado.mood}
+                  mesPasadoSavingsDelta={data.mesPasado.savingsDelta}
+                  mesPasadoTopExpense={data.mesPasado.topExpense}
+                  currentTopCatSpent={data.mesPasado.currentTopCatSpent}
+                  mesPasadoCycleRangeLabel={data.mesPasado.cycleRangeLabel}
+                  proyectadoMes={view.proyectadoMes}
+                  vsMesAhorro={view.vsMesAhorro}
+                  vsMesDeltaPct={view.vsMesDeltaPct}
+                  vsMesDiasBajoCupo={view.vsMesDiasBajoCupo}
+                  vsMesMejor={view.vsMesMejor}
+                  diasGanadores={view.diasGanadores}
+                  diaActual={data.diaActual}
+                />
+              </ControlV2Anchor>
+            </TourTarget>
 
-            <ControlV2Anchor section="patron">
-              <ControlV2PatronCard
-                dows={view.porDowEnriched}
-                peorDow={view.peorDow}
-                mejorDow={view.mejorDow}
-                globalAvg={view.globalAvg}
-                diaActual={data.diaActual}
-              />
-            </ControlV2Anchor>
+            <TourTarget
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.patron.order}
+              text={CONTROL_TOUR_STEPS.patron.text}
+            >
+              <ControlV2Anchor section="patron">
+                <ControlV2PatronCard
+                  dows={view.porDowEnriched}
+                  peorDow={view.peorDow}
+                  mejorDow={view.mejorDow}
+                  globalAvg={view.globalAvg}
+                  diaActual={data.diaActual}
+                />
+              </ControlV2Anchor>
+            </TourTarget>
 
-            <ControlV2Anchor section="cobertura">
-              <ControlV2CoberturaCard
-                fijosMes={data.fijosMes}
-                ahorroMes={ahorroMes}
-                libreMes={data.libreMes}
-                ingresoMes={data.ingresoMes}
-                diasMes={data.diasMes}
-                fijosRatioPct={fijosRatioPct}
-                cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
-              />
-            </ControlV2Anchor>
+            <TourTarget
+              tour={CONTROL_TOUR}
+              order={CONTROL_TOUR_STEPS.cobertura.order}
+              text={CONTROL_TOUR_STEPS.cobertura.text}
+            >
+              <ControlV2Anchor section="cobertura">
+                <ControlV2CoberturaCard
+                  fijosMes={data.fijosMes}
+                  ahorroMes={ahorroMes}
+                  libreMes={data.libreMes}
+                  ingresoMes={data.ingresoMes}
+                  diasMes={data.diasMes}
+                  fijosRatioPct={fijosRatioPct}
+                  cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
+                />
+              </ControlV2Anchor>
+            </TourTarget>
 
           </View>
         </ScrollView>
