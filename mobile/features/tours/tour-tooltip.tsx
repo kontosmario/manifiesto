@@ -26,16 +26,20 @@ export function TourTooltip() {
     totalSteps,
     isFirstStep,
     isLastStep,
-    currentConfig,
+    currentStep,
     next,
     prev,
     stop,
     defaults,
   } = useTour()
 
-  if (!currentConfig) return null
+  if (!currentStep) return null
 
-  const tooltipStyle = currentConfig.tooltip
+  // Read the current step's config fresh from the ref — this lets
+  // per-step `text` / `tooltip` updates flow through without the
+  // step needing to re-register.
+  const config = currentStep.configRef.current
+  const tooltipStyle = config.tooltip
   const background = tooltipStyle?.backgroundColor ?? FALLBACK_BACKGROUND
   const foreground = tooltipStyle?.foregroundColor ?? FALLBACK_FOREGROUND
   const muted = tooltipStyle?.mutedForeground ?? FALLBACK_FOREGROUND_MUTED
@@ -77,9 +81,7 @@ export function TourTooltip() {
           <Text style={[styles.skip, { color: muted }]}>{labels.skip}</Text>
         </Pressable>
       </View>
-      <Text style={[styles.body, { color: foreground }]}>
-        {currentConfig.text}
-      </Text>
+      <Text style={[styles.body, { color: foreground }]}>{config.text}</Text>
       <View style={styles.actions}>
         <Pressable
           accessibilityLabel={labels.previous}

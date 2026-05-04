@@ -9,12 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react'
 import { TourHost } from './tour-host'
-import type {
-  RegisteredStep,
-  StepConfig,
-  TourDefaults,
-  TourEvents,
-} from './types'
+import type { RegisteredStep, TourDefaults, TourEvents } from './types'
 import type { TourKey } from './tour-keys'
 
 interface TourContextValue {
@@ -34,10 +29,16 @@ interface TourContextValue {
   totalSteps: number
   isFirstStep: boolean
   isLastStep: boolean
-  /** The current step's config, or null when no tour is active. */
-  currentConfig: StepConfig | null
-  /** The current step's view ref, used by the host to measure. */
-  currentRef: React.RefObject<unknown> | null
+  /**
+   * The currently active registered step, or null when no tour is
+   * running. Both viewRef and configRef live on this object — the
+   * config is read fresh from the ref at execution time so per-step
+   * prop updates flow through without re-registering. The object
+   * reference itself is stable per (activeTour, activeIndex) pair,
+   * so consumers' useEffects can depend on it without re-running on
+   * every host re-render.
+   */
+  currentStep: RegisteredStep | null
 
   // Defaults (read by host + tooltip)
   defaults: Required<TourDefaults>
@@ -60,11 +61,20 @@ const FALLBACK_DEFAULTS: Required<TourDefaults> = {
   scrimColor: '#06120C',
   highlightPadding: 6,
   highlightRadius: 18,
-  // Lifted from `motionSprings.value` (24/180/1.0) — calm, no overshoot.
-  highlightSpring: { damping: 24, stiffness: 180, mass: 1.0 },
-  // Lifted from `motionSprings.enter` (22/210/1.0).
-  tooltipSpring: { damping: 22, stiffness: 210, mass: 1.0 },
-  scrollDurationMs: 320,
+  // Tuned for premium step transitions: ζ ≈ 0.88 (slightly under
+  // critical → settles in ~280ms with a near-imperceptible tail).
+  // Tighter than `motionSprings.value` so step-to-step transitions
+  // feel like one continuous motion at 60fps, not separate moves.
+  highlightSpring: { damping: 26, stiffness: 260, mass: 0.85 },
+  // Tooltip slides slightly more damped (ζ ≈ 0.98 ≈ critical) so it
+  // glides into place without a wobble — the cutout lands first
+  // and the tooltip's calmer arrival makes the chain feel deliberate.
+  tooltipSpring: { damping: 28, stiffness: 240, mass: 0.85 },
+  // Scroll takes ~280ms via RN's native animated scroll. The host
+  // fires it in parallel with the cutout spring (both target the
+  // same final window position), so this number isn't a wall-clock
+  // wait anymore — only used for tooltip timing math.
+  scrollDurationMs: 280,
   scrollOffsetRatio: 0.3,
   pulseDurationMs: 1100,
   labels: DEFAULT_LABELS,
@@ -183,11 +193,12 @@ export function TourProvider({
     onStepChange(activeTour, activeIndex, list.length)
   }, [activeTour, activeIndex, onStepChange])
 
-  // Derive current step's config + ref each render.
+  // Derive current step. The RegisteredStep object reference is
+  // stable as long as the step stays registered at the same order,
+  // so consumers' effects can depend on `currentStep` directly
+  // without re-running on every render of the provider.
   const list = activeTour ? stepsRef.current.get(activeTour) ?? [] : []
-  const currentStep: RegisteredStep | undefined = list[activeIndex]
-  const currentConfig = currentStep?.configRef.current ?? null
-  const currentRef = currentStep?.viewRef ?? null
+  const currentStep: RegisteredStep | null = list[activeIndex] ?? null
   const totalSteps = list.length
   const isFirstStep = activeIndex === 0
   const isLastStep = totalSteps > 0 && activeIndex >= totalSteps - 1
@@ -205,8 +216,7 @@ export function TourProvider({
       totalSteps,
       isFirstStep,
       isLastStep,
-      currentConfig,
-      currentRef,
+      currentStep,
       defaults,
       measureToken,
     }),
@@ -222,8 +232,7 @@ export function TourProvider({
       totalSteps,
       isFirstStep,
       isLastStep,
-      currentConfig,
-      currentRef,
+      currentStep,
       defaults,
       measureToken,
     ],

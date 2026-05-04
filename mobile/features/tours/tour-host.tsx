@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Modal,
   Pressable,
@@ -52,8 +52,6 @@ interface MeasuredRect {
   height: number
 }
 
-const ZERO_RECT: MeasuredRect = { x: 0, y: 0, width: 0, height: 0 }
-
 /**
  * Top-level overlay for the guided tour. Mounted once at the
  * `<TourProvider>` level. When a tour starts:
@@ -81,8 +79,7 @@ export function TourHost() {
   const {
     activeTour,
     activeIndex,
-    currentRef,
-    currentConfig,
+    currentStep,
     defaults,
     measureToken,
     stop,
@@ -90,6 +87,14 @@ export function TourHost() {
   const { width: screenW, height: screenH } = useWindowDimensions()
 
   const visible = activeTour !== null
+  // Cache the registered ScrollView's window rect across step
+  // transitions within the same tour. The ScrollView doesn't move
+  // mid-tour, so re-measuring its window position on every step is
+  // pure waste. Reset when the active tour changes.
+  const svRectRef = useRef<MeasuredRect | null>(null)
+  useEffect(() => {
+    svRectRef.current = null
+  }, [activeTour])
 
   // Cutout rect (window coords) + radius — the spring values that
   // the SVG mask reads on the UI thread.
@@ -136,8 +141,14 @@ export function TourHost() {
 
   // Pulse loop — runs only while a tour is active and the step opts
   // in. Cancels on stop / step-without-pulse so we don't waste CPU.
+  // Reads pulse opt-in fresh from the configRef inside the effect
+  // so per-step config updates don't force the effect to re-run on
+  // every render of the host.
+  const stepPulseEnabled = Boolean(
+    currentStep?.configRef.current?.highlight?.pulse,
+  )
   useEffect(() => {
-    if (reduced || !visible || !currentConfig?.highlight?.pulse) {
+    if (reduced || !visible || !stepPulseEnabled) {
       cancelAnimation(pulseT)
       pulseT.value = 0
       return
@@ -155,128 +166,146 @@ export function TourHost() {
       -1,
       false,
     )
-  }, [reduced, visible, currentConfig, defaults.pulseDurationMs, pulseT])
+  }, [reduced, visible, stepPulseEnabled, defaults.pulseDurationMs, pulseT])
 
-  // Measure the active step's view + auto-scroll + spring the cutout
-  // to the new rect. Re-runs when the step changes or when targets
-  // re-register (measureToken).
+  // Measure the active step + (optionally) fire scroll + spring the
+  // cutout — all in parallel. Re-runs when the step or the active
+  // tour changes, or when targets re-register (`measureToken`).
+  //
+  // The previous version awaited the scroll for `scrollDurationMs`
+  // (320ms) before springing the cutout. That serial wait dominated
+  // the felt-latency between steps. This version computes the post-
+  // scroll window position with arithmetic, fires the scroll and
+  // springs the cutout in the same frame, and skips the scroll
+  // entirely when the target is already in the viewport at the
+  // desired offset (delta < 4pt).
   useEffect(() => {
-    if (!visible || !currentRef?.current || !activeTour) return
+    if (!visible || !currentStep || !activeTour) return
     let cancelled = false
 
-    const runMeasure = (): Promise<MeasuredRect | null> =>
+    const measure = (
+      node: { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null,
+    ): Promise<MeasuredRect | null> =>
       new Promise((resolve) => {
-        const node = currentRef.current as
-          | {
-              measureInWindow: (
-                cb: (x: number, y: number, w: number, h: number) => void,
-              ) => void
-            }
-          | null
         if (!node) {
           resolve(null)
           return
         }
-        node.measureInWindow((x, y, width, height) => {
-          resolve({ x, y, width, height })
-        })
+        node.measureInWindow((x, y, w, h) =>
+          resolve({ x, y, width: w, height: h }),
+        )
       })
 
     const run = async () => {
-      // First, optionally auto-scroll so the step lands at the
-      // configured ratio. We do this BEFORE the cutout measurement
-      // so the spring tracks the post-scroll position.
+      const node = currentStep.viewRef.current as
+        | {
+            measureInWindow: (
+              cb: (x: number, y: number, w: number, h: number) => void,
+            ) => void
+          }
+        | null
+      if (!node) return
+
+      // 1. Measure the step in window coords.
+      const stepRect = await measure(node)
+      if (cancelled || !stepRect) return
+
+      // 2. Compute target window position. If a ScrollView is
+      //    registered, work out the post-scroll position math and
+      //    fire scrollTo immediately — no awaiting.
+      let targetWindowY = stepRect.y
+      const targetWindowX = stepRect.x
+
       const entry = getTourScrollEntry(activeTour)
       if (entry?.scrollView) {
-        const stepRect = await runMeasure()
-        if (cancelled || !stepRect) return
         const sv = entry.scrollView as unknown as {
           measureInWindow: (
             cb: (x: number, y: number, w: number, h: number) => void,
           ) => void
           scrollTo: (opts: { y: number; animated: boolean }) => void
         }
-        const svRect = await new Promise<MeasuredRect | null>((resolve) => {
-          if (!sv) {
-            resolve(null)
-            return
-          }
-          sv.measureInWindow((x, y, w, h) =>
-            resolve({ x, y, width: w, height: h }),
-          )
-        })
-        if (cancelled || !svRect) return
-        const contentY =
-          stepRect.y - svRect.y + entry.scrollYRef.current
+        // Cache svRect across steps within the same tour — the
+        // ScrollView's window position doesn't change mid-tour.
+        let svRect = svRectRef.current
+        if (!svRect) {
+          svRect = await measure(sv)
+          if (cancelled || !svRect) return
+          svRectRef.current = svRect
+        }
         const desiredVisibleY = svRect.height * defaults.scrollOffsetRatio
-        const targetScrollY = Math.max(0, contentY - desiredVisibleY)
-        sv.scrollTo({ y: targetScrollY, animated: true })
-        // Wait for the scroll to settle (animated:true on RN
-        // ScrollView is OS-driven — there's no callback, so we use
-        // the configured scroll duration as a proxy).
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, defaults.scrollDurationMs),
-        )
-        if (cancelled) return
+        const stepContentY =
+          stepRect.y - svRect.y + entry.scrollYRef.current
+        const targetScrollY = Math.max(0, stepContentY - desiredVisibleY)
+        const scrollDelta = targetScrollY - entry.scrollYRef.current
+
+        // Skip the scroll call entirely if we're already there.
+        // Saves a frame on screens where the target was visible.
+        if (Math.abs(scrollDelta) > 4) {
+          sv.scrollTo({ y: targetScrollY, animated: true })
+          // Where the step lands in window after the scroll lands.
+          targetWindowY = svRect.y + (stepContentY - targetScrollY)
+        }
       }
 
-      // Now measure again post-scroll and spring the cutout.
-      const finalRect = await runMeasure()
-      if (cancelled || !finalRect) return
-      const padding =
-        currentConfig?.highlight?.padding ?? defaults.highlightPadding
+      // 3. Read per-step style and compute final cutout rect.
+      const config = currentStep.configRef.current
+      const padding = config?.highlight?.padding ?? defaults.highlightPadding
       const radius =
-        currentConfig?.highlight?.borderRadius ?? defaults.highlightRadius
+        config?.highlight?.borderRadius ?? defaults.highlightRadius
 
-      const targetX = finalRect.x - padding
-      const targetY = finalRect.y - padding
-      const targetW = finalRect.width + padding * 2
-      const targetH = finalRect.height + padding * 2
+      const targetX = targetWindowX - padding
+      const targetY = targetWindowY - padding
+      const targetW = stepRect.width + padding * 2
+      const targetH = stepRect.height + padding * 2
 
-      // First time we render a cutout, snap rather than animate from
-      // (0, 0). Subsequent transitions spring smoothly.
+      // 4. Spring everything in parallel with the scroll. First
+      //    measure of the session snaps; subsequent transitions
+      //    spring with the configured `highlightSpring`.
       const isFirstMeasure = cutW.value === 0 && cutH.value === 0
-      const spring = (to: number, sv: typeof cutX) =>
-        isFirstMeasure || reduced
-          ? (sv.value = to)
-          : (sv.value = withSpring(to, defaults.highlightSpring))
+      const spring = (sv: typeof cutX, to: number) => {
+        sv.value =
+          isFirstMeasure || reduced
+            ? to
+            : withSpring(to, defaults.highlightSpring)
+      }
+      spring(cutX, targetX)
+      spring(cutY, targetY)
+      spring(cutW, targetW)
+      spring(cutH, targetH)
+      spring(cutR, radius)
 
-      spring(targetX, cutX)
-      spring(targetY, cutY)
-      spring(targetW, cutW)
-      spring(targetH, cutH)
-      spring(radius, cutR)
-
-      // Tooltip placement: above the cutout if there's more room
-      // above, otherwise below. Tooltip Y is the *top* of the card.
+      // Tooltip placement based on the post-scroll position.
       const TOOLTIP_GAP = 16
-      const TOOLTIP_HEIGHT_ESTIMATE = 200 // tooltip won't exceed this
+      const TOOLTIP_HEIGHT_ESTIMATE = 200
       const roomBelow =
         screenH - (targetY + targetH) - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
       const roomAbove = targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
-      const placement = roomBelow >= 0 || roomBelow > roomAbove ? 'below' : 'above'
+      const placement =
+        roomBelow >= 0 || roomBelow > roomAbove ? 'below' : 'above'
       tooltipPlacement.value = placement
       const tooltipTop =
         placement === 'below'
           ? targetY + targetH + TOOLTIP_GAP
           : Math.max(48, targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE)
-      tooltipY.value = isFirstMeasure || reduced
-        ? tooltipTop
-        : withSpring(tooltipTop, defaults.tooltipSpring)
+      tooltipY.value =
+        isFirstMeasure || reduced
+          ? tooltipTop
+          : withSpring(tooltipTop, defaults.tooltipSpring)
     }
 
     void run()
     return () => {
       cancelled = true
     }
-    // measureToken is included so re-registering a step (e.g. via
-    // hot reload or a layout flip) re-measures.
+    // currentStep's reference is stable per (activeTour, activeIndex)
+    // pair, so depending on it (instead of currentConfig + currentRef
+    // which were fresh each render) means this effect only re-runs on
+    // actual step changes, not on every host re-render.
   }, [
     visible,
     activeTour,
     activeIndex,
-    currentRef,
-    currentConfig,
+    currentStep,
     measureToken,
     reduced,
     screenH,
@@ -300,9 +329,12 @@ export function TourHost() {
     ry: cutR.value,
   }))
 
-  // Optional border drawn around the cutout.
-  const borderColor = currentConfig?.highlight?.borderColor
-  const borderWidth = currentConfig?.highlight?.borderWidth ?? 0
+  // Optional border drawn around the cutout. Read fresh from the
+  // configRef so per-step style updates flow through without
+  // re-registering.
+  const stepConfig = currentStep?.configRef.current
+  const borderColor = stepConfig?.highlight?.borderColor
+  const borderWidth = stepConfig?.highlight?.borderWidth ?? 0
   const borderAnimatedProps = useAnimatedProps(() => ({
     x: cutX.value,
     y: cutY.value,
@@ -313,9 +345,9 @@ export function TourHost() {
   }))
 
   // Pulse halo — expands from the cutout and fades out cyclically.
-  const pulseColor = currentConfig?.highlight?.pulseColor ?? '#A6EF8F'
-  const pulseWidth = currentConfig?.highlight?.pulseWidth ?? 3
-  const pulseEnabled = Boolean(currentConfig?.highlight?.pulse)
+  const pulseColor = stepConfig?.highlight?.pulseColor ?? '#A6EF8F'
+  const pulseWidth = stepConfig?.highlight?.pulseWidth ?? 3
+  const pulseEnabled = Boolean(stepConfig?.highlight?.pulse)
   const pulseAnimatedProps = useAnimatedProps(() => {
     const t = pulseT.value
     const expand = interpolate(t, [0, 1], [0, 22], Extrapolation.CLAMP)
