@@ -1,4 +1,5 @@
-export { TourStep } from './tour-step'
+export { TourProvider, useTour } from './tour-context'
+export { TourTarget } from './tour-target'
 export { TourTooltip } from './tour-tooltip'
 export { useScreenTour } from './use-screen-tour'
 export { useRegisterTourScrollView } from './use-register-tour-scroll-view'
@@ -16,6 +17,13 @@ export {
   setToursEnabled,
   setTourSeen,
 } from './persistence'
+export type {
+  HighlightStyle,
+  StepConfig,
+  TooltipStyle,
+  TourDefaults,
+  TourEvents,
+} from './types'
 export { HOME_TOUR, HOME_TOUR_STEPS } from './screens/home-tour'
 export { GASTOS_TOUR, GASTOS_TOUR_STEPS } from './screens/gastos-tour'
 export { FIJOS_TOUR, FIJOS_TOUR_STEPS } from './screens/fijos-tour'

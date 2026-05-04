@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useIsFocused } from '@react-navigation/native'
-import { useCopilot } from 'react-native-copilot'
 import { triggerHaptic } from '@/lib/haptics'
 import { getToursEnabled, getTourSeen, setTourSeen } from './persistence'
-import { getTourScrollEntry } from './tour-scroll-registry'
+import { useTour } from './tour-context'
 import type { TourKey } from './tour-keys'
 
 interface UseScreenTourOptions {
@@ -21,147 +20,49 @@ interface UseScreenTourOptions {
   forceStart?: boolean
 }
 
-interface MeasureRect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-/**
- * Promise wrapper around `View.measureInWindow`. Used in place of
- * `measureLayout` so the auto-scroll math works on Fabric without
- * triggering RN's "must be called with a ref to a native component"
- * deprecation warning.
- */
-function measureInWindow(
-  node: { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null | undefined,
-): Promise<MeasureRect | null> {
-  if (!node) return Promise.resolve(null)
-  return new Promise((resolve) => {
-    node.measureInWindow((x, y, width, height) => {
-      resolve({ x, y, width, height })
-    })
-  })
-}
-
 /**
  * Auto-starts the screen's guided tour the first time the user
- * lands on it. Marks the tour as "seen" once the user finishes or
- * dismisses the tour.
+ * lands on it; marks it seen on dismiss/finish. Wraps the new
+ * custom `TourContext` with the same persistence + focus-gating
+ * we had with `react-native-copilot`, so callers don't need to
+ * change anything.
  *
- * Two implementation notes:
- *
- *   1. The auto-start effect MUST NOT re-run on every render of the
- *      host screen, because each cleanup cancels the pending
- *      `setTimeout` and the next run sees `startedRef.current` is
- *      already true and skips. We avoid this by keeping the effect
- *      deps to stable primitives only and reading the (potentially
- *      unstable) `start()` function via a ref.
- *
- *   2. `copilotEvents.on('stop', ...)` fires for ANY tour that
- *      stops, not just ours. Without filtering, all four tours
- *      would mark themselves as seen the moment the first one
- *      finishes. We track the last active step name and only mark
- *      our own tour as seen when the stopped step belonged to it
- *      (step names are prefixed `<tour>/<order>` by `<TourStep>`).
- *
- *   3. Auto-scroll is implemented here (not via the lib's built-in
- *      `start(_, scrollView)`) because the lib uses `measureLayout`
- *      under the hood, which fires a Fabric deprecation warning
- *      in RN 0.81+. We listen to `stepChange` and use
- *      `measureInWindow` on both the step and the registered
- *      ScrollView to compute the scroll target, then scroll
- *      manually.
+ * Implementation details:
+ *   - The auto-start effect's deps are stable primitives only, so
+ *     re-renders of the host screen don't cancel a pending start.
+ *   - The `start` fn from the context is captured in a ref each
+ *     render so it can change without invalidating the effect.
+ *   - We mark the tour seen on `stop` only when the active tour
+ *     was actually ours (the context emits onStop with the tour
+ *     key, so no name-prefix filtering is needed — it's already
+ *     scoped).
  */
 export function useScreenTour(
   tour: TourKey,
   { startDelayMs = 600, forceStart = false }: UseScreenTourOptions = {},
-): { start: () => Promise<void> } {
-  const { copilotEvents, start: copilotStart } = useCopilot()
+): { start: () => void } {
+  const ctx = useTour()
   const isFocused = useIsFocused()
-  const startRef = useRef(copilotStart)
-  startRef.current = copilotStart
+  const ctxRef = useRef(ctx)
+  ctxRef.current = ctx
   const startedRef = useRef(false)
-  const lastStepNameRef = useRef<string | undefined>(undefined)
 
-  // Mark the tour as seen on stop, only if our own tour was active.
-  // Auto-scroll on stepChange to keep the target visible.
+  // Mark our tour as seen on stop. The context's `activeTour` flips
+  // to null when a tour stops; we infer "ours just stopped" by
+  // checking if `activeTour` became null while previously it was us.
+  const wasActiveRef = useRef(false)
   useEffect(() => {
-    const handleStepChange = (
-      step:
-        | {
-            name: string
-            wrapperRef?: { current?: unknown }
-          }
-        | undefined,
-    ) => {
-      if (!step?.name) return
-      lastStepNameRef.current = step.name
-      if (!step.name.startsWith(`${tour}/`)) return
-
-      const entry = getTourScrollEntry(tour)
-      const scrollView = entry?.scrollView
-      const scrollYRef = entry?.scrollYRef
-      if (!scrollView || !scrollYRef) return
-      const wrapperNode = step.wrapperRef?.current as
-        | {
-            measureInWindow: (
-              cb: (x: number, y: number, w: number, h: number) => void,
-            ) => void
-          }
-        | null
-        | undefined
-      if (!wrapperNode) return
-
-      // Run the measurements concurrently and scroll once both come
-      // back. measureInWindow is the Fabric-friendly path — works
-      // identically on the new and old architectures. The
-      // ScrollView's class type doesn't surface `measureInWindow`
-      // in TS, but the runtime instance does inherit it from the
-      // underlying NativeMethods — cast through to call it.
-      void Promise.all([
-        measureInWindow(wrapperNode),
-        measureInWindow(
-          scrollView as unknown as {
-            measureInWindow: (
-              cb: (x: number, y: number, w: number, h: number) => void,
-            ) => void
-          },
-        ),
-      ]).then(([stepRect, svRect]) => {
-        if (!stepRect || !svRect) return
-        // Step's content-Y inside the ScrollView's content view:
-        //   stepRect.y is the step's window position
-        //   svRect.y is the ScrollView's window position
-        //   scrollYRef.current is the current scroll offset
-        // → contentY = (stepRect.y - svRect.y) + scrollYRef.current
-        const contentY = stepRect.y - svRect.y + scrollYRef.current
-        // Place the step ~25% from the top of the visible area.
-        const desiredVisibleY = svRect.height * 0.25
-        const targetScrollY = Math.max(0, contentY - desiredVisibleY)
-        scrollView.scrollTo({ y: targetScrollY, animated: true })
-      })
+    const isOurs = ctx.activeTour === tour
+    if (isOurs) {
+      wasActiveRef.current = true
+    } else if (wasActiveRef.current && ctx.activeTour === null) {
+      // Just stopped from being our tour.
+      wasActiveRef.current = false
+      void setTourSeen(tour)
     }
+  }, [ctx.activeTour, tour])
 
-    const handleStop = () => {
-      const name = lastStepNameRef.current
-      if (name?.startsWith(`${tour}/`)) {
-        void setTourSeen(tour)
-        lastStepNameRef.current = undefined
-      }
-    }
-
-    copilotEvents.on('stepChange', handleStepChange)
-    copilotEvents.on('stop', handleStop)
-    return () => {
-      copilotEvents.off('stepChange', handleStepChange)
-      copilotEvents.off('stop', handleStop)
-    }
-  }, [copilotEvents, tour])
-
-  // Auto-start on focus, gated by the seen flag and the global
-  // enabled flag.
+  // Auto-start on focus.
   useEffect(() => {
     if (!isFocused) {
       startedRef.current = false
@@ -181,10 +82,7 @@ export function useScreenTour(
       }
       timeoutId = setTimeout(() => {
         void triggerHaptic('light')
-        // Don't pass the scrollView — the lib's built-in auto-scroll
-        // path uses measureLayout, which warns on Fabric. We do the
-        // scroll manually in the stepChange handler above.
-        void startRef.current()
+        ctxRef.current.start(tour)
       }, startDelayMs)
     })()
 
@@ -194,10 +92,10 @@ export function useScreenTour(
     }
   }, [forceStart, isFocused, startDelayMs, tour])
 
-  const start = useCallback(async () => {
+  const start = useCallback(() => {
     void triggerHaptic('light')
-    await startRef.current()
-  }, [])
+    ctxRef.current.start(tour)
+  }, [tour])
 
   return { start }
 }

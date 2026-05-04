@@ -1,85 +1,88 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { useCopilot, type TooltipProps } from 'react-native-copilot'
 import { triggerHaptic } from '@/lib/haptics'
 import { surfaceScale } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
+import { useTour } from './tour-context'
 
-// The tooltip always sits over a strong dark scrim regardless of
-// the system theme, so a "floating mini-sheet" rendered in dark
-// reads better than swapping with light/dark mode. Concretely: a
-// light-mode tooltip with a 1px border showed a halo against the
-// scrim that the user described as a "marco blanco antiestético".
-// Pinning the surface to V1 surface-900 (`#244235`) and dropping
-// the border kills the halo and unifies both modes.
-const TOOLTIP_BACKGROUND = surfaceScale[900]
-const TOOLTIP_FOREGROUND = surfaceScale[50]
-const TOOLTIP_FOREGROUND_MUTED = surfaceScale[300]
+const FALLBACK_BACKGROUND = surfaceScale[900]
+const FALLBACK_FOREGROUND = surfaceScale[50]
+const FALLBACK_FOREGROUND_MUTED = surfaceScale[300]
 
 /**
- * Custom tooltip that matches the Manifiesto motion + palette
- * vocabulary instead of the library's generic look. Shows step
- * counter, body text, and Skip / Anterior / Siguiente / Finalizar
- * controls. The library's default Spanish labels are passed through
- * the `labels` prop on the provider so the buttons stay localized.
+ * The card that explains what each step is about. Pulls everything
+ * — current step text, step number, navigation, defaults — from the
+ * tour context. Per-step `tooltip` overrides on the active step's
+ * `<TourTarget>` win over provider defaults.
  *
- * The card uses `theme.colors.surface` + `border` so it lifts off
- * the dark scrim cleanly in both light and dark modes — verified
- * AA contrast on body text against either surface.
+ * The card is intentionally always-dark regardless of system theme:
+ * it sits over a strong dark scrim, so a light-mode surface would
+ * read as a halo against it.
  */
-export function TourTooltip({ labels }: TooltipProps) {
+export function TourTooltip() {
   const { theme } = useAppTheme()
   const {
-    currentStep,
-    currentStepNumber,
-    goToNext,
-    goToPrev,
+    activeIndex,
+    totalSteps,
     isFirstStep,
     isLastStep,
+    currentConfig,
+    next,
+    prev,
     stop,
-    totalStepsNumber,
-  } = useCopilot()
+    defaults,
+  } = useTour()
 
-  if (!currentStep) return null
+  if (!currentConfig) return null
+
+  const tooltipStyle = currentConfig.tooltip
+  const background = tooltipStyle?.backgroundColor ?? FALLBACK_BACKGROUND
+  const foreground = tooltipStyle?.foregroundColor ?? FALLBACK_FOREGROUND
+  const muted = tooltipStyle?.mutedForeground ?? FALLBACK_FOREGROUND_MUTED
+  const primary = tooltipStyle?.primaryColor ?? theme.colors.primary
+  const primaryFg =
+    tooltipStyle?.primaryForeground ?? (theme.isDark ? '#0E1B14' : '#FFFFFF')
+
+  const labels = defaults.labels
 
   const handleNext = () => {
     void triggerHaptic('light')
     if (isLastStep) {
-      void stop()
+      stop(true)
     } else {
-      void goToNext()
+      next()
     }
   }
-
   const handlePrev = () => {
     void triggerHaptic('light')
-    void goToPrev()
+    prev()
   }
-
   const handleSkip = () => {
     void triggerHaptic('selection')
-    void stop()
+    stop(false)
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: background }]}>
       <View style={styles.header}>
-        <Text style={styles.counter}>
-          {currentStepNumber} / {totalStepsNumber}
+        <Text style={[styles.counter, { color: muted }]}>
+          {activeIndex + 1} / {totalSteps}
         </Text>
         <Pressable
-          accessibilityLabel={labels.skip ?? 'Saltar'}
+          accessibilityLabel={labels.skip}
           accessibilityRole="button"
           hitSlop={8}
           onPress={handleSkip}
         >
-          <Text style={styles.skip}>{labels.skip ?? 'Saltar'}</Text>
+          <Text style={[styles.skip, { color: muted }]}>{labels.skip}</Text>
         </Pressable>
       </View>
-      <Text style={styles.body}>{currentStep.text}</Text>
+      <Text style={[styles.body, { color: foreground }]}>
+        {currentConfig.text}
+      </Text>
       <View style={styles.actions}>
         <Pressable
-          accessibilityLabel={labels.previous ?? 'Anterior'}
+          accessibilityLabel={labels.previous}
           accessibilityRole="button"
           disabled={isFirstStep}
           hitSlop={8}
@@ -91,32 +94,25 @@ export function TourTooltip({ labels }: TooltipProps) {
             },
           ]}
         >
-          <Text style={styles.secondaryLabel}>{labels.previous ?? 'Anterior'}</Text>
+          <Text style={[styles.secondaryLabel, { color: foreground }]}>
+            {labels.previous}
+          </Text>
         </Pressable>
         <Pressable
-          accessibilityLabel={
-            isLastStep ? labels.finish ?? 'Finalizar' : labels.next ?? 'Siguiente'
-          }
+          accessibilityLabel={isLastStep ? labels.finish : labels.next}
           accessibilityRole="button"
           hitSlop={8}
           onPress={handleNext}
           style={({ pressed }) => [
             styles.primary,
             {
-              backgroundColor: theme.colors.primary,
+              backgroundColor: primary,
               opacity: pressed ? 0.92 : 1,
             },
           ]}
         >
-          <Text
-            style={[
-              styles.primaryLabel,
-              { color: theme.isDark ? '#0E1B14' : '#FFFFFF' },
-            ]}
-          >
-            {isLastStep
-              ? labels.finish ?? 'Finalizar'
-              : labels.next ?? 'Siguiente'}
+          <Text style={[styles.primaryLabel, { color: primaryFg }]}>
+            {isLastStep ? labels.finish : labels.next}
           </Text>
         </Pressable>
       </View>
@@ -126,13 +122,12 @@ export function TourTooltip({ labels }: TooltipProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: TOOLTIP_BACKGROUND,
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 12,
-    // Shadow only — no border. The previous theme.colors.border
-    // halo'd as a "marco blanco" against the dark scrim.
+    // No border — relies on shadow for elevation. Halo-free on
+    // any scrim color.
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.42,
@@ -149,18 +144,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.1,
     textTransform: 'uppercase',
-    color: TOOLTIP_FOREGROUND_MUTED,
   },
   skip: {
     fontSize: 13,
     fontWeight: '600',
-    color: TOOLTIP_FOREGROUND_MUTED,
   },
   body: {
     ...typography.body,
     fontSize: 15,
     lineHeight: 21,
-    color: TOOLTIP_FOREGROUND,
   },
   actions: {
     flexDirection: 'row',
@@ -170,9 +162,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   secondary: {
-    // Subtle pill outline using the foreground muted at low alpha,
-    // so the button reads against the dark card without re-creating
-    // the harsh 1px contour we just removed from the card itself.
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.16)',
@@ -183,7 +172,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: TOOLTIP_FOREGROUND,
   },
   primary: {
     borderRadius: 999,
