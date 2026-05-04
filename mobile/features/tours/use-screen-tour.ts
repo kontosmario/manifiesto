@@ -3,7 +3,32 @@ import { useIsFocused } from '@react-navigation/native'
 import { triggerHaptic } from '@/lib/haptics'
 import { getToursEnabled, getTourSeen, setTourSeen } from './persistence'
 import { useTour } from './tour-context'
+import { getTourScrollEntry } from './tour-scroll-registry'
 import type { TourKey } from './tour-keys'
+
+/**
+ * Reset the screen's ScrollView to y=0 before starting the tour
+ * and wait for the scroll to settle. Without this, if the user has
+ * already scrolled the screen mid-load (or reactivated the tour
+ * from Settings while the screen carries a stale offset), every
+ * step's measure runs against a moved viewport and the cutout
+ * lands in the wrong place. Resetting to top guarantees the first
+ * step measures against a fresh layout.
+ *
+ * Returns a promise that resolves once the scroll is presumed
+ * complete (~320ms — RN's animated scroll has no completion
+ * callback, so we time-box it).
+ */
+async function resetScrollToTop(tour: TourKey): Promise<void> {
+  const entry = getTourScrollEntry(tour)
+  if (!entry?.scrollView) return
+  if (entry.scrollYRef.current <= 1) return // already at top
+  const sv = entry.scrollView as unknown as {
+    scrollTo: (opts: { y: number; animated: boolean }) => void
+  }
+  sv.scrollTo({ y: 0, animated: true })
+  await new Promise<void>((resolve) => setTimeout(resolve, 320))
+}
 
 interface UseScreenTourOptions {
   /**
@@ -40,7 +65,7 @@ interface UseScreenTourOptions {
 export function useScreenTour(
   tour: TourKey,
   { startDelayMs = 600, forceStart = false }: UseScreenTourOptions = {},
-): { start: () => void } {
+): { start: () => Promise<void> } {
   const ctx = useTour()
   const isFocused = useIsFocused()
   const ctxRef = useRef(ctx)
@@ -80,8 +105,15 @@ export function useScreenTour(
         const seen = await getTourSeen(tour)
         if (cancelled || seen) return
       }
-      timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(async () => {
+        if (cancelled) return
         void triggerHaptic('light')
+        // Reset scroll to top so the first step's measurement runs
+        // against an unscrolled layout. Avoids mid-tour drift when
+        // the user reopens the tour from Settings while the screen
+        // is mid-page.
+        await resetScrollToTop(tour)
+        if (cancelled) return
         ctxRef.current.start(tour)
       }, startDelayMs)
     })()
@@ -92,8 +124,9 @@ export function useScreenTour(
     }
   }, [forceStart, isFocused, startDelayMs, tour])
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     void triggerHaptic('light')
+    await resetScrollToTop(tour)
     ctxRef.current.start(tour)
   }, [tour])
 

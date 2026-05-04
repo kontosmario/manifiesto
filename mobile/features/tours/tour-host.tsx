@@ -11,6 +11,7 @@ import Animated, {
   Easing,
   Extrapolation,
   interpolate,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -18,7 +19,16 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import SvgRaw, { Path } from 'react-native-svg'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+
+// react-native-svg's typings are strict on children/style. Cast to
+// `React.FC` so we can pass the animated children we need without
+// fighting the lib's prop types.
+const Svg = SvgRaw as unknown as React.FC<
+  React.ComponentProps<typeof SvgRaw> & { children?: React.ReactNode }
+>
+const AnimatedPath = Animated.createAnimatedComponent(Path)
 import { motionDurations } from '@/lib/motion/tokens'
 import { useTour } from './tour-context'
 import { TourTooltip } from './tour-tooltip'
@@ -279,94 +289,53 @@ export function TourHost() {
     tooltipY,
   ])
 
-  // ─── Mask geometry (native Views, no SVG) ──────────────────────
-  // Each animated style derives its position/size from cutX/cutY/
-  // cutW/cutH/cutR via worklet — runs on the UI thread, no bridge.
+  // ─── Mask geometry (single SVG Path, fillRule=evenodd) ─────────
+  //
+  // Builds the scrim shape as one Path: full-screen outer rect,
+  // followed by a rounded-rectangle subpath for the cutout drawn
+  // counter-clockwise. With `fillRule="evenodd"`, the cutout area
+  // counts as "outside" the fill region — that's what creates the
+  // transparent hole.
+  //
+  // Why this beats the previous 4-rect + 4-corner-cap approach:
+  // the corner caps had to paint the "kite" between the bounding
+  // rectangle and the cutout's curve, but with `borderXxxRadius =
+  // sideLength` the View collapsed into a quarter-circle on the
+  // *opposite* side, so the kite never got painted and the cutout
+  // ended up with concave corners eating into it ("comido hacia
+  // adentro" was the user's exact description). A single path with
+  // explicit arc commands has no such trap — the curve is what
+  // we say it is.
+  //
+  // The path string is rebuilt each frame by a worklet, so cutout
+  // motion runs entirely on the UI thread. Native renderers
+  // (Android Canvas.drawPath, iOS CGPath) handle Paths far more
+  // efficiently than `<Mask>` compositing.
 
   const stepConfig = currentStep?.configRef.current
 
-  const topMaskStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: screenW,
-    height: Math.max(0, cutY.value),
-  }))
-
-  const bottomMaskStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: 0,
-    top: cutY.value + cutH.value,
-    width: screenW,
-    height: Math.max(0, screenH - (cutY.value + cutH.value)),
-  }))
-
-  const leftMaskStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: 0,
-    top: cutY.value,
-    width: Math.max(0, cutX.value),
-    height: cutH.value,
-  }))
-
-  const rightMaskStyle = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: cutX.value + cutW.value,
-    top: cutY.value,
-    width: Math.max(0, screenW - (cutX.value + cutW.value)),
-    height: cutH.value,
-  }))
-
-  // Corner caps: r×r squares at each cutout corner, with one
-  // inverted-radius corner facing inward. Together with the four
-  // mask rectangles they paint the rounded-rectangle cutout.
-  // `safeR` clamps the radius so caps never overlap on small rects.
-  const tlCornerStyle = useAnimatedStyle(() => {
-    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
-    return {
-      position: 'absolute',
-      left: cutX.value,
-      top: cutY.value,
-      width: safeR,
-      height: safeR,
-      borderBottomRightRadius: safeR,
-    }
-  })
-
-  const trCornerStyle = useAnimatedStyle(() => {
-    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
-    return {
-      position: 'absolute',
-      left: cutX.value + cutW.value - safeR,
-      top: cutY.value,
-      width: safeR,
-      height: safeR,
-      borderBottomLeftRadius: safeR,
-    }
-  })
-
-  const blCornerStyle = useAnimatedStyle(() => {
-    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
-    return {
-      position: 'absolute',
-      left: cutX.value,
-      top: cutY.value + cutH.value - safeR,
-      width: safeR,
-      height: safeR,
-      borderTopRightRadius: safeR,
-    }
-  })
-
-  const brCornerStyle = useAnimatedStyle(() => {
-    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
-    return {
-      position: 'absolute',
-      left: cutX.value + cutW.value - safeR,
-      top: cutY.value + cutH.value - safeR,
-      width: safeR,
-      height: safeR,
-      borderTopLeftRadius: safeR,
-    }
+  const cutoutPathProps = useAnimatedProps(() => {
+    const x = cutX.value
+    const y = cutY.value
+    const w = cutW.value
+    const h = cutH.value
+    const r = Math.max(0, Math.min(cutR.value, w / 2, h / 2))
+    // Outer rect (clockwise) + inner rounded rect (counter-
+    // clockwise). evenodd fillRule turns the inner shape into a
+    // hole.
+    const d =
+      `M0 0 H${screenW} V${screenH} H0 Z` +
+      ` M${x + r} ${y}` +
+      ` H${x + w - r}` +
+      ` A${r} ${r} 0 0 1 ${x + w} ${y + r}` +
+      ` V${y + h - r}` +
+      ` A${r} ${r} 0 0 1 ${x + w - r} ${y + h}` +
+      ` H${x + r}` +
+      ` A${r} ${r} 0 0 1 ${x} ${y + h - r}` +
+      ` V${y + r}` +
+      ` A${r} ${r} 0 0 1 ${x + r} ${y}` +
+      ` Z`
+    return { d }
   })
 
   // Optional border around the cutout.
@@ -428,8 +397,11 @@ export function TourHost() {
       transparent
       visible
     >
-      {/* Scrim — Pressable wrapper for tap-to-dismiss; the 8 child
-          mask Views form the rounded cutout. */}
+      {/* Scrim — Pressable wrapper for tap-to-dismiss; a single
+          SVG Path with `fillRule="evenodd"` paints the scrim and
+          subtracts the rounded cutout. The Animated.View's opacity
+          drives both the show/hide fade and the configured
+          `scrimOpacity` cap. */}
       <Pressable
         accessibilityLabel="Cerrar tutorial"
         onPress={() => stop(false)}
@@ -439,41 +411,13 @@ export function TourHost() {
           pointerEvents="auto"
           style={[StyleSheet.absoluteFill, scrimAnimatedStyle]}
         >
-          {/* 4 main mask rectangles + 4 corner caps. All
-              backgroundColor: scrimColor — the parent Animated.View's
-              opacity multiplies through. */}
-          <Animated.View
-            pointerEvents="none"
-            style={[topMaskStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[bottomMaskStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[leftMaskStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[rightMaskStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[tlCornerStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[trCornerStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[blCornerStyle, { backgroundColor: scrimColor }]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[brCornerStyle, { backgroundColor: scrimColor }]}
-          />
+          <Svg width={screenW} height={screenH}>
+            <AnimatedPath
+              animatedProps={cutoutPathProps}
+              fill={scrimColor}
+              fillRule="evenodd"
+            />
+          </Svg>
         </Animated.View>
       </Pressable>
 
