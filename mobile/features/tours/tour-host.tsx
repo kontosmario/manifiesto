@@ -11,7 +11,6 @@ import Animated, {
   Easing,
   Extrapolation,
   interpolate,
-  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -19,31 +18,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import SvgRaw, {
-  Defs as DefsRaw,
-  Mask as MaskRaw,
-  Rect,
-} from 'react-native-svg'
-
-// react-native-svg's TypeScript declarations are strict in a way
-// that rejects loose `children` and `style` on these wrapper
-// components. Casting to React.FC restores the children-accepting
-// behavior we get at runtime. See `feedback_react_native_svg_typing`
-// in our memory for the same pattern used elsewhere.
-const Svg = SvgRaw as unknown as React.FC<
-  React.ComponentProps<typeof SvgRaw> & { children?: React.ReactNode }
->
-const Defs = DefsRaw as unknown as React.FC<{ children?: React.ReactNode }>
-const Mask = MaskRaw as unknown as React.FC<
-  React.ComponentProps<typeof MaskRaw> & { children?: React.ReactNode }
->
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useTour } from './tour-context'
 import { TourTooltip } from './tour-tooltip'
 import { getTourScrollEntry } from './tour-scroll-registry'
-
-const AnimatedRect = Animated.createAnimatedComponent(Rect)
 
 interface MeasuredRect {
   x: number
@@ -54,25 +33,41 @@ interface MeasuredRect {
 
 /**
  * Top-level overlay for the guided tour. Mounted once at the
- * `<TourProvider>` level. When a tour starts:
+ * `<TourProvider>` level. When a tour starts, the host:
  *
- *   1. `useTour` exposes the active step's view ref + config.
- *   2. The host runs `measureInWindow` on the ref and computes the
- *      cutout's window rect (with the step's optional padding).
- *   3. Reanimated SharedValues spring to the new rect; the SVG
- *      mask animates with them on the UI thread (no bridge cost
- *      per frame, no `measureLayout` deprecation warnings).
- *   4. An optional pulse halo loops outward from the cutout, and an
- *      optional border draws around it — both per-step opt-ins.
- *   5. The tooltip is positioned above or below the cutout
- *      depending on which side has more room, and slides into
- *      place with a separate spring.
+ *   1. Reads the active step's view ref + config from `useTour`.
+ *   2. Calls `measureInWindow` to get the target's window rect.
+ *   3. Optionally fires `scrollTo` on the registered ScrollView and
+ *      computes the target's post-scroll window position with
+ *      arithmetic (no second measure needed) so the cutout's spring
+ *      and the scroll run in parallel.
+ *   4. Springs five SharedValues (cutX, cutY, cutW, cutH, cutR)
+ *      that drive the mask's geometry on the UI thread.
  *
- * The host also drives auto-scroll: when the active step changes
- * and the screen has registered a ScrollView, the host scrolls it
- * so the target lands at the configured offset ratio (default 30%
- * from the top of the visible area). All measurement uses
- * `measureInWindow` — Fabric-safe.
+ * The mask itself is built from 4 axis-aligned rectangles + 4
+ * corner caps (each a small View with one inverted-radius corner).
+ * This is significantly faster than an SVG mask on Android — no
+ * mask compositing pipeline, no offscreen rasterization per frame,
+ * just native View transforms which Reanimated drives directly on
+ * the UI thread.
+ *
+ *   Layout of the cutout (X = scrim, _ = transparent):
+ *
+ *      X X X X X X X X X X X
+ *      X X X X X X X X X X X    ← top mask
+ *      X X X X X X X X X X X
+ *      X X┌─────────────┐X X
+ *      X X│             │X X    ← left + right masks (vertical strips)
+ *      X X│      _      │X X      with the corner caps rounding the four
+ *      X X│             │X X      inner corners
+ *      X X└─────────────┘X X
+ *      X X X X X X X X X X X
+ *      X X X X X X X X X X X    ← bottom mask
+ *
+ * The corner caps are r×r squares with `borderXxxRadius: r` on the
+ * corner that points into the cutout. With backgroundColor=scrim,
+ * they paint the "kite" between the bounding rectangle and the
+ * rounded shape at each corner.
  */
 export function TourHost() {
   const reduced = useReducedMotion()
@@ -87,38 +82,31 @@ export function TourHost() {
   const { width: screenW, height: screenH } = useWindowDimensions()
 
   const visible = activeTour !== null
-  // Cache the registered ScrollView's window rect across step
-  // transitions within the same tour. The ScrollView doesn't move
-  // mid-tour, so re-measuring its window position on every step is
-  // pure waste. Reset when the active tour changes.
   const svRectRef = useRef<MeasuredRect | null>(null)
   useEffect(() => {
     svRectRef.current = null
   }, [activeTour])
 
-  // Cutout rect (window coords) + radius — the spring values that
-  // the SVG mask reads on the UI thread.
+  // Cutout rect (window coords) + radius. These five SharedValues
+  // drive every animated style below — the mask geometry is fully
+  // derived from them, so the entire mask animates as one motion.
   const cutX = useSharedValue(0)
   const cutY = useSharedValue(0)
   const cutW = useSharedValue(0)
   const cutH = useSharedValue(0)
   const cutR = useSharedValue(defaults.highlightRadius)
 
-  // Tooltip placement (window y for the top of the tooltip card).
   const tooltipY = useSharedValue(0)
   const tooltipPlacement = useSharedValue<'above' | 'below'>('below')
 
-  // Scrim opacity + tooltip opacity are gated by `visible`, animated
-  // separately so the show/hide curve doesn't fight the cutout
-  // tracking spring.
   const scrimO = useSharedValue(0)
   const tooltipO = useSharedValue(0)
 
   // Pulse drives a 0→1 cyclic value used by the pulse rect's props.
   const pulseT = useSharedValue(0)
 
-  // Mount/unmount the Modal in step with an animated fade so the
-  // overlay doesn't snap on/off.
+  // Mount/unmount fade — animated separately so the show/hide curve
+  // doesn't fight the cutout tracking spring.
   useEffect(() => {
     if (reduced) {
       scrimO.value = visible ? 1 : 0
@@ -133,17 +121,10 @@ export function TourHost() {
       })
     } else {
       scrimO.value = withTiming(0, { duration: motionDurations.scrimOut })
-      tooltipO.value = withTiming(0, {
-        duration: motionDurations.exitTab,
-      })
+      tooltipO.value = withTiming(0, { duration: motionDurations.exitTab })
     }
   }, [visible, reduced, scrimO, tooltipO])
 
-  // Pulse loop — runs only while a tour is active and the step opts
-  // in. Cancels on stop / step-without-pulse so we don't waste CPU.
-  // Reads pulse opt-in fresh from the configRef inside the effect
-  // so per-step config updates don't force the effect to re-run on
-  // every render of the host.
   const stepPulseEnabled = Boolean(
     currentStep?.configRef.current?.highlight?.pulse,
   )
@@ -168,23 +149,20 @@ export function TourHost() {
     )
   }, [reduced, visible, stepPulseEnabled, defaults.pulseDurationMs, pulseT])
 
-  // Measure the active step + (optionally) fire scroll + spring the
-  // cutout — all in parallel. Re-runs when the step or the active
-  // tour changes, or when targets re-register (`measureToken`).
-  //
-  // The previous version awaited the scroll for `scrollDurationMs`
-  // (320ms) before springing the cutout. That serial wait dominated
-  // the felt-latency between steps. This version computes the post-
-  // scroll window position with arithmetic, fires the scroll and
-  // springs the cutout in the same frame, and skips the scroll
-  // entirely when the target is already in the viewport at the
-  // desired offset (delta < 4pt).
+  // Step measurement + auto-scroll + cutout spring. See the file
+  // header for why scroll runs in parallel with the spring.
   useEffect(() => {
     if (!visible || !currentStep || !activeTour) return
     let cancelled = false
 
     const measure = (
-      node: { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null,
+      node:
+        | {
+            measureInWindow: (
+              cb: (x: number, y: number, w: number, h: number) => void,
+            ) => void
+          }
+        | null,
     ): Promise<MeasuredRect | null> =>
       new Promise((resolve) => {
         if (!node) {
@@ -206,13 +184,9 @@ export function TourHost() {
         | null
       if (!node) return
 
-      // 1. Measure the step in window coords.
       const stepRect = await measure(node)
       if (cancelled || !stepRect) return
 
-      // 2. Compute target window position. If a ScrollView is
-      //    registered, work out the post-scroll position math and
-      //    fire scrollTo immediately — no awaiting.
       let targetWindowY = stepRect.y
       const targetWindowX = stepRect.x
 
@@ -224,8 +198,6 @@ export function TourHost() {
           ) => void
           scrollTo: (opts: { y: number; animated: boolean }) => void
         }
-        // Cache svRect across steps within the same tour — the
-        // ScrollView's window position doesn't change mid-tour.
         let svRect = svRectRef.current
         if (!svRect) {
           svRect = await measure(sv)
@@ -238,16 +210,12 @@ export function TourHost() {
         const targetScrollY = Math.max(0, stepContentY - desiredVisibleY)
         const scrollDelta = targetScrollY - entry.scrollYRef.current
 
-        // Skip the scroll call entirely if we're already there.
-        // Saves a frame on screens where the target was visible.
         if (Math.abs(scrollDelta) > 4) {
           sv.scrollTo({ y: targetScrollY, animated: true })
-          // Where the step lands in window after the scroll lands.
           targetWindowY = svRect.y + (stepContentY - targetScrollY)
         }
       }
 
-      // 3. Read per-step style and compute final cutout rect.
       const config = currentStep.configRef.current
       const padding = config?.highlight?.padding ?? defaults.highlightPadding
       const radius =
@@ -258,9 +226,6 @@ export function TourHost() {
       const targetW = stepRect.width + padding * 2
       const targetH = stepRect.height + padding * 2
 
-      // 4. Spring everything in parallel with the scroll. First
-      //    measure of the session snaps; subsequent transitions
-      //    spring with the configured `highlightSpring`.
       const isFirstMeasure = cutW.value === 0 && cutH.value === 0
       const spring = (sv: typeof cutX, to: number) => {
         sv.value =
@@ -274,7 +239,6 @@ export function TourHost() {
       spring(cutH, targetH)
       spring(cutR, radius)
 
-      // Tooltip placement based on the post-scroll position.
       const TOOLTIP_GAP = 16
       const TOOLTIP_HEIGHT_ESTIMATE = 200
       const roomBelow =
@@ -297,10 +261,6 @@ export function TourHost() {
     return () => {
       cancelled = true
     }
-    // currentStep's reference is stable per (activeTour, activeIndex)
-    // pair, so depending on it (instead of currentConfig + currentRef
-    // which were fresh each render) means this effect only re-runs on
-    // actual step changes, not on every host re-render.
   }, [
     visible,
     activeTour,
@@ -319,70 +279,146 @@ export function TourHost() {
     tooltipY,
   ])
 
-  // SVG cutout (the hole in the scrim).
-  const cutoutAnimatedProps = useAnimatedProps(() => ({
-    x: cutX.value,
-    y: cutY.value,
-    width: cutW.value,
-    height: cutH.value,
-    rx: cutR.value,
-    ry: cutR.value,
+  // ─── Mask geometry (native Views, no SVG) ──────────────────────
+  // Each animated style derives its position/size from cutX/cutY/
+  // cutW/cutH/cutR via worklet — runs on the UI thread, no bridge.
+
+  const stepConfig = currentStep?.configRef.current
+
+  const topMaskStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: screenW,
+    height: Math.max(0, cutY.value),
   }))
 
-  // Optional border drawn around the cutout. Read fresh from the
-  // configRef so per-step style updates flow through without
-  // re-registering.
-  const stepConfig = currentStep?.configRef.current
+  const bottomMaskStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: 0,
+    top: cutY.value + cutH.value,
+    width: screenW,
+    height: Math.max(0, screenH - (cutY.value + cutH.value)),
+  }))
+
+  const leftMaskStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: 0,
+    top: cutY.value,
+    width: Math.max(0, cutX.value),
+    height: cutH.value,
+  }))
+
+  const rightMaskStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: cutX.value + cutW.value,
+    top: cutY.value,
+    width: Math.max(0, screenW - (cutX.value + cutW.value)),
+    height: cutH.value,
+  }))
+
+  // Corner caps: r×r squares at each cutout corner, with one
+  // inverted-radius corner facing inward. Together with the four
+  // mask rectangles they paint the rounded-rectangle cutout.
+  // `safeR` clamps the radius so caps never overlap on small rects.
+  const tlCornerStyle = useAnimatedStyle(() => {
+    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
+    return {
+      position: 'absolute',
+      left: cutX.value,
+      top: cutY.value,
+      width: safeR,
+      height: safeR,
+      borderBottomRightRadius: safeR,
+    }
+  })
+
+  const trCornerStyle = useAnimatedStyle(() => {
+    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
+    return {
+      position: 'absolute',
+      left: cutX.value + cutW.value - safeR,
+      top: cutY.value,
+      width: safeR,
+      height: safeR,
+      borderBottomLeftRadius: safeR,
+    }
+  })
+
+  const blCornerStyle = useAnimatedStyle(() => {
+    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
+    return {
+      position: 'absolute',
+      left: cutX.value,
+      top: cutY.value + cutH.value - safeR,
+      width: safeR,
+      height: safeR,
+      borderTopRightRadius: safeR,
+    }
+  })
+
+  const brCornerStyle = useAnimatedStyle(() => {
+    const safeR = Math.min(cutR.value, cutW.value / 2, cutH.value / 2)
+    return {
+      position: 'absolute',
+      left: cutX.value + cutW.value - safeR,
+      top: cutY.value + cutH.value - safeR,
+      width: safeR,
+      height: safeR,
+      borderTopLeftRadius: safeR,
+    }
+  })
+
+  // Optional border around the cutout.
   const borderColor = stepConfig?.highlight?.borderColor
   const borderWidth = stepConfig?.highlight?.borderWidth ?? 0
-  const borderAnimatedProps = useAnimatedProps(() => ({
-    x: cutX.value,
-    y: cutY.value,
+  const borderStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: cutX.value,
+    top: cutY.value,
     width: cutW.value,
     height: cutH.value,
-    rx: cutR.value,
-    ry: cutR.value,
+    borderRadius: cutR.value,
   }))
 
-  // Pulse halo — expands from the cutout and fades out cyclically.
+  // Pulse halo — expands outward and fades cyclically.
   const pulseColor = stepConfig?.highlight?.pulseColor ?? '#A6EF8F'
   const pulseWidth = stepConfig?.highlight?.pulseWidth ?? 3
-  const pulseEnabled = Boolean(stepConfig?.highlight?.pulse)
-  const pulseAnimatedProps = useAnimatedProps(() => {
+  const pulseEnabled = stepPulseEnabled
+  const pulseStyle = useAnimatedStyle(() => {
     const t = pulseT.value
     const expand = interpolate(t, [0, 1], [0, 22], Extrapolation.CLAMP)
     const fade = interpolate(t, [0, 0.2, 1], [0, 0.7, 0], Extrapolation.CLAMP)
     return {
-      x: cutX.value - expand,
-      y: cutY.value - expand,
+      position: 'absolute',
+      left: cutX.value - expand,
+      top: cutY.value - expand,
       width: cutW.value + expand * 2,
       height: cutH.value + expand * 2,
-      rx: cutR.value + expand,
-      ry: cutR.value + expand,
-      strokeOpacity: fade,
+      borderRadius: cutR.value + expand,
+      opacity: fade,
     }
   })
 
-  // Scrim opacity — controls the whole SVG layer's visibility.
+  // Whole-overlay scrim opacity. This wraps every mask View so they
+  // all fade in/out together, while individual mask geometry
+  // continues to animate via its own SharedValues.
+  const finalScrimOpacity = useMemo(
+    () => Math.max(0, Math.min(1, defaults.scrimOpacity)),
+    [defaults.scrimOpacity],
+  )
   const scrimAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: scrimO.value,
+    opacity: scrimO.value * finalScrimOpacity,
   }))
 
-  // Tooltip container — slides into place + fades.
   const tooltipAnimatedStyle = useAnimatedStyle(() => ({
     opacity: tooltipO.value,
     transform: [{ translateY: tooltipY.value }],
   }))
 
-  const finalScrimColor = useMemo(() => defaults.scrimColor, [defaults.scrimColor])
-  const finalScrimOpacity = useMemo(
-    () => Math.max(0, Math.min(1, defaults.scrimOpacity)),
-    [defaults.scrimOpacity],
-  )
-
-  // Don't render the Modal at all when no tour is active. Prevents
-  // any cost when idle.
   if (!visible) return null
+
+  const scrimColor = defaults.scrimColor
 
   return (
     <Modal
@@ -392,71 +428,84 @@ export function TourHost() {
       transparent
       visible
     >
-      {/* Scrim with cutout — tap-anywhere-to-stop is wired here.
-          Pressable wraps the SVG so the empty area outside the
-          cutout dismisses the tour; the cutout itself doesn't, by
-          virtue of being below the user's actual UI (the modal is
-          on top, so taps don't pass through anyway — but the
-          dismiss intent is "tap on scrim"). */}
+      {/* Scrim — Pressable wrapper for tap-to-dismiss; the 8 child
+          mask Views form the rounded cutout. */}
       <Pressable
         accessibilityLabel="Cerrar tutorial"
         onPress={() => stop(false)}
         style={StyleSheet.absoluteFill}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, scrimAnimatedStyle]}>
-          <Svg width={screenW} height={screenH}>
-            <Defs>
-              <Mask id="tour-cutout">
-                {/* Mask: white = scrim shows, black = scrim hidden
-                    (the cutout). */}
-                <Rect
-                  x={0}
-                  y={0}
-                  width={screenW}
-                  height={screenH}
-                  fill="white"
-                />
-                <AnimatedRect
-                  animatedProps={cutoutAnimatedProps}
-                  fill="black"
-                />
-              </Mask>
-            </Defs>
-            {/* The scrim itself, with the cutout subtracted. */}
-            <Rect
-              x={0}
-              y={0}
-              width={screenW}
-              height={screenH}
-              fill={finalScrimColor}
-              fillOpacity={finalScrimOpacity}
-              mask="url(#tour-cutout)"
-            />
-            {/* Optional border around the cutout. */}
-            {borderWidth > 0 && borderColor ? (
-              <AnimatedRect
-                animatedProps={borderAnimatedProps}
-                fill="none"
-                stroke={borderColor}
-                strokeWidth={borderWidth}
-              />
-            ) : null}
-            {/* Optional pulse halo. */}
-            {pulseEnabled ? (
-              <AnimatedRect
-                animatedProps={pulseAnimatedProps}
-                fill="none"
-                stroke={pulseColor}
-                strokeWidth={pulseWidth}
-              />
-            ) : null}
-          </Svg>
+        <Animated.View
+          pointerEvents="auto"
+          style={[StyleSheet.absoluteFill, scrimAnimatedStyle]}
+        >
+          {/* 4 main mask rectangles + 4 corner caps. All
+              backgroundColor: scrimColor — the parent Animated.View's
+              opacity multiplies through. */}
+          <Animated.View
+            pointerEvents="none"
+            style={[topMaskStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[bottomMaskStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[leftMaskStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[rightMaskStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[tlCornerStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[trCornerStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[blCornerStyle, { backgroundColor: scrimColor }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[brCornerStyle, { backgroundColor: scrimColor }]}
+          />
         </Animated.View>
       </Pressable>
 
-      {/* Tooltip — positioned absolutely with an animated translateY.
-          The Pressable wrapper above lets the user tap the scrim to
-          dismiss; the tooltip itself sits above and is interactive. */}
+      {/* Optional border + pulse — sit ABOVE the scrim, don't capture
+          taps (so the user can still tap on highlighted UI through
+          the cutout, in case future iterations want interactive tour
+          targets). */}
+      {borderWidth > 0 && borderColor ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            borderStyle,
+            {
+              borderWidth,
+              borderColor,
+            },
+          ]}
+        />
+      ) : null}
+      {pulseEnabled ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            pulseStyle,
+            {
+              borderWidth: pulseWidth,
+              borderColor: pulseColor,
+            },
+          ]}
+        />
+      ) : null}
+
       <Animated.View
         pointerEvents="box-none"
         style={[styles.tooltipWrap, tooltipAnimatedStyle]}

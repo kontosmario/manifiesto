@@ -1,4 +1,5 @@
-export { TourProvider, useTour } from './tour-context'
+export { useTour } from './tour-context'
+export { TourProvider } from './tour-provider'
 export { TourTarget } from './tour-target'
 export { TourTooltip } from './tour-tooltip'
 export { useScreenTour } from './use-screen-tour'
