@@ -1,8 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useCopilot, type TooltipProps } from 'react-native-copilot'
 import { triggerHaptic } from '@/lib/haptics'
+import { surfaceScale } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
+
+// The tooltip always sits over a strong dark scrim regardless of
+// the system theme, so a "floating mini-sheet" rendered in dark
+// reads better than swapping with light/dark mode. Concretely: a
+// light-mode tooltip with a 1px border showed a halo against the
+// scrim that the user described as a "marco blanco antiestético".
+// Pinning the surface to V1 surface-900 (`#244235`) and dropping
+// the border kills the halo and unifies both modes.
+const TOOLTIP_BACKGROUND = surfaceScale[900]
+const TOOLTIP_FOREGROUND = surfaceScale[50]
+const TOOLTIP_FOREGROUND_MUTED = surfaceScale[300]
 
 /**
  * Custom tooltip that matches the Manifiesto motion + palette
@@ -50,18 +62,9 @@ export function TourTooltip({ labels }: TooltipProps) {
   }
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          shadowColor: theme.isDark ? '#000000' : '#0F2A1E',
-        },
-      ]}
-    >
+    <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={[styles.counter, { color: theme.colors.primaryStrong }]}>
+        <Text style={styles.counter}>
           {currentStepNumber} / {totalStepsNumber}
         </Text>
         <Pressable
@@ -70,14 +73,10 @@ export function TourTooltip({ labels }: TooltipProps) {
           hitSlop={8}
           onPress={handleSkip}
         >
-          <Text style={[styles.skip, { color: theme.colors.textMuted }]}>
-            {labels.skip ?? 'Saltar'}
-          </Text>
+          <Text style={styles.skip}>{labels.skip ?? 'Saltar'}</Text>
         </Pressable>
       </View>
-      <Text style={[styles.body, { color: theme.colors.text }]}>
-        {currentStep.text}
-      </Text>
+      <Text style={styles.body}>{currentStep.text}</Text>
       <View style={styles.actions}>
         <Pressable
           accessibilityLabel={labels.previous ?? 'Anterior'}
@@ -88,14 +87,11 @@ export function TourTooltip({ labels }: TooltipProps) {
           style={({ pressed }) => [
             styles.secondary,
             {
-              borderColor: theme.colors.border,
-              opacity: isFirstStep ? 0.36 : pressed ? 0.7 : 1,
+              opacity: isFirstStep ? 0.32 : pressed ? 0.7 : 1,
             },
           ]}
         >
-          <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-            {labels.previous ?? 'Anterior'}
-          </Text>
+          <Text style={styles.secondaryLabel}>{labels.previous ?? 'Anterior'}</Text>
         </Pressable>
         <Pressable
           accessibilityLabel={
@@ -130,15 +126,18 @@ export function TourTooltip({ labels }: TooltipProps) {
 
 const styles = StyleSheet.create({
   card: {
+    backgroundColor: TOOLTIP_BACKGROUND,
     borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 12,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 8,
+    // Shadow only — no border. The previous theme.colors.border
+    // halo'd as a "marco blanco" against the dark scrim.
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
+    elevation: 14,
   },
   header: {
     flexDirection: 'row',
@@ -150,15 +149,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.1,
     textTransform: 'uppercase',
+    color: TOOLTIP_FOREGROUND_MUTED,
   },
   skip: {
     fontSize: 13,
     fontWeight: '600',
+    color: TOOLTIP_FOREGROUND_MUTED,
   },
   body: {
     ...typography.body,
     fontSize: 15,
     lineHeight: 21,
+    color: TOOLTIP_FOREGROUND,
   },
   actions: {
     flexDirection: 'row',
@@ -168,8 +170,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   secondary: {
+    // Subtle pill outline using the foreground muted at low alpha,
+    // so the button reads against the dark card without re-creating
+    // the harsh 1px contour we just removed from the card itself.
     borderRadius: 999,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     paddingHorizontal: 16,
     paddingVertical: 9,
   },
@@ -177,6 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.2,
+    color: TOOLTIP_FOREGROUND,
   },
   primary: {
     borderRadius: 999,

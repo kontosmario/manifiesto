@@ -3,6 +3,7 @@ import { useIsFocused } from '@react-navigation/native'
 import { useCopilot } from 'react-native-copilot'
 import { triggerHaptic } from '@/lib/haptics'
 import { getToursEnabled, getTourSeen, setTourSeen } from './persistence'
+import { getTourScrollView } from './tour-scroll-registry'
 import type { TourKey } from './tour-keys'
 
 interface UseScreenTourOptions {
@@ -106,7 +107,12 @@ export function useScreenTour(
       }
       timeoutId = setTimeout(() => {
         void triggerHaptic('light')
-        void startRef.current()
+        // Pass the screen's ScrollView so the lib auto-scrolls
+        // each step's target into view before animating the
+        // highlight. The library caches it internally on the first
+        // start() call — subsequent stepChange events use the same
+        // ScrollView for the auto-scroll.
+        void startRef.current(undefined, getTourScrollView(tour))
       }, startDelayMs)
     })()
 
@@ -118,8 +124,8 @@ export function useScreenTour(
 
   const start = useCallback(async () => {
     void triggerHaptic('light')
-    await startRef.current()
-  }, [])
+    await startRef.current(undefined, getTourScrollView(tour))
+  }, [tour])
 
   return { start }
 }

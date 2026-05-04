@@ -1,6 +1,7 @@
 export { TourStep } from './tour-step'
 export { TourTooltip } from './tour-tooltip'
 export { useScreenTour } from './use-screen-tour'
+export { useRegisterTourScrollView } from './use-register-tour-scroll-view'
 export {
   ALL_TOUR_KEYS,
   TOUR_KEYS,

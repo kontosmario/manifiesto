@@ -34,8 +34,23 @@ export function AppProviders({ children }: PropsWithChildren) {
                   uses our motion token so the highlight rectangle
                   travels at the same pace as the rest of the UI. */}
               <CopilotProvider
-                animationDuration={motionDurations.standard}
+                animationDuration={motionDurations.quick}
                 arrowColor="transparent"
+                // `view` overlay (vs default `svg`) keeps the
+                // mask/highlight on the native UI thread instead of
+                // routing through react-native-svg. Significantly
+                // smoother on low-end Android, where the SVG path
+                // re-render per frame was the source of the "tilda
+                // y se siente lento" jank.
+                overlay="view"
+                // Darker forest-tinted scrim. The default ~40%
+                // black was too transparent — the user couldn't
+                // separate the highlighted target from the rest
+                // of the screen. 78% on our deepest surface tone
+                // gives strong isolation while keeping the app
+                // legible enough to recognise *what* is being
+                // highlighted (`continuity` rule).
+                backdropColor="rgba(6, 18, 12, 0.78)"
                 labels={{
                   finish: 'Finalizar',
                   next: 'Siguiente',

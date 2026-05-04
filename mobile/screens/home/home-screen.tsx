@@ -5,6 +5,7 @@ import {
   StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ScrollView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { HomeDashboard } from '@/components/home/home-dashboard'
@@ -29,6 +30,7 @@ import { logHomeEvent } from '@/features/home/log-home-event'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useDismissedIds } from '@/features/insights/control-dismiss-store'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
+import { HOME_TOUR, useRegisterTourScrollView } from '@/features/tours'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -44,6 +46,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  // Register the screen's ScrollView ref so the guided tour can
+  // auto-scroll each step into view before highlighting it.
+  const tourScrollRef = useRef<ScrollView | null>(null)
+  useRegisterTourScrollView(HOME_TOUR, tourScrollRef)
 
   // AppStackShell already fires and seeds this; here we only need the
   // refetch handle for pull-to-refresh.
@@ -238,6 +244,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       contentContainerStyle={styles.screenContent}
       onScroll={handleScroll}
       scrollEventThrottle={250}
+      scrollRef={tourScrollRef}
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={

@@ -1,7 +1,7 @@
-import { Alert, StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View, type ScrollView } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
@@ -15,6 +15,7 @@ import {
   FIJOS_TOUR,
   FIJOS_TOUR_STEPS,
   TourStep,
+  useRegisterTourScrollView,
   useScreenTour,
 } from '@/features/tours'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
@@ -41,6 +42,9 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const router = useRouter()
   // Auto-start the Fijos guided tour on first visit. No-op once seen.
   useScreenTour(FIJOS_TOUR)
+  // ScrollView ref so the tour can auto-scroll to each step's target.
+  const tourScrollRef = useRef<ScrollView | null>(null)
+  useRegisterTourScrollView(FIJOS_TOUR, tourScrollRef)
   const controller = useFijosController(familyId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categoriesById = useMemo(() => {
@@ -127,6 +131,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={<AmbientBlobs />}
+      scrollRef={tourScrollRef}
     >
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>

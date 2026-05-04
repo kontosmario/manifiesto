@@ -28,6 +28,7 @@ import {
   CONTROL_TOUR,
   CONTROL_TOUR_STEPS,
   TourStep,
+  useRegisterTourScrollView,
   useScreenTour,
 } from '@/features/tours'
 import { triggerHaptic } from '@/lib/haptics'
@@ -70,6 +71,8 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
 
   // Section anchor bookkeeping for the dispatcher's scroll-to-section.
   const scrollRef = useRef<ScrollView | null>(null)
+  // Reuse that same ScrollView for the guided tour's auto-scroll.
+  useRegisterTourScrollView(CONTROL_TOUR, scrollRef)
   const offsetsRef = useRef<Map<ControlSectionAnchor, number>>(new Map())
   const [pulsingSection, setPulsingSection] =
     useState<ControlSectionAnchor | null>(null)
