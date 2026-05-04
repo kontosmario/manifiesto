@@ -27,7 +27,7 @@ import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
   CONTROL_TOUR,
   CONTROL_TOUR_STEPS,
-  TourStep,
+  TourTarget,
   useRegisterTourScrollView,
   useScreenTour,
 } from '@/features/tours'
@@ -212,7 +212,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               scoreTone={view.scoreToneDark}
             />
 
-            <TourStep
+            <TourTarget
               tour={CONTROL_TOUR}
               order={CONTROL_TOUR_STEPS.hoy.order}
               text={CONTROL_TOUR_STEPS.hoy.text}
@@ -238,19 +238,19 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   alreadyExhausted={view.alreadyExhausted}
                 />
               </ControlV2Anchor>
-            </TourStep>
+            </TourTarget>
 
             {signals.length > 0 ? (
-              <TourStep
+              <TourTarget
                 tour={CONTROL_TOUR}
                 order={CONTROL_TOUR_STEPS.asesor.order}
                 text={CONTROL_TOUR_STEPS.asesor.text}
               >
                 <ControlV2AsesorCard tareas={signals} />
-              </TourStep>
+              </TourTarget>
             ) : null}
 
-            <TourStep
+            <TourTarget
               tour={CONTROL_TOUR}
               order={CONTROL_TOUR_STEPS.alcanza.order}
               text={CONTROL_TOUR_STEPS.alcanza.text}
@@ -272,7 +272,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
                 />
               </ControlV2Anchor>
-            </TourStep>
+            </TourTarget>
 
             <ControlV2Anchor section="alcancia">
               <ControlV2AlcanciaCard

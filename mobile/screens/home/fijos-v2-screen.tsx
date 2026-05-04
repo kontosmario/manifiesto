@@ -14,7 +14,7 @@ import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
 import {
   FIJOS_TOUR,
   FIJOS_TOUR_STEPS,
-  TourStep,
+  TourTarget,
   useRegisterTourScrollView,
   useScreenTour,
 } from '@/features/tours'
@@ -142,7 +142,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
         <Animated.View layout={sectionLayout}>
           <FijosHeader onPressAdd={handlePressAdd} />
         </Animated.View>
-        <TourStep
+        <TourTarget
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.hero.order}
           text={FIJOS_TOUR_STEPS.hero.text}
@@ -161,7 +161,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               porcentajeSueldo={controller.pctOfIncome}
             />
           </Animated.View>
-        </TourStep>
+        </TourTarget>
         <Animated.View layout={sectionLayout}>
           <FijosSmartAlerts
             zombieCount={controller.summary.zombies.length}
@@ -171,7 +171,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             onOpenHike={handleEdit}
           />
         </Animated.View>
-        <TourStep
+        <TourTarget
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.calendar.order}
           text={FIJOS_TOUR_STEPS.calendar.text}
@@ -183,7 +183,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               categoriesById={categoriesById}
             />
           </Animated.View>
-        </TourStep>
+        </TourTarget>
         <Animated.View layout={sectionLayout}>
           <FijosTabs
             tab={controller.tab}
@@ -197,7 +197,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             }}
           />
         </Animated.View>
-        <TourStep
+        <TourTarget
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.list.order}
           text={FIJOS_TOUR_STEPS.list.text}
@@ -214,7 +214,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               }
             />
           </Animated.View>
-        </TourStep>
+        </TourTarget>
         <View style={styles.bottomSpacer} />
       </View>
     </Screen>

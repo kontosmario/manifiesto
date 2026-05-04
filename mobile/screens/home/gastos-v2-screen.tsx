@@ -29,7 +29,7 @@ import { StreakSheet } from '@/components/gastos/streak-sheet'
 import {
   GASTOS_TOUR,
   GASTOS_TOUR_STEPS,
-  TourStep,
+  TourTarget,
   useScreenTour,
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
@@ -403,7 +403,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             rightSlot={<StreakFlameIcon data={streakData} onPress={handlePressStreak} />}
           />
         </Animated.View>
-        <TourStep
+        <TourTarget
           tour={GASTOS_TOUR}
           order={GASTOS_TOUR_STEPS.hero.order}
           text={GASTOS_TOUR_STEPS.hero.text}
@@ -418,8 +418,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               averageWindowDays={controller.cycleDaysElapsed}
             />
           </Animated.View>
-        </TourStep>
-        <TourStep
+        </TourTarget>
+        <TourTarget
           tour={GASTOS_TOUR}
           order={GASTOS_TOUR_STEPS.calendar.order}
           text={GASTOS_TOUR_STEPS.calendar.text}
@@ -452,8 +452,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               onRegisterForgottenExpense={handleRegisterForgotten}
             />
           </Animated.View>
-        </TourStep>
-        <TourStep
+        </TourTarget>
+        <TourTarget
           tour={GASTOS_TOUR}
           order={GASTOS_TOUR_STEPS.filters.order}
           text={GASTOS_TOUR_STEPS.filters.text}
@@ -467,7 +467,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               onSelect={handleSelectCategory}
             />
           </Animated.View>
-        </TourStep>
+        </TourTarget>
         {controller.hasAnyFilter ? (
           <Animated.View layout={sectionLayout}>
             <Pressable

@@ -20,7 +20,7 @@ import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
-import { HOME_TOUR, HOME_TOUR_STEPS, TourStep, useScreenTour } from '@/features/tours'
+import { HOME_TOUR, HOME_TOUR_STEPS, TourTarget, useScreenTour } from '@/features/tours'
 import type { Expense } from '@/features/expenses/use-expenses'
 import {
   classifyDashboardError,
@@ -478,7 +478,7 @@ export function HomeDashboard({
         onPressSettings={handlePressSettings}
         onPressAssistant={handlePressAssistant}
       />
-      <TourStep
+      <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.payday.order}
         text={HOME_TOUR_STEPS.payday.text}
@@ -489,8 +489,8 @@ export function HomeDashboard({
           paydayPending={pending}
           onPaydayPress={handleChipConfirmTracked}
         />
-      </TourStep>
-      <TourStep
+      </TourTarget>
+      <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
         text={HOME_TOUR_STEPS.hero.text}
@@ -501,8 +501,8 @@ export function HomeDashboard({
           projectedCloseTrend={projectedCloseTrend}
           savingsChip={savingsChip}
         />
-      </TourStep>
-      <TourStep
+      </TourTarget>
+      <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.monthSummary.order}
         text={HOME_TOUR_STEPS.monthSummary.text}
@@ -520,7 +520,7 @@ export function HomeDashboard({
           nextFixedFallback={nextFixedFallback}
           onPressNextFixedFallback={handleNextFixedFallbackPress}
         />
-      </TourStep>
+      </TourTarget>
       {savingsGoalQuery.data ? (
         <MetaCard
           goal={savingsGoalQuery.data}
