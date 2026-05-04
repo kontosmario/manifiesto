@@ -238,9 +238,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 order={CONTROL_TOUR_STEPS.asesor.order}
                 text={CONTROL_TOUR_STEPS.asesor.text}
               >
-                <View collapsable={false}>
-                  <ControlV2AsesorCard tareas={signals} />
-                </View>
+                <ControlV2AsesorCard tareas={signals} />
               </TourStep>
             ) : null}
 

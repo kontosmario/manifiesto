@@ -483,49 +483,43 @@ export function HomeDashboard({
         order={HOME_TOUR_STEPS.payday.order}
         text={HOME_TOUR_STEPS.payday.text}
       >
-        <View collapsable={false}>
-          <FamilyStrip
-            members={membersQuery.data ?? []}
-            daysUntilPayday={days}
-            paydayPending={pending}
-            onPaydayPress={handleChipConfirmTracked}
-          />
-        </View>
+        <FamilyStrip
+          members={membersQuery.data ?? []}
+          daysUntilPayday={days}
+          paydayPending={pending}
+          onPaydayPress={handleChipConfirmTracked}
+        />
       </TourStep>
       <TourStep
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
         text={HOME_TOUR_STEPS.hero.text}
       >
-        <View collapsable={false}>
-          <HomeHeroCard
-            data={homeMetrics.hero}
-            onPressConfigureIncome={handlePressConfigureIncome}
-            projectedCloseTrend={projectedCloseTrend}
-            savingsChip={savingsChip}
-          />
-        </View>
+        <HomeHeroCard
+          data={homeMetrics.hero}
+          onPressConfigureIncome={handlePressConfigureIncome}
+          projectedCloseTrend={projectedCloseTrend}
+          savingsChip={savingsChip}
+        />
       </TourStep>
       <TourStep
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.monthSummary.order}
         text={HOME_TOUR_STEPS.monthSummary.text}
       >
-        <View collapsable={false}>
-          <MonthSummaryCard
-            data={homeMetrics.monthSummary}
-            onPressVariable={handleViewGastos}
-            onPressFixed={handleViewFijos}
-            topCategory={topCategory}
-            onPressTopCategory={handleTopCategoryPress}
-            topCategoryFallback={topCategoryFallback}
-            onPressTopCategoryFallback={handleTopCategoryFallbackPress}
-            nextFixed={nextFixed}
-            onPressNextFixed={handleNextFixedPress}
-            nextFixedFallback={nextFixedFallback}
-            onPressNextFixedFallback={handleNextFixedFallbackPress}
-          />
-        </View>
+        <MonthSummaryCard
+          data={homeMetrics.monthSummary}
+          onPressVariable={handleViewGastos}
+          onPressFixed={handleViewFijos}
+          topCategory={topCategory}
+          onPressTopCategory={handleTopCategoryPress}
+          topCategoryFallback={topCategoryFallback}
+          onPressTopCategoryFallback={handleTopCategoryFallbackPress}
+          nextFixed={nextFixed}
+          onPressNextFixed={handleNextFixedPress}
+          nextFixedFallback={nextFixedFallback}
+          onPressNextFixedFallback={handleNextFixedFallbackPress}
+        />
       </TourStep>
       {savingsGoalQuery.data ? (
         <MetaCard

@@ -1,7 +1,24 @@
-import type { ReactElement } from 'react'
+import type { ReactNode } from 'react'
+import { View } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
-import { CopilotStep } from 'react-native-copilot'
+import { CopilotStep, walkthroughable } from 'react-native-copilot'
 import type { TourKey } from './tour-keys'
+
+/**
+ * `<CopilotStep>` doesn't pass `ref` to its child directly — it
+ * clones the child with `{ copilot: { ref, onLayout } }` and
+ * expects the child to spread those onto a native primitive. The
+ * library ships a `walkthroughable` HOC for exactly this; without
+ * it, the child silently ignores the `copilot` prop, the wrapper
+ * ref is never populated, and the library's measure loop spins on
+ * `requestAnimationFrame` forever — `start()` then awaits a promise
+ * that never resolves and *nothing renders*.
+ *
+ * That's why earlier iterations of this component (wrapping plain
+ * `<View>` or `<Animated.View>` as the CopilotStep child) made the
+ * tour never appear in the UI.
+ */
+const WalkthroughableView = walkthroughable(View)
 
 interface TourStepProps {
   tour: TourKey
@@ -9,8 +26,8 @@ interface TourStepProps {
   order: number
   /** Tooltip body text. */
   text: string
-  /** Single child whose layout becomes the highlight target. */
-  children: ReactElement
+  /** Content whose layout becomes the highlight target. */
+  children: ReactNode
 }
 
 /**
@@ -37,7 +54,10 @@ export function TourStep({ tour, order, text, children }: TourStepProps) {
       order={order}
       text={text}
     >
-      {children}
+      {/* `collapsable={false}` keeps the View in the native layout
+          tree on Android even when it has no styling — required for
+          the library's `measure()` to return a valid rect. */}
+      <WalkthroughableView collapsable={false}>{children}</WalkthroughableView>
     </CopilotStep>
   )
 }
