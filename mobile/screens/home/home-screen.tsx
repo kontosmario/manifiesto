@@ -249,7 +249,15 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     <Screen
       contentContainerStyle={styles.screenContent}
       onScroll={handleScroll}
-      scrollEventThrottle={250}
+      // Tour math reads `scrollYRef.current` to compute each step's
+      // window position; with a 250ms throttle the ref drifted up
+      // to a quarter-second behind the actual scroll, which made the
+      // highlight land off-target on Home (other screens use 64ms).
+      // 16ms = once per frame at 60fps; the existing
+      // `home.scrolled_to_bottom` telemetry inside `handleScroll`
+      // is rate-limited by its own `reachedBottomRef`, so the higher
+      // event rate is harmless there.
+      scrollEventThrottle={16}
       scrollRef={tourScrollRef}
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.

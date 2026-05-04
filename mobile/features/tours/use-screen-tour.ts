@@ -15,19 +15,38 @@ import type { TourKey } from './tour-keys'
  * lands in the wrong place. Resetting to top guarantees the first
  * step measures against a fresh layout.
  *
- * Returns a promise that resolves once the scroll is presumed
- * complete (~320ms — RN's animated scroll has no completion
- * callback, so we time-box it).
+ * The function does two things on top of the scrollTo:
+ *
+ *   1. Optimistically writes `scrollYRef.current = 0` immediately,
+ *      regardless of when the screen's `onScroll` would catch up.
+ *      Otherwise on screens with coarse `scrollEventThrottle` the
+ *      tour's host still reads the pre-reset Y when it computes
+ *      the first step's window position, and the cutout lands
+ *      offset by however much the ref was lagging.
+ *
+ *   2. Waits 360ms (slightly longer than RN's animated scroll
+ *      duration) so any in-flight scroll completes and the layout
+ *      flushes before the host's first measure runs.
  */
 async function resetScrollToTop(tour: TourKey): Promise<void> {
   const entry = getTourScrollEntry(tour)
   if (!entry?.scrollView) return
-  if (entry.scrollYRef.current <= 1) return // already at top
+  // Capture the pre-reset position before we sync the ref so we can
+  // decide whether the screen actually needs to animate-scroll.
+  const previousY = entry.scrollYRef.current
+  // Always sync the tracked ref to 0. Even if we're already at the
+  // top, the ref may have stale data from a previous mount; we
+  // want the host to start from a known baseline.
+  entry.scrollYRef.current = 0
+  if (previousY <= 1) {
+    // Already at top — no animation needed, no wait needed.
+    return
+  }
   const sv = entry.scrollView as unknown as {
     scrollTo: (opts: { y: number; animated: boolean }) => void
   }
   sv.scrollTo({ y: 0, animated: true })
-  await new Promise<void>((resolve) => setTimeout(resolve, 320))
+  await new Promise<void>((resolve) => setTimeout(resolve, 360))
 }
 
 interface UseScreenTourOptions {

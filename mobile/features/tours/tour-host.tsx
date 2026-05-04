@@ -222,6 +222,13 @@ export function TourHost() {
 
         if (Math.abs(scrollDelta) > 4) {
           sv.scrollTo({ y: targetScrollY, animated: true })
+          // Optimistically advance the tracked ref to the new
+          // target. RN's animated scroll fires onScroll with some
+          // throttle delay, so the next step's measure can read a
+          // stale offset and land the cutout misaligned. By
+          // pre-writing the target here, the next measure has the
+          // right baseline regardless of when onScroll catches up.
+          entry.scrollYRef.current = targetScrollY
           targetWindowY = svRect.y + (stepContentY - targetScrollY)
         }
       }
