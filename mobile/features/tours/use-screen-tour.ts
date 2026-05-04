@@ -25,41 +25,70 @@ interface UseScreenTourOptions {
  * lands on it. Marks the tour as "seen" once the user finishes or
  * dismisses the tour.
  *
- * Returns a manual `start` function for the rare case where the
- * caller wants to trigger the tour from a button (e.g. an inline
- * "Ver tutorial" link inside the screen).
+ * IMPORTANT: this hook lives in 4 screens that are all kept mounted
+ * by the tab navigator (`freezeOnBlur: false`). Two consequences
+ * shape the implementation:
  *
- * The hook does not own the `<CopilotStep>` wrapping — each screen
- * is responsible for rendering its own steps with `name` prefixed
- * by the tour key (e.g. `home/0`, `home/1`) and `active={isFocused}`
- * via the shared `<TourStep>` helper.
+ *   1. The auto-start effect MUST NOT re-run on every render of the
+ *      host screen, because each cleanup cancels the pending
+ *      `setTimeout` and the next run sees `startedRef.current` is
+ *      already true and skips. Result: the tour silently never
+ *      fires. We avoid this by keeping the effect deps to stable
+ *      primitives only and reading the (potentially unstable)
+ *      `start()` function via a ref.
+ *
+ *   2. `copilotEvents.on('stop', ...)` fires for ANY tour that
+ *      stops, not just ours. Without filtering, all four tours
+ *      would mark themselves as seen the moment the first one
+ *      finishes. We track the last active step name and only mark
+ *      our own tour as seen when the stopped step belonged to it
+ *      (step names are prefixed `<tour>/<order>` by `<TourStep>`).
  */
 export function useScreenTour(
   tour: TourKey,
   { startDelayMs = 600, forceStart = false }: UseScreenTourOptions = {},
 ): { start: () => Promise<void> } {
-  const { start: copilotStart, copilotEvents } = useCopilot()
+  const { copilotEvents, start: copilotStart } = useCopilot()
   const isFocused = useIsFocused()
+  // Snapshot the (possibly unstable) start fn to a ref so the
+  // auto-start effect's deps don't include it. See `IMPORTANT`
+  // note above for why this matters.
+  const startRef = useRef(copilotStart)
+  startRef.current = copilotStart
   const startedRef = useRef(false)
+  const lastStepNameRef = useRef<string | undefined>(undefined)
 
-  // Mark the tour as seen on stop (whether the user finished it or
-  // dismissed it). Once flagged, auto-start won't re-fire.
+  // Mark the tour as seen on stop, but only if the stopped tour
+  // was actually ours. Without the `startsWith` filter, any tour's
+  // stop event would mark all four tours as seen, since every
+  // mounted screen registers its own `handleStop` on the same
+  // global emitter.
   useEffect(() => {
-    const handleStop = () => {
-      void setTourSeen(tour)
+    const handleStepChange = (step: { name: string } | undefined) => {
+      if (step?.name) lastStepNameRef.current = step.name
     }
+    const handleStop = () => {
+      const name = lastStepNameRef.current
+      if (name?.startsWith(`${tour}/`)) {
+        void setTourSeen(tour)
+        // Reset so a subsequent stop from a different tour doesn't
+        // re-mark this one as seen.
+        lastStepNameRef.current = undefined
+      }
+    }
+    copilotEvents.on('stepChange', handleStepChange)
     copilotEvents.on('stop', handleStop)
     return () => {
+      copilotEvents.off('stepChange', handleStepChange)
       copilotEvents.off('stop', handleStop)
     }
   }, [copilotEvents, tour])
 
-  // Auto-start on first focus, but only if (a) tours are enabled
-  // globally and (b) this specific tour hasn't been seen yet.
+  // Auto-start on focus, gated by the seen flag and the global
+  // enabled flag. Deps are stable per render so this effect runs
+  // only when the screen actually focuses or unfocuses.
   useEffect(() => {
     if (!isFocused) {
-      // Reset the start guard when leaving the screen so re-entries
-      // can re-evaluate (still gated by the seen flag).
       startedRef.current = false
       return
     }
@@ -77,7 +106,7 @@ export function useScreenTour(
       }
       timeoutId = setTimeout(() => {
         void triggerHaptic('light')
-        void copilotStart()
+        void startRef.current()
       }, startDelayMs)
     })()
 
@@ -85,12 +114,12 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [copilotStart, forceStart, isFocused, startDelayMs, tour])
+  }, [forceStart, isFocused, startDelayMs, tour])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')
-    await copilotStart()
-  }, [copilotStart])
+    await startRef.current()
+  }, [])
 
   return { start }
 }

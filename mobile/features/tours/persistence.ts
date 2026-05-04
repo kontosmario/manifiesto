@@ -1,4 +1,8 @@
-import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
+import {
+  deletePersistentValue,
+  getPersistentValue,
+  setPersistentValue,
+} from '@/lib/persistent-kv'
 import { ALL_TOUR_KEYS, type TourKey } from './tour-keys'
 
 /**
@@ -13,6 +17,13 @@ import { ALL_TOUR_KEYS, type TourKey } from './tour-keys'
  * A separate `tours-disabled` flag exists for users who explicitly
  * turn tours off in Settings — when set, even unseen tours don't
  * auto-start.
+ *
+ * IMPORTANT: reset paths use `deletePersistentValue` rather than
+ * writing an empty string. iOS Keychain rejects empty values
+ * silently, so a `setItemAsync(key, '')` would leave the previous
+ * `'1'` in place and `getTourSeen` would keep returning `true`
+ * forever — the user would never see the tour again after the
+ * first time it was marked seen.
  */
 const SEEN_PREFIX = 'tour-seen.'
 const DISABLED_KEY = 'tours-disabled'
@@ -31,16 +42,13 @@ export async function setTourSeen(tour: TourKey): Promise<void> {
 }
 
 export async function resetTourSeen(tour: TourKey): Promise<void> {
-  // SecureStore has no `delete`, so write the empty string. The
-  // `getTourSeen` check is `=== '1'`, so any other value is treated
-  // as unseen and the tour will auto-start again on next entry.
-  await setPersistentValue(seenKey(tour), '')
+  await deletePersistentValue(seenKey(tour))
 }
 
 export async function resetAllTours(): Promise<void> {
   await Promise.all(ALL_TOUR_KEYS.map(resetTourSeen))
   // Re-enable in case the user had toggled them off globally.
-  await setPersistentValue(DISABLED_KEY, '')
+  await deletePersistentValue(DISABLED_KEY)
 }
 
 export async function getToursEnabled(): Promise<boolean> {
@@ -49,5 +57,9 @@ export async function getToursEnabled(): Promise<boolean> {
 }
 
 export async function setToursEnabled(enabled: boolean): Promise<void> {
-  await setPersistentValue(DISABLED_KEY, enabled ? '' : '1')
+  if (enabled) {
+    await deletePersistentValue(DISABLED_KEY)
+  } else {
+    await setPersistentValue(DISABLED_KEY, '1')
+  }
 }

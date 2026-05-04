@@ -38,3 +38,28 @@ export async function setPersistentValue(key: string, value: string): Promise<vo
     return
   }
 }
+
+/**
+ * Removes a key from the persistent store. Prefer this over writing
+ * an empty string when you want a fresh "absent" state — iOS Keychain
+ * rejects empty values silently, so a `setPersistentValue(key, '')`
+ * may leave the previous value intact and `getPersistentValue` keeps
+ * returning the stale data.
+ */
+export async function deletePersistentValue(key: string): Promise<void> {
+  if (isWeb()) {
+    globalThis.localStorage?.removeItem(key)
+    return
+  }
+
+  try {
+    const isAvailable = await SecureStore.isAvailableAsync()
+    if (!isAvailable) {
+      return
+    }
+
+    await SecureStore.deleteItemAsync(key)
+  } catch {
+    return
+  }
+}
