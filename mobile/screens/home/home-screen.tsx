@@ -49,10 +49,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // Register the screen's ScrollView ref so the guided tour can
   // auto-scroll each step into view before highlighting it.
   const tourScrollRef = useRef<ScrollView | null>(null)
-  const { onScroll: onTourScroll } = useRegisterTourScrollView(
-    HOME_TOUR,
-    tourScrollRef,
-  )
+  const {
+    onScroll: onTourScroll,
+    onContentSizeChange: onTourContentSizeChange,
+  } = useRegisterTourScrollView(HOME_TOUR, tourScrollRef)
 
   // AppStackShell already fires and seeds this; here we only need the
   // refetch handle for pull-to-refresh.
@@ -259,6 +259,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       // event rate is harmless there.
       scrollEventThrottle={16}
       scrollRef={tourScrollRef}
+      onContentSizeChange={onTourContentSizeChange}
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={

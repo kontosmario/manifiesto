@@ -45,10 +45,10 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   useScreenTour(FIJOS_TOUR)
   // ScrollView ref so the tour can auto-scroll to each step's target.
   const tourScrollRef = useRef<ScrollView | null>(null)
-  const { onScroll: onTourScroll } = useRegisterTourScrollView(
-    FIJOS_TOUR,
-    tourScrollRef,
-  )
+  const {
+    onScroll: onTourScroll,
+    onContentSizeChange: onTourContentSizeChange,
+  } = useRegisterTourScrollView(FIJOS_TOUR, tourScrollRef)
   // The add-fijo button lives inside FijosHeader's right cluster.
   // Ref-based registration so we don't have to refactor the header.
   const addButtonTourRef = useTourTargetRef(
@@ -149,7 +149,13 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       backgroundSlot={<AmbientBlobs />}
       scrollRef={tourScrollRef}
       onScroll={onTourScroll}
-      scrollEventThrottle={64}
+      onContentSizeChange={onTourContentSizeChange}
+      // 16ms = once per frame at 60fps. The tour's auto-scroll math
+      // reads `scrollYRef.current` to compute each step's window
+      // position; with a coarser throttle (e.g. 64ms) the tracked Y
+      // drifts behind the actual scroll and the highlight lands
+      // off-target.
+      scrollEventThrottle={16}
     >
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>
@@ -162,6 +168,9 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.hero.order}
           text={FIJOS_TOUR_STEPS.hero.text}
+          // Match FijosHeroCard's borderRadius (24) plus padding so
+          // the cutout's curve sits a hair outside the card's edge.
+          highlight={{ borderRadius: 28, padding: 6 }}
         >
           <Animated.View layout={sectionLayout}>
             <FijosHeroCard
@@ -191,6 +200,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.calendar.order}
           text={FIJOS_TOUR_STEPS.calendar.text}
+          // Match FijosUpcomingStrip's outer borderRadius (14).
+          highlight={{ borderRadius: 18, padding: 6 }}
         >
           <Animated.View layout={sectionLayout}>
             <FijosUpcomingStrip
@@ -217,6 +228,17 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.list.order}
           text={FIJOS_TOUR_STEPS.list.text}
+          // Stretch the cutout from the top of the list category
+          // groups down to the bottom of the visible scroll surface,
+          // mirroring the gastos `list` step. This makes the
+          // highlight feel like "everything from here onward" instead
+          // of cutting off at whatever fraction of the list happens
+          // to be in the natural rect.
+          highlight={{
+            borderRadius: 14,
+            padding: 8,
+            extendToScrollEnd: true,
+          }}
         >
           <Animated.View layout={sectionLayout}>
             <FijoCategoryGroups

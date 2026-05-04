@@ -25,6 +25,19 @@ export interface HighlightStyle {
   pulseColor?: string
   /** Pulse stroke width. Default: 3. */
   pulseWidth?: number
+  /**
+   * When true, the cutout's bottom edge is stretched down to the
+   * scroll surface's bottom (instead of `target.y + target.height`).
+   * Useful for "highlight everything from this anchor onward" steps,
+   * e.g. the gastos tour's `list` step which anchors at the
+   * "Movimientos" title and should cover all the rows that follow,
+   * even though those rows live in a separate virtualized region
+   * outside the anchor element's bounds.
+   *
+   * Requires a registered scroll surface (otherwise the host has no
+   * "bottom" to stretch to and the flag is a no-op).
+   */
+  extendToScrollEnd?: boolean
 }
 
 /**

@@ -1,6 +1,12 @@
 import type { MutableRefObject } from 'react'
-import type { ScrollView } from 'react-native'
 import type { TourKey } from './tour-keys'
+
+export interface MeasuredRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 /**
  * Module-level registry that pairs each screen's ScrollView ref
@@ -24,8 +30,37 @@ import type { TourKey } from './tour-keys'
  * without needing measureLayout at all.
  */
 export interface TourScrollEntry {
-  scrollView: ScrollView | null | undefined
+  /**
+   * Measure the scrollable surface in window coordinates. Returns
+   * `null` if the underlying node isn't ready yet (relevant for
+   * `SectionList`/`FlatList`, whose internal ScrollView responder is
+   * not always attached the instant our parent's useEffect runs).
+   *
+   * Stored as a closure so resolution happens lazily on every call.
+   * This is safer than caching the resolved node at registration
+   * time, which left dangling references when the inner ScrollView
+   * mounted late or when `getScrollResponder()` returned the
+   * `ScrollResponderMixin` method bag (no `measureInWindow`) instead
+   * of a class instance.
+   */
+  measureSv: (cb: (rect: MeasuredRect | null) => void) => void
+  /**
+   * Imperatively scroll the surface to a Y offset (in content
+   * coordinates). No-ops if the underlying node isn't ready or
+   * doesn't expose `scrollTo`.
+   */
+  scrollSvTo: (y: number, animated: boolean) => void
   scrollYRef: MutableRefObject<number>
+  /**
+   * Total height of the scrollable content. Updated via the
+   * ScrollView's `onContentSizeChange`. Used by the tour host to
+   * clamp `targetScrollY` to the actual `maxScrollY = contentHeight
+   * − viewport height` — without this, requesting a scroll past
+   * the content's end appeared to succeed (the call returns void)
+   * but the ScrollView silently clamped, leaving the cutout's
+   * computed post-scroll position out of sync with reality.
+   */
+  contentHeightRef: MutableRefObject<number>
 }
 
 const registry = new Map<TourKey, TourScrollEntry>()

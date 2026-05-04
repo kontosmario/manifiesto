@@ -30,7 +30,7 @@ import type { TourKey } from './tour-keys'
  */
 async function resetScrollToTop(tour: TourKey): Promise<void> {
   const entry = getTourScrollEntry(tour)
-  if (!entry?.scrollView) return
+  if (!entry) return
   // Capture the pre-reset position before we sync the ref so we can
   // decide whether the screen actually needs to animate-scroll.
   const previousY = entry.scrollYRef.current
@@ -42,10 +42,7 @@ async function resetScrollToTop(tour: TourKey): Promise<void> {
     // Already at top — no animation needed, no wait needed.
     return
   }
-  const sv = entry.scrollView as unknown as {
-    scrollTo: (opts: { y: number; animated: boolean }) => void
-  }
-  sv.scrollTo({ y: 0, animated: true })
+  entry.scrollSvTo(0, true)
   await new Promise<void>((resolve) => setTimeout(resolve, 360))
 }
 

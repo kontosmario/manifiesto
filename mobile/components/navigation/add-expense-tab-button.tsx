@@ -4,6 +4,7 @@ import {
   type PressableStateCallbackType,
   Pressable,
   StyleSheet,
+  View,
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
@@ -60,13 +61,17 @@ export function AddExpenseTabButton({
   // Register the FAB as the closing step of the Home guided tour.
   // The button lives in the tab bar (shared chrome) but it's only
   // taught from Home — when the Gastos / Fijos / Control tours run,
-  // this step doesn't participate (different tour key). Registers
-  // once for the lifetime of the tab bar; the FAB is circular so
-  // we override the highlight radius to match its 64pt face.
+  // this step doesn't participate (different tour key). The ref is
+  // attached to a 66×66 inner wrapper (not the outer Pressable,
+  // which is `flex: 1` and fills the whole tab cell — that's why
+  // the cutout previously rendered as a wide oval instead of
+  // matching the round face). Border radius is set generously: the
+  // SVG cutout path clamps `r` to `min(r, w/2, h/2) = 33`, which
+  // produces a perfect circle.
   const fabTourRef = useTourTargetRef(HOME_TOUR, HOME_TOUR_STEPS.fab.order, {
     text: HOME_TOUR_STEPS.fab.text,
     highlight: {
-      borderRadius: 36,
+      borderRadius: 40,
       padding: 4,
       pulse: true,
       pulseColor: theme.brand.bright,
@@ -119,7 +124,6 @@ export function AddExpenseTabButton({
   return (
     <>
       <Pressable
-        ref={fabTourRef}
         accessibilityLabel="Agregar gasto"
         accessibilityHint="Mantené presionado para más acciones"
         accessibilityRole="button"
@@ -159,20 +163,25 @@ export function AddExpenseTabButton({
             burstRingStyle,
           ]}
         />
-        <Animated.View
-          style={[
-            pressScale.animatedStyle,
-            {
-              shadowColor: theme.isDark ? '#A6EF8F' : '#297811',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: theme.isDark ? 0.34 : 0.30,
-              shadowRadius: 12,
-              elevation: 12,
-            },
-          ]}
-        >
-          <AddExpenseTabButtonFace theme={theme} />
-        </Animated.View>
+        {/* Tour ref host. Sized to the face exactly so the guided
+            tour's cutout measures 66×66 (matches the visible disc)
+            instead of the parent Pressable's full-cell box. */}
+        <View ref={fabTourRef} collapsable={false} style={styles.tourTargetHost}>
+          <Animated.View
+            style={[
+              pressScale.animatedStyle,
+              {
+                shadowColor: theme.isDark ? '#A6EF8F' : '#297811',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: theme.isDark ? 0.34 : 0.30,
+                shadowRadius: 12,
+                elevation: 12,
+              },
+            ]}
+          >
+            <AddExpenseTabButtonFace theme={theme} />
+          </Animated.View>
+        </View>
       </Pressable>
 
       <AddQuickActionsOverlay
@@ -199,5 +208,9 @@ const styles = StyleSheet.create({
     height: 66,
     borderRadius: 33,
     borderWidth: 2,
+  },
+  tourTargetHost: {
+    width: 66,
+    height: 66,
   },
 })

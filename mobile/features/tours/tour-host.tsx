@@ -32,14 +32,10 @@ const AnimatedPath = Animated.createAnimatedComponent(Path)
 import { motionDurations } from '@/lib/motion/tokens'
 import { useTour } from './tour-context'
 import { TourTooltip } from './tour-tooltip'
-import { getTourScrollEntry } from './tour-scroll-registry'
-
-interface MeasuredRect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import {
+  getTourScrollEntry,
+  type MeasuredRect,
+} from './tour-scroll-registry'
 
 /**
  * Top-level overlay for the guided tour. Mounted once at the
@@ -199,41 +195,76 @@ export function TourHost() {
 
       let targetWindowY = stepRect.y
       const targetWindowX = stepRect.x
+      // Read config early so the scroll math can also use the
+      // `extendToScrollEnd` flag (steps that anchor at a row and
+      // stretch their cutout downward want the anchor near the TOP
+      // of the scroll surface, not at the usual 30% offset, so the
+      // stretched region covers as much content as possible).
+      const config = currentStep.configRef.current
+      const extendToScrollEnd = Boolean(config?.highlight?.extendToScrollEnd)
 
       const entry = getTourScrollEntry(activeTour)
-      if (entry?.scrollView) {
-        const sv = entry.scrollView as unknown as {
-          measureInWindow: (
-            cb: (x: number, y: number, w: number, h: number) => void,
-          ) => void
-          scrollTo: (opts: { y: number; animated: boolean }) => void
-        }
+      let svRectForExtend: MeasuredRect | null = null
+      if (entry) {
         let svRect = svRectRef.current
         if (!svRect) {
-          svRect = await measure(sv)
+          svRect = await new Promise<MeasuredRect | null>((resolve) => {
+            entry.measureSv(resolve)
+          })
           if (cancelled || !svRect) return
           svRectRef.current = svRect
         }
-        const desiredVisibleY = svRect.height * defaults.scrollOffsetRatio
-        const stepContentY =
-          stepRect.y - svRect.y + entry.scrollYRef.current
-        const targetScrollY = Math.max(0, stepContentY - desiredVisibleY)
-        const scrollDelta = targetScrollY - entry.scrollYRef.current
+        svRectForExtend = svRect
 
-        if (Math.abs(scrollDelta) > 4) {
-          sv.scrollTo({ y: targetScrollY, animated: true })
-          // Optimistically advance the tracked ref to the new
-          // target. RN's animated scroll fires onScroll with some
-          // throttle delay, so the next step's measure can read a
-          // stale offset and land the cutout misaligned. By
-          // pre-writing the target here, the next measure has the
-          // right baseline regardless of when onScroll catches up.
-          entry.scrollYRef.current = targetScrollY
+        // Detect targets that live OUTSIDE the registered ScrollView
+        // (e.g. the Home tab bar's FAB). Their window-Y is not a
+        // function of scroll, so any scrollTo math would yank the
+        // cutout away from the real element. Skip the auto-scroll
+        // entirely and use the measured rect directly.
+        const OUTSIDE_TOLERANCE = 50
+        const isAboveScrollView = stepRect.y + stepRect.height < svRect.y
+        const isBelowScrollView =
+          stepRect.y > svRect.y + svRect.height + OUTSIDE_TOLERANCE
+        const targetOutsideScrollView = isAboveScrollView || isBelowScrollView
+
+        if (!targetOutsideScrollView) {
+          // For "extend to scroll end" steps, push the anchor to the
+          // top of the scroll surface (10% inset) so the stretched
+          // cutout covers the rest of the viewport. Other steps use
+          // the configured `scrollOffsetRatio` (defaults to 30%) which
+          // leaves comfortable room for the tooltip above.
+          const offsetRatio = extendToScrollEnd
+            ? 0.1
+            : defaults.scrollOffsetRatio
+          const desiredVisibleY = svRect.height * offsetRatio
+          const stepContentY =
+            stepRect.y - svRect.y + entry.scrollYRef.current
+          // Clamp the requested scroll to maxScrollY = contentHeight
+          // − viewport. Without this, the ScrollView silently
+          // clamps internally but our `targetWindowY` math is
+          // computed from the un-clamped value, leaving the cutout
+          // off by the overshoot amount.
+          const contentHeight = entry.contentHeightRef.current
+          const maxScrollY =
+            contentHeight > 0 ? Math.max(0, contentHeight - svRect.height) : Infinity
+          const desiredScrollY = Math.max(0, stepContentY - desiredVisibleY)
+          const targetScrollY = Math.min(desiredScrollY, maxScrollY)
+          const scrollDelta = targetScrollY - entry.scrollYRef.current
+
+          if (Math.abs(scrollDelta) > 4) {
+            entry.scrollSvTo(targetScrollY, true)
+          }
+          // Use the clamped targetScrollY for the post-scroll window
+          // position so the cutout lands exactly where the ScrollView
+          // will actually settle. Don't optimistically write
+          // `entry.scrollYRef.current = targetScrollY` here — with
+          // `scrollEventThrottle={16}` the onScroll handler catches
+          // up within a frame, and writing the un-clamped value
+          // cascaded baseline drift into the next step's measure.
           targetWindowY = svRect.y + (stepContentY - targetScrollY)
         }
       }
 
-      const config = currentStep.configRef.current
       const padding = config?.highlight?.padding ?? defaults.highlightPadding
       const radius =
         config?.highlight?.borderRadius ?? defaults.highlightRadius
@@ -241,7 +272,15 @@ export function TourHost() {
       const targetX = targetWindowX - padding
       const targetY = targetWindowY - padding
       const targetW = stepRect.width + padding * 2
-      const targetH = stepRect.height + padding * 2
+      // For `extendToScrollEnd` steps, stretch the cutout's bottom to
+      // the scroll surface's bottom edge instead of the anchor's own
+      // height. We subtract a small safe margin (4pt) so the cutout
+      // doesn't kiss the chrome below.
+      const naturalH = stepRect.height + padding * 2
+      const targetH =
+        extendToScrollEnd && svRectForExtend
+          ? Math.max(naturalH, svRectForExtend.y + svRectForExtend.height - targetY - 4)
+          : naturalH
 
       const isFirstMeasure = cutW.value === 0 && cutH.value === 0
       const spring = (sv: typeof cutX, to: number) => {

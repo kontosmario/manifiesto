@@ -72,10 +72,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   // Section anchor bookkeeping for the dispatcher's scroll-to-section.
   const scrollRef = useRef<ScrollView | null>(null)
   // Reuse that same ScrollView for the guided tour's auto-scroll.
-  const { onScroll: onTourScroll } = useRegisterTourScrollView(
-    CONTROL_TOUR,
-    scrollRef,
-  )
+  const {
+    onScroll: onTourScroll,
+    onContentSizeChange: onTourContentSizeChange,
+  } = useRegisterTourScrollView(CONTROL_TOUR, scrollRef)
   const offsetsRef = useRef<Map<ControlSectionAnchor, number>>(new Map())
   const [pulsingSection, setPulsingSection] =
     useState<ControlSectionAnchor | null>(null)
@@ -202,6 +202,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           onScroll={onTourScroll}
+          onContentSizeChange={onTourContentSizeChange}
           scrollEventThrottle={64}
           showsVerticalScrollIndicator={false}
         >

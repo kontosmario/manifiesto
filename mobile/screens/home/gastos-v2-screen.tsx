@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
@@ -30,6 +30,7 @@ import {
   GASTOS_TOUR,
   GASTOS_TOUR_STEPS,
   TourTarget,
+  useRegisterTourScrollView,
   useScreenTour,
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
@@ -76,6 +77,27 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   const safeAreaInsets = useSafeAreaInsets()
   // Auto-start the Gastos guided tour on first visit. No-op once seen.
   useScreenTour(GASTOS_TOUR)
+  // Register the SectionList as the tour's scroll surface so the host
+  // can auto-scroll each step's target into view (hero/streak live in
+  // the list header; calendar and filters live further down). The
+  // hook resolves the underlying ScrollView via `getScrollResponder()`
+  // — SectionList doesn't expose `scrollTo`/`measureInWindow` on its
+  // own instance.
+  const tourScrollRef = useRef<SectionList<Expense, MovimientosSection> | null>(null)
+  // Outer `<View collapsable={false}>` wrapping the SectionList. Used
+  // as the registry's `measureRef`: SectionList instances don't expose
+  // `measureInWindow` reliably across RN versions, so we measure this
+  // flex:1 host instead. The `list` tour step is registered separately
+  // (via `<TourTarget>` around the "Movimientos" title row, with
+  // `highlight.extendToScrollEnd` so the cutout stretches from the
+  // anchor down to the bottom of the visible scroll surface).
+  const tourMeasureRef = useRef<View | null>(null)
+  const {
+    onScroll: onTourScroll,
+    onContentSizeChange: onTourContentSizeChange,
+  } = useRegisterTourScrollView(GASTOS_TOUR, tourScrollRef, {
+    measureRef: tourMeasureRef,
+  })
   // Replicate Screen's bottom-padding logic for tab screens — without
   // this, the SectionList scroll-surface ends ~120pt above the tab
   // bar (cuando no hay paddingBottom propio) y el área visible se
@@ -405,7 +427,11 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
                 tour={GASTOS_TOUR}
                 order={GASTOS_TOUR_STEPS.streak.order}
                 text={GASTOS_TOUR_STEPS.streak.text}
-                highlight={{ borderRadius: 999, padding: 4, pulse: true }}
+                // Match the icon's rounded-square geometry (44×44,
+                // borderRadius 14) and pad enough to cover the
+                // absolutely-positioned count badge that pokes out
+                // at top:-5 / right:-5.
+                highlight={{ borderRadius: 20, padding: 6, pulse: true }}
               >
                 <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
               </TourTarget>
@@ -508,16 +534,27 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
             onPress={handleAdvisorPress}
           />
         </Animated.View>
-        <View style={styles.movimientosTitleRow}>
-          <Text style={[styles.movimientosTitle, { color: theme.colors.text }]}>
-            Movimientos
-          </Text>
-          {sections.length > 0 ? (
-            <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
-              ‹ Desliza para acciones
+        <TourTarget
+          tour={GASTOS_TOUR}
+          order={GASTOS_TOUR_STEPS.list.order}
+          text={GASTOS_TOUR_STEPS.list.text}
+          highlight={{
+            borderRadius: 12,
+            padding: 8,
+            extendToScrollEnd: true,
+          }}
+        >
+          <View style={styles.movimientosTitleRow}>
+            <Text style={[styles.movimientosTitle, { color: theme.colors.text }]}>
+              Movimientos
             </Text>
-          ) : null}
-        </View>
+            {sections.length > 0 ? (
+              <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
+                ‹ Desliza para acciones
+              </Text>
+            ) : null}
+          </View>
+        </TourTarget>
       </View>
     ),
     [
@@ -583,27 +620,26 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
           header) so the absolute-positioned blobs fill the whole canvas
           instead of getting clipped to the ListHeaderComponent cell. */}
       <AmbientBlobs />
-      {/* The TourTarget wraps the SectionList in a `<View
-          collapsable={false}>` so the activity-list tour step can
-          measure the whole feed region. The wrapper inherits flex:1
-          via `styles.activityListWrap` to preserve the list's
-          fill-the-rest layout. */}
+      {/* `tourMeasureRef` wires this `flex:1` host as the registry's
+          measurement target for the scrollable surface. The `list`
+          step's highlight is registered separately (TourTarget around
+          the "Movimientos" title row inside ListHeader, with
+          `extendToScrollEnd`). */}
       <View
+        ref={tourMeasureRef}
         collapsable={false}
         style={styles.activityListWrap}
       >
-      <TourTarget
-        tour={GASTOS_TOUR}
-        order={GASTOS_TOUR_STEPS.list.order}
-        text={GASTOS_TOUR_STEPS.list.text}
-        highlight={{ borderRadius: 12, padding: 0 }}
-      >
       <SectionList<Expense, MovimientosSection>
+        ref={tourScrollRef}
         sections={sections}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={ListHeader}
+        onScroll={onTourScroll}
+        onContentSizeChange={onTourContentSizeChange}
+        scrollEventThrottle={16}
         ListEmptyComponent={
           emptyState ? (
             <View
@@ -716,7 +752,6 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
           />
         }
       />
-      </TourTarget>
       </View>
 
       <StreakSheet
