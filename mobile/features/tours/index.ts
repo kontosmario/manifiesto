@@ -1,6 +1,7 @@
 export { useTour } from './tour-context'
 export { TourProvider } from './tour-provider'
 export { TourTarget } from './tour-target'
+export { useTourTargetRef } from './use-tour-target-ref'
 export { TourTooltip } from './tour-tooltip'
 export { useScreenTour } from './use-screen-tour'
 export { useRegisterTourScrollView } from './use-register-tour-scroll-view'

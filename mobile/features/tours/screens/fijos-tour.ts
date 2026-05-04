@@ -3,6 +3,10 @@ import type { TourStepCopy } from './home-tour'
 
 export const FIJOS_TOUR = TOUR_KEYS.fijos
 
+/**
+ * Fijos tour — 4 stops. Adds the "agregar fijo" button on top of
+ * the existing 3 (hero / upcoming strip / list).
+ */
 export const FIJOS_TOUR_STEPS = {
   hero: {
     order: 0,
@@ -14,6 +18,10 @@ export const FIJOS_TOUR_STEPS = {
   },
   list: {
     order: 2,
-    text: 'La lista debajo muestra cada fijo con su próximo vencimiento. Tocalo para marcarlo como pagado, o deslizá para editarlo o pausarlo.',
+    text: 'La lista debajo agrupa los fijos por categoría. Tocá uno para marcarlo como pagado, o deslizá para editarlo, pausarlo o eliminarlo.',
+  },
+  addButton: {
+    order: 3,
+    text: 'Acá agregás un fijo nuevo. Sumá un alquiler, una suscripción o cualquier compromiso recurrente — definís cada cuánto vence y la app lo mete en el ciclo automáticamente.',
   },
 } as const satisfies Record<string, TourStepCopy>
