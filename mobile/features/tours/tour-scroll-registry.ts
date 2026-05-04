@@ -1,35 +1,46 @@
+import type { MutableRefObject } from 'react'
 import type { ScrollView } from 'react-native'
 import type { TourKey } from './tour-keys'
 
 /**
- * Module-level registry that lets each screen advertise its
- * ScrollView ref so the guided tour can auto-scroll to a step's
- * target before animating the highlight onto it.
+ * Module-level registry that pairs each screen's ScrollView ref
+ * with a live scroll-Y tracker so the guided tour can auto-scroll
+ * to a step's target before highlighting it.
  *
- * `react-native-copilot` already supports auto-scroll natively —
- * it just needs the `ScrollView` instance passed to `start()`. The
- * lib then does `measureLayout` against the scroll node and calls
- * `scrollTo` (with a 100ms buffer before animating the highlight)
- * on every step change. No manual scroll math needed.
+ * We do NOT use `react-native-copilot`'s built-in auto-scroll
+ * (passing the ScrollView to `start()`) because the lib internally
+ * calls `wrapperRef.current.measureLayout(findNodeHandle(scrollView),
+ * ...)`. In RN 0.81+ on Fabric, `measureLayout` no longer accepts a
+ * numeric node handle — it expects a ref to a host component — and
+ * the lib's call triggers a runtime warning ("ref.measureLayout
+ * must be called with a ref to a native component"). The auto-
+ * scroll either silently fails or fires a deprecation warning per
+ * step transition.
  *
- * The registry is a plain Map rather than a React context because
- * the consumer (`useScreenTour`) lives in the same screen that
- * registers the ref — context would either need to be hoisted to
- * a parent we don't control, or duplicated per screen.
+ * Instead we run the scroll ourselves from `useScreenTour` using
+ * the new-architecture-friendly `measureInWindow` API on both the
+ * step's wrapper and the screen's ScrollView, plus a tracked
+ * scroll-Y ref so we can compute the absolute target offset
+ * without needing measureLayout at all.
  */
-const registry = new Map<TourKey, ScrollView | null | undefined>()
-
-export function registerTourScrollView(
-  tour: TourKey,
-  scrollView: ScrollView | null | undefined,
-): void {
-  registry.set(tour, scrollView)
+export interface TourScrollEntry {
+  scrollView: ScrollView | null | undefined
+  scrollYRef: MutableRefObject<number>
 }
 
-export function unregisterTourScrollView(tour: TourKey): void {
+const registry = new Map<TourKey, TourScrollEntry>()
+
+export function registerTourScrollEntry(
+  tour: TourKey,
+  entry: TourScrollEntry,
+): void {
+  registry.set(tour, entry)
+}
+
+export function unregisterTourScrollEntry(tour: TourKey): void {
   registry.delete(tour)
 }
 
-export function getTourScrollView(tour: TourKey): ScrollView | null {
+export function getTourScrollEntry(tour: TourKey): TourScrollEntry | null {
   return registry.get(tour) ?? null
 }

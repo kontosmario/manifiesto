@@ -44,7 +44,10 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   useScreenTour(FIJOS_TOUR)
   // ScrollView ref so the tour can auto-scroll to each step's target.
   const tourScrollRef = useRef<ScrollView | null>(null)
-  useRegisterTourScrollView(FIJOS_TOUR, tourScrollRef)
+  const { onScroll: onTourScroll } = useRegisterTourScrollView(
+    FIJOS_TOUR,
+    tourScrollRef,
+  )
   const controller = useFijosController(familyId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categoriesById = useMemo(() => {
@@ -132,6 +135,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={<AmbientBlobs />}
       scrollRef={tourScrollRef}
+      onScroll={onTourScroll}
+      scrollEventThrottle={64}
     >
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>

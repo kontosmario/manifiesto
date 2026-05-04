@@ -49,7 +49,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // Register the screen's ScrollView ref so the guided tour can
   // auto-scroll each step into view before highlighting it.
   const tourScrollRef = useRef<ScrollView | null>(null)
-  useRegisterTourScrollView(HOME_TOUR, tourScrollRef)
+  const { onScroll: onTourScroll } = useRegisterTourScrollView(
+    HOME_TOUR,
+    tourScrollRef,
+  )
 
   // AppStackShell already fires and seeds this; here we only need the
   // refetch handle for pull-to-refresh.
@@ -67,6 +70,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const reachedBottomRef = useRef(false)
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Mirror the offset into the tour registry so its auto-scroll
+      // can compute absolute targets without measureLayout.
+      onTourScroll(event)
       if (reachedBottomRef.current) return
       if (!familyId) return
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
@@ -84,7 +90,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         })
       }
     },
-    [familyId, telemetry.sessionId],
+    [familyId, onTourScroll, telemetry.sessionId],
   )
 
   const handleRefresh = useCallback(async () => {
