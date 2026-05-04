@@ -256,18 +256,39 @@ export function TourHost() {
       spring(cutH, targetH)
       spring(cutR, radius)
 
+      // Tooltip placement: pick the side with more usable room, then
+      // anchor + clamp so the card stays within the visible area.
+      //
+      // The previous version used the full window height when
+      // computing `roomBelow`, ignoring that the tab bar (~88pt +
+      // ~22pt home indicator) at the bottom and the status bar
+      // (~50pt) at the top are not usable. For steps near the
+      // bottom of the screen (activity, FAB) `roomBelow` looked
+      // positive on paper while the tooltip was actually being
+      // pushed behind the tab bar — invisible to the user.
       const TOOLTIP_GAP = 16
-      const TOOLTIP_HEIGHT_ESTIMATE = 200
-      const roomBelow =
-        screenH - (targetY + targetH) - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
-      const roomAbove = targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
-      const placement =
-        roomBelow >= 0 || roomBelow > roomAbove ? 'below' : 'above'
+      const TOOLTIP_HEIGHT_ESTIMATE = 220
+      const STATUS_BAR_RESERVE = 50
+      const TAB_BAR_RESERVE = 110
+      const usableTop = STATUS_BAR_RESERVE
+      const usableBottom = screenH - TAB_BAR_RESERVE
+      const roomAbove = targetY - usableTop
+      const roomBelow = usableBottom - (targetY + targetH)
+      // Prefer the side with more room. Ties go to 'below' (the
+      // natural reading flow) but on Home's lower-half steps
+      // roomAbove always wins decisively.
+      const placement = roomAbove > roomBelow ? 'above' : 'below'
       tooltipPlacement.value = placement
-      const tooltipTop =
-        placement === 'below'
-          ? targetY + targetH + TOOLTIP_GAP
-          : Math.max(48, targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE)
+      let tooltipTop: number
+      if (placement === 'above') {
+        tooltipTop = targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
+        // Clamp so the tooltip can't slip behind the status bar.
+        tooltipTop = Math.max(usableTop, tooltipTop)
+      } else {
+        tooltipTop = targetY + targetH + TOOLTIP_GAP
+        // Clamp so the tooltip can't slip behind the tab bar.
+        tooltipTop = Math.min(usableBottom - TOOLTIP_HEIGHT_ESTIMATE, tooltipTop)
+      }
       tooltipY.value =
         isFirstMeasure || reduced
           ? tooltipTop
