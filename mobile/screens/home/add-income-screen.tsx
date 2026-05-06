@@ -142,7 +142,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         },
         onError: (err: unknown) => {
           void triggerHaptic('error')
-          const msg = getErrorMessage(err, 'Reintentá en un momento.')
+          const msg = getErrorMessage(err, 'Reintenta en un momento.')
           setSubmitErrorMessage(msg)
           Alert.alert('No pudimos guardar', msg)
         },

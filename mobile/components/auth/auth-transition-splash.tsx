@@ -6,10 +6,6 @@ import Animated, {
   ReduceMotion,
 } from 'react-native-reanimated'
 import NetInfo from '@react-native-community/netinfo'
-import {
-  AuroraLayer,
-  ParticleLayer,
-} from '@/components/auth/auth-launch-splash'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import {
@@ -56,8 +52,7 @@ export function AuthTransitionSplash({
 
   return (
     <View style={[styles.root, { backgroundColor: authTokens.welcomeBg }]}>
-      <AuroraLayer width={width} height={height} reduced={reduced} randomize />
-      <ParticleLayer width={width} height={height} reduced={reduced} />
+      <FirefliesLayer width={width} height={height} reduced={reduced} />
       <View style={styles.center}>
         {isError ? (
           <ErrorFallback errorKind={errorKind} />
@@ -65,6 +60,129 @@ export function AuthTransitionSplash({
           <WarmFernLogo size={180} />
         )}
       </View>
+    </View>
+  )
+}
+
+// ─── Fireflies — Reanimated 4 CSS animations (declarative) ─────────
+//
+// Why CSS animations and NOT useAnimatedStyle/useSharedValue:
+//
+// Per Reanimated 4's official guidance (and the
+// `animating-react-native-expo` skill):
+//   "Prefer animations (keyframes) for looping, staged motion, and
+//    micro-interactions. Prefer shared values/worklets for gestures
+//    and scroll."
+//
+// CSS animations are declarative — once defined, the animation runs
+// entirely in the native side without per-frame worklet evaluation,
+// without JS round-trips, and without shared-value reads. They are
+// the correct primitive for ambient/decorative loops like a firefly
+// field.
+//
+// Earlier iterations used 24 → 16 particles each with their own
+// `useAnimatedStyle` worklet evaluating 60 times/second = 16 × 60 =
+// 960 worklet evals/sec just for the particle field. Even with one
+// shared tick, that worklet count contested the UI thread during
+// the auth-transition window (when iOS was also doing native mounts
+// for the home tree).
+//
+// With CSS animations: ZERO worklet evals, ZERO shared values. The
+// animation system handles timing on the native side. The only cost
+// is the underlying native view transform updates, which iOS's
+// rendering pipeline already does very efficiently for keyframe
+// animations.
+const FIREFLY_COUNT = 16
+const FIREFLIES = Array.from({ length: FIREFLY_COUNT }, (_, i) => ({
+  key: i,
+  leftPct: (i * 17 + 11) % 92,
+  topPct: (i * 23 + 9) % 78,
+  // Stagger duration + delay so each firefly twinkles on its own
+  // rhythm. Durations 8-11s, delays 0-7s spread.
+  durationMs: 8000 + ((i * 191) % 3000),
+  delayMs: (i * 460) % 7000,
+  color: i % 3 === 0 ? authTokens.peach : '#C7EE9C',
+}))
+
+function FirefliesLayer({
+  width,
+  height,
+  reduced,
+}: {
+  width: number
+  height: number
+  reduced: boolean
+}) {
+  if (reduced) {
+    return (
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        {FIREFLIES.map((f) => (
+          <View
+            key={f.key}
+            style={[
+              styles.firefly,
+              {
+                left: (f.leftPct / 100) * width,
+                top: (f.topPct / 100) * height,
+                backgroundColor: f.color,
+                opacity: 0.4,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    )
+  }
+
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {FIREFLIES.map((f) => (
+        <Animated.View
+          key={f.key}
+          style={{
+            position: 'absolute',
+            width: 3,
+            height: 3,
+            borderRadius: 1.5,
+            left: (f.leftPct / 100) * width,
+            top: (f.topPct / 100) * height,
+            backgroundColor: f.color,
+            // Keyframe animation: bell-curve opacity (firefly fades
+            // in, peaks at 50%, fades out) + lissajous-style drift
+            // (translateY upward at peak, slight X wiggle).
+            //
+            // Reanimated 4 supports keyframe percentage stops directly
+            // in `animationName`. The native runtime interpolates
+            // between them — no per-frame JS or worklet involvement.
+            animationName: {
+              '0%': {
+                opacity: 0,
+                transform: [{ translateY: 0 }, { translateX: 0 }],
+              },
+              '25%': {
+                opacity: 0.45,
+                transform: [{ translateY: -16 }, { translateX: 5 }],
+              },
+              '50%': {
+                opacity: 0.65,
+                transform: [{ translateY: -22 }, { translateX: -3 }],
+              },
+              '75%': {
+                opacity: 0.45,
+                transform: [{ translateY: -16 }, { translateX: 5 }],
+              },
+              '100%': {
+                opacity: 0,
+                transform: [{ translateY: 0 }, { translateX: 0 }],
+              },
+            },
+            animationDuration: `${f.durationMs}ms`,
+            animationDelay: `${f.delayMs}ms`,
+            animationIterationCount: 'infinite',
+            animationTimingFunction: 'linear',
+          }}
+        />
+      ))}
     </View>
   )
 }
@@ -206,5 +324,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
     color: '#0E3A26',
+  },
+  firefly: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
   },
 })

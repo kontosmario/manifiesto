@@ -30,7 +30,7 @@ export function JoinScreen() {
     <RequireGuest allowFamilylessSession>
       <Screen
         contentContainerStyle={styles.screenContent}
-        subtitle="Después del acceso, elegí si abrís un grupo nuevo o si te sumás a uno existente."
+        subtitle="Después del acceso, elige si abres un grupo nuevo o si te sumas a uno existente."
         title="Tu grupo familiar"
       >
         <View style={styles.sectionStack}>
@@ -44,7 +44,7 @@ export function JoinScreen() {
               Primero definimos a qué grupo vas a pertenecer.
             </Text>
             <Text style={[styles.heroSubtitle, { color: theme.colors.textMuted }]}>
-              Si todavía no existe, creás uno y seguís al wizard inicial. Si ya existe, ingresás el código y entrás directo.
+              Si todavía no existe, creas uno y sigues al wizard inicial. Si ya existe, ingresas el código y entrás directo.
             </Text>
 
             <SegmentedControl
@@ -103,7 +103,7 @@ export function JoinScreen() {
           ) : (
             <BrandedPanel style={styles.formCard}>
               <Text style={[styles.formCopy, { color: theme.colors.textMuted }]}>
-                Ingresá el código del grupo familiar al que querés sumarte. Al validar el código, vas a entrar directamente a la app con ese hogar activo.
+                Ingresa el código del grupo familiar al que quieres sumarte. Al validar el código, vas a entrar directamente a la app con ese hogar activo.
               </Text>
 
               <TextField

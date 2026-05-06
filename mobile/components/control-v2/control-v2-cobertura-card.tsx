@@ -141,7 +141,7 @@ export function ControlV2CoberturaCard({
     if (ahorroMes === 0 && ingresoMes > 0) {
       return {
         icon: 'savings' as const,
-        text: 'No definiste cuánto ahorrar. Configurá tu meta mensual en Ajustes para que la app la respete.',
+        text: 'No definiste cuánto ahorrar. Configura tu meta mensual en Ajustes para que la app la respete.',
       }
     }
     switch (state) {

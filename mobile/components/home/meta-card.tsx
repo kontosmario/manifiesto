@@ -121,7 +121,7 @@ function MetaCardImpl({
           void triggerHaptic('error')
           Alert.alert(
             'No pudimos sumar el aporte',
-            err instanceof Error ? err.message : 'Reintentá en un momento.',
+            err instanceof Error ? err.message : 'Reintenta en un momento.',
           )
         },
       },

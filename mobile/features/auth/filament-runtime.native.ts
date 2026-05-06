@@ -26,7 +26,7 @@ export type RotationVector = [number, number, number]
 
 export function getFilamentUnavailableDetail(error: unknown) {
   const fallbackMessage =
-    'No se pudo cargar react-native-filament. Probá con un build nativo limpio.'
+    'No se pudo cargar react-native-filament. Prueba con un build nativo limpio.'
   const message = getErrorMessage(error, fallbackMessage)
 
   if (

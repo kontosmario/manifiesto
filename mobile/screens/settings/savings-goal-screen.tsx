@@ -270,7 +270,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
       <NumericEditSheet
         visible={goalOpen}
         title="Objetivo"
-        subtitle="Monto total que querés ahorrar."
+        subtitle="Monto total que quieres ahorrar."
         rawValue={goalAmount}
         onChangeRawValue={setGoalAmount}
         formatDisplay={(raw) => formatPriceInputValue(raw, false)}
@@ -279,7 +279,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
         helper={
           Number.isFinite(goalNumber) && goalNumber > 0
             ? `Se guardará como ${currencyFormatter.format(goalNumber)}.`
-            : 'Ingresá un monto mayor a cero.'
+            : 'Ingresa un monto mayor a cero.'
         }
         errorText={
           goalAmount.length > 0 && !(Number.isFinite(goalNumber) && goalNumber > 0)
@@ -294,7 +294,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
       <NumericEditSheet
         visible={currentOpen}
         title="Ahorrado hoy"
-        subtitle="Cuánto de esta meta ya tenés ahorrado."
+        subtitle="Cuánto de esta meta ya tienes ahorrado."
         rawValue={currentAmount}
         onChangeRawValue={setCurrentAmount}
         formatDisplay={(raw) => formatPriceInputValue(raw, false)}
@@ -303,7 +303,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
         helper={
           Number.isFinite(currentNumber)
             ? `Se guardará como ${currencyFormatter.format(Math.max(0, currentNumber))}.`
-            : 'Ingresá un monto válido.'
+            : 'Ingresa un monto válido.'
         }
         saveLabel="Guardar ahorrado"
         saveDisabled={!Number.isFinite(currentNumber) || currentNumber < 0}
@@ -313,7 +313,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
       <NumericEditSheet
         visible={monthsOpen}
         title="Meses objetivo"
-        subtitle="En cuántos meses pensás alcanzar esta meta (opcional)."
+        subtitle="En cuántos meses piensas alcanzar esta meta (opcional)."
         rawValue={targetMonths}
         onChangeRawValue={setTargetMonths}
         displayEyebrow="PLAZO"
@@ -324,7 +324,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
           if (!Number.isFinite(n)) return raw
           return `${n} ${n === 1 ? 'mes' : 'meses'}`
         }}
-        helper="Dejalo vacío si no tenés plazo definido."
+        helper="Déjalo vacío si no tienes plazo definido."
         maxIntegerDigits={3}
         maxDecimalDigits={0}
         saveLabel="Guardar plazo"

@@ -45,7 +45,7 @@ interface HomeHeroCardProps {
  * Redesigned Home hero. Same visual language as FijosHeroCard — gradient
  * shell, diagonal shine, breathing status dot, CountUpText for money.
  * The two side tiles split the single "available today" figure into
- * "podés gastar por día" (accent) and "vas a cerrar con" (neutral).
+ * "puedes gastar por día" (accent) and "vas a cerrar con" (neutral).
  */
 export function HomeHeroCard({
   data,
@@ -112,7 +112,7 @@ export function HomeHeroCard({
           ? `Cierre proyectado: ${formatMoney(data.projectedClose)}.`
           : ''
       } ${savingsChip ? savingsChip.a11y : ''}`.trim()
-    : 'Configurá tu ingreso mensual para activar el seguimiento del ciclo.'
+    : 'Configura tu ingreso mensual para activar el seguimiento del ciclo.'
 
   return (
     <RiseView delay={60}>
@@ -163,7 +163,7 @@ export function HomeHeroCard({
                   <Text
                     style={[styles.label, { color: theme.colors.heroAccent }]}
                   >
-                    Empezá acá
+                    Empieza aquí
                   </Text>
                 </View>
               </View>
@@ -175,7 +175,7 @@ export function HomeHeroCard({
                   { color: theme.colors.heroText },
                 ]}
               >
-                Configurá tu ingreso mensual
+                Configura tu ingreso mensual
               </Text>
               <Text
                 style={[
@@ -184,7 +184,7 @@ export function HomeHeroCard({
                 ]}
               >
                 Una vez que cargues tu sueldo y tus fijos, te decimos
-                cuánto podés gastar por día y cómo vas a cerrar el ciclo.
+                cuánto puedes gastar por día y cómo vas a cerrar el ciclo.
               </Text>
             </RiseView>
             <RiseView delay={160}>
@@ -387,7 +387,7 @@ export function HomeHeroCard({
               ]}
             >
               <Text style={[styles.tileLabel, { color: theme.colors.heroAccent }]}>
-                Podés gastar por día
+                Puedes gastar por día
               </Text>
               <Text style={[styles.tileValue, { color: theme.colors.heroText }]}>
                 {formatMoneyShort(data.dailyBudget)}
@@ -419,7 +419,7 @@ export function HomeHeroCard({
                   </Text>
                   {/* Sprint 3 — show the trend arrow + signed % vs
                       prior cycle when we have a baseline. The hint
-                      "si seguís este ritmo" stays as a fallback when
+                      "si sigues este ritmo" stays as a fallback when
                       no comparison data exists yet. */}
                   {projectedCloseTrend != null ? (
                     <View
@@ -473,7 +473,7 @@ export function HomeHeroCard({
                     </View>
                   ) : (
                     <Text style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}>
-                      si seguís este ritmo
+                      si sigues este ritmo
                     </Text>
                   )}
                 </>

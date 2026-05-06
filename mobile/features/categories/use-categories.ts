@@ -224,7 +224,7 @@ export function useDeleteCategory(familyId?: string) {
       }
 
       if ((countResponse.count ?? 0) > 0) {
-        throw new Error('No podés borrar una categoría que ya tiene gastos cargados.')
+        throw new Error('No puedes borrar una categoría que ya tiene gastos cargados.')
       }
 
       const { error } = await supabase

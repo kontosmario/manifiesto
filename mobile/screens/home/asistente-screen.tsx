@@ -31,6 +31,7 @@ import { decorativeDurations } from '@/lib/motion/tokens'
 import { formatMoneyShort } from '@/utils/money'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
 import { useControlActionDispatcher } from '@/features/insights/use-control-action-dispatcher'
+import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-action-host'
 import { useBlockSignalFamily } from '@/features/insights/use-signal-blocklist'
 import { signalFamilyOf } from '@/features/insights/signal-family'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
@@ -168,7 +169,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
       const family = signalFamilyOf(task.id)
       Alert.alert(
         task.title,
-        '¿Qué querés hacer con esta sugerencia?',
+        '¿Qué quieres hacer con esta sugerencia?',
         [
           {
             text: '¿Por qué veo esto?',
@@ -199,7 +200,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                     void triggerHaptic('error')
                     Alert.alert(
                       'No pudimos guardar',
-                      'Probá de nuevo en unos segundos.',
+                      'Prueba de nuevo en unos segundos.',
                     )
                   },
                 },
@@ -297,6 +298,19 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           <ZombieFeedSection familyId={familyId} userId={userId} />
         </ScrollView>
       </LinearGradient>
+      {/* Nested instance of the advisor sheets. Required because the
+          Asistente screen is itself a stack-modal — iOS doesn't
+          reliably stack another RN `<Modal>` over a presented modal,
+          so the AppStackShell-mounted host can't show its sheets
+          while we're on top. The nested host claims the slot, makes
+          the AppStackShell host step aside, and renders the same
+          QuickAddSavings / MemberWarning sheets inside this view
+          hierarchy where the modal opens correctly. */}
+      <GlobalAdvisorActionHost
+        familyId={familyId}
+        userId={userId}
+        isNested
+      />
     </ControlAnchorsContext.Provider>
   )
 }

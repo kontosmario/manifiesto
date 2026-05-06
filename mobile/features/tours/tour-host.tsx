@@ -217,15 +217,23 @@ export function TourHost() {
         svRectForExtend = svRect
 
         // Detect targets that live OUTSIDE the registered ScrollView
-        // (e.g. the Home tab bar's FAB). Their window-Y is not a
-        // function of scroll, so any scrollTo math would yank the
-        // cutout away from the real element. Skip the auto-scroll
-        // entirely and use the measured rect directly.
+        // BELOW its bottom edge (e.g. the Home tab bar's FAB). Their
+        // window-Y is not a function of scroll, so any scrollTo math
+        // would yank the cutout away from the real element. Skip the
+        // auto-scroll entirely and use the measured rect directly.
+        //
+        // We do NOT treat targets above the scroll view's top as
+        // "outside". A target whose window-Y is above `svRect.y`
+        // is virtually always scrolled-off content (e.g. the Fijos
+        // tour's `addButton` step after step 3 has scrolled the list
+        // deep). Skipping the scroll there left the cutout pinned
+        // to the previous step's offset; instead we let the normal
+        // scroll math run, which produces a negative `stepContentY`
+        // → desiredScrollY 0 → animates the page back to the top.
         const OUTSIDE_TOLERANCE = 50
-        const isAboveScrollView = stepRect.y + stepRect.height < svRect.y
         const isBelowScrollView =
           stepRect.y > svRect.y + svRect.height + OUTSIDE_TOLERANCE
-        const targetOutsideScrollView = isAboveScrollView || isBelowScrollView
+        const targetOutsideScrollView = isBelowScrollView
 
         if (!targetOutsideScrollView) {
           // For "extend to scroll end" steps, push the anchor to the

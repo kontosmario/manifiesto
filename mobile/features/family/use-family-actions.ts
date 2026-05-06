@@ -92,7 +92,7 @@ export function usePeekFamilyInvite() {
     mutationFn: async (rawCode: string) => {
       const normalized = rawCode.trim().toUpperCase()
       if (!normalized) {
-        throw new Error('Ingresá un código de invitación válido.')
+        throw new Error('Ingresa un código de invitación válido.')
       }
       const { data, error } = await supabase.rpc('peek_family_invite', {
         p_code: normalized,
@@ -123,7 +123,7 @@ export function useConsumeFamilyInvite(userId?: string) {
       }
       const normalized = input.code.trim().toUpperCase()
       if (!normalized) {
-        throw new Error('Ingresá un código de invitación válido.')
+        throw new Error('Ingresa un código de invitación válido.')
       }
       const { data, error } = await supabase.rpc('consume_family_invite', {
         p_code: normalized,

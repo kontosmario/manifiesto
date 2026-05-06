@@ -71,7 +71,7 @@ export function StepFamily({
   const handleJoin = async () => {
     const trimmed = codeInput.trim().toUpperCase()
     if (trimmed.length < 4) {
-      Alert.alert('Código inválido', 'Ingresá el código que te compartieron.')
+      Alert.alert('Código inválido', 'Ingresa el código que te compartieron.')
       return
     }
     void triggerHaptic('selection')
@@ -93,10 +93,10 @@ export function StepFamily({
         <Text style={[styles.title, { color: theme.colors.text }]}>Familia</Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
           {closedByOwner
-            ? 'Tu hogar anterior fue cerrado. Armemos uno propio o sumate a otro con su código.'
+            ? 'Tu hogar anterior fue cerrado. Armemos uno propio o súmate a otro con su código.'
             : isRejoin
-              ? 'Podés empezar un hogar nuevo o sumarte a otro con su código.'
-              : 'Empezá una familia o sumate a una existente.'}
+              ? 'Puedes empezar un hogar nuevo o sumarte a otro con su código.'
+              : 'Empieza una familia o súmate a una existente.'}
         </Text>
         {closedByOwner ? (
           <Text style={[styles.rejoinHint, { color: theme.colors.textMuted }]}>
@@ -134,7 +134,7 @@ export function StepFamily({
             </Text>
             {familyMode === 'created' ? (
               <Text style={[styles.confirmHint, { color: theme.colors.textMuted }]}>
-                Cuando quieras invitar a alguien, generá un código desde Ajustes.
+                Cuando quieras invitar a alguien, genera un código desde Ajustes.
               </Text>
             ) : null}
           </View>

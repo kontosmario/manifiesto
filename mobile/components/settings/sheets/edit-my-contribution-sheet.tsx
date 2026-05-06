@@ -47,7 +47,7 @@ export function EditMyContributionSheet({
     <NumericEditSheet
       visible={visible}
       title="Mi aporte mensual"
-      subtitle="Es lo que vos aportás al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro."
+      subtitle="Es lo que tú aportas al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro."
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => formatPriceInputValue(raw, false)}
@@ -56,7 +56,7 @@ export function EditMyContributionSheet({
       helper={
         isValid
           ? `Total del hogar: ${currencyFormatter.format(projectedTotal)}.`
-          : 'Ingresá un monto válido (puede ser 0).'
+          : 'Ingresa un monto válido (puede ser 0).'
       }
       errorText={showError ? 'El aporte no puede ser negativo.' : undefined}
       saveLabel="Guardar aporte"

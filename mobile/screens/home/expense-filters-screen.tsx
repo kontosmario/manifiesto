@@ -62,7 +62,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
     <Screen
       canGoBack
       contentContainerStyle={styles.screenContent}
-      subtitle="Ajustá período, categoría y búsqueda con el mismo patrón modal de Agregar gasto."
+      subtitle="Ajusta período, categoría y búsqueda con el mismo patrón modal de Agregar gasto."
       title="Filtros"
       titleColor={headerPalette.titleColor}
     >
@@ -75,7 +75,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
               Historial
             </Text>
             <Text style={[styles.sectionTitle, theme.typography.sectionTitle, { color: theme.colors.text }]}>
-              Definí qué querés mirar
+              Define qué quieres mirar
             </Text>
           </View>
 
@@ -115,7 +115,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
           {!categoriesQuery.isLoading && categories.length === 0 ? (
             <EmptyState
               icon="category"
-              subtitle="Todavia no hay categorias. Igual podés aplicar período y búsqueda libre."
+              subtitle="Todavia no hay categorias. Igual puedes aplicar período y búsqueda libre."
               title="Sin categorias"
             />
           ) : null}

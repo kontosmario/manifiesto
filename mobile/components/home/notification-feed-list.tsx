@@ -188,7 +188,7 @@ export function NotificationFeedList({
           <EmptyState
             icon="notifications-none"
             title="Sin novedades por ahora"
-            subtitle="Acá vas a ver los movimientos del hogar, tu racha y tus metas."
+            subtitle="Aquí vas a ver los movimientos del hogar, tu racha y tus metas."
           />
         </View>
       }

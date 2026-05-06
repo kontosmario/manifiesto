@@ -15,7 +15,11 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
+// Aliased import: the Asesor card's loops are decorative (halos,
+// breath, shimmer) and must NOT pause on blur. Switch from
+// focus-gated `useLoopAnimation` to `useUnboundedLoopAnimation`.
+// See ui/card-particles.tsx for the same fix in the Home hero.
+import { useUnboundedLoopAnimation as useLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoneyShort } from '@/utils/money'
@@ -115,7 +119,7 @@ export function ControlV2AsesorCard({
               <Text style={styles.headerSub}>
                 {allDismissed
                   ? 'Al día por ahora'
-                  : `${ideaCount} ${ideaCount === 1 ? 'cosa' : 'cosas'} para vos`}
+                  : `${ideaCount} ${ideaCount === 1 ? 'cosa' : 'cosas'} para ti`}
               </Text>
             </View>
             {!allDismissed ? (

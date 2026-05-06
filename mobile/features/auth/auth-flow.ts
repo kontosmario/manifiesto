@@ -42,8 +42,8 @@ export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {
 
   return {
     buttonLabel: 'Crear cuenta',
-    subtitle: 'Empezá hoy, ordená el resto.',
-    title: 'Sumate a Manifiesto',
+    subtitle: 'Empieza hoy, ordená el resto.',
+    title: 'Súmate a Manifiesto',
   }
 }
 
@@ -53,7 +53,7 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
   const trimmedDisplayName = draft.displayName.trim()
 
   if (!normalizedEmail || !normalizedEmail.includes('@')) {
-    return { error: 'Ingresá un email válido.' }
+    return { error: 'Ingresa un email válido.' }
   }
 
   if (trimmedPassword.length < 6) {
@@ -61,7 +61,7 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
   }
 
   if (draft.mode === 'sign-up' && trimmedDisplayName.length < 2) {
-    return { error: 'Agregá un nombre para tu perfil.' }
+    return { error: 'Agrega un nombre para tu perfil.' }
   }
 
   return {

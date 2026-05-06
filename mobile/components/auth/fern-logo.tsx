@@ -1,147 +1,92 @@
 import { useEffect } from 'react'
-import { View } from 'react-native'
-import Svg, { Path, G } from 'react-native-svg'
 import Animated, {
-  useSharedValue,
+  Easing,
+  cancelAnimation,
   useAnimatedProps,
+  useSharedValue,
   withDelay,
   withTiming,
-  Easing,
 } from 'react-native-reanimated'
+import Svg, { Path } from 'react-native-svg'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { decorativeDurations } from '@/lib/motion/tokens'
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
-const AnimatedG = Animated.createAnimatedComponent(G)
-
-type Palette = 'dark' | 'light' | 'mono-dark' | 'mono-light' | 'duotone'
+export type FernPalette = 'dark' | 'light' | 'peach' | 'mono-light' | 'warm'
 
 interface FernLogoProps {
   size?: number
-  palette?: Palette
+  palette?: FernPalette
   animate?: boolean
   delay?: number
+  /**
+   * Crop the viewBox to leaves-only (no stem) for compact contexts
+   * like nav bars and avatars. Stem-draw animation is suppressed in
+   * this mode since the stem isn't visible.
+   */
   iconMode?: boolean
 }
 
-const PALETTES: Record<Palette, { leafA: string; leafB: string; structure: string }> = {
-  dark: {
-    leafA: '#1F7A4B',
-    leafB: '#1F7A4B',
-    structure: '#0E3A26',
-  },
-  light: {
-    leafA: '#9FD97A',
-    leafB: '#9FD97A',
-    structure: '#FFFBF2',
-  },
-  'mono-dark': {
-    leafA: '#0E3A26',
-    leafB: '#0E3A26',
-    structure: '#0E3A26',
-  },
-  'mono-light': {
-    leafA: '#FFFBF2',
-    leafB: '#FFFBF2',
-    structure: '#FFFBF2',
-  },
-  duotone: {
-    leafA: '#0E3A26',
-    leafB: '#E08E63',
-    structure: '#0E3A26',
-  },
+// ─── Palette mapping ─────────────────────────────────────────────────
+// v2 art has THREE colour layers: silhouette (cream halo + stem),
+// big leaf, small leaf. Each named palette maps these layers to a
+// concrete colour from `authTokens` / brand. Names preserved from v1
+// so existing call sites keep working.
+const PALETTES: Record<FernPalette, { silhouette: string; leafBig: string; leafSmall: string }> = {
+  dark:         { silhouette: '#0E3A26', leafBig: '#1F7A4B', leafSmall: '#1F7A4B' },
+  light:        { silhouette: '#FDFEF9', leafBig: '#A9D57F', leafSmall: '#A9D57F' },
+  peach:        { silhouette: '#FDFEF9', leafBig: '#0E3A26', leafSmall: '#0E3A26' },
+  'mono-light': { silhouette: '#FDFEF9', leafBig: '#FDFEF9', leafSmall: '#FDFEF9' },
+  // Warm keeps the v1 spirit: peach big leaf, dark small leaf — used
+  // by the post-login splash to echo brand warmth.
+  warm:         { silhouette: '#FDFEF9', leafBig: '#E08E63', leafSmall: '#0E3A26' },
 }
 
-// Tight crop around the canonical SVG (assets/brand/manifiesto-fern.svg):
-// leaves top ≈ y=113, pill bottom ≈ y=384. We add a small margin so the
-// art doesn't kiss the edges (looks better as a brand mark on its own).
-//   normal: includes the bottom pill (full mark for hero use)
-//   icon:   excludes the pill, focuses on bowl + stem (compact navbar icon)
-const VIEWBOX_NORMAL = '0 100 502 295'
-const VIEWBOX_ICON = '15 110 472 215'
-const ASPECT_NORMAL = 295 / 502
-const ASPECT_ICON = 215 / 472
+// ─── Geometry ────────────────────────────────────────────────────────
+// Path data lifted directly from `assets/brand/manifiesto-fern-v2-transparent.svg`.
+// All path coords live in the SVG's pre-transform space (1160×1024).
+// We apply `transform="scale(0.725 0.725318)"` on each path to map
+// into the 841×742 viewBox.
+const D_SILHOUETTE =
+  'M930.253 161.648C952.922 159.917 1062.65 162.321 1076.44 174.946C1079.49 177.73 1079.97 182.367 1080.01 186.271C1080.2 205.99 1073.97 226.042 1069.75 245.157C1050.77 331.198 1019.52 419.339 967.311 491.088C958.351 503.402 949.002 515.375 938.355 526.29C892.277 573.533 835.21 606.984 767.766 607.738C704.872 608.441 663.17 580.618 619.808 538.225C612.042 551.619 604.976 565.241 599.394 579.713C562.824 674.534 577.135 784.414 575.226 884.105C575.094 891.017 574.839 899.088 569.313 904.098C566.753 906.419 563.54 907.347 560.122 907.064C553.915 906.55 549.809 902.664 545.937 898.219C544.903 850.17 546.229 802.453 545.856 754.442C545.687 732.639 546.482 705.849 543.286 684.587C538.997 656.056 525.326 615.996 505.998 594.098C471.757 641.839 423.33 665.422 364.287 656.958C361.934 656.532 359.589 656.063 357.252 655.552C292.47 641.763 247.364 597.198 212.432 543.25C202.547 527.751 193.559 511.698 185.511 495.17C176.231 476.329 139.547 392.415 143.742 375.865C144.27 373.78 145.452 372.567 147.286 371.505C155.165 366.941 176.958 362.948 186.794 361.124C251.798 349.071 338.872 343.373 403.143 360.107C449.172 372.091 487.461 397.644 511.7 439.119C538.02 484.154 532.767 522.432 520.174 570.237C529.873 584.248 539.612 597.775 547.484 612.911C549.8 617.364 552.056 622.19 554.717 626.383C562.515 596.662 570.598 571.293 584.369 543.61C589.503 533.291 595.151 523.284 600.587 513.116C597.622 506.214 593.352 497.641 590.117 490.746C578.915 466.869 574.123 446.843 572.474 420.558C569.457 364.126 588.941 308.8 626.655 266.71C699.915 183.799 826.22 168.029 930.253 161.648Z'
 
-const D_BIG_LEAF = `M337.1,254.779c-34.545,5.548-67.046-17.959-72.594-52.504
-  s17.959-67.046,52.504-72.594
-  C417.26,113.581,492,261.545,492,261.545
-  S413.358,242.533,337.1,254.779z`
+const D_LEAF_BIG =
+  'M940.001 190.008C976.452 189.436 1012.9 191.405 1049.08 195.901C1047.96 206.133 1046.52 216.328 1044.75 226.468C1039.09 258.278 1028.32 293.779 1017.85 324.454C990.198 405.487 949.024 493.189 876.722 543.311C840.482 568.434 786.505 586.1 742.513 577.238C698.365 568.346 662.384 548.669 636.588 511.375C651.629 486.891 667.932 470.004 688.321 449.745C700.69 437.455 710.432 427.807 724.066 416.835C740.014 403.518 756.623 391.011 773.828 379.362C778.29 376.362 782.793 373.335 787.494 370.523C795.451 365.757 804.841 362.059 811.563 355.592C814.02 353.139 814.386 349.645 812.82 346.623C807.626 336.598 797.538 342.155 790.071 345.557C782.881 348.832 776.098 352.422 769.25 356.208C724.897 380.222 684.913 411.546 650.981 448.86C639.941 460.912 629.717 473.591 619.353 486.222C607.842 463.542 601.504 438.592 600.793 413.168C599.721 364.873 617.657 318.089 650.74 282.886C701.833 229.232 768.24 210.12 839.336 199.1C872.689 194.145 906.299 191.11 940.001 190.008Z'
 
-const D_SMALL_LEAF = `M111.366,249.668c22.606,3.63,43.875-11.752,47.505-34.358
-  s-11.752-43.875-34.358-47.505
-  C58.91,157.269,10,254.096,10,254.096
-  S61.463,241.654,111.366,249.668z`
+const D_LEAF_SMALL =
+  'M299.425 371.216C325.942 368.849 368.616 375.554 394.913 381.185C431.308 388.979 467.255 411.085 487.374 442.889C509.898 478.492 511.072 511.978 502.224 551.543C466.873 522.344 431.932 496.886 387.985 482.014C381.25 479.735 358.193 468.482 352.419 475.503C344.307 485.366 373.887 494.667 379.659 497.195C386.443 500.186 393.14 503.367 399.744 506.736C426.763 520.381 446.339 534.016 469.306 553.437C477.807 560.605 483.531 567.102 491.042 575.382C476.584 600.7 453.484 619.958 425.978 629.626C395.077 640.598 358.147 637.769 328.735 623.233C253.52 586.058 210.161 502.676 181.261 427.685C176.412 415.103 172.678 401.625 168.179 388.882C202.606 377.39 262.485 373.148 299.425 371.216Z'
 
-const D_STRUCTURE = `M500.926,257.036c-0.787-1.559-19.642-38.57-51.366-74.119
-  c-18.881-21.157-38.428-37.369-58.096-48.187
-  c-25.338-13.936-50.919-18.958-76.04-14.923
-  c-19.345,3.106-36.321,13.561-47.804,29.437
-  c-7.96,11.006-12.612,23.705-13.685,36.905
-  c-14.89,4.115-27.968,9.962-38.457,17.275
-  c-6.814,4.751-12.31,10.029-16.389,15.628
-  c-7.313-7.048-17.71-12.946-30.119-16.851
-  c-2.833-22.038-19.845-40.571-42.872-44.27
-  C54.103,146.367,3.206,245.368,1.074,249.587
-  c-1.758,3.479-1.333,7.664,1.088,10.72
-  c1.923,2.426,4.826,3.789,7.838,3.789
-  c0.781,0,1.569-0.092,2.35-0.28
-  c0.496-0.119,50.059-11.879,97.431-4.274
-  c13.573,2.182,27.178-1.056,38.314-9.11
-  c9.486-6.861,16.199-16.524,19.331-27.622
-  c15.11,5.769,23.256,14.539,23.256,20.116
-  l-0.085,82.058
-  c-0.006,5.523,4.467,10.005,9.989,10.011
-  c0.004,0,0.007,0,0.011,0
-  c5.518,0,9.994-4.471,10-9.989
-  l0.085-82.068
-  c0-12.153,15.442-27.405,44.459-36.331
-  c3.621,18.201,13.808,34.125,28.926,45.06
-  c15.874,11.481,35.271,16.099,54.617,12.987
-  c73.286-11.767,150.2,6.43,150.965,6.612
-  c0.78,0.188,1.568,0.28,2.35,0.28
-  c3.012,0,5.915-1.363,7.837-3.789
-  C502.259,264.7,502.684,260.517,500.926,257.036z
-  M136.374,234.225c-6.809,4.925-15.124,6.898-23.422,5.57
-  c-31.319-5.031-62.832-2.406-83.126,0.52
-  c15.812-24.062,47.327-63.308,84.686-63.308
-  c2.772,0,5.583,0.217,8.415,0.671
-  c11.54,1.854,20.607,9.805,24.457,20.032
-  c-11.101-1.384-22.205-1.709-33.09-0.938
-  c-5.509,0.39-9.659,5.172-9.269,10.681
-  c0.39,5.51,5.168,9.684,10.681,9.269
-  c10.601-0.749,21.456-0.317,32.302,1.254
-  C146.019,224.494,141.991,230.162,136.374,234.225z
-  M335.514,244.906c-14.064,2.259-28.178-1.096-39.725-9.447
-  c-11.182-8.087-18.651-19.929-21.165-33.448
-  c0.667-0.115,1.324-0.236,2.001-0.344
-  c24.446-3.926,48.841-4.08,72.503-0.46
-  c5.45,0.836,10.562-2.912,11.397-8.372
-  s-2.913-10.563-8.372-11.397
-  c-25.307-3.874-51.347-3.77-77.421,0.29
-  c1.482-7.401,4.538-14.464,9.094-20.763
-  c8.351-11.548,20.699-19.151,34.77-21.411
-  c71.229-11.429,130.472,70.104,153.813,107.941
-  C443.222,242.571,389.167,236.289,335.514,244.906z`
+// Stem-tracer overlay path — coords in POST-transform viewBox space
+// (does NOT need the scale transform). Centerline + width measured
+// from the silhouette directly via `scripts/measure-fern-stem.mjs`.
+// Direction matters: starts at the BOTTOM and curves UP to the V so
+// stroke-dashoffset draws it bottom→top like a sprout rising.
+const D_STEM_TRACE = 'M 406 648.5 C 405.9 593.42, 405.45 539.96, 405.25 486.5'
+const STEM_TRACE_LENGTH = 175 // path length + small buffer for clean off-screen state
+const STEM_STROKE_WIDTH = 21 // matches silhouette stem width
 
-const D_INNER = `M414.567,199.57c-10.438-4.554-21.218-8.425-32.042-11.508
-  c-5.307-1.509-10.844,1.567-12.356,6.88
-  c-1.512,5.312,1.568,10.844,6.88,12.356
-  c9.968,2.838,19.899,6.405,29.521,10.604
-  c1.302,0.567,2.659,0.837,3.994,0.837
-  c3.855,0,7.53-2.244,9.171-6.004
-  C421.942,207.674,419.63,201.779,414.567,199.57z`
+const VIEWBOX_FULL = '0 0 841 742'
+const ASPECT_FULL = 742 / 841 // ≈ 0.882
+// Leaves-only crop. Tight bbox around both leaf shapes; excludes the
+// stem so a small icon doesn't waste pixels on a thin vertical line.
+const VIEWBOX_ICON = '85 105 690 380'
+const ASPECT_ICON = 380 / 690 // ≈ 0.551
 
-// Bottom pill — the small vertical capsule centered around x=200, y≈356.
-const D_PILL = `M200.578,347
-  c-0.004,0-0.008,0-0.012,0
-  c-5.518,0-9.993,4.47-10,9.988
-  l-0.02,16.544
-  c-0.007,5.522,4.466,10.005,9.988,10.012
-  c0.004,0,0.008,0,0.012,0
-  c5.518,0,9.993-4.47,10-9.988
-  l0.02-16.544
-  C210.573,351.489,206.101,347.007,200.578,347z`
+// Animation keyframes (ms, relative to delay):
+//   0   → stem trace begins drawing
+//   700 → silhouette fade-in begins
+//   850 → stem trace fade-out begins (silhouette is taking over)
+//  1000 → small leaf fade-in begins
+//  1140 → big leaf fade-in begins (closes the entrance)
+//  1640 → final frame
+const STEM_DRAW_MS = 900
+const STEM_FADE_DELAY_MS = 850
+const STEM_FADE_MS = 350
+const SIL_DELAY_MS = 700
+const SIL_FADE_MS = 450
+const LEAF_SMALL_DELAY_MS = 1000
+const LEAF_BIG_DELAY_MS = 1140
+const LEAF_FADE_MS = 500
 
 export function FernLogo({
   size = 200,
@@ -154,173 +99,125 @@ export function FernLogo({
   const isAnimated = animate && !reducedMotion
 
   const c = PALETTES[palette]
-  const vb = iconMode ? VIEWBOX_ICON : VIEWBOX_NORMAL
-  const aspect = iconMode ? ASPECT_ICON : ASPECT_NORMAL
+  const viewBox = iconMode ? VIEWBOX_ICON : VIEWBOX_FULL
+  const aspect = iconMode ? ASPECT_ICON : ASPECT_FULL
   const height = size * aspect
 
-  const bigLeafProgress = useSharedValue(isAnimated ? 0 : 1)
-  const smallLeafProgress = useSharedValue(isAnimated ? 0 : 1)
-  const structureProgress = useSharedValue(isAnimated ? 0 : 1)
-  const pillProgress = useSharedValue(isAnimated ? 0 : 1)
+  // Five shared values — one per animated layer.
+  const stemDraw = useSharedValue(isAnimated ? 0 : 1)
+  const stemFade = useSharedValue(isAnimated ? 0 : 1)
+  const silOpacity = useSharedValue(isAnimated ? 0 : 1)
+  const leafSmall = useSharedValue(isAnimated ? 0 : 1)
+  const leafBig = useSharedValue(isAnimated ? 0 : 1)
 
   useEffect(() => {
     if (!isAnimated) {
-      bigLeafProgress.value = 1
-      smallLeafProgress.value = 1
-      structureProgress.value = 1
-      pillProgress.value = 1
+      stemDraw.value = 1
+      stemFade.value = 1
+      silOpacity.value = 1
+      leafSmall.value = 1
+      leafBig.value = 1
       return
     }
 
-    const easeOutSoft = Easing.bezier(0.2, 0.85, 0.2, 1)
-    const easeInOut = Easing.bezier(0.4, 0, 0.2, 1)
+    // Reset to off-screen / hidden states for a clean replay on remount.
+    stemDraw.value = 0
+    stemFade.value = 0
+    silOpacity.value = 0
+    leafSmall.value = 0
+    leafBig.value = 0
 
-    bigLeafProgress.value = 0
-    smallLeafProgress.value = 0
-    structureProgress.value = 0
-    pillProgress.value = 0
+    // Easing curves chosen to match the web prototype exactly:
+    //   ▸ stem draw: cubic-bezier(0.16, 1, 0.3, 1) → expo-out, fast
+    //     start, slow finish (sap rising ease).
+    //   ▸ silhouette / leaves: cubic-bezier(0.22, 0.61, 0.36, 1) →
+    //     standard ease-out, organic entrance.
+    const stemEase = Easing.bezier(0.16, 1, 0.3, 1)
+    const fadeEase = Easing.bezier(0.22, 0.61, 0.36, 1)
 
-    bigLeafProgress.value = withDelay(delay, withTiming(1, { duration: decorativeDurations.bloom, easing: easeOutSoft }))
-    smallLeafProgress.value = withDelay(delay + 200, withTiming(1, { duration: decorativeDurations.bloom, easing: easeOutSoft }))
-    structureProgress.value = withDelay(delay + 400, withTiming(1, { duration: decorativeDurations.paintSettle, easing: easeInOut }))
-    pillProgress.value = withDelay(delay + 900, withTiming(1, { duration: decorativeDurations.paintExit, easing: easeInOut }))
-  }, [isAnimated, delay, bigLeafProgress, smallLeafProgress, structureProgress, pillProgress])
+    stemDraw.value = withDelay(delay, withTiming(1, { duration: STEM_DRAW_MS, easing: stemEase }))
+    stemFade.value = withDelay(
+      delay + STEM_FADE_DELAY_MS,
+      withTiming(1, { duration: STEM_FADE_MS, easing: Easing.out(Easing.quad) }),
+    )
+    silOpacity.value = withDelay(
+      delay + SIL_DELAY_MS,
+      withTiming(1, { duration: SIL_FADE_MS, easing: fadeEase }),
+    )
+    leafSmall.value = withDelay(
+      delay + LEAF_SMALL_DELAY_MS,
+      withTiming(1, { duration: LEAF_FADE_MS, easing: fadeEase }),
+    )
+    leafBig.value = withDelay(
+      delay + LEAF_BIG_DELAY_MS,
+      withTiming(1, { duration: LEAF_FADE_MS, easing: fadeEase }),
+    )
 
-  // For react-native-svg, animated transforms must be applied via animatedProps
-  // (transform / opacity are SVG attributes on <g>/<circle>), not via View styles.
-  // We build each transform string with the appropriate origin so the scale pivots
-  // around the visual center of each element.
+    return () => {
+      // Tear down in-flight tweens if the component unmounts mid-animation.
+      cancelAnimation(stemDraw)
+      cancelAnimation(stemFade)
+      cancelAnimation(silOpacity)
+      cancelAnimation(leafSmall)
+      cancelAnimation(leafBig)
+    }
+  }, [isAnimated, delay, stemDraw, stemFade, silOpacity, leafSmall, leafBig])
 
-  const bigLeafProps = useAnimatedProps(() => {
-    const s = 0.6 + bigLeafProgress.value * 0.4
-    const ox = 380
-    const oy = 200
-    return {
-      opacity: bigLeafProgress.value,
-      transform: `translate(${ox}, ${oy}) scale(${s}) translate(${-ox}, ${-oy})`,
-    } as Record<string, unknown>
-  })
-  const smallLeafProps = useAnimatedProps(() => {
-    const s = 0.6 + smallLeafProgress.value * 0.4
-    const ox = 90
-    const oy = 210
-    return {
-      opacity: smallLeafProgress.value,
-      transform: `translate(${ox}, ${oy}) scale(${s}) translate(${-ox}, ${-oy})`,
-    } as Record<string, unknown>
-  })
-  const structureProps = useAnimatedProps(() => ({
-    opacity: structureProgress.value,
+  const silhouetteProps = useAnimatedProps(() => ({
+    opacity: silOpacity.value,
   }))
-  // Path-drawing overlay for the structure: a stroke that draws the
-  // silhouette outline of `D_STRUCTURE` ahead of the fill fade-in.
-  // Visual effect: as the bowl + stem appear, you see the contour
-  // line trace itself first (during the first ~60% of the structure
-  // phase), then it fades as the solid fill takes over (last ~40%).
-  // STROKE_PATH_LENGTH is a generous overshoot — the actual path
-  // length is well below this; SVG dasharray accepts any value ≥
-  // path-length and behaves correctly. We avoid `getTotalLength()`
-  // because it's not exposed by react-native-svg.
-  const STROKE_PATH_LENGTH = 2000
-  const structureStrokeProps = useAnimatedProps(() => {
-    const p = structureProgress.value
-    // Phase 1 (0 → 0.6): stroke draws (dashoffset full → 0).
-    const drawPhase = Math.min(1, p / 0.6)
-    // Phase 2 (0.6 → 1): stroke fades out as fill takes over.
-    const settlePhase = Math.max(0, (p - 0.6) / 0.4)
-    return {
-      strokeDashoffset: STROKE_PATH_LENGTH * (1 - drawPhase),
-      strokeOpacity: 1 - settlePhase,
-    } as Record<string, unknown>
-  })
-  const pillProps = useAnimatedProps(() => {
-    const ox = 200
-    const oy = 365
-    const s = 0.6 + pillProgress.value * 0.4
-    return {
-      opacity: pillProgress.value,
-      transform: `translate(${ox}, ${oy}) scale(${s}) translate(${-ox}, ${-oy})`,
-    } as Record<string, unknown>
-  })
-
-
-  // Inline initial props matching the worklet's value at progress=0.
-  // First-paint protection: without these, the SVG renders ONCE with
-  // its default props (no opacity attr → opacity 1, no transform →
-  // scale 1) before Reanimated's `animatedProps` apply on frame 2.
-  // On native this caused a visible "placeholder" flash of the fully-
-  // drawn fern, then a snap to invisible/scaled-down, then the
-  // animation. Web didn't show this because the browser merges styles
-  // before first paint; cold-start on native didn't either because
-  // the JS thread is saturated long enough that Reanimated catches
-  // up before the first frame paints. Post-login (JS warm) made the
-  // flicker visible. The inline values below are overridden by
-  // `animatedProps` on every subsequent frame, so the animation
-  // itself is unchanged.
-  //
-  // When NOT animated (reduced motion or `animate=false`), the worklet
-  // sits at the final state (opacity 1, scale 1) — which matches the
-  // SVG defaults, so no inline override needed.
-  const initialBigLeaf = isAnimated
-    ? { opacity: 0, transform: 'translate(380,200) scale(0.6) translate(-380,-200)' }
-    : null
-  const initialSmallLeaf = isAnimated
-    ? { opacity: 0, transform: 'translate(90,210) scale(0.6) translate(-90,-210)' }
-    : null
-  const initialStructure = isAnimated ? { opacity: 0 } : null
-  const initialPill = isAnimated
-    ? { opacity: 0, transform: 'translate(200,365) scale(0.6) translate(-200,-365)' }
-    : null
+  const stemTraceProps = useAnimatedProps(() => ({
+    // strokeDashoffset goes from STEM_TRACE_LENGTH (fully off-screen)
+    // to 0 (fully drawn) as stemDraw progresses 0→1.
+    strokeDashoffset: (1 - stemDraw.value) * STEM_TRACE_LENGTH,
+    opacity: 1 - stemFade.value,
+  }))
+  const leafSmallProps = useAnimatedProps(() => ({
+    opacity: leafSmall.value,
+  }))
+  const leafBigProps = useAnimatedProps(() => ({
+    opacity: leafBig.value,
+  }))
 
   return (
-    <View style={{ width: size, height }}>
-      <Svg width={size} height={height} viewBox={vb}>
-        {/* Big leaf */}
-        <AnimatedG {...initialBigLeaf} animatedProps={bigLeafProps}>
-          <Path d={D_BIG_LEAF} fill={c.leafA} />
-        </AnimatedG>
-
-        {/* Small leaf */}
-        <AnimatedG {...initialSmallLeaf} animatedProps={smallLeafProps}>
-          <Path d={D_SMALL_LEAF} fill={c.leafB} />
-        </AnimatedG>
-
-        {/* Structure (bowl + integrated stem + branch detail).
-            The group's wrapper opacity (structureProps) handles the
-            overall fade-in. Inside, we layer the solid fill UNDER an
-            animated stroke overlay that path-draws the silhouette
-            during the first 60% of the phase, then fades as the fill
-            takes over. The stroke is `fill="none"` so it doesn't
-            double the silhouette — just traces the contour.
-            For non-animated mounts (reduced motion or animate=false),
-            the stroke overlay sits at strokeDashoffset=0 and
-            strokeOpacity=0, so it's invisible — the fill alone
-            renders, identical to the previous behavior. */}
-        <AnimatedG {...initialStructure} animatedProps={structureProps}>
-          <Path d={D_STRUCTURE} fill={c.structure} />
-          <Path d={D_INNER} fill={c.structure} />
-          {isAnimated ? (
-            <AnimatedPath
-              d={D_STRUCTURE}
-              fill="none"
-              stroke={c.structure}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={STROKE_PATH_LENGTH}
-              strokeDashoffset={STROKE_PATH_LENGTH}
-              animatedProps={structureStrokeProps}
-            />
-          ) : null}
-        </AnimatedG>
-
-        {/* Bottom pill — small vertical capsule under the stem */}
-        <AnimatedG {...initialPill} animatedProps={pillProps}>
-          <Path d={D_PILL} fill={c.structure} />
-        </AnimatedG>
-      </Svg>
-    </View>
+    <Svg width={size} height={height} viewBox={viewBox}>
+      {/* Cream silhouette — leaves' halo + stem fill. Fades in BEHIND
+          the trace overlay so the handoff is invisible. */}
+      <AnimatedPath
+        d={D_SILHOUETTE}
+        fill={c.silhouette}
+        transform="scale(0.725 0.725318)"
+        animatedProps={silhouetteProps}
+      />
+      {/* Stem trace — only rendered in full mode. iconMode crops the
+          stem out of the viewBox anyway, so drawing it would just
+          waste cycles. */}
+      {!iconMode ? (
+        <AnimatedPath
+          d={D_STEM_TRACE}
+          fill="none"
+          stroke={c.silhouette}
+          strokeWidth={STEM_STROKE_WIDTH}
+          strokeLinecap="round"
+          strokeDasharray={STEM_TRACE_LENGTH}
+          animatedProps={stemTraceProps}
+        />
+      ) : null}
+      {/* Small leaf — fades in first to start the bloom from the
+          visually lighter element. */}
+      <AnimatedPath
+        d={D_LEAF_SMALL}
+        fill={c.leafSmall}
+        transform="scale(0.725 0.725318)"
+        animatedProps={leafSmallProps}
+      />
+      {/* Big leaf — closes the entrance with the heavier element. */}
+      <AnimatedPath
+        d={D_LEAF_BIG}
+        fill={c.leafBig}
+        transform="scale(0.725 0.725318)"
+        animatedProps={leafBigProps}
+      />
+    </Svg>
   )
 }
-
-export default FernLogo

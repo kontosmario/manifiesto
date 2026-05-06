@@ -62,6 +62,7 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
   freezeTokens: 0,
   weekActivity: Object.freeze([false, false, false, false, false, false, false]) as unknown as boolean[],
   isBroken: false,
+  streakBrokenAt: null,
 })
 
 interface MovimientosSection {
@@ -377,8 +378,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
       // Surfacing the same button a third time was redundant.
       return {
         kind: 'global' as const,
-        primary: 'Cargá tu primer gasto',
-        secondary: 'Empezá el ciclo registrando uno',
+        primary: 'Carga tu primer gasto',
+        secondary: 'Empieza el ciclo registrando uno',
         actionLabel: undefined,
         onAction: undefined,
         iconName: 'add-circle-outline' as const,
@@ -388,7 +389,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
       return {
         kind: 'filtered' as const,
         primary: 'No hay movimientos para este filtro',
-        secondary: 'Probá quitando algún filtro para ver más',
+        secondary: 'Prueba quitando algún filtro para ver más',
         actionLabel: 'Limpiar filtros',
         onAction: handleClearFilters,
         iconName: 'filter-alt-off' as const,
@@ -398,7 +399,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
       return {
         kind: 'cycle' as const,
         primary: 'Aún sin gastos en este ciclo',
-        secondary: 'Cuando cargues uno, lo vas a ver acá',
+        secondary: 'Cuando cargues uno, lo vas a ver aquí',
         actionLabel: undefined,
         onAction: undefined,
         iconName: 'hourglass-empty' as const,

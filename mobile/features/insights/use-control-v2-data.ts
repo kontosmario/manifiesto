@@ -47,6 +47,12 @@ import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
+import { useAssistantDemoMode } from '@/features/insights/assistant-demo-store'
+import { getAssistantDemoSignals } from '@/features/insights/assistant-demo-signals'
+import {
+  applyAssistantDemoFilter,
+  useAssistantDemoFilter,
+} from '@/features/insights/assistant-demo-filter-store'
 import { classifyControlMode } from '@/features/insights/control-v2-mode'
 
 // ─── Module-level memoization across hook invocations ──────────────
@@ -66,6 +72,27 @@ const memoizedInferPersona = singleEntryMemoize(inferPersona)
 const memoizedDetectCausal = singleEntryMemoize(detectCausalLinks)
 const memoizedBuildForecast = singleEntryMemoize(buildForecast7Day)
 const memoizedBuildSignals = singleEntryMemoize(buildControlSignals)
+
+// ─── Read-only coercion ──────────────────────────────────────────────
+//
+// For now every Asistente Financiero signal is informational only:
+// the user wants to be aware of risks (price hikes, zombies, velocity
+// burns, imbalances) without acting from the card. We rewrite each
+// task's `action` to a dismiss and normalize the CTA copy so the
+// surface stays clean.
+//
+// Removing this pass restores per-signal CTAs (sheet hand-offs,
+// routing, mutations) — keep it as a single chokepoint instead of
+// scattering conditionals across UI files.
+function coerceSignalsToReadOnly(
+  tasks: ControlAdvisorTask[],
+): ControlAdvisorTask[] {
+  return tasks.map((task) => ({
+    ...task,
+    cta: 'Entendido',
+    action: { kind: 'dismiss', dismissId: task.id },
+  }))
+}
 
 interface ControlIntelligenceRow {
   family_id: string
@@ -228,32 +255,51 @@ export function useControlV2Data(
     })
   }, [usingMock, view, fixedExpenses])
 
+  const demoMode = useAssistantDemoMode()
+  const demoFilter = useAssistantDemoFilter()
   const signals = useMemo<ControlAdvisorTask[]>(() => {
+    // TESTING flag (Settings → Desarrollo → "Modo demo del asistente").
+    // When ON, replace computed signals with a curated fixture
+    // covering every scenario + CTA action kind. The flag is gated
+    // on `__DEV__` at the toggle site, so production builds never
+    // see this branch fire. The companion `demoFilter` narrows the
+    // fixture to a single behavior class (read-only / routing /
+    // mutation / sin acción) so each bucket can be tested in
+    // isolation.
+    if (demoMode) {
+      return coerceSignalsToReadOnly(
+        applyAssistantDemoFilter(getAssistantDemoSignals(), demoFilter),
+      )
+    }
     if (usingMock) return resolveControlSignals({ usingMock: true, computedSignals: [] })
-    return memoizedBuildSignals({
-      view,
-      expenses,
-      fixedExpenses,
-      categoriesExpense,
-      summaries,
-      limits,
-      velocity,
-      notifications,
-      savingsGoal,
-      cupoDiario: data.cupoDiario,
-      gastoHoy: data.gastoHoy,
-      diasRestantes: view.diasRestantes,
-      ingresoMes: data.ingresoMes,
-      fijosMes: data.fijosMes,
-      dismissedHikes,
-      baselines,
-      forecast,
-      persona,
-      paydayPending: isSalaryPendingConfirmation,
-      blockedFamilies: blocklistQuery.data,
-      causalLinks,
-    })
+    return coerceSignalsToReadOnly(
+      memoizedBuildSignals({
+        view,
+        expenses,
+        fixedExpenses,
+        categoriesExpense,
+        summaries,
+        limits,
+        velocity,
+        notifications,
+        savingsGoal,
+        cupoDiario: data.cupoDiario,
+        gastoHoy: data.gastoHoy,
+        diasRestantes: view.diasRestantes,
+        ingresoMes: data.ingresoMes,
+        fijosMes: data.fijosMes,
+        dismissedHikes,
+        baselines,
+        forecast,
+        persona,
+        paydayPending: isSalaryPendingConfirmation,
+        blockedFamilies: blocklistQuery.data,
+        causalLinks,
+      }),
+    )
   }, [
+    demoMode,
+    demoFilter,
     usingMock,
     view,
     expenses,

@@ -20,7 +20,7 @@ const config: ExpoConfig = {
   name: 'Manifiesto',
   slug: 'manifiesto',
   version: '1.0.0',
-  icon: './assets/brand/wallet-cartoon-app-icon.png',
+  icon: './assets/brand/ios-icon-light.png',
   orientation: 'portrait',
   scheme: 'manifiesto',
   userInterfaceStyle: 'automatic',
@@ -52,7 +52,17 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.manifiesto.mobile',
-    icon: './assets/brand/wallet-cartoon-app-icon.png',
+    // iOS 18+ tri-variant icons. The fern source SVG is rendered
+    // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
+    // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
+    // xcasset Contents.json is the source of truth at archive time;
+    // these paths exist so a future `expo prebuild` regenerates the
+    // xcasset entries identically.
+    icon: {
+      light: './assets/brand/ios-icon-light.png',
+      dark: './assets/brand/ios-icon-dark.png',
+      tinted: './assets/brand/ios-icon-tinted.png',
+    },
     usesAppleSignIn: true,
   },
   android: {
@@ -64,7 +74,14 @@ const config: ExpoConfig = {
   },
   extra: {
     eas: {
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+      // Hardcoded so it's baked into the bundle regardless of how
+      // the build is invoked (xcodebuild direct vs `expo run:ios`
+      // vs EAS Build cloud). Previously this read from .env, but
+      // the EXConstants build phase runs in a sandboxed shell that
+      // doesn't pick up .env reliably — pushed tokens were silently
+      // failing with `projectId === ''`. Linked to the EAS project
+      // at expo.dev/accounts/markon07/projects/manifiesto.
+      projectId: '54449767-9236-4734-972a-e561debd1360',
     },
   },
 }

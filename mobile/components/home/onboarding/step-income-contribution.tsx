@@ -37,10 +37,10 @@ export function StepIncomeContribution({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          ¿Aportás al ingreso del hogar?
+          ¿Aportas al ingreso del hogar?
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Si tenés un sueldo o ingreso, lo sumamos al total de la familia. Si no
+          Si tienes un sueldo o ingreso, lo sumamos al total de la familia. Si no
           (un hijo, pareja sin trabajo, etc), también está bien.
         </Text>
       </RiseView>
@@ -76,7 +76,7 @@ export function StepIncomeContribution({
             />
           </View>
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-            Se suma al ingreso total de la familia. Podés editarlo desde Ajustes
+            Se suma al ingreso total de la familia. Puedes editarlo desde Ajustes
             cuando quieras.
           </Text>
         </RiseView>
@@ -95,7 +95,7 @@ export function StepIncomeContribution({
           >
             <Text style={[styles.infoText, { color: theme.colors.textMuted }]}>
               Listo — no se suma nada al ingreso del hogar. Si en algún momento
-              empezás a aportar, podés activarlo desde Ajustes.
+              empiezas a aportar, puedes activarlo desde Ajustes.
             </Text>
           </View>
         </RiseView>

@@ -101,13 +101,13 @@ export function SignupScreen() {
     const trimmedPassword = password.trim()
 
     if (trimmedName.length < 2) {
-      setErrorMessage('Agregá un nombre para tu perfil.')
+      setErrorMessage('Agrega un nombre para tu perfil.')
       await triggerHaptic('warning')
       nameRef.current?.focus?.()
       return
     }
     if (!normalizedEmail.includes('@')) {
-      setErrorMessage('Ingresá un email válido.')
+      setErrorMessage('Ingresa un email válido.')
       await triggerHaptic('warning')
       emailRef.current?.focus?.()
       return
@@ -275,7 +275,7 @@ export function SignupScreen() {
               Crear cuenta
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-              Empezá a organizar tus finanzas en menos de un minuto.
+              Empieza a organizar tus finanzas en menos de un minuto.
             </Text>
           </FadeInUp>
 
@@ -453,7 +453,7 @@ export function SignupScreen() {
 
           <FadeInUp delay={300} reduced={reduced}>
             <Text style={[styles.fineprint, { color: theme.colors.textSoft }]}>
-              Al crear tu cuenta aceptás los{' '}
+              Al crear tu cuenta aceptas los{' '}
               <Text style={styles.fineprintLink}>Términos</Text> y la{' '}
               <Text style={styles.fineprintLink}>Privacidad</Text>.
             </Text>

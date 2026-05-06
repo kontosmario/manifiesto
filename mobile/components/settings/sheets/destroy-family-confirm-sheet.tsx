@@ -71,7 +71,7 @@ export function DestroyFamilyConfirmSheet({
       subtitle={
         step === 1
           ? `Aún hay ${memberLabel} en tu hogar.`
-          : 'Confirmá escribiendo la palabra exacta.'
+          : 'Confirma escribiendo la palabra exacta.'
       }
       title={step === 1 ? '¿Eliminar tu hogar?' : 'Última confirmación'}
       visible={visible}
@@ -124,7 +124,7 @@ export function DestroyFamilyConfirmSheet({
               colorMuted={theme.colors.textMuted}
               colorText={theme.colors.text}
               icon="restore"
-              label="Si querés volver, vas a tener que armar un hogar de cero."
+              label="Si quieres volver, vas a tener que armar un hogar de cero."
             />
           </View>
 
@@ -145,7 +145,7 @@ export function DestroyFamilyConfirmSheet({
         <View style={styles.stack}>
           <View style={styles.confirmHelperRow}>
             <Text style={[styles.confirmHelper, { color: theme.colors.textMuted }]}>
-              Escribí{' '}
+              Escribe{' '}
               <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
                 {CONFIRM_PHRASE}
               </Text>{' '}
@@ -162,7 +162,7 @@ export function DestroyFamilyConfirmSheet({
             autoCapitalize="characters"
             autoCorrect={false}
             spellCheck={false}
-            accessibilityLabel="Escribí ELIMINAR para confirmar"
+            accessibilityLabel="Escribe ELIMINAR para confirmar"
             style={[
               styles.input,
               {

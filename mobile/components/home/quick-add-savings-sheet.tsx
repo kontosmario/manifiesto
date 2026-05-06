@@ -25,6 +25,9 @@ interface QuickAddSavingsSheetProps {
   initialAmount?: number
   onClose: () => void
   onSubmit: (amount: number) => void
+  /** When true, the sheet renders inline (no native `<Modal>`). Use
+   *  when the host screen is already a stack-modal — see ModalCard. */
+  inline?: boolean
 }
 
 const PRESET_PERCENTAGES = [25, 50, 75, 100] as const
@@ -56,6 +59,7 @@ export function QuickAddSavingsSheet({
   initialAmount,
   onClose,
   onSubmit,
+  inline,
 }: QuickAddSavingsSheetProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -210,10 +214,10 @@ export function QuickAddSavingsSheet({
       : ''
 
   const helper = !isValid
-    ? 'Movés el slider para elegir cuánto sumar.'
+    ? 'Mueves el slider para elegir cuánto sumar.'
     : exceedsRemaining
       ? `Estás superando lo que falta (${formatMoneyShort(remaining)}). Vamos a guardar igual y la meta queda completa.`
-      : `Sumás ${currencyFormatter.format(amount)} a "${goalTitle}".`
+      : `Sumas ${currencyFormatter.format(amount)} a "${goalTitle}".`
 
   const saveLabel = isValid ? `Sumar ${formatMoneyShort(amount)}` : 'Sumar a la meta'
 
@@ -221,8 +225,9 @@ export function QuickAddSavingsSheet({
     <ModalCard
       visible={visible}
       onClose={onClose}
+      inline={inline}
       title={`Agregar ahorro · ${goalTitle}`}
-      subtitle="Elegí cuánto del ahorro sugerido querés mover. Podés ajustar el monto deslizando o usando los atajos de porcentaje."
+      subtitle="Elige cuánto del ahorro sugerido quieres mover. Puedes ajustar el monto deslizando o usando los atajos de porcentaje."
     >
       <View style={styles.body}>
         <View
@@ -241,6 +246,17 @@ export function QuickAddSavingsSheet({
             style={[styles.amountValue, { color: theme.colors.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
+            // Without a floor, iOS's `adjustsFontSizeToFit` happily
+            // shrinks the amount to ~4pt when the rendered string
+            // (with letterSpacing + bold weight) exceeds the
+            // measured container width by even a few px. The screen
+            // ended up showing a microscopic "$74.000" at 6pt. The
+            // floor pins it to 70% of the base size (≈ 33.6pt at the
+            // 48pt baseline) so we never fall below "comfortable
+            // bold-display" territory; truly-too-long amounts will
+            // ellipsize via `numberOfLines={1}` instead.
+            minimumFontScale={0.7}
+            allowFontScaling
           >
             {currencyFormatter.format(amount)}
           </Text>
@@ -386,10 +402,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   amountValue: {
-    fontSize: 38,
+    // The aporte is the focal element of the sheet. Earlier
+    // versions used 38pt with `lineHeight: 42` and tight tracking,
+    // which made `adjustsFontSizeToFit` shrink the text down to
+    // ~5pt on iOS — `minimumFontScale` is silently ignored when the
+    // shrink decision is driven by a too-tight `lineHeight` rather
+    // than by horizontal width. Fix: drop `lineHeight` entirely so
+    // RN derives it from the font's natural metrics, leaving the
+    // shrink logic to fall back to its width-based path (where
+    // `minimumFontScale={0.7}` actually applies). Tracking kept
+    // gentle for the same reason.
+    fontSize: 44,
     fontWeight: '800',
-    letterSpacing: -1.4,
-    lineHeight: 42,
+    letterSpacing: -0.6,
   },
   amountSub: {
     fontSize: 12,

@@ -82,7 +82,7 @@ export function AuditPromptCard({
       {!youAlreadyAnswered ? (
         <>
           <Text style={styles.question}>
-            {others.length > 0 ? '¿Y vos?' : '¿La estás usando vos?'}
+            {others.length > 0 ? '¿Y tú?' : '¿La estás usando?'}
           </Text>
           <UsageLevelButtons onSelect={onSelect} />
         </>

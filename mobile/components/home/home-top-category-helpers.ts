@@ -158,7 +158,7 @@ export function computeTopCategoryFallback(
   if (args.variableCount <= 0) {
     return {
       kind: 'empty',
-      primary: 'Cargá tu primer gasto',
+      primary: 'Carga tu primer gasto',
       secondary: 'Arrancá el ciclo registrando algo',
     }
   }
@@ -170,7 +170,7 @@ export function computeTopCategoryFallback(
     return {
       kind: 'sparse',
       primary: 'Sin categoría líder aún',
-      secondary: 'Cargá más gastos para verla',
+      secondary: 'Carga más gastos para verla',
     }
   }
 

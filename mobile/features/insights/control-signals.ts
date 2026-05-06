@@ -16,7 +16,7 @@
 // Rules of the road:
 //  - data-grounded — every claim is a specific peso amount from
 //    THIS user, never generic "ahorrá más"
-//  - rioplatense direct copy ("vos", "tenés", "mirá")
+//  - español latinoamericano neutro, tuteo directo ("tú", "tienes", "mira")
 //  - cap output at 5 — Asesor card is designed for 3-5 items
 //
 // Data tiers (for confidence scoring):
@@ -493,7 +493,7 @@ function tryComposeSavingsMomentum(
     emoji: '🚀',
     cat: 'Momentum',
     title: 'Momentum positivo',
-    body: `Llevás racha sostenida, el ciclo proyecta sobrante, y hay categorías a favor. Es el momento de capitalizar: subir la meta o reasignar el excedente.`,
+    body: `Llevas racha sostenida, el ciclo proyecta sobrante, y hay categorías a favor. Es el momento de capitalizar: subir la meta o reasignar el excedente.`,
     impact: headline.label,
     impactRaw: headline.impactRaw,
     impactScope: headline.impactScope,
@@ -725,7 +725,7 @@ function buildRecoveryPath(
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
         'Cuando el sobregiro del día es grande, intentar bajar mucho el cupo el resto del mes no funciona. Mejor reajustar la meta de ahorro o reordenar algún gasto fijo antes que sostener un objetivo imposible.',
-      action: { kind: 'navigate', route: '/(app)/settings' },
+      action: { kind: 'open-settings-modal', modal: 'savings-percent' },
     }
   }
   return {
@@ -1589,7 +1589,7 @@ function buildHighSingleExpense(
     emoji: '💥',
     cat: 'Gasto único',
     title: `Movimiento alto hoy: ${fmt(price)}`,
-    body: `Hoy registraste ${fmt(price)} en un solo movimiento — ${pct}% del cupo diario (${fmt(args.cupoDiario)}). Mirá si conviene compensar el resto del día.`,
+    body: `Hoy registraste ${fmt(price)} en un solo movimiento — ${pct}% del cupo diario (${fmt(args.cupoDiario)}). Mira si conviene compensar el resto del día.`,
     impact: `Hoy: ${fmt(price)}`,
     impactRaw: Math.round(price),
     impactScope: 'oneTime',
@@ -1637,7 +1637,7 @@ function buildDuplicateMerchant(
       emoji: '🪞',
       cat: 'Posible duplicado',
       title: `${list.length} cargos parecidos en 48h`,
-      body: `Detecté ${list.length} cargos de "${focus.description}" por ~${fmt(hi)} en menos de 48h. ¿Confirmás que son distintos?`,
+      body: `Detecté ${list.length} cargos de "${focus.description}" por ~${fmt(hi)} en menos de 48h. ¿Confirmas que son distintos?`,
       impact: `Revisar: ${fmt(hi)}`,
       impactRaw: Math.round(hi),
       impactScope: 'oneTime',
@@ -1725,7 +1725,7 @@ function buildIncomeMissing(
     emoji: '📭',
     cat: 'Cobro',
     title: 'Cobro esperado no confirmado',
-    body: `Tu cobro estaba previsto pero el ciclo no se confirmó. Si llegó, actualizá el balance del nuevo ciclo. Si cambió la fecha, ajustá tu día de pago.`,
+    body: `Tu cobro estaba previsto pero el ciclo no se confirmó. Si llegó, actualiza el balance del nuevo ciclo. Si cambió la fecha, ajusta tu día de pago.`,
     impact: args.ingresoMes > 0 ? `Ingreso esperado: ${fmt(args.ingresoMes)}` : 'Confirmar cobro',
     impactRaw: Math.round(args.ingresoMes),
     impactScope: 'oneTime',
@@ -1734,7 +1734,7 @@ function buildIncomeMissing(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuando el día de pago configurado ya pasó pero el ciclo no se confirmó, el resto del cálculo (cupo diario, proyecciones) trabaja con el ciclo anterior. Confirmar acá restablece la base.',
+      'Cuando el día de pago configurado ya pasó pero el ciclo no se confirmó, el resto del cálculo (cupo diario, proyecciones) trabaja con el ciclo anterior. Confirmar aquí restablece la base.',
     action: { kind: 'navigate', route: '/(app)/(tabs)/control' },
   }
 }
@@ -1892,7 +1892,7 @@ function buildForecastPaydayGap(
     emoji: '⏳',
     cat: 'Predicción',
     title: `Riesgo: $0 ${gapDays} día${gapDays === 1 ? '' : 's'} antes del cobro`,
-    body: `Si seguís al ritmo proyectado de los últimos días, llegás a $0 unos ${gapDays} ${gapDays === 1 ? 'día' : 'días'} antes del próximo cobro. Hay margen para corregir si recortás ahora.`,
+    body: `Si sigues al ritmo proyectado de los últimos días, llegas a $0 unos ${gapDays} ${gapDays === 1 ? 'día' : 'días'} antes del próximo cobro. Hay margen para corregir si recortás ahora.`,
     impact: `Faltan ${fmt(gapAmount)}`,
     impactRaw: gapAmount,
     impactScope: 'oneTime',
@@ -1937,7 +1937,7 @@ function buildCausalFridayCascade(
     emoji: '🪢',
     cat: 'Patrón causal',
     title: 'Patrón viernes → sábado',
-    body: `Detecté ${link.occurrences} veces que un viernes con gasto alto dispara un sábado ${pct}% más caro de lo habitual. Hoy es jueves: si mañana hay salida, ojo el sábado.`,
+    body: `Detecté ${link.occurrences} veces que un viernes con gasto alto dispara un sábado ${pct}% más caro de lo habitual. Hoy es jueves: si mañana hay salida, atención el sábado.`,
     impact: `+${pct}% en sábados gatillados`,
     impactRaw: Math.round(link.effect.magnitude * 5000),
     impactScope: 'monthly',
@@ -1969,7 +1969,7 @@ function buildCausalPairedImpulse(
     emoji: '🪞',
     cat: catName,
     title: 'Compras pareadas',
-    body: `Cuando comprás en ${catName}, el ${pct}% de las veces hay otro gasto similar en menos de 3 horas. Si te pasa hoy, esperá 24h antes del segundo.`,
+    body: `Cuando compras en ${catName}, el ${pct}% de las veces hay otro gasto similar en menos de 3 horas. Si te pasa hoy, espera 24h antes del segundo.`,
     impact: 'Pausa de 24h sugerida',
     impactRaw: Math.round(link.effect.magnitude * 8000),
     impactScope: 'monthly',
@@ -2005,7 +2005,7 @@ function buildCausalStressSpending(
     emoji: '🌪️',
     cat: 'Patrón causal',
     title: 'Días de muchas compras chicas',
-    body: `Detecté ${link.occurrences} días con 4+ transacciones — esos días gastás ${pct}% más en promedio, casi todo discrecional. Probá una pausa antes de la 5ª compra del día.`,
+    body: `Detecté ${link.occurrences} días con 4+ transacciones — esos días gastas ${pct}% más en promedio, casi todo discrecional. Prueba una pausa antes de la 5ª compra del día.`,
     impact: `+${pct}% en días de stress`,
     impactRaw: Math.round(link.effect.magnitude * 8000),
     impactScope: 'monthly',

@@ -110,7 +110,7 @@ export function StreakSheet({
     if (markNoExpenseMutation.isPending) return
     Alert.alert(
       'Marcar día sin gastos',
-      'Confirmás que hoy no tuviste gastos? La racha avanza igual y sumás un día a tu progreso. Podés revertirlo si después aparece algún gasto.',
+      'Confirmas que hoy no tuviste gastos? La racha avanza igual y sumas un día a tu progreso. Puedes revertirlo si después aparece algún gasto.',
       [
         { style: 'cancel', text: 'Cancelar' },
         {
@@ -124,7 +124,7 @@ export function StreakSheet({
                 void triggerHaptic('error')
                 Alert.alert(
                   'No se pudo marcar el día',
-                  error instanceof Error ? error.message : 'Reintentá en un momento.',
+                  error instanceof Error ? error.message : 'Reintenta en un momento.',
                 )
               },
             })
@@ -138,7 +138,7 @@ export function StreakSheet({
     if (unmarkNoExpenseMutation.isPending) return
     Alert.alert(
       'Revertir día sin gastos',
-      '¿Apareció un gasto y querés volver atrás la marca de hoy? La racha vuelve a depender de que registres antes de medianoche.',
+      '¿Apareció un gasto y quieres volver atrás la marca de hoy? La racha vuelve a depender de que registres antes de medianoche.',
       [
         { style: 'cancel', text: 'Cancelar' },
         {
@@ -153,7 +153,7 @@ export function StreakSheet({
                 void triggerHaptic('error')
                 Alert.alert(
                   'No se pudo revertir',
-                  error instanceof Error ? error.message : 'Reintentá en un momento.',
+                  error instanceof Error ? error.message : 'Reintenta en un momento.',
                 )
               },
             })
@@ -551,7 +551,7 @@ function ShieldChip({ tokens, tone }: { tokens: number; tone: StatusTone }) {
               ? 'Stock al máximo. Cubren un día perdido cada uno.'
               : tokens === 1
                 ? 'Te queda 1. Cubrirá un día sin registrar.'
-                : 'Ganás uno cada 7 días seguidos de racha.'}
+                : 'Ganas uno cada 7 días seguidos de racha.'}
           </Text>
         </View>
       </View>
@@ -702,10 +702,10 @@ function ShieldNotice({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.cardTitle, { color: tone.fg }]}>
-              Tenés {tokens} {tokens === 1 ? 'escudo disponible' : 'escudos disponibles'}
+              Tienes {tokens} {tokens === 1 ? 'escudo disponible' : 'escudos disponibles'}
             </Text>
             <Text style={[styles.cardBody, { color: tone.soft }]}>
-              Si no registrás hoy, el escudo protege tu racha automáticamente a las 23:59.
+              Si no registras hoy, el escudo protege tu racha automáticamente a las 23:59.
             </Text>
           </View>
         </View>
@@ -728,7 +728,7 @@ function ConsequenceCard({
   const lost = Math.max(0, data.currentStreak - derived.regressionDay)
   const rows = [
     `Volvés al día ${derived.regressionDay} (inicio de ${derived.levelLabel})`,
-    `Perdés ${lost} ${lost === 1 ? 'día' : 'días'} de progreso ganados`,
+    `Pierdes ${lost} ${lost === 1 ? 'día' : 'días'} de progreso ganados`,
     `Necesitarías ${derived.daysToNextLevel + lost} días más para llegar a ${derived.nextLevelLabel}`,
   ]
   return (
@@ -740,7 +740,7 @@ function ConsequenceCard({
         ]}
       >
         <Text style={[styles.cardTitle, { color: danger.fg, marginBottom: 10 }]}>
-          Si no registrás hoy
+          Si no registras hoy
         </Text>
         {rows.map((text, i) => (
           <View key={i} style={styles.consequenceRow}>
@@ -764,7 +764,7 @@ function RecoveryCard({ derived }: { derived: StreakDerived }) {
         ]}
       >
         <Text style={[styles.cardTitle, { color: theme.colors.text, marginBottom: 6 }]}>
-          Podés volver
+          Puedes volver
         </Text>
         <Text style={[styles.cardBody, { color: theme.colors.textMuted }]}>
           {derived.copyMessage}
@@ -807,7 +807,7 @@ function MotivationalCard({
               { color: tone.fg, fontWeight: '800', marginTop: 8 },
             ]}
           >
-            🏆 Estás en tu récord personal. ¡Seguí!
+            🏆 Estás en tu récord personal. ¡Sigue!
           </Text>
         ) : null}
       </View>
@@ -855,8 +855,8 @@ function FreezeInfo({ tokens }: { tokens: number }) {
   const { theme } = useAppTheme()
   return (
     <Text style={[styles.freezeInfo, { color: theme.colors.textMuted }]}>
-      Ganás un escudo cada 7 días seguidos de racha.{'\n'}
-      Tenés {tokens} · Podés acumular hasta 2.
+      Ganas un escudo cada 7 días seguidos de racha.{'\n'}
+      Tienes {tokens} · Puedes acumular hasta 2.
     </Text>
   )
 }

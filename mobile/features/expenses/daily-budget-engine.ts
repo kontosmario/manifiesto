@@ -200,13 +200,13 @@ export function computeDailyBudgetSummary({
 
   if (remainingToday < 0) {
     suggestions.push({
-      detail: `Si frenás ahora, mañana abrirías con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
+      detail: `Si frenas ahora, mañana abrirías con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
       title: 'Hoy ya te comiste parte de mañana',
       tone: 'warning',
     })
   } else if (todaySpent === 0) {
     suggestions.push({
-      detail: `Si cerrás el día así, mañana arrancás con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
+      detail: `Si cierras el día así, mañana arrancas con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
       title: zeroSpendStreak > 0 ? `${zeroSpendStreak} días cero en fila` : 'Día cero activo',
       tone: 'success',
     })
@@ -223,9 +223,9 @@ export function computeDailyBudgetSummary({
     suggestions.push({
       detail:
         carryover >= 0
-          ? `Traés ${formatSignedCurrency(carryover)} de aire acumulado por debajo del ritmo.`
+          ? `Traes ${formatSignedCurrency(carryover)} de aire acumulado por debajo del ritmo.`
           : `Arrastrás ${formatSignedCurrency(Math.abs(carryover))} de exceso desde días anteriores.`,
-      title: carryover >= 0 ? 'Venís administrando bien el ciclo' : 'El arrastre te está apretando hoy',
+      title: carryover >= 0 ? 'Vienes administrando bien el ciclo' : 'El arrastre te está apretando hoy',
       tone: carryover >= 0 ? 'success' : 'warning',
     })
   }
@@ -235,7 +235,7 @@ export function computeDailyBudgetSummary({
       detail:
         bufferRemaining > 0
           ? `${formatSignedCurrency(bufferRemaining)} del colchón siguen intactos para absorber desvíos.`
-          : 'El colchón ya se consumió. Desde acá empezás a tocar el plan principal.',
+          : 'El colchón ya se consumió. Desde aquí empiezas a tocar el plan principal.',
       title: bufferRemaining > 0 ? 'Tu colchón sigue defendiendo el cierre' : 'El colchón ya no está cubriendo desvíos',
       tone: bufferRemaining > 0 ? 'primary' : 'warning',
     })

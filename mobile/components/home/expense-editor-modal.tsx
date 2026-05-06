@@ -42,7 +42,7 @@ export function ExpenseEditorModal({
     <ModalCard
       visible={visible}
       title={title}
-      subtitle="Actualizá sólo lo necesario y mantené el historial limpio."
+      subtitle="Actualiza sólo lo necesario y mantené el historial limpio."
       onClose={onClose}
     >
       <View
@@ -56,7 +56,7 @@ export function ExpenseEditorModal({
       >
         <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>Edición rápida</Text>
         <Text style={[styles.introText, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
-          Cambiá la descripción o el monto final. El resto del movimiento se conserva.
+          Cambia la descripción o el monto final. El resto del movimiento se conserva.
         </Text>
       </View>
 
@@ -73,7 +73,7 @@ export function ExpenseEditorModal({
       />
 
       <TextField
-        helper="Ingresá el valor final en pesos."
+        helper="Ingresa el valor final en pesos."
         keyboardType="decimal-pad"
         label="Monto"
         onBlur={() => setPriceFocused(false)}

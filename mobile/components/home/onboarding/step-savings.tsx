@@ -55,10 +55,10 @@ export function StepSavings({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          ¿Querés arrancar con una meta?
+          ¿Quieres arrancar con una meta?
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Podés agregarla después si preferís.
+          Puedes agregarla después si prefieres.
         </Text>
       </RiseView>
 
@@ -114,11 +114,11 @@ export function StepSavings({
             <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
               {savingsGoalPercent > 0
                 ? `≈ ${formatMoney(targetAmount)} por mes`
-                : 'Sin ahorro automático — lo podés activar luego.'}
+                : 'Sin ahorro automático — lo puedes activar luego.'}
             </Text>
           ) : (
             <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-              Ingresá tu sueldo en el paso anterior para ver el equivalente.
+              Ingresa tu sueldo en el paso anterior para ver el equivalente.
             </Text>
           )}
         </View>

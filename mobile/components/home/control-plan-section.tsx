@@ -67,7 +67,7 @@ export function ControlPlanSection({
           />
           <EmptyState
             icon="psychology"
-            subtitle="Apenas haya historial suficiente, acá vas a ver alertas de ritmo, concentración y hábitos."
+            subtitle="Apenas haya historial suficiente, aquí vas a ver alertas de ritmo, concentración y hábitos."
             title="Todavía falta lectura suficiente"
           />
         </BrandedPanel>
@@ -81,7 +81,7 @@ export function ControlPlanSection({
         {focusMetrics.length === 0 ? (
           <EmptyState
             icon="insights"
-            subtitle="Seguí registrando para que la app detecte patrones más finos."
+            subtitle="Sigue registrando para que la app detecte patrones más finos."
             title="Sin focos relevantes todavía"
           />
         ) : (

@@ -404,7 +404,7 @@ export function HomeDashboard({
     // functionally — that route is just a `<Redirect>` to
     // `/(app)/add-expense` — but it briefly mounts the tab, then
     // navigates again, which makes the empty-state CTA feel
-    // qualitatively different from "Cargá tu primer gasto fijo"
+    // qualitatively different from "Carga tu primer gasto fijo"
     // (which goes straight to its modal). Skipping the redirect
     // gives both bands the same modal presentation animation.
     router.push('/(app)/add-expense')

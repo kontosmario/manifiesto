@@ -27,7 +27,7 @@ export function recoveryHardBody(
     case 'loss':
       return `Sin recortar a ${args.newCupo}/día, el cierre del mes vas a perderlo: el sobregiro de ${args.overspend} se acumula y arrastra al próximo ciclo.`
     case 'gain':
-      return `Recortando a ${args.newCupo}/día durante ${args.diasRestantes} días recuperás el ritmo y cerrás dentro del presupuesto.`
+      return `Recortando a ${args.newCupo}/día durante ${args.diasRestantes} días recuperás el ritmo y cierras dentro del presupuesto.`
     default:
       return `Para recuperar el ritmo habría que gastar menos de ${args.newCupo}/día los próximos ${args.diasRestantes} días — es muy difícil. Mejor reajustar la meta o reordenar algún gasto fijo.`
   }
@@ -50,11 +50,11 @@ export function velocityBody(
   switch (framing) {
     case 'loss':
       return args.over
-        ? `Si no frenás, el cierre estimado es ${args.forecast}: te vas ${args.over} por encima del presupuesto. ${base}`
+        ? `Si no frenas, el cierre estimado es ${args.forecast}: te vas ${args.over} por encima del presupuesto. ${base}`
         : `Cierre estimado a este ritmo: ${args.forecast}. ${base}`
     case 'gain':
       return args.over
-        ? `Si bajás el ritmo ${args.over} en lo que queda, el cierre vuelve a presupuesto. ${base}`
+        ? `Si bajas el ritmo ${args.over} en lo que queda, el cierre vuelve a presupuesto. ${base}`
         : `Estás dentro de margen. ${base}`
     default:
       return `Al ritmo de los últimos 7 días, el cierre estimado es ${args.forecast}. ${base}`
@@ -95,7 +95,7 @@ export function positiveForecastBody(
   if (args.goalTitle && args.proposed) {
     switch (framing) {
       case 'loss':
-        return `Si no movés el excedente ahora, ${args.sobra} se diluyen el próximo ciclo. Sugerencia: pasar ${args.proposed} a "${args.goalTitle}" antes que se evapore.`
+        return `Si no mueves el excedente ahora, ${args.sobra} se diluyen el próximo ciclo. Sugerencia: pasar ${args.proposed} a "${args.goalTitle}" antes que se evapore.`
       case 'gain':
         return `Vas adelantado: en ${args.diasRestantes} días el ciclo cierra con ${args.sobra} a favor. Mover ${args.proposed} a "${args.goalTitle}" capitaliza el momentum.`
       default:

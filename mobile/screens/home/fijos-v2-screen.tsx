@@ -108,7 +108,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const handleDelete = useCallback(
     (fixedExpenseId: string) => {
       void triggerHaptic('warning')
-      Alert.alert('Eliminar fijo', '¿Seguro que querés eliminar este fijo?', [
+      Alert.alert('Eliminar fijo', '¿Seguro que quieres eliminar este fijo?', [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',

@@ -42,7 +42,7 @@ export function SettingsAccountCard({
         <Text style={[styles.accountText, { color: theme.colors.textMuted }]}>{email}</Text>
       </View>
       <Text style={[styles.leaveCopy, { color: theme.colors.textSoft }]}>
-        Podés desvincularte del grupo familiar actual. Si sos la última persona dentro del grupo,
+        Puedes desvincularte del grupo familiar actual. Si sos la última persona dentro del grupo,
         el hogar compartido y sus datos se eliminarán.
       </Text>
       <AppButton

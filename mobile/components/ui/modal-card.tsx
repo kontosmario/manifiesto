@@ -46,6 +46,21 @@ interface ModalCardProps extends PropsWithChildren {
   title: string
   subtitle?: string
   onClose: () => void
+  /**
+   * `false` (default) — renders inside RN's native `<Modal>`.
+   *   Required when the sheet must overlay anything outside the
+   *   current React tree (e.g. shown from Home over the tab bar).
+   *
+   * `true` — renders as an absolute-positioned `<View>` INSIDE the
+   *   parent component, with no native `<Modal>` wrapper. Use this
+   *   when the host screen is already presented as a stack-modal
+   *   (e.g. the Asistente screen): iOS otherwise has to coordinate
+   *   the dismissal of two stacked UIViewControllers, which adds
+   *   150-250ms of latency before touches return to the host. With
+   *   `inline`, dismissal is a single React commit and the host's
+   *   CTAs become tappable on the next frame.
+   */
+  inline?: boolean
 }
 
 const DISMISS_DISTANCE = 120
@@ -63,7 +78,14 @@ const DISMISS_VELOCITY = 800
  *  - Drag gesture runs on the UI thread via worklet — no JS-bridge
  *    hops, no re-render on state changes during the swipe
  */
-export function ModalCard({ visible, title, subtitle, onClose, children }: ModalCardProps) {
+export function ModalCard({
+  visible,
+  title,
+  subtitle,
+  onClose,
+  inline = false,
+  children,
+}: ModalCardProps) {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
@@ -74,6 +96,12 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
 
   const translateY = useSharedValue(screenHeight)
   const backdropOpacity = useSharedValue(0)
+  // Tracks whether the inline-mode exit animation is currently
+  // playing. While `true`, the inline wrapper sets
+  // `pointerEvents="none"` so taps fall through to the host's
+  // underlying CTAs even though the sheet is still visually present
+  // (sliding down + fading). Always false in native-Modal mode.
+  const [exiting, setExiting] = useState(false)
   // Local `mounted` flag survives one extra frame after `visible` flips
   // to false so the native `<Modal>` keeps the sheet on-screen while
   // our exit animation plays. Without this, RN's Modal unmounts the
@@ -100,6 +128,9 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
   useEffect(() => {
     if (visible) {
       setMounted(true)
+      // Cancel any in-flight inline exit so re-opening during the
+      // slide-down springs back up instead of finishing the exit.
+      setExiting(false)
       translateY.value = reduceMotion ? 0 : withSpring(0, motionSprings.sheet)
       backdropOpacity.value = reduceMotion
         ? 1
@@ -107,24 +138,45 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
       return
     }
     if (!mounted) return
-    if (reduceMotion) {
-      translateY.value = screenHeight
-      backdropOpacity.value = 0
-      setMounted(false)
+    // Two close strategies — chosen by render mode:
+    //
+    //   · `inline` mode (sheet renders as an absolute View inside
+    //     the host's tree, no native `<Modal>`): we CAN play the
+    //     slide-down + backdrop fade because the inline wrapper
+    //     toggles `pointerEvents="none"` during the exit, so taps
+    //     fall through to the host's underlying CTAs immediately
+    //     while the visual exit finishes. Best of both worlds —
+    //     polished close motion + instant interactivity.
+    //
+    //   · Native `<Modal>` mode: the OS blocks every underlying
+    //     touch while the Modal is mounted, no matter what we set
+    //     on inner `pointerEvents`. To keep re-tap instant we have
+    //     to snap the Modal closed (no visual exit) and let
+    //     entrance animate the next open.
+    if (inline) {
+      setExiting(true)
+      backdropOpacity.value = withTiming(0, {
+        duration: motionDurations.scrimOut,
+      })
+      translateY.value = withTiming(
+        screenHeight,
+        {
+          duration: motionDurations.exitModal,
+          easing: motionEasings.accelerate,
+        },
+        (finished) => {
+          if (finished) {
+            runOnJS(setMounted)(false)
+            runOnJS(setExiting)(false)
+          }
+        },
+      )
       return
     }
-    backdropOpacity.value = withTiming(0, { duration: motionDurations.standard })
-    translateY.value = withTiming(
-      screenHeight,
-      {
-        duration: motionDurations.deliberate,
-        easing: motionEasings.accelerate,
-      },
-      (finished) => {
-        if (finished) runOnJS(setMounted)(false)
-      },
-    )
-  }, [visible, mounted, reduceMotion, screenHeight, translateY, backdropOpacity])
+    setMounted(false)
+    translateY.value = screenHeight
+    backdropOpacity.value = 0
+  }, [visible, mounted, inline, reduceMotion, screenHeight, translateY, backdropOpacity])
 
   const handleDismiss = useCallback(() => {
     Keyboard.dismiss()
@@ -138,14 +190,23 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
     setSheetHeight(event.nativeEvent.layout.height)
   }, [])
 
-  // Drag-dismiss path: spring lands at `screenHeight` first, then we
-  // unmount and notify the parent in a single completion handler. This
-  // avoids racing the parent's `visible→false` re-render against the
-  // in-flight spring (which used to swap the curve mid-air).
+  // Drag-dismiss path:
+  //   · Native `<Modal>` mode — unmount the Modal immediately. RN's
+  //     `<Modal>` blocks every underlying touch as long as it's
+  //     mounted, and the sheetDismiss spring takes ~250-300ms to
+  //     settle, so we'd spend that whole window with the host
+  //     unresponsive.
+  //   · Inline mode — only call `onClose()`. The parent flips
+  //     `visible` to false, the useEffect above runs the inline
+  //     exit branch (slide-down + backdrop fade with
+  //     `pointerEvents="none"`), and the underlying host stays
+  //     touch-interactive throughout the animation.
   const handleDragDismissed = useCallback(() => {
-    setMounted(false)
+    if (!inline) {
+      setMounted(false)
+    }
     onClose()
-  }, [onClose])
+  }, [inline, onClose])
 
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -169,17 +230,15 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
       const shouldDismiss =
         event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
       if (shouldDismiss) {
-        backdropOpacity.value = withTiming(0, { duration: motionDurations.quick })
-        translateY.value = withSpring(
-          screenHeight,
-          {
-            ...motionSprings.sheetDismiss,
-            velocity: Math.max(event.velocityY, 900),
-          },
-          (finished) => {
-            if (finished) runOnJS(handleDragDismissed)()
-          },
-        )
+        // Fire the unmount immediately, BEFORE waiting on the spring
+        // to land. The visible animation of the spring would only
+        // play inside the soon-to-unmount Modal anyway — and keeping
+        // the Modal alive until spring completion was the source of
+        // the ~250ms "tap-after-dismiss" delay the user reported
+        // even after the close-path animation was removed. Snap-out
+        // matches the snap-out we apply on backdrop-tap (see effect
+        // above), so close behavior is consistent across all paths.
+        runOnJS(handleDragDismissed)()
       } else {
         translateY.value = withSpring(0, motionSprings.sheet)
         backdropOpacity.value = withTiming(1, { duration: motionDurations.quick })
@@ -199,6 +258,85 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
     numpadOffset > 0 ? Math.max(0, numpadOffset - insets.bottom) + BUTTON_CLEARANCE : 0
   const bottomInset = Math.max(insets.bottom + 12, rawKeyboardPad, rawNumpadPad)
 
+  // Inner JSX is the same regardless of inline vs Modal — backdrop +
+  // sheet inside a GestureHandlerRootView. Wrapping container is the
+  // only difference: native `<Modal>` (separate UIVC) for top-level
+  // surfaces, absolute-positioned `<View>` for inline mode.
+  const inner = (
+    <GestureHandlerRootView style={styles.root}>
+      <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
+        <Pressable
+          accessibilityLabel="Cerrar"
+          accessibilityRole="button"
+          onPress={handleDismiss}
+          style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
+        />
+      </Animated.View>
+
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          accessibilityViewIsModal
+          onLayout={handleSheetLayout}
+          style={[
+            styles.sheet,
+            sheetAnimatedStyle,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              paddingBottom: bottomInset,
+              maxHeight: screenHeight * 0.92,
+            },
+          ]}
+        >
+          <View style={styles.handleArea}>
+            <View
+              style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]}
+            />
+          </View>
+          <View style={styles.headerBlock}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
+            {subtitle ? (
+              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </Animated.View>
+      </GestureDetector>
+    </GestureHandlerRootView>
+  )
+
+  if (inline) {
+    // Inline mode: render as an absolute-positioned overlay inside
+    // the parent component. No native UIViewController, so iOS does
+    // not need to coordinate stacked-modal teardown — dismissal is a
+    // single React commit and the host's underlying view becomes
+    // touch-interactive on the next frame. Keep rendering null while
+    // unmounted so the absolute layer doesn't sit invisibly over
+    // host content (and steal pointer events).
+    if (!mounted) return null
+    // While exiting, set `pointerEvents="none"` so the still-visible
+    // sheet + backdrop don't block taps on the host. The animation
+    // (backdrop fade-out + sheet slide-down) keeps playing visually,
+    // but the user can already tap underlying CTAs on the next frame.
+    return (
+      <View
+        style={StyleSheet.absoluteFill}
+        pointerEvents={exiting ? 'none' : 'box-none'}
+      >
+        {inner}
+      </View>
+    )
+  }
+
   return (
     <Modal
       animationType="none"
@@ -207,55 +345,7 @@ export function ModalCard({ visible, title, subtitle, onClose, children }: Modal
       transparent
       visible={mounted}
     >
-      <GestureHandlerRootView style={styles.root}>
-        <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
-          <Pressable
-            accessibilityLabel="Cerrar"
-            accessibilityRole="button"
-            onPress={handleDismiss}
-            style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
-          />
-        </Animated.View>
-
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            accessibilityViewIsModal
-            onLayout={handleSheetLayout}
-            style={[
-              styles.sheet,
-              sheetAnimatedStyle,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-                paddingBottom: bottomInset,
-                maxHeight: screenHeight * 0.92,
-              },
-            ]}
-          >
-            <View style={styles.handleArea}>
-              <View
-                style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]}
-              />
-            </View>
-            <View style={styles.headerBlock}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-              {subtitle ? (
-                <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-                  {subtitle}
-                </Text>
-              ) : null}
-            </View>
-            <ScrollView
-              contentContainerStyle={styles.content}
-              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
-          </Animated.View>
-        </GestureDetector>
-      </GestureHandlerRootView>
+      {inner}
     </Modal>
   )
 }

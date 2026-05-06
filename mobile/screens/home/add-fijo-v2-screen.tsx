@@ -624,7 +624,7 @@ export function AddFijoV2Screen({
                 : { backgroundColor: theme.colors.line },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={canContinue ? 'Ver impacto' : 'Completá los datos'}
+            accessibilityLabel={canContinue ? 'Ver impacto' : 'Completa los datos'}
           >
             <Text
               style={[
@@ -634,7 +634,7 @@ export function AddFijoV2Screen({
                 },
               ]}
             >
-              {canContinue ? 'Ver impacto →' : 'Completá los datos'}
+              {canContinue ? 'Ver impacto →' : 'Completa los datos'}
             </Text>
           </Pressable>
         ) : (
@@ -650,7 +650,7 @@ export function AddFijoV2Screen({
             accessibilityRole="button"
             accessibilityLabel={
               !canSubmit
-                ? 'Elegí el día del mes'
+                ? 'Elige el día del mes'
                 : isEditing
                   ? 'Actualizar fijo'
                   : 'Confirmar fijo'
@@ -665,7 +665,7 @@ export function AddFijoV2Screen({
               ]}
             >
               {!canSubmit
-                ? 'Elegí el día del mes'
+                ? 'Elige el día del mes'
                 : pending
                 ? isEditing
                   ? 'Actualizando…'
@@ -701,7 +701,7 @@ function StepHeader({
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
   const stepTitle =
-    step === 1 ? (isEditing ? 'Editar fijo' : 'Nuevo fijo') : 'Revisá el impacto'
+    step === 1 ? (isEditing ? 'Editar fijo' : 'Nuevo fijo') : 'Revisa el impacto'
   return (
     <View style={styles.headerRow}>
       <Pressable
@@ -977,7 +977,7 @@ function CalendarDropImpact({
 
       {day != null ? (
         <Text style={[styles.calendarFoot, { color: theme.colors.textMuted }]}>
-          Tocá un día para cambiar ·{' '}
+          Toca un día para cambiar ·{' '}
           <Text style={{ color: theme.colors.text, fontWeight: '800' }}>día {day}</Text>{' '}
           de cada mes
         </Text>
@@ -989,7 +989,7 @@ function CalendarDropImpact({
             { color: theme.colors.primary },
           ]}
         >
-          Elegí el día del mes
+          Elige el día del mes
         </Text>
       )}
     </Animated.View>

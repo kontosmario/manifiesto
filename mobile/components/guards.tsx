@@ -1,6 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
 import { Redirect } from 'expo-router'
-import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
@@ -37,10 +36,12 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }, [isLoading, shouldShowAuthTransitionSplash])
 
   if (isLoading) {
-    if (shouldShowAuthTransitionSplash) {
-      return <AuthLaunchSplash persistent />
-    }
-
+    // Always render the passive backdrop. Do NOT mount a second
+    // splash beneath the warm transition overlay (mounted at root) —
+    // see the long comment in `app-entry-gate.tsx` for the full
+    // diagnosis (duplicate fern + aurora + particle layers caused
+    // 60→<30fps drops during auth, perceived as "right-to-center
+    // entry" + "1-2s pause" on the warm fern).
     return <BlockingScreenView message="Preparando tu espacio..." />
   }
 
@@ -87,10 +88,8 @@ export function RequireGuest({
   }, [isLoading, shouldShowAuthTransitionSplash])
 
   if (isLoading) {
-    if (shouldShowAuthTransitionSplash) {
-      return <AuthLaunchSplash persistent />
-    }
-
+    // Same rationale as RequireAuth above — yield to the warm
+    // overlay; don't mount a duplicate splash underneath.
     return <BlockingScreenView message="Preparando tu sesión..." />
   }
 

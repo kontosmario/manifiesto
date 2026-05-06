@@ -26,7 +26,7 @@ export type MotionDurationKey = keyof typeof motionDurations
 // Decorative loop durations — fuera del rango de UI interaction
 // (120–480ms) por diseño. Loops infinitos que comunican "la app está
 // viva" sin pedir atención: breaths, sonar halos, shimmer sweeps,
-// ambient blob drift. Si necesitás un valor más rápido es probable
+// ambient blob drift. Si necesitas un valor más rápido es probable
 // que sea UI feedback y debería ir en `motionDurations`.
 //
 // Convención: los valores corresponden a la duración de UN ciclo

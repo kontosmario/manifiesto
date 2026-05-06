@@ -58,7 +58,7 @@ export function AddFixedExpenseScreen({
     <Screen
       canGoBack
       contentContainerStyle={styles.screenContent}
-      subtitle="Definí gastos fijos que impactan el ciclo: recurrentes, periódicos, cuotas o deuda."
+      subtitle="Define gastos fijos que impactan el ciclo: recurrentes, periódicos, cuotas o deuda."
       title={sectionConfig.addTitle}
       titleColor={headerPalette.titleColor}
     >
@@ -113,7 +113,7 @@ export function AddFixedExpenseScreen({
               >
                 <Text style={[styles.highlightLabel, { color: theme.colors.textMuted }]}>Categoria</Text>
                 <Text style={[styles.highlightValue, { color: theme.colors.text }]}>
-                  {selectedCategory?.name ?? 'Elegí una'}
+                  {selectedCategory?.name ?? 'Elige una'}
                 </Text>
               </View>
             </View>
@@ -123,8 +123,8 @@ export function AddFixedExpenseScreen({
             ) : categories.length === 0 ? (
               <EmptyState
                 icon="category"
-                subtitle="Necesitás al menos una categoría para registrar gastos fijos, cuotas o deuda."
-                title="Primero creá una categoría"
+                subtitle="Necesitas al menos una categoría para registrar gastos fijos, cuotas o deuda."
+                title="Primero crea una categoría"
               />
             ) : (
               <FixedExpenseForm

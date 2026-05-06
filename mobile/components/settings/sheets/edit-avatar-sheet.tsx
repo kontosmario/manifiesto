@@ -45,7 +45,7 @@ export function EditAvatarSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Elegí el animal que te represente en la familia."
+      subtitle="Elige el animal que te represente en la familia."
       title="Avatar"
       visible={visible}
     >

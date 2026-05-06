@@ -94,10 +94,10 @@ export function OnboardingAvailableSheet(props: SharedProps) {
     <CycleBalancePromptSheetBase
       {...props}
       copy={{
-        title: '¿Cuánto tenés disponible hoy?',
+        title: '¿Cuánto tienes disponible hoy?',
         contextPrefixLabel: 'Sueldo configurado',
         helperEmpty:
-          'Anotá el monto en mano. Lo usamos para arrancar este ciclo con la realidad.',
+          'Anota el monto en mano. Lo usamos para arrancar este ciclo con la realidad.',
         saveLabel: 'Guardar disponible',
         eyebrow: 'O AJUSTÁ EL DISPONIBLE',
         chipTitle: 'Tengo el sueldo completo',
@@ -123,10 +123,10 @@ export function SalaryConfirmationSheet(props: SharedProps) {
     <CycleBalancePromptSheetBase
       {...props}
       copy={{
-        title: '¿Cobraste? Confirmá el monto',
+        title: '¿Cobraste? Confirma el monto',
         contextPrefixLabel: 'Sueldo recurrente',
         helperEmpty:
-          'Anotá el monto que recibiste este mes. Solo aplica a este ciclo.',
+          'Anota el monto que recibiste este mes. Solo aplica a este ciclo.',
         saveLabel: 'Guardar cobro',
         eyebrow: 'O AJUSTÁ EL MONTO COBRADO',
         chipTitle: 'Cobré el sueldo completo',

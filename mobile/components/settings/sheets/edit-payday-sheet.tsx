@@ -51,7 +51,7 @@ export function EditPaydaySheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="El día del mes en que cobrás el ingreso. Usamos esta fecha para calcular el ciclo y avisarte cuando corresponde confirmar."
+      subtitle="El día del mes en que cobras el ingreso. Usamos esta fecha para calcular el ciclo y avisarte cuando corresponde confirmar."
       title="Día de cobro"
       visible={visible}
     >

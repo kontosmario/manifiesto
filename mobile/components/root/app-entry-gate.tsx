@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { Redirect } from 'expo-router'
-import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
 import {
@@ -17,10 +17,19 @@ export function AppEntryGate() {
   const familyQuery = useFamily(userId)
   const family = familyQuery.data ?? null
   const profileQuery = useMyProfile(userId)
+  // Cold-start biometric probe — read once, used to decide between
+  // the welcome hero and the login auto-biometric route below. Runs
+  // in parallel with the session check so by the time we know the
+  // user has no session, we usually already know whether biometrics
+  // are set up.
+  const biometric = useColdStartBiometricCheck()
   const isLoading =
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||
-    (Boolean(userId) && profileQuery.isLoading)
+    (Boolean(userId) && profileQuery.isLoading) ||
+    // Wait for the biometric probe ONLY when we don't have a session
+    // (otherwise the redirect to home shouldn't be blocked by it).
+    (!userId && !sessionQuery.isLoading && biometric.status === 'loading')
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
@@ -30,14 +39,29 @@ export function AppEntryGate() {
   }, [isLoading, shouldShowAuthTransitionSplash])
 
   if (isLoading) {
-    if (shouldShowAuthTransitionSplash) {
-      return <AuthLaunchSplash persistent />
-    }
-
+    // Always render the passive backdrop while loading. CRITICAL: do
+    // NOT mount `AuthLaunchSplash` here when the warm transition
+    // splash is visible. The warm splash (mounted at root in
+    // `RootLayoutShell`) already covers the entire screen — rendering
+    // a SECOND splash beneath it doubled the GPU load (two ferns +
+    // two aurora layers + two particle fields running concurrently)
+    // exactly during the auth + query window when JS/UI threads are
+    // already at peak load. The user perceived the resulting frame
+    // drops as a "right-to-center entry" + "1-2s pause" on the warm
+    // fern. Yielding to the warm overlay alone restores 60fps.
     return <BlockingScreenView message="Abriendo Manifiesto..." />
   }
 
   if (!session) {
+    // Returning user with biometrics set up — go straight to the
+    // login screen with the auto-biometric flag. The login screen
+    // reads `?autoBiometric=1`, fires the Face ID / Touch ID prompt
+    // immediately on mount, and clears the param so a manual back-
+    // navigate doesn't re-trigger. Skips the entire "Crear cuenta /
+    // Ya tengo cuenta" hero for users who clearly don't need it.
+    if (biometric.shouldUseBiometric) {
+      return <Redirect href="/(auth)/login?autoBiometric=1" />
+    }
     return <Redirect href="/(auth)/welcome" />
   }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useIsFocused } from '@react-navigation/native'
+import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import { getToursEnabled, getTourSeen, setTourSeen } from './persistence'
 import { useTour } from './tour-context'
@@ -84,6 +85,15 @@ export function useScreenTour(
 ): { start: () => Promise<void> } {
   const ctx = useTour()
   const isFocused = useIsFocused()
+  // The auth-transition splash is a full-screen overlay that holds
+  // for ~3s after login while the home destination loads. If we
+  // start the tour while it's still up, the cutout/tooltip render on
+  // top of the splash logo (the user sees the tour modal floating
+  // over the Manifiesto wordmark instead of the actual home).
+  // Subscribe to its phase so the auto-start effect re-runs once it
+  // hides, and gate the start on `phase === 'hidden'`.
+  const splash = useAuthTransitionSplash()
+  const splashHidden = splash.phase === 'hidden'
   const ctxRef = useRef(ctx)
   ctxRef.current = ctx
   const startedRef = useRef(false)
@@ -109,6 +119,11 @@ export function useScreenTour(
       startedRef.current = false
       return
     }
+    // Wait for the auth-transition splash to dismiss before
+    // scheduling the tour. Without this, on first login the tour
+    // fires while the splash logo is still on top, and the user
+    // sees the tooltip/cutout floating over the brand wordmark.
+    if (!splashHidden) return
     if (startedRef.current) return
     startedRef.current = true
 
@@ -138,7 +153,7 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [forceStart, isFocused, startDelayMs, tour])
+  }, [forceStart, isFocused, splashHidden, startDelayMs, tour])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')

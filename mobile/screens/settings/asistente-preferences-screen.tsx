@@ -107,7 +107,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                     void triggerHaptic('error')
                     Alert.alert(
                       'No pudimos desbloquear',
-                      'Probá de nuevo en unos segundos.',
+                      'Prueba de nuevo en unos segundos.',
                     )
                   },
                 },
@@ -195,8 +195,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           title="Familias bloqueadas"
           subtitle={
             blocklistQuery.data && blocklistQuery.data.length > 0
-              ? 'Tocá una para desbloquear.'
-              : 'Cuando bloqueás una familia desde el chat, aparece acá.'
+              ? 'Toca una para desbloquear.'
+              : 'Cuando bloqueas una familia desde el chat, aparece aquí.'
           }
         />
         {blocklistQuery.data && blocklistQuery.data.length > 0 ? (
@@ -243,7 +243,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           </View>
         ) : (
           <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-            No tenés familias bloqueadas.
+            No tienes familias bloqueadas.
           </Text>
         )}
       </RiseView>

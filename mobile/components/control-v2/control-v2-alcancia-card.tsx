@@ -52,7 +52,7 @@ interface ControlV2AlcanciaCardProps {
  *    lugar de duplicarse:
  *      1. **Días sin gastos** — incluye los días marcados como "hoy
  *         no tuve gastos" desde la pantalla de Gastos (los marked
- *         days viven en `streak_marked_days` y se cuentan acá igual
+ *         days viven en `streak_marked_days` y se cuentan aquí igual
  *         que los días pasivamente $0).
  *      2. **Bajo cupo** — proporción del ciclo donde respetaste el
  *         presupuesto diario (engagement con la métrica de Hoy).
@@ -93,7 +93,7 @@ export function ControlV2AlcanciaCard({
   }
 
   // Tone tokens — alineados con la MetaCard así "alcancía" y "meta"
-  // se leen como dos vistas del mismo dominio (lo que ahorrás vs. el
+  // se leen como dos vistas del mismo dominio (lo que ahorras vs. el
   // objetivo final).
   const accentFg = theme.colors.success
   const accentBorder = isDark ? 'rgba(122,216,163,0.32)' : 'rgba(28,126,58,0.26)'

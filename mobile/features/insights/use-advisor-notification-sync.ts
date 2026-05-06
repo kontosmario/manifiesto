@@ -1,29 +1,26 @@
-// Pipe high-priority advisor signals into the in-app notification
-// feed and (optionally) trigger a push delivery via the existing
-// `send-family-push` Edge Function.
+// Trigger push delivery for high-priority advisor signals.
 //
-// Why client-side: the signal engine runs on local data with React
-// Query state; reproducing it server-side would require duplicating
-// the rules in SQL/Edge. As long as the user opens the Control v2
-// screen at least occasionally, the most actionable signals get
-// surfaced into the feed and pushed out.
+// PRIOR BEHAVIOUR (removed): this hook also inserted notification
+// rows into the `notifications` table so advisor signals showed up
+// in the regular notifications feed. That created the "mixing"
+// problem — the user wanted asistente notifications kept INSIDE the
+// asistente surface only. The asistente screen reads its signals
+// directly from `useControlV2Data` and tracks dismissals via the
+// new server-side `advisor_signal_dismissals` table; piping into
+// the generic feed was redundant duplication.
 //
-// What this DOES:
-//  - For tasks with `urgency === 'alta'` AND `confidence >= 0.7`,
-//    insert one notification row per signal id, scoped to the
-//    current user, with `kind = 'advisor_<signalId>'`.
+// CURRENT BEHAVIOUR:
 //  - For tasks with `urgency === 'alta'` AND `confidence >= 0.85`,
-//    also fire-and-forget `sendFamilyPush()` to wake the device.
-//  - De-dup via SecureStore: a given signal id is piped at most
-//    once per `MIN_INTERVAL_HOURS` window per device.
-//
-// What this does NOT do:
-//  - It does not pipe `media`/`baja` signals (avoid feed noise).
-//  - It does not run when no familyId/userId is available.
-//  - It does not retry on insert failure (the next render will).
+//    fire-and-forget `sendFamilyPush()` to wake the device. The
+//    push system writes to the user's APNs/FCM token directly via
+//    the `send-family-push` Edge Function — no notification row
+//    inserted, no feed pollution.
+//  - De-dup via SecureStore: a given signal id pushes at most once
+//    per `MIN_INTERVAL_HOURS` window per device.
+//  - In-app feed never receives advisor rows. Users see signals
+//    only on the asistente screen.
 
 import { useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
@@ -107,14 +104,11 @@ function isQuietHour(now: Date): boolean {
 }
 
 /**
- * Each signal has two independent timers: one for the in-app feed
- * insert and one for the push delivery. Splitting them prevents a
- * signal that first becomes eligible during quiet hours from being
- * permanently silenced — the insert lands, but `pushedAt` stays
- * untouched so the push can still fire on the next eligible window.
+ * Push delivery cooldown tracker. Single timestamp per signal id —
+ * the previous version also tracked `insertedAt` for the in-app
+ * feed insert, but that path was removed (see header comment).
  */
 interface PipedEntry {
-  insertedAt: number
   pushedAt: number
 }
 type PipedMap = Record<string, PipedEntry>
@@ -132,28 +126,27 @@ async function hydrate(): Promise<void> {
     const now = Date.now()
     const next: PipedMap = {}
     for (const [id, value] of Object.entries(parsed)) {
-      // Migrate v1 (number) → v2 (entry) by treating the legacy
-      // timestamp as both insertedAt and pushedAt.
+      // Legacy v1 stored a single number; legacy v2 stored
+      // {insertedAt, pushedAt}. Both collapse to the new {pushedAt}
+      // shape — we take the newest timestamp from whichever shape
+      // we find and use it as `pushedAt`.
+      let pushedAt = 0
       if (typeof value === 'number' && Number.isFinite(value)) {
-        if (now - value < 30 * DAY_MS) {
-          next[id] = { insertedAt: value, pushedAt: value }
-        }
-        continue
-      }
-      if (value && typeof value === 'object') {
+        pushedAt = value
+      } else if (value && typeof value === 'object') {
         const v = value as { insertedAt?: unknown; pushedAt?: unknown }
-        const insertedAt =
+        const ia =
           typeof v.insertedAt === 'number' && Number.isFinite(v.insertedAt)
             ? v.insertedAt
             : 0
-        const pushedAt =
+        const pa =
           typeof v.pushedAt === 'number' && Number.isFinite(v.pushedAt)
             ? v.pushedAt
             : 0
-        const newest = Math.max(insertedAt, pushedAt)
-        if (newest > 0 && now - newest < 30 * DAY_MS) {
-          next[id] = { insertedAt, pushedAt }
-        }
+        pushedAt = Math.max(ia, pa)
+      }
+      if (pushedAt > 0 && now - pushedAt < 30 * DAY_MS) {
+        next[id] = { pushedAt }
       }
     }
     cache = next
@@ -168,12 +161,6 @@ async function persist(): Promise<void> {
   } catch {
     // Best-effort.
   }
-}
-
-function shouldInsert(signalId: string): boolean {
-  const entry = cache[signalId]
-  if (!entry) return true
-  return Date.now() - entry.insertedAt >= cooldownHoursFor(signalId) * HOUR_MS
 }
 
 function shouldPush(signalId: string): boolean {
@@ -209,73 +196,35 @@ export function useAdvisorNotificationSync({
       await hydrate()
       if (cancelled) return
 
-      // High-urgency + reliable signals are the only ones that ever
-      // touch the feed/push. Everything else stays inside the screen.
+      // Only high-confidence + high-urgency signals trigger a push.
+      // Everything else lives inside the asistente screen and is
+      // visible only when the user opens it.
       const eligible = signals.filter(
-        (s) => s.urgency === 'alta' && s.confidence >= 0.7,
+        (s) =>
+          s.urgency === 'alta' &&
+          s.confidence >= 0.85 &&
+          !isQuietHour(new Date()) &&
+          shouldPush(s.id),
       )
-      // Track per-signal which side of the pipeline still has budget;
-      // a signal might be due for its first push without needing a
-      // second feed insert (or vice versa).
-      const work = eligible
-        .map((s) => ({
-          signal: s,
-          insert: shouldInsert(s.id),
-          push:
-            s.confidence >= 0.85 &&
-            !isQuietHour(new Date()) &&
-            shouldPush(s.id),
-        }))
-        .filter((w) => w.insert || w.push)
-      if (work.length === 0) return
+      if (eligible.length === 0) return
 
       const now = Date.now()
       const nextCache = { ...cache }
 
       await Promise.allSettled(
-        work.map(async ({ signal: task, insert, push }) => {
+        eligible.map(async (task) => {
           const kind = `advisor_${task.id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase()}`
-          const insertPromise = insert
-            ? supabase.from('notifications').insert({
-                family_id: familyId,
-                user_id: userId,
-                title: task.title,
-                body: task.body,
-                kind,
-                severity: 'warning',
-                metadata: {
-                  source: 'control-advisor',
-                  signal_id: task.id,
-                  category: task.cat,
-                  impact_raw: task.impactRaw,
-                  cta: task.cta,
-                  confidence: task.confidence,
-                  data_days: task.dataDays,
-                  route: '/(app)/(tabs)/control',
-                },
-              })
-            : Promise.resolve()
-
-          const pushPromise = push
-            ? sendFamilyPush({
-                familyId: familyId!,
-                title: task.title,
-                body: task.body,
-                kind,
-                url: '/(app)/(tabs)/control',
-              }).catch(() => {
-                // Push delivery is best-effort; in-app feed still
-                // has the row.
-              })
-            : Promise.resolve()
-
-          await Promise.allSettled([insertPromise, pushPromise])
-
-          const prev = nextCache[task.id] ?? { insertedAt: 0, pushedAt: 0 }
-          nextCache[task.id] = {
-            insertedAt: insert ? now : prev.insertedAt,
-            pushedAt: push ? now : prev.pushedAt,
-          }
+          await sendFamilyPush({
+            familyId: familyId!,
+            title: task.title,
+            body: task.body,
+            kind,
+            url: '/(app)/(tabs)/control',
+          }).catch(() => {
+            // Push delivery is best-effort; cache still bumps below
+            // so we don't retry on every render.
+          })
+          nextCache[task.id] = { pushedAt: now }
         }),
       )
 

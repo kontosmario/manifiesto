@@ -70,8 +70,8 @@ export function EditBufferSheet({
     if (mode === 'none') return 'No se reservará dinero para imprevistos.'
     if (!isValid) {
       return mode === 'percent'
-        ? 'Ingresá un porcentaje entre 0 y 100.'
-        : 'Ingresá un monto válido.'
+        ? 'Ingresa un porcentaje entre 0 y 100.'
+        : 'Ingresa un monto válido.'
     }
     if (mode === 'percent') return `Reservaremos ${parsed}% del presupuesto diario.`
     return `Reservaremos ${currencyFormatter.format(parsed)} por día.`
@@ -94,7 +94,7 @@ export function EditBufferSheet({
     <NumericEditSheet
       visible={visible}
       title="Buffer diario"
-      subtitle="Dinero que querés reservar antes de proyectar tu presupuesto variable."
+      subtitle="Dinero que quieres reservar antes de proyectar tu presupuesto variable."
       rawValue={mode === 'none' ? '' : draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => {

@@ -130,14 +130,14 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                     Categoría seleccionada
                   </Text>
                   <Text style={[styles.selectionValue, { color: theme.colors.text }]}>
-                    {managedCategory?.name ?? 'Elegí una categoría para administrarla'}
+                    {managedCategory?.name ?? 'Elige una categoría para administrarla'}
                   </Text>
                   <Text style={[styles.selectionMeta, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
                     {managedCategory
                       ? `${selectedCount} ${
                           selectedCount === 1 ? 'gasto asociado' : 'gastos asociados'
                         }${selectedCategoryId === managedCategory.id ? ' · usada en el filtro actual' : ''}`
-                      : 'Tocá una fila para renombrar o borrar la categoría correcta.'}
+                      : 'Toca una fila para renombrar o borrar la categoría correcta.'}
                   </Text>
                   {managedCategory && selectedCount > 0 ? (
                     <Text style={[styles.selectionWarning, { color: theme.colors.warning }]}>

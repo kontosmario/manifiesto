@@ -1,27 +1,32 @@
 // Global connectivity watcher.
 //
-// Replaces the inline / banner offline indicators with a single
-// hard-fallback: when NetInfo reports the device is offline we
-// promote the auth-transition splash into its `error` phase
-// (`errorKind: 'network'`). The splash overlay is mounted at the
-// root, blocks the underlying screen via pointerEvents='auto', and
-// exposes a "Reintentar" button that probes NetInfo before
-// dismissing — so the user can't escape into a half-broken UI while
-// the device is still offline.
+// Promotes the auth-transition splash into its `error('network')`
+// fallback when the device goes offline, and dismisses the fallback
+// when connectivity comes back. Renders nothing of its own.
 //
-// Why a hard fallback instead of a chip?
-//   - One source of truth across every screen (Home, Gastos,
-//     Control, Fijos, Settings, modals).
-//   - Prevents users from running mutations (save settings, mark
-//     fijo paid, submit expense) that would silently fail.
-//   - Removes a class of "stale data" confusion — if the splash is
-//     up, you know the data isn't live; if it isn't, you can trust
-//     the screen.
+// Why a hard fallback instead of an inline chip?
+//   - One source of truth across every screen.
+//   - Prevents users from running mutations that would silently fail.
+//   - Removes a class of "stale data" confusion.
 //
-// Renders nothing of its own — the splash overlay in
-// `root-layout-shell.tsx` reacts to the state machine flip.
+// Why DEBOUNCE the offline state (added 2026-05-09)?
+//   The previous version flipped the splash to error mode the moment
+//   `isOnline` went false. That created a recurring annoying UX:
+//   every time the app came back from background, NetInfo briefly
+//   reports offline (the OS suspends the radio while backgrounded),
+//   and the user saw "Sin conexión a internet" + Reintentar for half
+//   a second before NetInfo recovered and the watcher dismissed the
+//   fallback automatically. The recovery was automatic but the flash
+//   was confusing and made the app feel broken.
+//
+//   Now: we wait `OFFLINE_DEBOUNCE_MS` (2.5s) of CONTINUOUS offline
+//   before promoting the splash. Real outages persist; resume-flicker
+//   does not. We also extend that wait to `RESUME_GRACE_MS` (3s) when
+//   the app just became active — that's the window where false-
+//   offline reports are most likely (NetInfo stale snapshot).
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { AppState } from 'react-native'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import {
   hideAuthTransitionSplash,
@@ -29,25 +34,80 @@ import {
   useAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 
+const OFFLINE_DEBOUNCE_MS = 2500 // require offline to persist this long
+const RESUME_GRACE_MS = 3000 // longer wait when within this many ms of foregrounding
+
 export function GlobalConnectivityWatcher() {
   const isOnline = useOnlineStatus()
   const transition = useAuthTransitionSplash()
 
+  // Tracks the last time the app transitioned to 'active'. We use it
+  // to compute "are we still inside the resume grace window?".
+  // Initialised null so React's purity rule is satisfied; we set it
+  // to `Date.now()` on mount in the AppState effect below. While
+  // null (very early in mount), `sinceResume` evaluates as if the
+  // app just became active — same effective behaviour.
+  const lastActiveAtRef = useRef<number | null>(null)
+  // Pending offline-promotion timer. Cleared when offline flips back
+  // to online before it fires.
+  const offlineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Track foreground transitions so the watcher can apply a grace
+  // period right after resume. Also seed `lastActiveAtRef` on first
+  // mount (we treat first mount as effectively a fresh foreground —
+  // any offline state at that moment is the legitimate cold-start
+  // signal, but we still want a small grace window).
+  useEffect(() => {
+    lastActiveAtRef.current = Date.now()
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        lastActiveAtRef.current = Date.now()
+        // Cancel any pending offline-promotion that was queued up
+        // during the background window — it's based on stale state.
+        if (offlineTimerRef.current) {
+          clearTimeout(offlineTimerRef.current)
+          offlineTimerRef.current = null
+        }
+      }
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     if (!isOnline) {
-      // Force the network-error fallback regardless of the previous
-      // phase. Idempotent: showAuthTransitionError no-ops when the
-      // current state is already `error('network')`.
-      showAuthTransitionError('network')
-      return
+      // We just went offline. Don't promote the splash immediately —
+      // wait at least OFFLINE_DEBOUNCE_MS, more if we're inside the
+      // resume grace window. Real outages keep the timer alive
+      // through the wait; transient blips clear it via the cleanup.
+      const sinceResume = Date.now() - (lastActiveAtRef.current ?? Date.now())
+      const remainingGrace = Math.max(0, RESUME_GRACE_MS - sinceResume)
+      const delay = Math.max(OFFLINE_DEBOUNCE_MS, remainingGrace)
+
+      if (offlineTimerRef.current) clearTimeout(offlineTimerRef.current)
+      offlineTimerRef.current = setTimeout(() => {
+        offlineTimerRef.current = null
+        showAuthTransitionError('network')
+      }, delay)
+
+      return () => {
+        if (offlineTimerRef.current) {
+          clearTimeout(offlineTimerRef.current)
+          offlineTimerRef.current = null
+        }
+      }
     }
 
-    // Came back online. If the user is currently staring at the
-    // `network` error fallback (because the connection dropped
-    // earlier and they haven't tapped Reintentar yet), dismiss it
-    // automatically — the underlying screen is fine to reveal.
-    // Other auth-transition states (`showing`, `success-pending`,
-    // or a non-network error like `timeout`) are preserved.
+    // We're online — cancel any pending promotion that was about to
+    // fire from a transient blip.
+    if (offlineTimerRef.current) {
+      clearTimeout(offlineTimerRef.current)
+      offlineTimerRef.current = null
+    }
+
+    // Came back online while the user was staring at the network
+    // error fallback. Auto-dismiss so the underlying screen reveals.
+    // Other auth-transition states (`showing`, `success-pending`, or
+    // a non-network error like `timeout`) are preserved.
     if (transition.phase === 'error' && transition.errorKind === 'network') {
       hideAuthTransitionSplash()
     }

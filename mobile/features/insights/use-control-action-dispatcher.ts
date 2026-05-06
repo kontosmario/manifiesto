@@ -15,12 +15,16 @@ import { useCallback, useRef } from 'react'
 import { useRouter } from 'expo-router'
 import { Alert, Linking } from 'react-native'
 import { triggerHaptic } from '@/lib/haptics'
-import { useSendMemberWarning } from '@/features/insights/use-send-member-warning'
 import { dismissCard } from '@/features/insights/control-dismiss-store'
 import { useControlAnchors } from '@/features/insights/control-section-anchors'
-import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
-import { formatMoney } from '@/utils/money'
+import { openSettingsModal } from '@/features/insights/settings-modal-coordinator'
+import {
+  requestFixedExpenseAdd,
+  requestFixedExpenseEdit,
+  requestMemberWarning,
+  requestSavingsContribution,
+  requestSavingsGoalEdit,
+} from '@/features/insights/advisor-action-coordinator'
 import {
   logAdvisorInteraction,
   type AdvisorOutcome,
@@ -53,20 +57,27 @@ export interface DispatchMeta {
 //
 // Prevent the same action from firing twice in quick succession — covers
 // both accidental double-taps and React re-renders that re-mount a CTA.
-// Idempotent kinds (navigate, scroll, dismiss) are exempt; mutations
-// (savings contribution, member warning, external URL) and modals
-// (open-coach, open-fixed-expense) are gated.
+// Idempotent kinds (navigate, scroll, dismiss) are exempt; sheet
+// hand-offs (savings contribution, member warning, savings-goal
+// edit, fixed-expense edit/add, settings) are also exempt — see
+// CIRCUIT_BREAKER_KINDS comment below for why. Only true side-
+// effecting kinds (external URL, coach route, streak sheet) are
+// gated.
 const CIRCUIT_BREAKER_WINDOW_MS = 1500
 
 const CIRCUIT_BREAKER_KINDS = new Set<ControlAction['kind']>([
-  'open-fixed-expense',
-  'open-add-fixed-prefilled',
-  'open-savings-goal',
   'open-streak-sheet',
-  'send-member-warning',
-  'quick-savings-contribution',
   'open-external-url',
   'open-coach-mode',
+  // Modal-open kinds (settings, member-warning, savings-contribution,
+  // savings-goal-edit, fixed-expense-edit, fixed-expense-add) are
+  // intentionally EXCLUDED. They don't run a mutation directly —
+  // they hand off to the coordinator, which is idempotent (last
+  // request wins), and the host's mutation has its own `isPending`
+  // guard. Keeping them in the breaker meant that after the user
+  // dismissed the sheet, the next tap was silently swallowed for up
+  // to 1.5s because the breaker's last-fired timestamp was still in
+  // cooldown.
 ])
 
 function actionKey(action: ControlAction): string {
@@ -83,6 +94,8 @@ function actionKey(action: ControlAction): string {
       return `${action.kind}:${action.url}`
     case 'open-coach-mode':
       return `${action.kind}:${action.signalId}`
+    case 'open-settings-modal':
+      return `${action.kind}:${action.modal}`
     default:
       return action.kind
   }
@@ -90,10 +103,7 @@ function actionKey(action: ControlAction): string {
 
 export function useControlActionDispatcher(ctx: DispatcherContext) {
   const router = useRouter()
-  const warningMutation = useSendMemberWarning()
   const anchors = useControlAnchors()
-  const savingsGoalQuery = useSavingsGoal(ctx.familyId)
-  const addContributionMutation = useAddSavingsContribution(ctx.familyId)
   const lastFireRef = useRef<Map<string, number>>(new Map())
 
   return useCallback(
@@ -113,13 +123,21 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
       // contribution, member warning) log inside their success branch
       // so we never count a cancel as `acted`.
       if (meta) {
+        // Confirmation-gated kinds (anything that opens a sheet and
+        // runs a mutation only on submit) log inside their host's
+        // success branch — never count a cancel as `acted`.
+        const isConfirmationGated =
+          action.kind === 'send-member-warning' ||
+          action.kind === 'quick-savings-contribution' ||
+          action.kind === 'open-savings-goal' ||
+          action.kind === 'open-fixed-expense' ||
+          action.kind === 'open-add-fixed-prefilled'
         const outcome: AdvisorOutcome | null =
           action.kind === 'dismiss'
             ? 'dismissed'
-            : action.kind === 'send-member-warning' ||
-              action.kind === 'quick-savings-contribution'
-            ? null
-            : 'acted'
+            : isConfirmationGated
+              ? null
+              : 'acted'
         if (outcome) {
           void logAdvisorInteraction({
             familyId: ctx.familyId,
@@ -164,10 +182,24 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
         }
         case 'open-fixed-expense': {
           if (!action.fixedExpenseId) return
-          router.push({
-            pathname: '/(app)/add-fixed-expense',
-            params: { id: action.fixedExpenseId },
-          })
+          // Hand off to the global advisor-action host. The host
+          // looks up the fixed expense in the cache and opens
+          // `FixedExpenseQuickEditSheet` for fast name + amount
+          // tweaks (price-hike CTA, zombie cancellation, etc).
+          // Falls through to the full `/add-fixed-expense` editor
+          // when the id isn't found in cache.
+          void triggerHaptic('selection')
+          requestFixedExpenseEdit(
+            action.fixedExpenseId,
+            meta
+              ? {
+                  taskId: meta.taskId,
+                  surface: meta.surface,
+                  context: meta.taskContext,
+                  timeToActionMs: meta.timeToActionMs,
+                }
+              : null,
+          )
           return
         }
         case 'open-expenses-filtered': {
@@ -187,17 +219,42 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           return
         }
         case 'open-add-fixed-prefilled': {
-          const params: Record<string, string> = {}
-          if (action.amount != null) params.amount = String(action.amount)
-          if (action.description) params.description = action.description
-          router.push({
-            pathname: '/(app)/add-fixed-expense',
-            params,
-          })
+          // Hand off to the global advisor-action host. The host
+          // opens `AddFixedQuickSheet` pre-seeded with amount +
+          // description and uses smart defaults (monthly recurring,
+          // today's day-of-month) so the user can register the
+          // detected recurring pattern in one tap.
+          void triggerHaptic('selection')
+          requestFixedExpenseAdd(
+            action.amount ?? null,
+            action.description ?? null,
+            meta
+              ? {
+                  taskId: meta.taskId,
+                  surface: meta.surface,
+                  context: meta.taskContext,
+                  timeToActionMs: meta.timeToActionMs,
+                }
+              : null,
+          )
           return
         }
         case 'open-savings-goal': {
-          router.push('/(app)/savings-goal')
+          // Hand off to the global advisor-action host. The host
+          // opens `SavingsGoalQuickEditSheet` for fast goalAmount /
+          // targetMonths tweaks. Falls through to /(app)/savings-goal
+          // when no active goal exists yet (creation flow).
+          void triggerHaptic('selection')
+          requestSavingsGoalEdit(
+            meta
+              ? {
+                  taskId: meta.taskId,
+                  surface: meta.surface,
+                  context: meta.taskContext,
+                  timeToActionMs: meta.timeToActionMs,
+                }
+              : null,
+          )
           return
         }
         case 'open-streak-sheet': {
@@ -217,122 +274,45 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
         }
         case 'send-member-warning': {
           if (!action.targetUserId || action.targetUserId === ctx.userId) return
-          Alert.alert(
-            '¿Enviar aviso?',
+          // Hand off to the global advisor-action host (mounted in
+          // AppStackShell) which renders the warning sheet, runs the
+          // mutation on submit, and shows success/error feedback. The
+          // host owns the mutation so the dispatcher stays slim.
+          void triggerHaptic('selection')
+          requestMemberWarning(
+            action.targetUserId,
             action.message,
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Enviar',
-                style: 'default',
-                onPress: () => {
-                  void triggerHaptic('success')
-                  warningMutation.mutate(
-                    {
-                      familyId: ctx.familyId,
-                      targetUserId: action.targetUserId,
-                      message: action.message,
-                      createdBy: ctx.userId,
-                    },
-                    {
-                      onSuccess: () => {
-                        if (meta) {
-                          void logAdvisorInteraction({
-                            familyId: ctx.familyId,
-                            signalId: meta.taskId,
-                            outcome: 'acted',
-                            surface: meta.surface,
-                            context: meta.taskContext,
-                            timeToActionMs: meta.timeToActionMs,
-                          })
-                        }
-                        Alert.alert('Listo', 'Aviso enviado.')
-                      },
-                      onError: () => {
-                        void triggerHaptic('error')
-                        Alert.alert(
-                          'No pudimos enviar',
-                          'Reintentá en unos segundos.',
-                        )
-                      },
-                    },
-                  )
-                },
-              },
-            ],
-            { cancelable: true },
+            meta
+              ? {
+                  taskId: meta.taskId,
+                  surface: meta.surface,
+                  context: meta.taskContext,
+                  timeToActionMs: meta.timeToActionMs,
+                }
+              : null,
           )
           return
         }
         case 'quick-savings-contribution': {
-          const goal = savingsGoalQuery.data
-          if (!goal || !goal.isActive) {
-            // No active goal — degrade to "open savings" so the user
-            // can create one.
-            router.push('/(app)/savings-goal')
-            return
-          }
           const amount = Math.max(0, Math.round(action.amount))
           if (amount <= 0) return
-          Alert.alert(
-            'Mover a la alcancía',
-            `Vamos a mover ${formatMoney(amount)} a "${goal.title}". ¿Confirmás?`,
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Mover',
-                style: 'default',
-                onPress: () => {
-                  void triggerHaptic('success')
-                  addContributionMutation.mutate(
-                    { goalId: goal.id, amount },
-                    {
-                      onSuccess: () => {
-                        dismissCard(action.dismissId)
-                        if (meta) {
-                          void logAdvisorInteraction({
-                            familyId: ctx.familyId,
-                            signalId: meta.taskId,
-                            outcome: 'acted',
-                            surface: meta.surface,
-                            context: { ...meta.taskContext, contributedAmount: amount },
-                            timeToActionMs: meta.timeToActionMs,
-                          })
-                          // Counterfactual value: the contribution itself
-                          // is the realized value. One-shot horizon — we
-                          // don't claim the same dollars repeat monthly.
-                          void logAdvisorValue({
-                            familyId: ctx.familyId,
-                            signalId: meta.taskId,
-                            actionTaken: 'moved_to_savings',
-                            valueSaved: amount,
-                            horizonMonths: 1,
-                            evidence: {
-                              goalId: goal.id,
-                              goalTitle: goal.title,
-                              contributedAmount: amount,
-                            },
-                            isEstimated: false,
-                          })
-                        }
-                        Alert.alert(
-                          '¡Listo!',
-                          `${formatMoney(amount)} sumados a tu alcancía.`,
-                        )
-                      },
-                      onError: () => {
-                        void triggerHaptic('error')
-                        Alert.alert(
-                          'No pudimos mover',
-                          'Reintentá en unos segundos.',
-                        )
-                      },
-                    },
-                  )
-                },
-              },
-            ],
-            { cancelable: true },
+          // Hand off to the global advisor-action host. The host
+          // checks whether an active savings goal exists, opens the
+          // shared `QuickAddSavingsSheet` (slider + chips, same as
+          // Home/Control alcancía) seeded at this amount, and runs
+          // the contribution mutation on submit.
+          void triggerHaptic('selection')
+          requestSavingsContribution(
+            amount,
+            action.dismissId,
+            meta
+              ? {
+                  taskId: meta.taskId,
+                  surface: meta.surface,
+                  context: meta.taskContext,
+                  timeToActionMs: meta.timeToActionMs,
+                }
+              : null,
           )
           return
         }
@@ -347,7 +327,7 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           void triggerHaptic('selection')
           if (action.dismissId) dismissCard(action.dismissId)
           void Linking.openURL(action.url).catch(() => {
-            Alert.alert('No pudimos abrir el enlace', 'Probá de nuevo más tarde.')
+            Alert.alert('No pudimos abrir el enlace', 'Prueba de nuevo más tarde.')
           })
           return
         }
@@ -359,15 +339,16 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           router.push({ pathname: '/(app)/coach/[signalId]' as any, params })
           return
         }
+        case 'open-settings-modal': {
+          // No router.push — the global host (mounted in
+          // AppStackShell) subscribes to the coordinator and renders
+          // the requested sheet on top of the current screen.
+          void triggerHaptic('selection')
+          openSettingsModal(action.modal)
+          return
+        }
       }
     },
-    [
-      router,
-      warningMutation,
-      anchors,
-      ctx,
-      savingsGoalQuery.data,
-      addContributionMutation,
-    ],
+    [router, anchors, ctx],
   )
 }

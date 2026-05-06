@@ -41,8 +41,8 @@ export class RootErrorBoundary extends Component<
         <View style={styles.root}>
           <Text style={styles.title}>Algo se rompió</Text>
           <Text style={styles.body}>
-            Tocá reintentar para volver a cargar. Si vuelve a pasar, cerrá y
-            abrí la app.
+            Toca reintentar para volver a cargar. Si vuelve a pasar, cierra y
+            abre la app.
           </Text>
           <Pressable
             accessibilityRole="button"

@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 interface CardParticlesProps {
@@ -126,7 +126,15 @@ export function CardParticles({
   )
   const wave = useSharedValue(0)
 
-  useLoopAnimation(
+  // Hero-card particles must NEVER pause from the user's perspective.
+  // Switched from `useLoopAnimation` (which cancels on `useIsFocused`
+  // → false) to `useUnboundedLoopAnimation` (no focus gating).
+  // Reason: with the Stack's `freezeOnBlur: true`, navigating away
+  // from Home and back left the `wave` shared value cancelled and
+  // not always restarted cleanly — users saw the firefly field
+  // "frozen" until app restart. Decorative ambient motion is the
+  // exact use-case where `useUnboundedLoopAnimation` exists.
+  useUnboundedLoopAnimation(
     () => {
       wave.value = withRepeat(
         withTiming(1, { duration: WAVE_DURATION_MS, easing: Easing.linear }),

@@ -3,10 +3,13 @@ import { Platform } from 'react-native'
 import { Stack } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { DailyBudgetNudgeBridge } from '@/components/bridges/daily-budget-nudge-bridge'
+import { GlobalSettingsModalsHost } from '@/components/settings/global-settings-modals-host'
+import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-action-host'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
+import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import {
   getIsAuthTransitionSplashVisible,
@@ -76,6 +79,17 @@ export function AppStackShell() {
   // boundary work in practice (instead of a hardcoded BA default).
   useTimezoneSync()
 
+  // Hydrate the advisor-dismiss cache once familyId + userId are
+  // known. This server-side store replaces the previous SecureStore-
+  // backed dismissals — see `control-dismiss-store.ts` for details.
+  // Mounted up here (BEFORE the conditional `BlockingScreenView`
+  // return) so the hook order stays stable across renders. The hook
+  // itself no-ops while either id is null.
+  useAdvisorDismissalsSync({
+    familyId: snapshot.data?.family?.familyId ?? null,
+    userId: userId ?? null,
+  })
+
   // Bridge home_snapshot errors to the auth transition splash so the
   // user sees a "no internet" fallback instead of the splash hanging
   // forever. We classify by NetInfo first (offline trumps everything),
@@ -123,9 +137,21 @@ export function AppStackShell() {
     return <BlockingScreenView message="Preparando tu espacio..." />
   }
 
+  // The global host is only useful once we know who the user is and
+  // which family they belong to. The snapshot resolves both before we
+  // render the stack (the BlockingScreenView above gates that), so by
+  // this point both ids are stable.
+  const familyId = snapshot.data?.family?.familyId ?? null
+
   return (
     <>
       <DailyBudgetNudgeBridge />
+      {userId && familyId ? (
+        <>
+          <GlobalSettingsModalsHost familyId={familyId} userId={userId} />
+          <GlobalAdvisorActionHost familyId={familyId} userId={userId} />
+        </>
+      ) : null}
       <Stack
         screenOptions={{
           headerShown: false,
@@ -137,7 +163,19 @@ export function AppStackShell() {
           gestureEnabled: true,
         }}
       >
-        <Stack.Screen name="(tabs)" />
+        {/* The `(tabs)` group is the first screen pushed onto this
+            stack right after login (AppEntryGate redirects here once
+            session+family resolve). The push transition fires while
+            the warm splash is still fully opaque on top — animating
+            it is wasted UI-thread work that contests the splash's
+            worklets (~280ms of native push animation overlapping
+            with snapshot RPC processing + tabs tree mounting at the
+            same wall-clock moment). Setting `animation: 'none'`
+            makes the push instant; the splash handles all the
+            visual transition work itself. Pure-navigation pushes to
+            `/(tabs)` after login (and any internal swap) become
+            free UI-thread work. */}
+        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
         <Stack.Screen
           name="onboarding"
           options={{

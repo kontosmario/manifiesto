@@ -242,7 +242,7 @@ export function ControlV2VsMesCard({
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
             Cuando confirmes tu próximo cobro, vamos a cerrar el ciclo
-            actual automáticamente y vas a ver acá cómo te fue contra
+            actual automáticamente y vas a ver aquí cómo te fue contra
             el siguiente.
           </Text>
 
@@ -262,7 +262,7 @@ export function ControlV2VsMesCard({
               color={moodPalette.fg}
             />
             <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-              Seguí registrando tus gastos: una vez cerrado el ciclo,
+              Sigue registrando tus gastos: una vez cerrado el ciclo,
               esta card se activa sola con totales, mood y la categoría
               que más pesó.
             </Text>
@@ -369,7 +369,7 @@ export function ControlV2VsMesCard({
     }
     return {
       icon: 'trending-up' as const,
-      text: `Vas a gastar ${formatMoneyShort(diffAbs)} (~${pctAbs.toFixed(0)}%) más que en ${mesPasadoNombre}. Ajustá el ritmo si querés cerrar más holgado.`,
+      text: `Vas a gastar ${formatMoneyShort(diffAbs)} (~${pctAbs.toFixed(0)}%) más que en ${mesPasadoNombre}. Ajusta el ritmo si quieres cerrar más holgado.`,
     }
   })()
 

@@ -20,7 +20,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
@@ -70,6 +70,13 @@ export function LoginScreen() {
   const reducedMotion = useReducedMotion()
   const controller = useLoginController()
   const { theme } = useAppTheme()
+  // Cold-start biometric auto-fire. AppEntryGate redirects returning
+  // users with saved biometrics to `/(auth)/login?autoBiometric=1`,
+  // expecting the prompt to fire on its own — the user shouldn't have
+  // to tap anything. We read the param once, fire the prompt, then
+  // clear it so a back-navigate or remount can't re-trigger.
+  const params = useLocalSearchParams<{ autoBiometric?: string }>()
+  const autoBiometricFiredRef = useRef(false)
 
   const {
     actions,
@@ -251,16 +258,38 @@ export function LoginScreen() {
     setStatus('scanning')
     try {
       await actions.handleBiometricSignIn()
-      setStatus('authed')
-    } catch {
+      // `handleBiometricSignIn` swallows every non-success path
+      // internally — cancellations, stale credentials, and network
+      // failures all return normally instead of throwing. On actual
+      // success the controller navigates the user away (this screen
+      // unmounts), so reaching this line means the prompt was
+      // cancelled or failed silently. Reset to 'idle' so the CTA
+      // stops saying "Entrando…" and the user can retry.
       setStatus('idle')
-      // Surface the use-password form as a fallback after a Face ID
-      // failure — the stored email is still good, only the biometric
-      // handshake failed.
+    } catch {
+      // Defensive: handleBiometricSignIn doesn't throw today, but
+      // if that ever changes, fall back to the password form so
+      // the user has a path forward.
+      setStatus('idle')
       userPickedModeRef.current = true
       setFormMode('use-password')
     }
   }, [actions, isBusy, status])
+
+  // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
+  // Guarded by a ref so a setState-driven re-render (e.g. status flips
+  // to 'scanning') doesn't re-enter the prompt. We also clear the
+  // param via `router.setParams` so the trigger doesn't survive a
+  // back-navigate or a remount.
+  useEffect(() => {
+    if (autoBiometricFiredRef.current) return
+    if (params.autoBiometric !== '1') return
+    if (!hasSavedBiometric) return
+    if (isBusy || status !== 'idle') return
+    autoBiometricFiredRef.current = true
+    router.setParams({ autoBiometric: undefined })
+    void triggerFaceID()
+  }, [params.autoBiometric, hasSavedBiometric, isBusy, status, router, triggerFaceID])
 
   const handleSwitchAccount = useCallback(() => {
     void triggerHaptic('selection')
@@ -430,7 +459,7 @@ export function LoginScreen() {
             // First-time login (no stored session): unisex welcome-back
             // greeting for users who already have an account but are
             // signing in fresh after an install. No name, no
-            // "tu cuenta guardada", no "Tocá para identificarte" — those
+            // "tu cuenta guardada", no "Toca para identificarte" — those
             // are Face ID copy. The avatar keeps the Fern brand mark.
             <View style={styles.heroBlock}>
               <FadeInUp reduced={reduced} {...fadeUp(100)}>
@@ -460,7 +489,7 @@ export function LoginScreen() {
 
               <FadeInUp reduced={reduced} {...fadeUp(400)}>
                 <Text style={[styles.welcomeBackSub, { color: theme.colors.textSoft }]}>
-                  Ingresá tus datos para volver a tu cuenta.
+                  Ingresa tus datos para volver a tu cuenta.
                 </Text>
               </FadeInUp>
             </View>

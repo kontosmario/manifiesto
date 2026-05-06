@@ -90,6 +90,30 @@ export type ControlAction =
    * wants (full-screen modal today, immersive view later).
    */
   | { kind: 'open-coach-mode'; signalId: string; topic?: string }
+  /**
+   * Open a specific Settings editor sheet directly, without
+   * navigating to the Settings tab. The dispatcher flips the
+   * coordinator at `features/insights/settings-modal-coordinator`
+   * and the global host (mounted in `AppStackShell`) renders the
+   * matching sheet on top of whatever screen is current.
+   *
+   * Use this for advisor signals that want the user to adjust a
+   * specific value (income, payday, savings %, buffer, USD rate,
+   * display name, avatar) — opening the right editor in one tap is
+   * better than dropping the user into the Settings list and asking
+   * them to find the row.
+   */
+  | {
+      kind: 'open-settings-modal'
+      modal:
+        | 'income'
+        | 'payday'
+        | 'savings-percent'
+        | 'usd-rate'
+        | 'buffer'
+        | 'display-name'
+        | 'avatar'
+    }
 
 /** Helper to keep the action field compact at the rule definition. */
 export function a(action: ControlAction): ControlAction {

@@ -25,7 +25,7 @@ interface ControlV2SemanaCardProps {
 const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
 
 /**
- * "Cómo venís esta semana" — auditada y alineada con la familia.
+ * "Cómo vienes esta semana" — auditada y alineada con la familia.
  *
  * Visual:
  *  · Cream surface + accent border tinted por mood (success cuando
@@ -192,7 +192,7 @@ export function ControlV2SemanaCard({
       // thinking we're comparing against actual prior data.
       return {
         icon: 'trending-flat' as const,
-        text: 'Recién arrancás el ciclo. La comparación vs. tu semana anterior aparece a partir del día 14.',
+        text: 'Recién arrancas el ciclo. La comparación vs. tu semana anterior aparece a partir del día 14.',
       }
     }
     return {

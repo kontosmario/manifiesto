@@ -111,6 +111,12 @@ export function useFamilyNotifications(
         .from('notifications')
         .select(NOTIFICATION_COLUMNS)
         .eq('family_id', familyId)
+        // Asistente Financiero signals are NOT shown in this feed.
+        // They live exclusively on the asistente surface, with their
+        // own per-user dismiss table (`advisor_signal_dismissals`).
+        // Filter is defensive — also covers rows inserted by older
+        // builds before the sync hook stopped piping them in.
+        .not('kind', 'like', 'advisor_%')
 
       if (userId) {
         // Include family-wide notifications (user_id IS NULL) OR those
@@ -147,6 +153,9 @@ function unreadNotificationsQueryFn(familyId: string | undefined, userId: string
       .select('id', { count: 'exact', head: true })
       .eq('family_id', familyId)
       .is('read_at', null)
+      // Same filter as the list query — advisor signals don't count
+      // toward the unread badge in the regular feed.
+      .not('kind', 'like', 'advisor_%')
 
     if (userId) {
       query = query.or(`user_id.is.null,user_id.eq.${userId}`)
@@ -226,6 +235,9 @@ export function useMarkAllNotificationsRead(familyId?: string, userId?: string) 
         .update({ read_at: nowIso })
         .eq('family_id', familyId)
         .is('read_at', null)
+        // Don't sweep advisor signals — they're not shown here, and
+        // marking them read would silently affect a different surface.
+        .not('kind', 'like', 'advisor_%')
 
       if (userId) {
         query = query.or(`user_id.is.null,user_id.eq.${userId}`)

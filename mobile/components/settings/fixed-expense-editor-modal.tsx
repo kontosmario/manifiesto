@@ -45,7 +45,7 @@ export function FixedExpenseEditorModal({
     <ModalCard
       visible={visible}
       title={title}
-      subtitle="Definí gastos fijos que impactan el ciclo: recurrentes, periódicos, cuotas o deuda."
+      subtitle="Define gastos fijos que impactan el ciclo: recurrentes, periódicos, cuotas o deuda."
       onClose={onClose}
     >
       <FixedExpenseForm

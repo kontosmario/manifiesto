@@ -173,7 +173,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
     return {
       status: 'unavailable',
       error:
-        'Google sign-in no está disponible en este build. Necesitás un development build (no Expo Go).',
+        'Google sign-in no está disponible en este build. Necesitas un development build (no Expo Go).',
     }
   }
   configureGoogleIfNeeded(google)

@@ -24,7 +24,7 @@ export function selectAsistenteEmptyCopy(
   if (input.usingMock) {
     return {
       title: 'Listos para empezar',
-      body: 'Cargá tu ingreso y un par de gastos para que el asistente pueda mirar tus números.',
+      body: 'Carga tu ingreso y un par de gastos para que el asistente pueda mirar tus números.',
     }
   }
   return {

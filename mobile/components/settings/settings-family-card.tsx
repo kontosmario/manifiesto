@@ -40,7 +40,7 @@ export function SettingsFamilyCard({
           iconFallback="group"
           iconName="person.2.fill"
           onPress={onCopyFamilyCode}
-          subtitle="Tocá para copiar y compartir"
+          subtitle="Toca para copiar y compartir"
           title="Código familiar"
           value={familyCode}
         />
@@ -54,7 +54,7 @@ export function SettingsFamilyCard({
               ? 'Disponible sólo en development build. Expo Go no soporta push remoto.'
               : hasPushSubscription
                 ? 'El dispositivo ya recibe notificaciones.'
-                : 'Activá recordatorios y avisos compartidos.'
+                : 'Activa recordatorios y avisos compartidos.'
           }
           title="Notificaciones"
           value={
@@ -77,7 +77,7 @@ export function SettingsFamilyCard({
           iconFallback="insights"
           iconName="chart.line.uptrend.xyaxis"
           onPress={onOpenControl}
-          subtitle="Abrí control diario, gasto inteligente y tendencia."
+          subtitle="Abre control diario, gasto inteligente y tendencia."
           title="Control"
           value="Ver"
         />
@@ -86,7 +86,7 @@ export function SettingsFamilyCard({
             iconFallback="view-in-ar"
             iconName="arkit"
             onPress={onOpenFilamentSpike}
-            subtitle="Abrí la prueba Filament incluida en el build nativo."
+            subtitle="Abre la prueba Filament incluida en el build nativo."
             title="Spike 3D nativo"
             value="Probar"
           />

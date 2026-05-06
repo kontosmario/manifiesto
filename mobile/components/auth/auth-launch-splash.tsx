@@ -107,15 +107,12 @@ export function AuthLaunchSplash({
         >
           <View style={styles.hero}>
             {/*
-              Same optical-centring shift as welcome-screen.tsx so the
-              splash → welcome handoff lands the Fern at identical
-              pixel coordinates. See the welcome screen comment for
-              the rationale (stem/pill is ~22pt left of geometric
-              centre in the SVG).
+              v2 Fern is horizontally symmetric — no optical shift
+              needed. The splash → welcome handoff still lands the
+              logo at identical coordinates because welcome-screen
+              also dropped the shift.
             */}
-            <View style={styles.logoOpticalAlign}>
-              <FernLogo size={220} palette="light" animate={!reduced} delay={300} />
-            </View>
+            <FernLogo size={220} palette="light" animate={!reduced} delay={300} />
 
             <RiseView delay={1100} duration={900} translateY={12}>
               <View style={styles.wordmarkRow}>
@@ -546,9 +543,6 @@ const styles = StyleSheet.create({
     // anchored at the centre with the wordmark as its caption.
     justifyContent: 'center',
     paddingTop: 120,
-  },
-  logoOpticalAlign: {
-    transform: [{ translateX: 22 }],
   },
   wordmarkRow: {
     flexDirection: 'row',

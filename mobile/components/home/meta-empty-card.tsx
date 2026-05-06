@@ -41,10 +41,10 @@ export const MetaEmptyCard = memo(function MetaEmptyCard() {
         </View>
         <View style={styles.text}>
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            Creá tu primera meta
+            Crea tu primera meta
           </Text>
           <Text style={[styles.subtitle, { color: theme.colors.textMuted }]} maxFontSizeMultiplier={1.4}>
-            Definí un objetivo y el asistente te muestra cuánto adelantás cada ciclo.
+            Define un objetivo y el asistente te muestra cuánto adelantás cada ciclo.
           </Text>
         </View>
         <MaterialIcons name="chevron-right" size={18} color={theme.colors.textMuted} />

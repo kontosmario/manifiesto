@@ -41,7 +41,13 @@ export function AppButton({
     primary: {
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
-      textColor: '#FFFFFF',
+      // Light mode: white on primary-800 (#297811) → 5.54:1, AA-pass.
+      // Dark mode: primary flips to primary-300 (#A6EF8F, light green),
+      // and `#FFFFFF` on it gives 1.37:1 — fails WCAG even for
+      // bold/large text. Switch to the dark canvas color so the label
+      // (and ActivityIndicator spinner) reads against the bright
+      // green pill at 12:1.
+      textColor: theme.isDark ? theme.colors.background : '#FFFFFF',
     },
     secondary: {
       backgroundColor: theme.colors.primarySurface,
@@ -101,11 +107,13 @@ export function AppButton({
         color:
           variant === 'accent'
             ? withAlpha(theme.brand.deep, 0.18)
-            : variant === 'primary' || variant === 'danger'
-              ? withAlpha('#FFFFFF', 0.18)
-              : variant === 'secondary'
-                ? withAlpha(theme.colors.primaryStrong, 0.12)
-                : withAlpha(theme.colors.text, 0.08),
+            : variant === 'primary'
+              ? withAlpha(activeColors.textColor, 0.18)
+              : variant === 'danger'
+                ? withAlpha('#FFFFFF', 0.18)
+                : variant === 'secondary'
+                  ? withAlpha(theme.colors.primaryStrong, 0.12)
+                  : withAlpha(theme.colors.text, 0.08),
       }}
       disabled={isDisabled}
       hitSlop={DEFAULT_HIT_SLOP}

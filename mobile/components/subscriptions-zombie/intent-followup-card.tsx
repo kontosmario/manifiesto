@@ -33,7 +33,7 @@ export function IntentFollowupCard({
 
   const askByKind: Record<typeof followUpKind, string> = {
     payment_recurred: '¿Pasó algo?',
-    no_payment_after_due: '¿Confirmás que la diste de baja?',
+    no_payment_after_due: '¿Confirmas que la diste de baja?',
     awaiting_post_due: '¿Pudiste?',
   }
 

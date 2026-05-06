@@ -113,7 +113,7 @@ export function ControlMonthsSection({
         {!monthlyHistoryIsLoading && history.length === 0 ? (
           <EmptyState
             icon="insights"
-            subtitle="Necesitás algunos meses con movimientos para comparar resultados."
+            subtitle="Necesitas algunos meses con movimientos para comparar resultados."
             title="Sin historial suficiente"
           />
         ) : null}
@@ -150,7 +150,7 @@ export function ControlMonthsSection({
         {monthlyHistory.length === 0 ? (
           <EmptyState
             icon="calendar-month"
-            subtitle="Cuando se acumulen cierres mensuales, acá vas a poder comparar el resultado."
+            subtitle="Cuando se acumulen cierres mensuales, aquí vas a poder comparar el resultado."
             title="Todavía no hay meses cerrados"
           />
         ) : (
@@ -188,7 +188,7 @@ export function ControlMonthsSection({
 
       <BrandedPanel style={styles.card} variant="accent">
         <SectionHeader
-          subtitle="Usalo solo si querés reiniciar el historial variable del hogar."
+          subtitle="Usalo solo si quieres reiniciar el historial variable del hogar."
           title="Herramientas"
         />
         <AppButton

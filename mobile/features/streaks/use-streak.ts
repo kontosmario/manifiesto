@@ -41,6 +41,11 @@ export interface StreakData {
   /** 7 entries, index 0 = 6 days ago, index 6 = today. */
   weekActivity: boolean[]
   isBroken: boolean
+  /** ISO timestamp the streak broke at (server-authoritative), or
+   *  null if not broken. The hourly server cron is the source of
+   *  truth for break detection — the client used to derive this
+   *  locally but that race-conditioned with the at-risk window. */
+  streakBrokenAt: string | null
 }
 
 export interface StreakDerived {
@@ -84,6 +89,7 @@ interface UserStreakRow {
   total_days_logged: number
   last_logged_date: string | null
   freeze_tokens: number
+  streak_broken_at: string | null
 }
 
 export const streakQueryKey = (familyId?: string, userId?: string) =>
@@ -119,7 +125,9 @@ async function fetchStreakRow(
 ): Promise<UserStreakRow | null> {
   const { data, error } = await supabase
     .from('user_streaks')
-    .select('current_streak, longest_streak, total_days_logged, last_logged_date, freeze_tokens')
+    .select(
+      'current_streak, longest_streak, total_days_logged, last_logged_date, freeze_tokens, streak_broken_at',
+    )
     .eq('family_id', familyId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -217,22 +225,29 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
         freezeTokens: 0,
         weekActivity: week,
         isBroken: false,
+        streakBrokenAt: null,
       }
     }
 
     const hasLoggedToday = row.last_logged_date === todayIso
     const hasMarkedNoExpenseToday = markedDays.has(todayIso)
-    // `isBroken` on the client: last log is older than yesterday AND no
-    // shield available. If a shield IS available, we leave the card as
-    // at-risk — the shield consumption happens on the next insert.
-    const lastLogged = row.last_logged_date ? new Date(row.last_logged_date) : null
-    const isBroken = (() => {
-      if (!lastLogged) return false
+    // Server-authoritative `isBroken`: the hourly cron sets
+    // `streak_broken_at` and zeroes `current_streak` once the gap is
+    // too large to recover with a shield. We treat that combination
+    // as the canonical "broken" state.
+    //
+    // Fallback heuristic: if the server hasn't run yet but the client
+    // can plainly see the gap is too large, surface broken anyway.
+    // This covers the lag between the cron run and the next refresh
+    // (worst case ~1h before the cron catches up).
+    const serverBroken = row.streak_broken_at !== null && row.current_streak === 0
+    const heuristicBroken = (() => {
+      if (!row.last_logged_date) return false
       if (row.last_logged_date === todayIso) return false
       if (row.last_logged_date === yesterdayIso) return false
-      // Gap > 1 day.
       return row.freeze_tokens === 0 && row.current_streak > 0
     })()
+    const isBroken = serverBroken || heuristicBroken
 
     return {
       currentStreak: row.current_streak,
@@ -243,6 +258,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
       freezeTokens: row.freeze_tokens,
       weekActivity: week,
       isBroken,
+      streakBrokenAt: row.streak_broken_at,
     }
   }, [familyId, userId, streakRowQuery.data, expensesQuery.data, markedDaysQuery.data])
 
@@ -383,8 +399,11 @@ function buildCopy(input: {
   regressionDay: number
   atRiskIntensity: AtRiskIntensity | null
 }): { headline: string; message: string } {
-  const { status, data, daysToNextLevel, currentLevelLabel, regressionDay, atRiskIntensity } =
-    input
+  // `regressionDay` is preserved on `StreakDerived` for legacy
+  // consumers but the new copy doesn't reference it: the server now
+  // zeroes the streak on break (no level-boundary regression), so
+  // talking about a regression target would be misleading.
+  const { status, data, daysToNextLevel, currentLevelLabel, atRiskIntensity } = input
   const next = LEVELS.find((l) => l.from > data.currentStreak)
 
   if (status === 'active') {
@@ -397,7 +416,7 @@ function buildCopy(input: {
     if (daysToNextLevel > 0 && daysToNextLevel <= 3 && next) {
       return {
         headline: `¡Casi en ${next.label}!`,
-        message: `Solo ${daysToNextLevel} días más para subir de nivel. Seguí así.`,
+        message: `Solo ${daysToNextLevel} días más para subir de nivel. Sigue así.`,
       }
     }
     return {
@@ -405,7 +424,7 @@ function buildCopy(input: {
         data.currentStreak <= 1
           ? 'Empezaste tu racha'
           : `${data.currentStreak} días seguidos, imparable`,
-      message: `Estás en ${currentLevelLabel}. Cada día que registrás tu dinero trabaja mejor para vos.`,
+      message: `Estás en ${currentLevelLabel}. Cada día que registras tu dinero trabaja mejor para ti.`,
     }
   }
 
@@ -416,18 +435,38 @@ function buildCopy(input: {
       const shieldsLabel = `${n} ${n === 1 ? 'escudo' : 'escudos'}`
       return {
         headline: tone.atRiskHeadlineWithShield,
-        message: `${tone.atRiskMessage} Tenés ${shieldsLabel} disponible${n === 1 ? '' : 's'} — si no registrás hoy se activa solo a las 23:59.`,
+        message: `${tone.atRiskMessage} Tenés ${shieldsLabel} disponible${n === 1 ? '' : 's'} — si no registrás hoy se consume uno solo a la medianoche.`,
       }
     }
+    // Without shields, the streak goes to ZERO at the next cron run
+    // (true break). Frame consequence as "se corta" rather than the
+    // old regression bookkeeping; that copy referenced level
+    // boundaries that no longer apply server-side.
+    const dayWord = data.currentStreak === 1 ? 'día' : 'días'
     return {
       headline: tone.atRiskHeadlineNoShield,
-      message: `${tone.atRiskMessage} Sin escudos: si no registrás, volvés al día ${regressionDay} y perdés ${data.currentStreak - regressionDay} ${data.currentStreak - regressionDay === 1 ? 'día' : 'días'} de progreso.`,
+      message: `${tone.atRiskMessage} Llevás ${data.currentStreak} ${dayWord} — sin escudos, si no registrás se corta y mañana arrancás de cero.`,
     }
   }
 
+  // Broken state.
+  // After the server cron processes the break, `currentStreak` is 0
+  // and `longestStreak` keeps the prior best. Frame the copy around
+  // a fresh restart instead of regression bookkeeping (the v1 copy
+  // referenced a `regressionDay` that no longer applies — the new
+  // backend zeroes the streak instead of regressing to a level
+  // boundary).
+  if (data.longestStreak >= 7) {
+    return {
+      headline: 'La racha se cortó',
+      message: `Tu marca personal sigue siendo ${data.longestStreak} ${
+        data.longestStreak === 1 ? 'día' : 'días'
+      }. Cargá un movimiento hoy y arrancá una nueva.`,
+    }
+  }
   return {
     headline: 'La racha se cortó',
-    message: `Arrancás desde el día ${regressionDay}. Las rachas se construyen día a día — empezá hoy y en ${daysToNextLevel} días volvés a donde estabas.`,
+    message: 'Una racha nueva empieza con un solo registro. Cargá hoy y arrancás día 1.',
   }
 }
 
@@ -448,7 +487,7 @@ function resolveDayTone(intensity: AtRiskIntensity): DayTone {
       return {
         atRiskHeadlineWithShield: 'Buen día — tu racha sigue viva',
         atRiskHeadlineNoShield: 'Hoy todavía no registraste',
-        atRiskMessage: 'Tenés toda la jornada por delante, registrá cuando puedas.',
+        atRiskMessage: 'Tienes toda la jornada por delante, registra cuando puedas.',
       }
     case 'gentle':
       return {
@@ -460,13 +499,13 @@ function resolveDayTone(intensity: AtRiskIntensity): DayTone {
       return {
         atRiskHeadlineWithShield: 'Cuidado — se acerca el corte',
         atRiskHeadlineNoShield: 'Faltan pocas horas para medianoche',
-        atRiskMessage: 'Si registrás ahora, evitás cualquier sobresalto.',
+        atRiskMessage: 'Si registras ahora, evitás cualquier sobresalto.',
       }
     case 'critical':
       return {
         atRiskHeadlineWithShield: 'Última hora — racha en riesgo',
         atRiskHeadlineNoShield: 'Última hora antes de medianoche',
-        atRiskMessage: 'Registrá ya para cerrar el día sin perder progreso.',
+        atRiskMessage: 'Registra ya para cerrar el día sin perder progreso.',
       }
   }
 }

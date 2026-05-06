@@ -39,7 +39,7 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
   return (
     <View style={styles.stack}>
       <RiseView>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Elegí tu avatar</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Elige tu avatar</Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
           Lo vas a ver en tu perfil y en la actividad de la familia.
         </Text>

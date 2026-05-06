@@ -54,7 +54,7 @@ export function EditDisplayNameSheet({
         />
         {isInvalid ? (
           <Text style={[styles.error, { color: theme.colors.danger }]}>
-            Ingresá al menos un caracter válido.
+            Ingresa al menos un caracter válido.
           </Text>
         ) : null}
         <AppButton

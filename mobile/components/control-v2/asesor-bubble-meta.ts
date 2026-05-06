@@ -142,7 +142,7 @@ export function bubbleIntro(task: ControlAdvisorTask): string {
   if (task.id.startsWith('zombie-') || task.id.startsWith('undetected-sub-')) {
     return 'Algo raro encontré'
   }
-  if (type === 'warning') return 'Mirá esto'
+  if (type === 'warning') return 'Mira esto'
   return 'Patrón observado'
 }
 
@@ -150,7 +150,7 @@ export function bubbleIntro(task: ControlAdvisorTask): string {
 
 /**
  * Label for the impact chip ("Sobregiro proyectado", "Ahorro anual",
- * "Si bajás 10%"). Falls back to a generic label when the signal id
+ * "Si bajas 10%"). Falls back to a generic label when the signal id
  * isn't recognized.
  */
 export function impactChipLabel(task: ControlAdvisorTask): string {
@@ -162,9 +162,9 @@ export function impactChipLabel(task: ControlAdvisorTask): string {
   if (id === 'savings-feasibility') return 'Falta este mes'
   if (id === 'streak-ok') return 'Refuerzo'
   if (id === 'cat-win') return 'Ahorro vs histórico'
-  if (id === 'cat-accel') return 'Si volvés al promedio'
+  if (id === 'cat-accel') return 'Si vuelves al promedio'
   if (id === 'small-leaks') return 'Total filtraciones'
-  if (id === 'night-impulse') return 'Si bajás 20%'
+  if (id === 'night-impulse') return 'Si bajas 20%'
   if (id === 'weekly-pattern') return 'Premium semanal'
   if (id === 'fijos-ratio') return 'Exceso vs umbral'
   if (id === 'stress-week') return 'A reservar'
@@ -174,7 +174,7 @@ export function impactChipLabel(task: ControlAdvisorTask): string {
   if (id.startsWith('zombie-')) return 'Ahorro anual'
   if (id.startsWith('hike-')) return 'Suba mensual'
   if (id.startsWith('cap-')) return 'Excedente'
-  if (id.startsWith('cat-dominance-')) return 'Si bajás 10%'
+  if (id.startsWith('cat-dominance-')) return 'Si bajas 10%'
   if (id.startsWith('undetected-sub-')) return 'Suscripción anual'
   if (id.startsWith('member-imbalance-')) return 'Carga del miembro'
   if (id.startsWith('income-volatility')) return 'Delta ingreso'

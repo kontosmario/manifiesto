@@ -102,7 +102,7 @@ export function useDailyBudgetNudges() {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: 'Presupuesto del día listo',
-            body: `Hoy arrancás con ${formatMoney(checkinBudget)} para moverte con margen.`,
+            body: `Hoy arrancas con ${formatMoney(checkinBudget)} para moverte con margen.`,
             data: {
               key: `${CHECKIN_NOTIFICATION_KEY}:${familyId}`,
               kind: CHECKIN_NOTIFICATION_KEY,
@@ -131,7 +131,7 @@ export function useDailyBudgetNudges() {
             body:
               summary.remainingToday >= 0
                 ? `Ya usaste gran parte de hoy. Te quedan ${formatMoney(summary.remainingToday)} para cerrar prolijo.`
-                : `Ya te pasaste hoy. Si frenás ahora, mañana abrís con ${formatMoney(summary.projectedTomorrowOpening)}.`,
+                : `Ya te pasaste hoy. Si frenas ahora, mañana abres con ${formatMoney(summary.projectedTomorrowOpening)}.`,
             data: {
               kind: THRESHOLD_NOTIFICATION_KEY,
               url: '/expenses',

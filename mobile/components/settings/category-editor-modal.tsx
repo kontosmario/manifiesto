@@ -44,7 +44,7 @@ export function CategoryEditorModal({
       >
         <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>Nombre visible</Text>
         <Text style={[styles.introText, { color: theme.colors.textMuted }]}>
-          Usá un nombre corto y claro para reconocer la categoría rápido en filtros y formularios.
+          Usa un nombre corto y claro para reconocer la categoría rápido en filtros y formularios.
         </Text>
       </View>
 

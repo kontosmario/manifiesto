@@ -30,7 +30,7 @@ export function computeNextFixedFallback(
   if (input.fixedCount > 0) return null
   return {
     kind: 'empty',
-    primary: 'Cargá tu primer gasto fijo',
+    primary: 'Carga tu primer gasto fijo',
     secondary: 'Alquiler, servicios, suscripciones',
   }
 }

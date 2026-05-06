@@ -39,7 +39,7 @@ interface ComputeArgs {
    *  Home Fijos panel passes `payCycle.end` so that, once the user
    *  pays a fijo this cycle and `next_due_on` rolls forward, the chip
    *  stops surfacing it (the next obligation isn't due yet from the
-   *  perspective of this cycle's "lo que tenés que pagar"). */
+   *  perspective of this cycle's "lo que tienes que pagar"). */
   cycleEnd?: Date
 }
 
@@ -97,7 +97,7 @@ export function computeNextFixed(args: ComputeArgs): NextFixedResult | null {
     if (dueMs < todayMs) continue
     if (dueMs > horizonMs) continue
     // Items whose next obligation falls in a future cycle are not
-    // "lo que tenés que pagar este ciclo" — exclude them.
+    // "lo que tienes que pagar este ciclo" — exclude them.
     if (dueMs >= cycleEndMs) continue
     if (!best || dueMs < best.dueMs) {
       best = { fe, dueMs }

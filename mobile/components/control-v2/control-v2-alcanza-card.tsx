@@ -56,12 +56,12 @@ function safePct(n: number): number {
  *
  * Smarter logic:
  *  · Computes a recommended **daily reduction** for the shortfall
- *    branch using `restanteMes / diasRestantes`. Says "bajá $X/día"
+ *    branch using `restanteMes / diasRestantes`. Says "baja $X/día"
  *    instead of just naming the day-of-runout.
  *  · Surfaces `cycleStartingBalanceOverride` when active, so the
  *    user always knows whether the projection is anchored to their
  *    full salary or the mid-month confirmed balance.
- *  · "Llegás cómodo / justito / no llega" tri-state derived from
+ *  · "Llegas cómodo / justito / no llega" tri-state derived from
  *    `sobrantePresupuestadoMes` + `restanteMes`, not just the binary
  *    `alcanzaElMes`.
  */
@@ -96,7 +96,7 @@ export function ControlV2AlcanzaCard({
 
   // ── Tri-state semantics ──────────────────────────────────────
   // `alcanzaElMes` is binary, but visually we want to differentiate
-  // "sobra cómodo" from "llegás justo" so the user can act earlier.
+  // "sobra cómodo" from "llegas justo" so the user can act earlier.
   // A surplus under one daily cupo means "barely making it".
   const isComfortable =
     alcanzaElMes && sobrantePresupuestadoMes >= cupoDiario
@@ -204,7 +204,7 @@ export function ControlV2AlcanzaCard({
     }
     return {
       icon: 'savings' as const,
-      text: `Sobra ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))}. Podés mover parte a tu meta de ahorro.`,
+      text: `Sobra ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))}. Puedes mover parte a tu meta de ahorro.`,
     }
   })()
 

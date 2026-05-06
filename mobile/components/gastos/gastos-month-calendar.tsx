@@ -205,7 +205,7 @@ function GridMode({
           </View>
         </View>
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>
-          Tocá un día para filtrar sus gastos
+          Toca un día para filtrar sus gastos
         </Text>
         <View style={styles.weekdaysRow}>
           {WEEKDAYS.map((d, i) => (

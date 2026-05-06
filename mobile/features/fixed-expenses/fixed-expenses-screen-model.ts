@@ -150,7 +150,7 @@ export function buildFixedExpensesSections(
           : 'Todavía no cargaste gastos fijos recurrentes.',
       items: recurringItems,
       emptyTitle: 'Sin recurrentes',
-      emptySubtitle: 'Sumá alquiler, servicios o pagos periódicos para ver la base estable del hogar.',
+      emptySubtitle: 'Suma alquiler, servicios o pagos periódicos para ver la base estable del hogar.',
       emptyIcon: 'repeat',
     },
     {
@@ -167,7 +167,7 @@ export function buildFixedExpensesSections(
           : 'No hay planes en cuotas activos.',
       items: installmentItems,
       emptyTitle: 'Sin cuotas',
-      emptySubtitle: 'Registrá compras financiadas para seguir cuánto falta pagar.',
+      emptySubtitle: 'Registra compras financiadas para seguir cuánto falta pagar.',
       emptyIcon: 'payments',
     },
     {
@@ -184,7 +184,7 @@ export function buildFixedExpensesSections(
           : 'No hay deudas cargadas.',
       items: debtItems,
       emptyTitle: 'Sin deudas',
-      emptySubtitle: 'Cuando aparezca una deuda nueva, registrala acá para seguir saldo y pago planificado.',
+      emptySubtitle: 'Cuando aparezca una deuda nueva, registrala aquí para seguir saldo y pago planificado.',
       emptyIcon: 'account-balance-wallet',
     },
   ]

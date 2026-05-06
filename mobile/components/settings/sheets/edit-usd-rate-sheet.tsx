@@ -49,7 +49,7 @@ export function EditUsdRateSheet({
       helper={
         isValid
           ? `1 USD ≈ ${currencyFormatter.format(parsed)}.`
-          : 'Ingresá la cotización actual en ARS.'
+          : 'Ingresa la cotización actual en ARS.'
       }
       errorText={showError ? 'La cotización debe ser mayor a cero.' : undefined}
       saveLabel="Guardar cotización"

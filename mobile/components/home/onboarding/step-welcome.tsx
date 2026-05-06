@@ -27,7 +27,7 @@ export function StepWelcome({
           {isRejoin ? 'Hola de nuevo 👋' : 'Hola 👋'}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Contanos cómo querés que te llamemos.
+          Contanos cómo quieres que te llamemos.
         </Text>
       </RiseView>
 
@@ -49,7 +49,7 @@ export function StepWelcome({
           >
             <Text style={[styles.rejoinText, { color: theme.colors.textMuted }]}>
               El dueño de tu hogar anterior decidió cerrarlo. Tus gastos compartidos quedan allí —
-              acá empezás un hogar nuevo (propio o sumándote con un código).
+              aquí empiezas un hogar nuevo (propio o sumándote con un código).
             </Text>
           </View>
         </RiseView>
@@ -66,7 +66,7 @@ export function StepWelcome({
           >
             <Text style={[styles.rejoinText, { color: theme.colors.textMuted }]}>
               Esperamos que te haya sido agradable la experiencia en tu hogar anterior. A veces los
-              grupos cambian — armemos uno nuevo con vos.
+              grupos cambian — armemos uno nuevo contigo.
             </Text>
           </View>
         </RiseView>

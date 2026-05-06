@@ -32,7 +32,7 @@ export function buildExpenseAnalyticsSuggestions({
     suggestions.push({
       detail: `Si el ritmo actual sigue, te faltarían ${currencyFormatter.format(
         overspend,
-      )}. Bajá unos ${currencyFormatter.format(
+      )}. Baja unos ${currencyFormatter.format(
         overspend / Math.max(daysRemaining, 1),
       )} por día para llegar con aire.`,
       title: 'Riesgo de pasarte antes del próximo cobro',
@@ -45,7 +45,7 @@ export function buildExpenseAnalyticsSuggestions({
       detail: `Para llegar al próximo cobro sin quedarte corto, intentá bajar alrededor de ${currencyFormatter.format(
         adjustmentNeededPerDay,
       )} por día desde mañana.`,
-      title: 'Necesitás ajustar el ritmo diario',
+      title: 'Necesitas ajustar el ritmo diario',
       tone: 'warning',
     })
   }
@@ -84,7 +84,7 @@ export function buildExpenseAnalyticsSuggestions({
     suggestions.push({
       detail: `Los últimos 7 días subieron ${Math.round(
         weeklyDeltaRatio * 100,
-      )}% frente a la semana anterior. Revisá qué se aceleró antes de que se consolide.`,
+      )}% frente a la semana anterior. Revisa qué se aceleró antes de que se consolide.`,
       title: 'El gasto se aceleró esta semana',
       tone: 'warning',
     })

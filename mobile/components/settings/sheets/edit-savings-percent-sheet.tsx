@@ -53,7 +53,7 @@ export function EditSavingsPercentSheet({
     <NumericEditSheet
       visible={visible}
       title="Meta de ahorro"
-      subtitle={`Porcentaje del ingreso mensual que querés reservar para ahorro. Máximo ${MAX_SAVINGS_GOAL_PERCENT}%.`}
+      subtitle={`Porcentaje del ingreso mensual que quieres reservar para ahorro. Máximo ${MAX_SAVINGS_GOAL_PERCENT}%.`}
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => (raw ? `${raw}%` : '')}
@@ -62,7 +62,7 @@ export function EditSavingsPercentSheet({
       helper={helper}
       errorText={
         showError
-          ? `Ingresá un porcentaje entre 0 y ${MAX_SAVINGS_GOAL_PERCENT}.`
+          ? `Ingresa un porcentaje entre 0 y ${MAX_SAVINGS_GOAL_PERCENT}.`
           : undefined
       }
       maxIntegerDigits={3}

@@ -59,7 +59,7 @@ export function StepIncome({
           onChange={onChangeSalaryDay}
         />
         <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-          Siempre podés editarlo desde Ajustes.
+          Siempre puedes editarlo desde Ajustes.
         </Text>
       </RiseView>
     </View>

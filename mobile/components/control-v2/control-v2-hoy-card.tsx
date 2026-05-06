@@ -23,7 +23,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import {
@@ -237,7 +237,11 @@ export function ControlV2HoyCard({
   const markerHalo = useSharedValue(0)
   const ahoraFloat = useSharedValue(0)
   const hintBreath = useSharedValue(0)
-  useLoopAnimation(
+  // Hero-card decorative loops (shimmer / sonar / particles / halo).
+  // Use unbounded variant — these must keep running even when the
+  // Asistente screen blurs (Stack `freezeOnBlur: true` was leaving
+  // them cancelled and not restarting cleanly on focus return).
+  useUnboundedLoopAnimation(
     () => {
       shimmer.value = withRepeat(
         withSequence(

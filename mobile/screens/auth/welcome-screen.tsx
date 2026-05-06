@@ -76,16 +76,13 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
       >
         <View style={styles.hero}>
           {/*
-            The Fern brand mark's stem + pill sit at viewBox x≈200,
-            ~50 SVG units left of the geometric center (251). With the
-            normal viewBox that translates to ~22pt of left-bias on a
-            220pt logo, which makes the wordmark below appear off-axis.
-            A small translateX on this wrapper nudges the rendered SVG
-            right so the visual axis (stem) aligns with the wordmark.
+            The Fern v2 brand mark is horizontally symmetric — its
+            stem sits at viewBox x≈405 (within 1.7% of the geometric
+            centre). The asymmetric optical shift the v1 mark needed
+            is no longer required; rendering the SVG with default flex
+            centring puts the stem visually on-axis with the wordmark.
           */}
-          <View style={styles.logoOpticalAlign}>
-            <FernLogo size={220} palette="light" animate delay={300} />
-          </View>
+          <FernLogo size={220} palette="light" animate delay={300} />
 
           <RiseView delay={1100} duration={900} translateY={12}>
             <View style={styles.wordmarkRow}>
@@ -110,7 +107,7 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
             <SecondaryCta label="Ya tengo cuenta" onPress={onLogin} />
 
             <Text style={styles.fineprint}>
-              Al continuar aceptás los{' '}
+              Al continuar aceptas los{' '}
               <Text style={styles.fineprintLink}>Términos</Text> y la{' '}
               <Text style={styles.fineprintLink}>Privacidad</Text>
             </Text>
@@ -212,12 +209,6 @@ const styles = StyleSheet.create({
     // high"). The wordmark sits as a caption immediately below.
     justifyContent: 'center',
     paddingTop: 120,
-  },
-  // Optical centering for the Fern: the stem/pill sit ~22pt left of
-  // the SVG's geometric centre, so we shift the wrapper right by the
-  // same amount to align the visual axis with the wordmark below.
-  logoOpticalAlign: {
-    transform: [{ translateX: 22 }],
   },
   wordmarkRow: {
     flexDirection: 'row',

@@ -1,0 +1,310 @@
+<html lang="es"><head>
+<meta charset="utf-8">
+<title>Manifiesto — Fern v2 Animation Preview</title>
+<style>
+  :root {
+    --forest: #0E3A26;
+    --forest-deep: #082118;
+    --cream: #FDFEF9;
+    --leaf-bright: #A9D57F;
+    --leaf-dark: #1F7A4B;
+    --peach: #F2B58A;
+    --warm-bg: #1F3A2E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0a1410;
+    color: var(--cream);
+    padding: 32px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 8px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    color: #94a89c;
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1280px;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--warm-bg);
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: #94a89c;
+    margin: 0;
+    line-height: 1.5;
+    min-height: 36px;
+  }
+  .stage {
+    aspect-ratio: 1;
+    background: var(--forest);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .stage svg {
+    width: 80%;
+    height: 80%;
+  }
+  .replay-btn {
+    background: var(--peach);
+    color: var(--forest-deep);
+    border: none;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: -0.2px;
+    transition: opacity 120ms;
+  }
+  .replay-btn:hover { opacity: 0.9; }
+  .replay-btn:active { transform: scale(0.98); }
+  .global-controls {
+    margin-top: 32px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .all-replay {
+    background: var(--leaf-bright);
+    color: var(--forest-deep);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .pick-hint {
+    font-size: 12px;
+    color: #94a89c;
+  }
+
+  /* ───────────────────────────────────────────────────────────────
+     VARIANT A — "Sprout"
+     Single bottom-up clip reveal. Stem grows out of the bottom edge,
+     leaves unfurl as the clip continues rising. Plant-grows-from-soil
+     metaphor. ~900ms total.
+     ─────────────────────────────────────────────────────────────── */
+  .a-clip-rect {
+    transform-origin: 0 100%;
+    transform: scaleY(0);
+    animation: a-grow 900ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  .a-replay .a-clip-rect { animation: a-grow 900ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards; }
+  @keyframes a-grow {
+    0%   { transform: scaleY(0); }
+    100% { transform: scaleY(1); }
+  }
+
+  /* ───────────────────────────────────────────────────────────────
+     VARIANT B — "Sprout & fill" (refined stem draw)
+     Phase 1 (0-900ms): stem draws itself bottom→V using stroke-dashoffset.
+                        Looks like ink/sap rising up the path.
+     Phase 2 (700-1100ms): full cream silhouette fades in behind the
+                           stroke (the halo materialises around the
+                           drawing stem; leaf-shaped haloes appear).
+     Phase 3 (1000-1500ms): green leaves fade in over their haloes.
+     Total ~1.5s. Narrates "stem grows → halo appears → leaves bloom".
+     ─────────────────────────────────────────────────────────────── */
+  /* Stem-tracer path. Geometry measured directly off the cream
+     silhouette (`scripts/measure-fern-stem.mjs`):
+       ▸ centerline: (405.25, 486.5) → (406.0, 648.5) — basically
+         vertical at x≈406, slight drift right toward bottom
+       ▸ width: median 21px in viewBox units
+       ▸ path length: ~162 → dasharray 175 (small buffer)
+     With stroke-width 21 + linecap round, the stroke matches the
+     silhouette stem pixel-for-pixel; fading out hands off invisibly. */
+  .b-stem-trace {
+    stroke-dasharray: 175;
+    stroke-dashoffset: 175;
+    animation:
+      b-stem-draw 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards,
+      b-stem-fade 350ms ease-out 850ms forwards;
+  }
+  .b-silhouette {
+    opacity: 0;
+    animation: b-fade-in 450ms cubic-bezier(0.22, 0.61, 0.36, 1) 700ms forwards;
+  }
+  .b-leaf {
+    opacity: 0;
+    animation: b-fade-in 500ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  /* Small leaf (left) appears first, big leaf (right) closes the
+     entrance — gives the bloom a gentle build-up rather than leading
+     with the visually heaviest element. */
+  .b-leaf-l { animation-delay: 1000ms; }
+  .b-leaf-r { animation-delay: 1140ms; }
+  @keyframes b-stem-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes b-stem-fade {
+    /* Trace fades out as the silhouette fade-in takes over so we
+       don't end up with a stroke + fill double-stack on the stem. */
+    to { opacity: 0; }
+  }
+  @keyframes b-fade-in {
+    to { opacity: 1; }
+  }
+
+  /* ───────────────────────────────────────────────────────────────
+     VARIANT C — "Sway loop"
+     Logo enters with a quick fade, then leaves sway gently in a
+     continuous loop (like wind brushing them). Stem stays anchored.
+     ~6s loop. Subtle, ambient, good for splash idle.
+     ─────────────────────────────────────────────────────────────── */
+  .c-fade {
+    opacity: 0;
+    animation: c-fade-in 500ms ease-out 100ms forwards;
+  }
+  .c-leaf-r {
+    transform-box: fill-box;
+    transform-origin: 0% 100%;  /* base of right leaf (where it meets stem) */
+    animation: c-sway-r 5s ease-in-out 600ms infinite;
+  }
+  .c-leaf-l {
+    transform-box: fill-box;
+    transform-origin: 100% 100%; /* base of left leaf */
+    animation: c-sway-l 5s ease-in-out 600ms infinite;
+  }
+  @keyframes c-fade-in {
+    to { opacity: 1; }
+  }
+  @keyframes c-sway-r {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(-3deg); }
+  }
+  @keyframes c-sway-l {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(3deg); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Manifiesto · Fern v2 — Animación de logo</h1>
+<p class="subtitle">Tres opciones de entrada para el splash y login. Click en cada "Replay" para volver a verlas. La idea ganadora se traduce 1:1 a Reanimated.</p>
+
+<div class="grid">
+
+  <!-- ════════ VARIANT A — Sprout ════════ -->
+  <div class="card" id="card-a">
+    <h2 class="card-title">A — Sprout</h2>
+    <p class="card-desc">Clip de abajo hacia arriba único. La planta crece desde el borde inferior. Una sola onda de revelado. ~900ms.</p>
+    <div class="stage">
+      <svg viewBox="0 0 841 742" xmlns="http://www.w3.org/2000/svg" id="svg-a">
+        <defs>
+          <clipPath id="grow-clip-a">
+            <rect class="a-clip-rect" x="0" y="0" width="841" height="742"></rect>
+          </clipPath>
+        </defs>
+        <g clip-path="url(#grow-clip-a)">
+          <path fill="#FDFEF9" transform="scale(0.725 0.725318)" d="M930.253 161.648C952.922 159.917 1062.65 162.321 1076.44 174.946C1079.49 177.73 1079.97 182.367 1080.01 186.271C1080.2 205.99 1073.97 226.042 1069.75 245.157C1050.77 331.198 1019.52 419.339 967.311 491.088C958.351 503.402 949.002 515.375 938.355 526.29C892.277 573.533 835.21 606.984 767.766 607.738C704.872 608.441 663.17 580.618 619.808 538.225C612.042 551.619 604.976 565.241 599.394 579.713C562.824 674.534 577.135 784.414 575.226 884.105C575.094 891.017 574.839 899.088 569.313 904.098C566.753 906.419 563.54 907.347 560.122 907.064C553.915 906.55 549.809 902.664 545.937 898.219C544.903 850.17 546.229 802.453 545.856 754.442C545.687 732.639 546.482 705.849 543.286 684.587C538.997 656.056 525.326 615.996 505.998 594.098C471.757 641.839 423.33 665.422 364.287 656.958C361.934 656.532 359.589 656.063 357.252 655.552C292.47 641.763 247.364 597.198 212.432 543.25C202.547 527.751 193.559 511.698 185.511 495.17C176.231 476.329 139.547 392.415 143.742 375.865C144.27 373.78 145.452 372.567 147.286 371.505C155.165 366.941 176.958 362.948 186.794 361.124C251.798 349.071 338.872 343.373 403.143 360.107C449.172 372.091 487.461 397.644 511.7 439.119C538.02 484.154 532.767 522.432 520.174 570.237C529.873 584.248 539.612 597.775 547.484 612.911C549.8 617.364 552.056 622.19 554.717 626.383C562.515 596.662 570.598 571.293 584.369 543.61C589.503 533.291 595.151 523.284 600.587 513.116C597.622 506.214 593.352 497.641 590.117 490.746C578.915 466.869 574.123 446.843 572.474 420.558C569.457 364.126 588.941 308.8 626.655 266.71C699.915 183.799 826.22 168.029 930.253 161.648Z"></path>
+          <path fill="#A9D57F" transform="scale(0.725 0.725318)" d="M940.001 190.008C976.452 189.436 1012.9 191.405 1049.08 195.901C1047.96 206.133 1046.52 216.328 1044.75 226.468C1039.09 258.278 1028.32 293.779 1017.85 324.454C990.198 405.487 949.024 493.189 876.722 543.311C840.482 568.434 786.505 586.1 742.513 577.238C698.365 568.346 662.384 548.669 636.588 511.375C651.629 486.891 667.932 470.004 688.321 449.745C700.69 437.455 710.432 427.807 724.066 416.835C740.014 403.518 756.623 391.011 773.828 379.362C778.29 376.362 782.793 373.335 787.494 370.523C795.451 365.757 804.841 362.059 811.563 355.592C814.02 353.139 814.386 349.645 812.82 346.623C807.626 336.598 797.538 342.155 790.071 345.557C782.881 348.832 776.098 352.422 769.25 356.208C724.897 380.222 684.913 411.546 650.981 448.86C639.941 460.912 629.717 473.591 619.353 486.222C607.842 463.542 601.504 438.592 600.793 413.168C599.721 364.873 617.657 318.089 650.74 282.886C701.833 229.232 768.24 210.12 839.336 199.1C872.689 194.145 906.299 191.11 940.001 190.008Z"></path>
+          <path fill="#A9D57F" transform="scale(0.725 0.725318)" d="M299.425 371.216C325.942 368.849 368.616 375.554 394.913 381.185C431.308 388.979 467.255 411.085 487.374 442.889C509.898 478.492 511.072 511.978 502.224 551.543C466.873 522.344 431.932 496.886 387.985 482.014C381.25 479.735 358.193 468.482 352.419 475.503C344.307 485.366 373.887 494.667 379.659 497.195C386.443 500.186 393.14 503.367 399.744 506.736C426.763 520.381 446.339 534.016 469.306 553.437C477.807 560.605 483.531 567.102 491.042 575.382C476.584 600.7 453.484 619.958 425.978 629.626C395.077 640.598 358.147 637.769 328.735 623.233C253.52 586.058 210.161 502.676 181.261 427.685C176.412 415.103 172.678 401.625 168.179 388.882C202.606 377.39 262.485 373.148 299.425 371.216Z"></path>
+        </g>
+      </svg>
+    </div>
+    <button class="replay-btn" data-replay="a">↻ Replay</button>
+  </div>
+
+  <!-- ════════ VARIANT B — Sprout & fill ════════ -->
+  <div class="card" id="card-b">
+    <h2 class="card-title">B — Sprout &amp; fill</h2>
+    <p class="card-desc">Tallo + silueta crecen primero (cream). Luego las hojas aparecen llenas de verde, una tras otra, en posición exacta. ~1.3s.</p>
+    <div class="stage">
+      <svg viewBox="0 0 841 742" xmlns="http://www.w3.org/2000/svg" id="svg-b">
+        <!-- Cream silhouette — fades in BEHIND the stem trace -->
+        <path class="b-silhouette" fill="#FDFEF9" transform="scale(0.725 0.725318)" d="M930.253 161.648C952.922 159.917 1062.65 162.321 1076.44 174.946C1079.49 177.73 1079.97 182.367 1080.01 186.271C1080.2 205.99 1073.97 226.042 1069.75 245.157C1050.77 331.198 1019.52 419.339 967.311 491.088C958.351 503.402 949.002 515.375 938.355 526.29C892.277 573.533 835.21 606.984 767.766 607.738C704.872 608.441 663.17 580.618 619.808 538.225C612.042 551.619 604.976 565.241 599.394 579.713C562.824 674.534 577.135 784.414 575.226 884.105C575.094 891.017 574.839 899.088 569.313 904.098C566.753 906.419 563.54 907.347 560.122 907.064C553.915 906.55 549.809 902.664 545.937 898.219C544.903 850.17 546.229 802.453 545.856 754.442C545.687 732.639 546.482 705.849 543.286 684.587C538.997 656.056 525.326 615.996 505.998 594.098C471.757 641.839 423.33 665.422 364.287 656.958C361.934 656.532 359.589 656.063 357.252 655.552C292.47 641.763 247.364 597.198 212.432 543.25C202.547 527.751 193.559 511.698 185.511 495.17C176.231 476.329 139.547 392.415 143.742 375.865C144.27 373.78 145.452 372.567 147.286 371.505C155.165 366.941 176.958 362.948 186.794 361.124C251.798 349.071 338.872 343.373 403.143 360.107C449.172 372.091 487.461 397.644 511.7 439.119C538.02 484.154 532.767 522.432 520.174 570.237C529.873 584.248 539.612 597.775 547.484 612.911C549.8 617.364 552.056 622.19 554.717 626.383C562.515 596.662 570.598 571.293 584.369 543.61C589.503 533.291 595.151 523.284 600.587 513.116C597.622 506.214 593.352 497.641 590.117 490.746C578.915 466.869 574.123 446.843 572.474 420.558C569.457 364.126 588.941 308.8 626.655 266.71C699.915 183.799 826.22 168.029 930.253 161.648Z"></path>
+        <!--
+          Stem-tracer overlay — exact match to the silhouette stem.
+          Centerline + width measured by `scripts/measure-fern-stem.mjs`.
+          Animated via stroke-dashoffset so it draws itself bottom→top
+          like ink rising; fades out as the silhouette materialises so
+          there's no visible stack at the seam.
+        -->
+        <!-- Path direction matters for stroke-dashoffset: the M is the
+             START, so we begin at the BOTTOM and curve up to the V.
+             That makes the stem grow upward like a sprout. -->
+        <path class="b-stem-trace" fill="none" stroke="#FDFEF9" stroke-width="21" stroke-linecap="round" d="M 406.00 648.50 C 405.90 593.42, 405.45 539.96, 405.25 486.50"></path>
+        <!-- Green leaves — fade in last on top of their cream haloes -->
+        <path class="b-leaf b-leaf-r" fill="#A9D57F" transform="scale(0.725 0.725318)" d="M940.001 190.008C976.452 189.436 1012.9 191.405 1049.08 195.901C1047.96 206.133 1046.52 216.328 1044.75 226.468C1039.09 258.278 1028.32 293.779 1017.85 324.454C990.198 405.487 949.024 493.189 876.722 543.311C840.482 568.434 786.505 586.1 742.513 577.238C698.365 568.346 662.384 548.669 636.588 511.375C651.629 486.891 667.932 470.004 688.321 449.745C700.69 437.455 710.432 427.807 724.066 416.835C740.014 403.518 756.623 391.011 773.828 379.362C778.29 376.362 782.793 373.335 787.494 370.523C795.451 365.757 804.841 362.059 811.563 355.592C814.02 353.139 814.386 349.645 812.82 346.623C807.626 336.598 797.538 342.155 790.071 345.557C782.881 348.832 776.098 352.422 769.25 356.208C724.897 380.222 684.913 411.546 650.981 448.86C639.941 460.912 629.717 473.591 619.353 486.222C607.842 463.542 601.504 438.592 600.793 413.168C599.721 364.873 617.657 318.089 650.74 282.886C701.833 229.232 768.24 210.12 839.336 199.1C872.689 194.145 906.299 191.11 940.001 190.008Z"></path>
+        <path class="b-leaf b-leaf-l" fill="#A9D57F" transform="scale(0.725 0.725318)" d="M299.425 371.216C325.942 368.849 368.616 375.554 394.913 381.185C431.308 388.979 467.255 411.085 487.374 442.889C509.898 478.492 511.072 511.978 502.224 551.543C466.873 522.344 431.932 496.886 387.985 482.014C381.25 479.735 358.193 468.482 352.419 475.503C344.307 485.366 373.887 494.667 379.659 497.195C386.443 500.186 393.14 503.367 399.744 506.736C426.763 520.381 446.339 534.016 469.306 553.437C477.807 560.605 483.531 567.102 491.042 575.382C476.584 600.7 453.484 619.958 425.978 629.626C395.077 640.598 358.147 637.769 328.735 623.233C253.52 586.058 210.161 502.676 181.261 427.685C176.412 415.103 172.678 401.625 168.179 388.882C202.606 377.39 262.485 373.148 299.425 371.216Z"></path>
+      </svg>
+    </div>
+    <button class="replay-btn" data-replay="b">↻ Replay</button>
+  </div>
+
+  <!-- ════════ VARIANT C — Sway loop ════════ -->
+  <div class="card" id="card-c">
+    <h2 class="card-title">C — Sway loop</h2>
+    <p class="card-desc">Entrada rápida con fade + las hojas oscilan suave en loop, como con viento. Tallo siempre quieto. Ideal para splash idle.</p>
+    <div class="stage">
+      <svg viewBox="0 0 841 742" xmlns="http://www.w3.org/2000/svg" id="svg-c">
+        <g class="c-fade">
+          <path fill="#FDFEF9" transform="scale(0.725 0.725318)" d="M930.253 161.648C952.922 159.917 1062.65 162.321 1076.44 174.946C1079.49 177.73 1079.97 182.367 1080.01 186.271C1080.2 205.99 1073.97 226.042 1069.75 245.157C1050.77 331.198 1019.52 419.339 967.311 491.088C958.351 503.402 949.002 515.375 938.355 526.29C892.277 573.533 835.21 606.984 767.766 607.738C704.872 608.441 663.17 580.618 619.808 538.225C612.042 551.619 604.976 565.241 599.394 579.713C562.824 674.534 577.135 784.414 575.226 884.105C575.094 891.017 574.839 899.088 569.313 904.098C566.753 906.419 563.54 907.347 560.122 907.064C553.915 906.55 549.809 902.664 545.937 898.219C544.903 850.17 546.229 802.453 545.856 754.442C545.687 732.639 546.482 705.849 543.286 684.587C538.997 656.056 525.326 615.996 505.998 594.098C471.757 641.839 423.33 665.422 364.287 656.958C361.934 656.532 359.589 656.063 357.252 655.552C292.47 641.763 247.364 597.198 212.432 543.25C202.547 527.751 193.559 511.698 185.511 495.17C176.231 476.329 139.547 392.415 143.742 375.865C144.27 373.78 145.452 372.567 147.286 371.505C155.165 366.941 176.958 362.948 186.794 361.124C251.798 349.071 338.872 343.373 403.143 360.107C449.172 372.091 487.461 397.644 511.7 439.119C538.02 484.154 532.767 522.432 520.174 570.237C529.873 584.248 539.612 597.775 547.484 612.911C549.8 617.364 552.056 622.19 554.717 626.383C562.515 596.662 570.598 571.293 584.369 543.61C589.503 533.291 595.151 523.284 600.587 513.116C597.622 506.214 593.352 497.641 590.117 490.746C578.915 466.869 574.123 446.843 572.474 420.558C569.457 364.126 588.941 308.8 626.655 266.71C699.915 183.799 826.22 168.029 930.253 161.648Z"></path>
+          <path class="c-leaf-r" fill="#A9D57F" transform="scale(0.725 0.725318)" d="M940.001 190.008C976.452 189.436 1012.9 191.405 1049.08 195.901C1047.96 206.133 1046.52 216.328 1044.75 226.468C1039.09 258.278 1028.32 293.779 1017.85 324.454C990.198 405.487 949.024 493.189 876.722 543.311C840.482 568.434 786.505 586.1 742.513 577.238C698.365 568.346 662.384 548.669 636.588 511.375C651.629 486.891 667.932 470.004 688.321 449.745C700.69 437.455 710.432 427.807 724.066 416.835C740.014 403.518 756.623 391.011 773.828 379.362C778.29 376.362 782.793 373.335 787.494 370.523C795.451 365.757 804.841 362.059 811.563 355.592C814.02 353.139 814.386 349.645 812.82 346.623C807.626 336.598 797.538 342.155 790.071 345.557C782.881 348.832 776.098 352.422 769.25 356.208C724.897 380.222 684.913 411.546 650.981 448.86C639.941 460.912 629.717 473.591 619.353 486.222C607.842 463.542 601.504 438.592 600.793 413.168C599.721 364.873 617.657 318.089 650.74 282.886C701.833 229.232 768.24 210.12 839.336 199.1C872.689 194.145 906.299 191.11 940.001 190.008Z"></path>
+          <path class="c-leaf-l" fill="#A9D57F" transform="scale(0.725 0.725318)" d="M299.425 371.216C325.942 368.849 368.616 375.554 394.913 381.185C431.308 388.979 467.255 411.085 487.374 442.889C509.898 478.492 511.072 511.978 502.224 551.543C466.873 522.344 431.932 496.886 387.985 482.014C381.25 479.735 358.193 468.482 352.419 475.503C344.307 485.366 373.887 494.667 379.659 497.195C386.443 500.186 393.14 503.367 399.744 506.736C426.763 520.381 446.339 534.016 469.306 553.437C477.807 560.605 483.531 567.102 491.042 575.382C476.584 600.7 453.484 619.958 425.978 629.626C395.077 640.598 358.147 637.769 328.735 623.233C253.52 586.058 210.161 502.676 181.261 427.685C176.412 415.103 172.678 401.625 168.179 388.882C202.606 377.39 262.485 373.148 299.425 371.216Z"></path>
+        </g>
+      </svg>
+    </div>
+    <button class="replay-btn" data-replay="c">↻ Replay</button>
+  </div>
+
+</div>
+
+<div class="global-controls">
+  <button class="all-replay" id="all-replay">↻ Replay todos</button>
+  <span class="pick-hint">Decime cuál te gusta (A, B, o C) y la traduzco a Reanimated 1:1.</span>
+</div>
+
+<script>
+  // Replay logic — restart CSS animations by removing/reapplying the
+  // animation class (or cloning the node, which is the most robust).
+  function replay(scope) {
+    const card = document.getElementById('card-' + scope);
+    const stage = card.querySelector('.stage');
+    const oldSvg = stage.querySelector('svg');
+    const newSvg = oldSvg.cloneNode(true);
+    stage.replaceChild(newSvg, oldSvg);
+  }
+  document.querySelectorAll('[data-replay]').forEach(btn => {
+    btn.addEventListener('click', () => replay(btn.dataset.replay));
+  });
+  document.getElementById('all-replay').addEventListener('click', () => {
+    ['a', 'b', 'c'].forEach(replay);
+  });
+</script>
+
+
+
+</body></html>

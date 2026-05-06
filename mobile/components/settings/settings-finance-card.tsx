@@ -130,7 +130,7 @@ export function SettingsFinanceCard({
         ]}
       >
         <SectionHeader
-          subtitle="Define cuánto margen querés reservar antes de repartir el disponible por día."
+          subtitle="Define cuánto margen quieres reservar antes de repartir el disponible por día."
           title="Presupuesto diario"
         />
         <SegmentedControl

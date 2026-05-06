@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -47,6 +47,15 @@ import {
 } from '@/features/push/use-push-notifications'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { resetAllTours } from '@/features/tours'
+import {
+  setAssistantDemoMode,
+  useAssistantDemoMode,
+} from '@/features/insights/assistant-demo-store'
+import {
+  setAssistantDemoFilter,
+  useAssistantDemoFilter,
+  type AssistantDemoFilter,
+} from '@/features/insights/assistant-demo-filter-store'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import {
   hideAuthTransitionSplash,
@@ -280,7 +289,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     if (!supportsRemotePushNotifications) {
       Alert.alert(
         'Requiere development build',
-        'Expo Go ya no soporta notificaciones push remotas desde SDK 53. Abrí la app en un development build para activarlas.',
+        'Expo Go ya no soporta notificaciones push remotas desde SDK 53. Abre la app en un development build para activarlas.',
       )
       return
     }
@@ -412,6 +421,28 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     void triggerHaptic('selection')
     hideAuthTransitionSplash()
   }, [])
+
+  // TESTING flag: when ON, the Asistente returns a curated fixture
+  // covering every signal scenario + every CTA action kind, so we
+  // can step through every coach card and quick action without
+  // having to reproduce the data preconditions.
+  const assistantDemoMode = useAssistantDemoMode()
+  const handleToggleAssistantDemo = useCallback((next: boolean) => {
+    void triggerHaptic('selection')
+    void setAssistantDemoMode(next)
+  }, [])
+  // Companion filter: narrows the demo fixture to a single behavior
+  // class so each bucket (read-only / routing / mutation / sin
+  // acción) can be tested in isolation. Only meaningful while
+  // `assistantDemoMode` is on.
+  const assistantDemoFilter = useAssistantDemoFilter()
+  const handleAssistantDemoFilter = useCallback(
+    (next: AssistantDemoFilter) => {
+      void triggerHaptic('selection')
+      void setAssistantDemoFilter(next)
+    },
+    [],
+  )
 
   // ── Values shown on rows ──────────────────────────────────────
   const myContributionValue =
@@ -644,7 +675,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 />
                 {/*
                   Why a single row for both flows: the previous
-                  read-only "Tenés miembros en tu hogar" placeholder
+                  read-only "Tienes miembros en tu hogar" placeholder
                   left owners with no path forward — they had to
                   guess that "Gestionar miembros" → transfer was the
                   only escape. We now show one destructive row whose
@@ -734,10 +765,47 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Force-hide para recuperar de un estado pegado."
                     icon="cancel"
-                    isLast
                     label="Forzar cierre del splash"
                     onPress={handleForceHideTransitionSplash}
                   />
+                  <SettingsRow
+                    helper="Reemplaza las señales del Asistente Financiero por una lista demo con un ejemplo de cada escenario y de cada acción rápida disponible."
+                    icon="auto-fix-high"
+                    isLast
+                    label="Modo demo del asistente"
+                    trailing={
+                      <Switch
+                        accessibilityLabel="Activar modo demo del asistente"
+                        onValueChange={handleToggleAssistantDemo}
+                        value={assistantDemoMode}
+                      />
+                    }
+                  />
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
+
+            {/* 7b. Filtro del modo demo. Solo aparece cuando el modo
+                demo está encendido — en la lista normal de señales no
+                tiene sentido filtrar. */}
+            {__DEV__ && assistantDemoMode ? (
+              <RiseView delay={320}>
+                <SettingsGroup
+                  footer="Filtra las tarjetas demo por tipo de acción para probar cada bucket por separado."
+                  title="Filtro demo"
+                >
+                  <View style={styles.appearanceInner}>
+                    <SegmentedControl<AssistantDemoFilter>
+                      onChange={handleAssistantDemoFilter}
+                      options={[
+                        { label: 'Todas', value: 'all' },
+                        { label: 'Read-only', value: 'read-only' },
+                        { label: 'Routing', value: 'routing' },
+                        { label: 'Acción', value: 'action' },
+                      ]}
+                      value={assistantDemoFilter}
+                    />
+                  </View>
                 </SettingsGroup>
               </RiseView>
             ) : null}

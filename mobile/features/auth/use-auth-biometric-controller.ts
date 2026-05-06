@@ -11,6 +11,10 @@ import {
   saveBiometricCredentials,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
+import {
+  hideAuthTransitionSplash,
+  showAuthTransitionSplash,
+} from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -68,10 +72,10 @@ export function useAuthBiometricController({
         // own a perfectly clear "Cancel / scan" dialog; the
         // app-level pre-prompt was asking the same question twice.
         // The setup-specific `promptMessage` keeps the context
-        // ("Activá X para entrar más rápido la próxima vez") so the
+        // ("Activa X para entrar más rápido la próxima vez") so the
         // user understands this is opt-in setup, not a guard.
         const biometricResult = await authenticateBiometricAccess({
-          promptMessage: `Activá ${nextBiometricState.label} para entrar más rápido la próxima vez.`,
+          promptMessage: `Activa ${nextBiometricState.label} para entrar más rápido la próxima vez.`,
         })
 
         if (!biometricResult.success) {
@@ -111,13 +115,13 @@ export function useAuthBiometricController({
 
       if (!biometricState.isAvailable) {
         onInfoMessage(`Este dispositivo no tiene ${biometricState.label} disponible para Manifiesto.`)
-        await triggerHaptic('warning')
+        void triggerHaptic('warning')
         return
       }
 
       if (!biometricState.hasSavedCredentials) {
-        onInfoMessage(`Ingresá una vez con email y contraseña para activar ${biometricState.label}.`)
-        await triggerHaptic('selection')
+        onInfoMessage(`Ingresa una vez con email y contraseña para activar ${biometricState.label}.`)
+        void triggerHaptic('selection')
         return
       }
 
@@ -133,18 +137,39 @@ export function useAuthBiometricController({
             biometricResult.error !== 'user_cancel' &&
             biometricResult.error !== 'system_cancel'
           ) {
-            await triggerHaptic('warning')
+            void triggerHaptic('warning')
           }
           return
         }
 
+        // ⚡ Optimistic feedback path. The native biometric prompt
+        // just confirmed the match — fire the success haptic AND
+        // open the splash overlay BEFORE the network round trip.
+        // Previously these came AFTER `signInWithPassword`, so the
+        // user felt:
+        //   · Face ID prompt closes → ~700-1500ms of nothing →
+        //     late haptic + splash appears
+        // The new sequence:
+        //   · Face ID prompt closes → instant haptic + splash →
+        //     network runs invisibly behind the splash → on
+        //     success, the navigate happens (splash already up)
+        // `void` (no await) so the haptic and splash kickoff don't
+        // block the JS thread — the network call starts on the
+        // very next tick.
+        void triggerHaptic('success')
+        showAuthTransitionSplash()
+
         const credentials = await getBiometricCredentials()
 
         if (!credentials) {
+          // Stale credentials — hide the optimistic splash before
+          // surfacing the recovery prompt so the user isn't staring
+          // at a loading screen for a known failure.
+          hideAuthTransitionSplash()
           await clearBiometricCredentials()
           await refreshBiometricState()
-          onInfoMessage(`Volvé a ingresar manualmente para reactivar ${biometricState.label}.`)
-          await triggerHaptic('warning')
+          onInfoMessage(`Vuelve a ingresar manualmente para reactivar ${biometricState.label}.`)
+          void triggerHaptic('warning')
           return
         }
 
@@ -153,12 +178,18 @@ export function useAuthBiometricController({
           password: credentials.password,
         })
 
-        await triggerHaptic('success')
+        // Splash already up + haptic already fired. `onSignedIn`
+        // now does just the navigate. (showAuthTransitionSplash is
+        // idempotent so calling it again inside onSignedIn is a
+        // no-op.)
         onSignedIn()
       } catch (error) {
+        // Network / Supabase failed — hide the splash so the
+        // error UI on the auth screen is reachable.
+        hideAuthTransitionSplash()
         await clearBiometricCredentials()
         await refreshBiometricState()
-        await triggerHaptic('error')
+        void triggerHaptic('error')
         onErrorMessage(getErrorMessage(error, `No pudimos ingresar con ${biometricState.label}.`))
       } finally {
         submissionLockRef.current = false

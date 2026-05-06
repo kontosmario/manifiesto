@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -55,8 +54,20 @@ export function RootLayoutShell() {
               gestureEnabled: true,
             }}
           >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="auth/callback" />
+            {/* `index` and `auth/callback` are NEVER user-visible
+                in steady state — index is `<AppEntryGate />` which
+                redirects on every mount, and auth/callback is the
+                OAuth landing that hands off immediately. We always
+                navigate to/from these screens with the warm splash
+                overlay covering the whole window. Animating their
+                push transitions is wasted UI-thread work that
+                contests the splash's halo pulse + breath worklets,
+                and the user perceives it as a frame stutter ~1-2s
+                into login (right when these transitions fire). The
+                navigations are instant now; the splash does all the
+                visual transition work on top. */}
+            <Stack.Screen name="index" options={{ animation: 'none' }} />
+            <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
           </Stack>
 
           {/*
@@ -105,57 +116,43 @@ interface TransitionOverlayProps {
 }
 
 function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps) {
-  // Track whether we should keep the overlay mounted while fading
-  // out. We mount it as soon as `visible` flips true and only
-  // unmount once the fade-out completes — that way the overlay can
-  // animate to opacity 0 instead of just disappearing.
-  const [mounted, setMounted] = useState(visible)
+  // ⚠ ALWAYS-MOUNTED.
+  //
+  // The overlay's children (`AuthTransitionSplash` → `WarmFernLogo` +
+  // `AuroraLayer` + `ParticleLayer`) are mounted from app launch and
+  // stay mounted forever. We only animate the outer opacity to show
+  // / hide. Why: if we mount the children on demand (when login
+  // fires), the native view tree is created at the WORST moment —
+  // simultaneously with the auth request, the `router.replace('/')`
+  // re-render cascade, and the AppEntryGate query refetches. The
+  // native UI thread is saturated for ~1s, and the WarmFernLogo's
+  // entrance animation visibly stalls inside that window. The user
+  // sees the fern "pause for a second and then continue" exactly
+  // when the JS work peaks.
+  //
+  // Cost: the always-running halo pulse + breath + aurora + 24
+  // particles consume some UI-thread cycles continuously, but
+  // they're cheap (sin-based interpolations on shared values, no JS
+  // round-trip per frame). The benefit — zero mount race during the
+  // user's most attention-critical moment — is worth it.
   const opacity = useSharedValue(visible ? 1 : 0)
 
   useEffect(() => {
-    if (visible) {
-      setMounted(true)
-      opacity.value = withTiming(1, {
-        duration: FADE_IN_MS,
-        easing: Easing.out(Easing.cubic),
-      })
-      return
-    }
-    opacity.value = withTiming(
-      0,
-      { duration: FADE_OUT_MS, easing: Easing.in(Easing.cubic) },
-      (finished) => {
-        // The completion callback runs as a Reanimated worklet on
-        // the UI thread. Calling React's `setMounted` (a JS-thread
-        // setter) directly would crash without a stack trace in
-        // Expo Go — same constraint as Intl/locale APIs inside
-        // worklets. `runOnJS` marshals the call back to JS safely.
-        if (finished) {
-          runOnJS(setMounted)(false)
-        }
-      },
-    )
+    opacity.value = withTiming(visible ? 1 : 0, {
+      duration: visible ? FADE_IN_MS : FADE_OUT_MS,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+    })
   }, [visible, opacity])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }))
 
-  if (!mounted) return null
-
   return (
     <Animated.View
       style={[StyleSheet.absoluteFillObject, styles.overlayShell, overlayStyle]}
-      // pointerEvents stays auto while visible to block taps on the
-      // route below; once we unmount (mounted=false above) the
-      // overlay disappears entirely.
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      {/* Post-login bridge uses the warm variant (single fern,
-          contemplative breath) — not the cold-start AuthLaunchSplash
-          (which mirrors the welcome screen for the launch handoff).
-          The splash receives `phase` so it can swap to an error
-          fallback when a request fails / times out. */}
       <AuthTransitionSplash phase={phase} errorKind={errorKind} />
     </Animated.View>
   )

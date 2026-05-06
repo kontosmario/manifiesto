@@ -14,22 +14,22 @@ export const GASTOS_TOUR = TOUR_KEYS.gastos
 export const GASTOS_TOUR_STEPS = {
   hero: {
     order: 0,
-    text: 'El resumen del ciclo: cuánto llevás gastado y qué categorías lideran. Una mirada y entendés cómo viene el mes.',
+    text: 'El resumen del ciclo: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.',
   },
   streak: {
     order: 1,
-    text: 'Tu racha de días registrando gastos. Cada día que cargás al menos uno (o marcás "no gasté") suma un día a la llama. La racha es lo que destraba escudos y premios.',
+    text: 'Tu racha de días registrando gastos. Cada día que cargas al menos un gasto (o marcas que no gastaste) suma un día a la llama. La racha desbloquea escudos y recompensas.',
   },
   calendar: {
     order: 2,
-    text: 'El calendario del mes con tus gastos por día. El color de cada día refleja cuánto gastaste; tocá un día para filtrar la lista a esa fecha y ver sólo lo de ese día.',
+    text: 'El calendario del mes con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.',
   },
   filters: {
     order: 3,
-    text: 'Filtros rápidos por categoría. Tocá un chip y la lista de abajo se filtra al toque — útil para ver "cuánto llevo en supermercado" o "todos los gastos de transporte".',
+    text: 'Filtros rápidos por categoría. Toca un chip y la lista de abajo se ajusta al instante — útil para ver, por ejemplo, cuánto llevas en supermercado o en transporte.',
   },
   list: {
     order: 4,
-    text: 'Tu lista de movimientos del ciclo, agrupados por día. Tocá una fila para abrir el detalle, o deslizala hacia la izquierda para editar o borrar. La lista respeta el filtro y el día seleccionado arriba.',
+    text: 'Tu lista de movimientos del ciclo, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba.',
   },
 } as const satisfies Record<string, TourStepCopy>

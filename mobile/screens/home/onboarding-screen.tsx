@@ -221,9 +221,9 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     if (step === 1) {
       Alert.alert(
         '¿Salir del setup?',
-        'Tu progreso queda guardado. Podés cerrar la sesión y volver al inicio cuando quieras.',
+        'Tu progreso queda guardado. Puedes cerrar la sesión y volver al inicio cuando quieras.',
         [
-          { text: 'Seguir acá', style: 'cancel' },
+          { text: 'Seguir aquí', style: 'cancel' },
           {
             text: 'Cerrar sesión',
             style: 'destructive',
@@ -238,7 +238,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
 
   const handleFinish = useCallback(async () => {
     if (!state.familyId) {
-      Alert.alert('Falta la familia', 'Creá o uníte a una familia antes de terminar.')
+      Alert.alert('Falta la familia', 'Crea o uníte a una familia antes de terminar.')
       return
     }
     setSubmitting(true)
@@ -283,7 +283,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         // el payday. Pero para una cuenta recién creada, ese freeze
         // empuja el ciclo activo a uno del pasado donde la cuenta ni
         // existía, y los gastos recién cargados quedan fuera del
-        // rango y no aparecen en Gastos. Al stampear `now()` acá
+        // rango y no aparecen en Gastos. Al stampear `now()` aquí
         // dejamos claro que el usuario arranca ya dentro del ciclo
         // actual. Los renewals posteriores usan la sheet "Confirmar
         // sueldo" en Home.

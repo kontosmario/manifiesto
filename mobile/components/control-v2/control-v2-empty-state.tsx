@@ -17,7 +17,7 @@ interface ControlV2EmptyStateProps {
  *
  * La otra versión llamaba a `buildControlSignals` con un dataset mock
  * si faltaban ingreso/gastos — eso pintaba en pantalla cupos, rachas
- * y promedios que no eran del usuario. Acá devolvemos una vista
+ * y promedios que no eran del usuario. Aquí devolvemos una vista
  * neutra que explica por qué no hay datos todavía y guía al próximo
  * paso según lo que falte.
  */
@@ -34,7 +34,7 @@ export function ControlV2EmptyState({
   const muted = theme.colors.textMuted
 
   const heading = missingIncome
-    ? 'Configurá tu sueldo para empezar'
+    ? 'Configura tu sueldo para empezar'
     : missingExpenses
       ? 'Registra tu primer gasto'
       : 'Estamos juntando datos'

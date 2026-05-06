@@ -10,18 +10,18 @@ export const FIJOS_TOUR = TOUR_KEYS.fijos
 export const FIJOS_TOUR_STEPS = {
   hero: {
     order: 0,
-    text: 'Tus gastos fijos del mes: cuántos pagaste, cuánto te queda por pagar y cuándo vence cada uno. Pensá en alquiler, suscripciones, servicios.',
+    text: 'Tus gastos fijos del mes: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.',
   },
   calendar: {
     order: 1,
-    text: 'Lo que vence pronto, en orden cronológico. Cada burbuja te muestra el día y la categoría — si ves números rojos, son los que ya pasaron de fecha.',
+    text: 'Lo que vence pronto, en orden cronológico. Cada burbuja muestra el día y la categoría — los números en rojo marcan los que ya pasaron de fecha.',
   },
   list: {
     order: 2,
-    text: 'La lista debajo agrupa los fijos por categoría. Tocá uno para marcarlo como pagado, o deslizá para editarlo, pausarlo o eliminarlo.',
+    text: 'La lista de abajo agrupa tus fijos por categoría. Toca uno para marcarlo como pagado, o deslízalo hacia la izquierda para editarlo, pausarlo o eliminarlo.',
   },
   addButton: {
     order: 3,
-    text: 'Acá agregás un fijo nuevo. Sumá un alquiler, una suscripción o cualquier compromiso recurrente — definís cada cuánto vence y la app lo mete en el ciclo automáticamente.',
+    text: 'Aquí agregas un fijo nuevo. Suma una renta, una suscripción o cualquier compromiso recurrente — defines cada cuánto vence y la app lo añade automáticamente al ciclo.',
   },
 } as const satisfies Record<string, TourStepCopy>

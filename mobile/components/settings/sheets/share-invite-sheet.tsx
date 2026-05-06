@@ -51,7 +51,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
       void triggerHaptic('error')
       Alert.alert(
         'No pudimos generar el código',
-        getErrorMessage(error, 'Reintentá en un momento.'),
+        getErrorMessage(error, 'Reintenta en un momento.'),
       )
       onClose()
     }
@@ -80,7 +80,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     try {
       await Share.share({
         message:
-          `Te invito al hogar en Manifiesto. Ingresá este código en la app: ${invite.code}\n\n` +
+          `Te invito al hogar en Manifiesto. Ingresa este código en la app: ${invite.code}\n\n` +
           'El código sirve para una sola persona y vence en 7 días.',
       })
     } catch {
@@ -97,7 +97,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Compartilo con la persona que querés que se sume."
+      subtitle="Compartilo con la persona que quieres que se sume."
       title="Invitar a alguien"
       visible={visible}
     >
@@ -121,7 +121,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
                 {formatCode(invite.code)}
               </Text>
               <Text style={[styles.codeHint, { color: theme.colors.textMuted }]}>
-                Tocá para copiar
+                Toca para copiar
               </Text>
             </Pressable>
           ) : (

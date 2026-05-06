@@ -130,7 +130,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
     (member: FamilyMemberStats) => {
       Alert.alert(
         'Transferir propiedad',
-        `Vas a transferir la propiedad a ${member.displayName}. Perdés la capacidad de editar la familia. ¿Continuar?`,
+        `Vas a transferir la propiedad a ${member.displayName}. Pierdes la capacidad de editar la familia. ¿Continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
@@ -246,7 +246,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
             },
           )
         } else {
-          Alert.alert(member.displayName, 'Elegí una acción', [
+          Alert.alert(member.displayName, 'Elige una acción', [
             { text: 'Transferir propiedad', onPress: () => confirmTransfer(member) },
             {
               text: 'Bloquear',
@@ -280,7 +280,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
             },
           )
         } else {
-          Alert.alert(member.displayName, 'Elegí una acción', [
+          Alert.alert(member.displayName, 'Elige una acción', [
             { text: 'Desbloquear', onPress: () => confirmUnblock(member) },
             {
               text: 'Eliminar de la familia',
@@ -353,7 +353,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
               Gestión de familia
             </Text>
             <Text style={[styles.heroSubtitle, { color: theme.colors.textMuted }]}>
-              Solo vos, como dueño, ves esta pantalla. Gestioná roles, bloqueos y
+              Solo tú, como dueño, ves esta pantalla. Gestioná roles, bloqueos y
               transferencias.
             </Text>
             <View style={styles.heroPills}>
@@ -412,7 +412,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
             title="No pudimos cargar la familia"
             description={getErrorMessage(
               statsQuery.error,
-              'Probá otra vez en un momento.',
+              'Prueba otra vez en un momento.',
             )}
             onAction={() => {
               void statsQuery.refetch()
@@ -509,7 +509,7 @@ function MemberCard({ member, isMe, onPressActions }: MemberCardProps) {
               numberOfLines={1}
             >
               {member.displayName}
-              {isMe ? ' (vos)' : ''}
+              {isMe ? ' (tú)' : ''}
             </Text>
             <View
               style={[

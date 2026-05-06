@@ -55,7 +55,7 @@ export function useZombiePushSync(args: {
           item.classification === 'zombie_consensuado'
             ? `${fijo.name} — la familia casi no la usa`
             : `${fijo.name} — uso desigual en la familia`
-        const body = `Pagás $${fijo.amount.toLocaleString('es-AR')} al mes. Tocá para revisar.`
+        const body = `Pagas $${fijo.amount.toLocaleString('es-AR')} al mes. Toca para revisar.`
 
         try {
           await sendFamilyPush({

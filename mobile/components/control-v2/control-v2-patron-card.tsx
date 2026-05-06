@@ -473,7 +473,7 @@ function dowIndexFromName(name: string): number {
 }
 
 // Plural form for the narrative copy, capitalised so the day reads
-// as a proper label inside the inline text ("Los Viernes gastás...",
+// as a proper label inside the inline text ("Los Viernes gastas...",
 // "los Lunes sos el más ahorrativo"). Lun/Mar/Mié/Jue/Vie share form
 // in singular and plural in Spanish, so the "s" only attaches to
 // Sáb/Dom.

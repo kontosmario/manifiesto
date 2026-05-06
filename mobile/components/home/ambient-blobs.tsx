@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export const AmbientBlobs = memo(function AmbientBlobs() {
@@ -9,7 +9,9 @@ export const AmbientBlobs = memo(function AmbientBlobs() {
   const a = useSharedValue(0)
   const b = useSharedValue(0)
   const c = useSharedValue(0)
-  useLoopAnimation(
+  // Ambient background blobs — never pause, even on blur. See the
+  // matching comment in hero-aurora.tsx for the rationale.
+  useUnboundedLoopAnimation(
     () => {
       const loop = (sv: typeof a, period: number) => {
         sv.value = withRepeat(

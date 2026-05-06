@@ -46,7 +46,7 @@ export function ControlTodaySection({
       <BrandedPanel style={styles.card}>
         <EmptyState
           icon="insights"
-          subtitle="Definí ingreso, ahorro meta y día de cobro para convertir esta tab en un copiloto real."
+          subtitle="Define ingreso, ahorro meta y día de cobro para convertir esta tab en un copiloto real."
           title="Todavía no hay base para Control"
         />
       </BrandedPanel>
@@ -87,7 +87,7 @@ export function ControlTodaySection({
             <Text style={[styles.todayInsightCopy, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
               {dailyBudgetSummary.remainingToday < 0
                 ? 'La prioridad es no seguir trasladando gasto a mañana.'
-                : 'Tomá este número como referencia antes de cargar algo nuevo.'}
+                : 'Toma este número como referencia antes de cargar algo nuevo.'}
             </Text>
 
             <View style={styles.todayMiniDeck}>

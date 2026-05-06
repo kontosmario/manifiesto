@@ -57,7 +57,7 @@ const CHECKIN_SLOTS: Array<{
 const GROUP_ORDER: NotificationGroup[] = ['gastos', 'fijos', 'racha', 'meta', 'otros']
 
 const GROUP_DESCRIPTIONS: Record<NotificationGroup, string> = {
-  gastos: 'Gastos cargados por vos o tu familia.',
+  gastos: 'Gastos cargados por ti o tu familia.',
   fijos: 'Compromisos que vencen o se actualizan.',
   racha: 'Check-ins diarios, rachas y escudos.',
   meta: 'Hitos y aportes a tu meta.',
@@ -162,14 +162,14 @@ export function NotificationsPreferencesScreen() {
       canGoBack
       contentContainerStyle={styles.screenContent}
       title="Notificaciones"
-      subtitle="Elegí qué te llega, cuándo y por dónde."
+      subtitle="Elige qué te llega, cuándo y por dónde."
     >
       <View style={styles.stack}>
         <RiseView>
           <View style={styles.section}>
             <SectionHeader
               title="Canales"
-              subtitle="Elegí por qué vías queremos avisarte."
+              subtitle="Elige por qué vías queremos avisarte."
             />
             <SettingsSwitchRow
               label="Push"
@@ -190,7 +190,7 @@ export function NotificationsPreferencesScreen() {
           <View style={styles.section}>
             <SectionHeader
               title="Horarios de check-in"
-              subtitle="A qué hora querés que te escribamos."
+              subtitle="A qué hora quieres que te escribamos."
             />
             {CHECKIN_SLOTS.map((slot) => {
               const value = preferences
@@ -234,7 +234,7 @@ export function NotificationsPreferencesScreen() {
           <View style={styles.section}>
             <SectionHeader
               title="Silenciar por tipo"
-              subtitle="Dejá encendidos los grupos que sí te interesan."
+              subtitle="Deja encendidos los grupos que sí te interesan."
             />
             {GROUP_ORDER.map((group) => {
               const kinds = NOTIFICATION_KIND_GROUPS[group]

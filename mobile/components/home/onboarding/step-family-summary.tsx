@@ -14,7 +14,7 @@ interface StepFamilySummaryProps {
    *  screen's primary CTA). All summary data here comes from this
    *  read-only snapshot. */
   pendingFamily: FamilyPeek
-  /** Joiner's pending choice + amount. Renders an extra "vos" row
+  /** Joiner's pending choice + amount. Renders an extra "tú" row
    *  in the members list with the contribution they're about to
    *  bring in. */
   contributesIncome: boolean | null
@@ -60,7 +60,7 @@ export function StepFamilySummary({
           La familia
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Esto es lo que vas a encontrar al unirte. Confirmá si todo se ve bien.
+          Esto es lo que vas a encontrar al unirte. Confirma si todo se ve bien.
         </Text>
       </RiseView>
 
@@ -173,7 +173,7 @@ export function StepFamilySummary({
                 style={[styles.memberName, { color: theme.colors.text }]}
                 numberOfLines={1}
               >
-                {pendingDisplayName || 'Vos'} · vos
+                {pendingDisplayName || 'Tú'} · tú
               </Text>
               <Text
                 style={[

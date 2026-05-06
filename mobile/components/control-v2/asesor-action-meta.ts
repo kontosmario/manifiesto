@@ -97,6 +97,11 @@ const META_BY_KIND: Record<ControlAction['kind'], AsesorActionMeta> = {
     haptic: 'selection',
     fallbackLabel: 'Profundizar',
   },
+  'open-settings-modal': {
+    icon: 'tune',
+    haptic: 'selection',
+    fallbackLabel: 'Configurar',
+  },
 }
 
 /**

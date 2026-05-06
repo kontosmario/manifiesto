@@ -30,8 +30,8 @@ export function buildExpenseIntelligenceViewModel(
     analytics.projectedAvailableAtCycleEnd >= 0 ? 'success' : 'warning'
   const headlineText =
     analytics.projectedAvailableAtCycleEnd >= 0
-      ? 'Si seguís así, todavía debería quedar aire al final del ciclo.'
-      : 'Si seguís así, el ciclo termina corto y conviene corregir ahora.'
+      ? 'Si sigues así, todavía debería quedar aire al final del ciclo.'
+      : 'Si sigues así, el ciclo termina corto y conviene corregir ahora.'
 
   const leadMetrics: IntelligenceMetric[] = [
     {
@@ -45,7 +45,7 @@ export function buildExpenseIntelligenceViewModel(
       ? {
           helper: 'Recorte sugerido para llegar al próximo cobro.',
           icon: 'bolt',
-          label: 'Bajá por día',
+          label: 'Baja por día',
           tone: 'warning',
           value: currencyFormatter.format(analytics.adjustmentNeededPerDay),
         }

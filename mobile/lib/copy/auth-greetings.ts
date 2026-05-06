@@ -2,7 +2,7 @@
  * Saludos para el hero del login cuando hay sesión previa
  * (`isReturningUser`). Todos en español rioplatense, sin adjetivos
  * que concuerden en género con la persona — el original
- * ("Bienvenida de vuelta") era estrictamente femenino. Acá usamos
+ * ("Bienvenida de vuelta") era estrictamente femenino. Aquí usamos
  * locuciones idiomáticas o tiempos verbales que no marcan género.
  *
  * El pool combina 47 saludos neutros (siempre disponibles) + 3-5
@@ -16,12 +16,12 @@ const NEUTRAL_GREETINGS = [
   'Volviste',
   'Hola de nuevo',
   'Te estábamos esperando',
-  'Bueno verte por acá',
+  'Bueno verte por aquí',
   'Hola otra vez',
   'Llegaste',
   'Te extrañamos',
   'Qué alegría verte',
-  'Acá seguimos',
+  'Aquí seguimos',
   'Hola, qué tal',
   'Adelante, te toca',
   'El plan sigue activo',
@@ -36,7 +36,7 @@ const NEUTRAL_GREETINGS = [
   'Buen retorno',
   'Qué bueno tenerte',
   'Empecemos de nuevo',
-  'Acá te esperamos',
+  'Aquí te esperamos',
   'Tu turno',
   'Comenzamos',
   'Qué tal',
@@ -45,7 +45,7 @@ const NEUTRAL_GREETINGS = [
   'Estamos en sintonía',
   'Una vuelta más',
   'Hola, hola',
-  'Acá seguimos juntos',
+  'Aquí seguimos juntos',
   'Vos y tu plan',
   'Cuánto tiempo',
   'Te extrañábamos',
@@ -54,7 +54,7 @@ const NEUTRAL_GREETINGS = [
   'Una rutina más',
   'Volvés con todo',
   'Volvés en hora',
-  'Hola, ¿cómo andás?',
+  'Hola, ¿cómo andas?',
   'Te esperábamos',
   'Empezamos juntos',
   'El plan continúa',

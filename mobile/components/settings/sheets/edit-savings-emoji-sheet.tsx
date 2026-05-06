@@ -50,7 +50,7 @@ export function EditSavingsEmojiSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Elegí el que mejor represente tu meta."
+      subtitle="Elige el que mejor represente tu meta."
       title="Emoji de la meta"
       visible={visible}
     >
@@ -90,7 +90,7 @@ export function EditSavingsEmojiSheet({
             autoCapitalize="none"
             autoCorrect={false}
             autoFocus
-            label="Escribí el tuyo"
+            label="Escribe el tuyo"
             maxLength={4}
             onChangeText={setDraft}
             placeholder="🎯"

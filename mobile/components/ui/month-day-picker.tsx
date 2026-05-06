@@ -133,7 +133,7 @@ export function MonthDayPicker({
       <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
         {footer ?? (
           <>
-            Cobrás el{' '}
+            Cobras el{' '}
             <Text style={{ color: theme.colors.text, fontWeight: '800' }}>día {safeValue}</Text>{' '}
             de cada mes
           </>

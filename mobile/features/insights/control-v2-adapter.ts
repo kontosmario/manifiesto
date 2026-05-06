@@ -223,7 +223,7 @@ export function buildControlDataFromSnapshot(
   // "Presión de fijos" se calcula con el MISMO helper que el
   // family-dashboard (`computeFixedExpenseCycleSummary`) — suma
   // `paidInCycle + reservedInCycle`, o sea lo que se paga o se
-  // reserva en esta ventana específica del ciclo. Antes acá se
+  // reserva en esta ventana específica del ciclo. Antes aquí se
   // usaba `sumFixedMonthlyTotal` (equivalente mensual teórico:
   // weekly×4.33, quarterly/3…) que **no** coincidía con la
   // presión real del ciclo y desalineaba el cupo entre Control y
