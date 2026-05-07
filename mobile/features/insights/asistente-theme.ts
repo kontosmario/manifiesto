@@ -111,6 +111,3 @@ export function useAsistenteTheme(): AsistenteTokens {
   const { theme } = useAppTheme()
   return useMemo(() => (theme.isDark ? DARK : LIGHT), [theme.isDark])
 }
-
-/** Exposed for unit tests / contrast audits. */
-export const ASISTENTE_TOKENS = { light: LIGHT, dark: DARK } as const

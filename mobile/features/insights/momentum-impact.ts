@@ -33,15 +33,7 @@ function fmt(n: number): string {
   return '$' + Math.round(Math.abs(n)).toLocaleString('es-AR')
 }
 
-export function composeMomentumImpact(
-  positive: ControlAdvisorTask,
-  _reinforcer: ControlAdvisorTask,
-): MomentumImpact {
-  // Reinforcer is intentionally ignored for the headline — its role
-  // is body copy, not magnitude. Keeping it as a parameter so the
-  // call site stays expressive and future revisions (e.g. picking
-  // the larger of two cycle-scoped figures) don't have to change
-  // the signature.
+export function composeMomentumImpact(positive: ControlAdvisorTask): MomentumImpact {
   const impactRaw = Math.max(0, Math.round(positive.impactRaw))
   const impactScope = positive.impactScope ?? 'oneTime'
   const label = `+${fmt(impactRaw)} a favor en el ciclo`

@@ -60,6 +60,13 @@ interface ControlV2HoyCardProps {
   /** Whether the cumulative discretionary spend already crossed the
    *  full-cycle budget — used to escalate the status pill copy. */
   alreadyExhausted: boolean
+  /** User's self-imposed daily goal (in currency), or `null` when
+   *  no goal is set. When provided, the card escalates to `caution`
+   *  the moment `gastoHoy` crosses this threshold — even though the
+   *  real cupo still has headroom. The META tick on the pace bar
+   *  marks the goal position so the user can read the gap visually.
+   *  `critical` remains anchored to the real cupo. */
+  dailyGoalAmount?: number | null
 }
 
 /**
@@ -102,16 +109,45 @@ export function ControlV2HoyCard({
   momentum,
   noSpendCount,
   alreadyExhausted,
+  dailyGoalAmount = null,
 }: ControlV2HoyCardProps) {
   const { theme } = useAppTheme()
+
+  // ── Daily-goal awareness ────────────────────────────────────────
+  // The user can opt into a personal daily ceiling (`dailyGoalAmount`)
+  // below the real cupo. When active, the card treats the goal as the
+  // primary "positive→caution" threshold:
+  //   · gastoHoy ≤ goal       → positive (mint, on-target)
+  //   · goal < gastoHoy ≤ cupo → caution (yellow, sobre tu meta but
+  //                              still within the real cupo)
+  //   · gastoHoy > cupo       → critical (peach, hard ceiling broken)
+  //
+  // We require `goal < cupoDiario`: if the user accidentally lands in
+  // a state where the goal isn't strictly below the cupo (no buffer
+  // configured / floored math), there's nothing to escalate to.
+  const goalActive =
+    dailyGoalAmount != null &&
+    Number.isFinite(dailyGoalAmount) &&
+    dailyGoalAmount > 0 &&
+    dailyGoalAmount < cupoDiario
+  const overGoal = goalActive && gastoHoy > (dailyGoalAmount as number)
 
   const state: SemanticState = alreadyExhausted
     ? 'critical'
     : libreHoy <= 0
       ? 'critical'
-      : estaOk
-        ? 'positive'
-        : 'caution'
+      : overGoal
+        ? 'caution'
+        : estaOk
+          ? 'positive'
+          : 'caution'
+
+  // When the caution is goal-driven (not pace-driven), upgrade the
+  // pill copy from the generic "Atención" to a more specific
+  // "Sobre tu meta" — the user instantly understands which threshold
+  // they crossed. Pace-driven caution keeps the original token label
+  // so we don't mislead users without a goal active.
+  const cautionFromGoal = overGoal && state === 'caution'
 
   const tokens = getStateTokens(state, theme)
   const heroText = theme.colors.heroText
@@ -136,7 +172,6 @@ export function ControlV2HoyCard({
   // the dark gradient. We bump every secondary tone locally so each
   // typographic level reads independently.
   const textPrimary = heroText // 100% — marquee, big values
-  const textSecondary = 'rgba(246,251,239,0.92)' // strong sub-headings
   const textBody = 'rgba(246,251,239,0.78)' // captions, sub
   const textHint = 'rgba(246,251,239,0.62)' // subtle micro
 
@@ -162,6 +197,12 @@ export function ControlV2HoyCard({
 
   const spentPct = clamp((gastoHoy / Math.max(1, cupoDiario)) * 100, 0, 100)
   const pacePct = clamp((horaF / 24) * 100, 0, 100)
+  // META tick position on the bar — only when goal is active. We
+  // clamp to [4, 96] so the tick + mini-label never collide with
+  // the bar's rounded corners. Reading is `(goal/cupo) × 100`.
+  const goalPct = goalActive
+    ? clamp(((dailyGoalAmount as number) / Math.max(1, cupoDiario)) * 100, 4, 96)
+    : null
   // Clamp the floating chip's horizontal anchor so the chip never
   // gets clipped at the bar edges. The marker line itself uses the
   // raw `pacePct` — only the chip+arrow composite is constrained.
@@ -173,8 +214,62 @@ export function ControlV2HoyCard({
     : 'trending-up'
   const deltaSign = deltaPositive ? '+' : '−'
 
-  const heroAmountValue = libreHoy > 0 ? libreHoy : Math.abs(libreHoy)
-  const heroEyebrowText = libreHoy > 0 ? 'DISPONIBLE HOY' : 'CUPO EXCEDIDO'
+  // ── Hero stat — goal-aware hierarchy ───────────────────────────
+  // When a personal goal is active, the hero number flips from
+  // "available against cupo real" to "available against your goal".
+  // The cupo real is demoted to a smaller secondary line below — the
+  // user reads their own ceiling first, with the absolute cupo as
+  // context. When the user crosses the goal, the eyebrow shifts to
+  // "META EXCEDIDA" and the big number becomes the overshoot amount.
+  // Cupo-overshoot (libreHoy ≤ 0) keeps "CUPO EXCEDIDO" as the
+  // top-priority frame regardless of goal state.
+  const overGoalAmount = goalActive
+    ? Math.max(0, gastoHoy - (dailyGoalAmount as number))
+    : 0
+  const remainingVsGoal = goalActive
+    ? Math.max(0, (dailyGoalAmount as number) - gastoHoy)
+    : 0
+  const heroDescriptor: {
+    eyebrow: string
+    amount: number
+    /** Optional sign prefix (e.g. "−" for overshoot) — applied at
+     *  format time so CountUpText still animates the magnitude. */
+    sign: '' | '−'
+    subText: string
+  } = (() => {
+    if (libreHoy <= 0) {
+      return {
+        eyebrow: 'CUPO EXCEDIDO',
+        amount: Math.abs(libreHoy),
+        sign: '−',
+        subText: goalActive
+          ? `Pasaste tu meta y el cupo real ${formatMoney(cupoDiario)}`
+          : `de ${formatMoney(cupoDiario)} cupo del día`,
+      }
+    }
+    if (overGoal && goalActive) {
+      return {
+        eyebrow: 'META EXCEDIDA',
+        amount: overGoalAmount,
+        sign: '−',
+        subText: `Te quedan ${formatMoney(libreHoy)} del cupo real`,
+      }
+    }
+    if (goalActive) {
+      return {
+        eyebrow: 'PARA TU META HOY',
+        amount: remainingVsGoal,
+        sign: '',
+        subText: `Cupo real ${formatMoney(cupoDiario)}`,
+      }
+    }
+    return {
+      eyebrow: 'DISPONIBLE HOY',
+      amount: libreHoy,
+      sign: '',
+      subText: `de ${formatMoney(cupoDiario)} cupo del día`,
+    }
+  })()
 
   // Derived percentage for the combined label under the bar.
   const spentPctRound = Math.round(spentPct)
@@ -202,6 +297,8 @@ export function ControlV2HoyCard({
     proximoSueldoEnDias,
     noSpendCount,
     alreadyExhausted,
+    overGoal,
+    dailyGoalAmount,
   })
 
   // ── Animation: full motion choreography ────────────────────────
@@ -352,9 +449,13 @@ export function ControlV2HoyCard({
                 { backgroundColor: chipBg, borderColor: chipBorder },
               ]}
             >
-              <MaterialIcons name={tokens.icon} size={14} color={stateBright} />
+              <MaterialIcons
+                name={cautionFromGoal ? 'flag' : tokens.icon}
+                size={14}
+                color={stateBright}
+              />
               <Text style={[styles.statusPillText, { color: stateBright }]}>
-                {tokens.label}
+                {cautionFromGoal ? 'Sobre tu meta' : tokens.label}
               </Text>
             </View>
           </View>
@@ -362,13 +463,13 @@ export function ControlV2HoyCard({
           {/* ── Hero stat ── */}
           <View style={styles.heroStat}>
             <Text style={[styles.heroEyebrow, { color: textBody }]}>
-              {heroEyebrowText}
+              {heroDescriptor.eyebrow}
             </Text>
             <View style={styles.amountRow}>
               <CountUpText
-                value={Math.max(0, heroAmountValue)}
+                value={Math.max(0, heroDescriptor.amount)}
                 duration={1200}
-                format={(n) => formatMoney(n)}
+                format={(n) => `${heroDescriptor.sign}${formatMoney(n)}`}
                 style={[styles.heroAmount, { color: textPrimary }]}
               />
               {/*
@@ -396,14 +497,44 @@ export function ControlV2HoyCard({
                 </Text>
               </View>
             </View>
-            <Text style={[styles.heroSub, { color: textBody }]}>
-              de {formatMoney(cupoDiario)} cupo del día
-            </Text>
+            {goalActive && libreHoy > 0 && !alreadyExhausted ? (
+              // Goal-aware path: render the cupo real reference as
+              // a mint-tinted chip so the absolute number reads as
+              // a coherent secondary anchor next to the big META
+              // amount, not as throwaway grey copy. Wallet icon
+              // grounds the chip semantically; the tint reuses the
+              // hero accent so it threads visually with the eyebrow
+              // above and the META tick on the bar below.
+              <View
+                style={[
+                  styles.heroSubChip,
+                  {
+                    backgroundColor: hexAlpha(heroAccent, 0.16),
+                    borderColor: hexAlpha(heroAccent, 0.42),
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="account-balance-wallet"
+                  size={11}
+                  color={heroAccent}
+                />
+                <Text
+                  style={[styles.heroSubChipText, { color: heroAccent }]}
+                  numberOfLines={1}
+                >
+                  {heroDescriptor.subText}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.heroSub, { color: textBody }]}>
+                {heroDescriptor.subText}
+              </Text>
+            )}
           </View>
 
           {/* ── Pace bar ── */}
           <PaceBar
-            spentPct={spentPct}
             pacePct={pacePct}
             chipAnchorPct={chipAnchorPct}
             fillColor={stateBright}
@@ -425,6 +556,8 @@ export function ControlV2HoyCard({
             fillProgress={fillProgress}
             markerHalo={markerHalo}
             ahoraFloat={ahoraFloat}
+            goalPct={goalPct}
+            goalReached={overGoal}
           />
 
           {/* ── Stats row ── */}
@@ -518,6 +651,12 @@ interface HintInput {
   proximoSueldoEnDias: number
   noSpendCount: number
   alreadyExhausted: boolean
+  /** Whether the user has crossed their personal daily goal (goal
+   *  active and `gastoHoy > goalAmount`). Drives a dedicated hint
+   *  that explains what `caution` means in goal terms. */
+  overGoal: boolean
+  /** The personal daily goal amount, included in copy. */
+  dailyGoalAmount: number | null
 }
 
 interface Hint {
@@ -538,6 +677,18 @@ function pickHint(i: HintInput): Hint {
     return {
       icon: 'pause-circle-outline',
       text: 'Cupo del día agotado. Mañana se reinicia con el cupo completo.',
+    }
+  }
+  // Goal-overshoot hint takes precedence over generic caution copy.
+  // The user crossed their personal threshold but still has cupo
+  // headroom; we surface the exact remaining margin so the rest of
+  // the day is actionable, not just labelled as "Atención".
+  if (i.overGoal && i.dailyGoalAmount != null) {
+    return {
+      icon: 'flag',
+      text: `Pasaste tu meta de ${formatMoney(i.dailyGoalAmount)}. Te quedan ${formatMoney(
+        Math.max(0, i.libreHoy),
+      )} del cupo real.`,
     }
   }
   if (i.closedDays === 0) {
@@ -827,7 +978,6 @@ function HintIconBadge({
  * The gap between them = delta vs ritmo del día.
  */
 function PaceBar({
-  spentPct,
   pacePct,
   chipAnchorPct,
   fillColor,
@@ -849,8 +999,9 @@ function PaceBar({
   fillProgress,
   markerHalo,
   ahoraFloat,
+  goalPct,
+  goalReached,
 }: {
-  spentPct: number
   pacePct: number
   chipAnchorPct: number
   fillColor: string
@@ -872,6 +1023,13 @@ function PaceBar({
   fillProgress: ReturnType<typeof useSharedValue<number>>
   markerHalo: ReturnType<typeof useSharedValue<number>>
   ahoraFloat: ReturnType<typeof useSharedValue<number>>
+  /** Position (0-100) of the user's daily-goal threshold on the bar.
+   *  When `null`, no META tick is rendered. */
+  goalPct: number | null
+  /** Whether the spent fill has crossed the goal — drives the tick's
+   *  visual treatment (dashed when ahead of goal, solid when crossed)
+   *  so the user reads the threshold at a glance. */
+  goalReached: boolean
 }) {
   // Measure the track once via onLayout so leading-edge translateX
   // can be computed from a pixel value rather than animating `left:%`.
@@ -984,6 +1142,33 @@ function PaceBar({
             { backgroundColor: trackBg, borderColor: trackBorder },
           ]}
         >
+          {/* Goal-buffer segmentation — when a personal goal is
+              active, the track segment BEYOND the goal gets a soft
+              mint tint. This always-visible cue tells the user "that
+              far-right slice is your buffer" even on $0-spent days,
+              giving the goal a constant visual presence without
+              shouting. Sits beneath the fill so the fill paints over
+              it as it grows; clipped by the track's rounded corners. */}
+          {goalPct != null ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.paceGoalBuffer,
+                {
+                  left: `${goalPct}%`,
+                  // Higher alpha (0.22) than first pass (0.14): the
+                  // base track is rgba(0,0,0,0.50), which crushes
+                  // low-alpha mint into "barely there". 0.22 lifts
+                  // the buffer zone to clearly readable on the
+                  // dark hero gradient without competing with the
+                  // fill that paints over it.
+                  backgroundColor: hexAlpha(markerColor, 0.22),
+                  borderLeftWidth: StyleSheet.hairlineWidth,
+                  borderLeftColor: hexAlpha(markerColor, 0.55),
+                },
+              ]}
+            />
+          ) : null}
           <Animated.View
             style={[styles.paceFill, fillStyle]}
             pointerEvents="none"
@@ -1057,6 +1242,30 @@ function PaceBar({
             ]}
           />
         </Animated.View>
+
+        {/* META tick — single thin vertical line living STRICTLY
+            inside the track (top:4 to bottom:4 in paceTrackOuter
+            coords, matching the track's centered position). Stays
+            within the track bounds so it never collides with the
+            AHORA marker halo above/below or the chip arrow even
+            when goalPct ≈ chipAnchorPct. Pre-cross: semi-transparent
+            mint so it reads as a "soft target". Post-cross
+            (goalReached): solid bright mint to confirm the
+            threshold was breached. */}
+        {goalPct != null ? (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.paceGoalTick,
+              {
+                left: `${goalPct}%`,
+                backgroundColor: goalReached
+                  ? markerColor
+                  : hexAlpha(markerColor, 0.9),
+              },
+            ]}
+          />
+        ) : null}
 
         {/* Marker halo — soft pulse behind the marker line. Lives
             below the line in the z-order so the line stays sharp on
@@ -1267,10 +1476,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
+  // Hero sub chip — pill-shaped container that highlights the
+  // "Cupo real $X" reference when a personal goal is active. The
+  // mint tint visually anchors it to the goal's accent so the user
+  // reads it as "the absolute number that lives behind your goal",
+  // not as throwaway sub-text. Self-aligned to the start so the
+  // chip hugs its content instead of stretching across the row.
+  heroSubChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: 6,
+  },
+  heroSubChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+    fontVariant: ['tabular-nums'],
+  },
 
   // Pace bar
   paceContainer: {
-    marginTop: 24, // extra room for the floating chip above the bar
+    // Trimmed from 24pt → 10pt: the AHORA chip's own paceChipRow
+    // (height 32) already reserves vertical space for the floating
+    // chip + its arrow, so the extra cushion above was creating a
+    // dead-air pocket between the hero sub line and the bar without
+    // serving any layout function.
+    marginTop: 10,
   },
   paceChipRow: {
     height: 32, // reserves vertical space for the chip + arrow
@@ -1392,6 +1629,27 @@ const styles = StyleSheet.create({
     width: 14,
     borderRadius: 8,
     marginLeft: -7,
+  },
+  // META tick — strictly contained INSIDE the track (top:4 = track
+  // top edge in paceTrackOuter, bottom:4 = track bottom edge). Never
+  // extends above/below the track so it can't collide with the AHORA
+  // marker halo or chip arrow even when goalPct ≈ chipAnchorPct.
+  paceGoalTick: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    width: 1.5,
+    marginLeft: -0.75,
+  },
+  // Buffer-zone overlay — segments the track at goalPct so the area
+  // beyond the goal reads as "extra room past your personal ceiling".
+  // Lives inside the track (so the fill paints over it); clipped by
+  // the track's rounded corners.
+  paceGoalBuffer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
   },
   paceLabelRow: {
     flexDirection: 'row',

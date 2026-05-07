@@ -94,7 +94,7 @@ export function useUnblockSignalFamily() {
   })
 }
 
-interface ListEntryRow extends BlocklistRow {}
+type ListEntryRow = BlocklistRow
 
 export function useSignalBlocklistEntries(userId: string | null | undefined) {
   return useQuery<ListEntryRow[]>({

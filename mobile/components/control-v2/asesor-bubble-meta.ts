@@ -83,16 +83,6 @@ export function confidenceLabel(c: number): string {
   return CONFIDENCE_LABEL[confidenceTier(c)]
 }
 
-const CONFIDENCE_DOTS: Record<ConfidenceTier, string> = {
-  solid: '●●●',
-  building: '●●○',
-  early: '●○○',
-}
-
-export function confidenceDots(c: number): string {
-  return CONFIDENCE_DOTS[confidenceTier(c)]
-}
-
 // ─── Headline + intro (chat-style copy) ───────────────────────────────────
 
 /**

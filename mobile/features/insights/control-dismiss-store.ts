@@ -187,16 +187,6 @@ export function dismissCard(id: string): void {
   }
 }
 
-export function isDismissed(id: string): boolean {
-  const entry = cache[id]
-  if (!entry) return false
-  return !isExpired(id, entry, Date.now())
-}
-
-export function dismissedIgnoreCount(id: string): number {
-  return cache[id]?.ignoreCount ?? 0
-}
-
 export function useDismissedIds(): ReadonlySet<string> {
   const [state, setState] = useState<ReadonlySet<string>>(() =>
     activeIds(cache, Date.now()),

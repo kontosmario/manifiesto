@@ -7,25 +7,6 @@ export type TypographyPresetKey =
   | 'bodyLarge' | 'body' | 'bodyEmphasis' | 'bodySmall'
   | 'eyebrow' | 'fieldLabel' | 'caption'
 
-export const TYPOGRAPHY_PRESET_KEYS: readonly TypographyPresetKey[] = [
-  'hero',
-  'displayLarge',
-  'screenTitle',
-  'sectionTitle',
-  'titleMedium',
-  'metricLarge',
-  'metricValue',
-  'buttonDefault',
-  'buttonCompact',
-  'bodyLarge',
-  'body',
-  'bodyEmphasis',
-  'bodySmall',
-  'eyebrow',
-  'fieldLabel',
-  'caption',
-] as const
-
 export const typography: Record<TypographyPresetKey, TextStyle> = {
   hero:          { fontSize: 54, fontWeight: '900', letterSpacing: -2 },
   displayLarge:  { fontSize: 40, fontWeight: '900', letterSpacing: -1.5 },

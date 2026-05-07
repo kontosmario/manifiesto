@@ -21,17 +21,6 @@ export async function fetchActiveSavingsGoal(familyId: string): Promise<SavingsG
   return mapSavingsGoalRow(data as SavingsGoalRow)
 }
 
-export async function fetchSavingsGoalById(id: string): Promise<SavingsGoal | null> {
-  const { data, error } = await supabase
-    .from('savings_goals')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
-  if (error) throw error
-  if (!data) return null
-  return mapSavingsGoalRow(data as SavingsGoalRow)
-}
-
 export async function upsertSavingsGoal(
   familyId: string,
   input: SavingsGoalInput,
@@ -53,14 +42,4 @@ export async function upsertSavingsGoal(
   const { data, error } = await request
   if (error) throw error
   return mapSavingsGoalRow(data as SavingsGoalRow)
-}
-
-export async function deactivateOtherGoals(familyId: string, keepId: string): Promise<void> {
-  const { error } = await supabase
-    .from('savings_goals')
-    .update({ is_active: false })
-    .eq('family_id', familyId)
-    .neq('id', keepId)
-    .eq('is_active', true)
-  if (error) throw error
 }

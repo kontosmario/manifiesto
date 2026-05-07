@@ -1,5 +1,3 @@
-import { useCallback, useState } from 'react'
-
 /**
  * Mirror of the backend `public.sanitize_display_name` function.
  *
@@ -15,34 +13,4 @@ export function sanitizeDisplayName(raw: string): string {
   // Unicode-aware whitelist: \p{L} letters, \p{N} digits, plus ` -'.` .
   const kept = raw.replace(/[^\p{L}\p{N} \-'.]/gu, '')
   return kept.replace(/\s+/g, ' ').trimStart()
-}
-
-interface UseSanitizedInputOptions {
-  initial?: string
-  maxLength?: number
-}
-
-/**
- * Controlled string state that funnels every update through
- * `sanitizeDisplayName` and clamps to `maxLength`. The caller wires
- * `value` + `setValue` into a TextInput exactly like a normal
- * useState('').
- */
-export function useSanitizedInput({
-  initial = '',
-  maxLength = 40,
-}: UseSanitizedInputOptions = {}) {
-  const [value, setValueState] = useState<string>(() =>
-    sanitizeDisplayName(initial).slice(0, maxLength),
-  )
-
-  const setValue = useCallback(
-    (next: string) => {
-      const cleaned = sanitizeDisplayName(next).slice(0, maxLength)
-      setValueState(cleaned)
-    },
-    [maxLength],
-  )
-
-  return { value, setValue }
 }

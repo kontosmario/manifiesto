@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
-  Easing,
   LinearTransition,
   cancelAnimation,
   useAnimatedStyle,

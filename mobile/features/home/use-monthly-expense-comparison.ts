@@ -5,8 +5,6 @@ import {
   type MonthlyComparison,
 } from '@/features/home/home-aggregates.model'
 
-export const monthlyComparisonKey = (familyId?: string) => ['monthly-expense-comparison', familyId ?? null] as const
-
 const EMPTY: MonthlyComparison = {
   currentMonthTotal: 0,
   previousMonthTotal: 0,
@@ -24,10 +22,11 @@ const EMPTY: MonthlyComparison = {
  */
 export function useMonthlyExpenseComparison(familyId?: string) {
   const expensesQuery = useExpenses(familyId)
-  const rows = expensesQuery.data ?? []
+  const expensesData = expensesQuery.data
 
   const data = useMemo<MonthlyComparison>(() => {
     if (!familyId) return EMPTY
+    const rows = expensesData ?? []
     const since = new Date()
     since.setUTCDate(since.getUTCDate() - 70)
     // Variable gastos only — fixed expense payments are auto-recorded
@@ -43,7 +42,7 @@ export function useMonthlyExpenseComparison(familyId?: string) {
       expenses: inWindow.map((e) => ({ price: e.price, created_at: e.created_at })),
       today: new Date(),
     })
-  }, [familyId, rows])
+  }, [familyId, expensesData])
 
   return {
     data,

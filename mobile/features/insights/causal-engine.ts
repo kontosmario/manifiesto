@@ -48,16 +48,6 @@ const SPIKE_RATIO_FRIDAY_SAT = 1.4
 const PAIRED_TX_WINDOW_MS = 3 * 60 * 60 * 1000
 const STRESS_DAY_TX_THRESHOLD = 4
 
-const DOW_NAMES = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-] as const
-
 /** Project dow convention: Mon=0..Sun=6. */
 function projectDow(date: Date): number {
   return (date.getDay() + 6) % 7
@@ -246,7 +236,3 @@ export function detectCausalLinks(args: BuildArgs): CausalLink[] {
   if (stress) out.push(stress)
   return out
 }
-
-/** Re-export the project-dow helper for builders that need to map the
- *  detector's `cause.value` back to a JS-day index. */
-export const DOW_NAMES_FOR_CAUSAL = DOW_NAMES

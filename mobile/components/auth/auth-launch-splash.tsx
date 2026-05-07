@@ -96,7 +96,7 @@ export function AuthLaunchSplash({
   return (
     <Animated.View style={[styles.overlay, overlayStyle]} pointerEvents="auto">
       <View style={styles.root}>
-        <AuroraLayer width={width} height={height} reduced={reduced} />
+        <AuroraLayer width={width} height={height} />
         <ParticleLayer width={width} height={height} reduced={reduced} />
 
         <View
@@ -229,7 +229,6 @@ const STATIC_AURORA_POSITIONS: Record<number, AuroraPosition> = {
 export function AuroraLayer({
   width,
   height,
-  reduced,
   /**
    * - `false` (default): blobs sit at fixed positions for the lifetime
    *   of the app session (picked once at module load, shared by every
@@ -243,7 +242,6 @@ export function AuroraLayer({
 }: {
   width: number
   height: number
-  reduced: boolean
   randomize?: boolean
 }) {
   return (
@@ -254,7 +252,6 @@ export function AuroraLayer({
           config={blob}
           parentWidth={width}
           parentHeight={height}
-          reduced={reduced}
           randomize={randomize}
         />
       ))}
@@ -266,13 +263,11 @@ function AuroraBlob({
   config,
   parentWidth,
   parentHeight,
-  reduced: _reduced,
   randomize,
 }: {
   config: AuroraBlobConfig
   parentWidth: number
   parentHeight: number
-  reduced: boolean
   randomize: boolean
 }) {
   const t = useSharedValue(0)

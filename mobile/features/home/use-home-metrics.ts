@@ -134,8 +134,12 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const cycleExtraIncome = cycleIncomeQuery.data ?? 0
 
   const today = dashboard.todayDate
-  const fixedExpenses = dashboard.fixedExpensesQuery.data ?? []
-  const expenses = dashboard.expensesQuery.data ?? []
+  // Stabilise the `?? []` fallbacks so downstream memos don't bust
+  // when the underlying query data is unchanged.
+  const fixedExpensesData = dashboard.fixedExpensesQuery.data
+  const fixedExpenses = useMemo(() => fixedExpensesData ?? [], [fixedExpensesData])
+  const expensesData = dashboard.expensesQuery.data
+  const expenses = useMemo(() => expensesData ?? [], [expensesData])
   const paymentsQuery = useFixedExpensePayments({
     familyId,
     fixedExpenseIds: fixedExpenses.map((f) => f.id),
@@ -188,8 +192,6 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
         Math.floor((today.getTime() - cycleStart.getTime()) / msPerDay) + 1,
       ),
     )
-    const daysRemaining = Math.max(1, cycleTotalDays - cycleDay)
-
     // "Disponible hoy" = plata discrecional restante del ciclo
     // (dashboard.totalAvailable ya excluye fijos y ahorro). Le sumamos
     // los `income_events` del ciclo (transferencias, bonos, regalos)
@@ -312,6 +314,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.variableSpentInCurrentCycle,
     dashboard.effectiveCycleIncome,
     dashboard.effectiveCycleDays,
+    dashboard.monthlyIncome,
     dashboard.savingsGoal,
     dashboard.fixedExpensesMonthlyTotal,
     dashboard.cycleStartingBalanceOverride,

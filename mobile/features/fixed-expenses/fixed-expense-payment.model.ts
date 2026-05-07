@@ -26,9 +26,3 @@ export function mapFixedExpensePaymentRow(row: FixedExpensePaymentRow): FixedExp
     createdAt: row.created_at,
   }
 }
-
-export function firstOfCurrentMonth(today: Date): string {
-  const y = today.getUTCFullYear()
-  const m = String(today.getUTCMonth() + 1).padStart(2, '0')
-  return `${y}-${m}-01`
-}

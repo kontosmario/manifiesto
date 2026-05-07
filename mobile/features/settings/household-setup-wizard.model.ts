@@ -3,8 +3,6 @@ import {
   buildFinanceSubmitState,
   type BufferMode,
   type FinanceSettingsDrafts,
-  sanitizeMoneyInput,
-  sanitizePercentageInput,
 } from '@/features/settings/settings-form.model'
 import {
   deriveSavingsGoalAmount,
@@ -289,18 +287,6 @@ export function buildHouseholdSetupSubmitState({
   })
 }
 
-export function sanitizeHouseholdSetupMoneyInput(value: string) {
-  return sanitizeMoneyInput(value)
-}
-
 export function parseHouseholdSetupMoneyInput(value: string) {
   return parsePrice(value)
-}
-
-export function sanitizeHouseholdSetupPercentInput(value: string) {
-  return sanitizePercentageInput(value)
-}
-
-export function isHouseholdSetupPending(snapshot: FamilyFinanceInputSnapshot) {
-  return snapshot.monthlyIncome <= 0
 }

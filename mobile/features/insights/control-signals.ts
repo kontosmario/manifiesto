@@ -152,11 +152,6 @@ function clamp01(n: number): number {
   return n
 }
 
-/** 1-based current day of the cycle derived from closed-day count. */
-function currentCycleDay(view: ControlView): number {
-  return view.detalleDias.length + 1
-}
-
 // ─── builder ────────────────────────────────────────────────────────
 
 export function buildControlSignals(
@@ -487,7 +482,7 @@ function tryComposeSavingsMomentum(
   // See `momentum-impact.ts` for the rationale — folding the
   // reinforcer's monthly figure (× 12 was the old behavior) inflated
   // the number into fantasy ("+$770k a favor" for a healthy account).
-  const headline = composeMomentumImpact(positive, reinforcer)
+  const headline = composeMomentumImpact(positive)
   return {
     id: 'super-savings-momentum',
     emoji: '🚀',

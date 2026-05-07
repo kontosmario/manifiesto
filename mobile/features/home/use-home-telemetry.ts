@@ -99,8 +99,13 @@ export function useHomeTelemetry(
       context: { session_id: sessionId },
     })
 
+    // Snapshot the ref value at effect-setup time so the cleanup
+    // computes dwell against the mount-time anchor (the ref may be
+    // mutated again before unmount in dev/Strict-Mode double-runs).
+    const mountedAtSnapshot = mountedAtRef.current
+
     return () => {
-      const dwellMs = Date.now() - mountedAtRef.current
+      const dwellMs = Date.now() - mountedAtSnapshot
       lastUnmountedAt = Date.now()
       lastSessionId = sessionId
 

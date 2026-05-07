@@ -1,4 +1,4 @@
-import type { FamilyMonthlySpent } from '@/features/expenses/use-expenses'
+import type { FamilyMonthlySpent } from '@/features/expenses/expense-repository'
 import type { FixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-utils'
 import type { PayCycle } from '@/utils/pay-cycle'
 

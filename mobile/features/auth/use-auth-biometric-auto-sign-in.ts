@@ -11,6 +11,7 @@ interface UseAuthBiometricAutoSignInParams {
 // "Entrar con Face ID" button feel out of sync with the actual scan.
 // The reset callback is kept as a no-op for back-compat with the
 // controller's `useFocusEffect`.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- params kept for back-compat with caller signature
 export function useAuthBiometricAutoSignIn(_params: UseAuthBiometricAutoSignInParams) {
   const resetAutoBiometricAttempt = useCallback(() => {}, [])
 

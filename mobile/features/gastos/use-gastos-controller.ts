@@ -193,17 +193,17 @@ export function useGastosController(
     return m
   }, [categoriesQuery.data])
 
-  // ── Hero (server-computed) ──────────────────────────────────────
+  // ── Hero (server-computed at cycle scope) ───────────────────────
   const hero = heroQuery.data
-  const filteredTotal = hero?.total ?? 0
-  const filteredCount = hero?.count ?? 0
+  const cycleTotal = hero?.total ?? 0
+  const cycleCount = hero?.count ?? 0
   const cycleDaysElapsed = hero?.cycle_days_elapsed ?? cycleDaysElapsedClient
-  const averageDaily = hero?.average_daily ?? 0
+  const cycleAverageDaily = hero?.average_daily ?? 0
   const recentDailyBars = useMemo(
     () => hero?.recent_daily_bars ?? [0, 0, 0, 0, 0, 0, 0],
     [hero?.recent_daily_bars],
   )
-  const topCategories = useMemo<CategoryWeightRow[]>(
+  const cycleTopCategories = useMemo<CategoryWeightRow[]>(
     () =>
       (hero?.top_categories ?? []).map((r) => ({
         id: r.id,
@@ -263,6 +263,45 @@ export function useGastosController(
     [filteredExpenses, today],
   )
 
+  // ── Day-scoped hero stats (when the user tapped a day) ──────────
+  // The cycle-wide hero RPC keeps showing month totals; we override
+  // the hero outputs here so the card reflects exactly the day in
+  // focus. Top categories for the day are computed client-side over
+  // `dayDetailExpenses` (already loaded for the list).
+  const dayTopCategories = useMemo<CategoryWeightRow[]>(() => {
+    if (selectedDay == null) return cycleTopCategories
+    const totals = new Map<string, number>()
+    for (const e of dayDetailExpenses) {
+      totals.set(e.category_id, (totals.get(e.category_id) ?? 0) + e.price)
+    }
+    const dayTotal = Array.from(totals.values()).reduce((s, v) => s + v, 0)
+    if (dayTotal === 0) return []
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id, amount]) => {
+        const c = categoriesById.get(id)
+        return {
+          id,
+          label: c?.name ?? 'Sin categoría',
+          color: c?.color ?? '#888',
+          amount,
+          percent: Math.round((amount / dayTotal) * 100),
+        }
+      })
+  }, [selectedDay, dayDetailExpenses, cycleTopCategories, categoriesById])
+
+  // ── Hero outputs (filtered by selectedDay if set) ───────────────
+  const filteredTotal =
+    selectedDay != null ? (dailySpend[selectedDay]?.total ?? 0) : cycleTotal
+  const filteredCount =
+    selectedDay != null ? (dailySpend[selectedDay]?.count ?? 0) : cycleCount
+  const topCategories =
+    selectedDay != null ? dayTopCategories : cycleTopCategories
+  // Per-day average doesn't make sense — we pass 0 so consumers can
+  // hide the "Promedio día" row when a single day is in focus.
+  const averageDaily = selectedDay != null ? 0 : cycleAverageDaily
+
   // ── Summary chip ────────────────────────────────────────────────
   const summaryChip = useMemo(() => {
     const period = selectedDay != null ? `día ${selectedDay}` : cycleLabel
@@ -270,13 +309,9 @@ export function useGastosController(
       selectedCategoryId == null
         ? 'Todas'
         : (categoriesById.get(selectedCategoryId)?.name ?? 'Todas')
-    // When the user selected a day, count is the day-detail length.
-    // Otherwise count is the cycle-wide count (from the hero RPC).
-    const count = selectedDay != null ? filteredExpenses.length : filteredCount
-    return `${count} mov · ${period} · ${cat}`
+    return `${filteredCount} mov · ${period} · ${cat}`
   }, [
     filteredCount,
-    filteredExpenses.length,
     selectedDay,
     cycleLabel,
     selectedCategoryId,

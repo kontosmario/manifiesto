@@ -1,11 +1,3 @@
-import { Platform } from 'react-native'
-
-export const authTitleFontFamily = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: undefined,
-})
-
 export const authPalette = {
   badge: {
     background: 'rgba(10, 16, 13, 0.46)',

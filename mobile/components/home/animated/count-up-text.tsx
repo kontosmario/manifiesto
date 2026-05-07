@@ -51,6 +51,7 @@ export function CountUpText({
   useEffect(() => {
     if (reduced) {
       progress.value = value
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync of display when reduced-motion flips on
       setDisplay(format(value))
       return
     }

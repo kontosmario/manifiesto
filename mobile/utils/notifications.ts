@@ -1,12 +1,5 @@
 import type { NotificationSeverity } from '@/features/notifications/use-notifications'
 
-const notificationDateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
 const notificationDayMonthFormatter = new Intl.DateTimeFormat('es-AR', {
   day: '2-digit',
   month: 'short',
@@ -16,41 +9,6 @@ const notificationTimeFormatter = new Intl.DateTimeFormat('es-AR', {
   hour: '2-digit',
   minute: '2-digit',
 })
-
-export function notificationKindLabel(kind: string): string {
-  switch (kind) {
-    case 'expense':
-    case 'expense_logged':
-      return 'Gasto'
-    case 'fixed_expense':
-    case 'fixed_created':
-      return 'Gasto fijo'
-    case 'fixed_edited':
-      return 'Fijo actualizado'
-    case 'fixed_deleted':
-      return 'Fijo eliminado'
-    case 'fixed_paid':
-      return 'Fijo pagado'
-    case 'streak_milestone':
-      return 'Racha'
-    case 'streak_broken':
-      return 'Racha perdida'
-    case 'shield_used':
-      return 'Escudo usado'
-    case 'shield_earned':
-      return 'Escudo ganado'
-    case 'goal_created':
-      return 'Meta creada'
-    case 'goal_contribution':
-      return 'Aporte a meta'
-    case 'goal_milestone':
-      return 'Meta: hito'
-    case 'goal_achieved':
-      return 'Meta alcanzada'
-    default:
-      return 'Info'
-  }
-}
 
 export type NotificationGroup = 'gastos' | 'fijos' | 'racha' | 'meta' | 'otros'
 
@@ -169,15 +127,6 @@ export function pillForSeverity(
     default:
       return null
   }
-}
-
-export function formatNotificationDate(value: string): string {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return 'Sin fecha'
-  }
-
-  return notificationDateTimeFormatter.format(parsed)
 }
 
 function startOfDay(date: Date): Date {

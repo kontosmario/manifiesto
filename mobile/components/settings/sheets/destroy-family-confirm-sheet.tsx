@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -43,6 +43,7 @@ export function DestroyFamilyConfirmSheet({
   // from the warning).
   useEffect(() => {
     if (visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of destructive flow on each open
       setStep(1)
       setPhrase('')
     }

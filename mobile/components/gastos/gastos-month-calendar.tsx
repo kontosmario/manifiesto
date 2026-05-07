@@ -129,7 +129,6 @@ export function GastosMonthCalendar({
         >
           <GridMode
             dayMoods={dayMoods}
-            todayDay={todayDay}
             cycleStart={cycleStart}
             cycleDays={cycleDays}
             firstWeekdayOffset={firstWeekdayOffset}
@@ -143,14 +142,12 @@ export function GastosMonthCalendar({
 
 function GridMode({
   dayMoods,
-  todayDay,
   cycleStart,
   cycleDays,
   firstWeekdayOffset,
   onSelectDay,
 }: {
   dayMoods: Record<number, GastosDayMood>
-  todayDay: number
   cycleStart: Date
   cycleDays: number
   firstWeekdayOffset: number

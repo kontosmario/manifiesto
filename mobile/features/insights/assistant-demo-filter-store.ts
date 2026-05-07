@@ -80,10 +80,6 @@ export async function setAssistantDemoFilter(
   notify()
 }
 
-export function getAssistantDemoFilter(): AssistantDemoFilter {
-  return cached
-}
-
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

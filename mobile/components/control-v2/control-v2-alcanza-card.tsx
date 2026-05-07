@@ -4,7 +4,7 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ControlV2Placeholder } from './control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
-import { formatMoney, formatMoneyShort } from '@/utils/money'
+import { formatMoneyShort } from '@/utils/money'
 
 interface ControlV2AlcanzaCardProps {
   alcanzaElMes: boolean

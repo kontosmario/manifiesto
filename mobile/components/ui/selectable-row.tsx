@@ -66,12 +66,12 @@ export function SelectableRow({
         onPress={handlePress}
         onPressIn={() => {
           if (!disabled) {
-            // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+             
             pressScale.value = withSpring(0.97, motionSprings.press)
           }
         }}
         onPressOut={() => {
-          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+           
           pressScale.value = withSpring(1, motionSprings.press)
         }}
         disabled={disabled}

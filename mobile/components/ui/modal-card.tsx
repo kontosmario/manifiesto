@@ -9,7 +9,6 @@ import {
   Text,
   View,
   useWindowDimensions,
-  type LayoutChangeEvent,
 } from 'react-native'
 import Animated, {
   runOnJS,
@@ -92,7 +91,6 @@ export function ModalCard({
   const reduceMotion = useReducedMotion()
   const numpadOffset = useNumpadOffset()
   const keyboardHeight = useKeyboardHeight()
-  const [sheetHeight, setSheetHeight] = useState(screenHeight)
 
   const translateY = useSharedValue(screenHeight)
   const backdropOpacity = useSharedValue(0)
@@ -138,44 +136,47 @@ export function ModalCard({
       return
     }
     if (!mounted) return
-    // Two close strategies — chosen by render mode:
+    // Animated exit — slide-down + backdrop fade. Used in BOTH
+    // render modes (inline AND native `<Modal>`) so every close
+    // path in the app — backdrop tap, swipe-down, save success —
+    // ends with the same polished slow-down motion.
     //
-    //   · `inline` mode (sheet renders as an absolute View inside
-    //     the host's tree, no native `<Modal>`): we CAN play the
-    //     slide-down + backdrop fade because the inline wrapper
-    //     toggles `pointerEvents="none"` during the exit, so taps
-    //     fall through to the host's underlying CTAs immediately
-    //     while the visual exit finishes. Best of both worlds —
-    //     polished close motion + instant interactivity.
+    //   · `inline` mode additionally toggles `setExiting(true)` so
+    //     its `pointerEvents="none"` lets taps fall through to the
+    //     host's underlying CTAs during the slide-down. Native
+    //     Modal mode doesn't need that branch — the OS blocks
+    //     underlying touches while the Modal is mounted regardless,
+    //     so the user briefly waits the ~exitModal-duration window
+    //     for taps to reach the host. We accept that trade-off in
+    //     exchange for matching motion language across every sheet.
     //
-    //   · Native `<Modal>` mode: the OS blocks every underlying
-    //     touch while the Modal is mounted, no matter what we set
-    //     on inner `pointerEvents`. To keep re-tap instant we have
-    //     to snap the Modal closed (no visual exit) and let
-    //     entrance animate the next open.
-    if (inline) {
-      setExiting(true)
-      backdropOpacity.value = withTiming(0, {
-        duration: motionDurations.scrimOut,
-      })
-      translateY.value = withTiming(
-        screenHeight,
-        {
-          duration: motionDurations.exitModal,
-          easing: motionEasings.accelerate,
-        },
-        (finished) => {
-          if (finished) {
-            runOnJS(setMounted)(false)
-            runOnJS(setExiting)(false)
-          }
-        },
-      )
+    //   · Reduced-motion still snaps closed (no animation) — the
+    //     OS guarantee of "no decorative motion" beats consistent
+    //     app feel for that user setting.
+    if (reduceMotion) {
+      setMounted(false)
+      setExiting(false)
+      translateY.value = screenHeight
+      backdropOpacity.value = 0
       return
     }
-    setMounted(false)
-    translateY.value = screenHeight
-    backdropOpacity.value = 0
+    if (inline) setExiting(true)
+    backdropOpacity.value = withTiming(0, {
+      duration: motionDurations.scrimOut,
+    })
+    translateY.value = withTiming(
+      screenHeight,
+      {
+        duration: motionDurations.exitModal,
+        easing: motionEasings.accelerate,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(setMounted)(false)
+          runOnJS(setExiting)(false)
+        }
+      },
+    )
   }, [visible, mounted, inline, reduceMotion, screenHeight, translateY, backdropOpacity])
 
   const handleDismiss = useCallback(() => {
@@ -186,27 +187,19 @@ export function ModalCard({
     onClose()
   }, [onClose])
 
-  const handleSheetLayout = useCallback((event: LayoutChangeEvent) => {
-    setSheetHeight(event.nativeEvent.layout.height)
+  const handleSheetLayout = useCallback(() => {
+    // no-op — kept so the onLayout binding stays stable across the
+    // sheet's lifetime if a future feature needs height again.
   }, [])
 
-  // Drag-dismiss path:
-  //   · Native `<Modal>` mode — unmount the Modal immediately. RN's
-  //     `<Modal>` blocks every underlying touch as long as it's
-  //     mounted, and the sheetDismiss spring takes ~250-300ms to
-  //     settle, so we'd spend that whole window with the host
-  //     unresponsive.
-  //   · Inline mode — only call `onClose()`. The parent flips
-  //     `visible` to false, the useEffect above runs the inline
-  //     exit branch (slide-down + backdrop fade with
-  //     `pointerEvents="none"`), and the underlying host stays
-  //     touch-interactive throughout the animation.
+  // Drag-dismiss path: both inline and native Modal modes funnel
+  // through the same path now — call `onClose()`, parent flips
+  // `visible` to false, the useEffect above animates the slide-down
+  // + backdrop fade and unmounts on completion. Same exit motion
+  // for every dismiss path (backdrop tap, swipe-down, save).
   const handleDragDismissed = useCallback(() => {
-    if (!inline) {
-      setMounted(false)
-    }
     onClose()
-  }, [inline, onClose])
+  }, [onClose])
 
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -230,14 +223,12 @@ export function ModalCard({
       const shouldDismiss =
         event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
       if (shouldDismiss) {
-        // Fire the unmount immediately, BEFORE waiting on the spring
-        // to land. The visible animation of the spring would only
-        // play inside the soon-to-unmount Modal anyway — and keeping
-        // the Modal alive until spring completion was the source of
-        // the ~250ms "tap-after-dismiss" delay the user reported
-        // even after the close-path animation was removed. Snap-out
-        // matches the snap-out we apply on backdrop-tap (see effect
-        // above), so close behavior is consistent across all paths.
+        // Hand off to `handleDragDismissed` → `onClose()` → parent
+        // flips `visible` to false → the useEffect above runs the
+        // slide-down animation from the current translateY (wherever
+        // the user's finger left it) to screenHeight, then unmounts
+        // on completion. Single, uniform exit motion across drag,
+        // backdrop tap, and save success.
         runOnJS(handleDragDismissed)()
       } else {
         translateY.value = withSpring(0, motionSprings.sheet)

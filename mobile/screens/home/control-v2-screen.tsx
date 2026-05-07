@@ -14,8 +14,14 @@ import { ControlV2HoyCard } from '@/components/control-v2/control-v2-hoy-card'
 import { ControlV2PatronCard } from '@/components/control-v2/control-v2-patron-card'
 import { ControlV2SemanaCard } from '@/components/control-v2/control-v2-semana-card'
 import { ControlV2VsMesCard } from '@/components/control-v2/control-v2-vsmes-card'
+import { DailyGoalSheet } from '@/components/control-v2/daily-goal-sheet'
 import { Screen } from '@/components/ui/screen'
-import { useFamilyFinance } from '@/features/finance/use-family-finance'
+import {
+  buildFamilyFinanceInput,
+  useFamilyFinance,
+  useUpsertFamilyFinance,
+} from '@/features/finance/use-family-finance'
+import { useStreak } from '@/features/streaks/use-streak'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
@@ -66,8 +72,102 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const expensesQuery = useExpenses(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
   const dashboard = useFamilyDashboard(familyId)
+  const streakQuery = useStreak(familyId, userId)
+  const upsertFamilyFinance = useUpsertFamilyFinance(familyId)
   const missingIncome = (financeQuery.data?.monthly_income ?? 0) <= 0
   const missingExpenses = (expensesQuery.data ?? []).length === 0
+
+  // ── Daily-goal ("Mi meta diaria") wiring ────────────────────────
+  // The header score pill doubles as the entry point into the
+  // self-binding goal. The maths reuses the existing
+  // `daily_budget_buffer_*` columns: a "goal at 80% of cupo real"
+  // === bufferMode='percent' with 20% reserved.
+  //
+  // Guardrail #9: while the streak is server-canonically broken
+  // (`current_streak === 0` after the cron processed the break) AND
+  // within the 14-day recovery window, the editor is disabled.
+  // Stacking a self-imposed restriction on top of a freshly-broken
+  // streak compounds the emotional load.
+  //
+  // We deliberately gate on the server-canonical signal only, NOT on
+  // `useStreak.isBroken` — the latter folds in a client-side heuristic
+  // that flips to `true` when `last_logged_date` is 2+ days stale,
+  // even if the server hasn't zeroed `current_streak` yet. That
+  // heuristic catches "the cron is behind", not "the user is in a
+  // fragile recovery window", so using it would silent-disable the
+  // pill for any user with a slow cron run (including dev accounts
+  // testing the feature).
+  //
+  // Canonical state we check: `streak_broken_at !== null` AND the row
+  // shows `current_streak === 0`. We re-derive both fields directly
+  // from the raw streak row instead of trusting `isBroken`.
+  const RECOVERY_GRACE_DAYS = 14
+  const goalEditable = useMemo(() => {
+    const streak = streakQuery.data
+    if (!streak) return true
+    const broken = streak.streakBrokenAt
+    // Server-canonical broken: streak_broken_at stamped AND
+    // current_streak zeroed by the cron. If current_streak > 0 the
+    // user has either recovered or never had the break processed —
+    // either way, no reason to gate.
+    if (!broken || streak.currentStreak > 0) return true
+    const brokenAt = new Date(broken).getTime()
+    if (Number.isNaN(brokenAt)) return true
+    const ageDays = (Date.now() - brokenAt) / (1000 * 60 * 60 * 24)
+    return ageDays > RECOVERY_GRACE_DAYS
+  }, [streakQuery.data])
+
+  // Real cupo before any goal/buffer is applied — `data.cupoDiario`
+  // from the adapter is the pre-buffer value (it divides ingreso −
+  // fijos − ahorro by the cycle days, no buffer subtraction). We use
+  // the SAME number the user already sees on the HOY card so the
+  // sheet reads as a self-consistent surface instead of presenting a
+  // fresh figure pulled from a parallel pipeline.
+  const realDailyCupo = data.cupoDiario
+  const dailyGoalAmount = useMemo(() => {
+    const finance = financeQuery.data
+    if (!finance || finance.daily_budget_buffer_mode !== 'percent') return null
+    const pct = finance.daily_budget_buffer_value
+    if (!Number.isFinite(pct) || pct <= 0) return null
+    const reduced = Math.max(0, Math.round(realDailyCupo * (1 - pct / 100)))
+    return reduced > 0 && reduced < Math.round(realDailyCupo) ? reduced : null
+  }, [financeQuery.data, realDailyCupo])
+
+  const [goalSheetVisible, setGoalSheetVisible] = useState(false)
+  const handleGoalSubmit = useCallback(
+    async ({
+      bufferMode,
+      bufferPercent,
+    }: {
+      bufferMode: 'none' | 'percent'
+      bufferPercent: number
+    }) => {
+      const finance = financeQuery.data
+      if (!finance) return
+      const input = buildFamilyFinanceInput({
+        dailyBudgetBufferMode: bufferMode,
+        dailyBudgetBufferValue: bufferMode === 'percent' ? bufferPercent : 0,
+        dailyBudgetCheckinHour: finance.daily_budget_checkin_hour,
+        dailyBudgetNudgesEnabled: finance.daily_budget_nudges_enabled,
+        monthlyIncome: finance.monthly_income,
+        savingsGoal: finance.savings_goal,
+        savingsGoalPercent: finance.savings_goal_percent,
+        usdExchangeRate: finance.usd_exchange_rate,
+        salaryPaymentDay: finance.salary_payment_day,
+        lastSalaryConfirmedAt: finance.last_salary_confirmed_at,
+        currentCycleStartingBalance: finance.current_cycle_starting_balance,
+        currentCycleAnchor: finance.current_cycle_anchor,
+      })
+      try {
+        await upsertFamilyFinance.mutateAsync(input)
+        void triggerHaptic('success')
+        setGoalSheetVisible(false)
+      } catch {
+        void triggerHaptic('warning')
+      }
+    },
+    [financeQuery.data, upsertFamilyFinance],
+  )
 
   // Section anchor bookkeeping for the dispatcher's scroll-to-section.
   const scrollRef = useRef<ScrollView | null>(null)
@@ -211,6 +311,9 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               score={view.score}
               scoreLabel={view.scoreLabel}
               scoreTone={view.scoreToneDark}
+              dailyGoalAmount={dailyGoalAmount}
+              goalEditable={goalEditable}
+              onPressGoal={() => setGoalSheetVisible(true)}
             />
 
             <TourTarget
@@ -237,6 +340,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   momentum={view.momentum}
                   noSpendCount={view.noSpendCount}
                   alreadyExhausted={view.alreadyExhausted}
+                  dailyGoalAmount={dailyGoalAmount}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -334,7 +438,6 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   proyectadoMes={view.proyectadoMes}
                   vsMesAhorro={view.vsMesAhorro}
                   vsMesDeltaPct={view.vsMesDeltaPct}
-                  vsMesDiasBajoCupo={view.vsMesDiasBajoCupo}
                   vsMesMejor={view.vsMesMejor}
                   diasGanadores={view.diasGanadores}
                   diaActual={data.diaActual}
@@ -378,6 +481,35 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
 
           </View>
         </ScrollView>
+        <DailyGoalSheet
+          visible={goalSheetVisible}
+          realDailyCupo={realDailyCupo}
+          remainingCycleDays={view.diasRestantes}
+          initialBufferMode={
+            financeQuery.data?.daily_budget_buffer_mode ?? 'none'
+          }
+          initialBufferPercent={
+            financeQuery.data?.daily_budget_buffer_value ?? 0
+          }
+          userStats={{
+            racha: view.racha,
+            closedDays: view.closedDays,
+            diasGanadores: view.diasGanadores,
+            momentum: view.momentum,
+            noSpendCount: view.noSpendCount,
+          }}
+          isSaving={upsertFamilyFinance.isPending}
+          onClose={() => setGoalSheetVisible(false)}
+          onSubmit={handleGoalSubmit}
+          // Native Modal mode (no `inline`): the sheet wraps in its
+          // own UIViewController and covers the full screen
+          // including the tab bar — same family as the Home
+          // "agregar ahorro" sheet (`QuickAddSavingsSheet`). The
+          // animated slide-down close that used to require inline
+          // mode is now built into `ModalCard` for both modes, so
+          // every dismiss path (backdrop tap, swipe-down, save)
+          // plays the same polished exit.
+        />
       </Screen>
     </ControlAnchorsContext.Provider>
   )

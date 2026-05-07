@@ -89,8 +89,6 @@ function normalizeRow(row: RawNotification): FamilyNotification {
   }
 }
 
-export const familyNotificationsQueryKey = notificationQueryKeys.list
-
 const NOTIFICATION_COLUMNS =
   'id, family_id, user_id, title, body, kind, severity, created_by, created_at, read_at, metadata'
 
@@ -182,21 +180,6 @@ export function useUnreadNotificationsCount(familyId?: string, userId?: string) 
     queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
     enabled: Boolean(familyId),
     queryFn: unreadNotificationsQueryFn(familyId, userId),
-  })
-}
-
-/**
- * Boolean projection of `useUnreadNotificationsCount`. Use this when
- * the consumer only needs to know "are there ANY unread?" — narrowing
- * the hook with `select` ensures the component re-renders only on
- * `0 ↔ N` transitions, not every time the count changes (`3 → 5`).
- */
-export function useHasUnreadNotifications(familyId?: string, userId?: string) {
-  return useQuery<number, Error, boolean>({
-    queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
-    enabled: Boolean(familyId),
-    queryFn: unreadNotificationsQueryFn(familyId, userId),
-    select: (count) => count > 0,
   })
 }
 

@@ -82,7 +82,7 @@ export function useCategories(familyId?: string, scope: CategoryScope = 'expense
         return []
       }
 
-      let query = supabase
+      const query = supabase
         .from('categories')
         .select('id, family_id, name, color, template_id, scope, created_at')
         .eq('family_id', familyId)

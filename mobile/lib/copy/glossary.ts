@@ -11,5 +11,3 @@ export const terms = {
   fixedExpense:  'Gasto fijo',
   history:       'Historial',
 } as const
-
-export type GlossaryTerm = keyof typeof terms

@@ -46,10 +46,6 @@ export async function setAssistantDemoMode(enabled: boolean): Promise<void> {
   notify()
 }
 
-export function getAssistantDemoMode(): boolean {
-  return cached
-}
-
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

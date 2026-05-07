@@ -88,8 +88,13 @@ export function useScreenTelemetry({
       context: { session_id: sessionId },
     })
 
+    // Snapshot the ref value at effect-setup time so cleanup uses
+    // the mount-time anchor (avoid the cleanup-after-mutation race
+    // flagged by exhaustive-deps).
+    const mountedAtSnapshot = mountedAtRef.current
+
     return () => {
-      const dwellMs = Date.now() - mountedAtRef.current
+      const dwellMs = Date.now() - mountedAtSnapshot
       lastUnmountedAtByScope.set(scope, Date.now())
       lastSessionIdByScope.set(scope, sessionId)
 

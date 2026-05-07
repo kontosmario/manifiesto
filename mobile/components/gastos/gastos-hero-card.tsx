@@ -18,6 +18,14 @@ interface GastosHeroCardProps {
   averageDaily: number
   averageDailyBars: number[]
   averageWindowDays?: number
+  /**
+   * When `true`, the hero is showing data for a single day (the user
+   * tapped a calendar cell). In that mode the "PROMEDIO DÍA" row is
+   * hidden — the per-day average isn't meaningful when a single day
+   * IS the period — and the top label switches to "TOTAL DEL DÍA"
+   * so the user reads the value as "what you spent on this day".
+   */
+  daySelected?: boolean
 }
 
 /**
@@ -32,6 +40,7 @@ export function GastosHeroCard({
   averageDaily,
   averageDailyBars,
   averageWindowDays = 22,
+  daySelected = false,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
   // Pass through whatever the controller computed — including all
@@ -69,7 +78,9 @@ export function GastosHeroCard({
           <CardParticles count={9} accentColor={authTokens.peach} />
 
           <View style={styles.topRow}>
-            <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>TOTAL VISIBLE</Text>
+            <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>
+              {daySelected ? 'TOTAL DEL DÍA' : 'TOTAL VISIBLE'}
+            </Text>
             <View
               style={[
                 styles.chip,
@@ -87,27 +98,29 @@ export function GastosHeroCard({
             style={[styles.amount, { color: theme.colors.heroText }]}
           />
 
-          <View style={styles.avgRow}>
-            <View style={styles.avgText}>
-              <Text style={[styles.avgLabel, { color: theme.colors.heroMuted2 }]}>
-                PROMEDIO DÍA
-              </Text>
-              <View style={styles.avgValueRow}>
-                <CountUpText
-                  value={averageDaily}
-                  duration={1000}
-                  format={(n) => formatMoney(n)}
-                  style={[styles.avgValue, { color: theme.colors.heroText }]}
-                />
-                <Text style={[styles.avgSub, { color: theme.colors.heroMuted2 }]}>
-                  · últimos {averageWindowDays}d
+          {daySelected ? null : (
+            <View style={styles.avgRow}>
+              <View style={styles.avgText}>
+                <Text style={[styles.avgLabel, { color: theme.colors.heroMuted2 }]}>
+                  PROMEDIO DÍA
                 </Text>
+                <View style={styles.avgValueRow}>
+                  <CountUpText
+                    value={averageDaily}
+                    duration={1000}
+                    format={(n) => formatMoney(n)}
+                    style={[styles.avgValue, { color: theme.colors.heroText }]}
+                  />
+                  <Text style={[styles.avgSub, { color: theme.colors.heroMuted2 }]}>
+                    · últimos {averageWindowDays}d
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.avgBars}>
+                <GastosAverageBars values={barsData} color={theme.colors.heroAccent} totalHeight={24} />
               </View>
             </View>
-            <View style={styles.avgBars}>
-              <GastosAverageBars values={barsData} color={theme.colors.heroAccent} totalHeight={24} />
-            </View>
-          </View>
+          )}
 
           {topCategories.length > 0 ? (
             <Animated.View

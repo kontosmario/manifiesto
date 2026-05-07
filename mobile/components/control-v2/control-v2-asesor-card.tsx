@@ -45,7 +45,6 @@ const SHELL_GRADIENT = ['#12211A', '#244235'] as const  // surface-950 → surfa
 const STAR_COLOR = '#A6EF8F'                             // primary-300
 const ASSISTANT_GRADIENT = ['#A6EF8F', '#329315'] as const  // primary-300 → primary-700
 const STATUS_DOT = '#49D61F'                             // primary-500
-const TEXT_PRIMARY = '#F2EAD3'                           // V1 cream
 const TEXT_ACCENT = '#A6EF8F'                            // primary-300
 const TEXT_SECONDARY = 'rgba(242,234,211,0.70)'          // cream alpha
 const TEXT_TERTIARY = 'rgba(166,239,143,0.55)'           // primary-300 alpha

@@ -58,13 +58,9 @@ export const loadingLabels = {
   settings:      'Cargando tus preferencias',
 } as const
 
-export type LoadingLabelKey = keyof typeof loadingLabels
-
 export const errorMessages = {
   network: 'No pudimos conectarnos. Revisá tu conexión.',
   server:  'Algo falló del lado del servidor. Prueba de nuevo.',
   data:    'Los datos llegaron incompletos. Actualiza para reintentar.',
   auth:    'Tu sesión venció. Volvé a iniciar sesión.',
 } as const
-
-export type ErrorMessageKey = keyof typeof errorMessages

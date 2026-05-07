@@ -7,10 +7,8 @@ import {
 } from '@/features/auth/auth-layout'
 
 export function useAuthKeyboardController({
-  isReducedMotionEnabled,
   mode,
 }: {
-  isReducedMotionEnabled: boolean
   mode: AuthMode
 }) {
   const [availableContentHeight, setAvailableContentHeight] = useState(0)

@@ -178,6 +178,7 @@ export function AddFijoV2Screen({
   }
 
   // Hydrate form state from the fijo being edited, once it loads.
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional one-shot hydration of form state from loaded record */
   useEffect(() => {
     if (!editingFijo || editingFijo.id === hydratedFromFijoId) return
     setName(editingFijo.name)
@@ -193,6 +194,7 @@ export function AddFijoV2Screen({
     setNotify(editingFijo.notify_days_before != null)
     setHydratedFromFijoId(editingFijo.id)
   }, [editingFijo, hydratedFromFijoId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isInstallment = freqChoice === 'cuotas'
   const totalCuotas = isInstallment ? amount * cuotaTot : 0

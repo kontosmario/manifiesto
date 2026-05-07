@@ -189,10 +189,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
         </TourTarget>
         <Animated.View layout={sectionLayout}>
           <FijosSmartAlerts
-            zombieCount={controller.summary.zombies.length}
             hikes={controller.summary.hikes}
             advisorSignals={advisorSignals}
-            onOpenZombies={() => controller.setTab('zombis')}
             onOpenHike={handleEdit}
           />
         </Animated.View>

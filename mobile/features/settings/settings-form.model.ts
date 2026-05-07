@@ -5,7 +5,6 @@ import {
   type FamilyFinanceInputSnapshot,
 } from '@/features/finance/family-finance.model'
 import {
-  formatPriceInputValue,
   normalizePriceInput,
   parsePrice,
   serializePrice,
@@ -24,23 +23,6 @@ export interface FinanceSettingsDrafts {
   usdRateDraft: string
 }
 
-export function buildProfileDraftState(displayName: string) {
-  return {
-    displayNameDraft: displayName,
-  }
-}
-
-export function canSaveProfileDraft({
-  displayName,
-  draft,
-}: {
-  displayName: string
-  draft: string
-}) {
-  const trimmedDraft = draft.trim()
-  return trimmedDraft.length > 0 && trimmedDraft !== displayName.trim()
-}
-
 export function buildFinanceDraftState(snapshot: FamilyFinanceInputSnapshot): FinanceSettingsDrafts {
   return {
     bufferDraft: serializePrice(snapshot.dailyBudgetBufferValue),
@@ -54,50 +36,12 @@ export function buildFinanceDraftState(snapshot: FamilyFinanceInputSnapshot): Fi
   }
 }
 
-export function sanitizeDayInput(value: string) {
-  return value.replace(/[^\d]/g, '').slice(0, 2)
-}
-
 export function sanitizeMoneyInput(value: string) {
   return normalizePriceInput(value)
 }
 
 export function sanitizePercentageInput(value: string) {
   return value.replace(/[^\d]/g, '').slice(0, 2)
-}
-
-export function buildFinanceFieldValues({
-  bufferDraft,
-  bufferFocused,
-  bufferModeDraft,
-  incomeDraft,
-  incomeFocused,
-  savingsDraft,
-  savingsFocused,
-  usdRateDraft,
-  usdRateFocused,
-}: {
-  bufferDraft: string
-  bufferFocused: boolean
-  bufferModeDraft: BufferMode
-  incomeDraft: string
-  incomeFocused: boolean
-  savingsDraft: string
-  savingsFocused: boolean
-  usdRateDraft: string
-  usdRateFocused: boolean
-}) {
-  void savingsFocused
-
-  return {
-    buffer:
-      bufferModeDraft === 'percent'
-        ? bufferDraft
-        : formatPriceInputValue(bufferDraft, bufferFocused),
-    income: formatPriceInputValue(incomeDraft, incomeFocused),
-    savings: savingsDraft,
-    usdRate: formatPriceInputValue(usdRateDraft, usdRateFocused),
-  }
 }
 
 export function buildFinanceSubmitState({

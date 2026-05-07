@@ -810,7 +810,21 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </RiseView>
             ) : null}
 
-            {/* 8. CUENTA */}
+            {/* 8. PLAN DEL HOGAR */}
+            <RiseView delay={320}>
+              <SettingsGroup title="Tu plan">
+                <SettingsRow
+                  helper="Tu suscripción, las personas incluidas y la facturación."
+                  icon="workspace-premium"
+                  isLast
+                  label="Plan del hogar"
+                  onPress={() => router.push('/settings/plan' as never)}
+                  value="Ver planes"
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 9. CUENTA */}
             <RiseView delay={320}>
               <SettingsGroup title="Cuenta">
                 <SettingsRow

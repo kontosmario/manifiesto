@@ -1,17 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import {
-  clearFamilyExpenses,
   createExpense,
   deleteExpense,
-  fetchFamilyMonthlySpent,
-  fetchFamilyPeriodTotal,
-  fetchFamilyTotal,
   loadExpenses,
   updateExpense,
   type CreateExpenseInput,
   type Expense,
-  type FamilyMonthlySpent,
   type UpdateExpenseInput,
 } from '@/features/expenses/expense-repository'
 import { invalidateFamilyBudgetData } from '@/features/family/family-query-invalidation'
@@ -20,14 +15,10 @@ import { sendFamilyPush } from '@/lib/send-family-push'
 export type {
   CreateExpenseInput,
   Expense,
-  FamilyMonthlySpent,
   UpdateExpenseInput,
 } from '@/features/expenses/expense-repository'
 
 export const expensesQueryKey = expenseQueryKeys.list
-export const familyTotalQueryKey = expenseQueryKeys.total
-export const familyPeriodTotalQueryKey = expenseQueryKeys.periodTotal
-export const familyMonthlySpentQueryKey = expenseQueryKeys.monthlySpent
 export const recentExpensesQueryKey = expenseQueryKeys.recent
 
 export function useExpenses(familyId?: string, categoryId?: string) {
@@ -54,48 +45,6 @@ export function useRecentExpenses(familyId?: string, limit = 3) {
       }
 
       return loadExpenses(familyId, { limit })
-    },
-  })
-}
-
-export function useFamilyTotal(familyId?: string) {
-  return useQuery<number>({
-    queryKey: familyTotalQueryKey(familyId),
-    enabled: Boolean(familyId),
-    queryFn: async () => {
-      if (!familyId) {
-        return 0
-      }
-
-      return fetchFamilyTotal(familyId)
-    },
-  })
-}
-
-export function useFamilyPeriodTotal(familyId?: string, startIso?: string, endIso?: string) {
-  return useQuery<number>({
-    queryKey: familyPeriodTotalQueryKey(familyId, startIso, endIso),
-    enabled: Boolean(familyId && startIso && endIso),
-    queryFn: async () => {
-      if (!familyId || !startIso || !endIso) {
-        return 0
-      }
-
-      return fetchFamilyPeriodTotal(familyId, startIso, endIso)
-    },
-  })
-}
-
-export function useFamilyMonthlySpent(familyId?: string, monthsBack = 6) {
-  return useQuery<FamilyMonthlySpent[]>({
-    queryKey: familyMonthlySpentQueryKey(familyId, monthsBack),
-    enabled: Boolean(familyId) && monthsBack > 0,
-    queryFn: async () => {
-      if (!familyId || monthsBack <= 0) {
-        return []
-      }
-
-      return fetchFamilyMonthlySpent(familyId, monthsBack)
     },
   })
 }
@@ -211,22 +160,6 @@ export function useDeleteExpense(familyId?: string) {
       // automatically from the updated cache.
       queryClient.invalidateQueries({ queryKey: expenseQueryKeys.family(familyId) })
       queryClient.invalidateQueries({ queryKey: expenseQueryKeys.recentFamily(familyId) })
-    },
-  })
-}
-
-export function useClearFamilyExpenses(familyId?: string) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!familyId) {
-        throw new Error('No hay familia activa para limpiar los gastos.')
-      }
-      await clearFamilyExpenses(familyId)
-    },
-    onSuccess: async () => {
-      await invalidateFamilyBudgetData(queryClient, familyId)
     },
   })
 }

@@ -57,6 +57,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     }
   }, [createInvite, onClose])
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional sync: generate fresh code on open, reset on dismiss */
   useEffect(() => {
     if (visible && !invite && !createInvite.isPending) {
       void generate()
@@ -66,6 +67,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
       setInvite(null)
     }
   }, [visible, invite, createInvite.isPending, generate])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCopy = async () => {
     if (!invite) return

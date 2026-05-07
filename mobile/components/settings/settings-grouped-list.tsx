@@ -69,13 +69,13 @@ function useRowScale() {
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
   const onPressIn = () => {
     if (reduced) return
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+     
     // @motion-allow: 90ms press-in scale; faster than micro (120) for instant tactile feel on tap
     scale.value = withTiming(0.97, { duration: 90 })
   }
   const onPressOut = () => {
     if (reduced) return
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+     
     scale.value = withTiming(1, { duration: motionDurations.exitTab })
   }
   return { style, onPressIn, onPressOut }

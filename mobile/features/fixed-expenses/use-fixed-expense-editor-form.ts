@@ -26,6 +26,7 @@ export function useFixedExpenseEditorForm({
   const [isAmountFocused, setAmountFocused] = useState(false)
   const [isRemainingBalanceFocused, setRemainingBalanceFocused] = useState(false)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional one-shot default category seed when categories load */
   useEffect(() => {
     if (!values.categoryId && categories[0]?.id) {
       setValues((current) => {
@@ -40,6 +41,7 @@ export function useFixedExpenseEditorForm({
       })
     }
   }, [categories, values.categoryId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const submitState = useMemo(() => buildFixedExpenseSubmitState(values), [values])
 

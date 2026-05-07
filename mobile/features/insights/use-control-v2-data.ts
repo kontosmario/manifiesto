@@ -94,13 +94,6 @@ function coerceSignalsToReadOnly(
   }))
 }
 
-interface ControlIntelligenceRow {
-  family_id: string
-  monthly_summaries_history: MonthlySummaryHistory[] | null
-  category_limits: CategoryLimit[] | null
-  velocity_today: VelocitySnapshot | null
-}
-
 export interface ControlV2ViewModel {
   data: ControlMockData
   view: ControlView
@@ -176,13 +169,21 @@ export function useControlV2Data(
   const interactionStatsQuery = useInteractionStats(userId ?? null)
   const blocklistQuery = useSignalBlocklist(userId ?? null)
 
-  const expenses = expensesQuery.data ?? []
-  const fixedExpenses = fixedExpensesQuery.data ?? []
+  // Stabilise the `?? []` / `?? null` fallbacks so downstream memos
+  // don't see a fresh reference on every render when the underlying
+  // query data is unchanged.
+  const expensesData = expensesQuery.data
+  const expenses = useMemo(() => expensesData ?? [], [expensesData])
+  const fixedExpensesData = fixedExpensesQuery.data
+  const fixedExpenses = useMemo(() => fixedExpensesData ?? [], [fixedExpensesData])
   const finance = financeQuery.data
-  const categoriesExpense = categoriesQuery.data ?? []
+  const categoriesData = categoriesQuery.data
+  const categoriesExpense = useMemo(() => categoriesData ?? [], [categoriesData])
   const savingsGoal = goalQuery.data ?? null
-  const summaries = intelligenceQuery.data?.summaries ?? []
-  const limits = intelligenceQuery.data?.limits ?? []
+  const summariesData = intelligenceQuery.data?.summaries
+  const summaries = useMemo(() => summariesData ?? [], [summariesData])
+  const limitsData = intelligenceQuery.data?.limits
+  const limits = useMemo(() => limitsData ?? [], [limitsData])
   const velocity = intelligenceQuery.data?.velocity ?? null
   const notifications: NotificationLite[] = (notificationsQuery.data ?? []).map(
     (n) => ({

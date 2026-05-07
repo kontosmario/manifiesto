@@ -237,11 +237,11 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
         hitSlop={4}
         onPressIn={() => {
           if (reduceMotion) return
-          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+           
           scale.value = withSpring(0.94, motionSprings.press)
         }}
         onPressOut={() => {
-          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+           
           scale.value = withSpring(1, motionSprings.press)
         }}
         onPress={onPress}

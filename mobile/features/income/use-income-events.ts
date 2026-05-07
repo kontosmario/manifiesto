@@ -55,29 +55,6 @@ function normalizeRow(row: Record<string, unknown>): IncomeEvent {
 }
 
 /**
- * List all income events for a family, newest event_date first. Used
- * by the optional "Ingresos extra" surface on Home / month summary.
- */
-export function useIncomeEvents(familyId?: string, limit = 50) {
-  return useQuery<IncomeEvent[]>({
-    queryKey: incomeEventQueryKeys.list(familyId),
-    enabled: Boolean(familyId),
-    queryFn: async () => {
-      if (!familyId) return []
-      const { data, error } = await supabase
-        .from('income_events')
-        .select(ROW_COLUMNS)
-        .eq('family_id', familyId)
-        .order('event_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(limit)
-      if (error) throw error
-      return ((data as Record<string, unknown>[] | null) ?? []).map(normalizeRow)
-    },
-  })
-}
-
-/**
  * Sum of income events whose `event_date` falls within the current
  * pay cycle. Powers the "extra income" line in `useHomeMetrics`.
  */
@@ -153,23 +130,3 @@ export function useCreateIncomeEvent() {
   })
 }
 
-export function useDeleteIncomeEvent(familyId?: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string): Promise<string> => {
-      const { error } = await supabase.from('income_events').delete().eq('id', id)
-      if (error) throw error
-      return id
-    },
-    onSuccess: () => {
-      if (!familyId) return
-      void queryClient.invalidateQueries({
-        queryKey: incomeEventQueryKeys.list(familyId),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: ['income-events-cycle-sum', familyId],
-      })
-      void invalidateFamilyBudgetData(queryClient, familyId)
-    },
-  })
-}

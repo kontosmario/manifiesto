@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control · HOY Card — preview meta diaria</title>
+<style>
+  /* Faithful to mobile/components/control-v2/control-v2-hoy-card.tsx
+     Tones lifted directly from the file:
+       - hero gradient: forest-tinted dark green
+       - stateBright.positive: #C7EE9C  (bright pastel mint)
+       - stateBright.caution:  #F1D690  (bright butter yellow)
+       - stateBright.critical: #F2B58A  (bright peach)
+       - heroAccent: #A6EF8F (V1 primary-300)
+       - chipBg: rgba(255,255,255,0.10)
+       - trackBg: rgba(0,0,0,0.50)
+       - markerChipBg: rgba(20,32,28,0.92)
+  */
+  :root {
+    --positive: #C7EE9C;
+    --caution:  #F1D690;
+    --critical: #F2B58A;
+    --hero-accent: #A6EF8F;
+    --hero-text: rgba(246,251,239,1);
+    --text-body: rgba(246,251,239,0.78);
+    --text-hint: rgba(246,251,239,0.62);
+    --chip-bg: rgba(255,255,255,0.10);
+    --chip-border: rgba(255,255,255,0.20);
+    --track-bg: rgba(0,0,0,0.50);
+    --track-border: rgba(255,255,255,0.18);
+    --marker-chip-bg: rgba(20,32,28,0.92);
+    --page-bg: #FFFBF2;
+    --ink: #0F2E1F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+    padding: 32px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin-bottom: 4px;
+  }
+  .lede {
+    color: #5b6b62;
+    font-size: 13px;
+    margin-bottom: 32px;
+    max-width: 640px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  .variant-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin: 32px 0 4px;
+    color: var(--ink);
+  }
+  .variant-desc {
+    font-size: 12px;
+    color: #6b7d72;
+    margin-bottom: 16px;
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .scenario-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: #6b7d72;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* ─── Hero card ─── */
+  .hero-card {
+    border-radius: 26px;
+    padding: 22px 18px 18px;
+    background:
+      radial-gradient(120% 80% at 110% 0%, rgba(166,239,143,0.10) 0%, transparent 55%),
+      linear-gradient(180deg, #1a3a28 0%, #0d2a1c 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.08) inset,
+      0 18px 32px -22px rgba(0,0,0,0.6);
+    color: var(--hero-text);
+    overflow: hidden;
+    position: relative;
+  }
+  .hero-card::before {
+    /* particle-field stand-in: subtle radial dust */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.10), transparent 60%),
+      radial-gradient(2px 2px at 80% 60%, rgba(166,239,143,0.20), transparent 60%),
+      radial-gradient(1.5px 1.5px at 60% 20%, rgba(255,255,255,0.08), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Top row: day label + status pill */
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .day-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    color: var(--text-body);
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+  }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Hero stat */
+  .hero-stat { margin-bottom: 16px; }
+  .hero-eyebrow {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    color: var(--text-body);
+    margin-bottom: 4px;
+  }
+  .amount-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .hero-amount {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -1.2px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta-tag {
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    border-radius: 12px;
+    padding: 6px 9px;
+    text-align: right;
+  }
+  .delta-amount-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    justify-content: flex-end;
+  }
+  .delta-amount {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+  .delta-caption {
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: var(--text-body);
+    margin-top: 2px;
+  }
+  .hero-sub {
+    font-size: 12px;
+    color: var(--text-body);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .hero-sub .meta-inline {
+    color: var(--hero-accent);
+    font-weight: 700;
+  }
+
+  /* ─── Pace bar ─── */
+  .pace-area { margin: 8px 0 14px; position: relative; padding-top: 30px; }
+  .ahora-chip {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    background: var(--marker-chip-bg);
+    border: 1px solid rgba(166,239,143,0.45);
+    color: var(--hero-accent);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .ahora-chip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    transform: translateX(-50%) rotate(45deg);
+    width: 8px; height: 8px;
+    background: var(--marker-chip-bg);
+    border-right: 1px solid rgba(166,239,143,0.45);
+    border-bottom: 1px solid rgba(166,239,143,0.45);
+  }
+  .meta-tick-label {
+    position: absolute;
+    top: 6px;
+    transform: translateX(-50%);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--hero-accent);
+    background: rgba(15,46,31,0.6);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .pace-track {
+    position: relative;
+    height: 22px;
+    background: var(--track-bg);
+    border: 1px solid var(--track-border);
+    border-radius: 999px;
+    overflow: visible;
+  }
+  .pace-fill {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    /* will be set inline via --w */
+    width: var(--w, 0%);
+    background: linear-gradient(180deg,
+      var(--fill, var(--positive)) 0%,
+      color-mix(in srgb, var(--fill, var(--positive)) 75%, #0F2E1F 25%) 100%);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.10) inset,
+      0 0 12px var(--fill, var(--positive));
+  }
+  .pace-fill::after {
+    /* shimmer band */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg,
+      transparent 30%,
+      rgba(255,255,255,0.20) 50%,
+      transparent 70%);
+    border-radius: inherit;
+  }
+  .ahora-line {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2.5px;
+    background: var(--hero-accent);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--hero-accent);
+    transform: translateX(-50%);
+  }
+  .meta-tick {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 2px;
+    background: var(--hero-accent);
+    border-radius: 2px;
+    transform: translateX(-50%);
+    /* dashed via gradient so it reads "soft target" not "hard limit" */
+    background-image: repeating-linear-gradient(
+      180deg,
+      var(--hero-accent) 0 4px,
+      transparent 4px 7px
+    );
+    background-color: transparent;
+    opacity: 0.85;
+  }
+  .meta-tick.solid {
+    background-image: none;
+    background-color: var(--hero-accent);
+    opacity: 1;
+  }
+  .pace-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  .pace-foot .money { color: var(--hero-text); font-weight: 700; }
+  .pace-foot .pct { color: var(--text-body); }
+
+  /* ─── Stats row ─── */
+  .stats-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    border-radius: 14px;
+  }
+  .stat-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: 13px;
+  }
+  .stat-text { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+  .stat-caption {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--text-body);
+    text-transform: uppercase;
+  }
+
+  /* Goal stat-chip variant */
+  .stat-chip.goal {
+    background: rgba(166,239,143,0.12);
+    border-color: rgba(166,239,143,0.35);
+  }
+  .stat-chip.goal .stat-label { color: var(--hero-accent); }
+
+  /* ─── Hint ─── */
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hint-stripe {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+  }
+  .hint-icon {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--chip-bg);
+    font-size: 14px;
+  }
+  .hint-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--hero-text);
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  /* Variant-specific marker label spacing trick */
+  .pace-area.has-meta { padding-top: 44px; }
+
+  /* Footer notes */
+  .legend {
+    margin-top: 40px;
+    padding: 18px;
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #e5e2d8;
+  }
+  .legend h2 {
+    font-size: 13px; font-weight: 800; letter-spacing: 0.4px;
+    text-transform: uppercase; margin-bottom: 10px; color: var(--ink);
+  }
+  .legend table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .legend td { padding: 6px 8px; border-top: 1px solid #efece2; vertical-align: top; }
+  .legend td:first-child { font-weight: 700; width: 24%; color: var(--ink); }
+  .legend td:nth-child(2) { font-weight: 700; width: 16%; }
+
+  /* Chip color helpers */
+  .chip-positive .dot,
+  .chip-positive .icon { color: var(--positive); }
+  .chip-caution  .dot,
+  .chip-caution  .icon { color: var(--caution); }
+  .chip-critical .dot,
+  .chip-critical .icon { color: var(--critical); }
+  .chip-positive .text  { color: var(--positive); }
+  .chip-caution  .text  { color: var(--caution); }
+  .chip-critical .text  { color: var(--critical); }
+  .chip-positive .dot { background: var(--positive); }
+  .chip-caution  .dot { background: var(--caution); }
+  .chip-critical .dot { background: var(--critical); }
+
+  /* SVG-ish icon glyphs (simple unicode, not for production) */
+  .glyph { font-family: 'Material Icons', Symbols, sans-serif; }
+
+  .pill-baseline {
+    /* tonal background tint to evoke the state-bright fg-on-translucent */
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Control · HOY card — Preview "Mi meta diaria"</h1>
+<p class="lede">
+  Tres variantes mostrando cómo reflejar la meta diaria personal en la hero card,
+  fiel a la estética actual (gradiente forest, paleta state-bright, chips translúcidos).
+  Datos de ejemplo: cupo real <strong>$200.000</strong>, meta usuario al 80% = <strong>$160.000</strong>,
+  9 días para cobro, racha 8.
+</p>
+
+<!-- ─────────────────────────────────────────────── -->
+<!-- VARIANTE A — SEMÁNTICA FUERTE                   -->
+<!-- ─────────────────────────────────────────────── -->
+<div class="variant-title">Variante A · Semántica fuerte (escalado de state)</div>
+<p class="variant-desc">
+  El threshold "positive→caution" se mueve a la meta personal (no al cupo real).
+  Cruzar la meta vuelve toda la card cautelosa: status pill, hint, fill bar, todo en warm yellow.
+  El cupo real queda como techo crítico (peach). Reusa la maquinaria de tokens, no agrega colores nuevos.
+</p>
+<div class="grid">
+  <!-- A1: bajo meta -->
+  <div>
+    <div class="scenario-label">A1 · Bajo la meta — $80k gastado</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-positive">
+          <span class="dot"></span><span class="text">EN RITMO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$120.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--positive);">↓</span>
+              <span class="delta-amount" style="color: var(--positive);">+$24k</span>
+            </div>
+            <div class="delta-caption">BAJO RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 38%;">AHORA · 09:00</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 40%; --fill: var(--positive);"></div>
+          <span class="ahora-line" style="left: 38%;"></span>
+          <span class="meta-tick" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$80.000</span>
+          <span class="pct">40% del cupo · 50% de tu meta</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--positive);"></span>
+        <span class="hint-icon" style="color: var(--positive);">🔥</span>
+        <span class="hint-text">Racha de 8 días bajo cupo en curso. Estás a $80k de tu meta.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- A2: cruzando la meta -->
+  <div>
+    <div class="scenario-label">A2 · Cruzaste la meta — $175k gastado</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-caution">
+          <span class="dot"></span><span class="text">SOBRE TU META</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$25.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--caution);">↑</span>
+              <span class="delta-amount" style="color: var(--caution);">−$15k</span>
+            </div>
+            <div class="delta-caption">SOBRE META</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 60%;">AHORA · 14:24</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 87.5%; --fill: var(--caution);"></div>
+          <span class="ahora-line" style="left: 60%;"></span>
+          <span class="meta-tick solid" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$175.000</span>
+          <span class="pct">87% del cupo · pasaste tu meta</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--caution);"></span>
+        <span class="hint-icon" style="color: var(--caution);">⚑</span>
+        <span class="hint-text">Pasaste tu meta de $160k. Te quedan $25k del cupo real para cerrar el día.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- A3: cupo casi al límite -->
+  <div>
+    <div class="scenario-label">A3 · Casi en el cupo real — $195k</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-caution">
+          <span class="dot"></span><span class="text">SOBRE TU META</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$5.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--caution);">↑</span>
+              <span class="delta-amount" style="color: var(--caution);">−$35k</span>
+            </div>
+            <div class="delta-caption">SOBRE META</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 80%;">AHORA · 19:12</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 97.5%; --fill: var(--caution);"></div>
+          <span class="ahora-line" style="left: 80%;"></span>
+          <span class="meta-tick solid" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$195.000</span>
+          <span class="pct">97% del cupo</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--caution);"></span>
+        <span class="hint-icon" style="color: var(--caution);">⚡</span>
+        <span class="hint-text">Quedan $5k antes de tocar el cupo real. Frená si podés.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4: cupo excedido -->
+  <div>
+    <div class="scenario-label">A4 · Cupo real excedido — $220k</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-critical">
+          <span class="dot"></span><span class="text">CUPO EXCEDIDO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">CUPO EXCEDIDO</div>
+        <div class="amount-row">
+          <div class="hero-amount">$20.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--critical);">↑</span>
+              <span class="delta-amount" style="color: var(--critical);">−$60k</span>
+            </div>
+            <div class="delta-caption">SOBRE RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 88%;">AHORA · 21:15</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 100%; --fill: var(--critical);"></div>
+          <span class="ahora-line" style="left: 88%;"></span>
+          <span class="meta-tick solid" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$220.000</span>
+          <span class="pct">+10% sobre cupo</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--critical);"></span>
+        <span class="hint-icon" style="color: var(--critical);">⛔</span>
+        <span class="hint-text">Cupo del día agotado. Mañana se reinicia con el cupo completo.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<!-- VARIANTE B — SEMÁNTICA SUAVE                    -->
+<!-- ─────────────────────────────────────────────── -->
+<div class="variant-title">Variante B · Semántica suave (sólo tick + copy)</div>
+<p class="variant-desc">
+  El state sigue ligado al cupo real. Sólo agregamos el tick "META" en la pace bar
+  y la inline en el sub-copy. Cruzar la meta no escala el color — el visual lo cuenta
+  por la posición del fill respecto al tick. Menos invasivo, menos urgencia.
+</p>
+<div class="grid">
+  <!-- B1: bajo meta -->
+  <div>
+    <div class="scenario-label">B1 · Bajo la meta — $80k</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-positive">
+          <span class="dot"></span><span class="text">EN RITMO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$120.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--positive);">↓</span>
+              <span class="delta-amount" style="color: var(--positive);">+$24k</span>
+            </div>
+            <div class="delta-caption">BAJO RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 38%;">AHORA · 09:00</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 40%; --fill: var(--positive);"></div>
+          <span class="ahora-line" style="left: 38%;"></span>
+          <span class="meta-tick" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$80.000</span>
+          <span class="pct">40% del cupo</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--positive);"></span>
+        <span class="hint-icon" style="color: var(--positive);">🔥</span>
+        <span class="hint-text">Racha de 8 días bajo cupo en curso.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- B2: cruzando la meta — STATE QUEDA POSITIVO -->
+  <div>
+    <div class="scenario-label">B2 · Cruzaste la meta — $175k <em style="color:#a99">(state queda en RITMO)</em></div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-positive">
+          <span class="dot"></span><span class="text">EN RITMO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$25.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--positive);">↓</span>
+              <span class="delta-amount" style="color: var(--positive);">+$5k</span>
+            </div>
+            <div class="delta-caption">BAJO RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo · <span class="meta-inline">meta $160.000 (superada)</span></div>
+      </div>
+      <div class="pace-area has-meta">
+        <span class="meta-tick-label" style="left: 80%;">META</span>
+        <span class="ahora-chip" style="left: 60%;">AHORA · 14:24</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 87.5%; --fill: var(--positive);"></div>
+          <span class="ahora-line" style="left: 60%;"></span>
+          <span class="meta-tick solid" style="left: 80%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$175.000</span>
+          <span class="pct">87% del cupo · pasaste tu meta</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--positive);">🏅</span><div class="stat-text"><span class="stat-label">7/8</span><span class="stat-caption">Bajo cupo</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--positive);"></span>
+        <span class="hint-icon" style="color: var(--positive);">⚑</span>
+        <span class="hint-text">Pasaste tu meta de $160k. Te quedan $25k del cupo real.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<!-- VARIANTE C — STAT-CHIP DEDICADA A LA META       -->
+<!-- ─────────────────────────────────────────────── -->
+<div class="variant-title">Variante C · Stat-chip "Mi meta" en la fila inferior</div>
+<p class="variant-desc">
+  Reemplaza la chip <em>Bajo cupo</em> (información histórica de la racha) por una chip
+  <em>Mi meta</em> que muestra %-completado del techo personal hoy.
+  Pace bar sin tick adicional. Tradeoff: perdés visibilidad del histórico de bajo-cupo
+  cuando hay meta activa.
+</p>
+<div class="grid">
+  <!-- C1: bajo meta -->
+  <div>
+    <div class="scenario-label">C1 · Bajo la meta — $80k (50% de tu meta)</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-positive">
+          <span class="dot"></span><span class="text">EN RITMO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$120.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--positive);">↓</span>
+              <span class="delta-amount" style="color: var(--positive);">+$24k</span>
+            </div>
+            <div class="delta-caption">BAJO RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo del día</div>
+      </div>
+      <div class="pace-area">
+        <span class="ahora-chip" style="left: 38%;">AHORA · 09:00</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 40%; --fill: var(--positive);"></div>
+          <span class="ahora-line" style="left: 38%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$80.000</span>
+          <span class="pct">40% del cupo</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip goal"><span class="stat-icon">⚑</span><div class="stat-text"><span class="stat-label">50%</span><span class="stat-caption">Mi meta</span></div></div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--positive);"></span>
+        <span class="hint-icon" style="color: var(--positive);">🔥</span>
+        <span class="hint-text">Racha de 8 días bajo cupo en curso.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- C2: cruzando la meta -->
+  <div>
+    <div class="scenario-label">C2 · Cruzaste la meta — $175k (109%)</div>
+    <div class="hero-card">
+      <div class="top-row">
+        <span class="day-label">HOY · MIÉRCOLES 6</span>
+        <span class="status-pill chip-positive">
+          <span class="dot"></span><span class="text">EN RITMO</span>
+        </span>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-eyebrow">DISPONIBLE HOY</div>
+        <div class="amount-row">
+          <div class="hero-amount">$25.000</div>
+          <div class="delta-tag">
+            <div class="delta-amount-row">
+              <span style="color: var(--positive);">↓</span>
+              <span class="delta-amount" style="color: var(--positive);">+$5k</span>
+            </div>
+            <div class="delta-caption">BAJO RITMO</div>
+          </div>
+        </div>
+        <div class="hero-sub">de $200.000 cupo del día</div>
+      </div>
+      <div class="pace-area">
+        <span class="ahora-chip" style="left: 60%;">AHORA · 14:24</span>
+        <div class="pace-track">
+          <div class="pace-fill" style="--w: 87.5%; --fill: var(--positive);"></div>
+          <span class="ahora-line" style="left: 60%;"></span>
+        </div>
+        <div class="pace-foot">
+          <span class="money">$175.000</span>
+          <span class="pct">87% del cupo</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--caution);">🔥</span><div class="stat-text"><span class="stat-label">8</span><span class="stat-caption">Racha</span></div></div>
+        <div class="stat-chip goal" style="background: rgba(241,214,144,0.18); border-color: rgba(241,214,144,0.45);">
+          <span class="stat-icon" style="color: var(--caution);">⚑</span>
+          <div class="stat-text"><span class="stat-label" style="color: var(--caution);">109%</span><span class="stat-caption" style="color: var(--caution);">Mi meta</span></div>
+        </div>
+        <div class="stat-chip"><span class="stat-icon" style="color: var(--critical);">📅</span><div class="stat-text"><span class="stat-label">9d</span><span class="stat-caption">Al cobro</span></div></div>
+      </div>
+      <div class="hint">
+        <span class="hint-stripe" style="background: var(--positive);"></span>
+        <span class="hint-icon" style="color: var(--positive);">⚑</span>
+        <span class="hint-text">Pasaste tu meta de $160k. Te quedan $25k del cupo real.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<!-- LEYENDA SEMÁNTICA                                -->
+<!-- ─────────────────────────────────────────────── -->
+<div class="legend">
+  <h2>Mapeo semántico</h2>
+  <table>
+    <tr>
+      <td>Estado</td>
+      <td>Color</td>
+      <td>Cuándo dispara (Variante A · fuerte)</td>
+    </tr>
+    <tr>
+      <td>Positive</td>
+      <td><span style="color:#1f590d;background:#C7EE9C;padding:2px 8px;border-radius:4px;font-weight:800">#C7EE9C</span></td>
+      <td>gastoHoy ≤ meta · está dentro de tu techo personal</td>
+    </tr>
+    <tr>
+      <td>Caution</td>
+      <td><span style="color:#5d4914;background:#F1D690;padding:2px 8px;border-radius:4px;font-weight:800">#F1D690</span></td>
+      <td>meta &lt; gastoHoy ≤ cupo real · cruzaste tu meta, todavía dentro del cupo</td>
+    </tr>
+    <tr>
+      <td>Critical</td>
+      <td><span style="color:#611f0f;background:#F2B58A;padding:2px 8px;border-radius:4px;font-weight:800">#F2B58A</span></td>
+      <td>gastoHoy &gt; cupo real · pasaste el techo real (ya hoy)</td>
+    </tr>
+  </table>
+  <h2 style="margin-top:18px">Notas del visual</h2>
+  <table>
+    <tr>
+      <td>Tick "META"</td>
+      <td>—</td>
+      <td>Línea vertical mint (<code>heroAccent #A6EF8F</code>) en la pace bar al <code>(meta/cupo) × 100%</code>. Punteada cuando el fill no la cruzó, sólida cuando sí. Mini-label "META" arriba.</td>
+    </tr>
+    <tr>
+      <td>Sub-copy hero</td>
+      <td>—</td>
+      <td>Cambia <code>de $X cupo del día</code> → <code>de $X cupo · meta $Y</code>. Sólo cuando hay meta activa.</td>
+    </tr>
+    <tr>
+      <td>AHORA chip</td>
+      <td>—</td>
+      <td>Sin cambios — sigue marcando la posición temporal del día (no de la meta).</td>
+    </tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

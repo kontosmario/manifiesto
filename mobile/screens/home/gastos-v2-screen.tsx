@@ -10,7 +10,7 @@ import {
   type SectionListData,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -41,7 +41,6 @@ import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { useStreak, type StreakData } from '@/features/streaks/use-streak'
-import type { GastosGroup } from '@/features/gastos/gastos-aggregates.model'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { formatMoney } from '@/utils/money'
@@ -139,7 +138,8 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   )
 
   const membersQuery = useFamilyMembers(familyId)
-  const familyMembers = membersQuery.data ?? []
+  const familyMembersData = membersQuery.data
+  const familyMembers = useMemo(() => familyMembersData ?? [], [familyMembersData])
   const deleteExpenseMutation = useDeleteExpense(familyId)
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data ?? STREAK_DEFAULTS
@@ -313,7 +313,18 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
         deleteExpenseMutation.isPending &&
         deleteExpenseMutation.variables === item.id
       return (
-        <View style={styles.rowWrap}>
+        // Wrapping in Animated.View with entering/exiting + layout
+        // makes filter changes (category pill, day selection) feel
+        // smooth instead of snapping: rows fade in as they enter the
+        // filtered set, fade out as they leave, and slide into their
+        // new position when remaining rows reflow. Item key (item.id)
+        // is stable so unrelated rows don't re-trigger the entrance.
+        <Animated.View
+          style={styles.rowWrap}
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(140)}
+          layout={LinearTransition.duration(220)}
+        >
           <SwipeableRow
             accessibilityLabel={a11yLabel}
             accessibilityHint="Desliza a la izquierda para eliminar"
@@ -336,7 +347,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               time={formatTime(item.created_at)}
             />
           </SwipeableRow>
-        </View>
+        </Animated.View>
       )
     },
     [
@@ -350,7 +361,15 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<Expense, MovimientosSection> }) => (
-      <View style={[styles.groupHeader, { backgroundColor: theme.colors.background }]}>
+      // Section headers also fade in / reflow when filtering changes
+      // which day groups exist. Slightly faster than rows so the day
+      // label arrives a beat before its rows finish entering.
+      <Animated.View
+        style={[styles.groupHeader, { backgroundColor: theme.colors.background }]}
+        entering={FadeIn.duration(160)}
+        exiting={FadeOut.duration(120)}
+        layout={LinearTransition.duration(220)}
+      >
         <View>
           <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
             {section.title}
@@ -362,7 +381,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
         <Text style={[styles.groupTotal, { color: theme.colors.text }]}>
           -{formatMoney(section.total)}
         </Text>
-      </View>
+      </Animated.View>
     ),
     [theme.colors.background, theme.colors.text, theme.colors.textSoft],
   )
@@ -452,6 +471,7 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
               averageDaily={controller.averageDaily}
               averageDailyBars={controller.recentDailyBars}
               averageWindowDays={controller.cycleDaysElapsed}
+              daySelected={controller.selectedDay != null}
             />
           </Animated.View>
         </TourTarget>

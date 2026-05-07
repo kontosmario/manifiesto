@@ -37,7 +37,7 @@ export function EditSavingsEmojiSheet({
     if (visible) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate draft when sheet opens
       setDraft(currentValue || '🎯')
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset custom-input visibility when sheet opens
+       
       setCustomOpen(false)
     }
   }, [visible, currentValue])

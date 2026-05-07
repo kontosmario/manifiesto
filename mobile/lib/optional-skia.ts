@@ -3,7 +3,6 @@ import { Platform } from 'react-native'
 type SkiaModule = typeof import('@shopify/react-native-skia')
 
 let cachedSkiaModule: SkiaModule | null | undefined
-let cachedSkiaError: unknown
 let hasLoggedSkiaFallback = false
 
 function formatSkiaError(error: unknown) {
@@ -39,7 +38,6 @@ export function getOptionalSkiaModule() {
     return cachedSkiaModule
   } catch (error) {
     cachedSkiaModule = null
-    cachedSkiaError = error
 
     if (__DEV__ && !hasLoggedSkiaFallback) {
       hasLoggedSkiaFallback = true
@@ -48,8 +46,4 @@ export function getOptionalSkiaModule() {
 
     return cachedSkiaModule
   }
-}
-
-export function getOptionalSkiaError() {
-  return cachedSkiaError
 }

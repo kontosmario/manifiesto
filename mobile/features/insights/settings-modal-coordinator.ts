@@ -42,10 +42,6 @@ export function closeSettingsModal() {
   notify()
 }
 
-export function getActiveSettingsModal(): SettingsModalKind | null {
-  return active
-}
-
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

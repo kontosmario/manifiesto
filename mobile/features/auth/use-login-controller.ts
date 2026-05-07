@@ -50,7 +50,6 @@ export function useLoginController() {
   } = formActions
 
   const keyboardController = useAuthKeyboardController({
-    isReducedMotionEnabled,
     mode,
   })
   const {

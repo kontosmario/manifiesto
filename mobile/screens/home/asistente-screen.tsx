@@ -82,7 +82,6 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const t = useAsistenteTheme()
   const { signals, usingMock } = useControlV2Data(familyId, userId)
   const dismissed = useDismissedIds()
-  const [expanded, setExpanded] = useState(false)
 
   // Pipe high-confidence signals into push notifications. The hook is
   // device-deduplicated with an 18h cooldown per signal id, so it's
@@ -141,20 +140,6 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
       }
     },
     [tryScrollToId],
-  )
-
-  const handleStarTap = useCallback(
-    (i: number) => {
-      void triggerHaptic('selection')
-      setActive(i)
-      const target = visible[i]
-      if (!target) return
-      if (!tryScrollToId(target.id)) {
-        // Layout not ready yet — queue and let onMessageLayout flush.
-        pendingScrollIdRef.current = target.id
-      }
-    },
-    [visible, tryScrollToId],
   )
 
   const handleDismiss = useCallback((task: ControlAdvisorTask) => {

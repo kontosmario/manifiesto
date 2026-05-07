@@ -25,6 +25,7 @@ interface BlockingScreenViewProps {
  * `welcomeBg` so the screen color stays consistent if the overlay is
  * fading or hidden during very fast transitions.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- props kept for back-compat with existing call sites
 export function BlockingScreenView(_props: BlockingScreenViewProps) {
   return <View style={styles.backdrop} />
 }

@@ -168,7 +168,7 @@ export function useDeleteFixedExpense(familyId?: string) {
       }
       await deleteFixedExpense(familyId, fixedExpenseId)
     },
-    onSuccess: async (_data, _fixedExpenseId) => {
+    onSuccess: async () => {
       // Zombie cancellations now flow through the audit/intent path in
       // `subscriptions-zombie` and log value via the resolution RPC, so
       // the legacy zombie value capture is no longer fired here.

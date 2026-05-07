@@ -27,9 +27,7 @@ interface SmartAlert {
 }
 
 interface FijosSmartAlertsProps {
-  zombieCount: number
   hikes: FijoHikeAlert[]
-  onOpenZombies?: () => void
   onOpenHike?: (fixedExpenseId: string) => void
   /** Advisor signals from `useControlV2Data`. Filtered internally to
    *  the fijos domain (`stress-week`, `fijos-ratio`) so the rail
@@ -38,14 +36,12 @@ interface FijosSmartAlertsProps {
 }
 
 /**
- * Horizontal-scrolling rail of smart alert cards — zombie
- * subscriptions + detected price hikes. Each card has a colored
- * icon tile + title + body + action pill.
+ * Horizontal-scrolling rail of smart alert cards — detected price
+ * hikes on fixed expenses. (Legacy zombie alert removed — the
+ * family-transparent audit flow surfaces auditing in the Asistente.)
  */
 export function FijosSmartAlerts({
-  zombieCount,
   hikes,
-  onOpenZombies,
   onOpenHike,
   advisorSignals = [],
 }: FijosSmartAlertsProps) {

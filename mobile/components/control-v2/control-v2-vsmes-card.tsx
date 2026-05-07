@@ -35,7 +35,6 @@ interface ControlV2VsMesCardProps {
   proyectadoMes: number
   vsMesAhorro: number
   vsMesDeltaPct: number
-  vsMesDiasBajoCupo: number
   vsMesMejor: boolean
   diasGanadores: number
   /** Current day of the active cycle (1-indexed). Used to hide or
@@ -95,7 +94,6 @@ export function ControlV2VsMesCard({
   proyectadoMes,
   vsMesAhorro,
   vsMesDeltaPct,
-  vsMesDiasBajoCupo,
   vsMesMejor,
   diasGanadores,
   diaActual,

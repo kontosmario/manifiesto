@@ -38,10 +38,6 @@ export function getLastTabPulse(): TabPulse {
   return lastPulse
 }
 
-export function getLastTabPressAt(): number {
-  return lastPulse.ts
-}
-
 export function subscribeTabPress(cb: Listener): () => void {
   listeners.add(cb)
   return () => {

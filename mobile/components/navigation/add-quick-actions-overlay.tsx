@@ -85,6 +85,7 @@ export function AddQuickActionsOverlay({
   useEffect(() => {
     if (reduced) {
       // Reduced-motion users skip the choreography in both directions.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync of mount state when visible toggles
       setMounted(visible)
       progress.value = visible ? 1 : 0
       return

@@ -103,7 +103,7 @@ export function HomeHeroCard({
   // chip / number / chip in document order. The fall-through for the
   // setup state stays simple — there's no number to announce yet.
   const a11yLabel = data.incomeConfigured
-    ? `Disponible hoy: ${formatMoney(data.availableToday)}. ${
+    ? `Saldo del mes: ${formatMoney(data.availableToday)}. ${
         data.dailyBudget != null
           ? `Cupo diario: ${formatMoney(data.dailyBudget)}.`
           : ''
@@ -140,12 +140,12 @@ export function HomeHeroCard({
         <CardParticles count={12} accentColor="#F2A78C" />
 
         {!data.incomeConfigured ? (
-          // Setup state — no monthly income on file. Showing "$0
-          // disponible" is misleading; instead we surface a clear
-          // CTA that takes the user to Settings to configure their
-          // ingreso. Keeps the hero chrome (gradient, shine, aurora)
-          // so the user lands on a familiar surface, just with a
-          // setup-flavored body.
+          // Setup state — no monthly income on file. Showing "$0 de
+          // saldo" is misleading; instead we surface a clear CTA that
+          // takes the user to Settings to configure their ingreso.
+          // Keeps the hero chrome (gradient, shine, aurora) so the
+          // user lands on a familiar surface, just with a setup-
+          // flavored body.
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Configurar tu ingreso mensual"
@@ -228,7 +228,7 @@ export function HomeHeroCard({
                 glow={theme.colors.heroAccent}
               />
               <Text style={[styles.label, { color: theme.colors.heroAccent }]}>
-                Disponible
+                Saldo del mes
               </Text>
             </View>
             {data.paydayPending ? (
@@ -290,7 +290,7 @@ export function HomeHeroCard({
         </RiseView>
 
         {data.cycleAdjusted || savingsChip ? (
-          // Read-only chip stack between the disponible amount and the
+          // Read-only chip stack between the saldo amount and the
           // tiles row. Two captions can co-exist: "Ajustado para este
           // ciclo" (cycle override) and "Apartando ahorro" (savings).
           // The wrapper owns the bottom spacing so adding/removing
@@ -300,7 +300,7 @@ export function HomeHeroCard({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel="Disponible ajustado para este ciclo"
+                  accessibilityLabel="Saldo ajustado para este ciclo"
                   style={[
                     styles.adjustedChip,
                     {
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   // Stack wrapper for the read-only chips that may sit between the
-  // disponible amount and the tiles row. `gap` controls inter-chip
+  // saldo amount and the tiles row. `gap` controls inter-chip
   // spacing; `marginBottom` controls the gap to the tiles below.
   heroChipStack: {
     alignItems: 'flex-start',
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.2,
   },
-  // "Apartando ahorro" chip — sits below the disponible amount,
+  // "Apartando ahorro" chip — sits below the saldo amount,
   // above the tiles row. Stacks with the adjustedChip when both
   // apply (both are short, read-only captions; vertical rhythm
   // remains consistent at the same hierarchical level).

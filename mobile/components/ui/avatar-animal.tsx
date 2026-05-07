@@ -61,6 +61,7 @@ export function AvatarAnimal({
         style,
       ]}
     >
+      {/* eslint-disable-next-line react-hooks/static-components -- Component is a stable lookup from a frozen registry, not a created component */}
       <Component size={glyphSize} color={resolvedTint} />
     </View>
   )

@@ -132,35 +132,6 @@ export function formatSignedCurrency(value: number): string {
   return currencyFormatter.format(0)
 }
 
-export function formatUsdFromArs(arsValue: number, usdExchangeRate: number): string {
-  if (!Number.isFinite(arsValue) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
-    return usdFormatter.format(0)
-  }
-
-  return usdFormatter.format(arsValue / usdExchangeRate)
-}
-
-export function convertCurrencyAmount(
-  amount: number,
-  fromCurrency: MoneyCurrency,
-  toCurrency: MoneyCurrency,
-  usdExchangeRate: number,
-): number {
-  if (!Number.isFinite(amount) || !Number.isFinite(usdExchangeRate) || usdExchangeRate <= 0) {
-    return Number.NaN
-  }
-
-  if (fromCurrency === toCurrency) {
-    return amount
-  }
-
-  if (fromCurrency === 'USD' && toCurrency === 'ARS') {
-    return amount * usdExchangeRate
-  }
-
-  return amount / usdExchangeRate
-}
-
 const homeIntegerFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
 
 export function formatMoney(n: number, opts: { zeroAsDash?: boolean } = {}): string {

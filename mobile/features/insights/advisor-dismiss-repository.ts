@@ -100,22 +100,3 @@ export async function upsertAdvisorDismissal(input: {
   }
 }
 
-/**
- * Delete a dismissal — surfaces the signal again immediately. Used
- * by a future "reactivar señales" settings affordance; not currently
- * wired up but kept here so the data layer is complete.
- */
-export async function deleteAdvisorDismissal(input: {
-  userId: string
-  signalId: string
-}): Promise<void> {
-  const { error } = await supabase
-    .from('advisor_signal_dismissals')
-    .delete()
-    .eq('user_id', input.userId)
-    .eq('signal_id', input.signalId)
-
-  if (error && !isMissingDismissTableError(error)) {
-    throw error
-  }
-}

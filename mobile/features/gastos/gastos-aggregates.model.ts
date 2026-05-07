@@ -30,15 +30,6 @@ export interface CategoryWeightRow {
   percent: number
 }
 
-export interface DailySpendRow {
-  /** ISO date `YYYY-MM-DD`. */
-  isoDate: string
-  /** Day-of-month (1..31). */
-  day: number
-  total: number
-  count: number
-}
-
 export interface DayOfMonthSpendRow {
   day: number
   total: number

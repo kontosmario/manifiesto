@@ -330,11 +330,11 @@ function NumpadKey({
         accessibilityHint={accessibilityHint}
         onPressIn={() => {
           if (reduceMotion) return
-          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+           
           scale.value = withSpring(0.92, motionSprings.press)
         }}
         onPressOut={() => {
-          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value write
+           
           scale.value = withSpring(1, motionSprings.press)
         }}
         onPress={onPress}

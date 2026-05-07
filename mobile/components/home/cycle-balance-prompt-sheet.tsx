@@ -94,12 +94,12 @@ export function OnboardingAvailableSheet(props: SharedProps) {
     <CycleBalancePromptSheetBase
       {...props}
       copy={{
-        title: '¿Cuánto tienes disponible hoy?',
+        title: '¿Cuál es tu saldo hoy?',
         contextPrefixLabel: 'Sueldo configurado',
         helperEmpty:
           'Anota el monto en mano. Lo usamos para arrancar este ciclo con la realidad.',
-        saveLabel: 'Guardar disponible',
-        eyebrow: 'O AJUSTÁ EL DISPONIBLE',
+        saveLabel: 'Guardar saldo',
+        eyebrow: 'O AJUSTÁ EL SALDO',
         chipTitle: 'Tengo el sueldo completo',
         chipSubtitle: 'Igual al monto configurado',
         chipA11y: (formatted) =>

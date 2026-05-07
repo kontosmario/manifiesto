@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
   runOnJS,
@@ -83,7 +83,7 @@ export function QuickAddSavingsSheet({
   // Reset on every open: start at 100% of the suggested amount.
   useEffect(() => {
     if (!visible) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset on open
+     
     setAmount(maxAmount)
     // @motion-allow: 360ms initial fill on sheet open; slightly slower than deliberate (320) for an unhurried setup feel
     fillRatio.value = withTiming(1, {
@@ -103,16 +103,22 @@ export function QuickAddSavingsSheet({
   // ("$43.700" instead of "$43.682"). Adapts to the magnitude:
   // larger ranges snap to thousands so dragging feels coarse-grained
   // but not jittery.
-  const snapAmount = (raw: number): number => {
-    const clamped = Math.max(0, Math.min(maxAmount, raw))
-    const step = maxAmount >= 500_000 ? 1000 : maxAmount >= 50_000 ? 100 : 10
-    return Math.round(clamped / step) * step
-  }
+  const snapAmount = useCallback(
+    (raw: number): number => {
+      const clamped = Math.max(0, Math.min(maxAmount, raw))
+      const step = maxAmount >= 500_000 ? 1000 : maxAmount >= 50_000 ? 100 : 10
+      return Math.round(clamped / step) * step
+    },
+    [maxAmount],
+  )
 
-  const commitFromRatio = (ratio: number) => {
-    const next = snapAmount(maxAmount * ratio)
-    setAmount(next)
-  }
+  const commitFromRatio = useCallback(
+    (ratio: number) => {
+      const next = snapAmount(maxAmount * ratio)
+      setAmount(next)
+    },
+    [maxAmount, snapAmount],
+  )
 
   // Animate the bar + thumb fill ratio when the user picks a chip
   // (smooth) — drag updates jump immediately because that's what
@@ -159,7 +165,7 @@ export function QuickAddSavingsSheet({
           fillRatio.value = ratio
           runOnJS(commitFromRatio)(ratio)
         }),
-    [trackWidthShared, fillRatio],
+    [trackWidthShared, fillRatio, commitFromRatio],
   )
 
   // Use `transform: scaleX` instead of `width: %` so the fill bar
@@ -187,7 +193,7 @@ export function QuickAddSavingsSheet({
       if (Math.abs(amount - target) <= 1) return pct
     }
     return null
-  }, [amount, maxAmount])
+  }, [amount, maxAmount, snapAmount])
 
   const accentFg = theme.colors.success
   const trackBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,42,30,0.10)'

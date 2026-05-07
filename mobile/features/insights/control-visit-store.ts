@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 
 const STORAGE_KEY = 'control-visit:v1'
-const HOUR_MS = 60 * 60 * 1000
 /**
  * Window after a visit during which we consider all current signals
  * "seen". After this, fresh `alta` signals re-trigger the tab badge.
@@ -44,16 +43,6 @@ export function markControlVisited(): void {
   lastVisitMs = Date.now()
   emit()
   void setPersistentValue(STORAGE_KEY, String(lastVisitMs))
-}
-
-/**
- * True when the user hasn't visited Control within the freshness
- * window. New `alta` advisor signals raise the badge during this
- * state.
- */
-export function isControlStale(): boolean {
-  if (lastVisitMs == null) return true
-  return Date.now() - lastVisitMs > VISIT_FRESHNESS_HOURS * HOUR_MS
 }
 
 /** Reactive snapshot — re-renders when `markControlVisited` runs. */

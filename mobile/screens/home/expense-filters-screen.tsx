@@ -43,7 +43,8 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
   const { theme } = useAppTheme()
   const headerPalette = buildScreenHeaderPalette(theme)
   const categoriesQuery = useCategories(familyId)
-  const categories = categoriesQuery.data ?? []
+  const categoriesData = categoriesQuery.data
+  const categories = useMemo(() => categoriesData ?? [], [categoriesData])
   const filters = useExpenseHistoryFilters(familyId)
   const [categorySelectionDraft, setCategorySelectionDraft] = useState(filters.categorySelection)
   const [periodFilterDraft, setPeriodFilterDraft] = useState<PeriodFilter>(filters.periodFilter)

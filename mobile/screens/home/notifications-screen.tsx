@@ -30,7 +30,8 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
   const { theme } = useAppTheme()
   const router = useRouter()
   const notificationsQuery = useFamilyNotifications(familyId, userId, 80)
-  const notifications = notificationsQuery.data ?? []
+  const notificationsData = notificationsQuery.data
+  const notifications = useMemo(() => notificationsData ?? [], [notificationsData])
   const markOne = useMarkNotificationRead(familyId)
   const markAll = useMarkAllNotificationsRead(familyId, userId)
 

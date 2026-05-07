@@ -89,7 +89,8 @@ export function NotificationsPreferencesScreen() {
     [updateMutation],
   )
 
-  const kindsMuted = preferences?.kindsMuted ?? []
+  const kindsMutedRaw = preferences?.kindsMuted
+  const kindsMuted = useMemo(() => kindsMutedRaw ?? [], [kindsMutedRaw])
 
   const groupMuteStates = useMemo(() => {
     const map: Record<NotificationGroup, boolean> = {

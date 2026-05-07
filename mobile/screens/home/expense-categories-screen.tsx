@@ -41,8 +41,10 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   const renameCategoryMutation = useRenameCategory(familyId)
   const deleteCategoryMutation = useDeleteCategory(familyId)
   const filters = useExpenseHistoryFilters(familyId)
-  const categories = categoriesQuery.data ?? []
-  const expenses = expensesQuery.data ?? []
+  const categoriesData = categoriesQuery.data
+  const categories = useMemo(() => categoriesData ?? [], [categoriesData])
+  const expensesData = expensesQuery.data
+  const expenses = useMemo(() => expensesData ?? [], [expensesData])
   const selectedCategoryId = resolveSelectedCategoryId(categories, filters.categorySelection)
   const [categoryEditorMode, setCategoryEditorMode] = useState<'create' | 'rename' | null>(null)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)

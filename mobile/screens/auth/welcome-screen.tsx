@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import {
   Pressable,
   StyleSheet,
@@ -65,7 +65,7 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
 
   return (
     <View style={styles.root}>
-      <AuroraLayer width={width} height={height} reduced={reduced} />
+      <AuroraLayer width={width} height={height} />
       <ParticleLayer width={width} height={height} reduced={reduced} />
 
       <View

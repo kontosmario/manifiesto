@@ -68,7 +68,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   const financeQuery = useFamilyFinance(familyId)
   const expensesQuery = useExpenses(familyId)
 
-  const items = fixedExpensesQuery.data ?? []
+  const itemsData = fixedExpensesQuery.data
+  const items = useMemo(() => itemsData ?? [], [itemsData])
   const fixedExpenseIds = useMemo(() => items.map((i) => i.id), [items])
   const paymentsQuery = useFixedExpensePayments({
     familyId,

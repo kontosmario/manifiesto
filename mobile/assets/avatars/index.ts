@@ -293,7 +293,3 @@ export function randomAvatarSlug(): AvatarSlug {
 export function getAvatarComponent(slug: AvatarSlug): AvatarComponent {
   return AVATAR_COMPONENTS[slug]
 }
-
-export function getAvatarLabel(slug: AvatarSlug): string {
-  return AVATAR_LABELS[slug]
-}
