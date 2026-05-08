@@ -7,6 +7,18 @@ interface PushRequestBody {
   body?: string
   kind?: string
   url?: string
+  messages?: ExpoPushMessage[]
+}
+
+// New batch path used by the notifications-orchestrator. Lets the
+// orchestrator hand us a pre-built list of Expo push messages and
+// fan them out in batches of 100 (Expo Push API limit per request).
+interface ExpoPushMessage {
+  to: string
+  title: string
+  body: string
+  data?: unknown
+  sound?: string
 }
 
 interface PushSubscriptionRow {
@@ -247,6 +259,32 @@ async function sendWebPush(
   }
 }
 
+// Bulk Expo Push fan-out used by notifications-orchestrator.
+// Splits into batches of 100 (Expo's per-request cap) and fires
+// them sequentially. We don't propagate per-ticket errors here —
+// the orchestrator counts attempts, not deliveries; DeviceNotRegistered
+// cleanup happens in the per-subscription Expo path elsewhere.
+async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<void> {
+  for (let i = 0; i < messages.length; i += 100) {
+    const batch = messages.slice(i, i + 100)
+    try {
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(batch),
+      })
+    } catch (error) {
+      // Swallow — the orchestrator logs based on the response status,
+      // and a network failure on one batch shouldn't abort the rest.
+      console.error('sendExpoBatch failed', error)
+    }
+  }
+}
+
 async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') {
     return new Response('ok', {
@@ -273,6 +311,20 @@ async function handler(request: Request): Promise<Response> {
     payload = (await request.json()) as PushRequestBody
   } catch {
     return jsonResponse({ error: 'Invalid JSON payload.' }, 400)
+  }
+
+  // notifications-orchestrator path: caller pre-resolved tokens and
+  // built ExpoPushMessage[]. Skip the legacy familyId membership
+  // gate — the orchestrator runs with the service-role key and is
+  // the only thing that should hit this branch. Bulk-send to Expo
+  // in batches of 100 and return a count.
+  if (Array.isArray(payload.messages)) {
+    const messages = payload.messages
+    if (messages.length === 0) {
+      return jsonResponse({ ok: true, count: 0 })
+    }
+    await sendExpoBatch(messages)
+    return jsonResponse({ ok: true, count: messages.length })
   }
 
   // Sanitize + length-cap user-controlled strings BEFORE any auth /
