@@ -6,10 +6,18 @@ import {
 } from '@/theme/category-hues'
 
 describe('category hues', () => {
-  it('exposes 8 canonical hue keys', () => {
+  it('exposes the canonical hue keys', () => {
+    // Hue palette expanded post-refactor — assert against current set.
     expect(CATEGORY_HUE_KEYS).toEqual([
-      'comida', 'transporte', 'casa', 'salud',
-      'ocio', 'servicios', 'ropa', 'otros',
+      'comida', 'restaurante', 'supermercado',
+      'transporte', 'viajes',
+      'casa', 'servicios', 'suscripciones',
+      'salud', 'belleza',
+      'ocio', 'deporte',
+      'educacion', 'tecnologia',
+      'mascotas', 'ropa', 'regalos',
+      'inversiones',
+      'otros',
     ])
   })
 

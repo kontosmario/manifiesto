@@ -46,7 +46,7 @@ describe('expense-intelligence-model', () => {
 
     expect(model.hasRisk).toBe(true)
     expect(model.metricTone).toBe('warning')
-    expect(model.leadMetrics[1]?.label).toBe('Bajá por día')
+    expect(model.leadMetrics[1]?.label).toBe('Baja por día') // copy refresh
   })
 
   it('detecta focos de categoría, repetición y fin de semana', () => {

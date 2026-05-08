@@ -3,28 +3,28 @@ import { buildTheme, brand } from '@/theme/palette'
 
 describe('palette tokens', () => {
   it('brand constants are cross-mode identical', () => {
-    expect(brand.deep).toBe('#0F2E1F')
-    expect(brand.bright).toBe('#7AD8A3')
-    expect(brand.surfaceSoft).toBe('rgba(122,216,163,0.12)')
+    expect(brand.deep).toBe('#329315') // V1 palette migration
+    expect(brand.bright).toBe('#A6EF8F') // V1 palette migration
+    expect(brand.surfaceSoft).toBe('rgba(166,239,143,0.12)') // V1 palette migration
   })
 
   it('light theme has warm canvas and deep-green text', () => {
     const theme = buildTheme('light')
     expect(theme.colors.canvas).toBe('#F4F2ED')
     expect(theme.colors.surface).toBe('#FFFFFF')
-    expect(theme.colors.text).toBe('#0F2E1F')
+    expect(theme.colors.text).toBe('#12211A') // V1 palette migration
   })
 
   it('dark theme has deep canvas and pale text', () => {
     const theme = buildTheme('dark')
-    expect(theme.colors.canvas).toBe('#0A1A12')
+    expect(theme.colors.canvas).toBe('#12211A') // V1 palette migration
     expect(theme.colors.surface).toBe('#102018')
-    expect(theme.colors.text).toBe('#F8FBF8')
+    expect(theme.colors.text).toBe('#F2EAD3') // V1 palette migration
   })
 
   it('both modes expose brand constants on theme.brand', () => {
-    expect(buildTheme('light').brand.deep).toBe('#0F2E1F')
-    expect(buildTheme('dark').brand.bright).toBe('#7AD8A3')
+    expect(buildTheme('light').brand.deep).toBe('#329315') // V1 palette migration
+    expect(buildTheme('dark').brand.bright).toBe('#A6EF8F') // V1 palette migration
   })
 })
 

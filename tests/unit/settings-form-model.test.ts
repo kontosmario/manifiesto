@@ -1,52 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildFinanceDraftState,
-  buildFinanceFieldValues,
   buildFinanceSubmitState,
-  canSaveProfileDraft,
-  sanitizeDayInput,
   sanitizeMoneyInput,
 } from '@/features/settings/settings-form.model'
 
 describe('settings-form.model', () => {
-  it('detecta si el perfil tiene cambios guardables', () => {
-    expect(canSaveProfileDraft({ displayName: 'Mario', draft: 'Mario' })).toBe(false)
-    expect(canSaveProfileDraft({ displayName: 'Mario', draft: 'Mario A.' })).toBe(true)
-    expect(canSaveProfileDraft({ displayName: 'Mario', draft: '   ' })).toBe(false)
-  })
+  // TODO(phase-1-cleanup): function/export removed during V1 refactor (commits 55840b8/5f0a98b). Re-implement or delete this test.
+  it.skip('detecta si el perfil tiene cambios guardables', () => {})
 
-  it('arma drafts financieros y valores de campo visibles', () => {
-    const drafts = buildFinanceDraftState({
-      dailyBudgetBufferMode: 'fixed',
-      dailyBudgetBufferValue: 12000,
-      dailyBudgetCheckinHour: 9,
-      dailyBudgetNudgesEnabled: true,
-      lastSalaryConfirmedAt: null,
-      monthlyIncome: 350000,
-      salaryPaymentDay: 5,
-      savingsGoal: 70000,
-      savingsGoalPercent: 20,
-      usdExchangeRate: 1200,
-    })
-
-    const values = buildFinanceFieldValues({
-      bufferDraft: drafts.bufferDraft,
-      bufferFocused: false,
-      bufferModeDraft: drafts.bufferModeDraft,
-      incomeDraft: drafts.incomeDraft,
-      incomeFocused: false,
-      savingsDraft: drafts.savingsDraft,
-      savingsFocused: false,
-      usdRateDraft: drafts.usdRateDraft,
-      usdRateFocused: false,
-    })
-
-    expect(drafts.incomeDraft).toBe('350000')
-    expect(drafts.savingsDraft).toBe('20')
-    expect(values.income).toContain('$')
-    expect(values.buffer).toContain('$')
-    expect(values.savings).toBe('20')
-  })
+  // TODO(phase-1-cleanup): buildFinanceFieldValues / buildFinanceDraftState shape removed during V1 refactor.
+  it.skip('arma drafts financieros y valores de campo visibles', () => {})
 
   it('convierte drafts válidos a input financiero persistible', () => {
     const submitState = buildFinanceSubmitState({
@@ -64,7 +27,10 @@ describe('settings-form.model', () => {
     })
 
     expect(submitState.canSaveFinance).toBe(true)
+    // V1 refactor: buildFamilyFinanceInput now also persists currentCycle{StartingBalance,Anchor}.
     expect(submitState.input).toEqual({
+      currentCycleAnchor: null,
+      currentCycleStartingBalance: null,
       dailyBudgetBufferMode: 'percent',
       dailyBudgetBufferValue: 10,
       dailyBudgetCheckinHour: 8,
@@ -79,7 +45,7 @@ describe('settings-form.model', () => {
   })
 
   it('sanea entradas numéricas de settings', () => {
-    expect(sanitizeDayInput('1a2b3')).toBe('12')
+    // sanitizeDayInput was removed during V1 refactor.
     expect(sanitizeMoneyInput('$ 12,3a4')).toBe('12,34')
   })
 })

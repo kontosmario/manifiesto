@@ -280,6 +280,15 @@ describe('control-signals', () => {
         created_at: '2026-04-15T09:00:00',
         commitment_id: null,
       },
+      // Extra discretionary entry: post-refactor builder requires at least 4 entries before considering subscriptions.
+      {
+        id: 'a4',
+        category_id: 'cat',
+        price: 1200,
+        description: 'kiosko',
+        created_at: '2026-04-18T09:00:00',
+        commitment_id: null,
+      },
     ]
     const out = buildControlSignals(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding

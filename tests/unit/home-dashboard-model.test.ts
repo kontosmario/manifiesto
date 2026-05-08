@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildHomeVelocity,
   classifyDashboardError,
   daysUntilPayday,
   getGreeting,
@@ -92,44 +91,11 @@ describe('getGreeting', () => {
   })
 })
 
-describe('buildHomeVelocity', () => {
-  const today = new Date('2026-04-20T12:00:00Z')
-  const cycle = getPaydayCycle({ paymentDay: 25 }, today)
-
-  it('computes burn rate and runway when there is spending', () => {
-    const velocity = buildHomeVelocity({
-      spentInCurrentCycle: 520_000,
-      totalAvailable: 400_000,
-      cycle,
-      todayDate: today,
-    })
-    expect(velocity).not.toBeNull()
-    expect(velocity?.burnRatePerDay).toBeCloseTo(520_000 / cycle!.daysElapsed, 2)
-    expect(velocity?.runwayDays).toBeGreaterThan(0)
-    expect(velocity?.runwayDate).toBeInstanceOf(Date)
-  })
-
-  it('returns null when cycle has not started yet', () => {
-    expect(
-      buildHomeVelocity({
-        spentInCurrentCycle: 0,
-        totalAvailable: 1,
-        cycle,
-        todayDate: today,
-      }),
-    ).toBeNull()
-  })
-
-  it('returns null when no cycle is available', () => {
-    expect(
-      buildHomeVelocity({
-        spentInCurrentCycle: 1,
-        totalAvailable: 1,
-        cycle: null,
-        todayDate: today,
-      }),
-    ).toBeNull()
-  })
+// TODO(phase-1-cleanup): function/export removed during V1 refactor (commits 55840b8/5f0a98b). Re-implement or delete this test.
+describe.skip('buildHomeVelocity', () => {
+  it('computes burn rate and runway when there is spending', () => {})
+  it('returns null when cycle has not started yet', () => {})
+  it('returns null when no cycle is available', () => {})
 })
 
 describe('isPaydayPending', () => {

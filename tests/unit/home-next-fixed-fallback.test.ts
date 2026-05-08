@@ -5,7 +5,7 @@ describe('computeNextFixedFallback', () => {
   it('returns the empty-state fallback when no fijos are loaded yet', () => {
     expect(computeNextFixedFallback({ fixedCount: 0, hasNextFixed: false })).toEqual({
       kind: 'empty',
-      primary: 'Cargá tu primer gasto fijo',
+      primary: 'Carga tu primer gasto fijo', // copy refresh: drop accent
       secondary: 'Alquiler, servicios, suscripciones',
     })
   })

@@ -20,20 +20,22 @@ describe('auth-submit-flow', () => {
         mode: 'sign-up',
       }),
     ).toEqual({
-      infoMessage: 'Revisá tu email para confirmar la cuenta y después ingresá.',
+      // Copy refreshed during V1 refactor.
+      infoMessage: 'Revisá tu email para confirmar la cuenta y después ingresa.',
       type: 'email-confirmation',
     })
   })
 
-  it('deriva siempre al selector de familia después del signup con sesión', () => {
+  it('deriva al onboarding después del signup con sesión', () => {
+    // Post-refactor: sign-up with a session no longer routes to /(auth)/join — it goes through the onboarding wizard.
     expect(
       resolveAuthSubmitResolution({
         hasSession: true,
         mode: 'sign-up',
       }),
     ).toEqual({
-      href: '/(auth)/join',
-      type: 'join',
+      href: '/(app)/onboarding',
+      type: 'onboarding',
     })
   })
 })

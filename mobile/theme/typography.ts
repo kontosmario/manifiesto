@@ -25,3 +25,22 @@ export const typography: Record<TypographyPresetKey, TextStyle> = {
   fieldLabel:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
   caption:       { fontSize: 11, fontWeight: '500' },
 }
+
+export const TYPOGRAPHY_PRESET_KEYS: TypographyPresetKey[] = [
+  'hero',
+  'displayLarge',
+  'screenTitle',
+  'sectionTitle',
+  'titleMedium',
+  'metricLarge',
+  'metricValue',
+  'buttonDefault',
+  'buttonCompact',
+  'bodyLarge',
+  'body',
+  'bodyEmphasis',
+  'bodySmall',
+  'eyebrow',
+  'fieldLabel',
+  'caption',
+]

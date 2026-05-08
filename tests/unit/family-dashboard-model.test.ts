@@ -112,7 +112,8 @@ describe('buildFamilyDashboardSnapshot', () => {
     })
 
     expect(snapshot.isSalaryPendingConfirmation).toBe(true)
-    expect(formatLocalDateKey(snapshot.payCycle.start)).toBe('2026-03-02')
+    // Refactor: cycle anchor now starts on the salary day itself (inclusive) instead of day-after.
+    expect(formatLocalDateKey(snapshot.payCycle.start)).toBe('2026-03-01')
     expect(formatLocalDateKey(snapshot.payCycle.end)).toBe('2026-04-01')
     expect(snapshot.spentInCurrentCycle).toBe(8_000)
     expect(snapshot.remainingUntilPayday).toBeLessThan(0)

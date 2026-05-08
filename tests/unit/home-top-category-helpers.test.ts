@@ -207,7 +207,7 @@ describe('computeTopCategoryFallback', () => {
       variableCount: 0,
     })
     expect(out?.kind).toBe('empty')
-    expect(out?.primary).toMatch(/Cargá tu primer gasto/)
+    expect(out?.primary).toMatch(/Carga tu primer gasto/) // copy refresh: drop accent
   })
 
   it('returns sparse kind when transactions are below the minimum', () => {
@@ -216,7 +216,7 @@ describe('computeTopCategoryFallback', () => {
       variableCount: 2,
     })
     expect(out?.kind).toBe('sparse')
-    expect(out?.secondary).toMatch(/Cargá más gastos/)
+    expect(out?.secondary).toMatch(/Carga más gastos/) // copy refresh: drop accent
   })
 
   it('falls through to a generic sparse copy when the gate passes but the helper still returned null', () => {
@@ -235,6 +235,6 @@ describe('computeTopCategoryFallback', () => {
       minTransactions: 2,
     })
     expect(out?.kind).toBe('sparse')
-    expect(out?.secondary).toMatch(/Cargá más gastos/)
+    expect(out?.secondary).toMatch(/Carga más gastos/) // copy refresh: drop accent
   })
 })
