@@ -154,6 +154,19 @@ function resolveMyRole(
 export const homeSnapshotQueryKey = (userId?: string) =>
   ['home-snapshot', userId ?? null] as const
 
+/**
+ * Bare fetcher — calls the RPC and returns the raw payload without
+ * seeding any caches. Exported so the tab layout can prefetch the
+ * snapshot at mount time (cache warming). Cache seeding happens inside
+ * `useHomeSnapshot` where we have access to `queryClient` and `userId`.
+ */
+export async function fetchHomeSnapshot(): Promise<HomeSnapshotPayload> {
+  const { data, error } = await supabase.rpc('home_snapshot')
+  if (error) throw error
+  if (!data) throw new Error('El snapshot del inicio vino vacío.')
+  return data as HomeSnapshotPayload
+}
+
 const RECENT_EXPENSES_LIMIT = 6
 const MEMBER_COLOR_POOL = ['#2E7D5B', '#E08E63', '#6B3A4F', '#C9A23A', '#4D6FB3', '#8A4D9A']
 
@@ -304,15 +317,12 @@ export function useHomeSnapshot(userId?: string) {
   return useQuery<HomeSnapshotPayload>({
     queryKey: homeSnapshotQueryKey(userId),
     enabled: Boolean(userId),
-    // Inherits the global `staleTime: 30_000`. That keeps the snapshot
-    // fresh long enough that a second observer (e.g. HomeScreen) can
-    // subscribe without triggering a redundant refetch. Pull-to-refresh
-    // still works via explicit `snapshot.refetch()`.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('home_snapshot')
-      if (error) throw error
-      if (!data) throw new Error('El snapshot del inicio vino vacío.')
-      const payload = data as HomeSnapshotPayload
+      const payload = await fetchHomeSnapshot()
       // Seed synchronously inside the queryFn so the individual caches
       // are populated before consumer components re-render and mount
       // their own hooks. Doing this in a useEffect would lose the race.
