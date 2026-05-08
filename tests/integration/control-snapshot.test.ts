@@ -11,6 +11,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
+  adminClient,
   isSupabaseLocalReachable,
   userClient,
 } from './_helpers/supabase-test-client'
@@ -73,6 +74,20 @@ describeIfLive('control_snapshot', () => {
     // last_used_at OR null. The seed's fixed_expense has last_used_at null →
     // it qualifies as zombie. So we just verify the field is an array.
     expect(Array.isArray(snap.member_pressure)).toBe(true)
+  })
+
+  // ── Test 4: cron refresh populates row for every family ───────────────
+  it('cron_refresh_control_snapshots populates a row for every family', async () => {
+    if (!family) throw new Error('family not seeded')
+    const admin = adminClient()
+    const { error } = await admin.rpc('cron_refresh_control_snapshots')
+    expect(error).toBeNull()
+
+    const { data } = await admin
+      .from('control_snapshots')
+      .select('family_id, computed_at')
+      .eq('family_id', family.familyId)
+    expect(data?.length).toBe(1)
   })
 
   // ── Test 3: per-family scope ──────────────────────────────────────────
