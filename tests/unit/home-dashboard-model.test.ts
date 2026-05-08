@@ -91,13 +91,6 @@ describe('getGreeting', () => {
   })
 })
 
-// TODO(phase-1-cleanup): function/export removed during V1 refactor (commits 55840b8/5f0a98b). Re-implement or delete this test.
-describe.skip('buildHomeVelocity', () => {
-  it('computes burn rate and runway when there is spending', () => {})
-  it('returns null when cycle has not started yet', () => {})
-  it('returns null when no cycle is available', () => {})
-})
-
 describe('isPaydayPending', () => {
   const today = new Date('2026-04-20T12:00:00Z')
 

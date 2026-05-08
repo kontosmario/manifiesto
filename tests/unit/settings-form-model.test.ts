@@ -5,12 +5,6 @@ import {
 } from '@/features/settings/settings-form.model'
 
 describe('settings-form.model', () => {
-  // TODO(phase-1-cleanup): function/export removed during V1 refactor (commits 55840b8/5f0a98b). Re-implement or delete this test.
-  it.skip('detecta si el perfil tiene cambios guardables', () => {})
-
-  // TODO(phase-1-cleanup): buildFinanceFieldValues / buildFinanceDraftState shape removed during V1 refactor.
-  it.skip('arma drafts financieros y valores de campo visibles', () => {})
-
   it('convierte drafts válidos a input financiero persistible', () => {
     const submitState = buildFinanceSubmitState({
       drafts: {

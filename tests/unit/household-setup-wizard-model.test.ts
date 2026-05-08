@@ -84,7 +84,4 @@ describe('household-setup-wizard.model', () => {
 
     vi.useRealTimers()
   })
-
-  // TODO(phase-1-cleanup): function/export removed during V1 refactor (commits 55840b8/5f0a98b). Re-implement or delete this test.
-  it.skip('marca como pendiente un hogar sin ingreso configurado', () => {})
 })
