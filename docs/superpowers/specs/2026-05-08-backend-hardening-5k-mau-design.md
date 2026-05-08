@@ -7,6 +7,19 @@
 
 ---
 
+## 0. Glosario crítico
+
+**"Mes" / "ciclo" / "ciclo de cobro" son lo mismo en este documento.** Manifiesto opera en ciclos de cobro del usuario, no en meses calendario. Cada familia tiene un `family_finance.salary_payment_day` que define cuándo arranca su ciclo. El cierre de ciclo (`close_monthly_cycle`) corre cuando el usuario confirma el cobro del próximo sueldo (trigger en `family_finance.last_salary_confirmed_at`) o por el cron sweeper diario, no el día 1 calendario.
+
+Implicaciones:
+
+- "Borrar expenses 14 días post-ciclo" = 14 días después de que `archived_at` quedó seteado por `close_monthly_cycle`.
+- "Retención 12 meses de `monthly_summaries`" = 12 filas por familia (uno por ciclo cerrado), no 12 meses calendario.
+- "Retención 60 días de `fixed_expense_price_history`" = sí calendario, porque trackea cambios de precio que pueden ocurrir cualquier día.
+- "Cron de retención mensual" = primer día de cada mes calendario (NO atado a ciclos), porque limpia data cross-familia.
+
+---
+
 ## 1. Goals
 
 - Sostener **5.000 MAU activos** en plan Pro + Compute Medium con margen ≥30% sobre los límites duros.
@@ -27,23 +40,25 @@
 
 ### 3.1 Volumen esperado a 5K MAU
 
-Asumiendo 5.000 familias activas (1 familia ≈ 1 MAU pagador, miembros adicionales no compran), 150 transacciones por familia/mes (60 gastos variables + 20 fijos + ~70 cargas adicionales del resto del grupo).
+Asumiendo 5.000 familias activas (1 familia ≈ 1 MAU pagador, miembros adicionales no compran), 150 transacciones por familia/ciclo (60 gastos variables + 20 fijos + ~70 cargas adicionales del resto del grupo).
 
-| Tabla | Filas/mes | Filas vivas (12 m) | Bytes/fila aprox | Tamaño 12m |
-|---|---|---|---|---|
-| `expenses` | 750.000 | 9.000.000 | ~250 | **~2.3 GB** |
-| `notifications` | 1.500.000 | 4.500.000 (90 días) | ~400 | **~1.8 GB** |
-| `velocity_snapshots` | 150.000 | 1.800.000 | ~120 | **~210 MB** |
-| `fixed_expense_payments` | 100.000 | 1.200.000 | ~150 | **~180 MB** |
-| `fixed_expense_price_history` | ~25.000 | 300.000 | ~150 | **~45 MB** |
-| `monthly_summaries` | 5.000 | 60.000 (perpetuo) | ~3 KB (JSONB) | **~180 MB** |
-| `advisor_signal_dismissals` | ~150.000 | 1.800.000 | ~250 | **~450 MB** |
-| `home_telemetry` | ? (alto) | retención agresiva | ~200 | **<200 MB con 30 días** |
-| `user_streaks` | 5.000 (1 fila/user) | ~25.000 | ~200 | **~5 MB** |
-| Resto (categorías, families, miembros, etc.) | bajo | <50K filas | — | **<100 MB** |
-| **Total estimado DB vivo** | | | | **~5–6 GB** |
+| Tabla | Filas vivas a 5K MAU | Bytes/fila aprox | Tamaño |
+|---|---|---|---|
+| `expenses` (solo ciclo en curso + 14 días gracia post-cierre) | ~1.1M (1.5 ciclos peak) | ~250 | **~280 MB** |
+| `notifications` (90 días) | 4.500.000 | ~400 | **~1.8 GB** |
+| `velocity_snapshots` (6 meses) | 900.000 | ~120 | **~110 MB** |
+| `fixed_expense_payments` (12 ciclos) | 1.200.000 | ~150 | **~180 MB** |
+| `fixed_expense_price_history` (60 días) | ~50.000 | ~150 | **~8 MB** |
+| `monthly_summaries` (12 ciclos por familia) | 60.000 | ~3 KB (JSONB) | **~180 MB** |
+| `advisor_signal_dismissals` (12 meses) | 1.800.000 | ~250 | **~450 MB** |
+| `home_telemetry` (30 días) | variable | ~200 | **<200 MB** |
+| `user_streaks` | ~25.000 | ~200 | **~5 MB** |
+| Resto (categorías, families, miembros, fixed_expenses, etc.) | <100K filas | — | **<100 MB** |
+| **Total estimado DB vivo** | | | **~3–4 GB** |
 
-Plan Pro: 8 GB DB incluido + $0.125/GB extra. Margen sano sobre 8 GB.
+Plan Pro: 8 GB DB incluido + $0.125/GB extra. Margen ~50% sobre 8 GB.
+
+**Nota clave:** la tabla `expenses` es **drásticamente más chica** que en una arquitectura típica porque se purga al cierre de ciclo (con 14 días de gracia). Esto es el cambio que más capacidad desbloquea.
 
 ### 3.2 Egress
 
@@ -62,7 +77,7 @@ A 5.000 MAU × 5 aperturas/día × 30 días × 100 KB promedio = **~75 GB egress
 | 3 | `home_snapshot` egress | ALTO | Sin LIMIT en arrays largos (notifications=80 ok, pero `expenses` puede crecer si algún ciclo tarda en cerrar). | 🟡 |
 | 4 | RLS subqueries `family_members` | MEDIO | Política `is_family_member()` se evalúa por fila. Helper SECURITY DEFINER ya existe pero no está STABLE. | 🟡 |
 | 5 | `notifications` sin retención | ALTO | 1.5M filas/mes y crece monotónico. A 6 meses son 9M filas. | 🟡 |
-| 6 | `expenses` archivadas sin borrado | MEDIO | `archived_at` existe pero no hay cron que purgue después de N meses. | 🟢→🟡 |
+| 6 | `expenses` archivadas sin borrado | ALTO | `archived_at` existe pero no se borran. A 12 ciclos = ~9M filas. Decisión: hard-delete 14 días post-cierre. | 🟡→🟢 |
 | 7 | Push fan-out 1-a-1 | ALTO | Cada notif = 1 invocación Edge. A 1.5M notifs/mes = revienta el límite (2M/mes Pro). | 🔴 |
 | 8 | Realtime concurrent | MEDIO | Pico actual 3 conexiones; a 5K MAU posible 600-1200 simultáneas. Pro: 200. | 🟡 |
 | 9 | `home_snapshot` consultado en cada navegación | MEDIO | Tanstack Query cache: revisar staleTime/gcTime. | 🟢 |
@@ -169,24 +184,38 @@ cron_refresh_control_snapshots() -- corre cada 6h
 
 **Sobre el invalidación on-write:** intencionalmente NO añadimos triggers por gasto. El user dijo "puede tardar hasta 6h en reflejar". Mantener simple.
 
-#### D. Política de retención (cron mensual)
+#### D. Política de retención
 
-Función `cron_apply_retention_policies()` corre el día 1 de cada mes a las 04:00 UTC (post-rollup):
+Hay **dos crones distintos** para retención:
+
+**D.1 Cron diario `cron_purge_archived_expenses()` (04:30 UTC = 01:30 AR)**
+
+Borra físicamente los gastos variables que ya cerraron ciclo y cumplieron 14 días de gracia. Esto es el grueso del ahorro.
+
+```sql
+delete from public.expenses
+where archived_at is not null
+  and archived_at < now() - interval '14 days';
+```
+
+El comportamiento de `close_monthly_cycle` (que setea `archived_at = now()`) **no se cambia** — sigue siendo soft-delete. La separación entre soft-delete (al cerrar ciclo) y hard-delete (14 días después) preserva la red de seguridad y le da ventana al `cron_compute_velocity_snapshots` para empalmar la transición de ciclo (lee `archived_at` como parte de la ventana de 30 días).
+
+**D.2 Cron mensual `cron_apply_retention_policies()` (día 1 de cada mes calendario, 04:00 UTC)**
 
 | Tabla | Política |
 |---|---|
-| `expenses` (con `archived_at`) | Borra rows con `archived_at < now() - interval '12 months'`. Los datos viven en `monthly_summaries`. |
 | `notifications` | Borra `created_at < now() - interval '90 days'`. |
-| `velocity_snapshots` | Borra `snapshot_date < now() - interval '6 months'`. (Solo el último importa para `home_snapshot`; el histórico no se usa.) |
+| `velocity_snapshots` | Borra `snapshot_date < now() - interval '6 months'`. |
 | `advisor_signal_dismissals` | Borra `created_at < now() - interval '12 months'`. |
-| `fixed_expense_price_history` | Borra `changed_at < now() - interval '24 months'`. (La auditoría de precio fija necesita más historia que gastos.) |
+| `fixed_expense_price_history` | Borra `changed_at < now() - interval '60 days'`. |
 | `home_telemetry` (si existe) | Borra `created_at < now() - interval '30 days'`. |
-| `monthly_summaries` | **No purgar.** Es la fuente histórica. |
+| `monthly_summaries` | Borra rows donde la familia ya tiene **>12 ciclos** más nuevos. (Window function por `family_id` ordenado por `period_start desc`, drop rank > 12.) |
 | `user_streaks` | **No purgar.** 1 fila/user. |
 | `families`, `family_members`, `profiles` | **No purgar.** |
-| `push_subscriptions` | Borra rows con `last_used_at < now() - interval '90 days'` (si existe esa col; si no, agregarla). |
+| `fixed_expenses`, `fixed_expense_payments` | **No purgar.** Configuración persistente y registro de pagos. |
+| `push_subscriptions` | Borra rows con `last_used_at < now() - interval '90 days'` (si la col existe; si no, agregarla). |
 
-Borrado en chunks de 10K filas con `DELETE … WHERE ctid IN (SELECT ctid FROM … LIMIT 10000)` para evitar long locks.
+Borrado en chunks de 10K filas con `DELETE … WHERE ctid IN (SELECT ctid FROM … LIMIT 10000)` para evitar long locks. Cada DELETE en su propia transacción / savepoint.
 
 #### E. Notifications cron — refactor a Edge Orchestrator
 
@@ -282,7 +311,8 @@ Todas con timestamp > `20260511000000` y idempotentes.
 | 3 | `20260512020000_home_snapshot_payload_trim.sql` | Reescribe cuerpo de `home_snapshot` con caps. |
 | 4 | `20260512030000_control_snapshot_table_and_rpc.sql` | Tabla `control_snapshots` + RPC `control_snapshot()` + helper compute. |
 | 5 | `20260512040000_control_snapshot_cron.sql` | pg_cron schedule cada 6h. |
-| 6 | `20260512050000_retention_policies.sql` | `cron_apply_retention_policies()` + schedule mensual. |
+| 6a | `20260512050000_purge_archived_expenses.sql` | `cron_purge_archived_expenses()` + schedule diario (14 días post-cierre). |
+| 6b | `20260512051000_retention_policies.sql` | `cron_apply_retention_policies()` + schedule mensual (notifications, velocity, dismissals, price_history 60d, monthly_summaries 12 ciclos). |
 | 7 | `20260512060000_notifications_pending_helpers.sql` | `list_pending_notifications` + `emit_notifications_bulk`. |
 | 8 | `20260512070000_notifications_cron_handover.sql` | Reschedule pg_cron para llamar al orchestrator. Dropea jobs viejos `morning-checkins`, etc. |
 | 9 | `20260512080000_db_health_snapshot.sql` | RPC + rol `dev_admin`. |
@@ -331,7 +361,7 @@ Cada migración:
 
 | Métrica | Antes (proyectado a 5K) | Después | Margen sobre Pro |
 |---|---|---|---|
-| DB total | ~12 GB (sin retención) | **~5–6 GB** | ~30% |
+| DB total | ~12 GB (sin retención) | **~3–4 GB** | ~50% |
 | Egress/mes | ~80–100 GB | **~50–60 GB** | ~70% |
 | Edge invocations/mes | ~1.2M | **~150K** | ~92% |
 | Realtime concurrent peak | ~600–1.200 | **~150** | ~25% |
@@ -339,7 +369,7 @@ Cada migración:
 | Home p95 latency | ~250ms | **<150ms** (payload -30%) | ✓ |
 | Compute headroom (Medium 1GB/2vCPU) | borderline | margen ~40% | ✓ |
 
-**MAU servibles estimados:** ~6.500–8.000 con margen sobre 5K objetivo. Próxima ronda dispara cuando: DB > 70%, egress > 60%, o Edge > 70%.
+**MAU servibles estimados:** ~10.000–12.000 con margen sobre 5K objetivo (la purga agresiva de `expenses` desbloquea el doble de capacidad de lo que pensaba). Próxima ronda dispara cuando: DB > 70%, egress > 60%, Edge > 70%, o Realtime concurrent > 70%.
 
 ## 10. Costos estimados (USD/mes a 5K MAU)
 
@@ -376,13 +406,15 @@ Cada migración:
 
 ## 13. Brainstorming notes (de la conversación)
 
-- **P1 retención**: 12 meses vivos en `expenses`. Resumen mensual permanente en `monthly_summaries` (ya existe).
+- **Terminología**: "mes" = ciclo de cobro (definido por `family_finance.salary_payment_day`), no mes calendario.
+- **P1 retención**: `expenses` se purgan 14 días después del cierre de ciclo (soft-delete vía `archived_at` al cerrar, hard-delete 14 días después por cron). `monthly_summaries` retención de **12 ciclos** por familia. `fixed_expense_price_history` retención de 60 días.
 - **P2 Asistente**: refresh cada 6h. Cron 09:00, 15:00, 21:00 AR. Evita 0–6 AM.
 - **P3 observabilidad**: pantalla en Settings, **solo dev build**. Plain info.
-- **P4 volumen**: ~150 transacciones/familia/mes confirmado.
+- **P4 volumen**: ~150 transacciones/familia/ciclo confirmado.
 - **P5 push**: agrupar por familia/lote, cliente no nota diferencia.
 - **P6 realtime**: subscription gated por presence (2+ miembros activos). Resto: optimistic + invalidar al volver al tab.
 - **P7 cron notifications**: pg_cron llama 1 vez a Edge orchestrator que chunkea internamente.
+- **fixed_expenses**: la tabla actual `fixed_expense_price_history` ya provee el "valor del mes pasado" vía trigger. No se cambia su estructura, solo se le aplica retención agresiva de 60 días.
 
 ## 14. Definition of Done
 
