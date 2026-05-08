@@ -44,6 +44,10 @@ export const emptyStates = {
     title: 'Todo tranquilo',
     description: 'Cuando haya novedades de tu familia, las vas a ver aquí.',
   },
+  noData: {
+    title: 'Sin datos', // @copy-allow — canonical definition in states.ts
+    description: 'Todavía no hay información disponible para este período.',
+  },
 } as const satisfies Record<string, EmptyStateCopy>
 
 export type EmptyStateKey = keyof typeof emptyStates

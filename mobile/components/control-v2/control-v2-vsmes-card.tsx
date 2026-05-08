@@ -185,7 +185,7 @@ export function ControlV2VsMesCard({
             ? 'rgba(255,255,255,0.10)'
             : 'rgba(15,42,30,0.10)',
           icon: 'history' as const,
-          canonical: 'Sin datos',
+          canonical: 'Sin datos', // @copy-allow — internal label, not rendered
           label: 'Sin clasificar',
         }
     }

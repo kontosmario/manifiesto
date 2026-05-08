@@ -99,7 +99,7 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.textMuted, 0.20),
         fillSoft: hexAlpha(theme.colors.textMuted, 0.40),
         icon: 'schedule',
-        label: 'Sin datos',
+        label: 'Sin datos', // @copy-allow — canonical definition in state-tokens, matches emptyStates.noData.title
       }
   }
 }

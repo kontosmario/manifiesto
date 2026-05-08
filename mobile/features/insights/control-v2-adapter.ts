@@ -13,6 +13,7 @@ import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types
 import type { FamilyFinance } from '@/features/finance/use-family-finance'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
+import { emptyStates } from '@/lib/copy/states'
 
 /** One entry of the `category_breakdown` jsonb column.
  *  Matches the shape `close_monthly_cycle` writes (array of objects
@@ -265,7 +266,7 @@ export function buildControlDataFromSnapshot(
   const prevMonthName = MES_ES[prevMonthIndex.getMonth()] ?? 'Mes anterior'
   const lastTopCat = last
     ? topCategoryFromBreakdown(last.category_breakdown)
-    : { label: 'Sin datos', categoryId: null, amount: 0, pct: 0 }
+    : { label: emptyStates.noData.title, categoryId: null, amount: 0, pct: 0 }
   // Cross-cycle category check: how much did the user spend THIS
   // cycle in the same category that was the worst last month? Lets
   // the UI raise an alert when the same drain repeats.
@@ -430,7 +431,7 @@ function topCategoryFromBreakdown(
 ): { label: string; categoryId: string | null; amount: number; pct: number } {
   const list = normaliseCategoryBreakdown(raw)
   if (list.length === 0) {
-    return { label: 'Sin datos', categoryId: null, amount: 0, pct: 0 }
+    return { label: emptyStates.noData.title, categoryId: null, amount: 0, pct: 0 }
   }
   const top = list[0]!
   return {

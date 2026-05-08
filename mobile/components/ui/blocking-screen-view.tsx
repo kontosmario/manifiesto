@@ -5,7 +5,7 @@ interface BlockingScreenViewProps {
   /**
    * Legacy prop — preserved for back-compat with existing call sites.
    * Ignored: the splash overlay at root paints the brand surface, and
-   * showing extra "Cargando…" text underneath would just compete.
+   * rendering a loading label underneath would just compete with it.
    */
   message?: string
 }
