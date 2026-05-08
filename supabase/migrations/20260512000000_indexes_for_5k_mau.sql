@@ -2,10 +2,21 @@
 -- WHY: A escala el conteo de unread notifications y los scans de retención
 --      necesitan índices cubrientes. family_members(user_id) lo lee cada
 --      RLS policy via is_family_member().
+--
+-- NOTA OPERACIONAL: estas migraciones usan CREATE INDEX (no CONCURRENTLY)
+-- porque Supabase ejecuta las migraciones dentro de una transacción implícita,
+-- y CONCURRENTLY no puede correr en transacción. A escala actual (<100 MAU)
+-- el lock es instantáneo. Cuando notifications o advisor_signal_dismissals
+-- superen 1M de filas, conviene crear estos índices manualmente desde el
+-- dashboard con CREATE INDEX CONCURRENTLY antes de aplicar la migración
+-- (la migración acá quedará como no-op gracias a IF NOT EXISTS).
 
 -- ─── notifications: unread por usuario ─────────────────────────────
 -- home_snapshot calcula unread_notification_count en cada apertura.
-create index if not exists notifications_family_user_unread_idx
+-- Nota: notifications_family_user_unread_idx (sin WHERE) ya existe desde
+-- 20260423215800_notifications_ecosystem.sql y sirve al query de listado.
+-- Este índice parcial sirve exclusivamente al count de no leídas.
+create index if not exists notifications_family_user_unread_partial_idx
   on public.notifications (family_id, user_id, created_at desc)
   where read_at is null;
 
@@ -41,7 +52,7 @@ create index if not exists expenses_archived_at_idx
   where archived_at is not null;
 
 -- ═══ DOWN ══════════════════════════════════════════════════════════
--- drop index if exists notifications_family_user_unread_idx;
+-- drop index if exists notifications_family_user_unread_partial_idx;
 -- drop index if exists notifications_created_at_idx;
 -- drop index if exists advisor_signal_dismissals_created_at_idx;
 -- drop index if exists velocity_snapshots_snapshot_date_idx;
