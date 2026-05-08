@@ -85,4 +85,37 @@ describeIfLive('home_snapshot shape (golden)', () => {
     expect(Array.isArray(fixed)).toBe(true)
     expect(fixed.length).toBeLessThanOrEqual(100)
   })
+
+  it('caps expenses to 120 even when family has 200 active expenses', async () => {
+    const fam = await seedMinimalFamily('-cap')
+    try {
+      const { adminClient } = await import('./_helpers/supabase-test-client')
+      const admin = adminClient()
+      const { data: cat, error: catErr } = await admin
+        .from('categories')
+        .select('id')
+        .eq('family_id', fam.familyId)
+        .eq('scope', 'expense')
+        .limit(1)
+        .single()
+      if (catErr || !cat) throw catErr ?? new Error('no category seeded')
+
+      const extra = Array.from({ length: 200 }, (_, i) => ({
+        family_id: fam.familyId,
+        category_id: cat.id as string,
+        created_by: fam.ownerId,
+        description: `Extra ${i}`,
+        price: 100,
+      }))
+      const { error: insErr } = await admin.from('expenses').insert(extra)
+      if (insErr) throw insErr
+
+      const sb = userClient(fam.ownerAccessToken)
+      const { data } = await sb.rpc('home_snapshot')
+      const expenses = (data as { expenses: unknown[] }).expenses
+      expect(expenses.length).toBe(120)
+    } finally {
+      await cleanupFamily(fam)
+    }
+  }, 30_000)
 })
