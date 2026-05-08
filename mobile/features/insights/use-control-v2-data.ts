@@ -47,6 +47,7 @@ import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
+import { useControlSnapshot, type ControlSnapshot } from '@/features/insights/use-control-snapshot'
 import { useAssistantDemoMode } from '@/features/insights/assistant-demo-store'
 import { getAssistantDemoSignals } from '@/features/insights/assistant-demo-signals'
 import {
@@ -111,6 +112,16 @@ export interface ControlV2ViewModel {
    *  onboarding and CONTROL renders the real cards (with per-card
    *  placeholders for the ones that need historical data). */
   noConfig: boolean
+  /**
+   * Pre-computed snapshot from the `control_snapshot()` RPC (migration
+   * 20260512030000). Exposed as a surface-level field for progressive
+   * consumption — the existing causal/forecast/signal logic remains the
+   * primary computation path. `null` while loading or when the RPC is
+   * unavailable (migration not yet applied). A future iteration can
+   * deep-integrate specific fields (e.g. `forecast_close_amount` →
+   * `forecast`, `over_budget_categories` → signals).
+   */
+  controlSnapshot: ControlSnapshot | null
 }
 
 export interface UseControlV2DataOptions {
@@ -168,6 +179,7 @@ export function useControlV2Data(
   const intelligenceQuery = useControlIntelligence(heavyEnabled ? familyId : '')
   const interactionStatsQuery = useInteractionStats(userId ?? null)
   const blocklistQuery = useSignalBlocklist(userId ?? null)
+  const controlSnapshotQuery = useControlSnapshot()
 
   // Stabilise the `?? []` / `?? null` fallbacks so downstream memos
   // don't see a fresh reference on every render when the underlying
@@ -331,7 +343,9 @@ export function useControlV2Data(
     categoriesQuery.isLoading ||
     intelligenceQuery.isLoading
 
-  return { data, view, signals, forecast, isLoading, usingMock, noConfig }
+  const controlSnapshot = controlSnapshotQuery.data ?? null
+
+  return { data, view, signals, forecast, isLoading, usingMock, noConfig, controlSnapshot }
 }
 
 // ─── Intelligence slice (summaries + limits + velocity) ─────────────
@@ -361,7 +375,8 @@ function useControlIntelligence(familyId: string) {
       ])
       return { summaries, limits, velocity }
     },
-    staleTime: 2 * 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   })
 }
 
