@@ -25,10 +25,15 @@ export function normalizeEmail(rawEmail: string) {
   return rawEmail.trim().toLowerCase()
 }
 
+// Hardcoded — do NOT read this from EXPO_PUBLIC_AUTH_REDIRECT_PATH.
+// A build-time env override would let an unaudited deploy redirect
+// confirmation emails to any deep-link path on the manifiesto://
+// scheme. The auth callback screen is the only legitimate landing
+// point for OAuth redirects.
+const AUTH_REDIRECT_PATH = 'auth/callback'
+
 export function getEmailRedirectTo() {
-  const redirectPath = (process.env.EXPO_PUBLIC_AUTH_REDIRECT_PATH ?? 'auth/callback').trim()
-  const normalizedPath = redirectPath.startsWith('/') ? redirectPath.slice(1) : redirectPath
-  return Linking.createURL(normalizedPath)
+  return Linking.createURL(AUTH_REDIRECT_PATH)
 }
 
 export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {

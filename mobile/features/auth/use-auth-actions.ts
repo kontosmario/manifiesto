@@ -12,9 +12,7 @@ interface SignUpInput extends SignInInput {
 }
 
 interface CallbackPayload {
-  accessToken: string | null
   code: string | null
-  refreshToken: string | null
 }
 
 export function usePasswordSignIn() {
@@ -57,26 +55,20 @@ export function usePasswordSignUp() {
 
 export function useCompleteAuthCallback() {
   return useMutation({
-    mutationFn: async ({ accessToken, code, refreshToken }: CallbackPayload) => {
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-        if (error) {
-          throw error
-        }
-
-        return
+    mutationFn: async ({ code }: CallbackPayload) => {
+      // PKCE-only flow. The previous implementation also accepted
+      // `access_token` + `refresh_token` query params and called
+      // `setSession`, which let a phishing deep link
+      // (`manifiesto://auth/callback?access_token=<attacker-jwt>...`)
+      // silently swap the user into an attacker-controlled session.
+      // PKCE moves the secret material to a code-for-token exchange
+      // bound to the device's verifier, closing that vector.
+      if (!code) {
+        throw new Error('Falta el código de confirmación. Volvé a intentar el acceso.')
       }
-
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
-
-        if (error) {
-          throw error
-        }
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        throw error
       }
     },
   })

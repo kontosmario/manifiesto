@@ -1,5 +1,9 @@
 import { LogBox, Platform } from 'react-native'
-import 'expo-sqlite/localStorage/install'
+// NOTE: do NOT install `expo-sqlite/localStorage`. The previous polyfill
+// persisted Supabase JWTs (access_token + refresh_token) into an
+// unencrypted SQLite database, which left them readable by any
+// process/backup with file-system access. Auth tokens now live in
+// Keychain via `mobile/lib/supabase-secure-storage.ts`.
 import 'react-native-url-polyfill/auto'
 
 const ignoredExpoGlLogs = [

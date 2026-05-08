@@ -14,20 +14,20 @@ export function AuthCallbackScreen() {
   const { theme } = useAppTheme()
   const params = useLocalSearchParams<{
     code?: string
-    access_token?: string
-    refresh_token?: string
   }>()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isProcessing, setProcessing] = useState(true)
   const completeAuthCallback = useCompleteAuthCallback()
 
+  // PKCE flow: only the `code` is honored. Implicit-flow tokens
+  // (access_token / refresh_token in the URL) are no longer accepted
+  // — they were exploitable for session fixation via a phishing
+  // deep link.
   const payload = useMemo(() => {
     return {
       code: typeof params.code === 'string' ? params.code : null,
-      accessToken: typeof params.access_token === 'string' ? params.access_token : null,
-      refreshToken: typeof params.refresh_token === 'string' ? params.refresh_token : null,
     }
-  }, [params.access_token, params.code, params.refresh_token])
+  }, [params.code])
 
   useEffect(() => {
     let cancelled = false

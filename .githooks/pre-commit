@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Pre-commit secret scanner.
+#
+# Scans the contents of files about to be committed for known
+# secret patterns. Refuses the commit on a match.
+#
+# Why a hand-rolled scanner instead of gitleaks/git-secrets:
+#   Both require a separate binary install (Go / brew). This is a
+#   focused, dependency-free check covering the secrets this repo
+#   actually handles: Supabase access tokens, service-role keys,
+#   private keys, AWS-style access keys, and any commit that would
+#   re-introduce the .env files we already gitignore.
+#
+# To enable in a fresh clone, run once:
+#   git config core.hooksPath .githooks
+#
+# To bypass intentionally (rare, document why in commit message):
+#   SKIP_SECRET_SCAN=1 git commit ...
+
+set -euo pipefail
+
+if [ "${SKIP_SECRET_SCAN:-0}" = "1" ]; then
+  echo "[pre-commit] WARNING: secret scan skipped via SKIP_SECRET_SCAN=1"
+  exit 0
+fi
+
+# Collect the list of staged files (Added/Copied/Modified/Renamed).
+# Use a portable read loop instead of `mapfile` since macOS ships
+# bash 3.2 by default.
+STAGED_FILES=()
+while IFS= read -r line; do
+  STAGED_FILES+=("$line")
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ "${#STAGED_FILES[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+# Files that must NEVER be committed even if .gitignore is bypassed.
+FORBIDDEN_PATHS=(
+  '^\.env$'
+  '^\.env\.supabase$'
+  '^\.env\.supabase\.[^.]+$'
+  '^.*\.pem$'
+  '^.*\.p12$'
+  '^.*\.key$'
+)
+
+for f in "${STAGED_FILES[@]}"; do
+  for pat in "${FORBIDDEN_PATHS[@]}"; do
+    if [[ "$f" =~ $pat ]]; then
+      # Allow .example placeholders.
+      if [[ "$f" == *".example"* ]]; then
+        continue
+      fi
+      echo "[pre-commit] BLOCKED: $f matches forbidden path pattern ($pat)"
+      echo "  This file should never be committed. Verify .gitignore covers it."
+      exit 1
+    fi
+  done
+done
+
+# Patterns matching real secret material. Tuned to this repo's stack
+# (Supabase, AWS, generic JWTs, OpenSSH, AWS access keys).
+SECRET_PATTERNS=(
+  # Supabase Management API personal access token
+  'sbp_[A-Za-z0-9_-]{30,}'
+  # Supabase service-role JWT (HS256 + RS256 prefixes)
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'
+  # Anthropic API keys
+  'sk-ant-[A-Za-z0-9_-]{30,}'
+  # AWS access key id
+  'AKIA[0-9A-Z]{16}'
+  # AWS secret access key (rough heuristic)
+  'aws_secret_access_key.*=.*[A-Za-z0-9/+=]{40}'
+  # OpenSSH / PGP / RSA private key headers
+  '-----BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY-----'
+  # Bare service_role assignment
+  'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*[A-Za-z0-9._-]+'
+  # Postgres passwords inside connection strings
+  'postgresql?://[^:]+:[^@/[:space:]]{8,}@'
+)
+
+violations=0
+
+for f in "${STAGED_FILES[@]}"; do
+  # Skip binaries, lockfiles, and the hook itself (it contains the
+  # secret-pattern strings as part of its logic, but those are
+  # regexes, not real secrets).
+  case "$f" in
+    *.lock|*.png|*.jpg|*.jpeg|*.gif|*.pdf|*.zip|*.ipa|*.apk|.githooks/*)
+      continue ;;
+  esac
+
+  if [ ! -f "$f" ]; then
+    continue
+  fi
+
+  staged_content=$(git show ":$f" 2>/dev/null || true)
+  if [ -z "$staged_content" ]; then
+    continue
+  fi
+
+  for pat in "${SECRET_PATTERNS[@]}"; do
+    if echo "$staged_content" | grep -E -q -- "$pat"; then
+      echo "[pre-commit] SECRET DETECTED in $f"
+      echo "  Pattern: $pat"
+      echo "  Match (redacted): $(echo "$staged_content" | grep -E -o -- "$pat" | head -1 | cut -c1-12)…"
+      violations=$((violations + 1))
+    fi
+  done
+done
+
+if [ "$violations" -gt 0 ]; then
+  echo ""
+  echo "[pre-commit] $violations secret pattern violation(s) found."
+  echo "  - Move secrets to .env (already gitignored)."
+  echo "  - Override the block ONLY if certain it's a false positive:"
+  echo "      SKIP_SECRET_SCAN=1 git commit ..."
+  exit 1
+fi
+
+exit 0

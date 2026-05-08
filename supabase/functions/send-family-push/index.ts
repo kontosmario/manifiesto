@@ -98,16 +98,39 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
   return normalized
 }
 
-function getGatewayUserId(request: Request): string | null {
-  const value =
-    request.headers.get('x-supabase-auth-user') ??
-    request.headers.get('x-supabase-auth-user-id')
-  if (!value || !value.trim()) {
-    return null
-  }
-
-  return value.trim()
+// Strip control characters and cap length. Push payloads end up
+// rendered verbatim by the OS notification UI; we don't want a
+// malicious caller injecting newlines, ANSI escapes, or extreme
+// strings that fragment the notification or impersonate UI chrome.
+function sanitizeText(value: string | undefined, maxLen: number): string {
+  if (!value) return ""
+  // Build the control-char regex via RegExp() so the source stays
+  // grep-friendly (no literal 0x00-0x1F bytes embedded in the file).
+  // eslint-disable-next-line no-control-regex
+  const controlRe = new RegExp("[\\x00-\\x1F\\x7F]+", "g")
+  return value.replace(controlRe, " ").trim().slice(0, maxLen)
 }
+
+const ALLOWED_PUSH_KINDS = new Set([
+  'info',
+  'expense_logged',
+  'fixed_paid',
+  'fixed_created',
+  'fixed_edited',
+  'fixed_deleted',
+  'goal_contribution',
+  'goal_milestone',
+  'goal_achieved',
+  'goal_created',
+  'streak_broken',
+  'streak_milestone',
+  'shield_used',
+  'shield_earned',
+  'member_warning',
+  'member_nudge',
+  'member_left',
+  'cycle_close',
+])
 
 function isExpoPushToken(value: string): boolean {
   return /^ExponentPushToken\[[^\]]+\]$/.test(value) || /^ExpoPushToken\[[^\]]+\]$/.test(value)
@@ -252,59 +275,79 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Invalid JSON payload.' }, 400)
   }
 
+  // Sanitize + length-cap user-controlled strings BEFORE any auth /
+  // membership work. Stops control-char injection and keeps the
+  // notification payload bounded regardless of caller behavior.
   const familyId = (payload.familyId ?? '').trim()
-  const title = (payload.title ?? '').trim()
-  const body = payload.body?.trim() ?? ''
-  const kind = payload.kind?.trim() || 'info'
-  const url = payload.url?.trim() || '/home'
+  const title = sanitizeText(payload.title, 80)
+  const body = sanitizeText(payload.body, 240)
+  const rawKind = sanitizeText(payload.kind, 64) || 'info'
+  const kind = ALLOWED_PUSH_KINDS.has(rawKind) ? rawKind : 'info'
+  // url is consumed client-side as a route hint. Reject anything that
+  // doesn't start with `/` to block javascript:, http://, intent:, etc.
+  const rawUrl = sanitizeText(payload.url, 200)
+  const url = rawUrl.startsWith('/') ? rawUrl : '/home'
 
   if (!familyId || !title) {
     return jsonResponse({ error: 'familyId and title are required.' }, 400)
   }
 
+  // Strict bearer-token auth. The previous gateway-header fallback
+  // (`x-supabase-auth-user` / `x-supabase-auth-user-id`) was
+  // exploitable because verify_jwt is off (ES256 workaround) — the
+  // gateway does NOT inject those headers, so a caller could spoof
+  // them. Always require a valid bearer token, no exceptions.
   const token = extractBearerToken(
     request.headers.get('Authorization') ?? request.headers.get('authorization'),
   )
-  const gatewayUserId = getGatewayUserId(request)
-
-  let actorUserId = gatewayUserId
-  if (token) {
-    const userClient = createClient(supabaseUrl, supabaseAnonKey)
-    const authUserResponse = await userClient.auth.getUser(token)
-    if (authUserResponse.error || !authUserResponse.data.user) {
-      if (!gatewayUserId) {
-        return jsonResponse(
-          {
-            error: 'Unauthorized user (invalid token).',
-          },
-          401,
-        )
-      }
-    } else {
-      actorUserId = authUserResponse.data.user.id
-    }
+  if (!token) {
+    return jsonResponse({ error: 'Unauthorized (missing token).' }, 401)
   }
 
-  if (!actorUserId) {
-    return jsonResponse(
-      {
-        error: 'Unauthorized user (missing token).',
-      },
-      401,
-    )
+  const userClient = createClient(supabaseUrl, supabaseAnonKey)
+  const authUserResponse = await userClient.auth.getUser(token)
+  if (authUserResponse.error || !authUserResponse.data.user) {
+    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401)
   }
+  const actorUserId = authUserResponse.data.user.id
 
   const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey)
 
+  // Per-user rate limit: 10/minute. Legitimate notifications are
+  // emitted by triggers (1 per mutation); a client driving 10+/min
+  // is a fan-out abuse signal. We rate-limit BEFORE the membership
+  // check so an attacker hammering invalid family IDs still burns
+  // their own bucket.
+  const rateLimitResponse = await adminClient.rpc('enforce_rate_limit_for_user', {
+    p_user_id: actorUserId,
+    p_action: 'send_family_push',
+    p_max_attempts: 10,
+    p_window_seconds: 60,
+  })
+  if (rateLimitResponse.error) {
+    return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429)
+  }
+
   const membershipResponse = await adminClient
     .from('family_members')
-    .select('family_id')
+    .select('family_id, role, blocked_at')
     .eq('family_id', familyId)
     .eq('user_id', actorUserId)
     .maybeSingle()
 
   if (membershipResponse.error || !membershipResponse.data) {
     return jsonResponse({ error: 'User is not a member of this family.' }, 403)
+  }
+
+  // Reject blocked members — they can still hold a valid JWT briefly
+  // after the owner blocks them, and we don't want them spamming
+  // pushes during that window.
+  const member = membershipResponse.data as {
+    role?: string | null
+    blocked_at?: string | null
+  }
+  if (member.role === 'blocked' || member.blocked_at) {
+    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403)
   }
 
   const subscriptionsResponse = await adminClient

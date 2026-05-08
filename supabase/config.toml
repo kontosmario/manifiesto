@@ -390,6 +390,15 @@ deno_version = 2
 [functions.send-family-push]
 verify_jwt = false
 
+# control-advisor runs the Anthropic Sonnet call (~1500 tokens / call).
+# Be explicit about gateway verify_jwt = true so a copy-paste of the
+# send-family-push block above does NOT accidentally make this
+# function publicly callable. The function ALSO re-checks the bearer
+# token internally for ES256 compatibility and applies a per-user
+# rate limit, but defense-in-depth: keep the gateway gate on.
+[functions.control-advisor]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

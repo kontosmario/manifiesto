@@ -1,3 +1,23 @@
+// Biometric session restore — refresh-token flow.
+//
+// Why this is NOT password-based:
+//   The previous implementation persisted the user's plaintext
+//   password in Keychain ("biometric credentials") and re-ran
+//   `signInWithPassword` after Face ID succeeded. That multiplied
+//   the blast radius of any Keychain compromise (jailbroken device
+//   + Keychain dumper) into "attacker recovers the user's reusable
+//   password" — which often unlocks email + other services.
+//
+//   The refresh-token approach:
+//     • App-scoped (only valid against this Supabase project).
+//     • Rotatable (Supabase rotates on every refresh; we update the
+//       stored token after each successful refresh).
+//     • Revocable (the user can sign out everywhere, invalidating
+//       it; the user's password keeps working).
+//
+//   The Keychain entry is bound to WHEN_UNLOCKED_THIS_DEVICE_ONLY
+//   so it never travels in iCloud/iTunes backups.
+
 import { Platform } from 'react-native'
 import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
@@ -7,7 +27,9 @@ const BIOMETRIC_METADATA_KEY = 'auth.biometric.metadata'
 
 interface BiometricCredentialsPayload {
   email: string
-  password: string
+  /** Supabase refresh token. Used with `auth.refreshSession({ refresh_token })`
+   *  to mint a new session after biometric confirmation. Never the password. */
+  refreshToken: string
 }
 
 interface BiometricMetadataPayload {
@@ -45,7 +67,7 @@ function resolveBiometricLabel(types: LocalAuthentication.AuthenticationType[]) 
 }
 
 async function readBiometricMetadata() {
-  const rawValue = await SecureStore.getItemAsync(BIOMETRIC_METADATA_KEY)
+  const rawValue = await SecureStore.getItemAsync(BIOMETRIC_METADATA_KEY, credentialStoreOptions)
 
   if (!rawValue) {
     return null
@@ -98,15 +120,39 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
 }
 
 export async function saveBiometricCredentials(input: BiometricCredentialsPayload) {
-  await SecureStore.setItemAsync(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify(input), credentialStoreOptions)
+  if (!input.email || !input.refreshToken) {
+    return
+  }
+  await SecureStore.setItemAsync(
+    BIOMETRIC_CREDENTIALS_KEY,
+    JSON.stringify(input),
+    credentialStoreOptions,
+  )
   await SecureStore.setItemAsync(
     BIOMETRIC_METADATA_KEY,
     JSON.stringify({
       email: input.email,
     } satisfies BiometricMetadataPayload),
-    {
-      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-    },
+    credentialStoreOptions,
+  )
+}
+
+/**
+ * Update only the stored refresh token (called after each successful
+ * biometric session restore so we keep up with Supabase's refresh
+ * token rotation). Returns silently if no prior credentials exist.
+ */
+export async function updateStoredRefreshToken(nextToken: string) {
+  if (!nextToken) return
+  const metadata = await readBiometricMetadata()
+  if (!metadata) return
+  await SecureStore.setItemAsync(
+    BIOMETRIC_CREDENTIALS_KEY,
+    JSON.stringify({
+      email: metadata.email,
+      refreshToken: nextToken,
+    } satisfies BiometricCredentialsPayload),
+    credentialStoreOptions,
   )
 }
 
@@ -125,15 +171,21 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Partial<BiometricCredentialsPayload>
+    const parsed = JSON.parse(rawValue) as Partial<BiometricCredentialsPayload> & {
+      // Older builds may have stored a plaintext password here. Treat
+      // any such legacy blob as invalid so we never re-issue a
+      // password-based sign-in. The user re-authenticates with email
+      // + password once and we re-save with the refresh token.
+      password?: string
+    }
 
-    if (!parsed.email || !parsed.password) {
+    if (!parsed.email || !parsed.refreshToken) {
       return null
     }
 
     return {
       email: parsed.email,
-      password: parsed.password,
+      refreshToken: parsed.refreshToken,
     }
   } catch {
     return null

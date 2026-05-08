@@ -9,6 +9,7 @@ import {
   getBiometricCredentials,
   getBiometricLoginState,
   saveBiometricCredentials,
+  updateStoredRefreshToken,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
 import {
@@ -16,6 +17,7 @@ import {
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
+import { supabase } from '@/lib/supabase'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface UseAuthBiometricControllerParams {
@@ -25,7 +27,6 @@ interface UseAuthBiometricControllerParams {
   onErrorMessage: (message: string) => void
   onInfoMessage: (message: string) => void
   onSignedIn: () => void
-  signInWithPassword: (credentials: { email: string; password: string }) => Promise<unknown>
   submissionLockRef: MutableRefObject<boolean>
 }
 
@@ -36,7 +37,6 @@ export function useAuthBiometricController({
   onErrorMessage,
   onInfoMessage,
   onSignedIn,
-  signInWithPassword,
   submissionLockRef,
 }: UseAuthBiometricControllerParams) {
   const [isBiometricSubmitting, setBiometricSubmitting] = useState(false)
@@ -48,10 +48,19 @@ export function useAuthBiometricController({
     setBiometricState(nextState)
   }, [])
 
+  /**
+   * Persist the current Supabase refresh token in Keychain so a
+   * subsequent biometric prompt can mint a new session without ever
+   * touching the user's password again.
+   *
+   * Called after a successful manual sign-in. The refresh token is
+   * read from the live session via `supabase.auth.getSession()`; we
+   * do NOT take it as a parameter to avoid the password ever
+   * appearing in this module's surface.
+   */
   const persistBiometricCredentials = useCallback(
     async (
       nextEmail: string,
-      nextPassword: string,
       options?: {
         shouldPromptSetup?: boolean
       },
@@ -66,14 +75,6 @@ export function useAuthBiometricController({
       let shouldSaveCredentials = nextBiometricState.hasSavedCredentials
 
       if (!shouldSaveCredentials && options?.shouldPromptSetup) {
-        // Single interaction: skip the app-level Alert ("Activar
-        // Face ID? — Ahora no / Activar") and go straight to the
-        // native LocalAuthentication prompt. Apple/Android already
-        // own a perfectly clear "Cancel / scan" dialog; the
-        // app-level pre-prompt was asking the same question twice.
-        // The setup-specific `promptMessage` keeps the context
-        // ("Activa X para entrar más rápido la próxima vez") so the
-        // user understands this is opt-in setup, not a guard.
         const biometricResult = await authenticateBiometricAccess({
           promptMessage: `Activa ${nextBiometricState.label} para entrar más rápido la próxima vez.`,
         })
@@ -90,9 +91,14 @@ export function useAuthBiometricController({
       }
 
       try {
+        const sessionResponse = await supabase.auth.getSession()
+        const refreshToken = sessionResponse.data.session?.refresh_token
+        if (!refreshToken) {
+          return
+        }
         await saveBiometricCredentials({
           email: nextEmail,
-          password: nextPassword,
+          refreshToken,
         })
         setBiometricState({
           ...nextBiometricState,
@@ -142,29 +148,18 @@ export function useAuthBiometricController({
           return
         }
 
-        // ⚡ Optimistic feedback path. The native biometric prompt
-        // just confirmed the match — fire the success haptic AND
-        // open the splash overlay BEFORE the network round trip.
-        // Previously these came AFTER `signInWithPassword`, so the
-        // user felt:
-        //   · Face ID prompt closes → ~700-1500ms of nothing →
-        //     late haptic + splash appears
-        // The new sequence:
-        //   · Face ID prompt closes → instant haptic + splash →
-        //     network runs invisibly behind the splash → on
-        //     success, the navigate happens (splash already up)
-        // `void` (no await) so the haptic and splash kickoff don't
-        // block the JS thread — the network call starts on the
-        // very next tick.
+        // Optimistic feedback path: open the splash + haptic BEFORE
+        // the network round trip so the user sees instant
+        // acknowledgement of the biometric match.
         void triggerHaptic('success')
         showAuthTransitionSplash()
 
         const credentials = await getBiometricCredentials()
 
         if (!credentials) {
-          // Stale credentials — hide the optimistic splash before
-          // surfacing the recovery prompt so the user isn't staring
-          // at a loading screen for a known failure.
+          // Stale or legacy (password-based) credentials — surface
+          // the recovery prompt and clear so the user re-auths once
+          // to re-arm biometric with a refresh token.
           hideAuthTransitionSplash()
           await clearBiometricCredentials()
           await refreshBiometricState()
@@ -173,15 +168,23 @@ export function useAuthBiometricController({
           return
         }
 
-        await signInWithPassword({
-          email: credentials.email,
-          password: credentials.password,
+        // Mint a fresh session from the stored refresh token.
+        // Supabase rotates refresh tokens on each successful refresh;
+        // capture the new one and update Keychain so the next
+        // biometric attempt works.
+        const refreshResponse = await supabase.auth.refreshSession({
+          refresh_token: credentials.refreshToken,
         })
 
-        // Splash already up + haptic already fired. `onSignedIn`
-        // now does just the navigate. (showAuthTransitionSplash is
-        // idempotent so calling it again inside onSignedIn is a
-        // no-op.)
+        if (refreshResponse.error || !refreshResponse.data.session) {
+          throw refreshResponse.error ?? new Error('No se pudo restaurar la sesión.')
+        }
+
+        const newRefreshToken = refreshResponse.data.session.refresh_token
+        if (newRefreshToken && newRefreshToken !== credentials.refreshToken) {
+          await updateStoredRefreshToken(newRefreshToken)
+        }
+
         onSignedIn()
       } catch (error) {
         // Network / Supabase failed — hide the splash so the
@@ -204,7 +207,6 @@ export function useAuthBiometricController({
       onInfoMessage,
       onSignedIn,
       refreshBiometricState,
-      signInWithPassword,
       submissionLockRef,
     ],
   )

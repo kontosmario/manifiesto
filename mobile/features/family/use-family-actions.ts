@@ -146,28 +146,25 @@ export function useConsumeFamilyInvite(userId?: string) {
   })
 }
 
-/** Read-only preview of a family looked up by code. Returned by
- *  `usePeekFamilyByCode` (legacy) or `usePeekFamilyInvite` (new) —
- *  same shape so the onboarding step 5 summary works either way. */
+/** Read-only preview of a family looked up by an invite code.
+ *  Trimmed by the 2026-05-10 hardening migration: per-member
+ *  contribution amounts, goal amounts, cycle stats and the
+ *  blocked flag are only available after `consume_family_invite`.
+ *  The peek surfaces just enough for the joiner to confirm "is this
+ *  the right family?" — names, avatars, the household income total,
+ *  and the active goal title (no progress figures). */
 export interface FamilyPeek {
   family_id: string
   family_code: string
-  monthly_income: number
   members: Array<{
-    user_id: string
     display_name: string
     avatar_animal: string | null
-    monthly_income_contribution: number
     role: string
-    is_blocked: boolean
   }>
-  cycle_variable_spent: number
-  active_fixed_count: number
-  active_goal: {
-    title: string
-    goal_amount: number
-    current_amount: number
-  } | null
+  member_count: number
+  monthly_income: number
+  active_goal_title: string | null
+  invite_expires_at: string
 }
 
 /**
@@ -187,12 +184,11 @@ export function useUpdateMyIncomeContribution(
         throw new Error('No hay sesión activa para actualizar tu aporte.')
       }
       const safe = Math.max(0, Number.isFinite(amount) ? amount : 0)
-      const { error } = await supabase
-        .from('family_members')
-        .update({ monthly_income_contribution: safe })
-        .eq('user_id', userId)
+      const { data, error } = await supabase.rpc('update_my_income_contribution', {
+        p_amount: safe,
+      })
       if (error) throw error
-      return safe
+      return typeof data === 'number' ? data : safe
     },
     onSuccess: async () => {
       await Promise.all([

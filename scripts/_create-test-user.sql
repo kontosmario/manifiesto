@@ -5,9 +5,31 @@
 -- The on_auth_user_created trigger auto-creates the public.profiles row.
 --
 -- Variables (passed via psql -v / `supabase db query` interpolation):
---   :email     — full email address
---   :password  — plaintext (will be bcrypted)
+--   :email     — full email address (e.g. -v email="'user@example.com'")
+--   :password  — plaintext (will be bcrypted; e.g. -v password="'StrongPass!2026'")
 --   :name      — display name for raw_user_meta_data
+--
+-- IMPORTANT: never inline a default password in this file. A default
+-- ("123456" was committed previously) becomes a known credential
+-- against any environment where the script ran. All three variables
+-- MUST be provided by the caller; the file errors out if not.
+
+\if :{?email}
+\else
+\echo 'Missing required psql var :email — pass via -v email=\'""user@example.com""\''
+\quit
+\endif
+
+\if :{?password}
+\else
+\echo 'Missing required psql var :password — pass via -v password=\'""StrongPass!2026""\''
+\quit
+\endif
+
+\if :{?name}
+\else
+\set name '\'Tester\''
+\endif
 
 WITH new_user AS (
   INSERT INTO auth.users (
@@ -31,13 +53,13 @@ WITH new_user AS (
     gen_random_uuid(),
     'authenticated',
     'authenticated',
-    'aye.tello18@gmail.com',
-    crypt('123456', gen_salt('bf')),
+    :email,
+    crypt(:password, gen_salt('bf')),
     now(),
     now(),
     now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
-    '{"display_name":"Aye"}'::jsonb,
+    jsonb_build_object('display_name', :name),
     '', '', '', ''
   )
   RETURNING id, email

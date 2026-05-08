@@ -76,7 +76,6 @@ export function useLoginController() {
     onErrorMessage: formActions.setErrorMessage,
     onInfoMessage: formActions.setInfoMessage,
     onSignedIn: handleSignedInTransition,
-    signInWithPassword: passwordSignIn.mutateAsync,
     submissionLockRef: isSubmittingRef,
   })
   const {

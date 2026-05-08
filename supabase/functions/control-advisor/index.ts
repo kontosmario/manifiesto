@@ -510,16 +510,41 @@ async function handler(request: Request): Promise<Response> {
 
   const admin = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-  // Family membership
+  // Aggressive rate limit BEFORE any DB work or Anthropic call.
+  // Each invocation costs ~1500 Claude tokens; an unbounded caller
+  // could rack up multi-thousand-USD bills per hour. Cap at 5/hour
+  // per user — comfortably above the legitimate "manual refresh"
+  // pattern and well below abuse territory.
+  const rateLimitResponse = await admin.rpc('enforce_rate_limit_for_user', {
+    p_user_id: actorUserId,
+    p_action: 'control_advisor',
+    p_max_attempts: 5,
+    p_window_seconds: 3600,
+  })
+  if (rateLimitResponse.error) {
+    return jsonResponse(
+      { error: 'Rate limit exceeded. Refresh in ~1 hour.' },
+      429,
+    )
+  }
+
+  // Family membership (active members only).
   const membershipResponse = await admin
     .from('family_members')
-    .select('family_id')
+    .select('family_id, role, blocked_at')
     .eq('family_id', familyId)
     .eq('user_id', actorUserId)
     .maybeSingle()
 
   if (membershipResponse.error || !membershipResponse.data) {
     return jsonResponse({ error: 'User is not a member of this family.' }, 403)
+  }
+  const member = membershipResponse.data as {
+    role?: string | null
+    blocked_at?: string | null
+  }
+  if (member.role === 'blocked' || member.blocked_at) {
+    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403)
   }
 
   // Load context

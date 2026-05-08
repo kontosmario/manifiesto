@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '@/lib/supabase'
 import { clearLastUserProfile } from '@/lib/last-user-cache'
+import { PERSIST_STORAGE_KEY, queryPersister } from '@/lib/query-client'
 
 export const authQueryKeys = {
   session: ['auth', 'session'] as const,
@@ -27,6 +29,26 @@ export function useAuthSession() {
         queryClient.removeQueries({
           predicate: (q) => q.queryKey[0] !== 'auth',
         })
+        // Drop the persisted React Query cache from disk too. The
+        // throttled persister would only get around to rewriting a
+        // smaller cache ~1s later, leaving a window where the
+        // previous user's financial data is still on disk; if the
+        // app is killed before the throttle fires the data persists
+        // indefinitely. We forcibly clear both the persister state
+        // AND the raw AsyncStorage row so a new user signing in on
+        // the same device cannot see leftover data.
+        void (async () => {
+          try {
+            await queryPersister.removeClient()
+          } catch {
+            // best-effort
+          }
+          try {
+            await AsyncStorage.removeItem(PERSIST_STORAGE_KEY)
+          } catch {
+            // best-effort
+          }
+        })()
         // Drop the personalized login cache too — once the user signs
         // out we want the next login screen to reset, not greet the
         // previous account by name. The biometric metadata is wiped

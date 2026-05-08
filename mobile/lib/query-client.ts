@@ -91,19 +91,64 @@ export const queryClient = new QueryClient({
  * entries). Bumping invalidates all persisted entries forcing a
  * fresh fetch on next launch.
  */
-// v2 (2026-04-30): excluded `auth` / `family` / `profile` from
-// dehydration to fix the P0001 "No session" / stuck-on-join-screen
-// race. Bump invalidates any persisted cache that may contain the
-// stale `family=null` from a previous broken-auth session.
-export const QUERY_CACHE_BUSTER = 'manifiesto-cache-v2'
+// v3 (2026-05-10): security hardening — sensitive financial queries
+// (home_snapshot, expenses, fixed-expenses, etc.) are no longer
+// persisted to AsyncStorage. AsyncStorage is plaintext on disk
+// (a plist on iOS, SharedPreferences on Android) so backups,
+// rooted devices, and forensic acquisitions could read the entire
+// family financial history. We now persist only lightweight
+// non-financial UI state. Bumping the buster invalidates v2 caches.
+export const QUERY_CACHE_BUSTER = 'manifiesto-cache-v3'
+export const PERSIST_STORAGE_KEY = 'react-query-cache'
 
 export const queryPersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   // Throttle writes so a flurry of mutations doesn't hammer disk
   // (default 1000ms is fine; we set explicitly for clarity).
   throttleTime: 1000,
-  key: 'react-query-cache',
+  key: PERSIST_STORAGE_KEY,
 })
+
+/**
+ * Query-key roots whose data must NEVER touch disk. Anything with
+ * a financial / PII payload — household snapshots, expenses,
+ * recurring commitments, savings goals, paginated gastos lists,
+ * notifications (bodies contain user content), insights / advisor
+ * outputs — is fetched fresh each cold start. The cost is a brief
+ * skeleton on launch; the benefit is no plaintext financial data
+ * at rest.
+ */
+const SENSITIVE_QUERY_ROOTS = new Set<string>([
+  // Already excluded for unrelated reasons:
+  'auth',
+  'family',
+  'profile',
+  // Financial / dominant-PII:
+  'home-snapshot',
+  'home_snapshot',
+  'family-finance',
+  'family-members',
+  'family-members-detail',
+  'family-member-role',
+  'expenses',
+  'fixed-expenses',
+  'fixed-expense-payments',
+  'savings-goal',
+  'savings-goals',
+  'gastos',
+  'control',
+  'control-advisor',
+  'advisor',
+  'insights',
+  'notifications',
+  'notification',
+  'monthly-summaries',
+  'velocity-snapshots',
+  'income-events',
+  'subscriptions-zombie',
+  'home-telemetry',
+  'push-subscription',
+])
 
 export const queryPersistOptions = {
   maxAge: PERSIST_GC_TIME_MS,
@@ -144,7 +189,9 @@ export const queryPersistOptions = {
     }) => {
       if (query.state.status !== 'success') return false
       const root = query.queryKey[0]
-      if (root === 'auth' || root === 'family' || root === 'profile') return false
+      if (typeof root === 'string' && SENSITIVE_QUERY_ROOTS.has(root)) {
+        return false
+      }
       return true
     },
   },

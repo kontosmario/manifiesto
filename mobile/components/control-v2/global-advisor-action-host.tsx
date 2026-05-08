@@ -284,7 +284,6 @@ export function GlobalAdvisorActionHost({
           familyId,
           targetUserId: warningRequest.targetUserId,
           message,
-          createdBy: userId,
         },
         {
           onSuccess: () => {

@@ -35,7 +35,6 @@ interface UseLoginSubmitInput {
   }) => Promise<{ session?: unknown | null }>
   persistBiometricCredentials: (
     email: string,
-    password: string,
     options: { shouldPromptSetup: boolean },
   ) => Promise<void>
   setSubmitting: Dispatch<SetStateAction<boolean>>
@@ -118,7 +117,7 @@ export function useLoginSubmit({
         return
       }
 
-      await persistBiometricCredentials(normalizedEmail, trimmedPassword, {
+      await persistBiometricCredentials(normalizedEmail, {
         shouldPromptSetup: true,
       })
 
