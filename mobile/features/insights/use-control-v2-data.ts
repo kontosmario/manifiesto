@@ -47,7 +47,13 @@ import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
-import { useControlSnapshot, type ControlSnapshot } from '@/features/insights/use-control-snapshot'
+import {
+  useControlSnapshot,
+  type ControlSnapshot,
+  type OverBudgetCategoryRow,
+  type ZombieCandidateRow,
+  type MemberPressureRow,
+} from '@/features/insights/use-control-snapshot'
 import { useAssistantDemoMode } from '@/features/insights/assistant-demo-store'
 import { getAssistantDemoSignals } from '@/features/insights/assistant-demo-signals'
 import {
@@ -115,13 +121,49 @@ export interface ControlV2ViewModel {
   /**
    * Pre-computed snapshot from the `control_snapshot()` RPC (migration
    * 20260512030000). Exposed as a surface-level field for progressive
-   * consumption — the existing causal/forecast/signal logic remains the
-   * primary computation path. `null` while loading or when the RPC is
-   * unavailable (migration not yet applied). A future iteration can
-   * deep-integrate specific fields (e.g. `forecast_close_amount` →
-   * `forecast`, `over_budget_categories` → signals).
+   * consumption. The deep integration in `useControlV2Data` already
+   * routes specific fields (forecast / over_budget / zombies) through
+   * the existing engines when the snapshot is non-empty; the snapshot
+   * itself remains exposed so consumers can read additional fields
+   * (e.g. `member_pressure`, `recommended_actions`) directly.
+   * `null` while loading or when the RPC is unavailable (migration
+   * not yet applied).
    */
   controlSnapshot: ControlSnapshot | null
+  /**
+   * Server-computed forecast close amount + overshoot pct, surfaced
+   * verbatim from `control_snapshot.forecast_close_amount` /
+   * `forecast_overshoot_pct` when both are non-null. Consumers should
+   * prefer this over the engine-computed `forecast` for cycle-close
+   * projections, since the server has access to the canonical historical
+   * baselines. `null` when the snapshot is missing or fields are null.
+   */
+  forecastFromServer: { closeAmount: number; overshootPct: number | null } | null
+  /**
+   * Server-computed over-budget categories from
+   * `control_snapshot.over_budget_categories`. When non-empty, also
+   * shadows the `limits` input fed to `buildControlSignals` so the
+   * cap-breach signals reflect the server's authoritative caps and
+   * spend totals. `null` when the snapshot is missing or empty.
+   */
+  overBudgetFromServer: OverBudgetCategoryRow[] | null
+  /**
+   * Server-detected zombie subscription candidates from
+   * `control_snapshot.zombie_candidates`. When non-empty, also
+   * synthesises `zombie_alert` notification entries fed to
+   * `buildControlSignals` so the zombie signals fire even if the
+   * notifications stream is empty. `null` when the snapshot is missing
+   * or empty.
+   */
+  zombiesFromServer: ZombieCandidateRow[] | null
+  /**
+   * Server-computed per-member spend pressure from
+   * `control_snapshot.member_pressure`. Currently unused by the engines
+   * (no analog input today) — exposed for downstream consumers that
+   * want to render member-level pressure. `null` when the snapshot is
+   * missing or empty.
+   */
+  memberPressureFromServer: MemberPressureRow[] | null
 }
 
 export interface UseControlV2DataOptions {
@@ -195,9 +237,9 @@ export function useControlV2Data(
   const summariesData = intelligenceQuery.data?.summaries
   const summaries = useMemo(() => summariesData ?? [], [summariesData])
   const limitsData = intelligenceQuery.data?.limits
-  const limits = useMemo(() => limitsData ?? [], [limitsData])
+  const limitsBase = useMemo(() => limitsData ?? [], [limitsData])
   const velocity = intelligenceQuery.data?.velocity ?? null
-  const notifications: NotificationLite[] = (notificationsQuery.data ?? []).map(
+  const notificationsBase: NotificationLite[] = (notificationsQuery.data ?? []).map(
     (n) => ({
       id: n.id,
       kind: n.kind,
@@ -206,6 +248,91 @@ export function useControlV2Data(
       metadata: n.metadata as Record<string, unknown>,
     }),
   )
+
+  // ─── control_snapshot merger ───────────────────────────────────────
+  //
+  // Per-field decisions: when the snapshot is non-null with data,
+  // route through the engine via synthesised inputs that match the
+  // engine's existing input shape; otherwise the engine consumes the
+  // base inputs (notifications stream, intelligenceQuery limits) and
+  // computes everything client-side as before.
+  //
+  // FALLBACK INVARIANT: when `controlSnapshot` is null OR the relevant
+  // array is empty/null, the engine path is unchanged.
+  const snapshotData = controlSnapshotQuery.data ?? null
+
+  const overBudgetFromServer = useMemo<OverBudgetCategoryRow[] | null>(() => {
+    const rows = snapshotData?.over_budget_categories
+    if (!rows || rows.length === 0) return null
+    return rows
+  }, [snapshotData])
+
+  const zombiesFromServer = useMemo<ZombieCandidateRow[] | null>(() => {
+    const rows = snapshotData?.zombie_candidates
+    if (!rows || rows.length === 0) return null
+    return rows
+  }, [snapshotData])
+
+  const memberPressureFromServer = useMemo<MemberPressureRow[] | null>(() => {
+    const rows = snapshotData?.member_pressure
+    if (!rows || rows.length === 0) return null
+    return rows
+  }, [snapshotData])
+
+  const forecastFromServer = useMemo<
+    { closeAmount: number; overshootPct: number | null } | null
+  >(() => {
+    const closeAmount = snapshotData?.forecast_close_amount
+    if (closeAmount == null) return null
+    return {
+      closeAmount,
+      overshootPct: snapshotData?.forecast_overshoot_pct ?? null,
+    }
+  }, [snapshotData])
+
+  // Replace engine `limits` input with synthesised entries when the
+  // server reports over-budget categories. Keeps the engine unchanged
+  // — it still reads `monthly_cap` + computes spent client-side, but
+  // the caps come from the server's authoritative source. We default
+  // `warning_threshold_pct` to 80 (the engine compares spent against
+  // cap × threshold/100); over-budget rows already have ratio ≥ 1
+  // server-side, so the comparison passes regardless.
+  const limits = useMemo<CategoryLimit[]>(() => {
+    if (!overBudgetFromServer) return limitsBase
+    return overBudgetFromServer.map((row) => ({
+      id: `snapshot-${row.category_id}`,
+      category_id: row.category_id,
+      monthly_cap: row.monthly_cap,
+      warning_threshold_pct: 80,
+    }))
+  }, [overBudgetFromServer, limitsBase])
+
+  // Synthesise zombie_alert notifications from the snapshot's zombie
+  // candidates when the array is non-empty. The engine's
+  // `buildFromZombieNotifications` filters by `kind === 'zombie_alert'`
+  // and reads `metadata.name`, `metadata.amount`, `metadata.fixed_expense_id`
+  // — we map snapshot rows onto that exact shape.
+  //
+  // We replace, rather than augment, the existing zombie_alert entries:
+  // when the server has authoritative data, prefer it. Other notification
+  // kinds (price_hike, etc.) flow through unchanged.
+  const notifications = useMemo<NotificationLite[]>(() => {
+    if (!zombiesFromServer) return notificationsBase
+    const nowIso = new Date().toISOString()
+    const synthetic: NotificationLite[] = zombiesFromServer.map((row) => ({
+      id: `snapshot-zombie-${row.fixed_expense_id}`,
+      kind: 'zombie_alert',
+      severity: 'warning',
+      created_at: row.last_used_at ?? nowIso,
+      metadata: {
+        fixed_expense_id: row.fixed_expense_id,
+        name: row.name,
+        amount: row.amount,
+      },
+    }))
+    const otherKinds = notificationsBase.filter((n) => n.kind !== 'zombie_alert')
+    return [...synthetic, ...otherKinds]
+  }, [zombiesFromServer, notificationsBase])
 
   const { usingMock, noConfig } = classifyControlMode({
     finance,
@@ -343,9 +470,22 @@ export function useControlV2Data(
     categoriesQuery.isLoading ||
     intelligenceQuery.isLoading
 
-  const controlSnapshot = controlSnapshotQuery.data ?? null
+  const controlSnapshot = snapshotData
 
-  return { data, view, signals, forecast, isLoading, usingMock, noConfig, controlSnapshot }
+  return {
+    data,
+    view,
+    signals,
+    forecast,
+    isLoading,
+    usingMock,
+    noConfig,
+    controlSnapshot,
+    forecastFromServer,
+    overBudgetFromServer,
+    zombiesFromServer,
+    memberPressureFromServer,
+  }
 }
 
 // ─── Intelligence slice (summaries + limits + velocity) ─────────────
