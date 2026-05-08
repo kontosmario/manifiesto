@@ -118,8 +118,8 @@ export function GastosFilterPill({
           })
         }}
         onPressOut={() => {
+          // @motion-allow: press release de 200ms entre micro (120) y standard (240) para snap-back ágil
           press.value = withTiming(1, {
-            // @motion-allow: 200ms press release; sits between micro (120) and standard (260) for snappy snap-back
             duration: 200,
             easing: Easing.out(Easing.quad),
           })

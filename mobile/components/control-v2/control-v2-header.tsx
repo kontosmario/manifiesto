@@ -176,6 +176,7 @@ function ScorePillPulse({
       return
     }
     wave.value = withRepeat(
+      // @motion-allow: ciclo de respiración subliminal, bajo el umbral de blinking (3.2s vs breath token 2.8s)
       withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
       -1,
       false,

@@ -23,6 +23,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations } from '@/lib/motion/tokens'
 import {
   BILLING_PLANS,
   BILLING_TRIAL_DAYS,
@@ -256,7 +257,7 @@ function PlanTile({
   const { theme } = useAppTheme()
   const progress = useSharedValue(selected ? 1 : 0)
   useEffect(() => {
-    progress.value = withTiming(selected ? 1 : 0, { duration: 220 })
+    progress.value = withTiming(selected ? 1 : 0, { duration: motionDurations.standard })
   }, [selected, progress])
 
   const surfaceStyle = useAnimatedStyle(() => ({
