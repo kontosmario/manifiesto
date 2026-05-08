@@ -771,7 +771,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Reemplaza las señales del Asistente Financiero por una lista demo con un ejemplo de cada escenario y de cada acción rápida disponible."
                     icon="auto-fix-high"
-                    isLast
                     label="Modo demo del asistente"
                     trailing={
                       <Switch
@@ -780,6 +779,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                         value={assistantDemoMode}
                       />
                     }
+                  />
+                  <SettingsRow
+                    helper="Metricas de la base de datos: tamano, growth, tablas y slow queries."
+                    icon="monitor-heart"
+                    isLast
+                    label="DB Health"
+                    onPress={() => router.push('/(app)/settings/dev-health' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
