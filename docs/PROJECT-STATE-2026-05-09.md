@@ -178,17 +178,13 @@ Hay docs viejos en `docs/PENDIENTES A IMPLEMENTAR/` y `docs/` que mencionan feat
 
 ## Cambios investigados / pendientes diagnóstico
 
-### Android APK crashea al abrir (en investigación 2026-05-09)
+### Android APK crashea al abrir — root cause encontrada 2026-05-09
 - iOS sideloaded build funciona OK.
-- Android APK build se cierra automáticamente al abrir.
-- Investigación arranca después de cerrar el doc update.
-- Síntoma: crash inmediato sin pantalla visible.
-- Probables causas a investigar (en orden):
-  1. Mismatch entre New Architecture flags entre platforms.
-  2. Native modules con bindings rotos solo en Android.
-  3. Initial render error en alguna pantalla de auth/welcome (Android es estricto con ciertos JSI calls que iOS tolera).
-  4. Incompatibilidad de versiones (Reanimated, Expo SDK, etc.).
-  5. Problema en el `app.config.ts` Android-specific.
+- Android APK build (May 6) se cierra automáticamente al abrir, sin UI visible.
+- **Causa identificada (commit `9e4eac5`):** `package.json` tenía DOS librerías de worklets instaladas en paralelo (`react-native-worklets@0.5.1` requerida por Reanimated v4 + `react-native-worklets-core@1.6.3` huérfana sin imports en código). En Android, Hermes tiene resolución estricta de símbolos JNI y la colisión crasheaba el bundle al cargar; iOS con JSC toleraba la duplicación.
+- **Fix aplicado:** removido `react-native-worklets-core` de dependencies. `npm ls` confirmó que era huérfana (top-level only, 0 transitive deps).
+- **Pendiente para confirmar fix:** rebuild del APK desde HEAD post-`9e4eac5`. Comandos: `eas build --platform android --profile preview` o local `expo run:android`.
+- Si el crash persiste post-rebuild, correr en device: `adb logcat -c && adb logcat | grep -E "AndroidRuntime|FATAL"` para ver el stack trace real.
 
 ## Próximo bump esperado de este doc
 
