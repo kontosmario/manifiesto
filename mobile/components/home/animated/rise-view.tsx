@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { type ViewStyle } from 'react-native'
+import { Platform, View, type ViewStyle } from 'react-native'
 import Animated, { Keyframe, ReduceMotion } from 'react-native-reanimated'
 
 interface RiseViewProps {
@@ -32,6 +32,23 @@ interface RiseViewProps {
  * combine opacity + translateY in one declarative animation, with
  * `translateY` as a runtime prop (so different RiseViews can rise
  * from different distances).
+ *
+ * Web caveat:
+ *   En web Reanimated v4 layout animations (entering Keyframe) tienen
+ *   soporte parcial. El initial state {opacity: 0, translateY: N} no
+ *   se aplica antes del primer paint con la misma garantía que en
+ *   native (que usa el native layout coordinator). El View arranca
+ *   visible en el estado FINAL, después aparece a opacity 0+translateY
+ *   N un frame después, y después anima → flash visual + el layout
+ *   PUEDE pasarle altura cero brevemente a los siblings → cualquier
+ *   elemento ARRIBA del RiseView en un flex stack se ve "saltando".
+ *   En welcome screen el FernLogo arriba de 3 RiseViews (wordmark,
+ *   tagline, ctaBlock) recibía esa cascada de saltos.
+ *
+ *   En web saltamos el entering animation y rendereamos al estado
+ *   final inmediato — un <View> normal sin Animated.View. La pérdida
+ *   visual (sin fade-in stagger) es preferible al jitter de layout.
+ *   Native sigue usando el Keyframe, sin cambio.
  */
 export function RiseView({
   delay = 0,
@@ -53,6 +70,11 @@ export function RiseView({
         .reduceMotion(ReduceMotion.System),
     [duration, delay, translateY],
   )
+
+  // En web: View normal sin entering animation (ver Web caveat arriba).
+  if (Platform.OS === 'web') {
+    return <View style={style}>{children}</View>
+  }
 
   return (
     <Animated.View entering={entering} style={style}>
