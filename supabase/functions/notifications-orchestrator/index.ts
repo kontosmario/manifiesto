@@ -50,7 +50,7 @@ interface PendingRow {
 interface PushSubscriptionRow {
   family_id: string
   user_id: string
-  expo_push_token: string
+  endpoint: string
 }
 
 interface ExpoPushMessage {
@@ -101,7 +101,7 @@ async function fetchPushTokens(
   if (familyIds.length === 0) return []
   const { data, error } = await admin
     .from('push_subscriptions')
-    .select('family_id, user_id, expo_push_token')
+    .select('family_id, user_id, endpoint')
     .in('family_id', familyIds)
   if (error) throw error
   const rows = (data ?? []) as PushSubscriptionRow[]
@@ -163,8 +163,8 @@ async function processKind(kind: Kind) {
           (r.user_id === null || r.user_id === sub.user_id),
       )
       if (!row) continue
-      tokenToMsg.set(sub.expo_push_token, {
-        to: sub.expo_push_token,
+      tokenToMsg.set(sub.endpoint, {
+        to: sub.endpoint,
         sound: 'default',
         title: row.title,
         body: row.body,
@@ -208,7 +208,13 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse(result)
   } catch (error) {
     console.error('orchestrator failed', error)
-    return jsonResponse({ error: String(error) }, 500)
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error != null
+          ? JSON.stringify(error)
+          : String(error)
+    return jsonResponse({ error: message }, 500)
   }
 }
 
