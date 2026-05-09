@@ -24,8 +24,22 @@ const FADE_IN_MS = 220
 const FADE_OUT_MS = 320
 
 export function RootLayoutShell() {
+  // Cold-start splash:
+  //   - native (iOS/Android): muestra el AuthLaunchSplash al abrir la
+  //     app por primera vez, fade-out a los 2.22s. Brand polish para
+  //     dar sensación premium al cold-start.
+  //   - web (browser): NO mostramos el splash. El welcome se renderiza
+  //     directo. Razón: el splash y el welcome son DOS hero stacks
+  //     superpuestos durante 220ms de fade-out; en web los safe-area
+  //     insets, useReducedMotion, useWindowDimensions y el text
+  //     wrapping resuelven async. Cualquier diferencia de timing
+  //     entre los 2 trees genera desalineación visible (wordmark
+  //     duplicado/saltando) — clase de bug que ya intentamos arreglar
+  //     2 veces (commits 0a3e354 y ad8d2cf) sin resolver del todo.
+  //     En web nadie ve el splash brand-polish anyway porque es
+  //     contexto de test/demo, no producto en uso.
   const [isLaunchSplashVisible, setLaunchSplashVisible] = useState(
-    () => !hasShownAppLaunchSplash,
+    () => Platform.OS !== 'web' && !hasShownAppLaunchSplash,
   )
   const authTransition = useAuthTransitionSplash()
   // Splash overlay shows for any phase that isn't 'hidden' — including
