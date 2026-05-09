@@ -130,25 +130,32 @@ interface TransitionOverlayProps {
 }
 
 function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps) {
-  // ⚠ ALWAYS-MOUNTED.
+  // ⚠ ALWAYS-MOUNTED en native, CONDICIONAL en web.
   //
-  // The overlay's children (`AuthTransitionSplash` → `WarmFernLogo` +
-  // `AuroraLayer` + `ParticleLayer`) are mounted from app launch and
-  // stay mounted forever. We only animate the outer opacity to show
-  // / hide. Why: if we mount the children on demand (when login
-  // fires), the native view tree is created at the WORST moment —
-  // simultaneously with the auth request, the `router.replace('/')`
-  // re-render cascade, and the AppEntryGate query refetches. The
-  // native UI thread is saturated for ~1s, and the WarmFernLogo's
-  // entrance animation visibly stalls inside that window. The user
-  // sees the fern "pause for a second and then continue" exactly
-  // when the JS work peaks.
+  // Native (iOS/Android): los children (AuthTransitionSplash →
+  // WarmFernLogo + AuroraLayer + ParticleLayer) se mantienen
+  // montados desde el app launch. Razón: si los montamos on-demand
+  // (cuando login fires), el native view tree se crea en el peor
+  // momento — simultáneamente con el auth request, el router.replace
+  // y el cascade de refetches. La UI thread se satura ~1s y la
+  // entrance animation del WarmFernLogo se traba visiblemente.
+  // Mantenerlos always-mounted evita ese mount-race.
   //
-  // Cost: the always-running halo pulse + breath + aurora + 24
-  // particles consume some UI-thread cycles continuously, but
-  // they're cheap (sin-based interpolations on shared values, no JS
-  // round-trip per frame). The benefit — zero mount race during the
-  // user's most attention-critical moment — is worth it.
+  // Web (browser): NO podemos always-mount. En web Reanimated v4
+  // no aplica `useAnimatedStyle({opacity: 0})` al DOM con la misma
+  // garantía que en native. El WarmFernLogo (que tiene su propio
+  // <Text>Manifiesto</Text>) queda VISIBLE en el DOM incluso con
+  // opacity supuestamente 0 → wordmark duplicado superpuesto al
+  // del welcome screen → bug visual reportado de "Manifiesto" doble
+  // y "movimiento hacia abajo" (welcome wordmark en su pos + WFL
+  // wordmark en otra pos).
+  //
+  // Diagnosticado con telemetry: wordmarkCount: 2 en TODOS los logs
+  // de welcome (t=0s a t=15s). Confirma que las 2 instancias coexisten.
+  //
+  // En web los mount-races no aplican (no hay native UI thread; el
+  // browser maneja todo en JS thread con concurrent rendering),
+  // entonces unmount cuando hidden es safe + correcto.
   const opacity = useSharedValue(visible ? 1 : 0)
 
   useEffect(() => {
@@ -161,6 +168,12 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }))
+
+  // En web, si está hidden, no rendereamos children — evita el
+  // wordmark fantasma del WarmFernLogo. En native always-mounted.
+  if (Platform.OS === 'web' && !visible) {
+    return null
+  }
 
   return (
     <Animated.View
