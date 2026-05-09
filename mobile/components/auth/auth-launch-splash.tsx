@@ -128,10 +128,19 @@ export function AuthLaunchSplash({
 
           {/*
             Invisible spacer that mirrors welcome's CTA block dimensions
-            (primary 56 + 12 gap + secondary 52 + 22 gap + fineprint ~36
-            + paddingTop 8 + paddingBottom max(insets.bottom + 12, 24)).
+            (primary 56 + 12 gap + secondary 52 + 22 gap + fineprint).
             Reserves the exact space the CTAs occupy on welcome so the
             hero above is at identical y coordinates on both screens.
+
+            Fineprint usa Text con el MISMO contenido que welcome
+            (no un View con height fijo) porque en web el Text wrappea
+            según el ancho del DOM container — un width angosto fuerza
+            2 líneas (~32px), un width ancho cabe en 1 línea (~14px).
+            Un View de altura fija no se adapta y termina misalineado
+            con la versión del welcome, generando un "salto" visible
+            durante el fade-out de 220ms del splash. El Text invisible
+            wrappea idéntico → alineación pixel-perfect en cualquier
+            viewport.
           */}
           <View
             style={[
@@ -143,7 +152,9 @@ export function AuthLaunchSplash({
           >
             <View style={styles.ctaReservePrimary} />
             <View style={styles.ctaReserveSecondary} />
-            <View style={styles.ctaReserveFineprint} />
+            <Text style={styles.ctaReserveFineprint}>
+              Al continuar aceptas los Términos y la Privacidad
+            </Text>
           </View>
         </View>
       </View>
@@ -576,9 +587,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 18,
   },
+  // Fineprint reserve: mismas métricas que welcome.styles.fineprint,
+  // pero color transparent para que sea invisible. El Text wrappea
+  // según el viewport igual que el del welcome, así la altura
+  // calculada coincide exacta y la alineación del wordmark/logo
+  // arriba no salta cuando el splash hace fade-out.
   ctaReserveFineprint: {
     marginTop: 22,
-    height: 14,
+    fontSize: 11,
+    fontWeight: '400',
+    color: 'transparent',
+    textAlign: 'center',
   },
   auroraBlob: {
     position: 'absolute',
