@@ -50,6 +50,7 @@ Total `auth.users` = 2. Cualquier otra cuenta que aparezca es nueva o test debe 
 - Notifications orchestrator (Edge Function chunked, vault-based handover)
 - `db_health_snapshot()` RPC + dev-only screen
 - 23 tests pre-existentes skipped → ahora cerrados (5 borrados, 3 actualizados)
+- **2026-05-09:** Retención de `notifications` bajada de 90d a 30d (migración `20260513000000`). 3× DB ahorrado en esa tabla — duplica el techo del Free tier de Supabase.
 
 Spec/plan/runbook: `docs/superpowers/specs/2026-05-08-backend-hardening-5k-mau-design.md`, `docs/superpowers/plans/2026-05-08-backend-hardening-5k-mau-plan.md`, `docs/runbooks/backend-hardening.md`.
 

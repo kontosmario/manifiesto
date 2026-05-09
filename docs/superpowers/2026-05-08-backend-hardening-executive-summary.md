@@ -58,7 +58,7 @@ Cada fase tiene un **STOP & MERGE** explícito en el plan: mergeas, observás 24
 ### Fase 4 — Retención (la única fase con riesgo real de data)
 - **Cron diario:** `cron_purge_archived_expenses()` borra `expenses` con `archived_at < now() - 14d`. **Hard-delete físico**.
 - **Cron mensual:** `cron_apply_retention_policies()` día 1 de cada mes:
-  - `notifications` > 90 días → DELETE
+  - `notifications` > 30 días → DELETE (bajado de 90d el 2026-05-09 — ver migración `20260513000000_tighten_notifications_retention.sql`)
   - `velocity_snapshots` > 6 meses → DELETE
   - `advisor_signal_dismissals` > 12 meses → DELETE
   - `fixed_expense_price_history` > 60 días → DELETE

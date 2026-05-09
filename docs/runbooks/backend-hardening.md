@@ -28,7 +28,7 @@ Borra todos los `expenses` con `archived_at < now() - 14 days` en chunks de 10K.
 select public.cron_apply_retention_policies();
 ```
 
-Procesa: `notifications` 90d, `velocity_snapshots` 6m, `advisor_signal_dismissals` 12m, `fixed_expense_price_history` 60d, `home_telemetry` 30d (si existe), `monthly_summaries` top-12 por familia, `push_subscriptions` 90d sin uso.
+Procesa: `notifications` 30d (bajado de 90d el 2026-05-09), `velocity_snapshots` 6m, `advisor_signal_dismissals` 12m, `fixed_expense_price_history` 60d, `home_telemetry` 30d (si existe), `monthly_summaries` top-12 por familia, `push_subscriptions` 90d sin uso.
 
 Idempotente.
 

@@ -45,7 +45,7 @@ Asumiendo 5.000 familias activas (1 familia ≈ 1 MAU pagador, miembros adiciona
 | Tabla | Filas vivas a 5K MAU | Bytes/fila aprox | Tamaño |
 |---|---|---|---|
 | `expenses` (solo ciclo en curso + 14 días gracia post-cierre) | ~1.1M (1.5 ciclos peak) | ~250 | **~280 MB** |
-| `notifications` (90 días) | 4.500.000 | ~400 | **~1.8 GB** |
+| `notifications` (30 días, antes 90d — tightened 2026-05-09) | 1.500.000 | ~400 | **~600 MB** |
 | `velocity_snapshots` (6 meses) | 900.000 | ~120 | **~110 MB** |
 | `fixed_expense_payments` (12 ciclos) | 1.200.000 | ~150 | **~180 MB** |
 | `fixed_expense_price_history` (60 días) | ~50.000 | ~150 | **~8 MB** |
@@ -204,7 +204,7 @@ El comportamiento de `close_monthly_cycle` (que setea `archived_at = now()`) **n
 
 | Tabla | Política |
 |---|---|
-| `notifications` | Borra `created_at < now() - interval '90 days'`. |
+| `notifications` | Borra `created_at < now() - interval '30 days'`. (Bajado de 90d el 2026-05-09 tras auditar uso real — el bell icon corta a 80 filas y la dedup_key cubre el caso diario; >30d era zombi storage.) |
 | `velocity_snapshots` | Borra `snapshot_date < now() - interval '6 months'`. |
 | `advisor_signal_dismissals` | Borra `created_at < now() - interval '12 months'`. |
 | `fixed_expense_price_history` | Borra `changed_at < now() - interval '60 days'`. |
