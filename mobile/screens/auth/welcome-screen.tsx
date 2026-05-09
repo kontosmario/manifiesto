@@ -51,6 +51,31 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
   const { width, height } = useWindowDimensions()
   const reduced = useReducedMotion()
 
+  // ─── TEMP DEBUG (web layout shift investigation 2026-05-09) ─────────
+  // Logs valores clave del welcome al mount y a +1s/+3s/+5s para ver si
+  // algo cambia async. Remover post-fix.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return
+    const log = (label: string) => {
+      console.log(`[welcome-debug ${label}]`, {
+        insets: { top: insets.top, bottom: insets.bottom },
+        dims: { width, height },
+        reduced,
+        time: Date.now(),
+      })
+    }
+    log('mount')
+    const t1 = setTimeout(() => log('+1s'), 1000)
+    const t3 = setTimeout(() => log('+3s'), 3000)
+    const t5 = setTimeout(() => log('+5s'), 5000)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t3)
+      clearTimeout(t5)
+    }
+  }, [insets.top, insets.bottom, width, height, reduced])
+  // ─── /TEMP DEBUG ────────────────────────────────────────────────────
+
   // This is a destination route reached after `router.replace` from
   // logout (and from the cold-start cascade when there's no session).
   // Hide the auth-transition splash on mount so the overlay fades out
