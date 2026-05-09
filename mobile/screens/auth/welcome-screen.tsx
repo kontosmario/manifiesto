@@ -52,27 +52,61 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
   const reduced = useReducedMotion()
 
   // ─── TEMP DEBUG (web layout shift investigation 2026-05-09) ─────────
-  // Logs valores clave del welcome al mount y a +1s/+3s/+5s para ver si
-  // algo cambia async. Remover post-fix.
+  // Logs cada 500ms durante 15s para detectar cualquier cambio asíncrono
+  // (insets, dims, reduced) Y la posición real en el DOM del wordmark
+  // "Manifiesto" (DOMRect via getBoundingClientRect cuando esté disponible).
+  // Si el wordmark cambia de top entre logs, sabemos exactamente cuándo
+  // y por qué. Remover post-fix.
   useEffect(() => {
     if (Platform.OS !== 'web') return
-    const log = (label: string) => {
-      console.log(`[welcome-debug ${label}]`, {
-        insets: { top: insets.top, bottom: insets.bottom },
-        dims: { width, height },
-        reduced,
-        time: Date.now(),
-      })
+    const startedAt = Date.now()
+    const findWordmark = (): { top: number; left: number; height: number } | null => {
+      if (typeof document === 'undefined') return null
+      const candidates = document.querySelectorAll('div, span')
+      for (const el of Array.from(candidates)) {
+        if (
+          el.textContent === 'Manifiesto' &&
+          el.children.length === 0 &&
+          (el as HTMLElement).offsetHeight > 0
+        ) {
+          const r = (el as HTMLElement).getBoundingClientRect()
+          return { top: Math.round(r.top), left: Math.round(r.left), height: Math.round(r.height) }
+        }
+      }
+      return null
     }
-    log('mount')
-    const t1 = setTimeout(() => log('+1s'), 1000)
-    const t3 = setTimeout(() => log('+3s'), 3000)
-    const t5 = setTimeout(() => log('+5s'), 5000)
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t3)
-      clearTimeout(t5)
+    const log = (tickNo: number) => {
+      const wordmarks: Array<{ top: number; left: number; height: number }> = []
+      if (typeof document !== 'undefined') {
+        document.querySelectorAll('div, span').forEach((el) => {
+          if (
+            el.textContent === 'Manifiesto' &&
+            el.children.length === 0 &&
+            (el as HTMLElement).offsetHeight > 0
+          ) {
+            const r = (el as HTMLElement).getBoundingClientRect()
+            wordmarks.push({ top: Math.round(r.top), left: Math.round(r.left), height: Math.round(r.height) })
+          }
+        })
+      }
+      console.log(
+        `[welcome-debug t=${String((Date.now() - startedAt) / 1000).padStart(5)}s tick=${tickNo}]`,
+        {
+          insets: { top: insets.top, bottom: insets.bottom },
+          dims: { width, height },
+          reduced,
+          wordmarkCount: wordmarks.length,
+          wordmarks,
+        },
+      )
     }
+    log(0) // mount
+    const intervals: ReturnType<typeof setTimeout>[] = []
+    for (let i = 1; i <= 30; i++) {
+      intervals.push(setTimeout(() => log(i), i * 500))
+    }
+    void findWordmark // mantener referencia, no warning
+    return () => intervals.forEach(clearTimeout)
   }, [insets.top, insets.bottom, width, height, reduced])
   // ─── /TEMP DEBUG ────────────────────────────────────────────────────
 
