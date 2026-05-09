@@ -52,60 +52,67 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
   const reduced = useReducedMotion()
 
   // ─── TEMP DEBUG (web layout shift investigation 2026-05-09) ─────────
-  // Logs cada 500ms durante 15s para detectar cualquier cambio asíncrono
-  // (insets, dims, reduced) Y la posición real en el DOM del wordmark
-  // "Manifiesto" (DOMRect via getBoundingClientRect cuando esté disponible).
-  // Si el wordmark cambia de top entre logs, sabemos exactamente cuándo
-  // y por qué. Remover post-fix.
+  // Cada tick imprime el `top` del único wordmark inline (no como obj).
+  // Detecta y loggea con [SHIFT] cualquier cambio de posición.
+  // Tambien capturamos top de FernLogo (svg) y de ctaBlock (texto del
+  // primer botón "Empezar") para ver QUÉ se está moviendo.
   useEffect(() => {
     if (Platform.OS !== 'web') return
+    if (typeof document === 'undefined') return
     const startedAt = Date.now()
-    const findWordmark = (): { top: number; left: number; height: number } | null => {
-      if (typeof document === 'undefined') return null
-      const candidates = document.querySelectorAll('div, span')
-      for (const el of Array.from(candidates)) {
-        if (
-          el.textContent === 'Manifiesto' &&
-          el.children.length === 0 &&
-          (el as HTMLElement).offsetHeight > 0
-        ) {
-          const r = (el as HTMLElement).getBoundingClientRect()
-          return { top: Math.round(r.top), left: Math.round(r.left), height: Math.round(r.height) }
+    let lastWordmarkTop: number | null = null
+    let lastEmpezarTop: number | null = null
+    let lastSvgTop: number | null = null
+
+    const measure = () => {
+      let wordmarkTop: number | null = null
+      let empezarTop: number | null = null
+      let svgTop: number | null = null
+      document.querySelectorAll('div, span, svg').forEach((el) => {
+        const tag = el.tagName.toLowerCase()
+        const text = el.textContent
+        const h = (el as HTMLElement).offsetHeight ?? 0
+        if (h === 0) return
+        if (tag === 'svg' && svgTop === null) {
+          const r = (el as SVGElement).getBoundingClientRect()
+          if (r.height > 100) svgTop = Math.round(r.top)
         }
-      }
-      return null
+        if (text === 'Manifiesto' && el.children.length === 0 && wordmarkTop === null) {
+          wordmarkTop = Math.round((el as HTMLElement).getBoundingClientRect().top)
+        }
+        if (text === 'Empezar' && el.children.length === 0 && empezarTop === null) {
+          empezarTop = Math.round((el as HTMLElement).getBoundingClientRect().top)
+        }
+      })
+      return { wordmarkTop, empezarTop, svgTop }
     }
+
     const log = (tickNo: number) => {
-      const wordmarks: Array<{ top: number; left: number; height: number }> = []
-      if (typeof document !== 'undefined') {
-        document.querySelectorAll('div, span').forEach((el) => {
-          if (
-            el.textContent === 'Manifiesto' &&
-            el.children.length === 0 &&
-            (el as HTMLElement).offsetHeight > 0
-          ) {
-            const r = (el as HTMLElement).getBoundingClientRect()
-            wordmarks.push({ top: Math.round(r.top), left: Math.round(r.left), height: Math.round(r.height) })
-          }
-        })
+      const { wordmarkTop, empezarTop, svgTop } = measure()
+      const t = ((Date.now() - startedAt) / 1000).toFixed(2)
+      const shifts: string[] = []
+      if (lastWordmarkTop !== null && wordmarkTop !== lastWordmarkTop) {
+        shifts.push(`WORDMARK ${lastWordmarkTop}→${wordmarkTop} (Δ${(wordmarkTop ?? 0) - lastWordmarkTop})`)
       }
+      if (lastEmpezarTop !== null && empezarTop !== lastEmpezarTop) {
+        shifts.push(`EMPEZAR ${lastEmpezarTop}→${empezarTop} (Δ${(empezarTop ?? 0) - lastEmpezarTop})`)
+      }
+      if (lastSvgTop !== null && svgTop !== lastSvgTop) {
+        shifts.push(`SVG ${lastSvgTop}→${svgTop} (Δ${(svgTop ?? 0) - lastSvgTop})`)
+      }
+      const shiftStr = shifts.length > 0 ? ` ⚠ SHIFT: ${shifts.join(' | ')}` : ''
       console.log(
-        `[welcome-debug t=${String((Date.now() - startedAt) / 1000).padStart(5)}s tick=${tickNo}]`,
-        {
-          insets: { top: insets.top, bottom: insets.bottom },
-          dims: { width, height },
-          reduced,
-          wordmarkCount: wordmarks.length,
-          wordmarks,
-        },
+        `[t=${t}s tick=${tickNo}] wordmarkTop=${wordmarkTop} empezarTop=${empezarTop} svgTop=${svgTop} insets.top=${insets.top} dims=${width}x${height} reduced=${reduced}${shiftStr}`,
       )
+      lastWordmarkTop = wordmarkTop
+      lastEmpezarTop = empezarTop
+      lastSvgTop = svgTop
     }
-    log(0) // mount
+    log(0)
     const intervals: ReturnType<typeof setTimeout>[] = []
     for (let i = 1; i <= 30; i++) {
       intervals.push(setTimeout(() => log(i), i * 500))
     }
-    void findWordmark // mantener referencia, no warning
     return () => intervals.forEach(clearTimeout)
   }, [insets.top, insets.bottom, width, height, reduced])
   // ─── /TEMP DEBUG ────────────────────────────────────────────────────
