@@ -66,13 +66,16 @@ export async function fetchAdvisorDismissals(
 }
 
 /**
- * Upsert a dismissal: insert a new row, or update an existing one
- * by (user_id, signal_id). The upsert sets `dismissed_at` to now
- * and bumps `ignore_count`.
+ * Dismiss a signal. Goes through the `dismiss_advisor_signal`
+ * SECURITY DEFINER RPC (security hardening 2026-05-11): direct
+ * INSERT/UPDATE on `advisor_signal_dismissals` is denied by RLS.
+ * The RPC bumps `ignore_count` on conflict and sets `dismissed_at`
+ * server-side (clock authoritative), enforces a per-user rate limit
+ * (60/min), and validates active membership.
  *
- * The caller passes the NEXT ignore_count (computed from the prior
- * cached value plus debounce logic) so the server doesn't need to
- * read-then-write — it's a single round trip.
+ * `nextIgnoreCount` and `dismissedAt` from the previous client-driven
+ * shape are no longer used — the server owns both — but the
+ * parameter shape is preserved so callers don't need to change.
  */
 export async function upsertAdvisorDismissal(input: {
   familyId: string
@@ -81,19 +84,10 @@ export async function upsertAdvisorDismissal(input: {
   nextIgnoreCount: number
   dismissedAt: number
 }): Promise<void> {
-  const { familyId, userId, signalId, nextIgnoreCount, dismissedAt } = input
-  const { error } = await supabase
-    .from('advisor_signal_dismissals')
-    .upsert(
-      {
-        family_id: familyId,
-        user_id: userId,
-        signal_id: signalId,
-        dismissed_at: new Date(dismissedAt).toISOString(),
-        ignore_count: nextIgnoreCount,
-      },
-      { onConflict: 'user_id,signal_id' },
-    )
+  const { error } = await supabase.rpc('dismiss_advisor_signal', {
+    p_family_id: input.familyId,
+    p_signal_id: input.signalId,
+  })
 
   if (error && !isMissingDismissTableError(error)) {
     throw error

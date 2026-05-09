@@ -58,16 +58,14 @@ export function useBlockSignalFamily() {
   return useMutation({
     mutationFn: async (args: BlockArgs) => {
       const family = signalFamilyOf(args.signalId)
-      const { error } = await supabase
-        .from('user_signal_blocklist')
-        .upsert(
-          {
-            user_id: args.userId,
-            signal_family: family,
-            reason: args.reason ?? null,
-          },
-          { onConflict: 'user_id,signal_family' },
-        )
+      // Direct INSERT into user_signal_blocklist is denied by RLS
+      // (security hardening 2026-05-11). Go through the rate-limited
+      // SECURITY DEFINER RPC, which enforces length caps and binds
+      // user_id = auth.uid() server-side.
+      const { error } = await supabase.rpc('block_advisor_signal', {
+        p_signal_family: family,
+        p_reason: args.reason ?? null,
+      })
       if (error) throw error
       return family
     },
