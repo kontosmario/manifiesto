@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import Animated, {
   Easing,
   runOnJS,
@@ -102,7 +102,20 @@ export function AuthLaunchSplash({
         <View
           style={[
             styles.contentStack,
-            { paddingTop: insets.top + 24, paddingBottom: 24 },
+            // En web `insets.top` siempre es 0 (no hay notch en
+            // browser) pero el safe-area-provider lo entrega async:
+            // si el splash mountea antes que el provider hidrate
+            // y welcome después, los `paddingTop` resultantes pueden
+            // diferir mid-fade-out → wordmark/logo del splash y del
+            // welcome a posiciones distintas durante 220ms = doble
+            // visual reportado por el user. Hardcodeamos en web.
+            //
+            // Native (iOS/Android) sigue usando insets.top (notch /
+            // status bar) — sin cambio de comportamiento.
+            {
+              paddingTop: Platform.OS === 'web' ? 24 : insets.top + 24,
+              paddingBottom: 24,
+            },
           ]}
         >
           <View style={styles.hero}>
@@ -111,8 +124,16 @@ export function AuthLaunchSplash({
               needed. The splash → welcome handoff still lands the
               logo at identical coordinates because welcome-screen
               also dropped the shift.
+
+              `animate` siempre true (no `!reduced`) para matchear
+              welcome-screen.tsx:85. Antes el splash usaba
+              `animate={!reduced}` y `useReducedMotion()` resuelve
+              async via `AccessibilityInfo.isReduceMotionEnabled()`
+              en web — si la promesa resolvía mid-render, el splash
+              pasaba a no-animate mientras welcome (que siempre
+              animate) seguía animando → estados visuales distintos.
             */}
-            <FernLogo size={220} palette="light" animate={!reduced} delay={300} />
+            <FernLogo size={220} palette="light" animate delay={300} />
 
             <RiseView delay={1100} duration={900} translateY={12}>
               <View style={styles.wordmarkRow}>

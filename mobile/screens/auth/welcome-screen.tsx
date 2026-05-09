@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -71,7 +72,16 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
       <View
         style={[
           styles.contentStack,
-          { paddingTop: insets.top + 24, paddingBottom: 24 },
+          // Ver comentario gemelo en auth-launch-splash.tsx: en web
+          // hardcodeamos paddingTop=24 para evitar el race del
+          // safe-area-provider que en native resuelve sync (insets
+          // reales del notch) pero en web entrega 0 con un update
+          // async que mid-fade del splash desalinea ambos hero
+          // stacks. Native sigue usando insets.top.
+          {
+            paddingTop: Platform.OS === 'web' ? 24 : insets.top + 24,
+            paddingBottom: 24,
+          },
         ]}
       >
         <View style={styles.hero}>
