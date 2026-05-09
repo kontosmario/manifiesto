@@ -30,13 +30,28 @@ Total `auth.users` = 2. Cualquier otra cuenta que aparezca es nueva o test debe 
 
 ## Tamaño / capacidad actual (prod, 2026-05-09)
 
-- DB: **18 MB** / 8 GB plan Pro = **0.22% usado**
-- Edge invocations/mes: <1K (proyectado a 5K MAU: ~150K, plan da 2M)
+- DB: **18 MB** / 500 MB Free tier = **3.6% usado** (o 0.22% del plan Pro 8 GB)
+- Edge invocations/mes: <1K (proyectado a 5K MAU: ~150K, plan Free da 500K)
 - Realtime: 3 conexiones pico
 - Tests: 283 passing, 0 skip "TODO" (los pre-existentes ya cerrados)
 - Validate: verde (typecheck + lint + tests + 3 guards)
-- Migraciones aplicadas en prod: hasta `20260512090000`
+- Migraciones aplicadas en prod: hasta `20260513000000`
 - Edge functions deployed: `notifications-orchestrator`, `send-family-push v2`, (`control-advisor` eliminada por zombie)
+
+### Capacidad por plan (post-hardening + 30d retention)
+
+| Plan Supabase | Costo/mes | MAU servibles |
+|---|---|---|
+| **Free** | $0 | ~700–1.400 |
+| **Pro** | $25 | ~6.000–7.000 |
+| **Pro + Compute Medium** | $55 | ~10.000–12.000 |
+
+Bottleneck por plan:
+- Free: egress 5 GB/mes (~500 MAU si todos abren mucho la app; ~1.4K si mix realista).
+- Pro: realtime concurrent (200) — gating por presence está en backlog.
+- Pro+Medium: compute hasta ~12K, después ronda 2 (particionado, edge migration del Asistente).
+
+**Hoy estamos en Free tier funcionando para 2 users con ~3.6% del límite usado.**
 
 ---
 
@@ -47,10 +62,20 @@ Total `auth.users` = 2. Cualquier otra cuenta que aparezca es nueva o test debe 
 - `home_snapshot` payload trim (caps 120/100, family_finance columnas explícitas)
 - `control_snapshot()` materializado + cron 6h
 - Retention crones (purge expenses 14d post-cierre + monthly retention)
-- Notifications orchestrator (Edge Function chunked, vault-based handover)
+- Notifications orchestrator (Edge Function chunked, vault-based handover via supabase_vault — no JWT en `cron.job` text)
 - `db_health_snapshot()` RPC + dev-only screen
 - 23 tests pre-existentes skipped → ahora cerrados (5 borrados, 3 actualizados)
 - **2026-05-09:** Retención de `notifications` bajada de 90d a 30d (migración `20260513000000`). 3× DB ahorrado en esa tabla — duplica el techo del Free tier de Supabase.
+
+### Cambios deployados a producción 2026-05-09
+- 11 migraciones de hardening aplicadas (`20260512000000` a `20260512090000`) + 1 de retention tightening (`20260513000000`).
+- `notifications-orchestrator` Edge Function deployed (incluyendo bug-fix de columna `endpoint` vs `expo_push_token` y mejor serialización de errores).
+- `send-family-push` v2 deployed (acepta `{ messages: [...] }` además de la firma vieja, compat preservada).
+- `pg_net` extension habilitada en producción.
+- Vault con secret `orchestrator_service_role_key` configurado.
+- Cron handover ejecutado: 4 schedules nuevos (`notifications-morning/midday/evening/fixed-upcoming`) llaman a `dispatch_notifications_kind()` que lee del vault y postea al Edge orchestrator. 3 legacy schedules mantenidos (`streak-at-risk`, `streak-broken`, `weekly-insights`) porque el orchestrator todavía no implementa esos kinds.
+- Sanitización de demo accounts: 3 users borrados (`control.demo`, `control.demo.partner`, `home.test`) + sus 2 familias en cascada. Quedan solo 2 users reales: `kontosmario@gmail.com`, `aye.tello18@gmail.com`.
+- Push iOS error wrapper: en sideload sin Apple Developer, ahora muestra mensaje claro "Push iOS requiere Apple Developer Program ($99/año)" en vez del error nativo críptico (`MissingApsEntitlementError` en `mobile/features/push/use-push-notifications.ts`).
 
 Spec/plan/runbook: `docs/superpowers/specs/2026-05-08-backend-hardening-5k-mau-design.md`, `docs/superpowers/plans/2026-05-08-backend-hardening-5k-mau-plan.md`, `docs/runbooks/backend-hardening.md`.
 
@@ -151,6 +176,20 @@ Hay docs viejos en `docs/PENDIENTES A IMPLEMENTAR/` y `docs/` que mencionan feat
 
 ---
 
+## Cambios investigados / pendientes diagnóstico
+
+### Android APK crashea al abrir (en investigación 2026-05-09)
+- iOS sideloaded build funciona OK.
+- Android APK build se cierra automáticamente al abrir.
+- Investigación arranca después de cerrar el doc update.
+- Síntoma: crash inmediato sin pantalla visible.
+- Probables causas a investigar (en orden):
+  1. Mismatch entre New Architecture flags entre platforms.
+  2. Native modules con bindings rotos solo en Android.
+  3. Initial render error en alguna pantalla de auth/welcome (Android es estricto con ciertos JSI calls que iOS tolera).
+  4. Incompatibilidad de versiones (Reanimated, Expo SDK, etc.).
+  5. Problema en el `app.config.ts` Android-specific.
+
 ## Próximo bump esperado de este doc
 
 Cuando alguno de estos cambie:
@@ -159,5 +198,6 @@ Cuando alguno de estos cambie:
 - Se cierren todos los security pendings.
 - Se aplique una migration de "ronda 2" (por gatillo de métricas).
 - El usuario decida reanudar feature work.
+- Se resuelva el crash de Android APK.
 
 Hasta entonces, este doc refleja el estado.
