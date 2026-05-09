@@ -47,7 +47,10 @@ export interface ControlSnapshot {
 
 // ─── Query key ────────────────────────────────────────────────────────
 
-export const controlSnapshotKey = () => ['control-snapshot'] as const
+// userId va en la key para que la cache se invalide correctamente
+// cuando cambia la sesión (logout/login con otra cuenta).
+export const controlSnapshotKey = (userId?: string) =>
+  ['control-snapshot', userId] as const
 
 // ─── Fetcher ──────────────────────────────────────────────────────────
 
@@ -76,12 +79,24 @@ export async function fetchControlSnapshot(): Promise<ControlSnapshot | null> {
  * Cache tuned for a pre-computed snapshot: 5-minute staleTime so
  * navigation between tabs doesn't re-fetch aggressively, 30-minute
  * gcTime to keep it warm in memory for the full session.
+ *
+ * **Auth gate:** la RPC requiere `auth.uid()` server-side. Si fires
+ * antes que la session se hidrate en el supabase client (race en web
+ * sobre todo, donde la session vive en memory), la RPC tira
+ * `raise exception 'No session'` → 400 → react-query retiene → cascada
+ * de re-renders. Por eso gateamos con `enabled: !!userId` y
+ * desactivamos retry para esta condición transitoria.
  */
-export function useControlSnapshot() {
+export function useControlSnapshot(userId?: string) {
   return useQuery<ControlSnapshot | null>({
-    queryKey: controlSnapshotKey(),
+    queryKey: controlSnapshotKey(userId),
     queryFn: fetchControlSnapshot,
+    enabled: Boolean(userId),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
+    // 'No session' es transitorio (auth aún no hidratada) o
+    // estructural (RPC no aplicada en este env): retry no ayuda y
+    // genera ruido (3× POST + cascada de re-renders).
+    retry: false,
   })
 }

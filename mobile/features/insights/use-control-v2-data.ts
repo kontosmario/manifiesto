@@ -221,7 +221,7 @@ export function useControlV2Data(
   const intelligenceQuery = useControlIntelligence(heavyEnabled ? familyId : '')
   const interactionStatsQuery = useInteractionStats(userId ?? null)
   const blocklistQuery = useSignalBlocklist(userId ?? null)
-  const controlSnapshotQuery = useControlSnapshot()
+  const controlSnapshotQuery = useControlSnapshot(userId ?? undefined)
 
   // Stabilise the `?? []` / `?? null` fallbacks so downstream memos
   // don't see a fresh reference on every render when the underlying
