@@ -56,3 +56,4 @@ tmp/
 # is the source; tarballs / zips invariably end up stale and bloat
 # clones.
 *.zip
+backups/
