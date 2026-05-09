@@ -178,6 +178,13 @@ Hay docs viejos en `docs/PENDIENTES A IMPLEMENTAR/` y `docs/` que mencionan feat
 
 ## Cambios investigados / pendientes diagnóstico
 
+### Web layout shift en welcome / home / cards — resuelto 2026-05-09
+- Síntoma: en web browser, el FernLogo + cards en welcome y home cambiaban de posición después de unos segundos. Native (iOS/Android) funcionaba bien.
+- Root cause: `<RiseView>` en `mobile/components/home/animated/rise-view.tsx` usa Reanimated v4 `Keyframe entering` animation. En native el coordinator aplica el initial state `{opacity:0, translateY:N}` antes del primer paint. En web, soporte parcial → el View arranca en estado final, salta al inicial un frame después, después anima → flex containers recalculan altura → todo lo que está ARRIBA en el stack (FernLogo, hero card, etc.) se desplaza visualmente.
+- Fix: en web, `RiseView` rendea `<View>` plano sin entering. Pierde el stagger fade-in pero el layout queda estable. Native sigue idéntico (commit `dba7187`).
+- Bonus: el fix arregló en cascada los mismos saltos en home-dashboard, home-hero-card, meta-card, month-summary-card, greeting-header, add-expense-dashboard — todos consumen `RiseView`.
+- Fixes related (commits del day): `0a3e354` (fineprint reserve mismatch), `ad8d2cf` (paddingTop/animate align), `d27773b` (skip AuthLaunchSplash en web), `be9bb46` (unmount AuthTransitionSplash en web cuando hidden) — todos defense-in-depth, dejados en código.
+
 ### Android APK crashea al abrir — root cause encontrada 2026-05-09
 - iOS sideloaded build funciona OK.
 - Android APK build (May 6) se cierra automáticamente al abrir, sin UI visible.
