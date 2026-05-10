@@ -288,6 +288,22 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             void dashboard.refetchAll()
           }}
         />
+      ) : !snapshot.data ? (
+        // Esperar a que home_snapshot termine y popule (vía seedCaches)
+        // los caches de los feature hooks ANTES de mountar el dashboard.
+        // Sin este gate, los feature hooks (useExpenses, useFamilyFinance,
+        // useFixedExpenses, useFamilyNotifications, etc.) montean en
+        // paralelo con home_snapshot y disparan fetches redundantes —
+        // la red dispara ~7 requests duplicados en cada cold start del
+        // home aunque home_snapshot ya los tiene incluidos. Gateando en
+        // snapshot.data (que solo está disponible tras seedCaches), los
+        // feature hooks encuentran cache caliente al montearse y no
+        // refetchean (con staleTime: 60_000 que igualan home_snapshot).
+        // Trade-off: ~400ms de loading en cold start vs el flash actual
+        // de "todo carga junto" — el loading queda silenciado por el
+        // splash de auth-transition y la transición al home cierra
+        // sin diferencia perceptible.
+        null
       ) : (
         <HomeDashboard
           dashboard={dashboard}

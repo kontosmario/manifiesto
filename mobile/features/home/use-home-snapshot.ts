@@ -32,6 +32,8 @@ import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications
 import type { Expense } from '@/features/expenses/expense-repository'
 import { asFixedExpense } from '@/features/fixed-expenses/fixed-expense-repository.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
+import { controlIntelligenceQueryKey } from '@/features/insights/use-control-v2-data'
+import { seedAdvisorDismissals } from '@/features/insights/control-dismiss-store'
 
 interface RawNotificationSlice {
   id: string
@@ -87,6 +89,30 @@ interface HomeSnapshotPayload {
    *  hook (`useFixedExpensePayments`) falls back to its own fetch. */
   payments_cycle_start?: string | null
   payments_cycle_end?: string | null
+  /** Control layer (re-added 2026-05-09 via migración 20260514010000).
+   *  Si el RPC todavía no las devuelve (env viejo) las marcamos
+   *  optional para no romper el typecheck — el seed las skipea
+   *  silenciosamente y los hooks consumidores hacen su fetch directo. */
+  monthly_summaries_history?: Array<Record<string, unknown>>
+  category_limits?: Array<{
+    id: string
+    category_id: string
+    monthly_cap: number
+    warning_threshold_pct: number
+  }>
+  velocity_today?: {
+    snapshot_date: string
+    avg_daily_last_7: number
+    avg_daily_last_30: number
+    momentum: number
+    forecast_close_amount: number
+    stress_level: string
+  } | null
+  advisor_signal_dismissals?: Array<{
+    signal_id: string
+    dismissed_at: string
+    ignore_count: number
+  }>
 }
 
 function toFixedExpenses(
@@ -301,6 +327,41 @@ function seedCaches(
         payload.payments_cycle_end,
       ),
       (payload.fixed_expense_payments ?? []).map(mapFixedExpensePaymentRow),
+    )
+  }
+
+  // ─── Control layer seed (re-added 2026-05-09) ──────────────────────
+  // home_snapshot ahora incluye 4 keys que antes el cliente fetcheaba
+  // por separado (3 round-trips a monthly_summaries / category_limits /
+  // velocity_snapshots vía useControlIntelligence + 1 a
+  // advisor_signal_dismissals vía useAdvisorDismissalsSync). Sembrando
+  // las caches con los datos del snapshot, esos 4 round-trips quedan
+  // suprimidos en cold-start.
+  //
+  // Si el RPC en este env todavía no devuelve estas keys (env viejo
+  // pre-migración 20260514010000), el seed se skipea y los hooks
+  // consumidores caen al fetch directo — backwards compatible.
+  if (
+    payload.monthly_summaries_history !== undefined ||
+    payload.category_limits !== undefined ||
+    payload.velocity_today !== undefined
+  ) {
+    client.setQueryData(controlIntelligenceQueryKey(familyId), {
+      summaries: payload.monthly_summaries_history ?? [],
+      limits: payload.category_limits ?? [],
+      velocity: payload.velocity_today ?? null,
+    })
+  }
+
+  if (payload.advisor_signal_dismissals !== undefined) {
+    seedAdvisorDismissals(
+      payload.advisor_signal_dismissals.map((row) => ({
+        signalId: row.signal_id,
+        dismissedAt: new Date(row.dismissed_at).getTime(),
+        ignoreCount: row.ignore_count,
+      })),
+      userId,
+      familyId,
     )
   }
 }

@@ -49,6 +49,9 @@ export function useMyProfile(userId?: string) {
   return useQuery<Profile | null>({
     queryKey: profileQueryKey(userId),
     enabled: Boolean(userId),
+    // Match home_snapshot's staleTime so post-seed reads are served
+    // from cache and the hook does not refetch redundantly.
+    staleTime: 60_000,
     queryFn: async () => {
       if (!userId) {
         return null

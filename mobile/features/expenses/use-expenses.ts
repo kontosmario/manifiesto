@@ -25,6 +25,9 @@ export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
     queryKey: expensesQueryKey(familyId, categoryId),
     enabled: Boolean(familyId),
+    // Match home_snapshot's staleTime so the seed populates a "fresh"
+    // cache and consumer hooks don't refetch redundantly post-mount.
+    staleTime: 60_000,
     queryFn: async () => {
       if (!familyId) {
         return []
@@ -39,6 +42,7 @@ export function useRecentExpenses(familyId?: string, limit = 3) {
   return useQuery<Expense[]>({
     queryKey: recentExpensesQueryKey(familyId, limit),
     enabled: Boolean(familyId) && limit > 0,
+    staleTime: 60_000,
     queryFn: async () => {
       if (!familyId || limit <= 0) {
         return []

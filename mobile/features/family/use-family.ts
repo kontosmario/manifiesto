@@ -16,6 +16,9 @@ export function useFamily(userId?: string) {
   return useQuery<FamilyInfo | null>({
     queryKey: familyQueryKey(userId),
     enabled: Boolean(userId),
+    // Match home_snapshot's staleTime so post-seed reads are served
+    // from cache (the snapshot's seed populates this same key).
+    staleTime: 60_000,
     queryFn: async () => {
       if (!userId) {
         return null

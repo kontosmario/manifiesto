@@ -139,6 +139,37 @@ function rowsToMap(rows: AdvisorDismissalRow[]): DismissMap {
   return out
 }
 
+/**
+ * Seed la cache de dismissals desde una fuente externa (típicamente
+ * el seedCaches de home_snapshot, que ahora incluye `advisor_signal_dismissals`
+ * en su payload). Marcado como hidratado para que el subsequent
+ * `useAdvisorDismissalsSync` skipee el round-trip a Supabase.
+ *
+ * Si el seed se llama con un userId distinto al activo (sign-in con
+ * otra cuenta), antes resetea el estado para evitar leak entre users.
+ *
+ * Usage del lado del seedCaches:
+ *   if (payload.advisor_signal_dismissals) {
+ *     seedAdvisorDismissals(payload.advisor_signal_dismissals, userId, familyId)
+ *   }
+ */
+export function seedAdvisorDismissals(
+  rows: AdvisorDismissalRow[],
+  userId: string,
+  familyId: string | null,
+): void {
+  if (userId !== activeUserId) {
+    activeUserId = userId
+    activeFamilyId = familyId
+    cache = {}
+  } else {
+    activeFamilyId = familyId
+  }
+  cache = rowsToMap(rows)
+  hydrated = true
+  emit()
+}
+
 /** Repeat-tap window — see comment in `dismissCard`. */
 const DISMISS_DEBOUNCE_MS = 1500
 
