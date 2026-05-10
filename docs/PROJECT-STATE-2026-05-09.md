@@ -1,6 +1,6 @@
 # Manifiesto — Estado del proyecto
 
-**Fecha de este snapshot:** 2026-05-09
+**Fecha de este snapshot:** 2026-05-10 (extiende el del 2026-05-09 con la sprint de network optimization)
 **Para Claude (futuras sesiones):** lee este doc PRIMERO. Sustituye lo que digan los roadmaps viejos.
 
 ---
@@ -35,7 +35,7 @@ Total `auth.users` = 2. Cualquier otra cuenta que aparezca es nueva o test debe 
 - Realtime: 3 conexiones pico
 - Tests: 283 passing, 0 skip "TODO" (los pre-existentes ya cerrados)
 - Validate: verde (typecheck + lint + tests + 3 guards)
-- Migraciones aplicadas en prod: hasta `20260513000000`
+- Migraciones aplicadas en prod: hasta `20260514030000` (incluye gastos_snapshot)
 - Edge functions deployed: `notifications-orchestrator`, `send-family-push v2`, (`control-advisor` eliminada por zombie)
 
 ### Capacidad por plan (post-hardening + 30d retention)
@@ -78,6 +78,47 @@ Bottleneck por plan:
 - Push iOS error wrapper: en sideload sin Apple Developer, ahora muestra mensaje claro "Push iOS requiere Apple Developer Program ($99/año)" en vez del error nativo críptico (`MissingApsEntitlementError` en `mobile/features/push/use-push-notifications.ts`).
 
 Spec/plan/runbook: `docs/superpowers/specs/2026-05-08-backend-hardening-5k-mau-design.md`, `docs/superpowers/plans/2026-05-08-backend-hardening-5k-mau-plan.md`, `docs/runbooks/backend-hardening.md`.
+
+### Network optimization sprint — completado 2026-05-09 → 2026-05-10
+
+Sprint para reducir requests en cold-start. Implementado el **patrón "snapshot RPC + cliente seed + gate"** como convención reutilizable.
+
+**Resultados medidos (DevTools network tab, web build):**
+
+| Pantalla | Cold-start antes | Cold-start ahora |
+|---|---|---|
+| Home (incluye RequireAuth + login) | 17 requests | 8 requests |
+| Gastos (post-home, navegación) | 14 requests | **2 requests** |
+
+**RPCs nuevas / extendidas:**
+- `home_snapshot()` extendido: agregadas 4 control keys (`monthly_summaries_history`, `category_limits`, `velocity_today`, `advisor_signal_dismissals`) + `monthly_income_contribution` por miembro. Migraciones `20260514010000`, `20260514020000`.
+- `log_home_events_bulk(p_events jsonb)` (migración `20260514000000`): batchea hasta 50 eventos de telemetría en 1 RPC. Misma seguridad que `log_home_event` (rate limit + caps + membership check), aplicado al batch entero.
+- `gastos_snapshot(p_family_id, p_cycle_start, p_cycle_end, p_today, p_cupo_diario, p_days_per_page, p_timezone)` (migración `20260514030000`): bundlea 6 queries — hero + calendar + categories + primera página de paginated + streak row + marked_days. Wrapper que invoca las RPCs hijas + 2 selects directos. Defense-in-depth: membership check propio antes de invocar nada.
+
+**Cambios cliente:**
+- `mobile/features/telemetry/event-queue.ts`: queue compartida + flush bulk debounced (50ms / 20 eventos máx). `logHomeEvent` y `logScreenEvent` ambos routean por acá → todos los eventos terminan en `log_home_events_bulk`.
+- `mobile/features/home/use-home-snapshot.ts`: `seedCaches` extendido a las 4 control keys + advisor dismissals + family member details.
+- `mobile/features/insights/control-dismiss-store.ts`: nueva función `seedAdvisorDismissals(rows, userId, familyId)` que pobla la cache module-level desde el snapshot, evitando el round-trip a `advisor_signal_dismissals`.
+- `mobile/features/gastos/use-gastos-snapshot.ts`: hook nuevo análogo a `useHomeSnapshot`. Seedéa 6 caches (hero, calendar, categories, paginated infinite query, streak row, marked_days).
+- `mobile/screens/home/gastos-v2-screen.tsx`: refactoreado en `GastosV2Screen` (gate liviano que computa cycle/cupoDiario y dispara el snapshot) + `GastosV2ScreenContent` (cuerpo original). El gate retorna `null` mientras `snapshot.data` es undefined — patrón idéntico al `HomeScreen` con `home_snapshot`.
+- `mobile/screens/home/home-screen.tsx`: gate `!snapshot.data` agregado para no mountear `<HomeDashboard>` antes de que el seed corra.
+
+**Convención de staleTime:**
+- Hooks "estables" mid-session (profile, family, family_finance, expenses, notifications, gastos endpoints, useStreak): `staleTime: 5 * 60_000`. Cambios reales cubiertos por mutations + realtime que invalidan los keys.
+- Snapshots (`home_snapshot`, `gastos_snapshot`): `staleTime: 60_000`. Refetch en focus/reconnect; mutations específicas invalidan los hijos sin tirar el snapshot.
+- Hooks frecuentes (telemetry, advisor signals computados): default 0 — son cheap o no llaman red.
+
+**Otros tweaks:**
+- `useGastosExpensesPaginated`: `daysPerPage` 2 → 7. Antes el SectionList renderizaba contenido tan corto que `onEndReached` (threshold 0.5) disparaba auto-`fetchNextPage` 2 veces sin scroll del usuario.
+- `mobile/features/family/use-family-members-detail.ts`: hook usado por `global-advisor-action-host` (siempre montado en home). Antes hacía 2 round-trips (members con income + profiles in.()); ahora seedea desde `home_snapshot.family_members` que ya trae `monthly_income_contribution` + display_name + avatar joined.
+
+**Commits relevantes:** `0c9677d` (chain inicial home), `2e1834f` (member income seed), `ea783e7` (gastos snapshot + bulk telemetry + staleTime bumps), `dcb9fef` (staleTime fix para que el seed stickee).
+
+**Patrón canónico para próximas pantallas (insights / fijos / settings si llegan a tener este problema):**
+1. Crear migración `<screen>_snapshot()` que invoque RPCs hijas existentes o haga selects directos. SECURITY DEFINER + membership check propio + `revoke from public; grant to authenticated`.
+2. Crear hook `use<Screen>Snapshot` con `queryFn` que llama el RPC y SINCRÓNICAMENTE pobla las caches consumidoras vía `setQueryData`.
+3. Refactorear el screen en gate (`<Screen>`) + content (`<ScreenContent>`). El gate hace `if (!snapshot.data) return null` antes de renderear el content.
+4. Bumpear staleTime de los hooks consumidores a 5 min para que el seed sirva de verdad y no se vuelva stale enseguida.
 
 ### Security hardening — completado 2026-05-07 a 2026-05-11
 - 5 vulnerabilidades **críticas** del audit principal (RLS bypass, notif spoofing, edge billing abuse, JWT plaintext, financial cache plaintext)
@@ -184,6 +225,9 @@ Hay docs viejos en `docs/PENDIENTES A IMPLEMENTAR/` y `docs/` que mencionan feat
 - Fix: en web, `RiseView` rendea `<View>` plano sin entering. Pierde el stagger fade-in pero el layout queda estable. Native sigue idéntico (commit `dba7187`).
 - Bonus: el fix arregló en cascada los mismos saltos en home-dashboard, home-hero-card, meta-card, month-summary-card, greeting-header, add-expense-dashboard — todos consumen `RiseView`.
 - Fixes related (commits del day): `0a3e354` (fineprint reserve mismatch), `ad8d2cf` (paddingTop/animate align), `d27773b` (skip AuthLaunchSplash en web), `be9bb46` (unmount AuthTransitionSplash en web cuando hidden) — todos defense-in-depth, dejados en código.
+
+### Cold-start network optimization — completado 2026-05-09 → 2026-05-10
+Documentado arriba en la sección "Network optimization sprint". Resultado: home 17 → 8 requests, gastos 14 → 2 requests. Patrón "snapshot RPC + cliente seed + gate" disponible para reusar.
 
 ### Android APK crashea al abrir — root cause encontrada 2026-05-09
 - iOS sideloaded build funciona OK.
