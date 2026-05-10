@@ -20,6 +20,10 @@ import {
 import { fixedExpensePaymentsKey } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { categoriesQueryKey, type Category } from '@/features/categories/use-categories'
 import { familyMembersKey, type FamilyMemberRow } from '@/features/family/use-family-members'
+import {
+  familyMembersDetailKey,
+  type FamilyMemberDetail,
+} from '@/features/family/use-family-members-detail'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
 import {
   mapSavingsGoalRow,
@@ -79,6 +83,9 @@ interface HomeSnapshotPayload {
     display_name: string | null
     avatar_animal: string | null
     created_at: string
+    /** Optional — only present after migración 20260514020000. Used to
+     *  seed `useFamilyMembersDetail` and skip its 2 round-trips. */
+    monthly_income_contribution?: number | null
   }>
   savings_goal: SavingsGoalRow | null
   fixed_expense_payments: FixedExpensePaymentRow[]
@@ -196,6 +203,23 @@ export async function fetchHomeSnapshot(): Promise<HomeSnapshotPayload> {
 const RECENT_EXPENSES_LIMIT = 6
 const MEMBER_COLOR_POOL = ['#2E7D5B', '#E08E63', '#6B3A4F', '#C9A23A', '#4D6FB3', '#8A4D9A']
 
+function toFamilyMemberDetails(
+  raw: HomeSnapshotPayload['family_members'],
+): FamilyMemberDetail[] {
+  return raw.map((m): FamilyMemberDetail => {
+    let avatarSlug: AvatarSlug | null = null
+    if (typeof m.avatar_animal === 'string' && isAvatarSlug(m.avatar_animal)) {
+      avatarSlug = m.avatar_animal
+    }
+    return {
+      userId: m.user_id,
+      displayName: m.display_name ?? '',
+      avatarSlug,
+      monthlyIncomeContribution: Number(m.monthly_income_contribution ?? 0),
+    }
+  })
+}
+
 function toFamilyMemberRows(
   raw: HomeSnapshotPayload['family_members'],
 ): FamilyMemberRow[] {
@@ -301,6 +325,21 @@ function seedCaches(
   )
 
   client.setQueryData(familyMembersKey(familyId), toFamilyMemberRows(payload.family_members))
+
+  // Seed `useFamilyMembersDetail` (advisor host + settings + family-admin).
+  // Only when the snapshot includes `monthly_income_contribution` per
+  // member (migración 20260514020000+). Sin el campo, dejamos que el
+  // hook haga su fetch directo — backwards compatible.
+  if (
+    payload.family_members.some(
+      (m) => m.monthly_income_contribution !== undefined,
+    )
+  ) {
+    client.setQueryData(
+      familyMembersDetailKey(familyId),
+      toFamilyMemberDetails(payload.family_members),
+    )
+  }
 
   client.setQueryData(
     myFamilyRoleQueryKey(userId, familyId),
