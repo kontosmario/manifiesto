@@ -115,7 +115,11 @@ export function useGastosHeroSummary(args: UseGastosHeroSummaryArgs) {
       args.categoryId,
     ),
     enabled: Boolean(args.familyId),
-    staleTime: 30_000,
+    // 5 min: el seed de gastos_snapshot popula este key en cold-mount;
+    // mutations (create/delete expense) y `useGastosRealtime` invalidan
+    // por prefijo, así que el bump es seguro y evita refetches en
+    // tab-switches dentro del mismo uso.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!args.familyId) return EMPTY_HERO
       const { data, error } = await supabase.rpc('gastos_hero_summary', {
@@ -183,7 +187,9 @@ export function useGastosCalendarSummary(args: UseGastosCalendarSummaryArgs) {
       args.categoryId,
     ),
     enabled: Boolean(args.familyId),
-    staleTime: 30_000,
+    // 5 min — mismo razonamiento que useGastosHeroSummary: el seed
+    // del snapshot + mutations/realtime cubren los cambios reales.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!args.familyId) return { days: [] }
       const { data, error } = await supabase.rpc('gastos_calendar_summary', {
@@ -219,8 +225,9 @@ export function useGastosCategoriesWithCounts(
     queryKey: gastosEndpointKeys.categories(args.familyId, cycleStartIso, cycleEndIso),
     enabled: Boolean(args.familyId),
     // Categories cambian rara vez (solo cuando el usuario crea una
-    // nueva). Stale time más largo que las queries de gastos.
-    staleTime: 60_000,
+    // nueva). 5 min staleTime + invalidaciones explícitas en las
+    // mutations de categoría cubren los cambios reales.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!args.familyId) return []
       const { data, error } = await supabase.rpc('gastos_categories_with_counts', {
@@ -264,7 +271,9 @@ export function useGastosExpensesPaginated(args: UseGastosExpensesPaginatedArgs)
       args.categoryId,
     ),
     enabled: Boolean(args.familyId),
-    staleTime: 30_000,
+    // 5 min — el seed del snapshot popula la primera página en
+    // cold-mount; mutations + realtime invalidan por prefijo.
+    staleTime: 5 * 60_000,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     queryFn: async ({ pageParam }) => {

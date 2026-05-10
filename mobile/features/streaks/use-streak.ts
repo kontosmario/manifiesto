@@ -171,11 +171,17 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
   const streakRowQuery = useQuery<UserStreakRow | null>({
     queryKey: streakQueryKey(familyId, userId),
     enabled: Boolean(familyId && userId),
+    // Sin staleTime explícito el default es 0 → cada mount disparaba
+    // un refetch en background, anulando el seed de gastos_snapshot.
+    // 5 min + invalidaciones en mark/unmark mutations cubren los
+    // cambios reales.
+    staleTime: 5 * 60_000,
     queryFn: () => fetchStreakRow(familyId!, userId!),
   })
   const markedDaysQuery = useQuery<string[]>({
     queryKey: markedDaysQueryKey(familyId, userId),
     enabled: Boolean(familyId && userId),
+    staleTime: 5 * 60_000,
     queryFn: () => fetchMarkedDays(familyId!, userId!),
   })
 
