@@ -37,10 +37,13 @@ import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
+import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { useStreak, type StreakData } from '@/features/streaks/use-streak'
+import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { formatMoney } from '@/utils/money'
@@ -71,7 +74,58 @@ interface MovimientosSection {
   data: Expense[]
 }
 
+/**
+ * Gate component: dispara `gastos_snapshot` (RPC bundleada) y solo
+ * monta `<GastosV2ScreenContent>` cuando el snapshot resolvió. El
+ * snapshot seedéa las 6 caches que el contenido consume (hero,
+ * calendar, categories, primera página de paginated, streak row,
+ * marked_days). De esa forma los hooks adentro del controller leen
+ * cache hot y no disparan sus 6 RPCs propias en cold-start.
+ *
+ * `usePayCycle` y `useFamilyDashboard` se calculan acá pero no firen
+ * red porque sus dependencias (family_finance, fixed_expenses,
+ * expenses) ya están seeded por home_snapshot.
+ */
 export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
+  const { cycle, today } = usePayCycle(familyId)
+  const dashboard = useFamilyDashboard(familyId)
+  const cupoDiario = useMemo(() => {
+    const libre = Math.max(
+      0,
+      dashboard.monthlyIncome -
+        dashboard.fixedExpensesMonthlyTotal -
+        dashboard.savingsGoal,
+    )
+    return cycle.days > 0 ? libre / cycle.days : 0
+  }, [
+    dashboard.monthlyIncome,
+    dashboard.fixedExpensesMonthlyTotal,
+    dashboard.savingsGoal,
+    cycle.days,
+  ])
+
+  const snapshot = useGastosSnapshot({
+    familyId,
+    userId,
+    cycleStart: cycle.start,
+    cycleEnd: cycle.end,
+    today,
+    cupoDiario,
+    daysPerPage: 7,
+  })
+
+  if (!snapshot.data) {
+    // Snapshot pending → pantalla en blanco breve (~400ms). Mismo
+    // patrón que `<HomeScreen>` cuando espera home_snapshot. Evita
+    // mountear el controller con caches vacías y disparar 6 RPCs en
+    // paralelo.
+    return null
+  }
+
+  return <GastosV2ScreenContent familyId={familyId} userId={userId} />
+}
+
+function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
   const safeAreaInsets = useSafeAreaInsets()

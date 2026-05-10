@@ -16,9 +16,9 @@ export function useFamily(userId?: string) {
   return useQuery<FamilyInfo | null>({
     queryKey: familyQueryKey(userId),
     enabled: Boolean(userId),
-    // Match home_snapshot's staleTime so post-seed reads are served
-    // from cache (the snapshot's seed populates this same key).
-    staleTime: 60_000,
+    // Family membership rarely cambia mid-session (solo cambia en
+    // bootstrap, join o leave). 5 min evita refetches en tab-switches.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!userId) {
         return null

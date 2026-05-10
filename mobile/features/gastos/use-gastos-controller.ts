@@ -151,7 +151,13 @@ export function useGastosController(
     cycleEnd,
     today,
     categoryId: selectedCategoryId,
-    daysPerPage: 2,
+    // 7 días = 1 semana ~= viewport típico de una pantalla. Antes era
+    // 2: el SectionList renderizaba contenido tan corto que el
+    // onEndReached (threshold 0.5) disparaba auto-fetchNextPage en
+    // cadena, causando 3 RPC calls en cold-start sin que el usuario
+    // hiciera scroll. Con 7 días la primera página llena el viewport
+    // y la segunda solo se pide cuando el usuario realmente scrollea.
+    daysPerPage: 7,
   })
 
   // Convert day-of-month → ISO YYYY-MM-DD for the day-detail RPC.

@@ -100,11 +100,11 @@ export function useFamilyNotifications(
   return useQuery<FamilyNotification[]>({
     queryKey: notificationQueryKeys.list(familyId, userId ?? null, limit),
     enabled: Boolean(familyId) && limit > 0,
-    // Match home_snapshot's staleTime so the seeded cache serves
-    // post-mount reads. home_snapshot seeds with limit=80, so consumers
-    // calling with a different limit will still fetch — the seed only
-    // helps when the limit matches.
-    staleTime: 60_000,
+    // Notifications cambian via realtime + mark-read mutation; ambos
+    // invalidan este key. 5 min staleTime evita refetches en
+    // tab-switches dentro del mismo uso. home_snapshot seeds con
+    // limit=80; si el caller usa otro limit hay miss inevitable.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!familyId || limit <= 0) {
         return []
@@ -184,10 +184,10 @@ export function useUnreadNotificationsCount(familyId?: string, userId?: string) 
   return useQuery<number>({
     queryKey: notificationQueryKeys.unreadCount(familyId, userId ?? null),
     enabled: Boolean(familyId),
-    // Match home_snapshot's staleTime — the snapshot's
-    // `unread_notification_count` is seeded into this same key so
-    // post-seed reads are served from cache.
-    staleTime: 60_000,
+    // Unread count cambia via realtime + mark-read mutation; ambos
+    // invalidan este key. 5 min staleTime evita refetches en
+    // tab-switches dentro del mismo uso.
+    staleTime: 5 * 60_000,
     queryFn: unreadNotificationsQueryFn(familyId, userId),
   })
 }

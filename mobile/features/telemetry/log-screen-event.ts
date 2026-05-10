@@ -1,10 +1,12 @@
-// Generic wrapper around the `log_home_event` RPC. The table backing
-// it (`home_telemetry`) stores arbitrary event/element strings, so
-// the same plumbing serves all tabs. The RPC name itself is legacy —
-// when it gets renamed in a future migration the wrapper API stays
-// stable and consumers don't change.
+// Generic wrapper para telemetría cross-screen (gastos, settings, etc).
+//
+// Routea por la misma queue compartida que `logHomeEvent`, así múltiples
+// eventos disparados en cold-start de una pantalla terminan en una
+// única RPC `log_home_events_bulk`. La tabla backing (`home_telemetry`)
+// guarda event/element como strings arbitrarios, así que esta misma
+// plumbing sirve para todos los tabs — el nombre RPC es legacy.
 
-import { supabase } from '@/lib/supabase'
+import { enqueueTelemetryEvent } from '@/features/telemetry/event-queue'
 
 interface LogArgs {
   familyId: string
@@ -16,15 +18,11 @@ interface LogArgs {
 }
 
 export async function logScreenEvent(args: LogArgs): Promise<void> {
-  try {
-    await supabase.rpc('log_home_event', {
-      p_family_id: args.familyId,
-      p_event: args.event,
-      p_element_id: args.elementId ?? null,
-      p_slot: args.slot ?? null,
-      p_context: args.context ?? {},
-    })
-  } catch {
-    // Telemetry must never break the foreground UX.
-  }
+  enqueueTelemetryEvent({
+    family_id: args.familyId,
+    event: args.event,
+    element_id: args.elementId ?? null,
+    slot: args.slot ?? null,
+    context: args.context ?? {},
+  })
 }

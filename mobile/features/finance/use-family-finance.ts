@@ -26,9 +26,10 @@ export function useFamilyFinance(familyId?: string) {
   return useQuery<FamilyFinance>({
     queryKey: familyFinanceQueryKey(familyId),
     enabled: Boolean(familyId),
-    // Match home_snapshot's staleTime so the seed serves the cache
-    // and the hook doesn't refetch redundantly post-mount.
-    staleTime: 60_000,
+    // family_finance cambia solo cuando el usuario edita ingreso,
+    // ahorro, ciclo, etc. — todas esas mutations invalidan este key.
+    // 5 min evita refetches en tab-switches dentro del mismo uso.
+    staleTime: 5 * 60_000,
     queryFn: async () => fetchFamilyFinance(familyId),
   })
 }
