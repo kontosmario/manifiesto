@@ -7,8 +7,9 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { NotificationFeedList } from '@/components/home/notification-feed-list'
 import { NotificationsFilterPills, type NotificationFilter } from '@/components/home/notifications-filter-pills'
 import { NotificationsHero } from '@/components/home/notifications-hero'
-import { RiseView } from '@/components/home/animated/rise-view'
+import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
+import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import {
   useFamilyNotifications,
   useFamilyNotificationsRealtime,
@@ -29,6 +30,7 @@ interface NotificationsScreenProps {
 export function NotificationsScreen({ userId, familyId }: NotificationsScreenProps) {
   const { theme } = useAppTheme()
   const router = useRouter()
+  const isNavSettled = useIsNavigationSettled()
   const notificationsQuery = useFamilyNotifications(familyId, userId, 80)
   const notificationsData = notificationsQuery.data
   const notifications = useMemo(() => notificationsData ?? [], [notificationsData])
@@ -110,6 +112,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
 
   return (
     <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
+      <RiseViewGate skip={!isNavSettled}>
       <View style={styles.stack}>
         <AmbientBlobs />
 
@@ -164,6 +167,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
           />
         </View>
       </View>
+      </RiseViewGate>
     </Screen>
   )
 }

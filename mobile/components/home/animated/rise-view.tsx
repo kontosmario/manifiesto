@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { Platform, View, type ViewStyle } from 'react-native'
 import Animated, { Keyframe, ReduceMotion } from 'react-native-reanimated'
 
@@ -8,6 +8,33 @@ interface RiseViewProps {
   translateY?: number
   style?: ViewStyle
   children: React.ReactNode
+  /**
+   * Opt-out for the entering animation. When `true` (or when the
+   * surrounding `RiseViewGateContext` reports `skip`), the View
+   * renders at its final state without firing a Keyframe worklet.
+   * Use this on screens where many RiseViews would otherwise mount
+   * simultaneously and contend with the navigation transition.
+   */
+  skipEntering?: boolean
+}
+
+const RiseViewGateContext = createContext<{ skip: boolean }>({ skip: false })
+
+/**
+ * Wraps a subtree so every descendant `RiseView` skips its entering
+ * Keyframe. Use this at the top of a screen during the navigation
+ * transition window to keep the UI thread free; remove the gate
+ * after the transition completes (typically ~280ms post-mount).
+ */
+export function RiseViewGate({
+  skip,
+  children,
+}: {
+  skip: boolean
+  children: React.ReactNode
+}) {
+  const value = useMemo(() => ({ skip }), [skip])
+  return <RiseViewGateContext.Provider value={value}>{children}</RiseViewGateContext.Provider>
 }
 
 /**
@@ -56,7 +83,11 @@ export function RiseView({
   translateY = 14,
   style,
   children,
+  skipEntering = false,
 }: RiseViewProps) {
+  const gate = useContext(RiseViewGateContext)
+  const skip = skipEntering || gate.skip
+
   const entering = useMemo(
     () =>
       new Keyframe({
@@ -76,8 +107,12 @@ export function RiseView({
     return <View style={style}>{children}</View>
   }
 
+  // Native: always Animated.View so toggling `skip` doesn't unmount
+  // the subtree (which would lose child state and re-fire effects).
+  // When skipping, `entering` is omitted — the View renders at its
+  // final style synchronously without firing a Keyframe worklet.
   return (
-    <Animated.View entering={entering} style={style}>
+    <Animated.View entering={skip ? undefined : entering} style={style}>
       {children}
     </Animated.View>
   )

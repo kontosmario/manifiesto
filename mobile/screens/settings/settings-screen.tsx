@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { RiseView } from '@/components/home/animated/rise-view'
+import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
+import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
@@ -21,8 +22,10 @@ import { EditPaydaySheet } from '@/components/settings/sheets/edit-payday-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
 import { EditUsdRateSheet } from '@/components/settings/sheets/edit-usd-rate-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
+import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
   useLeaveCurrentFamily,
   useUpdateMyIncomeContribution,
@@ -63,7 +66,15 @@ import {
   reportAuthTransitionError,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
+import {
+  authenticateBiometricAccess,
+  clearBiometricCredentials,
+  getBiometricLoginState,
+  saveBiometricCredentials,
+  type BiometricLoginState,
+} from '@/lib/biometric-auth'
 import { triggerHaptic } from '@/lib/haptics'
+import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
@@ -79,6 +90,7 @@ const DISABLED_HINT = 'Solo el dueño puede editar'
 
 export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const router = useRouter()
+  const isNavSettled = useIsNavigationSettled()
   const { preference, setPreference, theme } = useAppTheme()
   const { data: session } = useAuthSession()
   const profileQuery = useMyProfile(userId)
@@ -159,6 +171,106 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
+
+  // Motion preference — drives `useReducedMotion()` for every consumer
+  // of `useLoopAnimation` / `useUnboundedLoopAnimation`. Users can
+  // override the device-class heuristic from here (auto/always/never).
+  const { preference: motionPreference, setPreference: setMotionPreference } =
+    useMotionPreferenceControls()
+
+  // Biometric "fast access" state — controls whether the login screen
+  // offers the Face ID / fingerprint shortcut on next cold start.
+  // Refreshed asynchronously from SecureStore + LocalAuth so the row
+  // shows the real state even after a reinstall or OS-level enrollment
+  // change. `userEmail` is needed to save credentials when the user
+  // activates the toggle (Supabase refresh token is paired with email
+  // for the auto-login flow).
+  const userEmail = session?.user?.email ?? null
+  const [biometricState, setBiometricState] = useState<BiometricLoginState>(
+    buildInitialBiometricState,
+  )
+  const [isBiometricBusy, setBiometricBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void getBiometricLoginState().then((next) => {
+      if (cancelled) return
+      setBiometricState(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleBiometricToggle = useCallback(async () => {
+    if (isBiometricBusy) return
+    if (!biometricState.isAvailable) {
+      Alert.alert(
+        'Acceso rápido no disponible',
+        `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema y volvé a intentarlo.`,
+      )
+      return
+    }
+    if (!userEmail) {
+      Alert.alert(
+        'Sesión inválida',
+        'Iniciá sesión nuevamente para activar el acceso rápido.',
+      )
+      return
+    }
+
+    setBiometricBusy(true)
+    void triggerHaptic('selection')
+
+    try {
+      if (biometricState.hasSavedCredentials) {
+        // Disable: clear the stored refresh token + metadata. The next
+        // cold start will route the user to email/password again.
+        await clearBiometricCredentials()
+        const next = await getBiometricLoginState()
+        setBiometricState(next)
+        return
+      }
+
+      // Enable: prompt the native biometric handshake. On success,
+      // grab the live Supabase refresh token (no password handling)
+      // and save it paired with the user's email.
+      const biometricResult = await authenticateBiometricAccess({
+        promptMessage: `Activá ${biometricState.label} para entrar más rápido la próxima vez.`,
+      })
+      if (!biometricResult.success) {
+        return
+      }
+      const sessionResponse = await supabase.auth.getSession()
+      const refreshToken = sessionResponse.data.session?.refresh_token
+      if (!refreshToken) {
+        Alert.alert(
+          'No pudimos completar',
+          'No encontramos una sesión activa. Volvé a entrar manualmente y probá de nuevo.',
+        )
+        return
+      }
+      await saveBiometricCredentials({
+        email: userEmail,
+        refreshToken,
+      })
+      const next = await getBiometricLoginState()
+      setBiometricState(next)
+    } catch {
+      Alert.alert(
+        'No pudimos guardar',
+        'Hubo un problema activando el acceso rápido. Probá nuevamente.',
+      )
+    } finally {
+      setBiometricBusy(false)
+    }
+  }, [biometricState, isBiometricBusy, userEmail])
+
+  const biometricRowValue = !biometricState.isAvailable
+    ? 'No disponible'
+    : biometricState.hasSavedCredentials
+      ? 'Activado'
+      : 'Desactivado'
 
   const supportsPushActivation = supportsRemotePushNotifications
   const shouldShowErrorState = Boolean(
@@ -481,6 +593,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       subtitle="Preferencias del hogar, tu perfil y la configuración base de la familia."
       title="Ajustes"
     >
+      {/* Mute the 19 descendant RiseViews during the ~340ms native
+          stack push. Without this gate the screen entry overlays 19
+          concurrent Keyframe worklets on top of the slide animation,
+          which is the perceived "lentitud" on cold-entry. The gate
+          flips off after the transition settles; further mounts (none
+          in this screen — RiseViews mount once with the screen) would
+          animate normally. */}
+      <RiseViewGate skip={!isNavSettled}>
       <View style={styles.sectionStack}>
         {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
         <AmbientBlobs />
@@ -741,6 +861,64 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
+            {/* 6b. ANIMACIONES — user-facing override del flag de
+                reduced-motion. 'Auto' (default) respeta accessibility
+                + auto-detecta hardware viejo via deviceYearClass<2020;
+                'Reducir' fuerza desactivar todos los loops decorativos;
+                'Todas' fuerza el motion completo aunque el hardware no
+                sea ideal. */}
+            <RiseView delay={320}>
+              <SettingsGroup
+                footer={
+                  motionPreference === 'always'
+                    ? 'Las animaciones decorativas están desactivadas siempre.'
+                    : motionPreference === 'never'
+                      ? 'Las animaciones decorativas se ejecutan aunque el dispositivo sea más lento.'
+                      : 'Se desactivan automáticamente en dispositivos antiguos para mantener la fluidez.'
+                }
+                title="Animaciones"
+              >
+                <View style={styles.appearanceInner}>
+                  <SegmentedControl
+                    onChange={setMotionPreference}
+                    options={[
+                      { label: 'Reducir', value: 'always' },
+                      { label: 'Auto', value: 'auto' },
+                      { label: 'Todas', value: 'never' },
+                    ]}
+                    value={motionPreference}
+                  />
+                </View>
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 6c. ACCESO RÁPIDO — toggle de biometría sin necesidad de
+                cerrar sesión. Permite activar Face ID / huella desde
+                acá si el usuario lo declinó en el post-login, o
+                desactivarlo (limpia el refresh token guardado). El
+                row queda disabled si el dispositivo no tiene
+                biometría enrolada. */}
+            <RiseView delay={320}>
+              <SettingsGroup
+                footer={
+                  biometricState.isAvailable
+                    ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
+                    : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
+                }
+                title="Acceso rápido"
+              >
+                <SettingsRow
+                  disabled={!biometricState.isAvailable}
+                  icon="fingerprint"
+                  isLast
+                  isLoading={isBiometricBusy}
+                  label={`Entrar con ${biometricState.label}`}
+                  onPress={handleBiometricToggle}
+                  value={biometricRowValue}
+                />
+              </SettingsGroup>
+            </RiseView>
+
             {/* 7. DESARROLLO — solo en builds de desarrollo. Permite
                 disparar animaciones específicas sin tener que repetir
                 el flow completo (login/logout, etc). */}
@@ -845,6 +1023,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           </>
         )}
       </View>
+      </RiseViewGate>
 
       {/* ── Sheets ────────────────────────────────────────────── */}
       <ShareInviteSheet

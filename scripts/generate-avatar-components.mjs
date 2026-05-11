@@ -1,24 +1,14 @@
 #!/usr/bin/env node
-// Generates relief-style React Native Svg components from the raw SVG
-// pack at mobile/assets/avatars/raw/<slug>.svg. Each component:
+// Generates monochrome silhouette React Native Svg components from
+// the raw SVG pack at mobile/assets/avatars/raw/<slug>.svg.
 //
-//   - flattens the original multicolor cartoon into a unified silhouette
-//     by stripping every per-path `fill` so the figure inherits a
-//     single gradient from the parent <G>
-//   - strips full-canvas BG washes (perimeter rects + ≥92% bbox
-//     coverage) so the silhouette renders with a clean cutout
-//   - centers + adaptively scales the figure inside the 1024×1024
-//     viewBox so canvas-hugging artwork still has padding for the drop
-//     shadow to land cleanly
-//   - draws a sparse outline pass on paths whose bbox area ≥ 2.5% of
-//     the canvas, preserving major anatomical contours without
-//     cluttering the silhouette with micro-stroke noise
-//   - emits a self-contained <Filter> for the drop shadow + a
-//     <LinearGradient> for the body gradient, both per-component so
-//     callers can drive light/dark/peach palettes via theme tokens
-//
-// Theme tokens are passed as props from <AvatarAnimal/> (resolved from
-// `useAppTheme().theme.isDark`). Defaults match the mint·light variant.
+// Each component flattens the source artwork's per-path fills so the
+// figure inherits a single `currentColor` from the parent <G>. The
+// silhouette tint is supplied by <AvatarAnimal/> based on theme
+// (primary forest in light, cream in dark). No gradient, no filter,
+// no drop shadow — minimal CPU + GPU work, which lets aging Android
+// hardware run them at 60fps with the rest of the relief stack
+// shelved.
 //
 // Usage: node scripts/generate-avatar-components.mjs
 //
@@ -38,39 +28,54 @@ const COMPONENTS_DIR = path.join(ROOT, 'mobile/assets/avatars/components')
 const INDEX_FILE = path.join(ROOT, 'mobile/assets/avatars/index.ts')
 
 // Spanish labels for each slug. Keep in sync with the Supabase seed
-// (migration 20260515000000_avatar_pack_argentine.sql).
+// (migration 20260515000000_avatar_pack_argentine.sql — superseded by
+// the latest pack-swap migration).
 const LABELS = {
   alpaca: 'Alpaca',
-  ballena: 'Ballena',
-  capibara: 'Capibara',
-  cerdo: 'Cerdo',
-  colibri: 'Colibrí',
-  condor: 'Cóndor',
-  flamenco: 'Flamenco',
-  gallina: 'Gallina',
-  gato: 'Gato',
-  hornero: 'Hornero',
-  lechuza: 'Lechuza',
-  'lobo-gris': 'Lobo gris',
-  'lobo-marino': 'Lobo marino',
-  mariposa: 'Mariposa',
-  'mono-aullador': 'Mono aullador',
-  nandu: 'Ñandú',
-  nutria: 'Nutria',
-  pato: 'Pato',
-  perro: 'Perro',
-  pinguino: 'Pingüino',
-  puma: 'Puma',
-  'tatu-carreta': 'Tatú carreta',
-  tortuga: 'Tortuga',
-  yaguarete: 'Yaguareté',
+  anteater: 'Oso hormiguero',
+  bat: 'Murciélago',
+  butterfly: 'Mariposa',
+  camel: 'Camello',
+  cat: 'Gato',
+  cow: 'Vaca',
+  crab: 'Cangrejo',
+  crocodile: 'Cocodrilo',
+  dog: 'Perro',
+  duck: 'Pato',
+  elephant: 'Elefante',
+  elk: 'Alce',
+  fish: 'Pez',
+  frog: 'Rana',
+  giraffe: 'Jirafa',
+  hippo: 'Hipopótamo',
+  husky: 'Husky',
+  kangaroo: 'Canguro',
+  lion: 'León',
+  macaw: 'Guacamayo',
+  manatee: 'Manatí',
+  mianyang: 'Carnero',
+  monkey: 'Mono',
+  mouse: 'Ratón',
+  octopus: 'Pulpo',
+  ostrich: 'Avestruz',
+  owl: 'Búho',
+  panda: 'Panda',
+  pelican: 'Pelícano',
+  penguin: 'Pingüino',
+  pig: 'Cerdo',
+  rabbit: 'Conejo',
+  raccoon: 'Mapache',
+  rhino: 'Rinoceronte',
+  rooster: 'Gallo',
+  shark: 'Tiburón',
+  squirrel: 'Ardilla',
+  swan: 'Cisne',
+  tiger: 'Tigre',
+  turtle: 'Tortuga',
+  whale: 'Ballena',
 }
 
 const VIEWBOX = 1024
-const FIGURE_SCALE = 0.85
-const TARGET_MAX_DIM = 0.78
-const STROKE_AREA_THRESHOLD = 0.025
-const STROKE_WIDTH = 5
 
 // ── helpers ───────────────────────────────────────────────────────────
 
@@ -89,7 +94,7 @@ const ATTR_RENAME = {
 }
 
 // Strips xmlns/xml:space, drops `fill` (set on parent <G>), camelCases
-// remaining kebab attributes. Used per-path in the silhouette body.
+// remaining kebab attributes.
 function transformPathAttributes(attrChunk) {
   return attrChunk.replace(
     /([a-zA-Z][a-zA-Z0-9_:-]*)=("[^"]*")/g,
@@ -102,255 +107,59 @@ function transformPathAttributes(attrChunk) {
   )
 }
 
-function isPerimeterRect(d) {
-  const ns = d.match(/-?\d+(?:\.\d+)?/g) || []
-  if (ns.length < 4 || ns.length % 2 !== 0) return false
-  for (let i = 0; i < ns.length; i += 2) {
-    const x = parseFloat(ns[i])
-    const y = parseFloat(ns[i + 1])
-    const onEdge =
-      Math.abs(x) < 0.5 ||
-      Math.abs(x - VIEWBOX) < 0.5 ||
-      Math.abs(y) < 0.5 ||
-      Math.abs(y - VIEWBOX) < 0.5
-    if (!onEdge) return false
-  }
-  return true
-}
-
-function bboxCoverage(d) {
-  const ns = d.match(/-?\d+(?:\.\d+)?/g) || []
-  if (ns.length < 4) return { x: 0, y: 0 }
-  let mnX = Infinity, mxX = -Infinity, mnY = Infinity, mxY = -Infinity
-  for (let i = 0; i < ns.length - 1; i += 2) {
-    const x = parseFloat(ns[i])
-    const y = parseFloat(ns[i + 1])
-    if (x < mnX) mnX = x
-    if (x > mxX) mxX = x
-    if (y < mnY) mnY = y
-    if (y > mxY) mxY = y
-  }
-  return { x: (mxX - mnX) / VIEWBOX, y: (mxY - mnY) / VIEWBOX, mnX, mxX, mnY, mxY }
-}
-
-function isBgWash(d) {
-  if (isPerimeterRect(d)) return true
-  const c = bboxCoverage(d)
-  return c.x >= 0.92 && c.y >= 0.92
-}
-
-function pathBboxArea(d) {
-  const c = bboxCoverage(d)
-  return c.x * c.y
-}
-
 function extractSvgInner(svgRaw) {
   const m = svgRaw.match(/<svg\b[^>]*>([\s\S]*)<\/svg>\s*$/)
   if (!m) throw new Error('Could not find <svg> root')
-  return m[2] !== undefined ? m[2] : m[1]
+  return m[1]
 }
 
-function buildBodies(rawInner) {
-  // Strip <defs> (only carried multicolor gradient definitions).
-  // For each <path>: drop BG washes, strip individual fills, collect
-  // into fillBody (all surviving paths) and outlineBody (subset whose
-  // bbox area ≥ STROKE_AREA_THRESHOLD).
+function buildBody(rawInner) {
+  // Strip <defs> (svgrepo SVGs use solid fills only — no gradients to
+  // preserve) and every per-path `fill="..."` so each <path> inherits
+  // the parent <G>'s fill (the theme tint passed in by AvatarAnimal).
   const noDefs = rawInner.replace(/<defs>[\s\S]*?<\/defs>/g, '')
-  const fillPaths = []
-  const outlinePaths = []
-  let mnX = Infinity, mxX = -Infinity, mnY = Infinity, mxY = -Infinity
-  noDefs.replace(/<path\b([^>]*?)\/>/g, (match, attrs) => {
-    const dM = attrs.match(/\bd="([^"]+)"/)
-    if (!dM) return ''
-    if (isBgWash(dM[1])) return ''
+  return noDefs.replace(/<path\b([^>]*?)\/>/g, (match, attrs) => {
     const cleaned = transformPathAttributes(attrs)
-    const tag = `<Path${cleaned}/>`
-    fillPaths.push(tag)
-    if (pathBboxArea(dM[1]) >= STROKE_AREA_THRESHOLD) {
-      outlinePaths.push(tag)
-    }
-    const ns = dM[1].match(/-?\d+(?:\.\d+)?/g) || []
-    for (let i = 0; i < ns.length - 1; i += 2) {
-      const x = parseFloat(ns[i])
-      const y = parseFloat(ns[i + 1])
-      if (x < mnX) mnX = x
-      if (x > mxX) mxX = x
-      if (y < mnY) mnY = y
-      if (y > mxY) mxY = y
-    }
-    return ''
+    return `<Path${cleaned}/>`
   })
-  return {
-    fillBody: fillPaths.join(''),
-    outlineBody: outlinePaths.join(''),
-    union: { mnX, mxX, mnY, mxY },
-    counts: { fill: fillPaths.length, outline: outlinePaths.length },
-  }
-}
-
-function adaptiveTransform(union) {
-  const w = (union.mxX - union.mnX) / VIEWBOX
-  const h = (union.mxY - union.mnY) / VIEWBOX
-  const maxDim = Math.max(w, h)
-  const scale = maxDim > FIGURE_SCALE
-    ? Math.min(FIGURE_SCALE, TARGET_MAX_DIM / maxDim)
-    : FIGURE_SCALE
-  const cx = (union.mnX + union.mxX) / 2
-  const cy = (union.mnY + union.mxY) / 2
-  return {
-    scale,
-    tx: VIEWBOX / 2 - cx * scale,
-    ty: VIEWBOX / 2 - cy * scale,
-  }
 }
 
 // ── component template ────────────────────────────────────────────────
 
-function buildComponentFile(slug, fillBody, outlineBody, transform) {
+function buildComponentFile(slug, body) {
   const name = `${pascalCase(slug)}Avatar`
-  const id = slug
   return `// AUTO-GENERATED — do not edit by hand.
 // Source: mobile/assets/avatars/raw/${slug}.svg
 // Regenerate via: node scripts/generate-avatar-components.mjs
 import * as React from 'react'
-import Svg, {
-  Path,
-  G as GRaw,
-  Defs as DefsRaw,
-  LinearGradient as LinearGradientRaw,
-  Stop as StopRaw,
-  Filter as FilterRaw,
-  FeGaussianBlur as FeGaussianBlurRaw,
-  FeOffset as FeOffsetRaw,
-  FeFlood as FeFloodRaw,
-  FeComposite as FeCompositeRaw,
-  FeMerge as FeMergeRaw,
-  FeMergeNode as FeMergeNodeRaw,
-} from 'react-native-svg'
+import Svg, { Path, G as GRaw } from 'react-native-svg'
 
-// react-native-svg's exported types omit several standard SVG filter
-// attributes (\`result\`, \`in\`, \`in2\`, \`floodColor\`, etc.) — runtime
-// works fine, only the TS surface is missing. We cast each tag through
-// React.FC with an explicit prop shape so the JSX below typechecks
-// (matches the codebase pattern in hero-sparkline.tsx / fern-logo.tsx).
+// react-native-svg's <G> type rejects children in TSX without a cast;
+// matches the codebase pattern in hero-sparkline.tsx / fern-logo.tsx.
 const G = GRaw as unknown as React.FC<{
   fill?: string
-  stroke?: string
-  strokeWidth?: number | string
-  strokeLinejoin?: string
-  strokeLinecap?: string
-  strokeOpacity?: number | string
-  filter?: string
-  transform?: string
   children?: React.ReactNode
 }>
-const Defs = DefsRaw as unknown as React.FC<{ children?: React.ReactNode }>
-const LinearGradient = LinearGradientRaw as unknown as React.FC<{
-  id: string
-  x1: string | number
-  y1: string | number
-  x2: string | number
-  y2: string | number
-  children?: React.ReactNode
-}>
-const Stop = StopRaw as unknown as React.FC<{
-  offset: string | number
-  stopColor: string
-  stopOpacity?: string | number
-}>
-const Filter = FilterRaw as unknown as React.FC<{
-  id: string
-  x?: string | number
-  y?: string | number
-  width?: string | number
-  height?: string | number
-  children?: React.ReactNode
-}>
-const FeGaussianBlur = FeGaussianBlurRaw as unknown as React.FC<{
-  in?: string
-  stdDeviation?: number | string
-  result?: string
-}>
-const FeOffset = FeOffsetRaw as unknown as React.FC<{
-  in?: string
-  dx?: number | string
-  dy?: number | string
-  result?: string
-}>
-const FeFlood = FeFloodRaw as unknown as React.FC<{
-  floodColor?: string
-  floodOpacity?: number | string
-  result?: string
-}>
-const FeComposite = FeCompositeRaw as unknown as React.FC<{
-  in?: string
-  in2?: string
-  operator?: string
-  result?: string
-}>
-const FeMerge = FeMergeRaw as unknown as React.FC<{ children?: React.ReactNode }>
-const FeMergeNode = FeMergeNodeRaw as unknown as React.FC<{ in?: string }>
 
 interface ${name}Props {
   size?: number
-  /** Top-of-gradient color (highlight). */
-  gradStart?: string
-  /** Mid-gradient color. */
-  gradMid?: string
-  /** Bottom-of-gradient color (deepest). */
-  gradEnd?: string
-  /** Selective outline color drawn on major contour paths. */
-  stroke?: string
-  /** Drop shadow color. */
-  shadow?: string
-  /** Drop shadow opacity (0..1). */
-  shadowOpacity?: number
+  /** Silhouette tint. Defaults to a deep forest that reads on cream;
+   *  pass the theme primary in light mode or cream in dark mode from
+   *  <AvatarAnimal/>. */
+  color?: string
 }
 
 /**
- * Relief-style avatar — silhouette flattened from the source artwork,
- * filled with a diagonal gradient (top-left light → bottom-right deep),
- * with a soft drop shadow + a sparse stroke pass on major contours.
- * Theme tokens (gradStart/gradMid/gradEnd/stroke/shadow) are resolved
- * upstream by <AvatarAnimal /> from \`useAppTheme()\`.
+ * Monochrome silhouette — every path in the source artwork is
+ * stripped of its own \`fill\` and inherits the parent <G>'s color.
+ * No gradient, no filter, no drop shadow — keeps render cost flat for
+ * older Android hardware while staying recognizable on iOS.
  */
-export function ${name}({
-  size = 64,
-  gradStart = '#F4FDF2',
-  gradMid = '#A6EF8F',
-  gradEnd = '#297811',
-  stroke = '#1F590D',
-  shadow = '#1F590D',
-  shadowOpacity = 0.42,
-}: ${name}Props) {
+export function ${name}({ size = 64, color = '#297811' }: ${name}Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 ${VIEWBOX} ${VIEWBOX}">
-      <Defs>
-        <LinearGradient id="bodyGrad-${id}" x1="15%" y1="10%" x2="85%" y2="92%">
-          <Stop offset="0%" stopColor={gradStart} />
-          <Stop offset="55%" stopColor={gradMid} />
-          <Stop offset="100%" stopColor={gradEnd} />
-        </LinearGradient>
-        <Filter id="shadow-${id}" x="-25%" y="-20%" width="150%" height="160%">
-          <FeGaussianBlur in="SourceAlpha" stdDeviation="12" />
-          <FeOffset dx="0" dy="20" result="off" />
-          <FeFlood floodColor={shadow} floodOpacity={shadowOpacity} />
-          <FeComposite in2="off" operator="in" />
-          <FeMerge>
-            <FeMergeNode />
-            <FeMergeNode in="SourceGraphic" />
-          </FeMerge>
-        </Filter>
-      </Defs>
-      <G filter="url(#shadow-${id})">
-        <G transform="translate(${transform.tx.toFixed(2)} ${transform.ty.toFixed(2)}) scale(${transform.scale.toFixed(4)})">
-          <G fill="url(#bodyGrad-${id})">
-            ${fillBody}
-          </G>
-          <G fill="none" stroke={stroke} strokeWidth={${STROKE_WIDTH}} strokeLinejoin="round" strokeLinecap="round" strokeOpacity={0.55}>
-            ${outlineBody}
-          </G>
-        </G>
+      <G fill={color}>
+        ${body}
       </G>
     </Svg>
   )
@@ -377,11 +186,11 @@ function buildIndexFile(slugs) {
     .join('\n')
 
   return `// AUTO-GENERATED avatar registry. Maps DB slugs (public.avatar_animals.slug)
-// to React Native Svg relief-style components. Regenerate via:
+// to React Native Svg components. Regenerate via:
 //   node scripts/generate-avatar-components.mjs
 //
-// If you add/remove a slug here, update the Supabase seed in
-// migration 20260515000000_avatar_pack_argentine.sql too.
+// If you add/remove a slug here, update the Supabase seed in the
+// latest avatar-pack migration too.
 //
 // \`AvatarAnimal\` and \`AvatarAnimalRow\` USED to be re-exported from
 // here, but that produced a require cycle:
@@ -398,18 +207,8 @@ ${slugUnion}
 
 export interface AvatarComponentProps {
   size?: number
-  /** Top-of-gradient color (highlight). */
-  gradStart?: string
-  /** Mid-gradient color. */
-  gradMid?: string
-  /** Bottom-of-gradient color (deepest). */
-  gradEnd?: string
-  /** Selective outline color drawn on major contour paths. */
-  stroke?: string
-  /** Drop shadow color. */
-  shadow?: string
-  /** Drop shadow opacity (0..1). */
-  shadowOpacity?: number
+  /** Silhouette tint. */
+  color?: string
 }
 
 export type AvatarComponent = ComponentType<AvatarComponentProps>
@@ -473,17 +272,10 @@ function main() {
     const raw = fs.readFileSync(svgPath, 'utf8')
     const noXmlDecl = raw.replace(/<\?xml[^?]*\?>/, '').trim()
     const inner = extractSvgInner(noXmlDecl)
-    const { fillBody, outlineBody, union, counts } = buildBodies(inner)
-    const transform = adaptiveTransform(union)
-    const file = buildComponentFile(slug, fillBody, outlineBody, transform)
+    const body = buildBody(inner)
+    const file = buildComponentFile(slug, body)
     fs.writeFileSync(path.join(COMPONENTS_DIR, `${slug}.tsx`), file, 'utf8')
-    if (process.env.AVATAR_GEN_VERBOSE) {
-      process.stdout.write(
-        `✓ ${slug}.tsx — fill=${counts.fill} outline=${counts.outline} scale=${transform.scale.toFixed(3)}\n`,
-      )
-    } else {
-      process.stdout.write(`✓ ${slug}.tsx\n`)
-    }
+    process.stdout.write(`✓ ${slug}.tsx\n`)
   }
 
   fs.writeFileSync(INDEX_FILE, buildIndexFile(slugs), 'utf8')

@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
+import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
   Dimensions,
   useWindowDimensions,
@@ -66,6 +67,12 @@ export function useLoginController() {
   // rendered screen. The dead code path is gone — see commit history
   // if you need the previous implementation.
   const handleSignedInTransition = useCallback(() => {
+    // Any successful sign-in (password, biometric refresh, or
+    // post-onboarding wizard) also unlocks the app-lock gate.
+    // Otherwise AppEntryGate would loop the user back to the lock
+    // screen even though they just authenticated. The unlock state
+    // resets on the next cold start and on explicit logout.
+    markAppUnlocked()
     showAuthTransitionSplash()
     router.replace('/')
   }, [router])

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
+import { useAppLockState } from '@/features/auth/app-lock-state'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
 import { useFamily } from '@/features/family/use-family'
@@ -23,13 +24,23 @@ export function AppEntryGate() {
   // user has no session, we usually already know whether biometrics
   // are set up.
   const biometric = useColdStartBiometricCheck()
+  // App-lock gate: even when the session is valid we require a
+  // biometric re-confirmation on every cold start (banking-app
+  // pattern). `useAppLockState` starts at `false` after the JS
+  // runtime initializes and flips to `true` once the user passes
+  // Face ID / Touch ID via the lock screen below.
+  const isAppUnlocked = useAppLockState()
   const isLoading =
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||
     (Boolean(userId) && profileQuery.isLoading) ||
-    // Wait for the biometric probe ONLY when we don't have a session
-    // (otherwise the redirect to home shouldn't be blocked by it).
-    (!userId && !sessionQuery.isLoading && biometric.status === 'loading')
+    // Wait for the biometric probe whenever its result affects the
+    // routing decision — i.e. whenever we haven't already unlocked
+    // the app this launch. Without this, family/profile finishing
+    // before the SecureStore read could let AppEntryGate redirect
+    // to home with `biometric.shouldUseBiometric === false` (the
+    // stale initial value), skipping the lock gate entirely.
+    (biometric.status === 'loading' && !isAppUnlocked)
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
@@ -63,6 +74,21 @@ export function AppEntryGate() {
       return <Redirect href="/(auth)/login?autoBiometric=1" />
     }
     return <Redirect href="/(auth)/welcome" />
+  }
+
+  // App-lock gate: session is valid, but we still require a per-
+  // launch biometric re-confirmation (banking pattern). Send the
+  // user to the login screen with `lock=1` so it runs in unlock
+  // mode (Face ID only, no Supabase refresh — the session is
+  // already valid). On success the lock screen sets isUnlocked and
+  // navigates back through here.
+  //
+  // Skip the lock when biometric isn't set up (e.g. new user just
+  // signed up on this device): there's nothing to authenticate
+  // against. The first successful manual login on this install
+  // arms biometrics for subsequent launches.
+  if (biometric.shouldUseBiometric && !isAppUnlocked) {
+    return <Redirect href="/(auth)/login?autoBiometric=1&lock=1" />
   }
 
   // First-login onboarding wizard — has to be checked BEFORE the

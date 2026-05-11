@@ -187,13 +187,40 @@ export function useAuthBiometricController({
 
         onSignedIn()
       } catch (error) {
-        // Network / Supabase failed — hide the splash so the
-        // error UI on the auth screen is reachable.
+        // Supabase couldn't refresh the session — most commonly because
+        // the stored refresh token expired or got rotated server-side
+        // (default Supabase refresh-token lifetime: 30 days). We
+        // INTENTIONALLY do NOT clear the credentials here.
+        //
+        // Why we used to clear, and why that was wrong UX:
+        //   Clearing wiped the email metadata too, so
+        //   `hasSavedCredentials` flipped to false and the next cold
+        //   start landed the user on the welcome hero instead of the
+        //   personalized Face ID screen — even though their biometric
+        //   enrolment was still valid and the only problem was a
+        //   server-side token rotation. The user perceived this as
+        //   "Face ID stopped working" with no recovery path.
+        //
+        // What we do instead:
+        //   Keep the credentials blob + metadata in Keychain. The next
+        //   cold start re-fires the auto-prompt as expected. After a
+        //   successful manual password sign-in,
+        //   `persistBiometricCredentials` overwrites the stored
+        //   refresh token with the fresh one — so Face ID auto-recovers
+        //   without the user having to re-enable anything in Settings.
+        //
+        // Explicit sign-out via the Settings → Cerrar sesión flow
+        // still clears credentials (see `logout.ts`); this only
+        // changes the implicit "session died on its own" path.
         hideAuthTransitionSplash()
-        await clearBiometricCredentials()
         await refreshBiometricState()
         void triggerHaptic('error')
-        onErrorMessage(getErrorMessage(error, `No pudimos ingresar con ${biometricState.label}.`))
+        onErrorMessage(
+          getErrorMessage(
+            error,
+            `Tu sesión expiró. Ingresá con tu contraseña una vez para reactivar ${biometricState.label}.`,
+          ),
+        )
       } finally {
         submissionLockRef.current = false
         setBiometricSubmitting(false)

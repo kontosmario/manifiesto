@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import {
   AVATAR_LABELS,
@@ -9,8 +10,8 @@ import { useAppTheme } from '@/theme/theme-provider'
 export interface AvatarAnimalProps {
   slug: AvatarSlug
   size?: number
-  /** @deprecated Kept for backward compatibility. The relief variant
-   *  resolves its own tokens from theme; this prop is ignored. */
+  /** Silhouette tint override. Falls back to the theme default
+   *  (primary-800 in light, cream in dark) when omitted. */
   tint?: string
   /** Circular background wash behind the silhouette. Defaults to the
    *  theme's `creamSoft` (light) / `creamCard` (dark). */
@@ -20,44 +21,34 @@ export interface AvatarAnimalProps {
   style?: ViewStyle
 }
 
-// Theme tokens for the relief silhouette — mirrors the mint variant
-// from the design preview (tmp/avatar-relief-preview.html). Light uses
-// the primary mint scale anchored at primary-300/800 with a primary-900
-// drop shadow; dark inverts the lightness so the figure pops against
-// the forest-mid avatar ring.
-const RELIEF_TOKENS = {
-  light: {
-    gradStart: '#F4FDF2', // primary-50 (top-left highlight)
-    gradMid: '#A6EF8F',   // primary-300
-    gradEnd: '#297811',   // primary-800 (bottom-right deep)
-    stroke: '#1F590D',    // primary-900 (selective contour)
-    shadow: '#1F590D',    // primary-900
-    shadowOpacity: 0.42,
-  },
-  dark: {
-    gradStart: '#D1F7C5', // primary-200
-    gradMid: '#77E755',   // primary-400
-    gradEnd: '#1F590D',   // primary-900
-    stroke: '#0F2D06',    // primary-950
-    shadow: '#0A140C',    // forest near-black
-    shadowOpacity: 0.65,
-  },
+// Silhouette tint — single color per theme mode. The SVG body is
+// flattened to a unified silhouette (no gradient, no filter, no drop
+// shadow) so each avatar render is essentially one `fillPath` call
+// per path. That's a fraction of the cost of the previous relief
+// stack on older Android hardware and keeps the visual identity
+// "simple" — which matches the user's design preference.
+const SILHOUETTE_TINTS = {
+  light: '#297811', // primary-800 — deep forest silhouette on cream
+  dark: '#F2EAD3', // cream — light silhouette on the dark forest ring
 } as const
 
+// Glyph occupies ~72% of the avatar diameter — gives the figure
+// natural breathing room inside the circular ring without needing
+// any per-svg transform (the svgrepo sources already have their own
+// internal padding).
+const GLYPH_RATIO = 0.72
+
 /**
- * Circular animal avatar built from the relief SVG pack at
+ * Circular animal avatar built from the monochrome SVG pack at
  * mobile/assets/avatars/components/<slug>.tsx. Renders:
  *   - a tinted background circle (creamSoft / creamCard from theme),
- *   - the relief silhouette filling the full circle (the SVG carries
- *     its own internal padding via the adaptive transform baked into
- *     each component, so there's no need for the size×0.66 shrink the
- *     monochrome pack used).
+ *   - the silhouette centered at size × GLYPH_RATIO so the animal
+ *     sits comfortably inside the ring,
  *   - an optional ring border (used by FamilyStrip overlap stacks).
  *
- * Light/dark variants are driven by theme tokens (RELIEF_TOKENS) passed
- * through as gradient/stroke/shadow color props.
+ * Both light and dark mode are supported via theme-driven tint.
  */
-export function AvatarAnimal({
+function AvatarAnimalImpl({
   slug,
   size = 64,
   tint,
@@ -67,11 +58,12 @@ export function AvatarAnimal({
 }: AvatarAnimalProps) {
   const { theme } = useAppTheme()
   const Component = getAvatarComponent(slug)
-  void tint
   const resolvedBackground =
     backgroundTint ??
     (theme.isDark ? theme.colors.creamCard : theme.colors.creamSoft)
-  const reliefTokens = theme.isDark ? RELIEF_TOKENS.dark : RELIEF_TOKENS.light
+  const resolvedTint =
+    tint ?? (theme.isDark ? SILHOUETTE_TINTS.dark : SILHOUETTE_TINTS.light)
+  const glyphSize = Math.round(size * GLYPH_RATIO)
 
   return (
     <View
@@ -91,10 +83,22 @@ export function AvatarAnimal({
       ]}
     >
       {/* eslint-disable-next-line react-hooks/static-components -- Component is a stable lookup from a frozen registry, not a created component */}
-      <Component size={size} {...reliefTokens} />
+      <Component size={glyphSize} color={resolvedTint} />
     </View>
   )
 }
+
+/**
+ * Memoized. Parents re-rendering for unrelated reasons (data refresh,
+ * theme toggle in a sibling subtree, etc.) no longer re-render the
+ * silhouette SVG. Shallow prop compare is enough since `slug`/`size`/
+ * `tint`/`ringColor`/`backgroundTint` are primitives; only `style`
+ * (optional ViewStyle) can be unstable from callers. Callers passing
+ * inline `style={{...}}` will defeat memoization for that one Avatar —
+ * acceptable because in practice almost every callsite either omits
+ * `style` or passes a constant.
+ */
+export const AvatarAnimal = memo(AvatarAnimalImpl)
 
 export interface AvatarAnimalRowProps {
   slug: AvatarSlug
@@ -110,7 +114,7 @@ export interface AvatarAnimalRowProps {
  * `selected` is true the row adopts the primary accent border and the
  * button flips to an active state.
  */
-export function AvatarAnimalRow({
+function AvatarAnimalRowImpl({
   slug,
   selected = false,
   onSelect,
@@ -173,6 +177,16 @@ export function AvatarAnimalRow({
     </Pressable>
   )
 }
+
+/**
+ * Memoized for the same reasons as AvatarAnimal. Onboarding's avatar
+ * picker renders 8 of these simultaneously; without memo, any
+ * unrelated parent re-render (e.g., theme tick, animation frame from
+ * Reanimated's LinearTransition) reruns all 8 silhouettes. Note:
+ * `onSelect` must be stable from the caller for memo to take effect —
+ * step-avatar.tsx passes a `setDraft` from useState, which IS stable.
+ */
+export const AvatarAnimalRow = memo(AvatarAnimalRowImpl)
 
 const styles = StyleSheet.create({
   container: {

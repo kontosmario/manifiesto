@@ -1,4 +1,6 @@
+import { memo, useCallback, useMemo } from 'react'
 import { Tabs } from 'expo-router'
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import {
   AddExpenseTabButton,
   TabBarBackground,
@@ -11,14 +13,22 @@ import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
 import { useAppTheme } from '@/theme/theme-provider'
 
+// ─── Memoized leaf components ───────────────────────────────────
+// The tab bar re-renders on every navigation event (focus changes,
+// pulse publishes, theme readers). Wrapping the leaves in `memo`
+// keeps each icon/background/button render cheap and stops their
+// internal hooks (e.g. `useAdvisorBadge`) from re-evaluating unless
+// their props actually change.
+
 /**
- * Control tab icon — sibling of `TabBarIcon` that overlays an unread
- * dot when the advisor has high-priority signals the user hasn't
- * seen since the last visit. Rendered as a dedicated component so the
- * `useAdvisorBadge` hook (which depends on auth + family + advisor
- * data) only mounts once per tab render.
+ * Control tab icon — overlays an unread dot when the advisor has
+ * high-priority signals. `useAdvisorBadge` reads from React-Query
+ * cache, so the cost here is hook bookkeeping + a Map filter; cheap
+ * per render but we still memo so it doesn't re-run while the user
+ * is on Home/Gastos/Fijos (the icon's color/focused/size don't change
+ * during transitions, so this turns the cost into 0).
  */
-function InsightsTabIcon({
+const InsightsTabIcon = memo(function InsightsTabIcon({
   color,
   focused,
   size,
@@ -38,78 +48,82 @@ function InsightsTabIcon({
       showAlert={show}
     />
   )
+})
+
+const MemoTabBarBackground = memo(TabBarBackground)
+
+const renderTabBarBackground = () => <MemoTabBarBackground />
+const renderAddExpenseButton = (props: BottomTabBarButtonProps) => (
+  <AddExpenseTabButton {...props} />
+)
+
+interface TabIconRenderProps {
+  color: string
+  focused: boolean
+  size: number
 }
+
+const renderHomeIcon = ({ color, focused, size }: TabIconRenderProps) => (
+  <TabBarIcon color={color} fallback="home" focused={focused} name="house.fill" size={size} />
+)
+const renderExpensesIcon = ({ color, focused, size }: TabIconRenderProps) => (
+  <TabBarIcon
+    color={color}
+    fallback="receipt-long"
+    focused={focused}
+    name="list.bullet.rectangle.portrait.fill"
+    size={size}
+  />
+)
+const renderFijosIcon = ({ color, focused, size }: TabIconRenderProps) => (
+  <TabBarIcon color={color} fallback="payments" focused={focused} name="calendar.badge.clock" size={size} />
+)
+const renderInsightsIcon = ({ color, focused, size }: TabIconRenderProps) => (
+  <InsightsTabIcon color={color} focused={focused} size={size} />
+)
+const renderAddIcon = () => null
 
 export function AppTabs() {
   const { theme } = useAppTheme()
   const tabHaptics = useTabHaptics()
 
+  // Theme-dependent option chunks are the only thing that should
+  // recompute on theme change. Everything else (icon renderers, tab
+  // bar background, button) is module-level so the closure identity
+  // is stable across renders.
+  const renderTabBarLabel = useCallback(
+    ({ children, focused }: { children: string; focused: boolean }) => (
+      <TabLabel focused={focused}>{String(children)}</TabLabel>
+    ),
+    [],
+  )
+
+  const screenOptions = useMemo(
+    () => ({
+      freezeOnBlur: false,
+      headerShown: false,
+      sceneStyle: { backgroundColor: theme.colors.background },
+      tabBarActiveTintColor: theme.colors.primaryStrong,
+      tabBarInactiveTintColor: theme.colors.textSoft,
+      tabBarHideOnKeyboard: true,
+      tabBarLabel: renderTabBarLabel,
+      tabBarItemStyle: tabBarUiStyles.item,
+      tabBarStyle: buildFloatingTabBarStyle(theme),
+      tabBarBackground: renderTabBarBackground,
+    }),
+    [theme, renderTabBarLabel],
+  )
+
   return (
-    <Tabs
-      screenListeners={tabHaptics}
-      screenOptions={{
-        freezeOnBlur: false,
-        headerShown: false,
-        sceneStyle: { backgroundColor: theme.colors.background },
-        tabBarActiveTintColor: theme.colors.primaryStrong,
-        tabBarInactiveTintColor: theme.colors.textSoft,
-        tabBarHideOnKeyboard: true,
-        tabBarLabel: ({ children, focused }) => <TabLabel focused={focused}>{String(children)}</TabLabel>,
-        tabBarItemStyle: tabBarUiStyles.item,
-        tabBarStyle: buildFloatingTabBarStyle(theme),
-        tabBarBackground: () => <TabBarBackground />,
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, focused, size }) => (
-            <TabBarIcon color={color} fallback="home" focused={focused} name="house.fill" size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="expenses"
-        options={{
-          title: 'Gastos',
-          tabBarIcon: ({ color, focused, size }) => (
-            <TabBarIcon
-              color={color}
-              fallback="receipt-long"
-              focused={focused}
-              name="list.bullet.rectangle.portrait.fill"
-              size={size}
-            />
-          ),
-        }}
-      />
+    <Tabs screenListeners={tabHaptics} screenOptions={screenOptions}>
+      <Tabs.Screen name="home" options={{ title: 'Inicio', tabBarIcon: renderHomeIcon }} />
+      <Tabs.Screen name="expenses" options={{ title: 'Gastos', tabBarIcon: renderExpensesIcon }} />
       <Tabs.Screen
         name="add"
-        options={{
-          title: 'Agregar',
-          tabBarButton: (props) => <AddExpenseTabButton {...props} />,
-          tabBarIcon: () => null,
-        }}
+        options={{ title: 'Agregar', tabBarButton: renderAddExpenseButton, tabBarIcon: renderAddIcon }}
       />
-      <Tabs.Screen
-        name="fixed-expenses"
-        options={{
-          title: 'Fijos',
-          tabBarIcon: ({ color, focused, size }) => (
-            <TabBarIcon color={color} fallback="payments" focused={focused} name="calendar.badge.clock" size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="insights"
-        options={{
-          title: 'Control',
-          tabBarIcon: ({ color, focused, size }) => (
-            <InsightsTabIcon color={color} focused={focused} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="fixed-expenses" options={{ title: 'Fijos', tabBarIcon: renderFijosIcon }} />
+      <Tabs.Screen name="insights" options={{ title: 'Control', tabBarIcon: renderInsightsIcon }} />
     </Tabs>
   )
 }

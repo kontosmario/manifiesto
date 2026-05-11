@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
@@ -200,6 +200,31 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const [streakSheetVisible, setStreakSheetVisible] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
+  // ─── Row-entrance animation gate ─────────────────────────────────
+  // The Animated.View wrapping each SectionList row carries
+  // `entering={FadeIn}` + `layout={LinearTransition}` to make filter
+  // changes feel smooth. The side-effect of leaving those props on
+  // permanently is that EVERY cold tab mount (and every recycle of a
+  // virtualized row while scrolling) re-fires the FadeIn worklet —
+  // contending with the 240ms native tab-switch transition. Gate the
+  // animation behind a transient flag that flips on for ~500ms only
+  // after the user changes a filter, then off again. Cold mount and
+  // plain scroll → 0 entering worklets.
+  const [rowAnimationEnabled, setRowAnimationEnabled] = useState(false)
+  const filterSignature = `${controller.selectedCategoryId ?? ''}|${controller.selectedDay ?? ''}`
+  const initialFilterSignatureRef = useRef(filterSignature)
+  const lastFilterSignatureRef = useRef(filterSignature)
+  useEffect(() => {
+    // Skip the very first effect run (mount). After that, any signature
+    // change is a real filter toggle by the user.
+    if (lastFilterSignatureRef.current === filterSignature) return
+    lastFilterSignatureRef.current = filterSignature
+    if (filterSignature === initialFilterSignatureRef.current) return
+    setRowAnimationEnabled(true)
+    const timeout = setTimeout(() => setRowAnimationEnabled(false), 500)
+    return () => clearTimeout(timeout)
+  }, [filterSignature])
+
   const handleDelete = useCallback(
     (expenseId: string) => {
       void triggerHaptic('warning')
@@ -369,15 +394,17 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       return (
         // Wrapping in Animated.View with entering/exiting + layout
         // makes filter changes (category pill, day selection) feel
-        // smooth instead of snapping: rows fade in as they enter the
-        // filtered set, fade out as they leave, and slide into their
-        // new position when remaining rows reflow. Item key (item.id)
-        // is stable so unrelated rows don't re-trigger the entrance.
+        // smooth instead of snapping. `entering`/`layout` are gated
+        // by `rowAnimationEnabled` so cold mount + virtualized scroll
+        // recycle don't fire worklets that contend with the tab
+        // transition. `exiting` stays on because rows leaving the
+        // filtered set should always fade out (the parent stays
+        // mounted, so the cost is bounded to actual deletions).
         <Animated.View
           style={styles.rowWrap}
-          entering={FadeIn.duration(180)}
+          entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
           exiting={FadeOut.duration(140)}
-          layout={LinearTransition.duration(220)}
+          layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
         >
           <SwipeableRow
             accessibilityLabel={a11yLabel}
@@ -410,19 +437,21 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       handleDelete,
       deleteExpenseMutation,
       theme.colors.textMuted,
+      rowAnimationEnabled,
     ],
   )
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<Expense, MovimientosSection> }) => (
       // Section headers also fade in / reflow when filtering changes
-      // which day groups exist. Slightly faster than rows so the day
-      // label arrives a beat before its rows finish entering.
+      // which day groups exist. Same gating logic as rows: cold mount
+      // → no entering animation; user toggles a filter → 500ms window
+      // where new sections fade in.
       <Animated.View
         style={[styles.groupHeader, { backgroundColor: theme.colors.background }]}
-        entering={FadeIn.duration(160)}
+        entering={rowAnimationEnabled ? FadeIn.duration(160) : undefined}
         exiting={FadeOut.duration(120)}
-        layout={LinearTransition.duration(220)}
+        layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
       >
         <View>
           <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
@@ -437,7 +466,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         </Text>
       </Animated.View>
     ),
-    [theme.colors.background, theme.colors.text, theme.colors.textSoft],
+    [theme.colors.background, theme.colors.text, theme.colors.textSoft, rowAnimationEnabled],
   )
 
   const keyExtractor = useCallback((item: Expense) => item.id, [])

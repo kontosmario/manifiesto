@@ -192,6 +192,23 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   }
 }
 
+// Android API 30 (Android 11) introduced support for
+// `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` as a combined authenticator.
+// On API 29 (Android 10) AndroidX's `BiometricPrompt.PromptInfo.Builder.build()`
+// throws `IllegalArgumentException: Authenticator combination is
+// unsupported on API 29: BIOMETRIC_STRONG | DEVICE_CREDENTIAL` when
+// `biometricsSecurityLevel: 'strong'` is paired with
+// `disableDeviceFallback: false`. We downgrade the requirement to
+// `'weak'` on older Android — the combo `BIOMETRIC_WEAK |
+// DEVICE_CREDENTIAL` IS supported on API 29, and on real S9-class
+// devices most enrolled biometrics already register as WEAK (Google's
+// strict criteria for STRONG excluded a lot of pre-2020 hardware), so
+// the user-visible UX is unchanged.
+const ANDROID_REQUIRES_WEAK_BIOMETRIC =
+  Platform.OS === 'android' &&
+  typeof Platform.Version === 'number' &&
+  Platform.Version < 30
+
 export async function authenticateBiometricAccess(
   options?: { promptMessage?: string },
 ) {
@@ -200,6 +217,6 @@ export async function authenticateBiometricAccess(
     cancelLabel: 'Cancelar',
     fallbackLabel: Platform.OS === 'ios' ? 'Usar código' : undefined,
     disableDeviceFallback: false,
-    biometricsSecurityLevel: 'strong',
+    biometricsSecurityLevel: ANDROID_REQUIRES_WEAK_BIOMETRIC ? 'weak' : 'strong',
   })
 }

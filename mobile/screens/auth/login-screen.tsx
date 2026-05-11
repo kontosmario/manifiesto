@@ -29,7 +29,10 @@ import { FernLogo } from '@/components/auth/fern-logo'
 import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
+import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { useLoginController } from '@/features/auth/use-login-controller'
+import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { authenticateBiometricAccess } from '@/lib/biometric-auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
 import { triggerHaptic } from '@/lib/haptics'
@@ -75,8 +78,14 @@ export function LoginScreen() {
   // expecting the prompt to fire on its own — the user shouldn't have
   // to tap anything. We read the param once, fire the prompt, then
   // clear it so a back-navigate or remount can't re-trigger.
-  const params = useLocalSearchParams<{ autoBiometric?: string }>()
+  const params = useLocalSearchParams<{ autoBiometric?: string; lock?: string }>()
   const autoBiometricFiredRef = useRef(false)
+  // `lock=1` is set by AppEntryGate when the session is valid but
+  // we still require a biometric re-confirmation on cold start.
+  // In this mode `triggerFaceID` skips the Supabase refresh path
+  // (the session doesn't need refreshing) and instead just runs
+  // the native authenticator + flips the in-memory unlock state.
+  const isLockMode = params.lock === '1'
 
   const {
     actions,
@@ -257,6 +266,30 @@ export function LoginScreen() {
     await triggerHaptic('selection')
     setStatus('scanning')
     try {
+      if (isLockMode) {
+        // App-lock unlock path: just authenticate Face ID, then
+        // mark the app unlocked and route home. No Supabase
+        // refresh — the session is already valid; this gate is
+        // purely a per-launch security re-confirmation. On cancel
+        // we fall through to 'idle' so the user sees the full
+        // login hero with retry CTA + secondary buttons.
+        const result = await authenticateBiometricAccess({
+          promptMessage: 'Desbloqueá Manifiesto',
+        })
+        if (result.success) {
+          await triggerHaptic('success')
+          // Show the fern transition splash so the user sees the
+          // same visual handshake as a fresh sign-in (Face ID OK →
+          // fern → home), not a bare route change. AppEntryGate
+          // calls `markAuthTransitionLoaded` once routing settles.
+          showAuthTransitionSplash()
+          markAppUnlocked()
+          router.replace('/')
+          return
+        }
+        setStatus('idle')
+        return
+      }
       await actions.handleBiometricSignIn()
       // `handleBiometricSignIn` swallows every non-success path
       // internally — cancellations, stale credentials, and network
@@ -274,7 +307,7 @@ export function LoginScreen() {
       userPickedModeRef.current = true
       setFormMode('use-password')
     }
-  }, [actions, isBusy, status])
+  }, [actions, isBusy, status, isLockMode, router])
 
   // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
   // Guarded by a ref so a setState-driven re-render (e.g. status flips
@@ -347,8 +380,8 @@ export function LoginScreen() {
 
   const ctaBg = status === 'authed' ? FOCUS : DARK_GREEN
 
-  return (
-    <RequireGuest allowFamilylessSession>
+  const body = (
+    <>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       {/*
         Standard mobile login pattern: a single ScrollView wraps the
@@ -610,7 +643,22 @@ export function LoginScreen() {
             ) : null}
         </View>
       </Screen>
-    </RequireGuest>
+    </>
+  )
+
+  // App-lock mode: the user IS authenticated. `RequireGuest` would
+  // bounce them straight to home (session + family valid) and the
+  // biometric gate would never render. Skip the guard — the
+  // session-validity check already happened upstream in
+  // `AppEntryGate`. The lock UI is identical to the returning-user
+  // hero; only the side-effect of `triggerFaceID` differs (Face ID
+  // unlock instead of Supabase refresh).
+  if (isLockMode) {
+    return body
+  }
+
+  return (
+    <RequireGuest allowFamilylessSession>{body}</RequireGuest>
   )
 }
 
