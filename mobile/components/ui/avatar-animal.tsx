@@ -9,24 +9,53 @@ import { useAppTheme } from '@/theme/theme-provider'
 export interface AvatarAnimalProps {
   slug: AvatarSlug
   size?: number
-  /** Drives SVG currentColor. Defaults to `theme.colors.text`. */
+  /** @deprecated Kept for backward compatibility. The relief variant
+   *  resolves its own tokens from theme; this prop is ignored. */
   tint?: string
-  /** Circular background wash behind the silhouette. */
+  /** Circular background wash behind the silhouette. Defaults to the
+   *  theme's `creamSoft` (light) / `creamCard` (dark). */
   backgroundTint?: string
   /** Optional ring around the circle (matches the initials Avatar API). */
   ringColor?: string
   style?: ViewStyle
 }
 
+// Theme tokens for the relief silhouette — mirrors the mint variant
+// from the design preview (tmp/avatar-relief-preview.html). Light uses
+// the primary mint scale anchored at primary-300/800 with a primary-900
+// drop shadow; dark inverts the lightness so the figure pops against
+// the forest-mid avatar ring.
+const RELIEF_TOKENS = {
+  light: {
+    gradStart: '#F4FDF2', // primary-50 (top-left highlight)
+    gradMid: '#A6EF8F',   // primary-300
+    gradEnd: '#297811',   // primary-800 (bottom-right deep)
+    stroke: '#1F590D',    // primary-900 (selective contour)
+    shadow: '#1F590D',    // primary-900
+    shadowOpacity: 0.42,
+  },
+  dark: {
+    gradStart: '#D1F7C5', // primary-200
+    gradMid: '#77E755',   // primary-400
+    gradEnd: '#1F590D',   // primary-900
+    stroke: '#0F2D06',    // primary-950
+    shadow: '#0A140C',    // forest near-black
+    shadowOpacity: 0.65,
+  },
+} as const
+
 /**
- * Circular animal avatar built from the monochrome SVG pack at
+ * Circular animal avatar built from the relief SVG pack at
  * mobile/assets/avatars/components/<slug>.tsx. Renders:
- *   - a soft tinted background circle (≈ diameter = size),
- *   - the silhouette centered at size * 0.66 (so the animal stays
- *     visually inside the circle without kissing the edge),
+ *   - a tinted background circle (creamSoft / creamCard from theme),
+ *   - the relief silhouette filling the full circle (the SVG carries
+ *     its own internal padding via the adaptive transform baked into
+ *     each component, so there's no need for the size×0.66 shrink the
+ *     monochrome pack used).
  *   - an optional ring border (used by FamilyStrip overlap stacks).
  *
- * Both light and dark mode are supported via theme tokens.
+ * Light/dark variants are driven by theme tokens (RELIEF_TOKENS) passed
+ * through as gradient/stroke/shadow color props.
  */
 export function AvatarAnimal({
   slug,
@@ -38,11 +67,11 @@ export function AvatarAnimal({
 }: AvatarAnimalProps) {
   const { theme } = useAppTheme()
   const Component = getAvatarComponent(slug)
-  const resolvedTint = tint ?? theme.colors.text
+  void tint
   const resolvedBackground =
     backgroundTint ??
     (theme.isDark ? theme.colors.creamCard : theme.colors.creamSoft)
-  const glyphSize = Math.round(size * 0.66)
+  const reliefTokens = theme.isDark ? RELIEF_TOKENS.dark : RELIEF_TOKENS.light
 
   return (
     <View
@@ -62,7 +91,7 @@ export function AvatarAnimal({
       ]}
     >
       {/* eslint-disable-next-line react-hooks/static-components -- Component is a stable lookup from a frozen registry, not a created component */}
-      <Component size={glyphSize} color={resolvedTint} />
+      <Component size={size} {...reliefTokens} />
     </View>
   )
 }
