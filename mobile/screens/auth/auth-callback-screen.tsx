@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AppButton } from '@/components/ui/button'
@@ -9,6 +9,8 @@ import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 
+const AUTH_CALLBACK_TIMEOUT_MS = 30_000
+
 export function AuthCallbackScreen() {
   const router = useRouter()
   const { theme } = useAppTheme()
@@ -17,7 +19,10 @@ export function AuthCallbackScreen() {
   }>()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isProcessing, setProcessing] = useState(true)
+  const [timedOut, setTimedOut] = useState(false)
+  const [retryToken, setRetryToken] = useState(0)
   const completeAuthCallback = useCompleteAuthCallback()
+  const cancelledRef = useRef(false)
 
   // PKCE flow: only the `code` is honored. Implicit-flow tokens
   // (access_token / refresh_token in the URL) are no longer accepted
@@ -30,17 +35,28 @@ export function AuthCallbackScreen() {
   }, [params.code])
 
   useEffect(() => {
-    let cancelled = false
+    cancelledRef.current = false
+
+    // Si Supabase no respondió en 30s probablemente está caído o la red
+    // está rota. En vez de dejar al usuario colgado en el blocking
+    // splash, le damos retry + fallback a login.
+    const timeoutId = setTimeout(() => {
+      if (cancelledRef.current) return
+      setTimedOut(true)
+      setProcessing(false)
+    }, AUTH_CALLBACK_TIMEOUT_MS)
 
     const run = async () => {
       try {
         await completeAuthCallback.mutateAsync(payload)
 
-        if (!cancelled) {
+        if (!cancelledRef.current) {
+          clearTimeout(timeoutId)
           router.replace('/')
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelledRef.current) {
+          clearTimeout(timeoutId)
           setErrorMessage(getErrorMessage(error, 'No se pudo completar la autenticación.'))
           setProcessing(false)
         }
@@ -50,12 +66,44 @@ export function AuthCallbackScreen() {
     void run()
 
     return () => {
-      cancelled = true
+      cancelledRef.current = true
+      clearTimeout(timeoutId)
     }
-  }, [completeAuthCallback, payload, router])
+  }, [completeAuthCallback, payload, retryToken, router])
+
+  const handleRetry = useCallback(() => {
+    setProcessing(true)
+    setErrorMessage(null)
+    setTimedOut(false)
+    setRetryToken((n) => n + 1)
+  }, [])
 
   if (isProcessing) {
     return <BlockingScreen message="Confirmando acceso..." />
+  }
+
+  if (timedOut) {
+    return (
+      <Screen
+        subtitle="No recibimos respuesta del servidor en 30 segundos."
+        title="Está tardando más de lo normal"
+      >
+        <BrandedPanel elevated style={styles.card} variant="accent">
+          <Text style={[styles.body, { color: theme.colors.textSoft }]}>
+            Puede ser tu conexión o un problema temporal. Probá de nuevo o
+            volvé al login.
+          </Text>
+          <View style={styles.actions}>
+            <AppButton label="Reintentar" onPress={handleRetry} />
+            <AppButton
+              label="Volver a login"
+              onPress={() => router.replace('/(auth)/login')}
+              variant="ghost"
+            />
+          </View>
+        </BrandedPanel>
+      </Screen>
+    )
   }
 
   return (
@@ -74,6 +122,10 @@ export function AuthCallbackScreen() {
 const styles = StyleSheet.create({
   card: {
     gap: 18,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   error: {
     fontSize: 14,

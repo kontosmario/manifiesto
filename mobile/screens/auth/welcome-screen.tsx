@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import {
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -22,6 +23,7 @@ import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import { authTokens } from '@/theme/palette'
 import { motionDurations } from '@/lib/motion/tokens'
 
@@ -116,10 +118,26 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
             <PrimaryCta label="Empezar" onPress={onCreate} />
             <SecondaryCta label="Ya tengo cuenta" onPress={onLogin} />
 
+            <Text style={styles.dataDisclosure}>
+              Solo guardamos tu email y lo que cargues acá (gastos, fijos, miembros del hogar). Nada se vende.
+            </Text>
             <Text style={styles.fineprint}>
               Al continuar aceptas los{' '}
-              <Text style={styles.fineprintLink}>Términos</Text> y la{' '}
-              <Text style={styles.fineprintLink}>Privacidad</Text>
+              <Text
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
+                style={styles.fineprintLink}
+              >
+                Términos
+              </Text>{' '}
+              y la{' '}
+              <Text
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+                style={styles.fineprintLink}
+              >
+                Privacidad
+              </Text>
             </Text>
           </View>
         </RiseView>
@@ -283,8 +301,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     color: '#FFFBF2',
   },
-  fineprint: {
+  dataDisclosure: {
     marginTop: 22,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '400',
+    color: 'rgba(255,251,242,0.55)',
+    textAlign: 'center',
+  },
+  fineprint: {
+    marginTop: 8,
     fontSize: 11,
     fontWeight: '400',
     color: 'rgba(255,251,242,0.38)',

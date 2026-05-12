@@ -31,9 +31,17 @@ export function normalizeEmail(rawEmail: string) {
 // scheme. The auth callback screen is the only legitimate landing
 // point for OAuth redirects.
 const AUTH_REDIRECT_PATH = 'auth/callback'
+// El reset de contraseña tiene su propio path porque la pantalla destino
+// pide setear contraseña nueva — distinto del flujo de confirmación de
+// email normal que solo abre sesión y manda al home.
+const AUTH_RESET_PASSWORD_PATH = 'auth/reset-password'
 
 export function getEmailRedirectTo() {
   return Linking.createURL(AUTH_REDIRECT_PATH)
+}
+
+export function getPasswordResetRedirectTo() {
+  return Linking.createURL(AUTH_RESET_PASSWORD_PATH)
 }
 
 export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {

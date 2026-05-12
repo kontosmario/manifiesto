@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,6 +9,20 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
+
+// Reanimated v4 has partial web support — `withRepeat(withSequence(...))`
+// chains with irregular timings run on rAF in the JS thread and tend
+// to desync, drop frames and skip keyframes under load. The result on
+// web is a flame that reads visually different from native (the
+// "breathing" looks dead, the "flicker" looks janky).
+//
+// To match the project's established pattern (see RiseView fix from
+// 2026-05-09: web renders a flat View without entering keyframes),
+// every flame loop short-circuits on web and parks shared values at
+// their neutral/static state. Web users still see the colored flame
+// SVG + badge — they just don't get the motion. iOS / Android keep
+// the full breathing + flicker + dance + pulse + dim loops.
+const IS_WEB = Platform.OS === 'web'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -81,7 +95,9 @@ function useBreath(status: FlameStatus): BreathValues {
 
   useLoopAnimation(
     () => {
-      if (status === 'broken') {
+      // Web: skip the loop entirely. Reanimated v4's withRepeat +
+      // withSequence chain doesn't replicate cleanly on web rAF.
+      if (IS_WEB || status === 'broken') {
         scaleX.value = 1
         scaleY.value = 1
         translateY.value = 0
@@ -136,7 +152,9 @@ function useFlicker(status: FlameStatus) {
 
   useLoopAnimation(
     () => {
-      if (status !== 'at_risk') {
+      // Web: park at static opacity (no flicker on the JS thread).
+      // The flame still reads as "alive" via the colored palette.
+      if (IS_WEB || status !== 'at_risk') {
         opacity.value = status === 'broken' ? 0.55 : 1
         return
       }
@@ -174,7 +192,8 @@ function useInnerDance(status: FlameStatus): BreathValues {
 
   useLoopAnimation(
     () => {
-      if (status === 'broken') {
+      // Web: park inner flame at identity (no dance on rAF).
+      if (IS_WEB || status === 'broken') {
         scaleX.value = 1
         scaleY.value = 1
         translateY.value = 0
@@ -226,7 +245,9 @@ function usePulseRing(status: FlameStatus) {
 
   useLoopAnimation(
     () => {
-      if (status === 'broken') {
+      // Web: hide the ring entirely (a static visible ring would
+      // sit permanently and read like a UI bug).
+      if (IS_WEB || status === 'broken') {
         scale.value = 1
         opacity.value = 0
         return
@@ -248,6 +269,11 @@ function useDimPulse(status: FlameStatus) {
 
   useLoopAnimation(
     () => {
+      // Web: broken flame stays at a fixed dim opacity (no pulse).
+      if (IS_WEB) {
+        opacity.value = status === 'broken' ? 0.45 : 1
+        return
+      }
       if (status !== 'broken') {
         opacity.value = 1
         return

@@ -4,6 +4,16 @@
 
 ---
 
+## ⚠️ Correcciones al audit original (verificación 2026-05-11)
+
+Revisada cada claim contra el código actual. Errores encontrados:
+
+- **1.8 `subscriptions-zombie` NO es código zombie.** Es el módulo activo que implementa el detector de suscripciones zombi (consumido por `mobile/components/control-v2/zombie-feed-section.tsx` y 5+ componentes en `mobile/components/subscriptions-zombie/`). El naming es engañoso pero la feature está viva. **Acción: cancelado, NO borrar.** Si Apple Review observa el folder name, renombrarlo (`subscription-audit/` por ejemplo) en lugar de eliminarlo.
+
+Todo el resto del audit en este archivo fue confirmado contra código real en la verificación inicial.
+
+---
+
 ## 1.1 — Delete Account flow ausente
 
 **Severidad:** ⛔ BLOCKER · **Guideline:** [App Store Review 5.1.1(v)](https://developer.apple.com/app-store/review/guidelines/#5.1.1)
@@ -149,14 +159,20 @@ PostHog (open source friendly) ó Amplitude (más maduro). Mi recomendación: **
 
 ---
 
-## 1.8 — Folder `subscriptions-zombie` en build
+## 1.8 — ~~Folder `subscriptions-zombie` en build~~ ⚠️ AUDIT ERROR
 
-**Severidad:** ⛔ BLOCKER (Hygiene)
+**Status:** ⚠️ NO APLICA — claim original del audit incorrecto.
 
-**Hallazgo:**
-`mobile/features/subscriptions-zombie/` existe como módulo legacy. Si Apple ve referencias a IAP no implementadas → rechazo automático.
+**Verificación 2026-05-11:** el folder `mobile/features/subscriptions-zombie/` NO es código legacy. Es la implementación activa del detector de suscripciones zombi (gastos fijos no usados). Está siendo consumido en producción por:
+- `mobile/components/control-v2/zombie-feed-section.tsx`
+- `mobile/components/subscriptions-zombie/` (5 componentes)
+- `mobile/features/insights/fixed-expense-value-capture.ts`
+- `mobile/features/fijos/fijos-aggregates.model.ts`
+- `mobile/features/fixed-expenses/use-fixed-expenses.ts`
 
-**Fix:** `rm -rf mobile/features/subscriptions-zombie/` + buscar imports rotos.
+El módulo no expone IAP — su nombre proviene del concepto producto ("suscripciones zombi" = gastos fijos olvidados), no de StoreKit. Apple Review no tiene visibilidad sobre nombres de folders internos.
+
+**Acción:** ninguna. Si querés evitar confusión interna a futuro, considerar rename a `subscription-audit/`, pero NO es un blocker de App Review.
 
 ---
 
@@ -289,7 +305,7 @@ Welcome screen no menciona qué datos se recopilan. App Review prefiere "we coll
 | ❌ | Password reset funcional | 1.4 |
 | ❌ | Permission priming en onboarding | 1.5 |
 | ❌ | Crash reporting | 1.6 |
-| ❌ | Eliminar código legacy `subscriptions-zombie` | 1.8 |
+| ⚠️ | ~~Eliminar código legacy `subscriptions-zombie`~~ | 1.8 — claim del audit incorrecto, módulo es feature activa |
 | ❌ | Screenshots 6.7" + 6.5" | 1.9 |
 | ❌ | App Preview video | 1.9 |
 | ❌ | Version + build info visible | 1.10 |

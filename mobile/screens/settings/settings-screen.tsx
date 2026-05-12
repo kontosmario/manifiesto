@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
+import Constants from 'expo-constants'
+import * as Application from 'expo-application'
 import { useRouter } from 'expo-router'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
@@ -13,6 +15,7 @@ import {
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
+import { DeleteAccountConfirmSheet } from '@/components/settings/sheets/delete-account-confirm-sheet'
 import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-sheet'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
@@ -25,6 +28,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useRequestAccountDeletion } from '@/features/auth/use-delete-account'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
   useLeaveCurrentFamily,
@@ -79,6 +83,11 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import {
+  PRIVACY_POLICY_URL,
+  TERMS_OF_SERVICE_URL,
+  buildSupportMailto,
+} from '@/lib/legal-urls'
 
 interface SettingsScreenProps {
   userId: string
@@ -171,6 +180,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
+  const [deleteAccountSheetOpen, setDeleteAccountSheetOpen] = useState(false)
+  const requestAccountDeletion = useRequestAccountDeletion()
 
   // Motion preference — drives `useReducedMotion()` for every consumer
   // of `useLoopAnimation` / `useUnboundedLoopAnimation`. Users can
@@ -495,6 +506,57 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       },
     ])
   }, [router, showError])
+
+  const handleConfirmDeleteAccount = useCallback(() => {
+    requestAccountDeletion.mutate(undefined, {
+      onSuccess: () => {
+        void triggerHaptic('success')
+        // El RPC ya marcó la cuenta; sacamos al usuario inmediatamente
+        // para que la sesión no tenga acceso post-confirmación.
+        void logoutSession({
+          onError: (error) => void showError(error, 'No se pudo cerrar sesión.'),
+          onSuccess: () => {
+            setDeleteAccountSheetOpen(false)
+            router.replace('/')
+          },
+        })
+      },
+      onError: (error) => {
+        void showError(error, 'No pudimos programar la baja de tu cuenta.')
+      },
+    })
+  }, [requestAccountDeletion, router, showError])
+
+  const handleOpenSupport = useCallback(() => {
+    const url = buildSupportMailto({
+      appVersion: Constants.expoConfig?.version ?? null,
+      buildNumber: Application.nativeBuildVersion,
+      platform: Platform.OS,
+      userId,
+    })
+    void Linking.openURL(url).catch(() => {
+      Alert.alert(
+        'No pudimos abrir tu mail',
+        'Escribinos a soporte@manifiesto.app desde la app de correo que prefieras.',
+      )
+    })
+  }, [userId])
+
+  const handleOpenPrivacy = useCallback(() => {
+    void Linking.openURL(PRIVACY_POLICY_URL)
+  }, [])
+
+  const handleOpenTerms = useCallback(() => {
+    void Linking.openURL(TERMS_OF_SERVICE_URL)
+  }, [])
+
+  // Footer "Manifiesto X.Y.Z (build N)" — Apple Review usa el build
+  // number para identificar la versión que está revisando.
+  const appVersionLabel = useMemo(() => {
+    const version = Constants.expoConfig?.version ?? Application.nativeApplicationVersion ?? '—'
+    const build = Application.nativeBuildVersion
+    return build ? `Manifiesto ${version} (build ${build})` : `Manifiesto ${version}`
+  }, [])
 
   // Dev-only triggers for the warm post-login splash (mounted as the
   // transition overlay in root-layout-shell). Lets us iterate on
@@ -1008,17 +1070,52 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 9. CUENTA */}
+            {/* 9. AYUDA Y LEGAL */}
+            <RiseView delay={320}>
+              <SettingsGroup title="Ayuda y legal">
+                <SettingsRow
+                  helper="Te respondemos por mail."
+                  icon="mail-outline"
+                  label="Contactar soporte"
+                  onPress={handleOpenSupport}
+                />
+                <SettingsRow
+                  icon="policy"
+                  label="Política de privacidad"
+                  onPress={handleOpenPrivacy}
+                />
+                <SettingsRow
+                  icon="description"
+                  isLast
+                  label="Términos de uso"
+                  onPress={handleOpenTerms}
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 10. CUENTA */}
             <RiseView delay={320}>
               <SettingsGroup title="Cuenta">
                 <SettingsRow
-                  destructive
                   icon="power-settings-new"
-                  isLast
                   label="Cerrar sesión"
                   onPress={handleConfirmLogout}
                 />
+                <SettingsRow
+                  destructive
+                  helper="Borra tus datos en 30 días. Podés cancelar antes."
+                  icon="delete-forever"
+                  isLast
+                  label="Eliminar cuenta"
+                  onPress={() => setDeleteAccountSheetOpen(true)}
+                />
               </SettingsGroup>
+            </RiseView>
+
+            <RiseView delay={320}>
+              <Text style={[styles.versionFooter, { color: theme.colors.textMuted }]}>
+                {appVersionLabel}
+              </Text>
             </RiseView>
           </>
         )}
@@ -1092,6 +1189,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         otherActiveMembers={otherActiveMembers}
         visible={destroyFamilySheetOpen}
       />
+      <DeleteAccountConfirmSheet
+        isOwnerWithMembers={isOwner && otherActiveMembers > 0}
+        isSubmitting={requestAccountDeletion.isPending}
+        onCancel={() => {
+          if (requestAccountDeletion.isPending) return
+          setDeleteAccountSheetOpen(false)
+        }}
+        onConfirm={handleConfirmDeleteAccount}
+        visible={deleteAccountSheetOpen}
+      />
     </Screen>
   )
 }
@@ -1143,5 +1250,11 @@ const styles = StyleSheet.create({
   appearanceInner: {
     paddingHorizontal: 14,
     paddingVertical: 14,
+  },
+  versionFooter: {
+    textAlign: 'center',
+    fontSize: 12,
+    paddingTop: 6,
+    paddingBottom: 24,
   },
 })

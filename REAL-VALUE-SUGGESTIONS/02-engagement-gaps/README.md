@@ -13,9 +13,9 @@
 
 | # | Item | Estado | Impacto retención | Esfuerzo | 💰 |
 |---|------|--------|-------------------|----------|-----|
-| 2.1 | Streaks UI prominente en Home (table missing en schema!) | 🟡 PARTIAL (sólo lógica, no persistencia) | Alto | 2-3 días | — |
-| 2.2 | Achievements / badges (Arranque → Leyenda) | 🔴 TO DO | Alto | 3 días | — |
-| 2.3 | Confetti + micro-celebrations en milestones | 🔴 TO DO | Medio | 1-2 días | — |
+| 2.1 | ~~Streaks UI prominente en Home~~ | ⛔ NOT APPLICABLE — decisión owner 2026-05-12: el streak queda solo en Gastos (donde ya está prominente vía `StreakFlameIcon` en el header). Web parity también arreglado el mismo día. Audit claim "table missing" era falso: `user_streaks` SÍ existe en producción | — | — | — |
+| 2.2 | Achievements / badges (Arranque → Leyenda) | 🔴 TO DO — pendiente confirmación owner (Bucket D, feature nuevo) | Alto | 3 días | — |
+| 2.3 | Confetti + micro-celebrations en milestones | 🟡 PARTIAL — mark-paid de fijos DONE 2026-05-12 con `ConfettiBurst` component reusable. Otros milestones (meta alcanzada, ciclo bajo cupo) quedan TODO para Bucket D | Medio | 1-2 días | — |
 | 2.4 | Manifiesto Wrapped (mes/año) | 🔴 TO DO | Alto + viralidad | 5-7 días | 💰 design |
 | 2.5 | Notes/comments en gastos (col + UI) | 🔴 TO DO | Alto | 2 días | — |
 | 2.6 | Reactions a gastos del partner (❤️😬👏) | 🔴 TO DO | Alto (familia) | 2 días | — |

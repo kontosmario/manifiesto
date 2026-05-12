@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Alert,
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +33,10 @@ import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { useLoginController } from '@/features/auth/use-login-controller'
+import {
+  isAppleSignInAvailable,
+  signInWithApple,
+} from '@/features/auth/social-sign-in'
 import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { authenticateBiometricAccess } from '@/lib/biometric-auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -336,6 +342,54 @@ export function LoginScreen() {
     }, 80)
   }, [actions, emailInputRef])
 
+  // Apple Sign-In presence en login es requisito de Apple Guideline 4.8
+  // (paridad con providers sociales ofrecidos en signup). El handler
+  // delega en `signInWithApple` y deja que el AppLayout detecte la
+  // sesión nueva — no necesitamos redirigir manualmente.
+  const [appleAvailable, setAppleAvailable] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void isAppleSignInAvailable().then((value) => {
+      if (!cancelled) setAppleAvailable(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const [appleSigningIn, setAppleSigningIn] = useState(false)
+  const [appleError, setAppleError] = useState<string | null>(null)
+  const handleAppleSignIn = useCallback(async () => {
+    if (appleSigningIn || isBusy) return
+    void triggerHaptic('selection')
+    if (!appleAvailable) {
+      Alert.alert(
+        'No disponible',
+        Platform.OS === 'ios'
+          ? 'Sign in with Apple no está habilitado en este dispositivo.'
+          : 'Sign in with Apple solo está disponible en iOS.',
+      )
+      return
+    }
+    setAppleSigningIn(true)
+    setAppleError(null)
+    try {
+      const result = await signInWithApple()
+      if (result.status === 'signed-in') {
+        await triggerHaptic('success')
+        showAuthTransitionSplash()
+        // La sesión queda persistida por Supabase → AppEntryGate / root
+        // layout detectan el cambio y nos sacan a /(app). No
+        // navegamos manualmente para evitar pisar el splash.
+        return
+      }
+      if (result.status === 'cancelled') return
+      await triggerHaptic('warning')
+      setAppleError(result.error ?? 'No pudimos continuar con Apple.')
+    } finally {
+      setAppleSigningIn(false)
+    }
+  }, [appleAvailable, appleSigningIn, isBusy])
+
   const handleUsePassword = useCallback(() => {
     void triggerHaptic('selection')
     userPickedModeRef.current = true
@@ -531,22 +585,33 @@ export function LoginScreen() {
 
         <View style={styles.actionsStack}>
           {formMode ? (
-              <PasswordForm
-                mode={formMode}
-                storedEmail={email}
-                emailRef={emailInputRef}
-                errorMessage={errorMessage}
-                infoMessage={infoMessage}
-                isBusy={isBusy}
-                isReducedMotionEnabled={isReducedMotionEnabled}
-                onCancel={isReturningUser ? handleCancelForm : undefined}
-                onChangeEmail={actions.setEmail}
-                onChangePassword={actions.setPassword}
-                onSubmit={submitPassword}
-                password={password}
-                passwordRef={passwordInputRef}
-                colors={theme.colors}
-              />
+              <>
+                <PasswordForm
+                  mode={formMode}
+                  storedEmail={email}
+                  emailRef={emailInputRef}
+                  errorMessage={errorMessage}
+                  infoMessage={infoMessage}
+                  isBusy={isBusy}
+                  isReducedMotionEnabled={isReducedMotionEnabled}
+                  onCancel={isReturningUser ? handleCancelForm : undefined}
+                  onChangeEmail={actions.setEmail}
+                  onChangePassword={actions.setPassword}
+                  onSubmit={submitPassword}
+                  password={password}
+                  passwordRef={passwordInputRef}
+                  colors={theme.colors}
+                />
+                {appleAvailable ? (
+                  <AppleSignInRow
+                    busy={appleSigningIn}
+                    error={appleError}
+                    onPress={() => void handleAppleSignIn()}
+                    colors={theme.colors}
+                    withDivider
+                  />
+                ) : null}
+              </>
             ) : hasSavedBiometric ? (
               <>
                 <Pressable
@@ -603,6 +668,14 @@ export function LoginScreen() {
                     </Text>
                   </Pressable>
                 </View>
+                {appleAvailable ? (
+                  <AppleSignInRow
+                    busy={appleSigningIn}
+                    error={appleError}
+                    onPress={() => void handleAppleSignIn()}
+                    colors={theme.colors}
+                  />
+                ) : null}
               </>
             ) : isReturningUser ? (
               // Cached profile from a previous login but biometric isn't
@@ -640,6 +713,14 @@ export function LoginScreen() {
                   </Text>
                 </Pressable>
               </View>
+            ) : null}
+            {!formMode && appleAvailable && !hasSavedBiometric ? (
+              <AppleSignInRow
+                busy={appleSigningIn}
+                error={appleError}
+                onPress={() => void handleAppleSignIn()}
+                colors={theme.colors}
+              />
             ) : null}
         </View>
       </Screen>
@@ -696,6 +777,7 @@ function PasswordForm({
   colors,
 }: PasswordFormProps) {
   const isUsePassword = mode === 'use-password'
+  const formRouter = useRouter()
   return (
     <FadeInUp reduced={isReducedMotionEnabled} delay={50} duration={260} style={styles.passwordForm}>
       {/*
@@ -750,6 +832,18 @@ function PasswordForm({
         ]}
       >
         <Text style={styles.primaryCtaLabel}>Continuar</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="Olvidé mi contraseña"
+        accessibilityRole="button"
+        hitSlop={DEFAULT_HIT_SLOP}
+        onPress={() => formRouter.push('/(auth)/forgot-password')}
+        style={({ pressed }) => [styles.forgotLink, pressed && { opacity: 0.6 }]}
+      >
+        <Text style={[styles.cancelLabel, { color: colors.textSoft }]}>
+          ¿Olvidaste tu contraseña?
+        </Text>
       </Pressable>
 
       {onCancel ? (
@@ -1008,4 +1102,91 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
   },
+  forgotLink: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: 2,
+  },
+  appleDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  appleDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  appleDividerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.4,
+  },
+  appleButton: {
+    marginTop: 10,
+    height: 52,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#000',
+  },
+  appleButtonLabel: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  appleErrorLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: 'center',
+  },
 })
+
+interface AppleSignInRowProps {
+  busy: boolean
+  error: string | null
+  onPress: () => void
+  colors: ThemeColors
+  withDivider?: boolean
+}
+
+function AppleSignInRow({ busy, error, onPress, colors, withDivider }: AppleSignInRowProps) {
+  return (
+    <View>
+      {withDivider ? (
+        <View style={styles.appleDivider}>
+          <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
+          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>O</Text>
+          <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
+        </View>
+      ) : null}
+      <Pressable
+        accessibilityLabel="Continuar con Apple"
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.appleButton,
+          { opacity: pressed || busy ? 0.85 : 1 },
+        ]}
+      >
+        <Svg width={16} height={18} viewBox="0 0 16 18" fill="none">
+          <Path
+            d="M13.62 9.55c-.02-2.18 1.78-3.23 1.86-3.28-1.01-1.48-2.59-1.68-3.16-1.7-1.34-.14-2.61.79-3.29.79-.68 0-1.73-.77-2.84-.75-1.46.02-2.81.85-3.56 2.15-1.52 2.63-.39 6.52 1.09 8.65.72 1.04 1.58 2.21 2.69 2.17 1.08-.04 1.49-.7 2.79-.7 1.31 0 1.68.7 2.83.68 1.17-.02 1.91-1.06 2.62-2.11.83-1.21 1.17-2.39 1.19-2.45-.03-.01-2.29-.88-2.31-3.48l.09.03ZM11.49 3.31c.59-.71 1-1.71.89-2.71-.86.04-1.91.57-2.52 1.28-.55.63-1.03 1.64-.9 2.62.97.08 1.95-.49 2.53-1.19Z"
+            fill="#fff"
+          />
+        </Svg>
+        <Text style={styles.appleButtonLabel}>
+          {busy ? 'Conectando…' : 'Continuar con Apple'}
+        </Text>
+      </Pressable>
+      {error ? (
+        <Text style={[styles.appleErrorLabel, { color: colors.danger }]}>{error}</Text>
+      ) : null}
+    </View>
+  )
+}

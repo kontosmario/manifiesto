@@ -1,6 +1,19 @@
 # 03 · Monetization
 
-> Estado: **infraestructura scaffolded, integración 0%, paywall 0%**. La UI de billing está pulida (`billing-screen.tsx` 1110 líneas, plans definidos, FAQ, trial badge), pero `useBilling` es 100% mock. Ningún feature está gated. Esta sección es la diferencia entre lanzar como freeware o como SaaS.
+> ## ⏸️ SKIPPED — decisión del owner 2026-05-11
+>
+> El owner decidió **postponer la monetización entera** para esta fase. Razón concreta: RevenueCat requiere productos IAP en App Store Connect, que requiere Apple Developer Program ($99/año), que el owner no quiere comprometer todavía.
+>
+> **Todo lo de abajo queda en "TO DO" hasta que el owner reabra la decisión.** Reabrir cuando:
+> 1. El owner haya comprado Apple Developer Program ($99/año), Y
+> 2. Tenga claridad de pricing (tiers, monthly/annual, precios), Y
+> 3. Confirme tasa de adopción esperada que justifique invertir 2 semanas de dev.
+>
+> Mientras tanto, `useBilling` sigue siendo mock (no rompe nada; la UI de billing se ve pero no procesa cobros reales).
+>
+> ---
+
+> Estado original: **infraestructura scaffolded, integración 0%, paywall 0%**. La UI de billing está pulida (`billing-screen.tsx` 1110 líneas, plans definidos, FAQ, trial badge), pero `useBilling` es 100% mock. Ningún feature está gated. Esta sección es la diferencia entre lanzar como freeware o como SaaS.
 
 📂 **Documentos:**
 - `audit.md` — estado actual de billing + propuesta de tiers

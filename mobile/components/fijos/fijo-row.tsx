@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
+import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { formatMoney } from '@/utils/money'
@@ -41,6 +42,17 @@ export function FijoRow({
   const [open, setOpen] = useState(false)
   const emoji = pickIconForFixedExpenseCategory(categoryName)
   const status = item.computedStatus
+
+  // ── Local celebration on status flip → 'paid' ──────────────────
+  // Capture the row's initial status on mount via a ref. The pulse
+  // only fires if the row transitions INTO 'paid' DURING its
+  // lifetime — rows that were already paid when the user first
+  // landed on the screen render quietly (no confetti on cold open).
+  // ConfettiBurst de-dupes by lastTokenRef so any re-render with the
+  // same pulseToken=1 is a no-op.
+  const initialStatusRef = useRef(status)
+  const confettiPulse =
+    status === 'paid' && initialStatusRef.current !== 'paid' ? 1 : 0
   const statusLabel =
     status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'
   const statusColor =
@@ -88,9 +100,20 @@ export function FijoRow({
               shadowOpacity: open ? 0.18 : 0,
               shadowRadius: 10,
               elevation: open ? 4 : 0,
+              // Allow confetti particles to render outside the card
+              // bounds without being clipped (default `overflow:
+              // hidden` on rounded cards would chop the burst).
+              overflow: 'visible',
             },
           ]}
         >
+          {/*
+            Confetti for this specific row. Triggered by the status
+            flip → 'paid'. originY=0 puts the burst at the top of the
+            card; particles spread outward and downward over the row.
+            Inert (renders null) until the first pulse arrives.
+          */}
+          <ConfettiBurst pulseToken={confettiPulse} originY={0} />
           <View style={styles.row}>
             <View style={styles.iconWrap}>
               <View

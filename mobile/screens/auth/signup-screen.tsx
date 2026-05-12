@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -30,9 +31,10 @@ import {
   signInWithGoogle,
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
-import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
+import { usePasswordSignUp, useResendSignupEmail } from '@/features/auth/use-auth-actions'
 import { resolveAuthSubmitResolution } from '@/features/auth/auth-submit-flow'
 import { normalizeEmail } from '@/features/auth/auth-flow'
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -65,10 +67,20 @@ const BRAND_CREAM_ON_GREEN = authTokens.surfaceCream
  * confirmation info or handing off to `/(app)/onboarding` (the 5-step
  * wizard, which covers family + profile in step 3+).
  */
+const RESEND_COOLDOWN_MS = 60_000
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return email
+  if (local.length <= 2) return `${local[0]}***@${domain}`
+  return `${local[0]}${local[1]}***@${domain}`
+}
+
 export function SignupScreen() {
   const router = useRouter()
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
+  const resendSignupEmail = useResendSignupEmail()
   const { theme } = useAppTheme()
 
   const [name, setName] = useState('')
@@ -77,6 +89,49 @@ export function SignupScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [infoMessage, setInfoMessage] = useState<string | null>(null)
   const [isSubmitting, setSubmitting] = useState(false)
+  // Estado del flujo de confirmación por email. Se setea cuando
+  // resolveAuthSubmitResolution decide "email-confirmation" (Supabase
+  // requiere verificar el mail antes de tener sesión).
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null)
+  const [resendAvailableAt, setResendAvailableAt] = useState<number>(0)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Tick mientras el cooldown está activo, para refrescar el contador
+  // visible en el botón de reenvío.
+  useEffect(() => {
+    if (!confirmationEmail) return
+    if (resendAvailableAt <= now) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [confirmationEmail, now, resendAvailableAt])
+
+  const resendCooldownSeconds = Math.max(
+    0,
+    Math.ceil((resendAvailableAt - now) / 1000),
+  )
+
+  const handleResendConfirmation = useCallback(async () => {
+    if (!confirmationEmail) return
+    if (resendCooldownSeconds > 0) return
+    setErrorMessage(null)
+    try {
+      await resendSignupEmail.mutateAsync({ email: confirmationEmail })
+      setInfoMessage('Te reenviamos el email. Revisá también spam.')
+      setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS)
+      await triggerHaptic('success')
+    } catch (error) {
+      await triggerHaptic('error')
+      setErrorMessage(getErrorMessage(error, 'No pudimos reenviar el email.'))
+    }
+  }, [confirmationEmail, resendCooldownSeconds, resendSignupEmail])
+
+  const handleChangeEmail = useCallback(() => {
+    setConfirmationEmail(null)
+    setResendAvailableAt(0)
+    setInfoMessage(null)
+    setEmail('')
+    emailRef.current?.focus?.()
+  }, [])
 
   const nameRef = useRef<TextInput | null>(null)
   const emailRef = useRef<TextInput | null>(null)
@@ -138,6 +193,8 @@ export function SignupScreen() {
 
       if (resolution.type === 'email-confirmation') {
         setInfoMessage(resolution.infoMessage)
+        setConfirmationEmail(normalizedEmail)
+        setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS)
         return
       }
 
@@ -369,6 +426,76 @@ export function SignupScreen() {
               <FeedbackPill intent="info" message={infoMessage} />
             ) : null}
 
+            {confirmationEmail ? (
+              <View
+                style={[
+                  styles.confirmationPanel,
+                  {
+                    backgroundColor: theme.colors.surfaceMuted,
+                    borderColor: theme.colors.line,
+                  },
+                ]}
+              >
+                <Text style={[styles.confirmationTitle, { color: theme.colors.text }]}>
+                  Te mandamos un mail a {maskEmail(confirmationEmail)}
+                </Text>
+                <Text style={[styles.confirmationBody, { color: theme.colors.textSoft }]}>
+                  Confirmá desde el link para entrar. Revisá spam si no lo ves.
+                </Text>
+                <View style={styles.confirmationActions}>
+                  <Pressable
+                    accessibilityLabel="Reenviar email de confirmación"
+                    accessibilityRole="button"
+                    disabled={resendCooldownSeconds > 0 || resendSignupEmail.isPending}
+                    onPress={() => void handleResendConfirmation()}
+                    style={({ pressed }) => [
+                      styles.confirmationPrimary,
+                      {
+                        backgroundColor:
+                          resendCooldownSeconds > 0
+                            ? theme.colors.surfaceMuted
+                            : BRAND_GREEN,
+                        opacity: pressed ? 0.85 : 1,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.confirmationPrimaryLabel,
+                        {
+                          color:
+                            resendCooldownSeconds > 0
+                              ? theme.colors.textSoft
+                              : BRAND_CREAM_ON_GREEN,
+                        },
+                      ]}
+                    >
+                      {resendSignupEmail.isPending
+                        ? 'Enviando…'
+                        : resendCooldownSeconds > 0
+                          ? `Reenviar en ${resendCooldownSeconds}s`
+                          : 'Reenviar email'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Cambiar email"
+                    accessibilityRole="button"
+                    onPress={handleChangeEmail}
+                    style={({ pressed }) => [
+                      styles.confirmationSecondary,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.confirmationSecondaryLabel, { color: theme.colors.text }]}
+                    >
+                      Cambiar email
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             <Pressable
               accessibilityLabel="Crear cuenta"
               accessibilityRole="button"
@@ -454,8 +581,22 @@ export function SignupScreen() {
           <FadeInUp delay={300} reduced={reduced}>
             <Text style={[styles.fineprint, { color: theme.colors.textSoft }]}>
               Al crear tu cuenta aceptas los{' '}
-              <Text style={styles.fineprintLink}>Términos</Text> y la{' '}
-              <Text style={styles.fineprintLink}>Privacidad</Text>.
+              <Text
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
+                style={styles.fineprintLink}
+              >
+                Términos
+              </Text>{' '}
+              y la{' '}
+              <Text
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+                style={styles.fineprintLink}
+              >
+                Privacidad
+              </Text>
+              .
             </Text>
           </FadeInUp>
         </View>
@@ -675,5 +816,47 @@ const styles = StyleSheet.create({
   },
   fineprintLink: {
     textDecorationLine: 'underline',
+  },
+  // Email confirmation panel
+  confirmationPanel: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    gap: 8,
+  },
+  confirmationTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  confirmationBody: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  confirmationActions: {
+    marginTop: 4,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  confirmationPrimary: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmationPrimaryLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  confirmationSecondary: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmationSecondaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 })

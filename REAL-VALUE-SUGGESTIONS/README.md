@@ -8,6 +8,10 @@
 
 ---
 
+## ⚡ Estado vivo
+
+→ **Leer primero [`STATUS-2026-05-11.md`](STATUS-2026-05-11.md)** para el estado actual, decisiones del owner y orden de ejecución. Los status boards de cada subcarpeta se mantienen para detalle por sección pero el doc de status manda en caso de conflicto.
+
 ## 🗂️ Estructura
 
 ```

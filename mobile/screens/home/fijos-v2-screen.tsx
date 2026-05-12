@@ -85,6 +85,11 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
     (fixedExpenseId: string) => {
       void triggerHaptic('success')
       recordPaymentMutation.mutate(fixedExpenseId, {
+        // No onSuccess celebration here — each FijoRow watches its
+        // own `computedStatus` and fires a local ConfettiBurst when
+        // it flips to 'paid'. That way the burst is always anchored
+        // to the row that just got marked, regardless of scroll
+        // position or how many fijos are on screen.
         onError: (error: unknown) => {
           void triggerHaptic('error')
           Alert.alert('No pudimos registrar el pago', getErrorMessage(error, errorMessages.server))

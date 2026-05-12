@@ -1,6 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { getEmailRedirectTo } from '@/features/auth/auth-flow'
+import {
+  getEmailRedirectTo,
+  getPasswordResetRedirectTo,
+} from '@/features/auth/auth-flow'
 
 interface SignInInput {
   email: string
@@ -49,6 +52,47 @@ export function usePasswordSignUp() {
       }
 
       return data
+    },
+  })
+}
+
+export function useResendSignupEmail() {
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: getEmailRedirectTo(),
+        },
+      })
+      if (error) {
+        throw error
+      }
+    },
+  })
+}
+
+export function usePasswordReset() {
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getPasswordResetRedirectTo(),
+      })
+      if (error) {
+        throw error
+      }
+    },
+  })
+}
+
+export function useUpdatePassword() {
+  return useMutation({
+    mutationFn: async ({ password }: { password: string }) => {
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) {
+        throw error
+      }
     },
   })
 }
