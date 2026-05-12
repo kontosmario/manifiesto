@@ -1068,16 +1068,23 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </RiseView>
             ) : null}
 
-            {/* 8a. LOGROS */}
+            {/* 8a. LOGROS + EDICIONES */}
             <RiseView delay={310}>
               <SettingsGroup title="Tu progreso">
                 <SettingsRow
                   helper="Hitos que vas desbloqueando con cada acción dentro de Manifiesto."
                   icon="emoji-events"
-                  isLast
                   label="Logros"
                   onPress={() => router.push('/settings/achievements' as never)}
                   value="Ver galería"
+                />
+                <SettingsRow
+                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que podés revivir."
+                  icon="auto-stories"
+                  isLast
+                  label="Ediciones"
+                  onPress={() => router.push('/settings/editions' as never)}
+                  value="Ver archivo"
                 />
               </SettingsGroup>
             </RiseView>

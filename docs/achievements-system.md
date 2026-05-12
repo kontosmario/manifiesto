@@ -15,7 +15,7 @@ Toda la **detección** es server-side. El cliente nunca otorga un logro — solo
 
 Vive en `achievements_catalog`. Cada fila: `code`, `title`, `body`, `icon` (emoji), `tier` (`bronze`/`silver`/`gold`/`legendary`), `sort_order`. Editable solo por `service_role` → para agregar uno nuevo NO hace falta re-deploy mobile; basta con un INSERT desde Studio.
 
-**Los 11 codes activos:**
+**Los 14 codes activos:**
 
 | Code | Tier | Cuándo se gana |
 |---|---|---|
@@ -28,6 +28,9 @@ Vive en `achievements_catalog`. Cada fila: `code`, `title`, `body`, `icon` (emoj
 | `streak_30` 🔥 | silver | 30 días |
 | `streak_60` 🔥 | gold | 60 días |
 | `streak_90` 👑 | legendary | 90 días |
+| `goal_25` 🌱 | bronze | Una meta de ahorro cruza el 25% |
+| `goal_50` 🌿 | silver | Cruza el 50% |
+| `goal_75` 🌳 | gold | Cruza el 75% |
 | `goal_completed` 🏆 | gold | Al cumplir una meta (`current_amount ≥ goal_amount`) |
 | `first_cycle_under_budget` 💰 | silver | Al cerrar tu primer ciclo mensual gastando menos que el `monthly_income` |
 
@@ -43,7 +46,7 @@ Vive en `achievements_catalog`. Cada fila: `code`, `title`, `body`, `icon` (emoj
 | `user_streaks` (UPDATE) | `tr_award_streak_milestones` | si `new.current_streak ≥ threshold && old.current_streak < threshold` → award. Solo dispara al **cruzar** el threshold, no en cada update por encima |
 | `user_streaks` (INSERT) | `tr_award_streak_milestones_initial` | defensive: si la primera fila viene con un streak alto (backfill, edge case), otorga retroactivo |
 | `savings_goals` | `tr_award_first_goal` | mismo patrón |
-| `savings_goals` (INSERT/UPDATE) | `tr_award_goal_completed` | dispara cuando `current_amount` cruza `goal_amount` |
+| `savings_goals` (INSERT/UPDATE) | `tr_award_goal_milestones` | evalúa los 4 thresholds (25/50/75/100) en una sola pasada. Solo dispara al CRUZAR el threshold (igual que streak milestones). Reemplazó a `tr_award_goal_completed` en migration `20260521000000`. |
 | `monthly_summaries` | `tr_award_first_cycle_under_budget` | al cerrar el ciclo si `total_spent < monthly_income`. Lee `family_finance.monthly_income` para comparar |
 
 Cada trigger llama a [`award_achievement(code, user_id, family_id, context)`](../supabase/migrations/20260520000000_achievements.sql). Esa función:

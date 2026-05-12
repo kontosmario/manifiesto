@@ -93,7 +93,16 @@ export function AchievementsGalleryScreen() {
             />
           </RiseView>
 
-          {earnedItems.length > 0 ? (
+          {earnedItems.length === 0 ? (
+            // Cold-start nudge — apunta al primer logro alcanzable
+            // (sort_order asc en `lockedItems` lo deja primero).
+            // Sin esto la galería de un user nuevo se siente como
+            // mirar un mostrador cerrado; con esto se siente como
+            // "empezás acá".
+            <RiseView delay={80}>
+              <StarterNudge nextItem={lockedItems[0]} />
+            </RiseView>
+          ) : (
             <View style={styles.section}>
               <SectionHeader label="Desbloqueados" count={earnedItems.length} />
               <View style={styles.sectionStack}>
@@ -107,7 +116,7 @@ export function AchievementsGalleryScreen() {
                 ))}
               </View>
             </View>
-          ) : null}
+          )}
 
           {lockedItems.length > 0 ? (
             <View style={styles.section}>
@@ -237,6 +246,90 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
     </LinearGradient>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Starter nudge — empty state when earnedCount === 0
+// ─────────────────────────────────────────────────────────────────
+
+interface StarterNudgeProps {
+  /** Primer item del catálogo en sort_order — el más alcanzable. */
+  nextItem: AchievementViewItem | undefined
+}
+
+function StarterNudge({ nextItem }: StarterNudgeProps) {
+  const { theme } = useAppTheme()
+  return (
+    <View
+      style={[
+        starterStyles.card,
+        {
+          backgroundColor: theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
+      ]}
+    >
+      <View
+        style={[
+          starterStyles.iconWrap,
+          { backgroundColor: theme.colors.primarySurface },
+        ]}
+      >
+        <Text style={starterStyles.iconGlyph}>{nextItem?.icon ?? '🌱'}</Text>
+      </View>
+      <Text style={[starterStyles.eyebrow, { color: theme.colors.textMuted }]}>
+        TU PRIMER LOGRO
+      </Text>
+      <Text style={[starterStyles.title, { color: theme.colors.text }]}>
+        {nextItem?.title ?? 'Está a un gasto de distancia'}
+      </Text>
+      <Text style={[starterStyles.body, { color: theme.colors.textMuted }]}>
+        {nextItem?.body ?? 'Cargá tu primer movimiento y empezamos.'}
+      </Text>
+    </View>
+  )
+}
+
+const starterStyles = StyleSheet.create({
+  card: {
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingTop: 22,
+    paddingBottom: 20,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  iconGlyph: {
+    fontSize: 26,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  body: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    letterSpacing: 0,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+})
 
 // ─────────────────────────────────────────────────────────────────
 // Section header — eyebrow + count chip
