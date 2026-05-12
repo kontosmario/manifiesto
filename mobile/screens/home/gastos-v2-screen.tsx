@@ -35,6 +35,7 @@ import {
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
 import { useFamilyMembers } from '@/features/family/use-family-members'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
@@ -610,25 +611,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         </TourTarget>
         {controller.hasAnyFilter ? (
           <Animated.View layout={sectionLayout}>
-            <Pressable
-              onPress={handleClearFilters}
-              accessibilityRole="button"
-              accessibilityLabel="Limpiar todos los filtros activos"
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.clearFiltersBtn,
-                {
-                  backgroundColor: theme.colors.creamSoft,
-                  borderColor: theme.colors.line,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              <MaterialIcons name="filter-alt-off" size={14} color={theme.colors.textMuted} />
-              <Text style={[styles.clearFiltersText, { color: theme.colors.textMuted }]}>
-                Limpiar filtros
-              </Text>
-            </Pressable>
+            <ClearFiltersButton onPress={handleClearFilters} />
           </Animated.View>
         ) : null}
         <Animated.View layout={sectionLayout}>
@@ -775,24 +758,10 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
                 ) : null}
               </View>
               {emptyState.actionLabel && emptyState.onAction ? (
-                <Pressable
+                <EmptyActionButton
+                  label={emptyState.actionLabel}
                   onPress={emptyState.onAction}
-                  accessibilityRole="button"
-                  accessibilityLabel={emptyState.actionLabel}
-                  hitSlop={6}
-                  style={({ pressed }) => [
-                    styles.emptyAction,
-                    {
-                      backgroundColor: theme.colors.primarySurface,
-                      borderColor: theme.colors.line,
-                      opacity: pressed ? 0.85 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.emptyActionText, { color: theme.colors.primary }]}>
-                    {emptyState.actionLabel}
-                  </Text>
-                </Pressable>
+                />
               ) : null}
             </View>
           ) : null
@@ -812,12 +781,30 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               </View>
             ) : null}
             {!controller.hasNextPage && controller.expenses.length > 0 ? (
-              <Text
-                style={[styles.endOfList, { color: theme.colors.textMuted }]}
-                accessibilityRole="text"
-              >
-                — Fin del ciclo —
-              </Text>
+              // Editorial eyebrow en lugar de los em dashes "— Fin del
+              // ciclo —" (impeccable ban: no em dashes en copy). Centrado
+              // con letter-spacing como label de cierre, más limpio.
+              <View style={styles.endOfListBlock}>
+                <View
+                  style={[
+                    styles.endOfListRule,
+                    { backgroundColor: theme.colors.line },
+                  ]}
+                />
+                <Text
+                  style={[styles.endOfList, { color: theme.colors.textMuted }]}
+                  accessibilityRole="text"
+                  accessibilityLabel="Fin del ciclo"
+                >
+                  FIN DEL CICLO
+                </Text>
+                <View
+                  style={[
+                    styles.endOfListRule,
+                    { backgroundColor: theme.colors.line },
+                  ]}
+                />
+              </View>
             ) : null}
           </View>
         }
@@ -900,7 +887,11 @@ const styles = StyleSheet.create({
   },
   groupLabel: { fontSize: 14, fontWeight: '700' },
   groupMeta: { fontSize: 11 },
-  groupTotal: { fontSize: 14, fontWeight: '800' },
+  // Tabular nums acá porque el total se renderea en columna right-aligned
+  // por encima del groupTotal de la siguiente sección. Sin tabular, los
+  // dígitos proporcionales (1 vs 8) hacen que la columna wobblee al
+  // scrollear. Mismo principio para GastoRow.amount.
+  groupTotal: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
   movimientosTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -919,10 +910,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  endOfListBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 32,
+  },
+  endOfListRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
   endOfList: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.8,
   },
   clearFiltersBtn: {
     alignSelf: 'flex-start',
@@ -966,6 +967,83 @@ const styles = StyleSheet.create({
   },
   emptyActionText: { fontSize: 12, fontWeight: '700' },
 })
+
+// ── Tiny sub-components con press feedback Emil-grade ───────────
+//
+// Extraídos del JSX inline porque `usePressScale` requiere component
+// body (rules of hooks lo prohíben adentro de `useMemo`). Mantenerlos
+// chicos y locales evita explotar el archivo a más componentes.
+//
+// Antes: `Pressable` con `style={({pressed}) => [..., {opacity: 0.85}]}`
+// → fade muerto sin sensación de tap. Después: Pressable + Animated.View
+// con spring scale 0.97 (mismo patrón que Home Sprint 1).
+
+function ClearFiltersButton({ onPress }: { onPress: () => void }) {
+  const { theme } = useAppTheme()
+  const press = usePressScale({ pressedScale: 0.97 })
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel="Limpiar todos los filtros activos"
+      hitSlop={8}
+    >
+      <Animated.View
+        style={[
+          styles.clearFiltersBtn,
+          {
+            backgroundColor: theme.colors.creamSoft,
+            borderColor: theme.colors.line,
+          },
+          press.animatedStyle,
+        ]}
+      >
+        <MaterialIcons name="filter-alt-off" size={14} color={theme.colors.textMuted} />
+        <Text style={[styles.clearFiltersText, { color: theme.colors.textMuted }]}>
+          Limpiar filtros
+        </Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+function EmptyActionButton({
+  label,
+  onPress,
+}: {
+  label: string
+  onPress: () => void
+}) {
+  const { theme } = useAppTheme()
+  const press = usePressScale({ pressedScale: 0.97 })
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+    >
+      <Animated.View
+        style={[
+          styles.emptyAction,
+          {
+            backgroundColor: theme.colors.primarySurface,
+            borderColor: theme.colors.line,
+          },
+          press.animatedStyle,
+        ]}
+      >
+        <Text style={[styles.emptyActionText, { color: theme.colors.primary }]}>
+          {label}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
 
 function getMondayFirstOffset(cycleStart: Date): number {
   const jsDow = cycleStart.getDay()

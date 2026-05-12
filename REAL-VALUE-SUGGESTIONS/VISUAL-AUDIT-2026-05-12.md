@@ -78,7 +78,7 @@ Cada pantalla se evalúa en estos 7 ejes. Cada eje recibe ✅ pass / 🟡 mid / 
 | # | Pantalla | Ruta | Tier | Estado | Score antes | Score después |
 |---|---------|------|------|--------|-------------|---------------|
 | 1 | Home | `/(tabs)/home` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 2 | Gastos v2 | `/(tabs)/expenses` | T1 | 🔴 TO DO | — | — |
+| 2 | Gastos v2 | `/(tabs)/expenses` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | 🔴 TO DO | — | — |
 | 4 | Control v2 | `/(tabs)/insights` | T1 | 🔴 TO DO | — | — |
 | 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | — | — |
@@ -263,9 +263,30 @@ Resultado: si los 6 más recientes eran 5 fijos auto-pagados + 1 gasto manual, e
 
 ### 2. Gastos v2 `/(tabs)/expenses`
 
-**Estado**: 🔴 TO DO
+**Estado**: ✅ DONE (2026-05-12)
+**Score antes**: ⭐⭐⭐⭐ · **Score después**: ⭐⭐⭐⭐⭐
 
-<!-- Pendiente. -->
+#### Findings
+
+| Eje | Estado | Notas |
+|---|---|---|
+| 1. Color discipline | ✅ | Theme tokens consistent. Hardcodes `#A6EF8F` y `#297811` en RefreshControl tintColor son brand palette, aceptables. |
+| 2. Typography | 🟡→✅ | `CountUpText` con TABULAR built-in ✅. Hierarchy bien (header 34pt, hero 40pt, row title 14pt). **Fix aplicado**: `groupTotal` (section header amount) y `GastoRow.amount` ahora con `fontVariant: ['tabular-nums']`. |
+| 3. Layout & spacing | ✅ | Gap 10dp consistent. Safe area por Screen. Sin nested cards. Hero richer que el SaaS hero-metric template. |
+| 4. Motion | ✅ | LinearTransition 260 en header reflow. FadeIn 180 / FadeOut 140 / Layout 220 en rows con gating `rowAnimationEnabled` (no contendrá worklets durante tab transition). RiseView 100/140 staggered. Filter pill press scale 0.96 custom. |
+| 5. Interaction & touch | 🟡→✅ | Filter pills tenían press scale custom ✅. **Fix aplicado**: `clearFiltersBtn` y `emptyAction` convertidos de opacity-only a sub-componentes con `usePressScale(0.97)` + `Animated.View`. |
+| 6. A11y | ✅ | Labels compuestos, `accessibilityActions` wired, `accessibilityState` en pills, `accessibilityHint` en swipe. |
+| 7. Anti-AI-slop | 🟡→✅ | Sin side-stripes, gradient text, glass, card-grid. **Fix aplicado**: "— Fin del ciclo —" (em dashes ban) reemplazado por eyebrow editorial centrado con rule-line a cada lado. |
+
+#### Fixes aplicados
+
+1. **[S] Press scale en `clearFiltersBtn` + `emptyAction`** — extracción a sub-componentes locales `ClearFiltersButton` + `EmptyActionButton` con `usePressScale(0.97)` (no podían usar el hook en `useMemo`/`ListEmptyComponent` callbacks). Reemplaza el `opacity: 0.85` fade muerto por spring scale Emil-grade. ([gastos-v2-screen.tsx](../mobile/screens/home/gastos-v2-screen.tsx))
+2. **[S] Tabular nums en amounts** — `groupTotal` (section header) y `GastoRow.amount`. Antes los dígitos proporcionales causaban micro-wobble en la columna right-aligned al scrollear. Ahora alinea limpio. ([gastos-v2-screen.tsx](../mobile/screens/home/gastos-v2-screen.tsx), [gasto-row.tsx](../mobile/components/gastos/gasto-row.tsx))
+3. **[S] Em dashes "Fin del ciclo"** — replaced `"— Fin del ciclo —"` con eyebrow editorial: `FIN DEL CICLO` (uppercase, 10pt, weight 800, letter-spacing 1.8) flanqueado por dos rule-lines hairline. Más limpio, alineado con impeccable's em-dash ban + matchea el lenguaje editorial del Wrapped/Ediciones. ([gastos-v2-screen.tsx](../mobile/screens/home/gastos-v2-screen.tsx))
+
+#### Comments
+
+Gastos era una de las pantallas más cargadas (hero rich + advisor chip + smart filter + month calendar + virtualized SectionList + streak icon + swipe rows + paginación). Los 3 fixes son polish-level: la pantalla ya operaba muy bien funcionalmente. Cambios totales <60 LOC.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -321,3 +342,4 @@ Resultado: si los 6 más recientes eran 5 fijos auto-pagados + 1 gasto manual, e
 - **2026-05-12** — Home Sprint 2 (post-feedback owner): Float icon `withRepeat(..., reverse=true)` oscilación continua (Home-specific). Tab transitions `animation: 'shift'` (re-clasificado como **G1 fix global**). Dark mode white flash hotfix dual-layer (re-clasificado como **G2 fix global**).
 - **2026-05-12** — Doc reorganizado: nueva sección "🌐 Fixes globales" para fixes que descubrimos auditando una pantalla pero viven en navigator/root containers/theme bridge. Cada pantalla del status board los hereda.
 - **2026-05-12** — Home Fix 7: activity feed mostraba 1/6 rows por bug slice-before-filter. Fix dual en `use-home-snapshot.ts` seed (pre-filter) + `useRecentExpenses` hook (over-fetch 4×). G2 dark mode flash marcado como 🟡 PARCIAL — todavía persiste post-fix dual; sospechas anotadas para próximo sprint.
+- **2026-05-12** — Pantalla 2/28 (Gastos v2) auditada + 3 fixes aplicados (press scale en clearFilters + emptyAction, tabular nums en groupTotal + GastoRow.amount, em dashes "Fin del ciclo" → eyebrow editorial). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.

@@ -140,5 +140,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   amountBlock: { alignItems: 'flex-end' },
-  amount: { fontSize: 14, fontWeight: '800' },
+  // Tabular nums para que la columna right-aligned de montos alinee
+  // verticalmente entre rows sin wobble por anchos de glifo
+  // proporcionales (1 vs 8 ocupan distintos pixels en defaults).
+  amount: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
 })
