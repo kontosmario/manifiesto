@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { darkenForLightBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -37,6 +39,21 @@ export function GastoRow({
   const { theme } = useAppTheme()
   const icon = pickIconForCategory(categoryName)
   const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
+  // catChipText antes usaba el `categoryColor` pastel directo, que sobre
+  // el chip bg tinted al 14% sobre creamCard fallaba WCAG:
+  //   - light: pastel (#89C8F7) sobre near-white tinted (#EEF6F9) → 1.6:1 ❌
+  //   - dark: pastel sobre olive-tinted dark → 3-4:1 marginal
+  // Fix theme-aware:
+  //   - light: variante oscura hue-preserved (L=22 HSL) → ≥6:1 sobre chip bg
+  //   - dark: pastel original sobre dark chip bg → 3-4:1 (legible, en banda
+  //     "large text AA" 3:1, las pastels sobre forest dark son visibles)
+  // En dark mode aceptamos el trade-off por hierarchy: el chip es
+  // informacional secundario, no critical reading. El category name
+  // también está implicit en el iconTile + position de la row.
+  const catChipTextColor = useMemo(
+    () => (theme.isDark ? categoryColor : darkenForLightBg(categoryColor)),
+    [categoryColor, theme.isDark],
+  )
   return (
     <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
       <View style={styles.iconWrap}>
@@ -67,7 +84,7 @@ export function GastoRow({
               },
             ]}
           >
-            <Text style={[styles.catChipText, { color: categoryColor }]} numberOfLines={1}>
+            <Text style={[styles.catChipText, { color: catChipTextColor }]} numberOfLines={1}>
               {categoryName}
             </Text>
           </View>

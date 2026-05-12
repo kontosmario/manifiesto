@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import Animated, {
   Easing,
@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { darkenForLightBg } from '@/utils/category-color'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosFilterPillProps {
@@ -61,9 +62,32 @@ export function GastosFilterPill({
   const inactiveFg = theme.colors.text
   const activeFg = theme.colors.creamCard
   const inactiveCountBg = theme.colors.pageBg
-  const activeCountBg = 'rgba(255,255,255,0.18)'
-  const inactiveCountFg = color ?? theme.colors.text
-  const activeCountFg = theme.colors.heroAccent
+  // Active count chip bg: cream-alpha en light (queda gris sobre text bg
+  // → contrast OK con cream fg), forest-alpha en dark (queda cream sobre
+  // text bg cream → contrast con forest fg). Antes era hardcoded
+  // `rgba(255,255,255,0.18)` que en dark dejaba el chip casi-blanco con
+  // lime invisible.
+  const activeCountBg = theme.isDark
+    ? 'rgba(15,46,31,0.18)'
+    : 'rgba(255,255,255,0.18)'
+  // Inactive count fg: el category color pastel sobre pageBg-light
+  // (#F4FDF2 faint mint) caía a ~1.5:1 — ilegible. Para light usamos
+  // la variante oscura hue-preserved del category color (L=22 HSL),
+  // que da ≥5:1 sobre pageBg. Para dark, el pastel original sobre
+  // pageBg #12211A ya da 8-10:1 ✅, no necesita ajuste.
+  // Fallback: si no hay color, usar `text` (alto contraste ambos modos).
+  const resolvedInactiveCountFg = useMemo(() => {
+    if (!color) return theme.colors.text
+    return theme.isDark ? color : darkenForLightBg(color)
+  }, [color, theme.isDark, theme.colors.text])
+  const inactiveCountFg = resolvedInactiveCountFg
+  // Active count fg: antes era `heroAccent` (lime) — en dark, sobre el
+  // chip bg que queda casi-cream, daba 1.16:1 invisible. Switch a
+  // `activeFg` (creamCard) para que el count "eche un eco" del label
+  // color → contraste alto en ambos modos:
+  //   - light: creamCard #FFFBF2 sobre chip-bg (dark-grey-green) ≥6:1
+  //   - dark: creamCard #305A47 sobre chip-bg (near-cream) ≥6:1
+  const activeCountFg = activeFg
 
   const pillStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(

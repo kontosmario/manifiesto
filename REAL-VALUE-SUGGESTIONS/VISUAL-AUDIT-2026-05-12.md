@@ -425,6 +425,68 @@ Single-token change, AA cleanly en ambos modos.
 
 Total Sprint D: 3 fixes, ~40 LOC. Score sigue ⭐⭐⭐⭐⭐ con dos contrast trade-offs documentados.
 
+#### Sprint E — Filter pills + Movimientos rows contrast deep-dive
+
+Owner pidió zoom específico sobre dos componentes: "Filtrar por categoría" y "Movimientos". Audit matricial de cada estado en ambos modos reveló **3 bugs de contrast invisibilizando contenido**:
+
+##### Discovery: las 12 category colors son TODAS pasteles
+
+`CATEGORY_FALLBACK_COLORS` en `use-categories.ts` define 12 colors fijos, todos con lightness 0.55–0.85 (`#89C8F7 → #9DE7C8`). Funcionan perfecto como **chip backgrounds tinted al 14%**, pero rotos como **TEXT colors** en algunos contextos:
+- Pastel light sobre `pageBg` #F4FDF2 (faint mint) light → ~1.5–2:1 ❌
+- Pastel light sobre tinted-chip-bg (0.14 sobre creamCard light) → ~1.6:1 ❌
+
+##### Matriz audit detallada
+
+**`GastosFilterPill`**:
+
+| Estado | Elemento | Light | Dark |
+|---|---|---|---|
+| Inactive | Label `text` on `creamCard` | 14:1 ✅ | 6:1 ✅ |
+| Inactive | **Count chip fg** | **1.5–2:1** 🔴 | 8–10:1 ✅ |
+| Active | Label `creamCard` on `text` | 14:1 ✅ | 6:1 ✅ |
+| Active | **Count chip fg** (lime on white-alpha bg) | 6:1 ✅ | **1.16:1** 🔴 |
+
+**`GastoRow`**:
+
+| Elemento | Light | Dark |
+|---|---|---|
+| title/subMeta/notes/amount | All ✅ | All ✅ |
+| **catChipText** (categoryColor on tinted bg) | **~1.6:1** 🔴 | ~3.3:1 🟡 |
+
+##### Fix M1 — Filter pill INACTIVE count chip fg (light mode catástrofe)
+
+Original: `inactiveCountFg = color ?? theme.colors.text`. En light, category color pastel sobre `pageBg #F4FDF2` (faint mint paper) = essentially invisible.
+
+Fix: extraer util compartido `darkenForLightBg` ([`mobile/utils/category-color.ts`](../mobile/utils/category-color.ts)) que deriva variante hue-preserved HSL L=22, S=+8 (mismo patrón que `darkenToneForText` en `control-v2-header.tsx`). Theme-aware:
+- **Light**: usa derivada oscura → contraste ≥6:1 sobre pageBg
+- **Dark**: mantiene pastel original → 8-10:1 sobre pageBg dark
+
+##### Fix M2 — Filter pill ACTIVE count chip fg (dark mode invisibility)
+
+Original: `activeCountFg = theme.colors.heroAccent` (lime #A6EF8F). En dark, el `activeBg = text` es cream #F2EAD3, el chip bg hardcoded `rgba(255,255,255,0.18)` blend a near-cream, y lime sobre near-cream = **1.16:1 invisible**.
+
+Fix dual:
+1. `activeCountBg` ahora theme-aware: `rgba(15,46,31,0.18)` (forest alpha) en dark mode evita el chip casi-blanco.
+2. `activeCountFg` switch a `activeFg` (creamCard) — el count "echo" el label color, contraste alto en ambos modos:
+   - Light: creamCard #FFFBF2 sobre dark-grey-green chip bg → ≥6:1 ✅
+   - Dark: creamCard #305A47 sobre cream-ish chip bg → ≥6:1 ✅
+
+##### Fix M3 — GastoRow catChipText category color
+
+Original: `color: categoryColor` (pastel) sobre `hexAlpha(categoryColor, 0.14)` over creamCard. Light: ~1.6:1 fail, Dark: ~3.3:1 marginal.
+
+Fix: theme-aware `catChipTextColor`:
+- **Light**: `darkenForLightBg(categoryColor)` → variante oscura, contraste ≥5:1 sobre tinted chip bg ✅
+- **Dark**: `categoryColor` original pastel → 3-4:1 sobre dark olive chip bg, en banda AA-Large (3:1), legible
+
+Trade-off documentado: dark mode marginal AA-body (4.5 req) para preservar la signal de category color identity. El chip es informacional secundario; el iconTile + el position de la row también comunican identidad.
+
+##### Polish adicional: nuevo util compartido
+
+Extracted `darkenForLightBg` a [`mobile/utils/category-color.ts`](../mobile/utils/category-color.ts) como utility reusable. `control-v2-header.tsx` mantiene su `darkenToneForText` local por ahora — migrar al util compartido queda en queue para próximo sweep que toque Control.
+
+Total Sprint E: 3 fixes contrast + 1 util compartido, ~80 LOC. Filter pills y Movimientos ahora pasan AA cleanly en light, y AA o AA-Large en dark sin perder hierarchy visual.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
@@ -483,3 +545,4 @@ Total Sprint D: 3 fixes, ~40 LOC. Score sigue ⭐⭐⭐⭐⭐ con dos contrast t
 - **2026-05-12** — Gastos Sprint 2 (re-audit "con lupa"): 3 sprints A/B/C con 10+ issues granulares en sub-componentes. Side-stripe ban en advisor chip removido. 6 Pressables del calendar + StreakFlameIcon ahora con press scale. Tabular nums residuales. Cascade order de RiseViews coherente.
 - **2026-05-12** — Hotfix Sprint B: el wrap de `DayCell` con `Pressable + Animated.View` rompió el grid del calendar. Causa: `styles.dayCell` con `flex: 1, aspectRatio: 1` quedó en el Animated.View interno, pero el grid layout requiere esos estilos EN EL CHILD DIRECTO del row (el Pressable). Empty cells retuvieron `flex: 1` mientras Pressables colapsaban → grid completamente desalineado. Fix: split en `dayCellLayout` (Pressable + empty View) y `dayCellSurface` (Animated.View visual chrome). Lección para refactors: cuando wrappás un Pressable con Animated.View interno, separar layout-affecting styles del visual chrome o el parent flex se rompe.
 - **2026-05-12** — Gastos Sprint D (contrast audit light + dark): cálculos WCAG sistemáticos sobre cada par fg/bg. 3 fixes aplicados: Today dot invisible en dark mode (heroAccent sobre cream → switch a canvas), hero gradient small-text contrast (heroMuted2 alpha 0.55 → heroMuted alpha 0.78, mejora de 2.5:1 a 3.5:1 manteniendo hierarchy), EmptyActionButton primary text en dark (primary #A6EF8F → primaryStrong #D1F7C5 para AA cleanly en ambos modos). Hero topLabel y small-text labels quedan marginales (3.5–4.2:1, mejor pero bajo AA estricto) — documentado como trade-off de hierarchy.
+- **2026-05-12** — Gastos Sprint E (filter pills + Movimientos zoom): owner pidió audit específico de estos dos componentes. Discovery: las 12 category colors son TODAS pasteles (lightness 0.55–0.85) — funcionan como chip bg tinted pero rotos como text color en algunos contextos. 3 bugs invisibilizando contenido: filter pill INACTIVE count chip fg falla light (1.5:1), filter pill ACTIVE count chip fg falla dark (1.16:1), GastoRow catChipText falla ambos (1.6:1 / 3.3:1). Fix: util compartido `darkenForLightBg` (hue-preserved HSL L=22) + theme-aware logic en los 3 spots.
