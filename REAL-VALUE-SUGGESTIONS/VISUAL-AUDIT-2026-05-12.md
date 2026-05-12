@@ -79,7 +79,7 @@ Cada pantalla se evalúa en estos 7 ejes. Cada eje recibe ✅ pass / 🟡 mid / 
 |---|---------|------|------|--------|-------------|---------------|
 | 1 | Home | `/(tabs)/home` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 2 | Gastos v2 | `/(tabs)/expenses` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | 🔴 TO DO | — | — |
+| 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | ✅ DONE | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 4 | Control v2 | `/(tabs)/insights` | T1 | 🔴 TO DO | — | — |
 | 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | — | — |
 | 6 | Asistente | `/asistente` (modal) | T2 | 🔴 TO DO | — | — |
@@ -568,9 +568,66 @@ Cuatro sprints (A/B/C + D + E + F) sobre Gastos. El cambio del approach del owne
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
 
-**Estado**: 🔴 TO DO
+**Estado**: ✅ DONE (2026-05-12)
+**Score antes**: ⭐⭐⭐ · **Score después**: ⭐⭐⭐⭐⭐
 
-<!-- Pendiente. -->
+Audit con lupa desde el primer pase (lecciones aprendidas de Gastos aplicadas). 30+ findings granulares organizados en 3 sprints. La pantalla tenía más interaction debt acumulada que Gastos porque sus sub-componentes (FijoRow, FijoCategoryGroups, FijosTabs, AlertCard) son todos interactivos pero ninguno tenía press feedback.
+
+#### Findings completos
+
+| Eje | Estado antes | Estado después |
+|---|---|---|
+| 1. Color discipline | 🔴 7 hardcoded values | ✅ all theme-aware |
+| 2. Typography | 🟡 4 amounts sin tabular | ✅ tabular everywhere |
+| 3. Layout & spacing | ✅ | ✅ |
+| 4. Motion | 🟡 Chevron snap + dead delay prop | ✅ Chevron rotates 240ms, dead code removed |
+| 5. Interaction & touch | 🔴 8 Pressables sin feedback | ✅ todos con usePressScale |
+| 6. A11y | 🟡 TrendBadge + statusChip sin SR | ✅ a11y labels añadidos |
+| 7. Anti-AI-slop | ✅ | ✅ |
+
+#### Sprint A — Press feedback batch (8 Pressables)
+
+| Componente | Press scale |
+|---|---|
+| `FijosHeader.addButton` | 0.94 (chico, 38pt + halo distractor) |
+| `FijoRow` card (tap-to-expand) | 0.98 sutil |
+| `FijoRow.actionPrimary` "Registrar pago" | 0.96 |
+| `FijoRow.actionSecondary` "Editar" | 0.96 |
+| `AlertCard.actionBtn` "Ver" | 0.96 |
+| `AlertCard.dismissBtn` ✓ | 0.92 (28pt chico) |
+| `FijosTabs.TabPill` | 0.96 |
+| `FijoCategoryGroups` header (tap expand) | 0.98 sutil |
+
+Cada uno con escala matched al tap-target size (Emil principle: chicos más pronunciados, grandes sutiles).
+
+#### Sprint B — Theme-aware colors
+
+**FijoRow status chip**: era light-only (chip pastel claro sobre card forest medium = visually disonante en dark). Theme-aware:
+- Light: `{bg: '#EAFBE4', color: '#297811'}` (paid) / `{bg: '#F8D1C3', color: '#973511'}` (overdue/pending)
+- Dark: `{bg: '#1F4530', color: '#A6EF8F'}` (paid) / `{bg: '#4A2418', color: '#F2A78C'}` (overdue) / `{bg: '#3A2A22', color: '#F2A78C'}` (pending)
+
+Mismo patrón que el calendar mood cells de Gastos. Cada par AA-verified.
+
+**TrendBadge**: light `#B84014`/`#297811` → dark `#F2A78C`/`#A6EF8F` para que el % suba/baja sea legible sobre card forest.
+
+**FijosHeader boxShadow**: hardcoded forest-dark → theme-aware (light: forest shadow / dark: lime halo de baja alpha).
+
+**FijosTabs active pill boxShadow**: mismo pattern (light shadow / dark halo).
+
+**FijoTrendSpark stroke**: las 3 colors hardcoded → theme-aware. Up: peach deep/light según modo. Down: forest deep/lime. Flat: token `textMuted`.
+
+#### Sprint C — Polish (tabular + motion + dead code + a11y)
+
+- Tabular nums añadido en 4 amounts: `FijoRow.amount`, `FijoCategoryGroups.total`, `FijosUpcomingStrip.amount`, `FijosHeroCard.bottomPct`.
+- **Chevron rotation animado** (snap → 240ms ease-out-expo rotation). Antes hacía path-swap entre up/down — visualmente snap. Ahora un solo path "down" con `Animated.View` rotation 0°↔180°.
+- **Dead code removed**: zombieBadge styles en FijoRow (~14 LOC), `void index` prop en AlertCard, `void delay` prop en UpcomingCard.
+- A11y: `accessibilityRole="text"` + `accessibilityLabel` en TrendBadge ("Tendencia subió/bajó X%") y FijoRow statusChip ("Estado: Pagado/Vencido/Pendiente").
+
+#### Comments
+
+Fijos partió de un score más bajo (⭐⭐⭐) que Gastos (⭐⭐⭐⭐) — más interaction debt acumulada en sub-componentes interactivos sin press feedback, más colores hardcoded en estados de status/trend, dead code de feature deprecada (zombie). Con las 3 sprints alcanzó paridad ⭐⭐⭐⭐⭐ con Home y Gastos. Total ~250 LOC de cambios distribuidos en 8 archivos.
+
+Lección reforzada: las pantallas con muchos estados visuales (status: paid/overdue/pending + trend: up/down/flat) tienden a acumular más colores hardcoded que las pantallas con menos estados. Audit checklist incluye "every state has a theme-aware pair" desde ahora.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -625,3 +682,4 @@ Cuatro sprints (A/B/C + D + E + F) sobre Gastos. El cambio del approach del owne
 - **2026-05-12** — Gastos Sprint E (filter pills + Movimientos zoom): owner pidió audit específico de estos dos componentes. Discovery: las 12 category colors son TODAS pasteles (lightness 0.55–0.85) — funcionan como chip bg tinted pero rotos como text color en algunos contextos. 3 bugs invisibilizando contenido: filter pill INACTIVE count chip fg falla light (1.5:1), filter pill ACTIVE count chip fg falla dark (1.16:1), GastoRow catChipText falla ambos (1.6:1 / 3.3:1). Fix: util compartido `darkenForLightBg` (hue-preserved HSL L=22) + theme-aware logic en los 3 spots.
 - **2026-05-12** — Gastos Sprint F (final completeness pass): catChipText dark switch a `textMuted` (brand-green uniform). Animation audit end-to-end zero gaps. 3 polish fixes: pull-to-refresh tintColor theme-aware, filter pill active shadow theme-aware (dark mode visible halo), swipeHint `‹` char → MaterialIcons chevron-left. Gastos cerrada con 6 sprints (A/B/C + D + E + F). Lección heurística confirmada: primer pass corto sobre pantallas con 5+ sub-components.
 - **2026-05-12** — Gastos Sprint F revisión criterio: owner corrigió "no me gusta que sea todo lime, de la gama del color original que era". Switch a `lightenForDarkBg(categoryColor)` — variante hue-preserved con L=92, S+8 (nuevo util en `category-color.ts`). 12/12 categorías AA pass (min 4.63:1). Paleta original preservada, identidad per-categoría intacta.
+- **2026-05-12** — Pantalla 3/28 (Fijos v2) auditada con lupa desde el primer pase. 30+ findings granulares organizados en 3 sprints: A (8 press feedbacks), B (statusChip + TrendBadge + 2 shadows + FijoTrendSpark theme-aware), C (4 tabular nums + chevron rotation + dead code + 2 a11y labels). Score ⭐⭐⭐ → ⭐⭐⭐⭐⭐. Lección reforzada: estados visuales múltiples (status, trend) propician más hardcoded colors.

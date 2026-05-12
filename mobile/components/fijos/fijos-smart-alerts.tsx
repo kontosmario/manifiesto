@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useRouter } from 'expo-router'
@@ -9,6 +10,7 @@ import {
   useDismissedHikes,
 } from '@/features/fijos/use-hike-dismiss-store'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -109,17 +111,21 @@ export function FijosSmartAlerts({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
       >
-        {alerts.map((a, i) => (
-          <AlertCard key={a.id} alert={a} index={i} />
+        {alerts.map((a) => (
+          <AlertCard key={a.id} alert={a} />
         ))}
       </ScrollView>
     </RiseView>
   )
 }
 
-function AlertCard({ alert, index }: { alert: SmartAlert; index: number }) {
+function AlertCard({ alert }: { alert: SmartAlert }) {
   const { theme } = useAppTheme()
-  void index
+  // Cada AlertCard tiene 2 buttons inline (action + dismiss). Cada uno
+  // con su propia press scale Emil-grade — la dismiss `✓` es 28pt
+  // chico (0.92), la action button es más grande (0.96).
+  const actionPress = usePressScale({ pressedScale: 0.96 })
+  const dismissPress = usePressScale({ pressedScale: 0.92 })
   return (
     <View
       style={[
@@ -145,31 +151,49 @@ function AlertCard({ alert, index }: { alert: SmartAlert; index: number }) {
         {alert.action ? (
           <Pressable
             onPress={alert.onPress}
-            style={[styles.actionBtn, { borderColor: theme.colors.line }]}
+            onPressIn={actionPress.onPressIn}
+            onPressOut={actionPress.onPressOut}
             accessibilityRole="button"
             accessibilityLabel={alert.action}
           >
-            <Text style={[styles.actionText, { color: theme.colors.text }]}>{alert.action}</Text>
+            <Animated.View
+              style={[
+                styles.actionBtn,
+                { borderColor: theme.colors.line },
+                actionPress.animatedStyle,
+              ]}
+            >
+              <Text style={[styles.actionText, { color: theme.colors.text }]}>{alert.action}</Text>
+            </Animated.View>
           </Pressable>
         ) : null}
         {alert.onDismiss ? (
           <Pressable
             onPress={alert.onDismiss}
-            style={[styles.dismissBtn, { borderColor: theme.colors.line }]}
+            onPressIn={dismissPress.onPressIn}
+            onPressOut={dismissPress.onPressOut}
             accessibilityRole="button"
             accessibilityLabel="Ya lo vi"
             accessibilityHint="Oculta este aviso hasta que cambie el precio"
             hitSlop={8}
           >
-            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M5 12l4 4 10-10"
-                stroke={theme.colors.text}
-                strokeWidth={2.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
+            <Animated.View
+              style={[
+                styles.dismissBtn,
+                { borderColor: theme.colors.line },
+                dismissPress.animatedStyle,
+              ]}
+            >
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M5 12l4 4 10-10"
+                  stroke={theme.colors.text}
+                  strokeWidth={2.4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </Animated.View>
           </Pressable>
         ) : null}
       </View>

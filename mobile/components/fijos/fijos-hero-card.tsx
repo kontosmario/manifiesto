@@ -471,6 +471,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   bottomPctSub: {
     fontSize: 10,

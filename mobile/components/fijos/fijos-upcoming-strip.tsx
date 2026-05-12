@@ -30,13 +30,12 @@ export function FijosUpcomingStrip({
         </Text>
       </View>
       <View style={styles.row}>
-        {upcoming.map((item, i) => (
+        {upcoming.map((item) => (
           <UpcomingCard
             key={item.id}
             item={item}
             todayDay={todayDay}
             category={item.category_id ? categoriesById.get(item.category_id) : undefined}
-            delay={140 + i * 20}
           />
         ))}
       </View>
@@ -48,16 +47,13 @@ function UpcomingCard({
   item,
   todayDay,
   category,
-  delay,
 }: {
   item: FijoItem
   todayDay: number
   category?: { id: string; name: string; color: string }
-  delay: number
 }) {
   const { theme } = useAppTheme()
   void todayDay
-  void delay
   const diffDays = Math.max(0, item.daysUntilDue)
   const urgent = diffDays <= 2
   const label = diffDays === 0 ? 'HOY' : diffDays === 1 ? 'MAÑANA' : `EN ${diffDays}D`
@@ -160,7 +156,8 @@ const styles = StyleSheet.create({
   },
   daysLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
   name: { fontSize: 13, fontWeight: '700', marginTop: 2 },
-  amount: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3, marginTop: 4 },
+  // Tabular nums para que montos alineen entre las 3 cards horizontales.
+  amount: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3, marginTop: 4, fontVariant: ['tabular-nums'] },
   catBadge: {
     position: 'absolute',
     top: 8,

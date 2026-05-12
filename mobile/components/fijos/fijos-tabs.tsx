@@ -1,7 +1,9 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { RiseView } from '@/components/home/animated/rise-view'
 import type { FijosTab } from '@/features/fijos/use-fijos-controller'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijosTabsProps {
@@ -41,6 +43,10 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
 
 function TabPill({ tab, active, onPress }: { tab: TabDef; active: boolean; onPress: () => void }) {
   const { theme } = useAppTheme()
+  // Press scale subtle 0.96 — tabs son tap-targets medianos, no necesitan
+  // escala pronunciada. La sensación es de "tactil response" sin que
+  // compita con el state change (active color morph 240ms).
+  const press = usePressScale({ pressedScale: 0.96 })
 
   // V1 Cuaderno palette:
   //  · Light active → solid ink `#0F2A1E`, cream label.
@@ -78,18 +84,22 @@ function TabPill({ tab, active, onPress }: { tab: TabDef; active: boolean; onPre
     return (
       <Pressable
         onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         accessibilityLabel={tab.label}
       >
-        <LinearGradient
-          colors={['#A6EF8F', '#49D61F'] as unknown as readonly [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.pill, styles.pillActiveDark]}
-        >
-          {content}
-        </LinearGradient>
+        <Animated.View style={press.animatedStyle}>
+          <LinearGradient
+            colors={['#A6EF8F', '#49D61F'] as unknown as readonly [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.pill, styles.pillActiveDark]}
+          >
+            {content}
+          </LinearGradient>
+        </Animated.View>
       </Pressable>
     )
   }
@@ -97,19 +107,35 @@ function TabPill({ tab, active, onPress }: { tab: TabDef; active: boolean; onPre
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.pill,
-        {
-          backgroundColor: active ? theme.colors.text : theme.colors.creamCard,
-          borderColor: active ? theme.colors.text : theme.colors.line,
-        },
-        active ? { boxShadow: '0px 6px 16px -6px rgba(15, 42, 30, 0.4)' } : null,
-      ]}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={tab.label}
     >
-      {content}
+      <Animated.View
+        style={[
+          styles.pill,
+          {
+            backgroundColor: active ? theme.colors.text : theme.colors.creamCard,
+            borderColor: active ? theme.colors.text : theme.colors.line,
+          },
+          // Active state shadow theme-aware. Antes era forest-dark
+          // hardcoded → invisible en dark. Light: forest shadow. Dark:
+          // lime halo arriba del pill (lift tonal). Mismo patrón que
+          // Gastos filter pills Sprint F.
+          active
+            ? {
+                boxShadow: theme.isDark
+                  ? '0px 6px 16px -6px rgba(166,239,143,0.32)'
+                  : '0px 6px 16px -6px rgba(15,42,30,0.4)',
+              }
+            : null,
+          press.animatedStyle,
+        ]}
+      >
+        {content}
+      </Animated.View>
     </Pressable>
   )
 }

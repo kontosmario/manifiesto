@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -82,15 +91,20 @@ function CategoryGroup({
   const { theme } = useAppTheme()
   const [expanded, setExpanded] = useState(true)
   const emoji = pickIconForFixedExpenseCategory(group.label)
+  // Press scale subtle 0.98 — toda la row es tap-target grande, escala
+  // sutil para no competir con la rotation del chevron.
+  const press = usePressScale({ pressedScale: 0.98 })
   return (
     <Animated.View layout={LinearTransition.duration(240)}>
       <Pressable
         onPress={() => setExpanded((v) => !v)}
-        style={styles.header}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`Categoría ${group.label}`}
       >
+        <Animated.View style={[styles.header, press.animatedStyle]}>
         <View style={styles.headerLeft}>
           <View
             style={[
@@ -114,8 +128,9 @@ function CategoryGroup({
           <Text style={[styles.total, { color: theme.colors.text }]}>
             {formatMoney(group.total)}
           </Text>
-          <Chevron color={theme.colors.textMuted} pointing={expanded ? 'up' : 'down'} />
+          <Chevron color={theme.colors.textMuted} expanded={expanded} />
         </View>
+        </Animated.View>
       </Pressable>
       {expanded ? (
         <Animated.View
@@ -175,12 +190,32 @@ function ItemSlot({
   )
 }
 
-function Chevron({ color, pointing }: { color: string; pointing: 'up' | 'down' }) {
-  const d = pointing === 'up' ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'
+function Chevron({ color, expanded }: { color: string; expanded: boolean }) {
+  // Antes hacíamos path-swap entre up y down → SNAP visual sin transition.
+  // Ahora: path fijo "down" + rotation 180° animado vía Reanimated.
+  // Resultado: el chevron rota suavemente cuando expandís/colapsás.
+  const rotation = useSharedValue(expanded ? 180 : 0)
+  useEffect(() => {
+    rotation.value = withTiming(expanded ? 180 : 0, {
+      duration: 240,
+      easing: Easing.bezier(0.16, 1, 0.30, 1),
+    })
+  }, [expanded, rotation])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }))
   return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path d={d} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
+    <Animated.View style={style}>
+      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M6 9l6 6 6-6"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </Animated.View>
   )
 }
 
@@ -218,7 +253,9 @@ const styles = StyleSheet.create({
   iconText: { fontSize: 16 },
   title: { fontSize: 14, fontWeight: '700' },
   count: { fontSize: 11 },
-  total: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
+  // Tabular nums para que totals por categoría alineen verticalmente
+  // cuando varios groups están expandidos uno encima del otro.
+  total: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
   list: { gap: 6 },
   emptyWrap: { padding: 24, alignItems: 'center' },
   emptyText: { fontSize: 13 },

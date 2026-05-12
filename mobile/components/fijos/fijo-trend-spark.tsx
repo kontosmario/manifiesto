@@ -1,5 +1,6 @@
 import { View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
+import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijoTrendSparkProps {
   points: number[]
@@ -12,8 +13,14 @@ interface FijoTrendSparkProps {
  * and draws a smooth path. Color shifts to match direction: up → peach,
  * down → green, flat → muted. Designed to sit at the right edge of a
  * Fijo row.
+ *
+ * Stroke colors theme-aware:
+ * - Light: deep brand peach/forest (high contrast en cream card)
+ * - Dark: light brand peach/lime (high contrast en forest card)
+ * - Flat: textMuted (token-driven, ya theme-aware)
  */
 export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSparkProps) {
+  const { theme } = useAppTheme()
   if (points.length < 2) {
     return <View style={{ width, height }} />
   }
@@ -23,7 +30,11 @@ export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSpa
   const diff = last - first
   const pctChange = first > 0 ? (diff / first) * 100 : 0
   const stroke =
-    pctChange >= 1.5 ? '#B84014' : pctChange <= -1.5 ? '#297811' : '#8A8A8A'
+    pctChange >= 1.5
+      ? theme.isDark ? '#F2A78C' : '#B84014'
+      : pctChange <= -1.5
+        ? theme.isDark ? '#A6EF8F' : '#297811'
+        : theme.colors.textMuted
 
   const min = Math.min(...points)
   const max = Math.max(...points)

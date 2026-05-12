@@ -6,6 +6,7 @@ import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -42,6 +43,12 @@ export function FijoRow({
   const [open, setOpen] = useState(false)
   const emoji = pickIconForFixedExpenseCategory(categoryName)
   const status = item.computedStatus
+  // 3 press scales — card (tap-to-expand, subtle 0.98), action primary
+  // (CTA verde 0.96), action secondary (Editar 0.96). Antes no había
+  // ningún feedback de press en el card ni en los action buttons.
+  const cardPress = usePressScale({ pressedScale: 0.98 })
+  const actionPrimaryPress = usePressScale({ pressedScale: 0.96 })
+  const actionSecondaryPress = usePressScale({ pressedScale: 0.96 })
 
   // ── Local celebration on status flip → 'paid' ──────────────────
   // Capture the row's initial status on mount via a ref. The pulse
@@ -55,10 +62,25 @@ export function FijoRow({
     status === 'paid' && initialStatusRef.current !== 'paid' ? 1 : 0
   const statusLabel =
     status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'
-  const statusColor =
-    status === 'paid' ? '#297811' : status === 'overdue' ? '#973511' : '#973511'
-  const statusBg =
-    status === 'paid' ? '#EAFBE4' : status === 'overdue' ? '#F8D1C3' : '#FCEAE3'
+  // Status chip theme-aware. Antes era light-only: chip bg pastel claro
+  // (#EAFBE4/#F8D1C3/#FCEAE3) + text dark (#297811/#973511). En dark mode
+  // ese chip pastel claro flotaba sobre el card forest medium — visualmente
+  // disonante y rompía la harmonía del card.
+  // Dark mode: usamos dark-tinted bg + light-tinted text (mismo patrón que
+  // los mood cells del calendar). Cada estado tiene su par AA-verified.
+  const statusStyle = theme.isDark
+    ? status === 'paid'
+      ? { bg: '#1F4530', color: '#A6EF8F' }     // dark-green bg + lime text
+      : status === 'overdue'
+        ? { bg: '#4A2418', color: '#F2A78C' }   // dark-red bg + peach text
+        : { bg: '#3A2A22', color: '#F2A78C' }   // dark-amber bg + peach text
+    : status === 'paid'
+      ? { bg: '#EAFBE4', color: '#297811' }     // light-green + forest text
+      : status === 'overdue'
+        ? { bg: '#F8D1C3', color: '#973511' }   // light-pink + dark-red text
+        : { bg: '#FCEAE3', color: '#973511' }   // light-peach + dark-red text
+  const statusColor = statusStyle.color
+  const statusBg = statusStyle.bg
 
   const diffDays = item.dayOfMonth - todayDay
   const dueLabel =
@@ -91,13 +113,17 @@ export function FijoRow({
       <Animated.View layout={LinearTransition.duration(240)}>
         <Pressable
           onPress={() => setOpen((v) => !v)}
+          onPressIn={cardPress.onPressIn}
+          onPressOut={cardPress.onPressOut}
+        >
+          <Animated.View
           style={[
             styles.card,
             {
               backgroundColor: theme.colors.creamCard,
-              shadowColor: '#12211A',
+              shadowColor: theme.colors.text,
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: open ? 0.18 : 0,
+              shadowOpacity: open ? (theme.isDark ? 0.32 : 0.18) : 0,
               shadowRadius: 10,
               elevation: open ? 4 : 0,
               // Allow confetti particles to render outside the card
@@ -105,6 +131,7 @@ export function FijoRow({
               // hidden` on rounded cards would chop the burst).
               overflow: 'visible',
             },
+            cardPress.animatedStyle,
           ]}
         >
           {/*
@@ -141,7 +168,11 @@ export function FijoRow({
                 ) : null}
               </View>
               <View style={styles.metaRow}>
-                <View style={[styles.statusChip, { backgroundColor: statusBg }]}>
+                <View
+                  style={[styles.statusChip, { backgroundColor: statusBg }]}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Estado: ${statusLabel}`}
+                >
                   <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
                 </View>
                 <Text style={[styles.metaDot, { color: theme.colors.textMuted }]}>·</Text>
@@ -188,35 +219,51 @@ export function FijoRow({
                 {status !== 'paid' && onMarkPaid ? (
                   <Pressable
                     onPress={() => onMarkPaid(item.id)}
-                    style={[styles.actionPrimary, { backgroundColor: theme.colors.text }]}
+                    onPressIn={actionPrimaryPress.onPressIn}
+                    onPressOut={actionPrimaryPress.onPressOut}
+                    style={styles.actionPrimaryWrap}
                     accessibilityRole="button"
                     accessibilityLabel="Registrar pago"
                   >
-                    <Text style={[styles.actionPrimaryText, { color: theme.colors.creamCard }]}>
-                      ✓ Registrar pago
-                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.actionPrimary,
+                        { backgroundColor: theme.colors.text },
+                        actionPrimaryPress.animatedStyle,
+                      ]}
+                    >
+                      <Text style={[styles.actionPrimaryText, { color: theme.colors.creamCard }]}>
+                        ✓ Registrar pago
+                      </Text>
+                    </Animated.View>
                   </Pressable>
                 ) : null}
                 {onEdit ? (
                   <Pressable
                     onPress={() => onEdit(item.id)}
-                    style={[
-                      styles.actionSecondary,
-                      { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
-                    ]}
+                    onPressIn={actionSecondaryPress.onPressIn}
+                    onPressOut={actionSecondaryPress.onPressOut}
+                    style={styles.actionSecondaryWrap}
                     accessibilityRole="button"
                     accessibilityLabel="Editar fijo"
                   >
-                    <Text
-                      style={[styles.actionSecondaryText, { color: theme.colors.text }]}
+                    <Animated.View
+                      style={[
+                        styles.actionSecondary,
+                        { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
+                        actionSecondaryPress.animatedStyle,
+                      ]}
                     >
-                      Editar
-                    </Text>
+                      <Text style={[styles.actionSecondaryText, { color: theme.colors.text }]}>
+                        Editar
+                      </Text>
+                    </Animated.View>
                   </Pressable>
                 ) : null}
               </View>
             </Animated.View>
           ) : null}
+          </Animated.View>
         </Pressable>
       </Animated.View>
     </SwipeableRow>
@@ -224,11 +271,26 @@ export function FijoRow({
 }
 
 function TrendBadge({ deltaPct }: { deltaPct: number }) {
+  const { theme } = useAppTheme()
   const up = deltaPct > 0
+  // Theme-aware: en light mantenemos tonos sólidos (peach + forest). En
+  // dark cambiamos a variantes brand-bright que contrastan con el card
+  // forest. Bg sigue alpha-based en ambos modos (works en cualquier
+  // canvas porque la categoría se ve a través).
   const bg = up ? 'rgba(242,167,140,0.18)' : 'rgba(166,239,143,0.16)'
-  const fg = up ? '#B84014' : '#297811'
+  const fg = up
+    ? theme.isDark
+      ? '#F2A78C'  // brand peach light (better contrast on dark card)
+      : '#B84014'  // brand peach deep
+    : theme.isDark
+      ? '#A6EF8F'  // brand lime
+      : '#297811'  // brand forest deep
   return (
-    <View style={[styles.trendBadge, { backgroundColor: bg }]}>
+    <View
+      style={[styles.trendBadge, { backgroundColor: bg }]}
+      accessibilityRole="text"
+      accessibilityLabel={`Tendencia ${up ? 'subió' : 'bajó'} ${Math.abs(deltaPct)} por ciento`}
+    >
       <Text style={[styles.trendBadgeText, { color: fg }]}>
         {up ? '+' : ''}
         {deltaPct}%
@@ -317,20 +379,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: { fontSize: 18 },
-  zombieBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#C9A6E0',
-    borderWidth: 2,
-    borderColor: '#FFFBF2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zombieBadgeText: { fontSize: 8 },
+  // zombieBadge styles eliminados — el zombie badge se removió cuando
+  // el audit migró al family-transparent Asistente flow (comment en
+  // línea 130). Eran ~14 LOC de dead style.
   body: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
@@ -346,7 +397,9 @@ const styles = StyleSheet.create({
   metaDot: { fontSize: 11 },
   metaText: { fontSize: 11, flexShrink: 1 },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
-  amount: { fontSize: 16, fontWeight: '800', letterSpacing: -0.4 },
+  // Tabular nums para columna right-aligned de montos entre rows
+  // (mismo razonamiento que Gastos.GastoRow.amount).
+  amount: { fontSize: 16, fontWeight: '800', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   detailBlock: {
     marginTop: 12,
     paddingTop: 12,
@@ -358,16 +411,20 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
   detailValue: { fontSize: 13, fontWeight: '700', marginTop: 2 },
   actionsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  // Wrap Pressable lleva el layout (flex), Animated.View interno lleva
+  // visual chrome + press scale. Mismo split que aprendimos del DayCell
+  // hotfix — sin esto la flex ratio se rompe cuando el Animated.View
+  // toma el flex.
+  actionPrimaryWrap: { flex: 2 },
   actionPrimary: {
-    flex: 2,
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionPrimaryText: { fontSize: 13, fontWeight: '700' },
+  actionSecondaryWrap: { flex: 1 },
   actionSecondary: {
-    flex: 1,
     paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',

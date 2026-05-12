@@ -10,6 +10,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijosHeaderProps {
@@ -78,6 +79,11 @@ export function FijosHeader({
     opacity: 0.22 * (1 - haloB.value),
   }))
 
+  // Press scale Emil-grade — escala 0.94 más pronunciada para el
+  // tap-target chico de 38pt + soft halo distractor. El opacity:0.92
+  // anterior se diluía contra el halo sonar.
+  const press = usePressScale({ pressedScale: 0.94 })
+
   return (
     <RiseView>
       <View style={styles.row}>
@@ -112,17 +118,29 @@ export function FijosHeader({
 
           <Pressable
             onPress={onPressAdd}
+            onPressIn={press.onPressIn}
+            onPressOut={press.onPressOut}
             accessibilityRole="button"
             accessibilityLabel="Agregar fijo"
-            style={({ pressed }) => [
-              styles.addButton,
-              {
-                backgroundColor: theme.colors.creamCard,
-                opacity: pressed ? 0.92 : 1,
-              },
-            ]}
           >
-            <PlusIcon color={theme.colors.primary} />
+            <Animated.View
+              style={[
+                styles.addButton,
+                {
+                  backgroundColor: theme.colors.creamCard,
+                  // Shadow theme-aware. Antes hardcoded `rgba(15,42,30,0.08)`
+                  // → invisible en dark mode sobre canvas dark. Light:
+                  // forest shadow below button. Dark: lime halo de menor
+                  // alpha para lift tonal sobre forest canvas.
+                  boxShadow: theme.isDark
+                    ? '0px 2px 6px rgba(166,239,143,0.18)'
+                    : '0px 2px 6px rgba(15,42,30,0.08)',
+                },
+                press.animatedStyle,
+              ]}
+            >
+              <PlusIcon color={theme.colors.primary} />
+            </Animated.View>
           </Pressable>
         </View>
       </View>
@@ -174,6 +192,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 2px 6px rgba(15, 42, 30, 0.08)',
+    // boxShadow theme-aware se aplica inline en el JSX (no acá) para
+    // que dependa de theme.isDark — los styles estáticos no pueden.
   },
 })
