@@ -19,6 +19,7 @@ import { HeroAurora } from '@/components/home/hero-aurora'
 import { CardParticles } from '@/components/ui/card-particles'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -98,6 +99,14 @@ export function HomeHeroCard({
     transform: [{ scale: pulseScale.value }],
   }))
 
+  // Press feedback para el estado setup. Hero card per se no es
+  // tappable en steady state — solo el CTA inferior. Cuando el income
+  // no está configurado, el card entero ES el tap-target (Pressable
+  // wrap exterior). usePressScale lo hace sentir responsive (Emil:
+  // "buttons must feel responsive"); reemplaza el opacity-only que
+  // estaba antes (no daba sensación de press).
+  const setupPress = usePressScale({ pressedScale: 0.98 })
+
   // Compose a single accessibility label for the whole card so screen
   // readers announce it as a summary unit rather than reading each
   // chip / number / chip in document order. The fall-through for the
@@ -150,65 +159,68 @@ export function HomeHeroCard({
             accessibilityRole="button"
             accessibilityLabel="Configurar tu ingreso mensual"
             onPress={onPressConfigureIncome}
-            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+            onPressIn={setupPress.onPressIn}
+            onPressOut={setupPress.onPressOut}
           >
-            <RiseView>
-              <View style={styles.labelRow}>
-                <View style={styles.labelLeft}>
-                  <BreatheDot
-                    size={8}
-                    color={theme.colors.heroAccent}
-                    glow={theme.colors.heroAccent}
-                  />
-                  <Text
-                    style={[styles.label, { color: theme.colors.heroAccent }]}
-                  >
-                    Empieza aquí
-                  </Text>
+            <Animated.View style={setupPress.animatedStyle}>
+              <RiseView>
+                <View style={styles.labelRow}>
+                  <View style={styles.labelLeft}>
+                    <BreatheDot
+                      size={8}
+                      color={theme.colors.heroAccent}
+                      glow={theme.colors.heroAccent}
+                    />
+                    <Text
+                      style={[styles.label, { color: theme.colors.heroAccent }]}
+                    >
+                      Empieza aquí
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </RiseView>
-            <RiseView delay={80}>
-              <Text
-                style={[
-                  styles.setupTitle,
-                  { color: theme.colors.heroText },
-                ]}
-              >
-                Configura tu ingreso mensual
-              </Text>
-              <Text
-                style={[
-                  styles.setupBody,
-                  { color: theme.colors.heroMuted },
-                ]}
-              >
-                Una vez que cargues tu sueldo y tus fijos, te decimos
-                cuánto puedes gastar por día y cómo vas a cerrar el ciclo.
-              </Text>
-            </RiseView>
-            <RiseView delay={160}>
-              <View
-                style={[
-                  styles.setupCta,
-                  {
-                    backgroundColor: 'rgba(166,239,143,0.16)',
-                    borderColor: 'rgba(166,239,143,0.35)',
-                  },
-                ]}
-              >
+              </RiseView>
+              <RiseView delay={80}>
                 <Text
-                  style={[styles.setupCtaText, { color: theme.colors.heroAccent }]}
+                  style={[
+                    styles.setupTitle,
+                    { color: theme.colors.heroText },
+                  ]}
                 >
-                  Configurar ahora
+                  Configura tu ingreso mensual
                 </Text>
-                <MaterialIcons
-                  name="arrow-forward"
-                  size={16}
-                  color={theme.colors.heroAccent}
-                />
-              </View>
-            </RiseView>
+                <Text
+                  style={[
+                    styles.setupBody,
+                    { color: theme.colors.heroMuted },
+                  ]}
+                >
+                  Una vez que cargues tu sueldo y tus fijos, te decimos
+                  cuánto puedes gastar por día y cómo vas a cerrar el ciclo.
+                </Text>
+              </RiseView>
+              <RiseView delay={160}>
+                <View
+                  style={[
+                    styles.setupCta,
+                    {
+                      backgroundColor: 'rgba(166,239,143,0.16)',
+                      borderColor: 'rgba(166,239,143,0.35)',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.setupCtaText, { color: theme.colors.heroAccent }]}
+                  >
+                    Configurar ahora
+                  </Text>
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={16}
+                    color={theme.colors.heroAccent}
+                  />
+                </View>
+              </RiseView>
+            </Animated.View>
           </Pressable>
         ) : (
         <>

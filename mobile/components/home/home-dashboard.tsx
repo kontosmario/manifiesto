@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCurrentDate } from '@/hooks/use-current-date'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 import { MetaCard } from '@/components/home/meta-card'
@@ -44,6 +45,7 @@ import {
 } from '@/features/home/log-home-event'
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
@@ -347,6 +349,11 @@ export function HomeDashboard({
     [familyId, telemetrySessionId, onMarkTapped],
   )
 
+  // Press scale para el "Ver todos" link — el opacity-only que tenía
+  // antes no transmitía sensación de tap. Spring scale 0.97 lo hace
+  // feel Emil-grade sin ser ruidoso (el link es secundario).
+  const viewAllPress = usePressScale({ pressedScale: 0.96 })
+
   const handleViewGastos = useCallback(() => {
     trackTap('month_summary_variables', 'S5', '/(app)/(tabs)/expenses')
     router.push('/(app)/(tabs)/expenses')
@@ -624,10 +631,14 @@ export function HomeDashboard({
             accessibilityLabel="Ver todo el historial"
             hitSlop={10}
             onPress={handleViewGastos}
+            onPressIn={viewAllPress.onPressIn}
+            onPressOut={viewAllPress.onPressOut}
           >
-            <Text style={[styles.activityLink, { color: theme.colors.primaryStrong }]}>
-              Ver todos
-            </Text>
+            <Animated.View style={viewAllPress.animatedStyle}>
+              <Text style={[styles.activityLink, { color: theme.colors.primaryStrong }]}>
+                Ver todos
+              </Text>
+            </Animated.View>
           </Pressable>
         ) : null}
       </View>

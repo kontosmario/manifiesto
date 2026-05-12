@@ -86,7 +86,11 @@ function HomeActivitySectionImpl({
               whoName={findName(familyMembers, expense.created_by) ?? 'Alguien'}
               whoColor={findColor(familyMembers, expense.created_by) ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
-              delay={400 + index * 60}
+              // Stagger faster: arranca a 180ms (entra "con" el hero, no
+              // después) y stagger 40ms entre filas. Cap a 360ms para
+              // que ni con 10 rows la cascada se sienta lenta. Antes:
+              // `400 + index * 60` (último row caía a 700ms).
+              delay={Math.min(180 + index * 40, 360)}
             />
           </SwipeableRow>
         )
