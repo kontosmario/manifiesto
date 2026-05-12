@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
   LinearTransition,
@@ -44,7 +44,7 @@ interface FijosHeroCardProps {
  *  · Animated.View layout={LinearTransition} so value changes transition
  *    the card height instead of snapping.
  */
-export function FijosHeroCard({
+function FijosHeroCardImpl({
   mes = 'Abril',
   diasRestantes = 0,
   totalFijos = 0,
@@ -479,3 +479,14 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 })
+
+/**
+ * Memo wrap. FijosHeroCard es el componente más pesado de Fijos
+ * (LinearGradient + ShineOverlay + CardParticles + ProgressBar
+ * animated + dot pulse glow + 2 StatCards + 2 CountUpText).
+ * Sin memo cada parent render reevaluaba todas las animations.
+ *
+ * Todos los props son primitives (numbers + strings) — shallow compare
+ * exacto cuando los aggregates del controller no cambian.
+ */
+export const FijosHeroCard = memo(FijosHeroCardImpl)

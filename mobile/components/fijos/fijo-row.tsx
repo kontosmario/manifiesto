@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
@@ -29,7 +29,7 @@ interface FijoRowProps {
  * with frequency + method + category + primary actions (mark paid,
  * edit, pause). Swipe → Editar/Eliminar matching the activity row.
  */
-export function FijoRow({
+function FijoRowImpl({
   item,
   categoryColor,
   categoryName,
@@ -433,3 +433,16 @@ const styles = StyleSheet.create({
   },
   actionSecondaryText: { fontSize: 13, fontWeight: '700' },
 })
+
+/**
+ * Memo wrap. FijoRow se renderea por cada item en cada CategoryGroup
+ * (potencialmente decenas en una familia con muchos fijos). Sin memo,
+ * cualquier change del controller (status update, día change, etc)
+ * disparaba N re-renders cada uno con SwipeableRow internals, useRef,
+ * useState, hexAlpha, ConfettiBurst pulse comparison, 3 usePressScale
+ * hooks, etc.
+ *
+ * Props: `item` (object — confiamos en controller stability), strings,
+ * primitives, callbacks (estables desde screen via useCallback).
+ */
+export const FijoRow = memo(FijoRowImpl)
