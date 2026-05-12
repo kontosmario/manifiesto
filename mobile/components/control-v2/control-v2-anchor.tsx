@@ -12,6 +12,7 @@ import Animated, {
 import { useControlAnchors } from '@/features/insights/control-section-anchors'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { useAppTheme } from '@/theme/theme-provider'
 
 interface ControlV2AnchorProps extends PropsWithChildren {
   section: ControlSectionAnchor
@@ -34,6 +35,7 @@ export function ControlV2Anchor({
   children,
 }: ControlV2AnchorProps) {
   const { registerOffset, pulsingSection } = useControlAnchors()
+  const { theme } = useAppTheme()
   const pulse = useSharedValue(0)
 
   useEffect(() => {
@@ -71,12 +73,18 @@ export function ControlV2Anchor({
     registerOffset(section, event.nativeEvent.layout.y)
   }
 
+  // Pulse glow theme-aware. Antes hardcoded `#A6EF8F` (lime) — en dark
+  // mode lime glow sobre forest canvas = visible; en light mode lime
+  // glow sobre cream canvas = casi imperceptible (cream y lime tienen
+  // L cercanos). Switch a `primaryStrong`: dark mode #D1F7C5 lime-light
+  // (visible halo sobre forest), light mode #1F590D forest deep
+  // (visible halo dark sobre cream).
   return (
     <View onLayout={handleLayout} style={style}>
       <Animated.View
         style={[
           {
-            shadowColor: '#A6EF8F',
+            shadowColor: theme.colors.primaryStrong,
             shadowOffset: { width: 0, height: 0 },
             shadowRadius: 20,
             shadowOpacity: 0,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -9,6 +10,7 @@ import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useStreak } from '@/features/streaks/use-streak'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
@@ -80,6 +82,10 @@ export function ControlV2AlcanciaCard({
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
+  // Press scale 0.97 — la CTA es el único elemento interactivo del
+  // card. Antes usaba `opacity: pressed ? 0.78 : ...` (lento fade
+  // muerto). Spring scale + Animated.View es Emil-grade y tactile.
+  const ctaPress = usePressScale({ pressedScale: 0.97 })
 
   if (diaActual < MIN_DIAS) {
     return (
@@ -215,35 +221,43 @@ export function ControlV2AlcanciaCard({
 
         <Pressable
           onPress={handleCtaPress}
+          onPressIn={ctaPress.onPressIn}
+          onPressOut={ctaPress.onPressOut}
           accessibilityRole="button"
           accessibilityLabel={ctaLabel}
           disabled={addMutation.isPending}
-          style={({ pressed }) => [
-            styles.cta,
-            {
-              backgroundColor: canMove || !hasGoal ? ctaBg : tileBg,
-              borderColor: canMove || !hasGoal ? ctaBorder : tileBorder,
-              opacity: pressed ? 0.78 : addMutation.isPending ? 0.5 : 1,
-            },
-          ]}
         >
-          <MaterialIcons
-            name={hasGoal ? 'arrow-forward' : 'add'}
-            size={16}
-            color={canMove || !hasGoal ? accentFg : muted}
-          />
-          <Text
+          <Animated.View
             style={[
-              styles.ctaText,
-              { color: canMove || !hasGoal ? accentFg : muted },
+              styles.cta,
+              {
+                backgroundColor: canMove || !hasGoal ? ctaBg : tileBg,
+                borderColor: canMove || !hasGoal ? ctaBorder : tileBorder,
+                // Disabled state retiene opacity 0.5 (semantica). Press
+                // feedback ahora vive en scale spring vía Animated.View.
+                opacity: addMutation.isPending ? 0.5 : 1,
+              },
+              ctaPress.animatedStyle,
             ]}
-            numberOfLines={1}
           >
-            {addMutation.isPending ? 'Sumando…' : ctaLabel}
-          </Text>
-          {hasGoal && vault > 0 ? (
-            <MaterialIcons name="chevron-right" size={16} color={accentFg} />
-          ) : null}
+            <MaterialIcons
+              name={hasGoal ? 'arrow-forward' : 'add'}
+              size={16}
+              color={canMove || !hasGoal ? accentFg : muted}
+            />
+            <Text
+              style={[
+                styles.ctaText,
+                { color: canMove || !hasGoal ? accentFg : muted },
+              ]}
+              numberOfLines={1}
+            >
+              {addMutation.isPending ? 'Sumando…' : ctaLabel}
+            </Text>
+            {hasGoal && vault > 0 ? (
+              <MaterialIcons name="chevron-right" size={16} color={accentFg} />
+            ) : null}
+          </Animated.View>
         </Pressable>
 
         <View style={styles.tilesRow}>

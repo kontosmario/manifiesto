@@ -20,6 +20,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 // focus-gated `useLoopAnimation` to `useUnboundedLoopAnimation`.
 // See ui/card-particles.tsx for the same fix in the Home hero.
 import { useUnboundedLoopAnimation as useLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoneyShort } from '@/utils/money'
@@ -87,6 +88,10 @@ export function ControlV2AsesorCard({
     void triggerHaptic('selection')
     router.push('/(app)/asistente' as never)
   }, [router])
+  // Press scale subtle 0.98 — el asesor card es grande (full-width
+  // gradient shell con TwinklingStars). Escala chica para que la
+  // sensación de tap sea perceptible sin competir con el shimmer.
+  const cardPress = usePressScale({ pressedScale: 0.98 })
 
   if (renderNothing) return null
 
@@ -100,9 +105,12 @@ export function ControlV2AsesorCard({
     <RiseView delay={260} style={styles.outer}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Abrir asistente — ${ideaCount} ${ideaCount === 1 ? 'sugerencia' : 'sugerencias'}`}
+        accessibilityLabel={`Abrir asistente, ${ideaCount} ${ideaCount === 1 ? 'sugerencia' : 'sugerencias'}`}
         onPress={openChat}
+        onPressIn={cardPress.onPressIn}
+        onPressOut={cardPress.onPressOut}
       >
+        <Animated.View style={cardPress.animatedStyle}>
         <LinearGradient
           colors={SHELL_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -151,6 +159,7 @@ export function ControlV2AsesorCard({
             onOpen={openChat}
           />
         </LinearGradient>
+        </Animated.View>
       </Pressable>
     </RiseView>
   )

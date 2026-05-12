@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoneyShort } from '@/utils/money'
@@ -56,6 +57,11 @@ export function ControlV2Header({
     void triggerHaptic('selection')
     onPressGoal()
   }
+  // Two press scales — el goal chip (chico, 24pt height) usa 0.94
+  // más pronunciado; el score pill (mediano) usa 0.96 sutil para no
+  // competir con el ScorePillPulse breathing.
+  const goalChipPress = usePressScale({ pressedScale: 0.94 })
+  const scorePillPress = usePressScale({ pressedScale: 0.96 })
   return (
     <RiseView>
       <View style={styles.root}>
@@ -72,42 +78,50 @@ export function ControlV2Header({
           {goalActive ? (
             <Pressable
               onPress={handlePress}
+              onPressIn={goalChipPress.onPressIn}
+              onPressOut={goalChipPress.onPressOut}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`Mi meta diaria: ${formatMoneyShort(
                 dailyGoalAmount as number,
               )}. Tocá para ajustarla.`}
-              style={[
-                styles.goalChip,
-                {
-                  backgroundColor: theme.colors.primarySurface,
-                  borderColor: theme.colors.heroAccent,
-                },
-              ]}
             >
-              <MaterialIcons
-                name="flag"
-                size={11}
-                color={theme.isDark ? theme.colors.heroAccent : theme.colors.primaryStrong}
-              />
-              <Text
+              <Animated.View
                 style={[
-                  styles.goalChipText,
+                  styles.goalChip,
                   {
-                    color: theme.isDark
-                      ? theme.colors.heroAccent
-                      : theme.colors.primaryStrong,
+                    backgroundColor: theme.colors.primarySurface,
+                    borderColor: theme.colors.heroAccent,
                   },
+                  goalChipPress.animatedStyle,
                 ]}
-                numberOfLines={1}
               >
-                Mi meta · {formatMoneyShort(dailyGoalAmount as number)}/día
-              </Text>
+                <MaterialIcons
+                  name="flag"
+                  size={11}
+                  color={theme.isDark ? theme.colors.heroAccent : theme.colors.primaryStrong}
+                />
+                <Text
+                  style={[
+                    styles.goalChipText,
+                    {
+                      color: theme.isDark
+                        ? theme.colors.heroAccent
+                        : theme.colors.primaryStrong,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Mi meta · {formatMoneyShort(dailyGoalAmount as number)}/día
+                </Text>
+              </Animated.View>
             </Pressable>
           ) : null}
         </View>
         <Pressable
           onPress={handlePress}
+          onPressIn={goalEditable && onPressGoal ? scorePillPress.onPressIn : undefined}
+          onPressOut={goalEditable && onPressGoal ? scorePillPress.onPressOut : undefined}
           disabled={!goalEditable || !onPressGoal}
           hitSlop={6}
           accessibilityRole={goalEditable && onPressGoal ? 'button' : 'text'}
@@ -121,21 +135,25 @@ export function ControlV2Header({
           }
           style={styles.pillPressable}
         >
-          {/* Discoverability pulse — only fires when the user CAN
-              configure a goal but hasn't yet. Once a goal exists,
-              the chip below already screams "tappable" and the pulse
-              becomes redundant noise. Disabled flat when streak
-              recovery blocks the editor (no false promise of an
-              interaction the gate will refuse). */}
-          <ScorePillPulse
-            tone={scoreTone}
-            visible={Boolean(goalEditable && onPressGoal && !goalActive)}
-          />
-          <ScorePill
-            score={score}
-            tone={scoreTone}
-            isDark={theme.isDark}
-          />
+          <Animated.View
+            style={goalEditable && onPressGoal ? scorePillPress.animatedStyle : undefined}
+          >
+            {/* Discoverability pulse — only fires when the user CAN
+                configure a goal but hasn't yet. Once a goal exists,
+                the chip below already screams "tappable" and the pulse
+                becomes redundant noise. Disabled flat when streak
+                recovery blocks the editor (no false promise of an
+                interaction the gate will refuse). */}
+            <ScorePillPulse
+              tone={scoreTone}
+              visible={Boolean(goalEditable && onPressGoal && !goalActive)}
+            />
+            <ScorePill
+              score={score}
+              tone={scoreTone}
+              isDark={theme.isDark}
+            />
+          </Animated.View>
         </Pressable>
       </View>
     </RiseView>

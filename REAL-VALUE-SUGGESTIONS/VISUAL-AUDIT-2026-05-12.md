@@ -80,7 +80,7 @@ Cada pantalla se evalúa en estos 7 ejes. Cada eje recibe ✅ pass / 🟡 mid / 
 | 1 | Home | `/(tabs)/home` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 2 | Gastos v2 | `/(tabs)/expenses` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | ✅ DONE | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 4 | Control v2 | `/(tabs)/insights` | T1 | 🔴 TO DO | — | — |
+| 4 | Control v2 | `/(tabs)/insights` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | — | — |
 | 6 | Asistente | `/asistente` (modal) | T2 | 🔴 TO DO | — | — |
 | 7 | Notificaciones | `/notifications` | T2 | 🔴 TO DO | — | — |
@@ -633,9 +633,73 @@ Lección reforzada: las pantallas con muchos estados visuales (status: paid/over
 
 ### 4. Control v2 `/(tabs)/insights`
 
-**Estado**: 🔴 TO DO
+**Estado**: ✅ DONE (2026-05-12)
+**Score antes**: ⭐⭐⭐⭐ · **Score después**: ⭐⭐⭐⭐⭐
 
-<!-- Pendiente. -->
+Pantalla más grande del audit (**10,002 LOC en 21 archivos**). Strategy de read pass: orchestrator + targeted grep para detectar patrones específicos en cards.
+
+#### Discovery clave: la mayoría de cards son read-only
+
+`alcanza`, `semana`, `vsmes`, `patron`, `cobertura`, `hoy` — los 6 cards informacionales más grandes (3,500+ LOC combined) tienen **0 Pressables**. Son superficies de lectura: muestran data agregada sin interactividad directa. La interactividad del Control vive concentrada en:
+
+- Header (2 Pressables: goal chip + score pill)
+- Asesor card (1 Pressable: tap to open chat)
+- Alcancia card (1 Pressable: CTA mover a meta)
+- Empty state (1 Pressable: primary CTA)
+- 5 sheets/modals (deferred para audit de modals)
+
+Esto simplificó dramáticamente el audit — 6 Pressables user-facing en lugar de 30+.
+
+#### Findings + fixes
+
+| Eje | Estado antes | Fix aplicado |
+|---|---|---|
+| Press feedback | 6 Pressables sin scale (4 sin feedback + 1 opacity-only en alcancia + 2 hardcoded opacity en sheets) | usePressScale en los 6 user-facing |
+| shadowColor hardcoded | 1 (`anchor:79` lime hardcoded) | theme-aware via `primaryStrong` |
+| Tabular nums | 9 ya presentes (hoy-card + header) | OK — los cards informacionales usan CountUpText (TABULAR built-in) o text inline que no requiere tabular |
+| Em dashes en copy | 0 en strings | ✅ |
+| Side-stripe borders | 0 | ✅ |
+| Anti-AI-slop bans | Hero gradients intencionales | ✅ |
+| Animations | RiseView cascade + TwinklingStars + ScorePillPulse + AssistantAvatar pulse — todos con reduced motion | ✅ |
+
+#### Sprint A — 6 press feedbacks
+
+**control-v2-header.tsx**:
+- `goalChip` (24pt height) → `usePressScale(0.94)` más pronunciado para tap-target chico
+- `scorePill` (medium) → `usePressScale(0.96)` sutil para no competir con ScorePillPulse breathing
+
+**control-v2-asesor-card.tsx**:
+- Main card wrapper (full-width gradient shell) → `usePressScale(0.98)` muy sutil para no competir con TwinklingStars + LeadBubble shimmer
+
+**control-v2-alcancia-card.tsx**:
+- CTA "Mover a tu meta / Crear meta" → `usePressScale(0.97)` reemplaza `opacity: 0.78` fade muerto. Disabled state retiene `opacity: 0.5` semantic.
+
+**control-v2-empty-state.tsx**:
+- Primary CTA ("Configurar sueldo" / "Registrar primer gasto") → `usePressScale(0.97)`
+
+#### Sprint B — anchor shadowColor theme-aware
+
+`ControlV2Anchor` pulsa con glow cuando el Asistente CTA redirige scroll a una sección (1s glow + scale). Antes hardcoded `shadowColor: '#A6EF8F'` (lime):
+- Dark: lime glow sobre forest canvas → ✅ visible
+- Light: lime glow sobre cream canvas → casi imperceptible (cream L=0.92, lime L=0.74 — diferencia <0.2)
+
+Switch a `theme.colors.primaryStrong`:
+- Light: `#1F590D` forest deep → dark halo sobre cream = visible ✅
+- Dark: `#D1F7C5` lime-light → light halo sobre forest = visible ✅
+
+Pulse de "landed here" ahora perceptible en ambos modos.
+
+#### Comments
+
+Control v2 partió de un score ⭐⭐⭐⭐ por:
+- Cards principales muy bien diseñados (Hoy/Alcanza/VsMes son production-grade ya)
+- Hero gradients consistentes con el rest of the app
+- Reduced motion respect universal
+- Tabular nums en los displays donde importan
+
+Las 7 fixes (6 press + 1 shadow) son polish-level. Total ~80 LOC distribuidos en 5 archivos.
+
+Lección reforzada: **pantallas grandes ≠ pantallas con muchos issues**. Control tiene 10K LOC pero solo 6 surfaces interactivas. La métrica importante es el "interaction surface count", no el LOC count.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -683,3 +747,4 @@ Lección reforzada: las pantallas con muchos estados visuales (status: paid/over
 - **2026-05-12** — Gastos Sprint F (final completeness pass): catChipText dark switch a `textMuted` (brand-green uniform). Animation audit end-to-end zero gaps. 3 polish fixes: pull-to-refresh tintColor theme-aware, filter pill active shadow theme-aware (dark mode visible halo), swipeHint `‹` char → MaterialIcons chevron-left. Gastos cerrada con 6 sprints (A/B/C + D + E + F). Lección heurística confirmada: primer pass corto sobre pantallas con 5+ sub-components.
 - **2026-05-12** — Gastos Sprint F revisión criterio: owner corrigió "no me gusta que sea todo lime, de la gama del color original que era". Switch a `lightenForDarkBg(categoryColor)` — variante hue-preserved con L=92, S+8 (nuevo util en `category-color.ts`). 12/12 categorías AA pass (min 4.63:1). Paleta original preservada, identidad per-categoría intacta.
 - **2026-05-12** — Pantalla 3/28 (Fijos v2) auditada con lupa desde el primer pase. 30+ findings granulares organizados en 3 sprints: A (8 press feedbacks), B (statusChip + TrendBadge + 2 shadows + FijoTrendSpark theme-aware), C (4 tabular nums + chevron rotation + dead code + 2 a11y labels). Score ⭐⭐⭐ → ⭐⭐⭐⭐⭐. Lección reforzada: estados visuales múltiples (status, trend) propician más hardcoded colors.
+- **2026-05-12** — Pantalla 4/28 (Control v2) auditada — 10,002 LOC en 21 archivos pero solo 6 Pressables user-facing (los 6 cards informacionales grandes son read-only). Sprint A: 6 press scales (header×2, asesor, alcancia upgrade, empty-state). Sprint B: anchor shadowColor theme-aware. Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐. Lección: pantallas grandes ≠ pantallas con muchos issues — métrica importante es interaction surface count.

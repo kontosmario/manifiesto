@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface ControlV2EmptyStateProps {
@@ -32,6 +34,8 @@ export function ControlV2EmptyState({
   const shellBorder = theme.isDark ? '#244235' : '#D5E6DF'  // V1 surface-900 / surface-200
   const accent = theme.colors.text
   const muted = theme.colors.textMuted
+  // Press scale 0.97 — primary CTA del empty state, lo único interactivo.
+  const ctaPress = usePressScale({ pressedScale: 0.97 })
 
   const heading = missingIncome
     ? 'Configura tu sueldo para empezar'
@@ -71,24 +75,34 @@ export function ControlV2EmptyState({
           {missingIncome ? (
             <Pressable
               onPress={onPressSetupIncome}
+              onPressIn={ctaPress.onPressIn}
+              onPressOut={ctaPress.onPressOut}
               accessibilityRole="button"
               accessibilityLabel="Configurar sueldo mensual"
-              style={[styles.primaryBtn, { backgroundColor: accent }]}
             >
-              <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                Configurar sueldo
-              </Text>
+              <Animated.View
+                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
+              >
+                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
+                  Configurar sueldo
+                </Text>
+              </Animated.View>
             </Pressable>
           ) : (
             <Pressable
               onPress={onPressAddExpense}
+              onPressIn={ctaPress.onPressIn}
+              onPressOut={ctaPress.onPressOut}
               accessibilityRole="button"
               accessibilityLabel="Registrar primer gasto"
-              style={[styles.primaryBtn, { backgroundColor: accent }]}
             >
-              <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                Registrar primer gasto
-              </Text>
+              <Animated.View
+                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
+              >
+                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
+                  Registrar primer gasto
+                </Text>
+              </Animated.View>
             </Pressable>
           )}
         </View>
