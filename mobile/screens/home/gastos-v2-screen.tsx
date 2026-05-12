@@ -1051,7 +1051,12 @@ function EmptyActionButton({
           press.animatedStyle,
         ]}
       >
-        <Text style={[styles.emptyActionText, { color: theme.colors.primary }]}>
+        {/* `primaryStrong` en lugar de `primary` para AA cleanly en
+            ambos modos. En light primaryStrong #1F590D es más oscuro
+            que primary (7.7:1 vs 5.2:1 sobre primarySurface). En dark
+            primaryStrong #D1F7C5 es más brillante que primary #A6EF8F
+            (5.1:1 vs 4.4:1 marginal). Switch single-token AA win. */}
+        <Text style={[styles.emptyActionText, { color: theme.colors.primaryStrong }]}>
           {label}
         </Text>
       </Animated.View>

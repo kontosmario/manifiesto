@@ -101,7 +101,7 @@ export function GastosHeroCard({
           {daySelected ? null : (
             <View style={styles.avgRow}>
               <View style={styles.avgText}>
-                <Text style={[styles.avgLabel, { color: theme.colors.heroMuted2 }]}>
+                <Text style={[styles.avgLabel, { color: theme.colors.heroMuted }]}>
                   PROMEDIO DÍA
                 </Text>
                 <View style={styles.avgValueRow}>
@@ -111,7 +111,7 @@ export function GastosHeroCard({
                     format={(n) => formatMoney(n)}
                     style={[styles.avgValue, { color: theme.colors.heroText }]}
                   />
-                  <Text style={[styles.avgSub, { color: theme.colors.heroMuted2 }]}>
+                  <Text style={[styles.avgSub, { color: theme.colors.heroMuted }]}>
                     · últimos {averageWindowDays}d
                   </Text>
                 </View>
@@ -128,14 +128,14 @@ export function GastosHeroCard({
               style={styles.weightsBlock}
               layout={LinearTransition.duration(260)}
             >
-              <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted2 }]}>
+              <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted }]}>
                 MÁS PESO POR CATEGORÍA
               </Text>
               <View style={{ marginTop: 6 }}>
                 <CategoryWeightsList
                   items={topCategories}
                   textColor={theme.colors.heroText}
-                  mutedColor={theme.colors.heroMuted2}
+                  mutedColor={theme.colors.heroMuted}
                   trackColor="rgba(242,234,211,0.12)"
                 />
               </View>

@@ -347,7 +347,17 @@ function DayCell({
         <Text style={[styles.dayNumber, { color }]}>{day}</Text>
         {isToday ? (
           <View style={styles.todayDot}>
-            <BreatheDot size={4} color={theme.colors.heroAccent} periodMs={1600} />
+            {/* Today dot debe contrastar con el bg de la cell Today.
+                En light bg = text #12211A (forest oscuro) → heroAccent
+                lime se ve perfecto (~9:1). En dark bg = text #F2EAD3
+                (cream) → heroAccent lime sobre cream colapsa a ~1.16:1
+                (invisible). Switch a `canvas` en dark, que es forest
+                deep #12211A — contraste alto sobre cream cell bg. */}
+            <BreatheDot
+              size={4}
+              color={theme.isDark ? theme.colors.canvas : theme.colors.heroAccent}
+              periodMs={1600}
+            />
           </View>
         ) : null}
       </Animated.View>

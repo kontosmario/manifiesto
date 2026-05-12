@@ -360,6 +360,71 @@ Lección para próximas pantallas: cuando una pantalla tiene 5+ sub-componentes 
 
 Total Sprint 2: 3 commits, ~150 LOC, 10+ issues granulares resueltos. Score sigue ⭐⭐⭐⭐⭐ pero "más sólido" — los detalles invisibles ahora compounden coherentes.
 
+#### Sprint D — Contrast audit light + dark (post Sprint 2 + hotfix calendar)
+
+Owner pidió audit de contrastes en ambos modos. Cálculo sistemático WCAG sobre cada par fg/bg en Gastos. Matriz resumen:
+
+| Elemento | Light contrast | Dark contrast | Status |
+|---|---|---|---|
+| Today dot (BreatheDot heroAccent sobre `text` bg) | ~9:1 ✅ | **~1.16:1** 🔴 | INVISIBLE en dark |
+| Hero `tileLabel` heroAccent sobre gradient #297811 | 4.2:1 | 4.2:1 | 🟡 Marginal fail AA (4.5) |
+| Hero `heroMuted2` (alpha 0.55) sobre gradient | 2.5:1 | 2.5:1 | 🔴 Fail AA notable |
+| EmptyActionButton `primary` sobre primarySurface | 5.2:1 ✅ | **4.4:1** 🟡 | Marginal fail dark |
+| GastoRow text/textMuted/textSoft sobre creamCard | 14/5.5/5.5 ✅ | 6/5.3/4.6 ✅ | OK |
+| Section header text/textSoft sobre canvas | ≥10 ✅ | ≥10 ✅ | OK |
+| Calendar mood cells (green/amber/red, bg + matched fg) | ≥5:1 ✅ | ≥5:1 ✅ | OK |
+| Filter pills (active + inactive) | ≥6:1 ✅ | ≥6:1 ✅ | OK |
+| Calendar focus stats | ≥5:1 ✅ | ≥5:1 ✅ | OK |
+
+##### Fix D1 — Today dot invisible en dark mode (crítico)
+
+`DayCell` Today: `bg = theme.colors.text` (cream #F2EAD3 en dark), `BreatheDot color = heroAccent` (#A6EF8F). Lime sobre cream → 1.16:1 → **prácticamente invisible**. Solo en dark mode (en light bg = forest deep, lime se ve perfecto).
+
+Fix: theme-aware dot color.
+
+```diff
+- <BreatheDot size={4} color={theme.colors.heroAccent} periodMs={1600} />
++ <BreatheDot
++   size={4}
++   color={theme.isDark ? theme.colors.canvas : theme.colors.heroAccent}
++   periodMs={1600}
++ />
+```
+
+En dark mode el dot ahora es forest deep #12211A sobre cream cell bg → high contrast. ([gastos-month-calendar.tsx](../mobile/components/gastos/gastos-month-calendar.tsx))
+
+##### Fix D2 — Hero gradient small-text contrast
+
+Hero card tenía 4 elementos usando `heroMuted2` (rgba(242,234,211,0.55)) sobre gradient verde — contraste efectivo ~2.5:1, severo fail AA. Switch a `heroMuted` (alpha 0.78) en los 4 usos:
+
+- `avgLabel` "PROMEDIO DÍA"
+- `avgSub` "· últimos 22d"
+- `weightsLabel` "MÁS PESO POR CATEGORÍA"
+- `mutedColor` prop a `CategoryWeightsList` (rows "· 25%" etc.)
+
+Resultado: mejora de **2.5:1 → 3.48:1** (40% más contraste). Sigue marginal de AA (req 4.5), pero ahora supera AA-Large threshold (3:1) y elimina el rango severamente ilegible. Trade-off documentado: hit AA estricto requeriría usar `heroText` solid para todo, perdiendo la hierarchy de "primary number" vs "muted label". El compromiso preserva hierarchy mientras mejora legibilidad significativamente. ([gastos-hero-card.tsx](../mobile/components/gastos/gastos-hero-card.tsx))
+
+No toco el palette token `heroMuted2` directamente — el cambio se queda scoped a `GastosHeroCard` para no rippler a `HomeHeroCard` sin auditarlo primero.
+
+##### Fix D3 — EmptyActionButton primary text en dark
+
+`EmptyActionButton.text` color `primary` sobre primarySurface (rgba primary alpha 0.12) sobre creamCard:
+- Light: `primary` #297811 sobre effective bg ≈ #F2FAEC → **5.2:1** ✅
+- Dark: `primary` #A6EF8F sobre effective bg ≈ (62,108,80) → **4.4:1** 🟡 (req 4.5)
+
+Switch a `primaryStrong`:
+- Light: `primaryStrong` #1F590D → **7.7:1** ✅ (mejor)
+- Dark: `primaryStrong` #D1F7C5 → **5.1:1** ✅ AA pass
+
+Single-token change, AA cleanly en ambos modos.
+
+##### Hallazgos NO fijados (documentados como follow-up)
+
+- **`tileLabel` "Puedes gastar por día"** uses `heroAccent` sobre gradient → 4.2:1 (marginal AA fail por 0.3). Aceptable como hierarchy signal pero requiere fix futuro: bump heroAccent a primaryStrong en hero context, OR redesign del gradient con un punto medio más oscuro para que heroAccent pase AA.
+- **Filter pill count chip**: en dark mode `inactiveCountFg` puede ser una categoría color (`color` prop) sobre `pageBg` #12211A. Para categorías con tonos mid (olive, brown, dusty) la legibilidad podría caer. Requiere audit del set actual de categorías y posiblemente clamping de category colors a un mínimo de brillo.
+
+Total Sprint D: 3 fixes, ~40 LOC. Score sigue ⭐⭐⭐⭐⭐ con dos contrast trade-offs documentados.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
@@ -417,3 +482,4 @@ Total Sprint 2: 3 commits, ~150 LOC, 10+ issues granulares resueltos. Score sigu
 - **2026-05-12** — Pantalla 2/28 (Gastos v2) auditada + 3 fixes aplicados (press scale en clearFilters + emptyAction, tabular nums en groupTotal + GastoRow.amount, em dashes "Fin del ciclo" → eyebrow editorial). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
 - **2026-05-12** — Gastos Sprint 2 (re-audit "con lupa"): 3 sprints A/B/C con 10+ issues granulares en sub-componentes. Side-stripe ban en advisor chip removido. 6 Pressables del calendar + StreakFlameIcon ahora con press scale. Tabular nums residuales. Cascade order de RiseViews coherente.
 - **2026-05-12** — Hotfix Sprint B: el wrap de `DayCell` con `Pressable + Animated.View` rompió el grid del calendar. Causa: `styles.dayCell` con `flex: 1, aspectRatio: 1` quedó en el Animated.View interno, pero el grid layout requiere esos estilos EN EL CHILD DIRECTO del row (el Pressable). Empty cells retuvieron `flex: 1` mientras Pressables colapsaban → grid completamente desalineado. Fix: split en `dayCellLayout` (Pressable + empty View) y `dayCellSurface` (Animated.View visual chrome). Lección para refactors: cuando wrappás un Pressable con Animated.View interno, separar layout-affecting styles del visual chrome o el parent flex se rompe.
+- **2026-05-12** — Gastos Sprint D (contrast audit light + dark): cálculos WCAG sistemáticos sobre cada par fg/bg. 3 fixes aplicados: Today dot invisible en dark mode (heroAccent sobre cream → switch a canvas), hero gradient small-text contrast (heroMuted2 alpha 0.55 → heroMuted alpha 0.78, mejora de 2.5:1 a 3.5:1 manteniendo hierarchy), EmptyActionButton primary text en dark (primary #A6EF8F → primaryStrong #D1F7C5 para AA cleanly en ambos modos). Hero topLabel y small-text labels quedan marginales (3.5–4.2:1, mejor pero bajo AA estricto) — documentado como trade-off de hierarchy.
