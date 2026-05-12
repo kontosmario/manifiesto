@@ -45,6 +45,11 @@ import {
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { triggerHaptic } from '@/lib/haptics'
+import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
+import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
+import { controlIntelligenceQueryKey } from '@/features/insights/use-control-v2-data'
+import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface HomeDashboardProps {
@@ -107,6 +112,7 @@ export function HomeDashboard({
   const router = useRouter()
   const { theme } = useAppTheme()
   const today = useCurrentDate()
+  const queryClient = useQueryClient()
   // Auto-start the Home guided tour on first visit. Hook is a no-op
   // if the tour was already seen or globally disabled in Settings.
   useScreenTour(HOME_TOUR)
@@ -265,14 +271,47 @@ export function HomeDashboard({
     if (isSavingSalary) return
     setCycleBalanceSheetOpen(false)
   }, [isSavingSalary])
+  // Dispara el "Manifiesto Wrapped" del ciclo recién cerrado. Gating:
+  //   - Solo en flow recurrente (NO en onboarding — el primer cobro
+  //     no cierra nada).
+  //   - Skip si no hay summary (race / primer cobro / familia nueva).
+  //   - Skip si la summary no tiene gastos (ciclo vacío, no hay
+  //     historia que contar).
+  // El DB trigger `trg_family_finance_salary_confirm` cierra el ciclo
+  // sync con el upsert. Por eso esperamos 700ms (post-haptic) y luego
+  // invalidamos la cache + refetch para leer la summary fresca.
+  const fireWrappedForClosedCycle = useCallback(async () => {
+    if (isOnboardingFlow) return
+    await new Promise<void>((resolve) => setTimeout(resolve, 700))
+    await queryClient.refetchQueries({
+      queryKey: controlIntelligenceQueryKey(familyId),
+      type: 'active',
+    })
+    const fresh = queryClient.getQueryData<{
+      summaries: MonthlySummaryHistory[]
+    }>(controlIntelligenceQueryKey(familyId))
+    const latest = fresh?.summaries?.[0]
+    if (!latest) return
+    if ((latest.expenses_count ?? 0) === 0) return
+    triggerCycleWrapped(
+      buildWrappedPayloadFromSummary({
+        summary: latest,
+        categoryNameById,
+        achievementsEarnedAt: [],
+      }),
+    )
+  }, [isOnboardingFlow, queryClient, familyId, categoryNameById])
+
   const handleCycleSheetSave = useCallback((amount: number) => {
     onConfirmCycleStartingBalance(amount)
     setCycleBalanceSheetOpen(false)
-  }, [onConfirmCycleStartingBalance])
+    void fireWrappedForClosedCycle()
+  }, [onConfirmCycleStartingBalance, fireWrappedForClosedCycle])
   const handleCycleSheetKeepDefault = useCallback(() => {
     onConfirmCycleStartingBalance(null)
     setCycleBalanceSheetOpen(false)
-  }, [onConfirmCycleStartingBalance])
+    void fireWrappedForClosedCycle()
+  }, [onConfirmCycleStartingBalance, fireWrappedForClosedCycle])
   // Which prompt to render is driven solely by whether the user has
   // already gone through the one-shot post-onboarding setup:
   //   • storedAnchor == null  → never resolved → onboarding sheet.

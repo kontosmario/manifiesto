@@ -1029,9 +1029,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Dispara el modal de unlock de cualquier logro y previsualiza la racha en cada estado (activa por nivel, en riesgo, rota)."
                     icon="emoji-events"
-                    isLast
                     label="Preview · Logros & Racha"
                     onPress={() => router.push('/(app)/settings/dev/preview' as never)}
+                  />
+                  <SettingsRow
+                    helper="Dispara el Manifiesto Wrapped (recap del ciclo cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
+                    icon="auto-stories"
+                    isLast
+                    label="Preview · Cierre de ciclo"
+                    onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
