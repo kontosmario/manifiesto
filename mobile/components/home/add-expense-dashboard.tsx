@@ -4,6 +4,7 @@ import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-b
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { DescriptionRow } from '@/components/home/description-row'
+import { NotesRow } from '@/components/home/notes-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
@@ -22,6 +23,7 @@ interface AddExpenseDashboardProps {
   suggestedAmounts: number[]
   quickDescriptionSuggestions: string[]
   description: string
+  notes: string
   isBusy: boolean
   submitErrorMessage?: string | null
   /** When set, the new movement is back-dated to this day — hint
@@ -36,6 +38,7 @@ interface AddExpenseDashboardProps {
   onSelectCategory: (categoryId: string) => void
   onSelectDescriptionSuggestion: (value: string) => void
   onDescriptionChange: (value: string) => void
+  onNotesChange: (value: string) => void
   onSubmit: () => void
 }
 
@@ -48,6 +51,7 @@ export function AddExpenseDashboard({
   suggestedAmounts,
   quickDescriptionSuggestions,
   description,
+  notes,
   isBusy,
   submitErrorMessage,
   forDate,
@@ -58,6 +62,7 @@ export function AddExpenseDashboard({
   onSelectCategory,
   onSelectDescriptionSuggestion,
   onDescriptionChange,
+  onNotesChange,
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
@@ -158,6 +163,10 @@ export function AddExpenseDashboard({
           quickSuggestions={quickDescriptionSuggestions}
           onSelectSuggestion={handleSelectDescriptionSuggestion}
         />
+      </RiseView>
+
+      <RiseView delay={forDate ? 260 : 200}>
+        <NotesRow notes={notes} onChange={onNotesChange} />
       </RiseView>
 
       {submitErrorMessage ? (

@@ -14,10 +14,10 @@
 | # | Item | Estado | Impacto retención | Esfuerzo | 💰 |
 |---|------|--------|-------------------|----------|-----|
 | 2.1 | ~~Streaks UI prominente en Home~~ | ⛔ NOT APPLICABLE — decisión owner 2026-05-12: el streak queda solo en Gastos (donde ya está prominente vía `StreakFlameIcon` en el header). Web parity también arreglado el mismo día. Audit claim "table missing" era falso: `user_streaks` SÍ existe en producción | — | — | — |
-| 2.2 | Achievements / badges (Arranque → Leyenda) | 🔴 TO DO — pendiente confirmación owner (Bucket D, feature nuevo) | Alto | 3 días | — |
+| 2.2 | Achievements / badges (Arranque → Leyenda) | ✅ DONE (2026-05-12) — catálogo DB de 11 codes + 7 triggers de detección + lockdown service-role + galería en Settings → Tu progreso → Logros + unlock modal realtime con confetti | Alto | 3 días | — |
 | 2.3 | Confetti + micro-celebrations en milestones | 🟡 PARTIAL — mark-paid de fijos DONE 2026-05-12 con `ConfettiBurst` component reusable. Otros milestones (meta alcanzada, ciclo bajo cupo) quedan TODO para Bucket D | Medio | 1-2 días | — |
 | 2.4 | Manifiesto Wrapped (mes/año) | 🔴 TO DO | Alto + viralidad | 5-7 días | 💰 design |
-| 2.5 | Notes/comments en gastos (col + UI) | 🔴 TO DO | Alto | 2 días | — |
+| 2.5 | Notes/comments en gastos (col + UI) | ✅ DONE (2026-05-12) — col + CHECK + 3 RPCs actualizadas + NotesRow component colapsado + display en GastoRow | Alto | 2 días | — |
 | 2.6 | Reactions a gastos del partner (❤️😬👏) | 🔴 TO DO | Alto (familia) | 2 días | — |
 | 2.7 | iOS Widget interactivo (Add Expense) | 🔴 TO DO | Muy alto (diferencial) | 5-7 días | 💰 dev experto |
 | 2.8 | Lock-screen widget (cupo diario) | 🔴 TO DO | Alto | 2 días | — |
@@ -29,7 +29,7 @@
 | 2.14 | Dynamic Island support | 🔴 TO DO | Bajo | 2 días | — |
 | 2.15 | OCR receipt scan | 🔴 TO DO | Muy alto | 3-5 días | 💰 Vision API |
 | 2.16 | Smart categorization (LLM) | 🔴 TO DO | Alto | 2 días | 💰 LLM tokens |
-| 2.17 | AI Coach conversacional (control-advisor existe!) | 🟡 PARTIAL (backend ya wired) | Muy alto | 3 días | 💰 Anthropic tokens |
+| 2.17 | AI Coach conversacional | ⏸️ DEFERRED (owner 2026-05-12) — el "asistente" actual es 100% heurístico y bien diseñado (20+ builders, persona inference, signal fusion, super-signals). Mantenerlo así por ahora. Oportunidades de augmentation LLM documentadas en `docs/asistente-llm-augmentation-notes.md` para cuando el owner reabra la decisión (trigger: ≥500 MAU + Bucket B activo). | Muy alto | 3 días | 💰 Anthropic tokens |
 | 2.18 | Recurring suggestion (12 cargas → "creá fijo?") | 🔴 TO DO | Medio | 2 días | — |
 | 2.19 | Daily closure recap notification | 🔴 TO DO | Alto | 1 día | — |
 | 2.20 | Mark-paid celebration en fijos | 🔴 TO DO | Bajo + delight | 4h | — |

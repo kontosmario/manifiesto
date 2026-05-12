@@ -62,6 +62,11 @@ export interface GastosExpenseRow {
   category_color: string | null
   commitment_id: string | null
   description: string
+  /** Optional free-form context attached to the expense. `null` when
+   *  the user did not add a note. Projected from `expenses.notes`
+   *  since the gastos_expenses_* RPCs were updated to include it
+   *  (migration 20260519000000). */
+  notes: string | null
   /** Stored as numeric in DB; Supabase's PostgREST returns string for
    *  high-precision numerics. The hook normalizes to number. */
   price: number

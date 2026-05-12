@@ -12,6 +12,11 @@ export interface GastoRowProps {
   whoColor: string
   amount: number // always negative here (expense)
   time?: string // HH:MM
+  /** Optional free-form note attached to the expense. Rendered as a
+   *  third line below the category chip, truncated to a single line
+   *  with an italic muted style so it reads as "context" without
+   *  competing with the title. `null` / undefined / "" → not rendered. */
+  notes?: string | null
 }
 
 /**
@@ -27,9 +32,11 @@ export function GastoRow({
   whoColor,
   amount,
   time,
+  notes,
 }: GastoRowProps) {
   const { theme } = useAppTheme()
   const icon = pickIconForCategory(categoryName)
+  const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
   return (
     <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
       <View style={styles.iconWrap}>
@@ -69,6 +76,14 @@ export function GastoRow({
             {time ? ` · ${time}` : null}
           </Text>
         </View>
+        {trimmedNotes ? (
+          <Text
+            style={[styles.notes, { color: theme.colors.textSoft }]}
+            numberOfLines={1}
+          >
+            “{trimmedNotes}”
+          </Text>
+        ) : null}
       </View>
       <View style={styles.amountBlock}>
         <Text style={[styles.amount, { color: theme.colors.text }]}>
@@ -118,6 +133,12 @@ const styles = StyleSheet.create({
   catChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, borderWidth: 1, flexShrink: 0 },
   catChipText: { fontSize: 10, fontWeight: '700' },
   subMeta: { fontSize: 11, flexShrink: 1 },
+  notes: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 3,
+    lineHeight: 14,
+  },
   amountBlock: { alignItems: 'flex-end' },
   amount: { fontSize: 14, fontWeight: '800' },
 })

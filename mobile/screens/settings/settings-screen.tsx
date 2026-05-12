@@ -1023,9 +1023,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Metricas de la base de datos: tamano, growth, tablas y slow queries."
                     icon="monitor-heart"
-                    isLast
                     label="DB Health"
                     onPress={() => router.push('/(app)/settings/dev-health' as never)}
+                  />
+                  <SettingsRow
+                    helper="Dispara el modal de unlock de cualquier logro y previsualiza la racha en cada estado (activa por nivel, en riesgo, rota)."
+                    icon="emoji-events"
+                    isLast
+                    label="Preview · Logros & Racha"
+                    onPress={() => router.push('/(app)/settings/dev/preview' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
@@ -1055,6 +1061,20 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 </SettingsGroup>
               </RiseView>
             ) : null}
+
+            {/* 8a. LOGROS */}
+            <RiseView delay={310}>
+              <SettingsGroup title="Tu progreso">
+                <SettingsRow
+                  helper="Hitos que vas desbloqueando con cada acción dentro de Manifiesto."
+                  icon="emoji-events"
+                  isLast
+                  label="Logros"
+                  onPress={() => router.push('/settings/achievements' as never)}
+                  value="Ver galería"
+                />
+              </SettingsGroup>
+            </RiseView>
 
             {/* 8. PLAN DEL HOGAR */}
             <RiseView delay={320}>

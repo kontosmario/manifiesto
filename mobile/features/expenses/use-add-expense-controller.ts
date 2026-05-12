@@ -71,6 +71,11 @@ export function useAddExpenseController({
   )
   const [categorySelection, setCategorySelection] = useState('')
   const [description, setDescription] = useState('')
+  // Notes: free-form optional context. Empty string when absent (we
+  // never carry null in UI state to keep TextInput controlled). The
+  // submit path passes it as-is and the repository normalizes via
+  // `normalizeExpenseNotes` (empty → null, with-text → trim + cap).
+  const [notes, setNotes] = useState('')
   const [rawPrice, setRawPrice] = useState('')
   const [isNumpadVisible, setNumpadVisible] = useState(true)
 
@@ -124,6 +129,9 @@ export function useAddExpenseController({
       {
         categoryId: selectedCategoryId,
         description: description.trim(),
+        // Pass `notes` raw — the repository's `normalizeExpenseNotes`
+        // handles trim + empty→null + max-length check.
+        notes,
         price: amount,
         // Back-date the movement to the target day at noon local
         // time (avoids DST edge cases + keeps it visible on the
@@ -147,6 +155,7 @@ export function useAddExpenseController({
         onSuccess: () => {
           void triggerHaptic('success')
           setDescription('')
+          setNotes('')
           setRawPrice('')
           onCreated()
         },
@@ -162,6 +171,7 @@ export function useAddExpenseController({
     createExpenseMutation,
     dashboard,
     description,
+    notes,
     expensesQuery,
     hasValidAmount,
     isNumpadVisible,
@@ -175,6 +185,7 @@ export function useAddExpenseController({
     actions: {
       selectCategory: setCategorySelection,
       setDescription,
+      setNotes,
       setRawPrice,
       setNumpadVisible,
       addQuickAmount: (delta: number) => setRawPrice(serializePrice(amount + delta)),

@@ -6,6 +6,10 @@ export interface RawExpense {
   created_at: string
   created_by: string
   description: string
+  /** Optional free-form context the user added when logging the
+   *  expense (max 500 chars; null when blank). Surfaced from
+   *  `expenses.notes` since migration 20260519000000. */
+  notes?: string | null
   family_id: string
   id: string
   price: number | string
@@ -43,6 +47,9 @@ export interface Expense {
   created_by: string
   creator_display_name: string
   description: string
+  /** Optional context attached to this expense (max 500 chars).
+   *  `null` when the user didn't add a note. */
+  notes: string | null
   family_id: string
   id: string
   price: number
@@ -57,6 +64,9 @@ export interface CreateExpenseInput {
   categoryId: string
   commitmentId?: string | null
   description: string
+  /** Optional free-form context, up to 500 chars after trim.
+   *  Pass `null`/`undefined` (or an empty string) to skip. */
+  notes?: string | null
   price: number
   /**
    * Optional ISO timestamp to back-date the movement (used by the
@@ -68,6 +78,9 @@ export interface CreateExpenseInput {
 
 export interface UpdateExpenseInput {
   description: string
+  /** Pass `null` to clear an existing note, `undefined` to leave it
+   *  untouched, or a string to set/replace it (max 500 after trim). */
+  notes?: string | null
   expenseId: string
   price: number
 }
@@ -84,6 +97,11 @@ export function isMissingCommitmentIdColumnError(error: PostgrestError): boolean
  *  con detalle ("Compra del super en el barrio chino — viandas") sin
  *  permitir abuso (texto pegado de email, etc.). */
 export const EXPENSE_DESCRIPTION_MAX_LENGTH = 200
+
+/** Hard cap on optional notes. Mirrors the server CHECK constraint
+ *  `expenses_notes_length_check` from migration 20260519000000.
+ *  500 cubre una nota de contexto sin permitir pegar emails enteros. */
+export const EXPENSE_NOTES_MAX_LENGTH = 500
 
 /** Hard cap on price. ARS rara vez supera 8 dígitos en un solo gasto;
  *  el techo de 10⁹ deja headroom para casos extremos sin permitir
@@ -103,6 +121,24 @@ export function validateExpenseDescription(description: string) {
   return normalizedDescription
 }
 
+/**
+ * Normaliza la nota opcional:
+ *   - undefined / null → null (no la persistimos)
+ *   - string vacío después de trim → null (no guardamos "")
+ *   - string con contenido → trimmed, validado contra el cap
+ */
+export function normalizeExpenseNotes(notes: string | null | undefined): string | null {
+  if (notes == null) return null
+  const trimmed = notes.trim()
+  if (!trimmed) return null
+  if (trimmed.length > EXPENSE_NOTES_MAX_LENGTH) {
+    throw new Error(
+      `La nota no puede superar los ${EXPENSE_NOTES_MAX_LENGTH} caracteres.`,
+    )
+  }
+  return trimmed
+}
+
 export function validateExpensePrice(price: number) {
   if (!Number.isFinite(price) || price < 0) {
     throw new Error('El precio debe ser un número mayor o igual a 0.')
@@ -117,6 +153,7 @@ export function buildExpenseInsertPayload({
   commitmentId,
   createdAt,
   description,
+  notes,
   familyId,
   price,
   userId,
@@ -125,6 +162,7 @@ export function buildExpenseInsertPayload({
   commitmentId?: string | null
   createdAt?: string | null
   description: string
+  notes?: string | null
   familyId: string
   price: number
   userId: string
@@ -135,6 +173,7 @@ export function buildExpenseInsertPayload({
     created_at?: string
     created_by: string
     description: string
+    notes?: string
     family_id: string
     price: number
   } = {
@@ -151,6 +190,10 @@ export function buildExpenseInsertPayload({
 
   if (typeof createdAt === 'string' && createdAt.trim() !== '') {
     insertPayload.created_at = createdAt
+  }
+
+  if (typeof notes === 'string' && notes.length > 0) {
+    insertPayload.notes = notes
   }
 
   return insertPayload

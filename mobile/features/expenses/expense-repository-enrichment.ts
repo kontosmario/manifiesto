@@ -52,6 +52,10 @@ export function enrichExpensesFromEmbed(rows: EmbedRow[]): Expense[] {
       getCachedProfileDisplayName(row.created_by) ??
       'Sin nombre',
     description: row.description,
+    // Normalize undefined → null so the consumer only branches on
+    // null vs string (legacy snapshots without the column still
+    // produce a usable shape).
+    notes: typeof row.notes === 'string' ? row.notes : null,
     family_id: row.family_id,
     id: row.id,
     price: Number(row.price),
@@ -92,6 +96,7 @@ export async function enrichExpenses(rows: RawExpense[]): Promise<Expense[]> {
   return rows.map((row) => ({
     ...row,
     commitment_id: typeof row.commitment_id === 'string' ? row.commitment_id : null,
+    notes: typeof row.notes === 'string' ? row.notes : null,
     creator_display_name: displayNames.get(row.created_by) ?? 'Sin nombre',
     price: Number(row.price),
   }))

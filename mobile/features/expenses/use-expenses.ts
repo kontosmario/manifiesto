@@ -64,6 +64,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       commitmentId,
       createdAt,
       description,
+      notes,
       price,
     }: CreateExpenseInput) => {
       if (!familyId || !userId) {
@@ -74,6 +75,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         commitmentId,
         createdAt,
         description,
+        notes,
         price,
       })
     },
@@ -101,11 +103,11 @@ export function useUpdateExpense(familyId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ expenseId, description, price }: UpdateExpenseInput) => {
+    mutationFn: async ({ expenseId, description, notes, price }: UpdateExpenseInput) => {
       if (!familyId) {
         throw new Error('No hay familia activa para editar gastos.')
       }
-      await updateExpense(familyId, { description, expenseId, price })
+      await updateExpense(familyId, { description, notes, expenseId, price })
     },
     onSuccess: async () => {
       await invalidateFamilyBudgetData(queryClient, familyId, {

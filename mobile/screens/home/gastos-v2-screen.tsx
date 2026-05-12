@@ -426,6 +426,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               whoColor={who?.color ?? '#329315'}
               amount={-Math.abs(Number(item.price ?? 0))}
               time={formatTime(item.created_at)}
+              notes={item.notes}
             />
           </SwipeableRow>
         </Animated.View>

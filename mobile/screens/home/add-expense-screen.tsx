@@ -101,6 +101,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           suggestedAmounts={controller.suggestedAmounts}
           quickDescriptionSuggestions={controller.quickDescriptionSuggestions}
           description={controller.description}
+          notes={controller.notes}
           isBusy={controller.createExpenseMutation.isPending}
           forDate={controller.forDate}
           advisorSignals={advisorSignals}
@@ -110,6 +111,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           onSelectCategory={controller.actions.selectCategory}
           onSelectDescriptionSuggestion={controller.actions.useQuickDescription}
           onDescriptionChange={controller.actions.setDescription}
+          onNotesChange={controller.actions.setNotes}
           onSubmit={controller.submitExpense}
         />
       )}

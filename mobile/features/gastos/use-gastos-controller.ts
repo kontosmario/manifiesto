@@ -418,6 +418,7 @@ function rowToExpense(row: GastosExpenseRow): Expense {
     category_id: row.category_id,
     commitment_id: row.commitment_id,
     description: row.description,
+    notes: row.notes,
     price: row.price,
     created_at: row.created_at,
     created_by: row.created_by,

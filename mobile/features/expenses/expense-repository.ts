@@ -6,6 +6,7 @@ import {
 import {
   buildExpenseInsertPayload,
   isMissingCommitmentIdColumnError,
+  normalizeExpenseNotes,
   validateExpenseDescription,
   validateExpensePrice,
   type CreateExpenseInput,
@@ -50,10 +51,14 @@ function applyExpenseFilters<Q extends {
  * to fetch the creator name in the same round-trip (audit §3.3).
  */
 const EXPENSE_COLUMNS =
-  'id, family_id, category_id, commitment_id, description, price, created_by, created_at'
+  'id, family_id, category_id, commitment_id, description, notes, price, created_by, created_at'
 
 const EXPENSE_COLUMNS_WITH_PROFILE = `${EXPENSE_COLUMNS}, profiles!expenses_created_by_profile_fkey(display_name)`
 
+// Legacy column list — used only on schemas that predate the
+// commitment_id + notes columns. Both columns are nullable so falling
+// back to the older select shape is safe for ancient envs; modern
+// prod and staging always go through the embed path above.
 const EXPENSE_COLUMNS_LEGACY =
   'id, family_id, category_id, description, price, created_by, created_at'
 
@@ -133,15 +138,17 @@ function isMissingProfilesEmbedError(error: { code?: string; message?: string })
 export async function createExpense(
   familyId: string,
   userId: string,
-  { categoryId, commitmentId, createdAt, description, price }: CreateExpenseInput,
+  { categoryId, commitmentId, createdAt, description, notes, price }: CreateExpenseInput,
 ) {
   const normalizedDescription = validateExpenseDescription(description)
+  const normalizedNotes = normalizeExpenseNotes(notes)
   validateExpensePrice(price)
   const insertPayload = buildExpenseInsertPayload({
     categoryId,
     commitmentId,
     createdAt,
     description: normalizedDescription,
+    notes: normalizedNotes,
     familyId,
     price,
     userId,
@@ -156,17 +163,25 @@ export async function createExpense(
 
 export async function updateExpense(
   familyId: string,
-  { expenseId, description, price }: UpdateExpenseInput,
+  { expenseId, description, notes, price }: UpdateExpenseInput,
 ) {
   const normalizedDescription = validateExpenseDescription(description)
   validateExpensePrice(price)
 
+  // `notes === undefined` → no toca el campo (preserva el valor previo).
+  // `notes === null` o `""` → lo limpia (vuelve a null en DB).
+  // string con contenido → reemplaza.
+  const updatePayload: { description: string; price: number; notes?: string | null } = {
+    description: normalizedDescription,
+    price,
+  }
+  if (notes !== undefined) {
+    updatePayload.notes = normalizeExpenseNotes(notes)
+  }
+
   const { error } = await supabase
     .from('expenses')
-    .update({
-      description: normalizedDescription,
-      price,
-    })
+    .update(updatePayload)
     .eq('id', expenseId)
     .eq('family_id', familyId)
 
