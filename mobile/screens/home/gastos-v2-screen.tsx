@@ -651,9 +651,19 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               Movimientos
             </Text>
             {sections.length > 0 ? (
-              <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
-                ‹ Desliza para acciones
-              </Text>
+              // El carácter `‹` (U+2039) era ambiguo como flecha. Switch
+              // a MaterialIcons `chevron-left` 14pt baseline-aligned con
+              // el texto para clarity icónica. Wrapped en row para flow.
+              <View style={styles.swipeHintRow}>
+                <MaterialIcons
+                  name="chevron-left"
+                  size={14}
+                  color={theme.colors.textMuted}
+                />
+                <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
+                  Desliza para acciones
+                </Text>
+              </View>
             ) : null}
           </View>
         </TourTarget>
@@ -853,8 +863,15 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#A6EF8F"
-            colors={['#297811']}
+            // iOS `tintColor` y Android `colors[]` ahora theme-aware.
+            // Antes hardcoded `#A6EF8F` iOS / `#297811` Android — el
+            // android spinner en dark mode sobre canvas dark daba ~3:1
+            // (visible animado pero apagado). heroAccent en iOS es lime
+            // brand-bright (visible en ambos modos sobre canvas).
+            // `primary` en android: light #297811 (dark green sobre cream
+            // ✅), dark #A6EF8F (lime sobre forest dark ✅).
+            tintColor={theme.colors.heroAccent}
+            colors={[theme.colors.primary]}
           />
         }
       />
@@ -913,6 +930,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   movimientosTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  swipeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+  },
   swipeHint: { fontSize: 11 },
   listFooter: { gap: 12, paddingVertical: 16, alignItems: 'center' },
   loadingMoreRow: {

@@ -167,7 +167,18 @@ export function GastosFilterPill({
               paddingVertical: small ? 6 : 8,
             },
             pillStyle,
-            active ? { boxShadow: '0px 6px 16px -6px rgba(15, 42, 30, 0.4)' } : null,
+            // Active state shadow theme-aware. Antes era hardcoded
+            // `rgba(15,42,30,0.4)` (forest dark con alpha) — funcionaba
+            // sobre canvas light pero en dark canvas (#12211A) la sombra
+            // era invisible (dark sobre dark). En dark usamos una lift
+            // tonal con cream-alpha que crea halo sutil arriba del pill.
+            active
+              ? {
+                  boxShadow: theme.isDark
+                    ? '0px 6px 16px -6px rgba(166,239,143,0.32)'
+                    : '0px 6px 16px -6px rgba(15,42,30,0.4)',
+                }
+              : null,
           ]}
         >
           {emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null}

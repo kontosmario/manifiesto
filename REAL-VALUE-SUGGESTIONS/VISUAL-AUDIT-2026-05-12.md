@@ -487,6 +487,64 @@ Extracted `darkenForLightBg` a [`mobile/utils/category-color.ts`](../mobile/util
 
 Total Sprint E: 3 fixes contrast + 1 util compartido, ~80 LOC. Filter pills y Movimientos ahora pasan AA cleanly en light, y AA o AA-Large en dark sin perder hierarchy visual.
 
+#### Sprint F — Final pass meticulous (catChipText green + animations + polish gaps)
+
+Owner pidió que el `catChipText` en dark mode sea green uniform (no pastel variado) y una pasada final completa sobre Gastos, con foco en animaciones, sin dejar gaps.
+
+##### Fix catChipText dark → green uniform
+
+Decisión owner: en dark mode, el `catChipText` ahora usa `theme.colors.textMuted` (lime brand-green #A6EF8F) en lugar del category color pastel original.
+
+- **Light mode**: mantiene `darkenForLightBg(categoryColor)` — variante hue-preserved oscura, identifica categoría
+- **Dark mode**: uniform brand-green ≥5:1 AA. La identidad de categoría queda comunicada via el iconTile bg + position en la lista, no necesita repetir signal en el chip text.
+
+Trade-off explícito: pierde signal de color en chip text en dark, gana legibilidad uniforme y coherencia visual con la paleta de marca.
+
+##### Audit completo de animaciones (todas verificadas)
+
+Matriz exhaustiva:
+
+| Animación | Timing | Easing | Reduced Motion | Status |
+|---|---|---|---|---|
+| Hero `CountUpText` totalVisible | 1200ms | ease-out cubic | ✅ instant | ✅ |
+| `GastosAverageBars` staggered grow | 600ms × 7, stagger 20ms | decelerate | ✅ instant | ✅ |
+| `CategoryWeightsList` AnimatedBar | 1000ms, stagger 25ms | ease-out-cubic | ✅ instant | ✅ |
+| Filter pill state interpolate | 240ms standard | decelerate | passthrough | ✅ |
+| Filter pill press scale | in 120ms / out 200ms | ease-out-quad | passthrough | ✅ |
+| Calendar grid ↔ focus crossfade | FadeIn 220 / FadeOut 160 | default | ✅ | ✅ |
+| `DayCell` press scale (0.92) | spring | spring | ✅ via usePressScale | ✅ |
+| SectionList row entering | FadeIn 180 / FadeOut 140 | default | gated by rowAnimationEnabled | ✅ |
+| RiseView cascade order | 0→100→120→140→160 ms | ease-out-expo | ✅ | ✅ |
+| `StreakFlameIcon` press (0.94) | spring | spring | ✅ via usePressScale | ✅ |
+| Advisor chip entering | FadeIn 220 / FadeOut 160 + Layout 220 | default | ✅ | ✅ |
+
+**Hallazgos animaciones**: zero gaps. Todas respetan `useReducedMotion`, usan custom easings apropiados, duraciones en banda Emil-grade, y stagger consistente.
+
+##### Polish gaps detectados (sin acción previa)
+
+**F1 — Pull-to-refresh tintColor hardcoded**: `tintColor="#A6EF8F"` (iOS) y `colors={['#297811']}` (Android) eran hardcoded. En android dark mode el spinner `#297811` sobre canvas `#12211A` daba ~3:1 (visible animado pero apagado). Switch a theme-aware:
+- iOS `tintColor = theme.colors.heroAccent` (lime brand-bright en ambos modos)
+- Android `colors = [theme.colors.primary]` (light: dark green sobre cream / dark: lime sobre forest)
+
+**F2 — Filter pill active boxShadow invisible en dark**: hardcoded `rgba(15,42,30,0.4)` (forest-dark alpha). En light mode sobre cream da lift visible ✅; en dark mode sobre canvas dark = INVISIBLE (dark sobre dark, sin diferencia perceptible). Fix theme-aware:
+- Light: `rgba(15,42,30,0.4)` (original, forest shadow below pill)
+- Dark: `rgba(166,239,143,0.32)` (lime halo arriba del pill, lift tonal en dark)
+
+**F3 — swipeHint character ambiguo**: `‹ Desliza para acciones` usaba carácter U+2039 (single left-pointing angle quote) como flecha — ambiguo y bajo perfil visual. Switch a `MaterialIcons chevron-left` 14pt baseline-aligned. Más claro como signal de "swipe izquierda". Wrapped en row con gap 1pt para flow tight.
+
+##### Findings sin acción (documentados como queue, low impact)
+
+- **Section header `paddingHorizontal: 2` vs row content `paddingHorizontal: 12`**: crea offset visual de ~10pt entre label "Lunes 12 may" y row icon. Estructural, requiere refactor — defer.
+- **`groupHeader` bg `theme.colors.background` redundante** (mismo que parent canvas). Sin impacto visual. Defer.
+- **GastosAverageBars 600ms × 7 staggered (~840ms total)**: feels lento pero alineado intencionalmente con CountUpText 1200ms del hero para que la entrada del card se sienta cohesive.
+- **dark catChipText pierde category color identity**: trade-off owner-aceptado por uniform brand-green legibility.
+
+Total Sprint F: 4 fixes (catChipText dark + 3 polish) + animation audit completo zero-gaps. **Gastos ahora está en su prime visual + motion + contrast end-to-end en ambos modos.**
+
+##### Comments finales
+
+Cuatro sprints (A/B/C + D + E + F) sobre Gastos. El cambio del approach del owner ("re-audit con lupa" + "contrast deep dive" + "filter+movimientos zoom" + "final completeness") expuso que **el primer pass siempre queda corto** sobre pantallas con 5+ sub-components interactivos. Lección heurística confirmada y documentada.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
@@ -546,3 +604,4 @@ Total Sprint E: 3 fixes contrast + 1 util compartido, ~80 LOC. Filter pills y Mo
 - **2026-05-12** — Hotfix Sprint B: el wrap de `DayCell` con `Pressable + Animated.View` rompió el grid del calendar. Causa: `styles.dayCell` con `flex: 1, aspectRatio: 1` quedó en el Animated.View interno, pero el grid layout requiere esos estilos EN EL CHILD DIRECTO del row (el Pressable). Empty cells retuvieron `flex: 1` mientras Pressables colapsaban → grid completamente desalineado. Fix: split en `dayCellLayout` (Pressable + empty View) y `dayCellSurface` (Animated.View visual chrome). Lección para refactors: cuando wrappás un Pressable con Animated.View interno, separar layout-affecting styles del visual chrome o el parent flex se rompe.
 - **2026-05-12** — Gastos Sprint D (contrast audit light + dark): cálculos WCAG sistemáticos sobre cada par fg/bg. 3 fixes aplicados: Today dot invisible en dark mode (heroAccent sobre cream → switch a canvas), hero gradient small-text contrast (heroMuted2 alpha 0.55 → heroMuted alpha 0.78, mejora de 2.5:1 a 3.5:1 manteniendo hierarchy), EmptyActionButton primary text en dark (primary #A6EF8F → primaryStrong #D1F7C5 para AA cleanly en ambos modos). Hero topLabel y small-text labels quedan marginales (3.5–4.2:1, mejor pero bajo AA estricto) — documentado como trade-off de hierarchy.
 - **2026-05-12** — Gastos Sprint E (filter pills + Movimientos zoom): owner pidió audit específico de estos dos componentes. Discovery: las 12 category colors son TODAS pasteles (lightness 0.55–0.85) — funcionan como chip bg tinted pero rotos como text color en algunos contextos. 3 bugs invisibilizando contenido: filter pill INACTIVE count chip fg falla light (1.5:1), filter pill ACTIVE count chip fg falla dark (1.16:1), GastoRow catChipText falla ambos (1.6:1 / 3.3:1). Fix: util compartido `darkenForLightBg` (hue-preserved HSL L=22) + theme-aware logic en los 3 spots.
+- **2026-05-12** — Gastos Sprint F (final completeness pass): catChipText dark switch a `textMuted` (brand-green uniform). Animation audit end-to-end zero gaps. 3 polish fixes: pull-to-refresh tintColor theme-aware, filter pill active shadow theme-aware (dark mode visible halo), swipeHint `‹` char → MaterialIcons chevron-left. Gastos cerrada con 6 sprints (A/B/C + D + E + F). Lección heurística confirmada: primer pass corto sobre pantallas con 5+ sub-components.

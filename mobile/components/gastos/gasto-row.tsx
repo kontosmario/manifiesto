@@ -45,14 +45,14 @@ export function GastoRow({
   //   - dark: pastel sobre olive-tinted dark → 3-4:1 marginal
   // Fix theme-aware:
   //   - light: variante oscura hue-preserved (L=22 HSL) → ≥6:1 sobre chip bg
-  //   - dark: pastel original sobre dark chip bg → 3-4:1 (legible, en banda
-  //     "large text AA" 3:1, las pastels sobre forest dark son visibles)
-  // En dark mode aceptamos el trade-off por hierarchy: el chip es
-  // informacional secundario, no critical reading. El category name
-  // también está implicit en el iconTile + position de la row.
+  //   - dark: `textMuted` (lime #A6EF8F brand-green) sobre dark chip bg
+  //     → ≥5:1 ✅ AA. Decisión owner 2026-05-12: usar uniform brand-green
+  //     en dark mode en vez de variantes pastel. La identidad de categoría
+  //     ya está comunicada via iconTile bg + position en la lista; el
+  //     catChipText puede ser uniform sin perder signal.
   const catChipTextColor = useMemo(
-    () => (theme.isDark ? categoryColor : darkenForLightBg(categoryColor)),
-    [categoryColor, theme.isDark],
+    () => (theme.isDark ? theme.colors.textMuted : darkenForLightBg(categoryColor)),
+    [categoryColor, theme.isDark, theme.colors.textMuted],
   )
   return (
     <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
