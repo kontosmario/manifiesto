@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
@@ -14,7 +15,7 @@ export interface ActivityRowV2Props {
   delay?: number
 }
 
-export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount, delay = 0 }: ActivityRowV2Props) {
+function ActivityRowV2Impl({ icon, title, category, whoName, whoColor, amount, delay = 0 }: ActivityRowV2Props) {
   const { theme } = useAppTheme()
   const amountColor = amount < 0 ? theme.colors.text : theme.colors.success
   return (
@@ -37,6 +38,15 @@ export function ActivityRowV2({ icon, title, category, whoName, whoColor, amount
     </SlideInView>
   )
 }
+
+/**
+ * Memo wrap. ActivityRowV2 se renderea en lista (hasta 6 rows en Home).
+ * Sin memo, cada vez que HomeActivitySection re-renderea (cualquier
+ * cambio del parent), TODAS las rows se re-rendereaban con sus
+ * SlideInView entrance worklets. Con memo solo re-renderean las rows
+ * cuyo prop cambió — primitivos comparados shallow, exact stability.
+ */
+export const ActivityRowV2 = memo(ActivityRowV2Impl)
 
 const styles = StyleSheet.create({
   // Only round the LEFT corners. The outer SwipeableRow clip + border

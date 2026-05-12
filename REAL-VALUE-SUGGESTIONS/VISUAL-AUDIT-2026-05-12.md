@@ -732,6 +732,35 @@ Lección reforzada: **pantallas grandes ≠ pantallas con muchos issues**. Contr
 
 ---
 
+## 🚀 Performance Audit (2026-05-12)
+
+Owner pidió audit agresivo de performance sobre las 4 pantallas T1 (Home, Gastos, Fijos, Control). Regla: **agilidad sin sacrificar animaciones ni estilos**. Zero downgrades de feel.
+
+### Framework
+
+Auditamos 6 dimensiones:
+1. **Rendering** — re-renders innecesarios, memoización gaps, props inestables
+2. **Animation** — worklets vs JS, cleanup, layout-triggering props
+3. **List virtualization** — config + key stability + renderItem memo
+4. **Data layer** — staleTime + cache invalidation precision
+5. **Initialization** — heavy mounts pre-snapshot
+6. **Bridge** — Intl en worklets, telemetry hot-path
+
+### Sprint P1 — Home
+
+**4 fixes shipped**, todos memoization gaps en `home-dashboard.tsx` + `home-hero-card.tsx` + `activity-row-v2.tsx`:
+
+| Fix | Antes | Después | Impact |
+|---|---|---|---|
+| **P1 — Inline `?? []` arrays** | `members={membersQuery.data ?? []}` crea new array per render → rompe React.memo de FamilyStrip + HomeActivitySection | `useMemo` extract: `familyMembers`, `expensesData`, `fixedExpensesData` reusados en todos los callsites | Memo'd children dejan de re-renderear en cada parent render (cycle sheet open, telemetry tap, hover, refetch) |
+| **P2 — `hasManualExpense` O(n)** | `.some(e => !e.commitment_id)` ejecuta cada render | `useMemo([expensesData])` | Solo recomputa cuando expenses cambia |
+| **P3 — `HomeHeroCard` no memo** | Hero card (el componente más pesado del Home: gradient + aurora + shine + particles + breathe dot + day chip pulse) se re-rendereaba en cada parent render | `memo(HomeHeroCardImpl)` | Hero solo re-renderea cuando `data` / `projectedCloseTrend` / `savingsChip` cambian. Todos sus props son ref-stable (`useHomeMetrics` memoized + `useMemo` + `useCallback`). |
+| **P4 — `ActivityRowV2` no memo** | Hasta 6 rows en lista, cada parent render disparaba 6 re-renderes con SlideInView entrance worklets cada uno | `memo(ActivityRowV2Impl)` | Solo rows con props cambiados re-renderean |
+
+Sin cambios visuales / animaciones — solo eliminación de trabajo redundante.
+
+Constraints respetados: cero downgrade animation, styles intactos, RiseView cascade preservada, todos los `useCallback`/`useMemo` existentes mantienen su shape.
+
 ## 📝 Log de cambios
 
 - **2026-05-12** — Doc creado. 28 pantallas catalogadas, rubric establecido, status board inicializado.

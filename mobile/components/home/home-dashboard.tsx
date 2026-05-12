@@ -165,6 +165,22 @@ export function HomeDashboard({
   const membersQuery = useFamilyMembers(familyId)
   const homeMetrics = useHomeMetrics(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
+  // Memoize array fallbacks. Sin esto cada `?? []` crea un new array
+  // reference por render, rompiendo el `React.memo` de FamilyStrip y
+  // HomeActivitySection — los hijos memo'd reciben new array y
+  // re-renderean en cada parent render (cycle sheet open, etc.).
+  const familyMembers = useMemo(
+    () => membersQuery.data ?? [],
+    [membersQuery.data],
+  )
+  const expensesData = useMemo(
+    () => dashboard.expensesQuery.data ?? [],
+    [dashboard.expensesQuery.data],
+  )
+  const fixedExpensesData = useMemo(
+    () => dashboard.fixedExpensesQuery.data ?? [],
+    [dashboard.fixedExpensesQuery.data],
+  )
   // Same vault calculation that powers the Control alcancía — sum of
   // positive deltas (cupo - gasto) across closed cycle days. Reading
   // it here so the MetaCard's slider reads "lo que ahorraste este
@@ -192,8 +208,11 @@ export function HomeDashboard({
   // payments (fixed expenses auto-recorded as expense rows when
   // marked paid) are not user-driven activity — they shouldn't
   // suppress the onboarding prompt.
-  const hasManualExpense = (dashboard.expensesQuery.data ?? []).some(
-    (e) => !e.commitment_id,
+  // Memoized: era O(n) en cada render, ahora solo recomputa cuando
+  // expensesData cambia (reference-stable via useMemo arriba).
+  const hasManualExpense = useMemo(
+    () => expensesData.some((e) => !e.commitment_id),
+    [expensesData],
   )
   const onboardingSkippedViaExpense = storedCycleAnchor == null && hasManualExpense
   const isOnboardingFlow = storedCycleAnchor == null
@@ -410,13 +429,13 @@ export function HomeDashboard({
   const topCategory = useMemo(
     () =>
       computeTopCategory({
-        expenses: dashboard.expensesQuery.data ?? [],
+        expenses: expensesData,
         cycleStart: dashboard.payCycle.start,
         cycleEnd: dashboard.payCycle.end,
         categoryNameById,
       }),
     [
-      dashboard.expensesQuery.data,
+      expensesData,
       dashboard.payCycle.start,
       dashboard.payCycle.end,
       categoryNameById,
@@ -471,13 +490,13 @@ export function HomeDashboard({
   const nextFixed = useMemo(
     () =>
       computeNextFixed({
-        fixedExpenses: dashboard.fixedExpensesQuery.data ?? [],
+        fixedExpenses: fixedExpensesData,
         // Scope to the current pay cycle: once the user pays a fijo
         // and its `next_due_on` rolls forward to the next cycle, we
         // stop surfacing it as pending here.
         cycleEnd: dashboard.payCycle.end,
       }),
-    [dashboard.fixedExpensesQuery.data, dashboard.payCycle.end],
+    [fixedExpensesData, dashboard.payCycle.end],
   )
   const nextFixedTracker = useTrackElement({
     familyId,
@@ -569,7 +588,7 @@ export function HomeDashboard({
         text={HOME_TOUR_STEPS.familyStrip.text}
       >
         <FamilyStrip
-          members={membersQuery.data ?? []}
+          members={familyMembers}
           daysUntilPayday={days}
           paydayPending={pending}
           onPaydayPress={handleChipConfirmTracked}
@@ -650,7 +669,7 @@ export function HomeDashboard({
         <HomeActivitySection
           expenses={recentExpenses}
           categoryNameById={categoryNameById}
-          familyMembers={membersQuery.data ?? []}
+          familyMembers={familyMembers}
           isLoading={isLoadingActivity}
           errorKind={activityErrorKind}
           onDelete={handleDeleteExpenseTracked}

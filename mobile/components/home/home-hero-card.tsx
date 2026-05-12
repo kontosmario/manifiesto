@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { memo, useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
@@ -48,7 +48,7 @@ interface HomeHeroCardProps {
  * The two side tiles split the single "available today" figure into
  * "puedes gastar por día" (accent) and "vas a cerrar con" (neutral).
  */
-export function HomeHeroCard({
+function HomeHeroCardImpl({
   data,
   onPressConfigureIncome,
   projectedCloseTrend = null,
@@ -522,6 +522,22 @@ export function HomeHeroCard({
     </RiseView>
   )
 }
+
+/**
+ * Memo wrap. El hero card es el componente más pesado del Home (gradient
+ * + aurora + shine + particles + breathe dot + day chip pulse + tile
+ * trends). Sin memo se re-rendereaba en cada parent render (apertura del
+ * cycle sheet, telemetry tap, refetch...) reevaluando todas sus
+ * animaciones internas. Con memo solo re-rendera cuando `data`,
+ * `projectedCloseTrend` o `savingsChip` cambian.
+ *
+ * `data` viene de `useHomeMetrics` (memoized output object) → reference
+ * stable cuando el subyacente no cambia.
+ * `savingsChip` viene de `useMemo` en dashboard → reference stable.
+ * `projectedCloseTrend` es number | null → primitive.
+ * `onPressConfigureIncome` es `useCallback`'d → stable.
+ */
+export const HomeHeroCard = memo(HomeHeroCardImpl)
 
 const styles = StyleSheet.create({
   card: {
