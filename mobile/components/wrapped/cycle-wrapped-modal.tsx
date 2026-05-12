@@ -443,9 +443,12 @@ function resolveVerdictTone(savingsDelta: number, isDark: boolean): VerdictTone 
     return {
       background: isDark ? '#1F4530' : '#E3F2D2',
       foreground: isDark ? '#F4FDF2' : '#0F2E1F',
-      foregroundSoft: isDark ? 'rgba(244,253,242,0.62)' : 'rgba(15,46,31,0.55)',
-      accent: '#1F590D',
-      progressTrack: isDark ? 'rgba(244,253,242,0.18)' : 'rgba(15,46,31,0.14)',
+      // Soft variants bumped a ~30% para AA legible sobre el tint
+      // sin perder la diferenciación con el foreground principal.
+      foregroundSoft: isDark ? 'rgba(244,253,242,0.78)' : 'rgba(15,46,31,0.74)',
+      // Accent darker para mayor contraste sobre el tint verde claro.
+      accent: isDark ? '#A6EF8F' : '#10410A',
+      progressTrack: isDark ? 'rgba(244,253,242,0.22)' : 'rgba(15,46,31,0.20)',
       progressFill: isDark ? '#A6EF8F' : '#1F590D',
       ctaBg: isDark ? '#A6EF8F' : '#1F590D',
       ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
@@ -457,9 +460,10 @@ function resolveVerdictTone(savingsDelta: number, isDark: boolean): VerdictTone 
     return {
       background: isDark ? '#4A2418' : '#F8D1C3',
       foreground: isDark ? '#FFFBF2' : '#3B1107',
-      foregroundSoft: isDark ? 'rgba(255,251,242,0.62)' : 'rgba(59,17,7,0.55)',
-      accent: '#B84014',
-      progressTrack: isDark ? 'rgba(255,251,242,0.18)' : 'rgba(59,17,7,0.14)',
+      foregroundSoft: isDark ? 'rgba(255,251,242,0.78)' : 'rgba(59,17,7,0.74)',
+      // Accent oscurecido sobre peach para AA + crisp edge con halo.
+      accent: isDark ? '#F2A78C' : '#8E2A0C',
+      progressTrack: isDark ? 'rgba(255,251,242,0.22)' : 'rgba(59,17,7,0.22)',
       progressFill: isDark ? '#F2A78C' : '#B84014',
       ctaBg: isDark ? '#F2A78C' : '#B84014',
       ctaFg: isDark ? '#3B1107' : '#FFFBF2',
@@ -470,9 +474,9 @@ function resolveVerdictTone(savingsDelta: number, isDark: boolean): VerdictTone 
   return {
     background: isDark ? '#2A3A2F' : '#EEE9DF',
     foreground: isDark ? '#F4FDF2' : '#12211A',
-    foregroundSoft: isDark ? 'rgba(244,253,242,0.62)' : 'rgba(18,33,26,0.55)',
-    accent: '#3B6D57',
-    progressTrack: isDark ? 'rgba(244,253,242,0.18)' : 'rgba(18,33,26,0.14)',
+    foregroundSoft: isDark ? 'rgba(244,253,242,0.78)' : 'rgba(18,33,26,0.74)',
+    accent: isDark ? '#A6EF8F' : '#1F590D',
+    progressTrack: isDark ? 'rgba(244,253,242,0.22)' : 'rgba(18,33,26,0.20)',
     progressFill: isDark ? '#A6EF8F' : '#1F590D',
     ctaBg: isDark ? '#A6EF8F' : '#1F590D',
     ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
@@ -487,26 +491,28 @@ function buildCoverScene(payload: CycleWrappedPayload): Scene {
     id: 'cover',
     background: '#FFFBF2', // cream paper
     foreground: '#0F2E1F',
-    foregroundSoft: 'rgba(15,46,31,0.55)',
-    progressTrack: 'rgba(15,46,31,0.14)',
+    // Soft text alphas bumpeados a 0.72 (era 0.55) — AA legible sobre
+    // cream sin colapsar la jerarquía con el foreground primario.
+    foregroundSoft: 'rgba(15,46,31,0.72)',
+    progressTrack: 'rgba(15,46,31,0.18)',
     progressFill: '#1F590D',
     ctaBg: '#1F590D',
     ctaFg: '#FFFBF2',
     render: () => (
       <View style={coverStyles.stage}>
-        <Text style={[coverStyles.eyebrow, { color: 'rgba(15,46,31,0.55)' }]}>
+        <Text style={[coverStyles.eyebrow, { color: 'rgba(15,46,31,0.72)' }]}>
           EDICIÓN {payload.periodLabel.toUpperCase()}
         </Text>
         <Text style={[coverStyles.title, { color: '#0F2E1F' }]} accessibilityRole="header">
           Tu mes,{'\n'}en cifras.
         </Text>
         {payload.periodRange ? (
-          <Text style={[coverStyles.range, { color: 'rgba(15,46,31,0.55)' }]}>
+          <Text style={[coverStyles.range, { color: 'rgba(15,46,31,0.72)' }]}>
             {payload.periodRange}
           </Text>
         ) : null}
         <View style={coverStyles.rule} />
-        <Text style={[coverStyles.kicker, { color: 'rgba(15,46,31,0.7)' }]}>
+        <Text style={[coverStyles.kicker, { color: 'rgba(15,46,31,0.85)' }]}>
           Una lectura corta de cómo cerraste.
         </Text>
       </View>
@@ -538,6 +544,15 @@ function buildVerdictScene(
     confettiSceneIdx: 1, // segunda escena
     render: ({ reduced }) => {
       const heroAmount = Math.abs(payload.savingsDelta)
+      // Halo cream sutil detrás del hero — crea "respiración" entre la
+      // tinta del número y el tint del fondo cuando son del mismo hue
+      // (peach-on-peach, green-on-green). No es un stroke duro: es un
+      // glow blando 8pt radius que solo se nota si te acercás.
+      const heroHalo = {
+        textShadowColor: 'rgba(255,251,242,0.55)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
+      }
       return (
         <View style={verdictStyles.stage}>
           <Text
@@ -547,11 +562,11 @@ function buildVerdictScene(
           </Text>
 
           <View style={verdictStyles.numberRow}>
-            <Text style={[verdictStyles.sign, { color: tone.accent }]}>
+            <Text style={[verdictStyles.sign, { color: tone.accent }, heroHalo]}>
               {sign}
             </Text>
             {reduced ? (
-              <Text style={[verdictStyles.hero, { color: tone.accent }]}>
+              <Text style={[verdictStyles.hero, { color: tone.accent }, heroHalo]}>
                 {formatMoney(Math.round(heroAmount))}
               </Text>
             ) : (
@@ -559,7 +574,7 @@ function buildVerdictScene(
                 value={heroAmount}
                 duration={1800}
                 format={(n) => formatMoney(Math.round(n))}
-                style={[verdictStyles.hero, { color: tone.accent }]}
+                style={[verdictStyles.hero, { color: tone.accent }, heroHalo]}
               />
             )}
           </View>
@@ -569,7 +584,13 @@ function buildVerdictScene(
           </Text>
 
           {hasDelta && deltaRounded !== 0 ? (
-            <View style={verdictStyles.deltaPill}>
+            <View
+              style={[
+                verdictStyles.deltaPill,
+                // Pill background más opaco para crisp legibility.
+                { backgroundColor: 'rgba(255,251,242,0.55)' },
+              ]}
+            >
               <MaterialIcons
                 name={deltaRounded < 0 ? 'south' : 'north'}
                 size={14}
@@ -594,8 +615,8 @@ function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
     id: 'top-category',
     background: '#F6EFE3', // cream warm
     foreground: '#0F2E1F',
-    foregroundSoft: 'rgba(15,46,31,0.55)',
-    progressTrack: 'rgba(15,46,31,0.14)',
+    foregroundSoft: 'rgba(15,46,31,0.72)',
+    progressTrack: 'rgba(15,46,31,0.18)',
     progressFill: '#1F590D',
     ctaBg: '#1F590D',
     ctaFg: '#FFFBF2',
@@ -603,7 +624,7 @@ function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
       const top = payload.topCategory!
       return (
         <View style={detailStyles.stage}>
-          <Text style={[detailStyles.eyebrow, { color: 'rgba(15,46,31,0.55)' }]}>
+          <Text style={[detailStyles.eyebrow, { color: 'rgba(15,46,31,0.72)' }]}>
             DONDE MÁS SE FUE
           </Text>
           <Text
@@ -614,22 +635,22 @@ function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
             {top.name}
           </Text>
           <View style={detailStyles.amountRow}>
-            <Text style={[detailStyles.amount, { color: '#1F590D' }]}>
+            <Text style={[detailStyles.amount, { color: '#10410A' }]}>
               {formatMoney(Math.round(top.amount))}
             </Text>
-            <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.55)' }]}>
+            <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.72)' }]}>
               {Math.round(top.share * 100)}% del ciclo
             </Text>
           </View>
 
-          {/* Full-bleed share bar */}
-          <View style={detailStyles.barTrack}>
+          {/* Full-bleed share bar — track más oscuro para visibilidad */}
+          <View style={[detailStyles.barTrack, { backgroundColor: 'rgba(15,46,31,0.14)' }]}>
             <View
               style={[
                 detailStyles.barFill,
                 {
                   width: `${Math.max(8, Math.round(top.share * 100))}%`,
-                  backgroundColor: '#1F590D',
+                  backgroundColor: '#10410A',
                 },
               ]}
             />
@@ -642,20 +663,27 @@ function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
 
 // 4. Top expense scene
 function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
+  // Halo cream sutil para el amount peach-on-peach — mismo recurso que
+  // el veredicto negativo. Crisp edge sin parecer stroke.
+  const amountHalo = {
+    textShadowColor: 'rgba(255,251,242,0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  }
   return {
     id: 'top-expense',
     background: '#F8D1C3', // peach band, warm accent
     foreground: '#3B1107',
-    foregroundSoft: 'rgba(59,17,7,0.55)',
-    progressTrack: 'rgba(59,17,7,0.16)',
-    progressFill: '#B84014',
-    ctaBg: '#B84014',
+    foregroundSoft: 'rgba(59,17,7,0.74)',
+    progressTrack: 'rgba(59,17,7,0.22)',
+    progressFill: '#8E2A0C',
+    ctaBg: '#8E2A0C',
     ctaFg: '#FFFBF2',
     render: () => {
       const top = payload.topExpense!
       return (
         <View style={detailStyles.stage}>
-          <Text style={[detailStyles.eyebrow, { color: 'rgba(59,17,7,0.55)' }]}>
+          <Text style={[detailStyles.eyebrow, { color: 'rgba(59,17,7,0.74)' }]}>
             EL GASTO QUE MÁS PESÓ
           </Text>
           <Text
@@ -665,10 +693,10 @@ function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
           >
             {top.description || 'Sin descripción'}
           </Text>
-          <Text style={[detailStyles.amount, { color: '#B84014', marginTop: 16 }]}>
+          <Text style={[detailStyles.amount, { color: '#8E2A0C', marginTop: 16 }, amountHalo]}>
             {currencyFormatter.format(top.price)}
           </Text>
-          <Text style={[detailStyles.dateMark, { color: 'rgba(59,17,7,0.55)' }]}>
+          <Text style={[detailStyles.dateMark, { color: 'rgba(59,17,7,0.74)' }]}>
             {formatLongDate(top.occurredAt)}
           </Text>
         </View>
@@ -683,14 +711,16 @@ function buildClosingScene(payload: CycleWrappedPayload): Scene {
     id: 'closing',
     background: '#0F2E1F', // forest deep, brand statement
     foreground: '#F4FDF2',
-    foregroundSoft: 'rgba(244,253,242,0.62)',
-    progressTrack: 'rgba(244,253,242,0.18)',
+    // Sobre forest deep el contraste es altísimo, pero bumpeamos a
+    // 0.82 para que eyebrow/labels no parezcan "apagados".
+    foregroundSoft: 'rgba(244,253,242,0.82)',
+    progressTrack: 'rgba(244,253,242,0.24)',
     progressFill: '#A6EF8F',
     ctaBg: '#A6EF8F',
     ctaFg: '#0F2E1F',
     render: () => (
       <View style={closingStyles.stage}>
-        <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.62)' }]}>
+        <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
           EL PRÓXIMO ARRANCA HOY
         </Text>
         <Text
@@ -703,7 +733,7 @@ function buildClosingScene(payload: CycleWrappedPayload): Scene {
           <View
             style={[
               closingStyles.achievementsRow,
-              { borderColor: 'rgba(166,239,143,0.4)' },
+              { borderColor: 'rgba(166,239,143,0.55)' },
             ]}
           >
             <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
@@ -719,14 +749,14 @@ function buildClosingScene(payload: CycleWrappedPayload): Scene {
             label="Gastaste"
             value={formatMoney(Math.round(payload.totalSpent))}
             color="#F4FDF2"
-            mutedColor="rgba(244,253,242,0.62)"
+            mutedColor="rgba(244,253,242,0.82)"
           />
           <View style={closingStyles.summaryDivider} />
           <SummaryStat
             label="Movimientos"
             value={String(payload.expensesCount)}
             color="#F4FDF2"
-            mutedColor="rgba(244,253,242,0.62)"
+            mutedColor="rgba(244,253,242,0.82)"
           />
         </View>
       </View>
@@ -1056,7 +1086,9 @@ const closingStyles = StyleSheet.create({
   },
   summaryDivider: {
     width: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(244,253,242,0.32)',
+    // Bump del divider para que se vea en pantallas tipo OLED donde
+    // la hairline a 0.32 se traga.
+    backgroundColor: 'rgba(244,253,242,0.5)',
   },
 })
 
