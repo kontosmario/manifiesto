@@ -145,19 +145,28 @@ Algunos fixes que descubrimos durante el audit por-pantalla resultaron vivir en 
 
 **Fix**: `AppTabs.screenOptions` ahora incluye `animation: 'shift'`. Default `'none'` de react-navigation snapeaba instantáneo sin continuidad direccional (Apple HIG `continuity` y MD `motion-meaning` requieren motion en navegación). `'shift'` desliza el contenido del nuevo tab desde el lado correspondiente al orden de tabs (Home→Gastos slides left, Gastos→Home slides right). ~220ms en UI thread. ([app-tabs.tsx](../mobile/components/navigation/app-tabs.tsx))
 
-### G2 · Theme-aware root containers (dark mode flash fix)
+### G2 · Theme-aware root containers (dark mode flash fix) — 🟡 PARCIAL
 
 **Descubierto auditando**: Home (feedback owner — flash blanco solo en dark mode al transicionar entre tabs después de aplicar G1).
 
 **Alcance**: toda transición de navegación que cause overlap entre escena saliente y entrante. Cubre: tab `shift`, stack push, modal slide_from_bottom, return de modal a tab. En light mode no era perceptible porque cream + default-blanco son visualmente cercanos; en dark mode el contraste forest-deep vs default-blanco hacía el flash obvio.
 
-**Fix en dos capas** (la chain root tenía dos containers sin `backgroundColor` theme-aware):
+**Fix en dos capas aplicado** (la chain root tenía dos containers sin `backgroundColor` theme-aware):
 
 1. **`RootLayoutShell`** ([root-layout-shell.tsx](../mobile/components/root/root-layout-shell.tsx)): refactor del root `<View>` a `ThemedRoot` sub-component que vive dentro de `AppProviders` y usa `useAppTheme()` para `backgroundColor: theme.colors.canvas` (cream / forest deep según tema).
 
 2. **`AppProviders`** ([app-providers.tsx](../mobile/providers/app-providers.tsx)): `GestureHandlerRootView` vive FUERA del theme provider. Solución: `useColorScheme()` de RN lee system preference, aplica `CANVAS_LIGHT` / `CANVAS_DARK` hard-coded en sync con `palette.ts`. Trade-off documentado: user con tema manual override contra system preference puede ver 1 frame de flash al primer mount.
 
 **Por qué no se veía antes**: tabs eran `animation: 'none'` (snap sin overlap = sin ventana de exposición). Stack transitions también podían flashear pero la screen saliente cubre completamente a la entrante en la mayor parte de la animación, masking. Light mode + tabs sin animation = bug latente. G1 + dark mode lo destapó.
+
+**🟡 Bug que aún persiste (2026-05-12)**: el owner confirma que después del fix dual el flash blanco TODAVÍA aparece en algunos casos en dark mode. Las dos capas de fix cubrieron `GestureHandlerRootView` + `RootLayoutShell.View`, pero hay un tercer container o re-render path que sigue exponiendo blanco. Sospechas a investigar en próximo sprint de nav-audit:
+
+- **`SafeAreaProvider`**: no acepta `style` prop directamente, su default bg podría seguir siendo white. Posiblemente envolver con un View themed encima.
+- **expo-router Stack scene container**: el `<Stack>` de expo-router renderea sus screens en un view interno que tiene su propio bg. No vimos config explícita; podría requerir `screenOptions.contentStyle = { backgroundColor: theme.colors.canvas }`.
+- **Bottom tabs `sceneContainerStyle`**: `screenOptions.sceneStyle` está seteado, pero `sceneContainerStyle` (el wrapper que contiene todas las scenes, no cada scene individual) podría también necesitar bg.
+- **`tabBarStyle.backgroundColor`**: la barra inferior podría estar mostrando un strip blanco durante el shift.
+
+Queda agendado como item del próximo sprint. Workaround interim: en dark mode el flash es breve (~80-120ms) y los tests internos pueden ignorarlo, pero requiere fix definitivo antes de submit.
 
 ---
 
@@ -226,9 +235,29 @@ y.value = withRepeat(
 
 Con `reverse=true` la animación se reproduce al revés automáticamente al llegar al destino. La velocidad llega a 0 SOLO en los extremos (peaks), que es lo natural en una sinusoidal. Resultado: oscilación continua sin pausas, alrededor del centro. ([float-view.tsx](../mobile/components/home/animated/float-view.tsx))
 
+##### Fix 7 — Activity feed mostraba solo 1 row de 6 esperados (Home-specific data bug)
+
+Owner detectó que la sección "ACTIVIDAD" mostraba solo 1 gasto en vez de los 6 esperados.
+
+**Root cause** — secuencia slice → filter:
+
+1. `home_snapshot` SQL: retorna top 120 expenses ordenados `created_at DESC`, **incluyendo** rows con `commitment_id` (auto-pagos de fijos).
+2. `use-home-snapshot.ts` seed: `payload.expenses.slice(0, 6)` — slice **antes** de filtrar.
+3. `home-screen.tsx`: `(recentExpensesQuery.data ?? []).filter(e => !e.commitment_id)` — filter **después** del slice.
+
+Resultado: si los 6 más recientes eran 5 fijos auto-pagados + 1 gasto manual, el activity feed mostraba solo 1. El bug se intensificaba el día que el user pagaba 3+ fijos seguidos.
+
+**Fix dual** (defensa-en-profundidad para todos los paths que pueblan `expenseQueryKeys.recent(...)`):
+
+1. **`use-home-snapshot.ts`** seed: pre-filtra antes del slice. `payload.expenses.filter(e => !e.commitment_id).slice(0, 6)`. El RPC trae buffer de 120 rows — sobra para sobrevivir cascadas de fijos.
+
+2. **`useRecentExpenses` hook** ([use-expenses.ts](../mobile/features/expenses/use-expenses.ts)): over-fetch `limit * 4` rows desde DB, filter + slice client-side. Cubre el refetch path post-mutation (cuando `useCreateExpense` invalida la cache). No agrega filter SQL para evitar branching de soporte legacy del column `commitment_id`.
+
+3. Home screen mantiene su filter post-query como **safety net** — idempotente con los dos fixes anteriores. No se removió.
+
 ##### Score final
 
-⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion + dark mode parity (heredando los fixes globales abajo).
+⭐⭐⭐⭐⭐ confirmado (con 🟡 G2 dark mode flash como ítem global pendiente).
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -291,3 +320,4 @@ Con `reverse=true` la animación se reproduce al revés automáticamente al lleg
 - **2026-05-12** — Pantalla 1/28 (Home) auditada + 3 fixes aplicados (Sprint 1). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
 - **2026-05-12** — Home Sprint 2 (post-feedback owner): Float icon `withRepeat(..., reverse=true)` oscilación continua (Home-specific). Tab transitions `animation: 'shift'` (re-clasificado como **G1 fix global**). Dark mode white flash hotfix dual-layer (re-clasificado como **G2 fix global**).
 - **2026-05-12** — Doc reorganizado: nueva sección "🌐 Fixes globales" para fixes que descubrimos auditando una pantalla pero viven en navigator/root containers/theme bridge. Cada pantalla del status board los hereda.
+- **2026-05-12** — Home Fix 7: activity feed mostraba 1/6 rows por bug slice-before-filter. Fix dual en `use-home-snapshot.ts` seed (pre-filter) + `useRecentExpenses` hook (over-fetch 4×). G2 dark mode flash marcado como 🟡 PARCIAL — todavía persiste post-fix dual; sospechas anotadas para próximo sprint.

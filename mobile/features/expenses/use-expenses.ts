@@ -40,6 +40,23 @@ export function useExpenses(familyId?: string, categoryId?: string) {
   })
 }
 
+/**
+ * Recent expenses para el activity feed de Home — filtra rows con
+ * `commitment_id` (fijos auto-pagados) que viven exclusivamente en la
+ * vista de Fijos.
+ *
+ * Implementación: over-fetch `limit * 4` rows desde DB para tener buffer
+ * cuando una cascada de fijos pagados ocupa los slots top, y filtra +
+ * slice client-side. La cache key sigue siendo `(familyId, limit)` para
+ * mantenerla coherente con el seed en `use-home-snapshot.ts` (que
+ * pre-filtra antes de slicear el slice de 120 que trae el RPC).
+ *
+ * Por qué over-fetch en vez de filter DB-level: el filter `is(commitment_id, null)`
+ * está disponible vía PostgREST, pero agregarlo al `applyExpenseFilters`
+ * acarrearía soporte de la column legacy (pre-2026-05) que algunos envs
+ * todavía no tienen. Over-fetch evita el branching y aún así es barato
+ * (24 rows vs 6). Si en el futuro la column es universal, swap a filter SQL.
+ */
 export function useRecentExpenses(familyId?: string, limit = 3) {
   return useQuery<Expense[]>({
     queryKey: recentExpensesQueryKey(familyId, limit),
@@ -50,7 +67,9 @@ export function useRecentExpenses(familyId?: string, limit = 3) {
         return []
       }
 
-      return loadExpenses(familyId, { limit })
+      const buffer = Math.max(limit * 4, 12)
+      const rows = await loadExpenses(familyId, { limit: buffer })
+      return rows.filter((e) => !e.commitment_id).slice(0, limit)
     },
   })
 }

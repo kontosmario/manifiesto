@@ -301,9 +301,19 @@ function seedCaches(
   )
 
   client.setQueryData(expenseQueryKeys.list(familyId, undefined), payload.expenses)
+  // Recent activity feed para Home: filtra commitment_id ANTES de slicear.
+  // Bug histórico: si los 6 más recientes eran 5 fijos auto-pagados + 1
+  // gasto manual, el filter client-side dejaba solo 1 row visible (todo
+  // commitment_id se descarta porque vive en la vista de Fijos, no acá).
+  // Pre-filtrar el seed acá garantiza que el primer paint de Home tenga
+  // 6 gastos manuales si el dataset los tiene. `payload.expenses` viene
+  // con limit 120 desde home_snapshot SQL — buffer suficiente para
+  // sobrevivir días con cascada de fijos pagados.
   client.setQueryData(
     expenseQueryKeys.recent(familyId, RECENT_EXPENSES_LIMIT),
-    payload.expenses.slice(0, RECENT_EXPENSES_LIMIT),
+    payload.expenses
+      .filter((e) => !(e as { commitment_id?: string | null }).commitment_id)
+      .slice(0, RECENT_EXPENSES_LIMIT),
   )
 
   client.setQueryData(categoriesQueryKey(familyId, 'expense'), payload.categories_expense)
