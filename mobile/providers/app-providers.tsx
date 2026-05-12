@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react'
+import { useColorScheme } from 'react-native'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -15,9 +16,27 @@ function StatusBarBridge() {
   return <StatusBar animated style={theme.isDark ? 'light' : 'dark'} />
 }
 
+// Canvas colors hard-coded acá porque GestureHandlerRootView vive
+// FUERA del AppThemeProvider y no puede usar `useAppTheme()`.
+// Estos hex deben mantenerse en sync con `palette.ts:canvas` para
+// que el "very-root" layer no flashee blanco durante transiciones
+// de tab (`shift`) o stack push antes de que el navigator
+// theme-aware tome el control. Si la paleta cambia, actualizar acá.
+const CANVAS_LIGHT = '#F4F2ED'
+const CANVAS_DARK = '#12211A'
+
 export function AppProviders({ children }: PropsWithChildren) {
+  // `useColorScheme()` lee directo del sistema (no del user-override
+  // del theme provider) — es la mejor aproximación disponible afuera
+  // del provider. El user que ponga su tema en modo dark forzado en
+  // un device claro puede ver un frame de flash al primer mount;
+  // todos los demás casos coinciden. Es un trade-off aceptable
+  // contra restructurar la chain de providers entera.
+  const systemScheme = useColorScheme()
+  const rootBg = systemScheme === 'dark' ? CANVAS_DARK : CANVAS_LIGHT
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: rootBg }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider
           client={queryClient}

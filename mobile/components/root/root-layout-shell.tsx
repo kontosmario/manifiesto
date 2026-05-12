@@ -1,5 +1,5 @@
 import '@/lib/runtime'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type PropsWithChildren } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
@@ -15,6 +15,7 @@ import { NotificationRouterBridge } from '@/components/root/notification-router-
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { AppProviders } from '@/providers/app-providers'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { useAppTheme } from '@/theme/theme-provider'
 
 let hasShownAppLaunchSplash = false
 
@@ -56,7 +57,7 @@ export function RootLayoutShell() {
   return (
     <RootErrorBoundary>
       <AppProviders>
-        <View style={styles.root}>
+        <ThemedRoot>
           <NotificationRouterBridge />
           <Stack
             screenOptions={{
@@ -117,9 +118,32 @@ export function RootLayoutShell() {
             phase={authTransition.phase}
             errorKind={authTransition.errorKind}
           />
-        </View>
+        </ThemedRoot>
       </AppProviders>
     </RootErrorBoundary>
+  )
+}
+
+/**
+ * Themed root container. Vive dentro de AppProviders (que monta el
+ * AppThemeProvider), entonces `useAppTheme()` está disponible acá.
+ *
+ * Razón de existir: el `<Tabs animation="shift">` desliza las escenas
+ * horizontalmente, y durante la transición hay un frame donde el
+ * parent del navigator queda visible entre la escena saliente y la
+ * entrante. Si ese parent no tiene un bg theme-aware, en dark mode
+ * el default-blanco de RN se cuela como flash visible.
+ *
+ * Setear `backgroundColor: theme.colors.canvas` acá garantiza que
+ * incluso en el frame de overlap, el fondo expuesto sea forest deep
+ * (#12211A) en dark mode o cream (#F4F2ED) en light. Sin flash.
+ */
+function ThemedRoot({ children }: PropsWithChildren) {
+  const { theme } = useAppTheme()
+  return (
+    <View style={[styles.root, { backgroundColor: theme.colors.canvas }]}>
+      {children}
+    </View>
   )
 }
 

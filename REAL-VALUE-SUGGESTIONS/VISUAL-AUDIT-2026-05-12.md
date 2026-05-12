@@ -213,9 +213,21 @@ y.value = withRepeat(
 
 Con `reverse=true` la animación se reproduce al revés automáticamente al llegar al destino. La velocidad llega a 0 SOLO en los extremos (peaks), que es lo natural en una sinusoidal. Resultado: oscilación continua sin pausas, alrededor del centro. ([float-view.tsx](../mobile/components/home/animated/float-view.tsx))
 
+##### Fix 6 — Dark mode white flash en tab transitions
+
+Owner reportó flash blanco visible en dark mode durante el `shift` (no en light). Root cause: la chain de containers `GestureHandlerRootView → SafeAreaProvider → AppThemeProvider → root View → Stack → Tabs` tenía **dos View sin `backgroundColor`** (el `GestureHandlerRootView` con `flex:1` y el root View dentro de `RootLayoutShell`). Durante el `shift` de tabs, un frame de overlap entre escena saliente y entrante expone el parent. En light mode el cream del scene matchea con el default blanco-ish → no se nota. En dark mode el scene es forest deep (#12211A) pero el parent sigue siendo el default white de RN → flash blanco visible.
+
+**Fix en dos capas**:
+
+1. **`RootLayoutShell`** ([root-layout-shell.tsx](../mobile/components/root/root-layout-shell.tsx)): refactor del root `<View>` a un sub-componente `ThemedRoot` que vive dentro de `AppProviders` y usa `useAppTheme()` para setear `backgroundColor: theme.colors.canvas` (cream o forest deep según tema).
+
+2. **`AppProviders`** ([app-providers.tsx](../mobile/providers/app-providers.tsx)): `GestureHandlerRootView` vive FUERA del theme provider (no puede usar el hook). Solución: `useColorScheme()` de RN para leer el system preference y aplicar `CANVAS_LIGHT` / `CANVAS_DARK` hard-coded en sync con `palette.ts`. Trade-off documentado en comentario: user que fuerza tema dark en device claro puede ver un frame de flash al primer mount; todos los demás casos coinciden con el theme provider.
+
+Resultado: durante cualquier transición de tab, el parent expuesto ya es canvas-coloreado en ambos modos. Zero flash.
+
 ##### Score final
 
-⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion.
+⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion + dark mode parity.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -277,3 +289,4 @@ Con `reverse=true` la animación se reproduce al revés automáticamente al lleg
 - **2026-05-12** — Doc creado. 28 pantallas catalogadas, rubric establecido, status board inicializado.
 - **2026-05-12** — Pantalla 1/28 (Home) auditada + 3 fixes aplicados (Sprint 1). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
 - **2026-05-12** — Home Sprint 2 (post-feedback owner): tab transitions con `animation: 'shift'` + Float icon con `withRepeat(..., reverse=true)` oscilación continua. Aunque toca `app-tabs.tsx` (navegación global), el origen del feedback fue Home, así que queda en su sub-section.
+- **2026-05-12** — Home Sprint 2 hotfix: dark mode white flash en tab transitions. Root cause: chain de containers root sin bg theme-aware. Fix dual en `RootLayoutShell` (ThemedRoot sub-component) + `AppProviders` (useColorScheme hard-coded canvas en GestureHandlerRootView).
