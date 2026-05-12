@@ -288,6 +288,78 @@ Resultado: si los 6 más recientes eran 5 fijos auto-pagados + 1 gasto manual, e
 
 Gastos era una de las pantallas más cargadas (hero rich + advisor chip + smart filter + month calendar + virtualized SectionList + streak icon + swipe rows + paginación). Los 3 fixes son polish-level: la pantalla ya operaba muy bien funcionalmente. Cambios totales <60 LOC.
 
+#### Sprint 2 — Re-audit "con lupa" (deep dive)
+
+Owner pidió re-audit más detallado, mirando con magnifying glass. El primer pase quedó en la superficie del screen file; este pase entró a los 12+ sub-componentes (calendar, advisor chip, streak flame, average bars, category weights list, swipeable row, filter pill, hero card internals). Se encontraron **10+ issues granulares** que el primer pase no detectó.
+
+##### Hallazgos críticos no detectados antes
+
+**🚨 Impeccable absolute ban — side-stripe border**: `GastosAdvisorChip` tenía:
+```js
+accent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 }
+```
+Exactamente el patrón que impeccable prohíbe explícitamente. Side-stripe border de 3px como acento de color en card.
+
+**🟡 7 Pressables sin press feedback Emil-grade** distribuidos en sub-componentes:
+- `StreakFlameIcon` (44×44 tap-target en header, sin feedback)
+- `DayCell` calendar (sin feedback)
+- `focusCenter` "Volver al ciclo" (72pt day number, sin feedback)
+- `registerForgottenBtn` (sin feedback)
+- `backChip` "Ciclo completo" (sin feedback)
+- `ChevronBtn` prev/next (solo opacity disabled)
+- `GastosAdvisorChip` (opacity-only `0.85`)
+
+**🟡 Typography incompleto del pase 1**:
+- `CategoryWeightsList.amountText` sin tabular-nums (afecta hero category amounts)
+- Calendar focus-mode `statValue` sin tabular-nums (GASTADO + MOVIMIENTOS no alinean)
+
+**🟡 Motion · cascade order incoherente**: el calendar entraba a 0ms (sin RiseView), antes del hero (delay 100ms). Mismo issue con advisor chip. Cascada visual rota.
+
+##### Sprint A — Side-stripe ban + advisor press
+
+Refactor de `GastosAdvisorChip`:
+- ❌ Side-stripe `accent: { position: 'absolute', left: 0, width: 3 }` removido
+- ✅ Reemplazado por `iconTile` 28×28 con `hexAlpha(tone, 0.14)` bg + `hexAlpha(tone, 0.28)` border — el color del urgency se comunica via el container del icon, no via stripe
+- ✅ `usePressScale(0.97)` con `Animated.View` reemplaza el `opacity: 0.85` muerto
+
+Resultado: la jerarquía visual mejora (el icon ahora es elemento central no un decorador junto a un stripe random), respeta impeccable, y el tap se siente Emil-grade. ([gastos-advisor-chip.tsx](../mobile/components/gastos/gastos-advisor-chip.tsx))
+
+##### Sprint B — Calendar + Streak press feedback batch
+
+**`StreakFlameIcon`** ([streak-flame-icon.tsx](../mobile/components/gastos/streak-flame-icon.tsx)): `usePressScale(0.94)` (escala más pronunciada para tap-target chico de 44×44) + `Animated.View` wrap.
+
+**`GastosMonthCalendar`** ([gastos-month-calendar.tsx](../mobile/components/gastos/gastos-month-calendar.tsx)):
+- `DayCell` (`usePressScale(0.92)`) — solo activo cuando `isPast`. Future cells siguen disabled.
+- `ChevronBtn` (`usePressScale(0.92)`) — solo activo cuando `!disabled`. Disabled retiene el `opacity: 0.35` como signal de estado.
+- `focusCenter` (`usePressScale(0.97)`) — 72pt day number area grande, escala sutil.
+- `registerForgottenBtn` (`usePressScale(0.97)`) — botón mediano con border.
+- `backChip` (`usePressScale(0.95)`) — pill compacto con bg sólido, escala más pronunciada para que el feedback se note.
+
+6 Pressables convertidos, cada uno con escala matched al peso visual del tap-target. Todos respetan el reduced-motion fallback del hook (`scale = 1`).
+
+##### Sprint C — Tabular nums residuales + cascade order
+
+**Tabular nums**:
+- `CategoryWeightsList.amountText` — hero category amounts ahora alinean cleanly ([category-weights-list.tsx](../mobile/components/gastos/category-weights-list.tsx)).
+- Calendar `statValue` — focus-mode GASTADO + MOVIMIENTOS alinean entre los dos stats blocks ([gastos-month-calendar.tsx](../mobile/components/gastos/gastos-month-calendar.tsx)).
+
+**Cascade order** ([gastos-v2-screen.tsx](../mobile/screens/home/gastos-v2-screen.tsx)):
+- Calendar ahora con `RiseView delay={120}` (antes 0ms)
+- Advisor chip ahora con `RiseView delay={160}` (antes 0ms)
+
+Cascada completa coherente: header(0) → hero(100) → calendar(120) → filter(140) → advisor(160). Lectura top-down como en Home.
+
+##### Comments del re-audit
+
+El primer pase fue "good enough" pero superficial — vi el screen file y 2 sub-componentes principales. La diferencia entre **mirar** una pantalla y **estudiarla con lupa** se manifiesta en:
+1. **Ban-explícito invisible** (side-stripe) que solo se ve leyendo styles de sub-componentes
+2. **Interaction debt** que se acumula en componentes anidados (calendar, streak) y no es visible desde el screen file
+3. **Motion order** que solo se nota cuando trazás los `RiseView delay` props a lo largo de toda la cadena
+
+Lección para próximas pantallas: cuando una pantalla tiene 5+ sub-componentes interactivos, asignar 2× el tiempo del read pass.
+
+Total Sprint 2: 3 commits, ~150 LOC, 10+ issues granulares resueltos. Score sigue ⭐⭐⭐⭐⭐ pero "más sólido" — los detalles invisibles ahora compounden coherentes.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
@@ -343,3 +415,4 @@ Gastos era una de las pantallas más cargadas (hero rich + advisor chip + smart 
 - **2026-05-12** — Doc reorganizado: nueva sección "🌐 Fixes globales" para fixes que descubrimos auditando una pantalla pero viven en navigator/root containers/theme bridge. Cada pantalla del status board los hereda.
 - **2026-05-12** — Home Fix 7: activity feed mostraba 1/6 rows por bug slice-before-filter. Fix dual en `use-home-snapshot.ts` seed (pre-filter) + `useRecentExpenses` hook (over-fetch 4×). G2 dark mode flash marcado como 🟡 PARCIAL — todavía persiste post-fix dual; sospechas anotadas para próximo sprint.
 - **2026-05-12** — Pantalla 2/28 (Gastos v2) auditada + 3 fixes aplicados (press scale en clearFilters + emptyAction, tabular nums en groupTotal + GastoRow.amount, em dashes "Fin del ciclo" → eyebrow editorial). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
+- **2026-05-12** — Gastos Sprint 2 (re-audit "con lupa"): 3 sprints A/B/C con 10+ issues granulares en sub-componentes. Side-stripe ban en advisor chip removido. 6 Pressables del calendar + StreakFlameIcon ahora con press scale. Tabular nums residuales. Cascade order de RiseViews coherente.

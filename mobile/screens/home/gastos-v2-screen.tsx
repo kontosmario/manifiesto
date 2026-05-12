@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { RiseView } from '@/components/home/animated/rise-view'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
@@ -565,6 +566,13 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           order={GASTOS_TOUR_STEPS.calendar.order}
           text={GASTOS_TOUR_STEPS.calendar.text}
         >
+          {/*
+            RiseView delay=120 para que el calendar entre DESPUÉS del
+            hero (delay=100) y ANTES del filter (delay=140). Sin esto
+            el calendar mounteaba a 0ms y aparecía antes que el hero,
+            rompiendo la cascada visual top→down esperada.
+          */}
+          <RiseView delay={120}>
           <Animated.View layout={sectionLayout}>
             <GastosMonthCalendar
               dayMoods={controller.dayMoods}
@@ -593,6 +601,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               onRegisterForgottenExpense={handleRegisterForgotten}
             />
           </Animated.View>
+          </RiseView>
         </TourTarget>
         <TourTarget
           tour={GASTOS_TOUR}
@@ -614,14 +623,19 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             <ClearFiltersButton onPress={handleClearFilters} />
           </Animated.View>
         ) : null}
-        <Animated.View layout={sectionLayout}>
-          <GastosAdvisorChip
-            signals={advisorSignals}
-            selectedCategoryId={controller.selectedCategoryId}
-            categoryNameById={categoryNameById}
-            onPress={handleAdvisorPress}
-          />
-        </Animated.View>
+        {/* delay=160 cierra la cascada (header 0 → hero 100 → calendar 120
+            → filter 140 → advisor 160). Antes el chip aparecía a 0ms sin
+            stagger junto al header, rompiendo la lectura top-down. */}
+        <RiseView delay={160}>
+          <Animated.View layout={sectionLayout}>
+            <GastosAdvisorChip
+              signals={advisorSignals}
+              selectedCategoryId={controller.selectedCategoryId}
+              categoryNameById={categoryNameById}
+              onPress={handleAdvisorPress}
+            />
+          </Animated.View>
+        </RiseView>
         <TourTarget
           tour={GASTOS_TOUR}
           order={GASTOS_TOUR_STEPS.list.order}

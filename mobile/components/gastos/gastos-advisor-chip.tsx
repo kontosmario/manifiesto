@@ -14,9 +14,21 @@ import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+
+/** Helper para tint suaves del icon-tile sin recurrir a `rgba(...)` hard.
+ *  Asume hex `#RRGGBB`. Si no matchea, devuelve el color sin alpha. */
+function hexAlpha(hex: string, alpha: number): string {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!m) return hex
+  const r = parseInt(m[1]!, 16)
+  const g = parseInt(m[2]!, 16)
+  const b = parseInt(m[3]!, 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 interface GastosAdvisorChipProps {
   signals: ControlAdvisorTask[]
@@ -46,6 +58,7 @@ export function GastosAdvisorChip({
   onPress,
 }: GastosAdvisorChipProps) {
   const { theme } = useAppTheme()
+  const press = usePressScale({ pressedScale: 0.97 })
 
   const target = useMemo<ControlAdvisorTask | null>(() => {
     // Filter to category-domain signals first.
@@ -96,36 +109,54 @@ export function GastosAdvisorChip({
           void triggerHaptic('selection')
           onPress?.(target)
         }}
-        style={({ pressed }) => [
-          styles.row,
-          {
-            backgroundColor: theme.colors.creamCard,
-            borderColor: theme.colors.line,
-            opacity: pressed ? 0.85 : 1,
-          },
-        ]}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
       >
-        <View style={[styles.accent, { backgroundColor: tone }]} />
-        <MaterialIcons name={icon} size={16} color={tone} />
-        <View style={styles.body}>
-          <Text
-            style={[styles.title, { color: theme.colors.text }]}
-            numberOfLines={1}
+        <Animated.View
+          style={[
+            styles.row,
+            {
+              backgroundColor: theme.colors.creamCard,
+              borderColor: theme.colors.line,
+            },
+            press.animatedStyle,
+          ]}
+        >
+          {/* Icon-tile tinted con el tone — reemplaza el side-stripe
+              border viejo (`width: 3, left: 0, top: 0, bottom: 0`)
+              que impeccable banea explícitamente. El tile carga el
+              color del urgency sin invadir la geometría del card. */}
+          <View
+            style={[
+              styles.iconTile,
+              {
+                backgroundColor: hexAlpha(tone, 0.14),
+                borderColor: hexAlpha(tone, 0.28),
+              },
+            ]}
           >
-            {target.title}
-          </Text>
-          <Text
-            style={[styles.impact, { color: theme.colors.textMuted }]}
-            numberOfLines={1}
-          >
-            {target.impact}
-          </Text>
-        </View>
-        <MaterialIcons
-          name="chevron-right"
-          size={18}
-          color={theme.colors.textMuted}
-        />
+            <MaterialIcons name={icon} size={16} color={tone} />
+          </View>
+          <View style={styles.body}>
+            <Text
+              style={[styles.title, { color: theme.colors.text }]}
+              numberOfLines={1}
+            >
+              {target.title}
+            </Text>
+            <Text
+              style={[styles.impact, { color: theme.colors.textMuted }]}
+              numberOfLines={1}
+            >
+              {target.impact}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="chevron-right"
+            size={18}
+            color={theme.colors.textMuted}
+          />
+        </Animated.View>
       </Pressable>
     </Animated.View>
   )
@@ -136,18 +167,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    overflow: 'hidden',
   },
-  accent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
+  iconTile: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   body: {
     flex: 1,

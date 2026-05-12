@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { AnimatedFlame, FLAME_PALETTE } from '@/components/gastos/animated-flame'
 import { deriveStreak, type StreakData } from '@/features/streaks/use-streak'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface StreakFlameIconProps {
@@ -17,6 +19,11 @@ export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
   const { theme } = useAppTheme()
   const derived = deriveStreak(data)
   const palette = FLAME_PALETTE[derived.status]
+  // Press scale Emil-grade. Antes el Pressable no tenía NINGÚN feedback
+  // de tap (ni opacity, ni scale) — 44×44 tap-target en el header de
+  // Gastos. 0.94 es ligeramente más pronunciado que el 0.97 default
+  // para que el feedback se note en un tap-target chico.
+  const press = usePressScale({ pressedScale: 0.94 })
 
   // Hour-of-day urgency ramp for the at_risk button — green/amber/
   // orange/red echoes the sheet hero, so the header tells the user the
@@ -52,25 +59,31 @@ export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={`Racha: ${data.currentStreak} días, estado ${derived.status}`}
-      style={[
-        styles.container,
-        {
-          backgroundColor: bgByStatus[derived.status],
-          borderColor: borderByStatus[derived.status],
-        },
-      ]}
     >
-      <AnimatedFlame status={derived.status} size={26} />
-      <View
+      <Animated.View
         style={[
-          styles.badge,
-          { backgroundColor: palette.outer, borderColor: badgeBorder },
+          styles.container,
+          {
+            backgroundColor: bgByStatus[derived.status],
+            borderColor: borderByStatus[derived.status],
+          },
+          press.animatedStyle,
         ]}
       >
-        <Text style={[styles.badgeText, { color: badgeTextColor }]}>{badgeText}</Text>
-      </View>
+        <AnimatedFlame status={derived.status} size={26} />
+        <View
+          style={[
+            styles.badge,
+            { backgroundColor: palette.outer, borderColor: badgeBorder },
+          ]}
+        >
+          <Text style={[styles.badgeText, { color: badgeTextColor }]}>{badgeText}</Text>
+        </View>
+      </Animated.View>
     </Pressable>
   )
 }

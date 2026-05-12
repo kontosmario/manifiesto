@@ -142,7 +142,9 @@ const styles = StyleSheet.create({
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   label: { fontSize: 12, fontWeight: '600' },
-  amountText: { fontSize: 12, fontWeight: '700' },
+  // Tabular nums para que las columnas right-aligned de montos por
+  // categoría alineen cleanly verticalmente en el hero card.
+  amountText: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   barWrap: { height: '100%', borderRadius: 3, overflow: 'hidden' },
 })

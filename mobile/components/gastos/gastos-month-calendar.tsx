@@ -3,6 +3,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import type { GastosDayMood } from '@/features/gastos/gastos-aggregates.model'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
 
@@ -273,6 +274,10 @@ function DayCell({
   const { theme } = useAppTheme()
   const moodStyle = getMoodStyle(mood, theme.isDark)
   const hasMoodFill = !!mood && mood !== 'empty'
+  // Press scale Emil-grade. Solo aplica a cells past (isPast). Cells
+  // future están disabled — el hook se setea igual pero el handler
+  // no se conecta cuando disabled.
+  const press = usePressScale({ pressedScale: 0.92 })
 
   // Four visual states:
   //   1. Today         → ink fill + cream number + accent dot underneath
@@ -311,25 +316,31 @@ function DayCell({
   return (
     <Pressable
       onPress={isPast ? onPress : undefined}
+      onPressIn={isPast ? press.onPressIn : undefined}
+      onPressOut={isPast ? press.onPressOut : undefined}
       disabled={!isPast}
-      style={[
-        styles.dayCell,
-        {
-          backgroundColor: bg,
-          borderStyle,
-          borderColor,
-          borderWidth,
-        },
-      ]}
       accessibilityRole="button"
       accessibilityLabel={`Filtrar día ${day}`}
     >
-      <Text style={[styles.dayNumber, { color }]}>{day}</Text>
-      {isToday ? (
-        <View style={styles.todayDot}>
-          <BreatheDot size={4} color={theme.colors.heroAccent} periodMs={1600} />
-        </View>
-      ) : null}
+      <Animated.View
+        style={[
+          styles.dayCell,
+          {
+            backgroundColor: bg,
+            borderStyle,
+            borderColor,
+            borderWidth,
+          },
+          isPast ? press.animatedStyle : undefined,
+        ]}
+      >
+        <Text style={[styles.dayNumber, { color }]}>{day}</Text>
+        {isToday ? (
+          <View style={styles.todayDot}>
+            <BreatheDot size={4} color={theme.colors.heroAccent} periodMs={1600} />
+          </View>
+        ) : null}
+      </Animated.View>
     </Pressable>
   )
 }
@@ -391,6 +402,14 @@ function FocusMode({
   onRegisterForgotten?: () => void
 }) {
   const { theme } = useAppTheme()
+  // Tres press hooks Emil-grade — uno por cada Pressable inline en
+  // FocusMode. Tap-targets distintos así que escalas matched al peso:
+  //   - focusCenter (72pt day number, área grande): 0.97 sutil
+  //   - registerForgottenBtn (botón mediano con border): 0.97
+  //   - backChip (pill compacto con bg sólido): 0.95 más pronunciado
+  const centerPress = usePressScale({ pressedScale: 0.97 })
+  const registerPress = usePressScale({ pressedScale: 0.97 })
+  const backChipPress = usePressScale({ pressedScale: 0.95 })
   const isToday = day === todayDay
   const moodLabel =
     mood === 'green' ? 'Día tranquilo'
@@ -420,14 +439,23 @@ function FocusMode({
 
         <View style={styles.focusHero}>
           <ChevronBtn direction="prev" onPress={onPrev} disabled={!canGoPrev} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
-          <Pressable onPress={onClear} style={styles.focusCenter} accessibilityRole="button" accessibilityLabel="Volver al ciclo completo">
-            <Text style={[styles.focusDay, { color: theme.colors.text }]}>{day}</Text>
-            <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
-              {cycleLabel}
-              {isToday ? (
-                <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{' · hoy'}</Text>
-              ) : null}
-            </Text>
+          <Pressable
+            onPress={onClear}
+            onPressIn={centerPress.onPressIn}
+            onPressOut={centerPress.onPressOut}
+            accessibilityRole="button"
+            accessibilityLabel="Volver al ciclo completo"
+            style={styles.focusCenter}
+          >
+            <Animated.View style={[styles.focusCenter, centerPress.animatedStyle]}>
+              <Text style={[styles.focusDay, { color: theme.colors.text }]}>{day}</Text>
+              <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
+                {cycleLabel}
+                {isToday ? (
+                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{' · hoy'}</Text>
+                ) : null}
+              </Text>
+            </Animated.View>
           </Pressable>
           <ChevronBtn direction="next" onPress={onNext} disabled={!canGoNext} color={theme.colors.text} bg={theme.colors.canvas} border={theme.colors.line} />
         </View>
@@ -446,48 +474,63 @@ function FocusMode({
         {onRegisterForgotten ? (
           <Pressable
             onPress={onRegisterForgotten}
-            style={[
-              styles.registerForgottenBtn,
-              {
-                backgroundColor: theme.colors.creamSoft,
-                borderColor: theme.colors.line,
-              },
-            ]}
+            onPressIn={registerPress.onPressIn}
+            onPressOut={registerPress.onPressOut}
             accessibilityRole="button"
             accessibilityLabel="Registrar gasto olvidado en este día"
           >
-            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M12 5v14M5 12h14"
-                stroke={theme.colors.text}
-                strokeWidth={2.4}
-                strokeLinecap="round"
-              />
-            </Svg>
-            <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
-              Registrar gasto olvidado
-            </Text>
+            <Animated.View
+              style={[
+                styles.registerForgottenBtn,
+                {
+                  backgroundColor: theme.colors.creamSoft,
+                  borderColor: theme.colors.line,
+                },
+                registerPress.animatedStyle,
+              ]}
+            >
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M12 5v14M5 12h14"
+                  stroke={theme.colors.text}
+                  strokeWidth={2.4}
+                  strokeLinecap="round"
+                />
+              </Svg>
+              <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
+                Registrar gasto olvidado
+              </Text>
+            </Animated.View>
           </Pressable>
         ) : null}
 
         <View style={styles.focusBackRow}>
           <Pressable
             onPress={onClear}
-            style={[styles.backChip, { backgroundColor: theme.colors.text }]}
+            onPressIn={backChipPress.onPressIn}
+            onPressOut={backChipPress.onPressOut}
             accessibilityRole="button"
             accessibilityLabel="Volver al ciclo completo"
           >
-            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M6 6l12 12M18 6L6 18"
-                stroke={theme.colors.creamCard}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-              />
-            </Svg>
-            <Text style={[styles.backChipText, { color: theme.colors.creamCard }]}>
-              Ciclo completo
-            </Text>
+            <Animated.View
+              style={[
+                styles.backChip,
+                { backgroundColor: theme.colors.text },
+                backChipPress.animatedStyle,
+              ]}
+            >
+              <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke={theme.colors.creamCard}
+                  strokeWidth={2.2}
+                  strokeLinecap="round"
+                />
+              </Svg>
+              <Text style={[styles.backChipText, { color: theme.colors.creamCard }]}>
+                Ciclo completo
+              </Text>
+            </Animated.View>
           </Pressable>
         </View>
     </View>
@@ -510,25 +553,34 @@ function ChevronBtn({
   border: string
 }) {
   const d = direction === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'
+  // Press scale solo cuando no está disabled. Cuando lo está, el
+  // opacity 0.35 sigue siendo el feedback visual de estado.
+  const press = usePressScale({ pressedScale: 0.92 })
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
+      onPressIn={disabled ? undefined : press.onPressIn}
+      onPressOut={disabled ? undefined : press.onPressOut}
       disabled={disabled}
       accessibilityState={{ disabled }}
-      style={[
-        styles.chevronBtn,
-        {
-          backgroundColor: bg,
-          borderColor: border,
-          opacity: disabled ? 0.35 : 1,
-        },
-      ]}
       accessibilityRole="button"
       accessibilityLabel={direction === 'prev' ? 'Día anterior' : 'Día siguiente'}
     >
-      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-        <Path d={d} stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      </Svg>
+      <Animated.View
+        style={[
+          styles.chevronBtn,
+          {
+            backgroundColor: bg,
+            borderColor: border,
+            opacity: disabled ? 0.35 : 1,
+          },
+          disabled ? undefined : press.animatedStyle,
+        ]}
+      >
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+          <Path d={d} stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -578,7 +630,15 @@ const styles = StyleSheet.create({
   },
   focusStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
   statLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
-  statValue: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4, marginTop: 2 },
+  // Tabular nums en focus-mode stats (GASTADO + MOVIMIENTOS) — los
+  // dos valores se renderean en columnas paralelas y deben alinear.
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
+  },
   focusBackRow: { marginTop: 12, alignItems: 'center' },
   backChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
   backChipText: { fontSize: 12, fontWeight: '700' },
