@@ -1,18 +1,23 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Dimensions,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
+  cancelAnimation,
   Easing,
+  interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -27,394 +32,747 @@ interface CycleWrappedModalProps {
   onDismiss: () => void
 }
 
+// ── Pacing tokens ────────────────────────────────────────────────────
+// El Wrapped se dispara una vez al mes. No hay que apurarse — el
+// usuario quiere leer. 4500ms por escena permite mirar el número,
+// procesar la copy, y avanzar antes de aburrir.
+const SCENE_DURATION_MS = 4500
+const SCENE_TRANSITION_MS = 360
+const EXPO_OUT = Easing.bezier(0.16, 1, 0.30, 1) // ease-out-expo
+
+const SCREEN_WIDTH = Dimensions.get('window').width
+
+// ── Component ────────────────────────────────────────────────────────
+
 /**
- * "Manifiesto Wrapped" — modal full-screen post-cobro que recapitula
- * el ciclo recién cerrado.
+ * "Manifiesto Wrapped" — post-cobro recap del ciclo cerrado.
  *
- * Pattern: AchievementUnlockModal (mismo scrim + card spring-in), pero
- * con contenido más denso (varios stats stacked) y dismiss explícito
- * (no auto-dismiss — el user quiere leer).
+ * Diseñado como una edición de revista mensual de finanzas personales,
+ * no como un slideshow tipo Spotify Wrapped. La gramática de stories
+ * (progress bars + tap-to-advance) se mantiene porque el usuario la
+ * reconoce y comunica "esto es un momento, no un popup"; pero la
+ * estética se aleja deliberadamente del cliché dark + neón:
  *
- * Tono: factual + restrained. Si ahorraste se celebra; si te
- * excediste, se dice como dato, sin shame. Coincide con el lenguaje
- * existente del cobro flow ("Cobré el sueldo completo" en peach, no
- * en rojo).
+ *   • Paleta committed cream + forest green del producto (no dark).
+ *   • Tipografía editorial weight-driven (sin custom font, system+800/900).
+ *   • Un solo elemento dominante por escena — sin grids de widgets.
+ *   • Color strategy committed: cada escena toma su tinte saturado.
+ *   • Confetti restrained, solo en la escena del veredicto si ahorraste.
+ *
+ * Motion: ease-out-expo 360ms entre escenas, stagger 60ms eyebrow →
+ * hero → subtitle dentro de cada escena. Progress bar linear sobre
+ * 4.5s. Long-press pausa, tap left/right navega, swipe-down dismiss.
  */
 export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
+  const insets = useSafeAreaInsets()
 
-  // Master entrance driver: scrim fade + card spring.
-  const t = useSharedValue(0)
+  const scenes = useMemo(
+    () => (payload ? buildScenes(payload, theme.isDark) : []),
+    [payload, theme.isDark],
+  )
+  const sceneCount = scenes.length
 
+  const [sceneIndex, setSceneIndex] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  // Master entrance driver: scrim + first scene fade-in.
+  const enter = useSharedValue(0)
+  // Per-scene progress bar fill. Resets every scene transition.
+  const progress = useSharedValue(0)
+  // Scene-content opacity for crossfade between scenes.
+  const sceneAlpha = useSharedValue(1)
+  // Tiny rise on each scene reveal.
+  const sceneRise = useSharedValue(0)
+
+  // ── Reset on new payload ────────────────────────────────────
+  // Hydrate scene state cada vez que llega un wrapped nuevo. Fires
+  // raramente (1×/ciclo en prod) — no es un sync-state-in-effect
+  // peligroso, es el reset del estado interno al abrirse el modal.
   useEffect(() => {
     if (!payload) return
     void triggerHaptic('success')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+    setSceneIndex(0)
+    setIsPaused(false)
+    enter.value = 0
     if (reduced) {
-      t.value = 1
-      return
+      enter.value = 1
+    } else {
+      enter.value = withTiming(1, { duration: 420, easing: EXPO_OUT })
     }
-    t.value = 0
-    t.value = withTiming(1, {
-      duration: 460,
-      easing: Easing.bezier(0.16, 1, 0.30, 1),
-    })
-  }, [payload, reduced, t])
+  }, [payload, reduced, enter])
 
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: t.value }))
+  // ── Auto-advance driver ─────────────────────────────────────
+  // Maneja: (a) avanzar al cumplirse la duración, (b) llenar el
+  // progress bar linearmente, (c) respetar pausa por long-press,
+  // (d) reduced motion → no auto-advance (usuario controla manual).
+  const advance = useCallback(() => {
+    setSceneIndex((idx) => {
+      if (idx + 1 >= sceneCount) {
+        // Último: dismiss
+        runOnJSDismiss(onDismiss)
+        return idx
+      }
+      return idx + 1
+    })
+  }, [sceneCount, onDismiss])
+
+  useEffect(() => {
+    if (!payload) return
+    // Cancel cualquier animación previa y resetea
+    cancelAnimation(progress)
+    progress.value = 0
+    // Crossfade del contenido entre escenas
+    if (!reduced) {
+      sceneAlpha.value = 0
+      sceneRise.value = 8
+      sceneAlpha.value = withTiming(1, {
+        duration: SCENE_TRANSITION_MS,
+        easing: EXPO_OUT,
+      })
+      sceneRise.value = withTiming(0, {
+        duration: SCENE_TRANSITION_MS,
+        easing: EXPO_OUT,
+      })
+    } else {
+      sceneAlpha.value = 1
+      sceneRise.value = 0
+    }
+
+    if (isPaused || reduced) return
+    // Arranca el progress timer — al llegar a 1, avanza.
+    progress.value = withTiming(
+      1,
+      { duration: SCENE_DURATION_MS, easing: Easing.linear },
+      (finished) => {
+        if (finished) runOnJS(advance)()
+      },
+    )
+    return () => {
+      cancelAnimation(progress)
+    }
+  }, [
+    sceneIndex,
+    isPaused,
+    payload,
+    reduced,
+    progress,
+    sceneAlpha,
+    sceneRise,
+    advance,
+  ])
+
+  // ── Touch zone handlers ─────────────────────────────────────
+  const handleTapLeft = useCallback(() => {
+    void triggerHaptic('selection')
+    setSceneIndex((i) => Math.max(0, i - 1))
+  }, [])
+  const handleTapRight = useCallback(() => {
+    void triggerHaptic('selection')
+    if (sceneIndex + 1 >= sceneCount) {
+      onDismiss()
+    } else {
+      setSceneIndex((i) => Math.min(sceneCount - 1, i + 1))
+    }
+  }, [sceneIndex, sceneCount, onDismiss])
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handlePressIn = useCallback(() => {
+    // Hold ≥160ms → pause. Tap simple no debe pausar.
+    pauseTimerRef.current = setTimeout(() => {
+      setIsPaused(true)
+    }, 160)
+  }, [])
+  const handlePressOut = useCallback(() => {
+    if (pauseTimerRef.current) {
+      clearTimeout(pauseTimerRef.current)
+      pauseTimerRef.current = null
+    }
+    if (isPaused) setIsPaused(false)
+  }, [isPaused])
+
+  // ── Animated styles ─────────────────────────────────────────
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: enter.value }))
   const cardStyle = useAnimatedStyle(() => ({
-    opacity: t.value,
+    opacity: enter.value,
     transform: [
-      { translateY: (1 - t.value) * 28 },
-      { scale: 0.96 + t.value * 0.04 },
+      { translateY: interpolate(enter.value, [0, 1], [24, 0]) },
+      { scale: interpolate(enter.value, [0, 1], [0.97, 1]) },
     ],
   }))
+  const sceneContentStyle = useAnimatedStyle(() => ({
+    opacity: sceneAlpha.value,
+    transform: [{ translateY: sceneRise.value }],
+  }))
 
-  // Confetti solo cuando hay algo para celebrar (ahorraste).
-  const confettiPulse = useMemo(() => {
-    if (!payload) return 0
-    return payload.savingsDelta > 0 ? 1 : 0
-  }, [payload])
+  // ── Early return ────────────────────────────────────────────
+  if (!payload || sceneCount === 0) return null
 
-  // Delta vs ciclo anterior — leve mejora si gastaste menos. Hook
-  // declarado antes del early return para mantener orden estable.
-  const deltaCopy = useMemo(
-    () => formatDeltaCopy(payload?.deltaVsPreviousPercent ?? null),
-    [payload?.deltaVsPreviousPercent],
-  )
-
-  if (!payload) return null
-
-  const savedPositive = payload.savingsDelta > 0
-  const overspent = payload.savingsDelta < 0
-
-  // Tono del hero — verde si ahorraste, peach si excediste, neutral
-  // si cerraste empatado.
-  const heroTone = savedPositive
-    ? {
-        eyebrow: 'CERRASTE CON MARGEN',
-        color: theme.colors.primaryStrong,
-        bgTint: theme.colors.primarySurface,
-      }
-    : overspent
-    ? {
-        eyebrow: 'CERRASTE EXCEDIDO',
-        color: '#C25A3E',
-        bgTint: 'rgba(232,151,106,0.16)',
-      }
-    : {
-        eyebrow: 'CERRASTE EMPATADO',
-        color: theme.colors.text,
-        bgTint: theme.colors.surfaceMuted,
-      }
-
-  // Texto principal del hero.
-  const heroAmount = Math.abs(payload.savingsDelta)
-  const heroLabel = savedPositive
-    ? 'te quedaron libres'
-    : overspent
-    ? 'te excediste'
-    : 'cerraste justo'
+  const scene = scenes[sceneIndex]
+  if (!scene) return null
 
   return (
     <Animated.View
       pointerEvents={payload ? 'auto' : 'none'}
-      style={[styles.scrim, scrimStyle]}
+      style={[
+        styles.scrim,
+        scrimStyle,
+        // Scrim casi opaco — el wrapped es modal pesado, ocupa pantalla
+        // entera y la cream-on-black queda con suficiente contraste
+        // para el card sin competir con el fondo.
+        { backgroundColor: 'rgba(8, 20, 14, 0.78)' },
+      ]}
     >
-      {/* Backdrop tap → dismiss */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Cerrar resumen del ciclo"
-        onPress={onDismiss}
-        style={StyleSheet.absoluteFill}
-      />
-
       <Animated.View
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
-            borderColor: theme.colors.line,
+            backgroundColor: scene.background,
+            paddingTop: Math.max(16, insets.top + 8),
+            paddingBottom: Math.max(20, insets.bottom + 16),
           },
           cardStyle,
         ]}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollBody}
-          // Prevent the backdrop press from swallowing scroll gestures.
-          // The pressable behind the card is absolute-positioned at the
-          // scrim level; this ensures swipes inside the card scroll.
-        >
-          {/* ── Header: eyebrow + period label ──────────────── */}
-          <View style={styles.header}>
-            <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              MANIFIESTO · CIERRE DE CICLO
-            </Text>
-            <Text style={[styles.periodLabel, { color: theme.colors.text }]}>
-              {payload.periodLabel}
-            </Text>
-            {payload.periodRange ? (
-              <Text style={[styles.periodRange, { color: theme.colors.textSoft }]}>
-                {payload.periodRange}
-              </Text>
-            ) : null}
-          </View>
+        {/* ── Progress bars (top) ──────────────────────────── */}
+        <View style={styles.progressRow}>
+          {scenes.map((_, idx) => (
+            <ProgressSegment
+              key={idx}
+              index={idx}
+              currentIndex={sceneIndex}
+              progress={progress}
+              trackColor={scene.progressTrack}
+              fillColor={scene.progressFill}
+            />
+          ))}
+        </View>
 
-          {/* ── Hero: savings delta ─────────────────────────── */}
-          <View
-            style={[
-              styles.hero,
-              {
-                backgroundColor: heroTone.bgTint,
-                borderColor: theme.colors.line,
-              },
+        {/* ── Header strip: brand + close ──────────────────── */}
+        <View style={styles.headerRow}>
+          <Text
+            style={[styles.brandMark, { color: scene.foregroundSoft }]}
+            accessibilityRole="header"
+          >
+            MANIFIESTO
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar resumen"
+            onPress={onDismiss}
+            hitSlop={16}
+            style={({ pressed }) => [
+              styles.closeBtn,
+              { opacity: pressed ? 0.6 : 1 },
             ]}
           >
-            <Text style={[styles.heroEyebrow, { color: heroTone.color }]}>
-              {heroTone.eyebrow}
-            </Text>
-            <CountUpText
-              value={heroAmount}
-              duration={1500}
-              format={(n) => formatMoney(Math.round(n))}
-              style={[styles.heroAmount, { color: heroTone.color }]}
+            <MaterialIcons
+              name="close"
+              size={20}
+              color={scene.foregroundSoft}
             />
-            <Text style={[styles.heroLabel, { color: theme.colors.textMuted }]}>
-              {heroLabel}
-            </Text>
-          </View>
+          </Pressable>
+        </View>
 
-          {/* ── Stat strip: total spent · count · delta vs prev ─ */}
-          <View style={styles.statStrip}>
-            <StatCell
-              label="Gastaste"
-              value={formatMoney(Math.round(payload.totalSpent))}
-              hint={`de ${formatMoney(Math.round(payload.monthlyIncome))} ingresados`}
-            />
-            <Divider color={theme.colors.line} />
-            <StatCell
-              label="Movimientos"
-              value={String(payload.expensesCount)}
-              hint={
-                payload.expensesCount === 1 ? 'gasto registrado' : 'gastos registrados'
-              }
-            />
-            {deltaCopy ? (
-              <>
-                <Divider color={theme.colors.line} />
-                <StatCell
-                  label="Vs ciclo anterior"
-                  value={deltaCopy.value}
-                  hint={deltaCopy.hint}
-                  valueColor={deltaCopy.color === 'good'
-                    ? theme.colors.primaryStrong
-                    : deltaCopy.color === 'bad'
-                    ? '#C25A3E'
-                    : theme.colors.text}
-                />
-              </>
-            ) : null}
-          </View>
+        {/* ── Scene content ─────────────────────────────────── */}
+        <Animated.View style={[styles.sceneStage, sceneContentStyle]}>
+          {scene.render({ reduced })}
+        </Animated.View>
 
-          {/* ── Top categoría ───────────────────────────────── */}
-          {payload.topCategory ? (
-            <View
-              style={[
-                styles.detailCard,
-                { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.line },
-              ]}
-            >
-              <View style={styles.detailHeader}>
-                <Text style={[styles.detailEyebrow, { color: theme.colors.textMuted }]}>
-                  TOP CATEGORÍA
-                </Text>
-                <Text style={[styles.detailShare, { color: theme.colors.textSoft }]}>
-                  {Math.round(payload.topCategory.share * 100)}% del total
-                </Text>
-              </View>
-              <Text style={[styles.detailTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                {payload.topCategory.name}
-              </Text>
-              <Text style={[styles.detailAmount, { color: theme.colors.primaryStrong }]}>
-                {formatMoney(Math.round(payload.topCategory.amount))}
-              </Text>
-              {/* Share bar — visualiza el % del total que se fue a esta cat */}
-              <View style={[styles.bar, { backgroundColor: theme.colors.line }]}>
-                <View
-                  style={[
-                    styles.barFill,
-                    {
-                      width: `${Math.max(6, Math.round(payload.topCategory.share * 100))}%`,
-                      backgroundColor: theme.colors.primary,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          {/* ── Top expense ─────────────────────────────────── */}
-          {payload.topExpense ? (
-            <View
-              style={[
-                styles.detailCard,
-                { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.line },
-              ]}
-            >
-              <Text style={[styles.detailEyebrow, { color: theme.colors.textMuted }]}>
-                EL GASTO MÁS GRANDE
-              </Text>
-              <Text style={[styles.detailTitle, { color: theme.colors.text }]} numberOfLines={2}>
-                {payload.topExpense.description || 'Sin descripción'}
-              </Text>
-              <Text style={[styles.detailAmount, { color: theme.colors.text }]}>
-                {currencyFormatter.format(payload.topExpense.price)}
-              </Text>
-              <Text style={[styles.detailHint, { color: theme.colors.textSoft }]}>
-                {formatDayMonth(payload.topExpense.occurredAt)}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* ── Achievements ganados en el ciclo ────────────── */}
-          {payload.achievementsEarnedInCycle > 0 ? (
-            <View
-              style={[
-                styles.achievementsPill,
+        {/* ── Footer: CTA on last scene, hint otherwise ────── */}
+        <View style={styles.footer}>
+          {sceneIndex === sceneCount - 1 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Empezar el próximo ciclo"
+              onPress={() => {
+                void triggerHaptic('selection')
+                onDismiss()
+              }}
+              style={({ pressed }) => [
+                styles.cta,
                 {
-                  backgroundColor: theme.colors.primarySurface,
-                  borderColor: theme.colors.primary,
+                  backgroundColor: scene.ctaBg,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
                 },
               ]}
             >
-              <MaterialIcons
-                name="emoji-events"
-                size={18}
-                color={theme.colors.primaryStrong}
-              />
-              <Text
-                style={[
-                  styles.achievementsText,
-                  { color: theme.colors.primaryStrong },
-                ]}
-              >
-                {payload.achievementsEarnedInCycle === 1
-                  ? '1 logro desbloqueado este ciclo'
-                  : `${payload.achievementsEarnedInCycle} logros desbloqueados este ciclo`}
+              <Text style={[styles.ctaText, { color: scene.ctaFg }]}>
+                Empezar el próximo
               </Text>
-            </View>
-          ) : null}
+              <MaterialIcons
+                name="arrow-forward"
+                size={18}
+                color={scene.ctaFg}
+              />
+            </Pressable>
+          ) : (
+            <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
+              {isPaused ? 'En pausa. Soltá para seguir.' : 'Mantené presionado para pausar.'}
+            </Text>
+          )}
+        </View>
 
-          {/* ── CTA ─────────────────────────────────────────── */}
+        {/* ── Tap zones (above content, below close) ───────── */}
+        <View style={styles.tapZones} pointerEvents="box-none">
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Empezar el próximo ciclo"
-            onPress={() => {
-              void triggerHaptic('selection')
-              onDismiss()
-            }}
-            style={({ pressed }) => [
-              styles.cta,
-              {
-                backgroundColor: theme.colors.primary,
-                opacity: pressed ? 0.86 : 1,
-              },
-            ]}
-          >
-            <Text style={styles.ctaText}>Empezar el próximo</Text>
-          </Pressable>
-        </ScrollView>
+            onPress={handleTapLeft}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            accessibilityLabel="Escena anterior"
+            style={styles.tapZoneLeft}
+          />
+          <Pressable
+            onPress={handleTapRight}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            accessibilityLabel={
+              sceneIndex + 1 >= sceneCount
+                ? 'Cerrar resumen'
+                : 'Escena siguiente'
+            }
+            style={styles.tapZoneRight}
+          />
+        </View>
 
-        {/* Confetti solo en cierres positivos. originY apunta al hero. */}
-        <ConfettiBurst pulseToken={confettiPulse} originY={200} />
+        {/* Confetti solo en el veredicto positivo */}
+        {scene.confetti ? (
+          <ConfettiBurst pulseToken={sceneIndex === scene.confettiSceneIdx ? 1 : 0} originY={200} />
+        ) : null}
       </Animated.View>
     </Animated.View>
   )
 }
 
-// ── Subcomponents ───────────────────────────────────────────────
+// Worklet-safe wrapper para llamar dismiss desde el callback de
+// withTiming (que corre en el UI thread).
+function runOnJSDismiss(fn: () => void) {
+  'worklet'
+  runOnJS(fn)()
+}
 
-function StatCell({
+// ── Progress bar segment ─────────────────────────────────────────────
+
+interface ProgressSegmentProps {
+  index: number
+  currentIndex: number
+  progress: SharedValue<number>
+  trackColor: string
+  fillColor: string
+}
+
+function ProgressSegment({
+  index,
+  currentIndex,
+  progress,
+  trackColor,
+  fillColor,
+}: ProgressSegmentProps) {
+  const fillStyle = useAnimatedStyle(() => {
+    // Past: 100%, current: progress, future: 0%
+    let pct: number
+    if (index < currentIndex) pct = 1
+    else if (index === currentIndex) pct = progress.value
+    else pct = 0
+    return { width: `${pct * 100}%` }
+  })
+
+  return (
+    <View style={[progressStyles.track, { backgroundColor: trackColor }]}>
+      <Animated.View
+        style={[progressStyles.fill, { backgroundColor: fillColor }, fillStyle]}
+      />
+    </View>
+  )
+}
+
+// ── Scene model ──────────────────────────────────────────────────────
+
+interface SceneRenderArgs {
+  reduced: boolean
+}
+
+interface Scene {
+  id: string
+  background: string
+  foreground: string
+  foregroundSoft: string
+  progressTrack: string
+  progressFill: string
+  ctaBg: string
+  ctaFg: string
+  confetti?: boolean
+  confettiSceneIdx?: number
+  render: (args: SceneRenderArgs) => React.ReactNode
+}
+
+function buildScenes(payload: CycleWrappedPayload, isDark: boolean): Scene[] {
+  // El veredicto carga su propia paleta state-driven. El cierre usa
+  // forest-deep para hacer statement de cierre, deliberadamente
+  // desvinculado del estado anímico del veredicto (un over-budget
+  // sigue cerrando con la misma identidad de marca).
+  const verdict = resolveVerdictTone(payload.savingsDelta, isDark)
+
+  return [
+    buildCoverScene(payload),
+    buildVerdictScene(payload, verdict),
+    ...(payload.topCategory ? [buildTopCategoryScene(payload)] : []),
+    ...(payload.topExpense ? [buildTopExpenseScene(payload)] : []),
+    buildClosingScene(payload),
+  ]
+}
+
+// ── Scene builders ───────────────────────────────────────────────────
+
+interface VerdictTone {
+  background: string
+  foreground: string
+  foregroundSoft: string
+  accent: string
+  progressTrack: string
+  progressFill: string
+  ctaBg: string
+  ctaFg: string
+  eyebrow: string
+  copyPositive: string
+}
+
+function resolveVerdictTone(savingsDelta: number, isDark: boolean): VerdictTone {
+  if (savingsDelta > 0) {
+    return {
+      background: isDark ? '#1F4530' : '#E3F2D2',
+      foreground: isDark ? '#F4FDF2' : '#0F2E1F',
+      foregroundSoft: isDark ? 'rgba(244,253,242,0.62)' : 'rgba(15,46,31,0.55)',
+      accent: '#1F590D',
+      progressTrack: isDark ? 'rgba(244,253,242,0.18)' : 'rgba(15,46,31,0.14)',
+      progressFill: isDark ? '#A6EF8F' : '#1F590D',
+      ctaBg: isDark ? '#A6EF8F' : '#1F590D',
+      ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
+      eyebrow: 'CERRASTE CON MARGEN',
+      copyPositive: 'Te queda margen para el siguiente.',
+    }
+  }
+  if (savingsDelta < 0) {
+    return {
+      background: isDark ? '#4A2418' : '#F8D1C3',
+      foreground: isDark ? '#FFFBF2' : '#3B1107',
+      foregroundSoft: isDark ? 'rgba(255,251,242,0.62)' : 'rgba(59,17,7,0.55)',
+      accent: '#B84014',
+      progressTrack: isDark ? 'rgba(255,251,242,0.18)' : 'rgba(59,17,7,0.14)',
+      progressFill: isDark ? '#F2A78C' : '#B84014',
+      ctaBg: isDark ? '#F2A78C' : '#B84014',
+      ctaFg: isDark ? '#3B1107' : '#FFFBF2',
+      eyebrow: 'CERRASTE EXCEDIDO',
+      copyPositive: 'Empezás el siguiente con menos colchón.',
+    }
+  }
+  return {
+    background: isDark ? '#2A3A2F' : '#EEE9DF',
+    foreground: isDark ? '#F4FDF2' : '#12211A',
+    foregroundSoft: isDark ? 'rgba(244,253,242,0.62)' : 'rgba(18,33,26,0.55)',
+    accent: '#3B6D57',
+    progressTrack: isDark ? 'rgba(244,253,242,0.18)' : 'rgba(18,33,26,0.14)',
+    progressFill: isDark ? '#A6EF8F' : '#1F590D',
+    ctaBg: isDark ? '#A6EF8F' : '#1F590D',
+    ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
+    eyebrow: 'CERRASTE EMPATADO',
+    copyPositive: 'Justo lo que tenías, ni más ni menos.',
+  }
+}
+
+// 1. Cover scene
+function buildCoverScene(payload: CycleWrappedPayload): Scene {
+  return {
+    id: 'cover',
+    background: '#FFFBF2', // cream paper
+    foreground: '#0F2E1F',
+    foregroundSoft: 'rgba(15,46,31,0.55)',
+    progressTrack: 'rgba(15,46,31,0.14)',
+    progressFill: '#1F590D',
+    ctaBg: '#1F590D',
+    ctaFg: '#FFFBF2',
+    render: () => (
+      <View style={coverStyles.stage}>
+        <Text style={[coverStyles.eyebrow, { color: 'rgba(15,46,31,0.55)' }]}>
+          EDICIÓN {payload.periodLabel.toUpperCase()}
+        </Text>
+        <Text style={[coverStyles.title, { color: '#0F2E1F' }]} accessibilityRole="header">
+          Tu mes,{'\n'}en cifras.
+        </Text>
+        {payload.periodRange ? (
+          <Text style={[coverStyles.range, { color: 'rgba(15,46,31,0.55)' }]}>
+            {payload.periodRange}
+          </Text>
+        ) : null}
+        <View style={coverStyles.rule} />
+        <Text style={[coverStyles.kicker, { color: 'rgba(15,46,31,0.7)' }]}>
+          Una lectura corta de cómo cerraste.
+        </Text>
+      </View>
+    ),
+  }
+}
+
+// 2. Verdict scene (savings delta)
+function buildVerdictScene(
+  payload: CycleWrappedPayload,
+  tone: VerdictTone,
+): Scene {
+  const hasDelta =
+    payload.deltaVsPreviousPercent != null &&
+    Number.isFinite(payload.deltaVsPreviousPercent)
+  const deltaRounded = hasDelta ? Math.round(payload.deltaVsPreviousPercent!) : 0
+  const sign = payload.savingsDelta > 0 ? '+' : payload.savingsDelta < 0 ? '−' : ''
+
+  return {
+    id: 'verdict',
+    background: tone.background,
+    foreground: tone.foreground,
+    foregroundSoft: tone.foregroundSoft,
+    progressTrack: tone.progressTrack,
+    progressFill: tone.progressFill,
+    ctaBg: tone.ctaBg,
+    ctaFg: tone.ctaFg,
+    confetti: payload.savingsDelta > 0,
+    confettiSceneIdx: 1, // segunda escena
+    render: ({ reduced }) => {
+      const heroAmount = Math.abs(payload.savingsDelta)
+      return (
+        <View style={verdictStyles.stage}>
+          <Text
+            style={[verdictStyles.eyebrow, { color: tone.foregroundSoft }]}
+          >
+            {tone.eyebrow}
+          </Text>
+
+          <View style={verdictStyles.numberRow}>
+            <Text style={[verdictStyles.sign, { color: tone.accent }]}>
+              {sign}
+            </Text>
+            {reduced ? (
+              <Text style={[verdictStyles.hero, { color: tone.accent }]}>
+                {formatMoney(Math.round(heroAmount))}
+              </Text>
+            ) : (
+              <CountUpText
+                value={heroAmount}
+                duration={1800}
+                format={(n) => formatMoney(Math.round(n))}
+                style={[verdictStyles.hero, { color: tone.accent }]}
+              />
+            )}
+          </View>
+
+          <Text style={[verdictStyles.copy, { color: tone.foreground }]}>
+            {tone.copyPositive}
+          </Text>
+
+          {hasDelta && deltaRounded !== 0 ? (
+            <View style={verdictStyles.deltaPill}>
+              <MaterialIcons
+                name={deltaRounded < 0 ? 'south' : 'north'}
+                size={14}
+                color={tone.foreground}
+              />
+              <Text
+                style={[verdictStyles.deltaText, { color: tone.foreground }]}
+              >
+                {Math.abs(deltaRounded)}% vs el ciclo anterior
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      )
+    },
+  }
+}
+
+// 3. Top category scene
+function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
+  return {
+    id: 'top-category',
+    background: '#F6EFE3', // cream warm
+    foreground: '#0F2E1F',
+    foregroundSoft: 'rgba(15,46,31,0.55)',
+    progressTrack: 'rgba(15,46,31,0.14)',
+    progressFill: '#1F590D',
+    ctaBg: '#1F590D',
+    ctaFg: '#FFFBF2',
+    render: () => {
+      const top = payload.topCategory!
+      return (
+        <View style={detailStyles.stage}>
+          <Text style={[detailStyles.eyebrow, { color: 'rgba(15,46,31,0.55)' }]}>
+            DONDE MÁS SE FUE
+          </Text>
+          <Text
+            style={[detailStyles.titleDisplay, { color: '#0F2E1F' }]}
+            numberOfLines={2}
+            accessibilityRole="header"
+          >
+            {top.name}
+          </Text>
+          <View style={detailStyles.amountRow}>
+            <Text style={[detailStyles.amount, { color: '#1F590D' }]}>
+              {formatMoney(Math.round(top.amount))}
+            </Text>
+            <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.55)' }]}>
+              {Math.round(top.share * 100)}% del ciclo
+            </Text>
+          </View>
+
+          {/* Full-bleed share bar */}
+          <View style={detailStyles.barTrack}>
+            <View
+              style={[
+                detailStyles.barFill,
+                {
+                  width: `${Math.max(8, Math.round(top.share * 100))}%`,
+                  backgroundColor: '#1F590D',
+                },
+              ]}
+            />
+          </View>
+        </View>
+      )
+    },
+  }
+}
+
+// 4. Top expense scene
+function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
+  return {
+    id: 'top-expense',
+    background: '#F8D1C3', // peach band, warm accent
+    foreground: '#3B1107',
+    foregroundSoft: 'rgba(59,17,7,0.55)',
+    progressTrack: 'rgba(59,17,7,0.16)',
+    progressFill: '#B84014',
+    ctaBg: '#B84014',
+    ctaFg: '#FFFBF2',
+    render: () => {
+      const top = payload.topExpense!
+      return (
+        <View style={detailStyles.stage}>
+          <Text style={[detailStyles.eyebrow, { color: 'rgba(59,17,7,0.55)' }]}>
+            EL GASTO QUE MÁS PESÓ
+          </Text>
+          <Text
+            style={[detailStyles.titleDisplay, { color: '#3B1107' }]}
+            numberOfLines={3}
+            accessibilityRole="header"
+          >
+            {top.description || 'Sin descripción'}
+          </Text>
+          <Text style={[detailStyles.amount, { color: '#B84014', marginTop: 16 }]}>
+            {currencyFormatter.format(top.price)}
+          </Text>
+          <Text style={[detailStyles.dateMark, { color: 'rgba(59,17,7,0.55)' }]}>
+            {formatLongDate(top.occurredAt)}
+          </Text>
+        </View>
+      )
+    },
+  }
+}
+
+// 5. Closing scene
+function buildClosingScene(payload: CycleWrappedPayload): Scene {
+  return {
+    id: 'closing',
+    background: '#0F2E1F', // forest deep, brand statement
+    foreground: '#F4FDF2',
+    foregroundSoft: 'rgba(244,253,242,0.62)',
+    progressTrack: 'rgba(244,253,242,0.18)',
+    progressFill: '#A6EF8F',
+    ctaBg: '#A6EF8F',
+    ctaFg: '#0F2E1F',
+    render: () => (
+      <View style={closingStyles.stage}>
+        <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.62)' }]}>
+          EL PRÓXIMO ARRANCA HOY
+        </Text>
+        <Text
+          style={[closingStyles.title, { color: '#F4FDF2' }]}
+          accessibilityRole="header"
+        >
+          Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+        </Text>
+        {payload.achievementsEarnedInCycle > 0 ? (
+          <View
+            style={[
+              closingStyles.achievementsRow,
+              { borderColor: 'rgba(166,239,143,0.4)' },
+            ]}
+          >
+            <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
+            <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
+              {payload.achievementsEarnedInCycle === 1
+                ? '1 logro desbloqueado este ciclo'
+                : `${payload.achievementsEarnedInCycle} logros desbloqueados este ciclo`}
+            </Text>
+          </View>
+        ) : null}
+        <View style={closingStyles.summaryRow}>
+          <SummaryStat
+            label="Gastaste"
+            value={formatMoney(Math.round(payload.totalSpent))}
+            color="#F4FDF2"
+            mutedColor="rgba(244,253,242,0.62)"
+          />
+          <View style={closingStyles.summaryDivider} />
+          <SummaryStat
+            label="Movimientos"
+            value={String(payload.expensesCount)}
+            color="#F4FDF2"
+            mutedColor="rgba(244,253,242,0.62)"
+          />
+        </View>
+      </View>
+    ),
+  }
+}
+
+// ── Small subcomponents ──────────────────────────────────────────────
+
+function SummaryStat({
   label,
   value,
-  hint,
-  valueColor,
+  color,
+  mutedColor,
 }: {
   label: string
   value: string
-  hint: string
-  valueColor?: string
+  color: string
+  mutedColor: string
 }) {
-  const { theme } = useAppTheme()
   return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>
-        {label}
-      </Text>
-      <Text
-        style={[
-          styles.statValue,
-          { color: valueColor ?? theme.colors.text },
-        ]}
-        numberOfLines={1}
-      >
+    <View style={summaryStyles.cell}>
+      <Text style={[summaryStyles.label, { color: mutedColor }]}>{label}</Text>
+      <Text style={[summaryStyles.value, { color }]} numberOfLines={1}>
         {value}
-      </Text>
-      <Text
-        style={[styles.statHint, { color: theme.colors.textSoft }]}
-        numberOfLines={1}
-      >
-        {hint}
       </Text>
     </View>
   )
 }
 
-function Divider({ color }: { color: string }) {
-  return <View style={[styles.divider, { backgroundColor: color }]} />
-}
+// ── Helpers ──────────────────────────────────────────────────────────
 
-// ── Helpers ─────────────────────────────────────────────────────
-
-/** Format del delta vs ciclo anterior. Negativo = gastaste menos =
- *  "good". Positivo = gastaste más = "bad". Si null, no mostramos. */
-function formatDeltaCopy(
-  deltaPct: number | null,
-): { value: string; hint: string; color: 'good' | 'bad' | 'neutral' } | null {
-  if (deltaPct == null || !Number.isFinite(deltaPct)) return null
-  const rounded = Math.round(deltaPct)
-  if (rounded === 0) {
-    return { value: '=', hint: 'igual que el anterior', color: 'neutral' }
-  }
-  if (rounded < 0) {
-    return {
-      value: `${rounded}%`,
-      hint: 'menos que el anterior',
-      color: 'good',
-    }
-  }
-  return {
-    value: `+${rounded}%`,
-    hint: 'más que el anterior',
-    color: 'bad',
-  }
-}
-
-/** "15 mar" en español, sin año porque ya está en el header. */
-function formatDayMonth(iso: string): string {
+function formatLongDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
   if (!match) return ''
+  const year = Number(match[1])
   const day = Number(match[3])
   const month = Number(match[2])
   const MES = [
-    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
   ]
-  return `${day} ${MES[month - 1]}`
+  return `${day} de ${MES[month - 1]}, ${year}`
 }
 
-// ── Styles ──────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   scrim: {
@@ -423,178 +781,299 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(8, 34, 26, 0.65)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 32,
   },
   card: {
     width: '100%',
-    maxWidth: 420,
-    maxHeight: '92%',
-    borderRadius: 28,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.35,
-    shadowRadius: 40,
-    elevation: 20,
-  },
-  scrollBody: {
+    height: '100%',
+    flexDirection: 'column',
     paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 24,
-    gap: 18,
+    overflow: 'hidden',
   },
-  header: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 2,
-  },
-  periodLabel: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  periodRange: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
-  hero: {
-    paddingVertical: 22,
-    paddingHorizontal: 18,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroEyebrow: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.8,
-  },
-  heroAmount: {
-    fontSize: 36,
-    fontWeight: '900',
-    letterSpacing: -1.1,
-    fontVariant: ['tabular-nums'],
-  },
-  heroLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  statStrip: {
+  progressRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingVertical: 12,
-    gap: 6,
-  },
-  statCell: {
-    flex: 1,
-    paddingHorizontal: 4,
     gap: 4,
-    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  statHint: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    marginVertical: 4,
-  },
-  detailCard: {
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 6,
-  },
-  detailHeader: {
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 8,
   },
-  detailEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.6,
-  },
-  detailShare: {
+  brandMark: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 3,
   },
-  detailTitle: {
-    fontSize: 16,
+  closeBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sceneStage: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  footer: {
+    paddingTop: 12,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 18,
+  },
+  ctaText: {
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
-  detailAmount: {
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-    fontVariant: ['tabular-nums'],
-  },
-  detailHint: {
+  hint: {
     fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.2,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
-  bar: {
-    height: 6,
+  tapZones: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    // Sit below the close button and progress bar (which have higher
+    // z by virtue of declaration order in the parent View).
+  },
+  tapZoneLeft: { width: '33%', height: '100%' },
+  tapZoneRight: { flex: 1, height: '100%' },
+})
+
+const progressStyles = StyleSheet.create({
+  track: {
+    flex: 1,
+    height: 3,
     borderRadius: 999,
     overflow: 'hidden',
-    marginTop: 6,
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+})
+
+// Scene-specific styles
+const coverStyles = StyleSheet.create({
+  stage: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 14,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+  },
+  title: {
+    fontSize: Math.min(60, SCREEN_WIDTH * 0.16),
+    fontWeight: '900',
+    letterSpacing: -2,
+    lineHeight: Math.min(62, SCREEN_WIDTH * 0.17),
+  },
+  range: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  rule: {
+    width: 48,
+    height: 2,
+    backgroundColor: '#1F590D',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  kicker: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 20,
+    maxWidth: 260,
+  },
+})
+
+const verdictStyles = StyleSheet.create({
+  stage: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 18,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+  },
+  numberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  sign: {
+    fontSize: Math.min(54, SCREEN_WIDTH * 0.14),
+    fontWeight: '900',
+    letterSpacing: -2,
+    lineHeight: Math.min(60, SCREEN_WIDTH * 0.16),
+  },
+  hero: {
+    fontSize: Math.min(56, SCREEN_WIDTH * 0.15),
+    fontWeight: '900',
+    letterSpacing: -2,
+    lineHeight: Math.min(60, SCREEN_WIDTH * 0.16),
+    fontVariant: ['tabular-nums'],
+  },
+  copy: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    lineHeight: 25,
+    maxWidth: 300,
+  },
+  deltaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  deltaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+})
+
+const detailStyles = StyleSheet.create({
+  stage: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 12,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+  },
+  titleDisplay: {
+    fontSize: Math.min(44, SCREEN_WIDTH * 0.115),
+    fontWeight: '900',
+    letterSpacing: -1.4,
+    lineHeight: Math.min(48, SCREEN_WIDTH * 0.125),
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 12,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  amount: {
+    fontSize: Math.min(36, SCREEN_WIDTH * 0.095),
+    fontWeight: '900',
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  share: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  barTrack: {
+    marginTop: 16,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(15,46,31,0.10)',
+    overflow: 'hidden',
   },
   barFill: {
     height: '100%',
     borderRadius: 999,
   },
-  achievementsPill: {
+  dateMark: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    marginTop: 4,
+  },
+})
+
+const closingStyles = StyleSheet.create({
+  stage: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 18,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+  },
+  title: {
+    fontSize: Math.min(40, SCREEN_WIDTH * 0.105),
+    fontWeight: '900',
+    letterSpacing: -1.2,
+    lineHeight: Math.min(46, SCREEN_WIDTH * 0.12),
+    fontVariant: ['tabular-nums'],
+  },
+  achievementsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
+    alignSelf: 'flex-start',
   },
   achievementsText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: -0.1,
+    letterSpacing: 0,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginTop: 18,
+    gap: 16,
+  },
+  summaryDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(244,253,242,0.32)',
+  },
+})
+
+const summaryStyles = StyleSheet.create({
+  cell: {
     flex: 1,
+    gap: 4,
   },
-  cta: {
-    marginTop: 6,
-    paddingVertical: 14,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: {
-    color: '#FFFBF2',
-    fontSize: 15,
+  label: {
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: 1.4,
+  },
+  value: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
   },
 })

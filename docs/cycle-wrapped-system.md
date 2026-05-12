@@ -46,10 +46,38 @@ Achievements ganados en el rango del ciclo se cuentan desde `achievements_earned
 
 ## Tono y UX
 
-- **Restrained**, no IG-Stories. Vertical scrollable, no tap-to-advance. Matches el tono utilitario del resto de la app.
-- **Confetti solo cuando ahorraste** (`savingsDelta > 0`). Excederte se reporta como dato, sin shame.
-- **CTA único**: "Empezar el próximo" → dismiss. No invade el flow del próximo ciclo.
-- Auto-haptic `success` al aparecer. No auto-dismiss — el usuario quiere leer.
+Diseñado como una **edición de revista mensual de finanzas personales**, no como un slideshow tipo Spotify Wrapped. La gramática de stories (progress bars + tap-to-advance) se mantiene porque comunica "esto es un momento, no un popup", pero la estética se aleja deliberadamente del cliché dark + neón.
+
+**Frameworks aplicados**: `/impeccable` (color strategy committed, no hero-metric template, no card-on-card), `/emil-design-eng` (ease-out-expo curves, stagger 60ms, scenes 4.5s, asymmetric press), `/ui-ux-pro-max` (touch targets ≥44pt, safe areas, reduced motion).
+
+### Anti-AI-slop checklist
+- ❌ Dark mode + neón → ✅ committed cream + forest green (paleta del producto)
+- ❌ Hero-metric template (big number + small label + stat grid) → ✅ editorial typography weight-driven, un dominante por escena
+- ❌ Card on card → ✅ full-bleed scenes, contenido en el field
+- ❌ Genérico confetti spray → ✅ confetti solo en veredicto positivo
+
+### Estructura (5 escenas)
+1. **Cover** — paper cream, eyebrow "EDICIÓN {mes}", "Tu mes, en cifras." en display 60pt, rule mark, kicker
+2. **El veredicto** — tinte state-driven (verde/peach/neutral), signo + número hero 56pt, copy short, delta pill vs anterior
+3. **Donde más se fue** — top categoría, name como display 44pt, amount + share %, barra full-bleed
+4. **El gasto que más pesó** — peach band background, description como quote display, amount + fecha long-form
+5. **El próximo arranca hoy** — forest deep (statement de marca), monthly income hero, achievements pill si hay, summary row con gastaste + movimientos, CTA primary
+
+### Navegación
+- Tap left third = anterior, tap right two-thirds = siguiente / dismiss en última
+- Long-press ≥160ms = pausa auto-advance
+- Auto-advance 4500ms por escena con progress bar linear top
+- X superior derecha = dismiss directo
+- Hint adaptativo: "Mantené presionado para pausar" / "En pausa. Soltá para seguir."
+
+### Motion
+- Scrim fade 420ms ease-out-expo
+- Scene crossfade 360ms con rise +8px → 0
+- Progress bar linear 4500ms
+- CountUpText en hero numbers (Verdict 1800ms)
+- Press feedback `scale(0.97)` en CTA
+- Confetti solo en escena 2 si `savingsDelta > 0`
+- `useReducedMotion`: no transitions, no auto-advance, CountUp instant, swipe manual
 
 ## Gates
 
