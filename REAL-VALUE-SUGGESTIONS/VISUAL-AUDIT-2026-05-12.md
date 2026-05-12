@@ -133,6 +133,34 @@ Para cada pantalla:
 
 ---
 
+## 🌐 Fixes globales (afectan toda la navegación)
+
+Algunos fixes que descubrimos durante el audit por-pantalla resultaron vivir en capas globales (navigator, root container, theme bridge). En vez de enterrarlos en la sub-sección de la pantalla donde se detectaron, los listamos acá. **Cada pantalla del status board los hereda automáticamente.**
+
+### G1 · Tab transitions con `shift` direccional
+
+**Descubierto auditando**: Home (feedback owner — navegación a Gastos / Fijos / Ver todos sentía extraña).
+
+**Alcance**: toda navegación entre tabs (`<Tabs>` de `@react-navigation/bottom-tabs` v7.15) en TODOS los flujos. Cubre: tap directo en tab bar, `router.push('/(app)/(tabs)/...')` desde cualquier screen, deep links, hardware back entre tabs.
+
+**Fix**: `AppTabs.screenOptions` ahora incluye `animation: 'shift'`. Default `'none'` de react-navigation snapeaba instantáneo sin continuidad direccional (Apple HIG `continuity` y MD `motion-meaning` requieren motion en navegación). `'shift'` desliza el contenido del nuevo tab desde el lado correspondiente al orden de tabs (Home→Gastos slides left, Gastos→Home slides right). ~220ms en UI thread. ([app-tabs.tsx](../mobile/components/navigation/app-tabs.tsx))
+
+### G2 · Theme-aware root containers (dark mode flash fix)
+
+**Descubierto auditando**: Home (feedback owner — flash blanco solo en dark mode al transicionar entre tabs después de aplicar G1).
+
+**Alcance**: toda transición de navegación que cause overlap entre escena saliente y entrante. Cubre: tab `shift`, stack push, modal slide_from_bottom, return de modal a tab. En light mode no era perceptible porque cream + default-blanco son visualmente cercanos; en dark mode el contraste forest-deep vs default-blanco hacía el flash obvio.
+
+**Fix en dos capas** (la chain root tenía dos containers sin `backgroundColor` theme-aware):
+
+1. **`RootLayoutShell`** ([root-layout-shell.tsx](../mobile/components/root/root-layout-shell.tsx)): refactor del root `<View>` a `ThemedRoot` sub-component que vive dentro de `AppProviders` y usa `useAppTheme()` para `backgroundColor: theme.colors.canvas` (cream / forest deep según tema).
+
+2. **`AppProviders`** ([app-providers.tsx](../mobile/providers/app-providers.tsx)): `GestureHandlerRootView` vive FUERA del theme provider. Solución: `useColorScheme()` de RN lee system preference, aplica `CANVAS_LIGHT` / `CANVAS_DARK` hard-coded en sync con `palette.ts`. Trade-off documentado: user con tema manual override contra system preference puede ver 1 frame de flash al primer mount.
+
+**Por qué no se veía antes**: tabs eran `animation: 'none'` (snap sin overlap = sin ventana de exposición). Stack transitions también podían flashear pero la screen saliente cubre completamente a la entrante en la mayor parte de la animación, masking. Light mode + tabs sin animation = bug latente. G1 + dark mode lo destapó.
+
+---
+
 ## 📚 Subsecciones por pantalla
 
 Cada sub-sección se llena cuando esa pantalla pasa de 🔴 → 🟡 → ✅. Hasta entonces queda como `<!-- TODO -->`.
@@ -166,24 +194,9 @@ Cada sub-sección se llena cuando esa pantalla pasa de 🔴 → 🟡 → ✅. Ha
 
 Home ya estaba en su prime visual (gradient + aurora + shine + particles + breathing dot + day chip + pulse warning). Los 3 fixes son refinamientos de feel responsivo. La pantalla pasó de "muy buena" a "Emil-grade" con cambios totales <30 LOC.
 
-#### Sprint 2 — Tab transitions + Float icon loop (post-feedback owner)
+#### Sprint 2 — Home-specific fixes (post-feedback owner)
 
-Owner detectó dos issues específicos post Sprint 1:
-- Navegación Home → Gastos / Fijos / "Ver todos" sentía "extraña" (snap sin transición direccional)
-- Icono del greeting (sol/atardecer/luna) "se sentía que reinicia"
-
-##### Fix 4 — Tab transition `shift`
-
-`AppTabs` `screenOptions` no seteaba `animation`. Default de `@react-navigation/bottom-tabs` v7.15 es `'none'` → cualquier navegación a tab (tap directo o `router.push('/(app)/(tabs)/...')`) snapeaba instantáneo. Apple HIG `continuity` y MD `motion-meaning` ambos requieren que la navegación exprese cause-effect via motion.
-
-```diff
-- /* no animation set, default 'none' */
-+ animation: 'shift' as const
-```
-
-`shift` desliza el contenido del nuevo tab desde el lado correspondiente al orden de tabs. Da direccionalidad: Home→Gastos slides left, Gastos→Home slides right. ~220ms en UI thread. ([app-tabs.tsx](../mobile/components/navigation/app-tabs.tsx))
-
-##### Fix 5 — Float icon continuous oscillation
+##### Fix 5 — Float icon continuous oscillation (Home-specific)
 
 `FloatView` viejo:
 
@@ -213,21 +226,9 @@ y.value = withRepeat(
 
 Con `reverse=true` la animación se reproduce al revés automáticamente al llegar al destino. La velocidad llega a 0 SOLO en los extremos (peaks), que es lo natural en una sinusoidal. Resultado: oscilación continua sin pausas, alrededor del centro. ([float-view.tsx](../mobile/components/home/animated/float-view.tsx))
 
-##### Fix 6 — Dark mode white flash en tab transitions
-
-Owner reportó flash blanco visible en dark mode durante el `shift` (no en light). Root cause: la chain de containers `GestureHandlerRootView → SafeAreaProvider → AppThemeProvider → root View → Stack → Tabs` tenía **dos View sin `backgroundColor`** (el `GestureHandlerRootView` con `flex:1` y el root View dentro de `RootLayoutShell`). Durante el `shift` de tabs, un frame de overlap entre escena saliente y entrante expone el parent. En light mode el cream del scene matchea con el default blanco-ish → no se nota. En dark mode el scene es forest deep (#12211A) pero el parent sigue siendo el default white de RN → flash blanco visible.
-
-**Fix en dos capas**:
-
-1. **`RootLayoutShell`** ([root-layout-shell.tsx](../mobile/components/root/root-layout-shell.tsx)): refactor del root `<View>` a un sub-componente `ThemedRoot` que vive dentro de `AppProviders` y usa `useAppTheme()` para setear `backgroundColor: theme.colors.canvas` (cream o forest deep según tema).
-
-2. **`AppProviders`** ([app-providers.tsx](../mobile/providers/app-providers.tsx)): `GestureHandlerRootView` vive FUERA del theme provider (no puede usar el hook). Solución: `useColorScheme()` de RN para leer el system preference y aplicar `CANVAS_LIGHT` / `CANVAS_DARK` hard-coded en sync con `palette.ts`. Trade-off documentado en comentario: user que fuerza tema dark en device claro puede ver un frame de flash al primer mount; todos los demás casos coinciden con el theme provider.
-
-Resultado: durante cualquier transición de tab, el parent expuesto ya es canvas-coloreado en ambos modos. Zero flash.
-
 ##### Score final
 
-⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion + dark mode parity.
+⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion + dark mode parity (heredando los fixes globales abajo).
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -288,5 +289,5 @@ Resultado: durante cualquier transición de tab, el parent expuesto ya es canvas
 
 - **2026-05-12** — Doc creado. 28 pantallas catalogadas, rubric establecido, status board inicializado.
 - **2026-05-12** — Pantalla 1/28 (Home) auditada + 3 fixes aplicados (Sprint 1). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
-- **2026-05-12** — Home Sprint 2 (post-feedback owner): tab transitions con `animation: 'shift'` + Float icon con `withRepeat(..., reverse=true)` oscilación continua. Aunque toca `app-tabs.tsx` (navegación global), el origen del feedback fue Home, así que queda en su sub-section.
-- **2026-05-12** — Home Sprint 2 hotfix: dark mode white flash en tab transitions. Root cause: chain de containers root sin bg theme-aware. Fix dual en `RootLayoutShell` (ThemedRoot sub-component) + `AppProviders` (useColorScheme hard-coded canvas en GestureHandlerRootView).
+- **2026-05-12** — Home Sprint 2 (post-feedback owner): Float icon `withRepeat(..., reverse=true)` oscilación continua (Home-specific). Tab transitions `animation: 'shift'` (re-clasificado como **G1 fix global**). Dark mode white flash hotfix dual-layer (re-clasificado como **G2 fix global**).
+- **2026-05-12** — Doc reorganizado: nueva sección "🌐 Fixes globales" para fixes que descubrimos auditando una pantalla pero viven en navigator/root containers/theme bridge. Cada pantalla del status board los hereda.
