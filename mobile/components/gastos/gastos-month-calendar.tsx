@@ -217,7 +217,10 @@ function GridMode({
             <View key={ri} style={styles.gridRow}>
               {row.map((cellDate, ci) => {
                 if (cellDate == null) {
-                  return <View key={`e-${ri}-${ci}`} style={styles.dayCell} />
+                  // Empty leading cell — solo layout, sin chrome. Mantiene
+                  // su flex:1 share del row para que el grid no se
+                  // desalinee respecto a las cells reales.
+                  return <View key={`e-${ri}-${ci}`} style={styles.dayCellLayout} />
                 }
                 const dayNum = cellDate.getDate()
                 const cellMs = cellDate.getTime()
@@ -321,10 +324,17 @@ function DayCell({
       disabled={!isPast}
       accessibilityRole="button"
       accessibilityLabel={`Filtrar día ${day}`}
+      // Layout-affecting styles van EN el Pressable porque es el child
+      // directo de `gridRow` (flexDirection: row, gap: 6). Sin `flex: 1`
+      // acá, la cell colapsa al tamaño del contenido y rompe el grid
+      // (las empty cells `<View style={dayCell} />` retienen flex: 1
+      // → mismatch de anchos por columna). El Animated.View interno
+      // toma el visual chrome y la transformación de press scale.
+      style={styles.dayCellLayout}
     >
       <Animated.View
         style={[
-          styles.dayCell,
+          styles.dayCellSurface,
           {
             backgroundColor: bg,
             borderStyle,
@@ -445,9 +455,12 @@ function FocusMode({
             onPressOut={centerPress.onPressOut}
             accessibilityRole="button"
             accessibilityLabel="Volver al ciclo completo"
+            // Pressable lleva el layout (flex:1 dentro de focusHero row).
+            // Animated.View interno solo carga la transform de press
+            // scale — sin doble flex:1 redundante.
             style={styles.focusCenter}
           >
-            <Animated.View style={[styles.focusCenter, centerPress.animatedStyle]}>
+            <Animated.View style={[styles.focusCenterInner, centerPress.animatedStyle]}>
               <Text style={[styles.focusDay, { color: theme.colors.text }]}>{day}</Text>
               <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
                 {cycleLabel}
@@ -602,13 +615,30 @@ const styles = StyleSheet.create({
   weekdayText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   grid: { gap: 6 },
   gridRow: { flexDirection: 'row', gap: 6 },
-  // Every cell — real day cells and trailing empties alike — carries a
-  // 1px (transparent-by-default) border so their content-boxes are
-  // identical. Without it, RN Web's box-sizing shifts the layout by 1px
-  // between states that have a border and states that don't.
-  dayCell: {
+  // Two-layer split (introducido en re-audit Sprint B hotfix):
+  //
+  // `dayCellLayout` va EN el Pressable wrapper (y en las empty cells
+  // como View directo). Es responsable del layout dentro del row:
+  // `flex: 1` para tomar 1/7 del row, `aspectRatio: 1` para que sea
+  // cuadrada. Sin esto, el Pressable colapsa al tamaño del contenido
+  // y rompe el grid (las empty cells siguen con flex:1 → mismatch).
+  //
+  // `dayCellSurface` va EN el Animated.View interno. Carga el visual
+  // chrome (border, radius, alignment) y recibe la transform del
+  // press scale. El `width/height: '100%'` lo hace llenar el
+  // Pressable parent que ya está dimensionado por el layout.
+  //
+  // Todas las cells (real + empty) heredan el mismo border de 1px
+  // (transparent por default) para que sus content-boxes alineen
+  // exactamente — sin esto, RN Web's box-sizing desalinearía los
+  // cells por 1px según tengan border o no.
+  dayCellLayout: {
     flex: 1,
     aspectRatio: 1,
+  },
+  dayCellSurface: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
@@ -622,6 +652,7 @@ const styles = StyleSheet.create({
   moodText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
   focusHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 4, paddingTop: 8 },
   focusCenter: { flex: 1, alignItems: 'center' },
+  focusCenterInner: { alignItems: 'center' },
   focusDay: { fontSize: 72, fontWeight: '800', letterSpacing: -3, lineHeight: 70 },
   focusDaySub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   chevronBtn: {
