@@ -110,6 +110,15 @@ export function AppTabs() {
       tabBarItemStyle: tabBarUiStyles.item,
       tabBarStyle: buildFloatingTabBarStyle(theme),
       tabBarBackground: renderTabBarBackground,
+      // Tab transition: `shift` desliza el contenido del tab nuevo
+      // desde el lado correspondiente al orden (izquierda → derecha
+      // si vas a un tab posterior, vice versa). Esto da continuidad
+      // direccional Apple-HIG style cuando navegás Home → Gastos →
+      // Fijos → Control via tab bar o via `router.push` a una ruta
+      // de tab (ej. "Ver todos" link en Home). Default era 'none' —
+      // snap instantáneo que sentía jarring. `'shift'` cuesta una
+      // animación de 220ms run on UI thread, imperceptible en perf.
+      animation: 'shift' as const,
     }),
     [theme, renderTabBarLabel],
   )

@@ -166,6 +166,57 @@ Cada sub-sección se llena cuando esa pantalla pasa de 🔴 → 🟡 → ✅. Ha
 
 Home ya estaba en su prime visual (gradient + aurora + shine + particles + breathing dot + day chip + pulse warning). Los 3 fixes son refinamientos de feel responsivo. La pantalla pasó de "muy buena" a "Emil-grade" con cambios totales <30 LOC.
 
+#### Sprint 2 — Tab transitions + Float icon loop (post-feedback owner)
+
+Owner detectó dos issues específicos post Sprint 1:
+- Navegación Home → Gastos / Fijos / "Ver todos" sentía "extraña" (snap sin transición direccional)
+- Icono del greeting (sol/atardecer/luna) "se sentía que reinicia"
+
+##### Fix 4 — Tab transition `shift`
+
+`AppTabs` `screenOptions` no seteaba `animation`. Default de `@react-navigation/bottom-tabs` v7.15 es `'none'` → cualquier navegación a tab (tap directo o `router.push('/(app)/(tabs)/...')`) snapeaba instantáneo. Apple HIG `continuity` y MD `motion-meaning` ambos requieren que la navegación exprese cause-effect via motion.
+
+```diff
+- /* no animation set, default 'none' */
++ animation: 'shift' as const
+```
+
+`shift` desliza el contenido del nuevo tab desde el lado correspondiente al orden de tabs. Da direccionalidad: Home→Gastos slides left, Gastos→Home slides right. ~220ms en UI thread. ([app-tabs.tsx](../mobile/components/navigation/app-tabs.tsx))
+
+##### Fix 5 — Float icon continuous oscillation
+
+`FloatView` viejo:
+
+```js
+y.value = withRepeat(
+  withSequence(
+    withTiming(-amplitude),  // 0 → -amp
+    withTiming(0),            // -amp → 0
+  ),
+  -1, false,  // sequence replays from y=0
+)
+// Path: 0 → -amp → 0 → 0 → -amp → 0 …
+```
+
+Problema: cada sequence termina en y=0 con velocidad decelerando a 0; la siguiente iteración arranca en y=0 con velocidad acelerando desde 0 hacia -amp. **Discontinuidad de velocidad → pausa visible → "restart feel"**. Además visualmente: bobbing solo hacia arriba ("hop"), no float real (oscilación alrededor del centro).
+
+`FloatView` nuevo:
+
+```js
+y.value = -amplitude / 2  // inicia en extremo negativo
+y.value = withRepeat(
+  withTiming(amplitude / 2, { easing: Easing.inOut(Easing.sin) }),
+  -1, true,  // reverse-alternate
+)
+// Path: -amp/2 → +amp/2 → -amp/2 → +amp/2 …
+```
+
+Con `reverse=true` la animación se reproduce al revés automáticamente al llegar al destino. La velocidad llega a 0 SOLO en los extremos (peaks), que es lo natural en una sinusoidal. Resultado: oscilación continua sin pausas, alrededor del centro. ([float-view.tsx](../mobile/components/home/animated/float-view.tsx))
+
+##### Score final
+
+⭐⭐⭐⭐⭐ confirmado. Home pasa el audit visual + de motion.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 2. Gastos v2 `/(tabs)/expenses`
@@ -224,4 +275,5 @@ Home ya estaba en su prime visual (gradient + aurora + shine + particles + breat
 ## 📝 Log de cambios
 
 - **2026-05-12** — Doc creado. 28 pantallas catalogadas, rubric establecido, status board inicializado.
-- **2026-05-12** — Pantalla 1/28 (Home) auditada + 3 fixes aplicados. Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
+- **2026-05-12** — Pantalla 1/28 (Home) auditada + 3 fixes aplicados (Sprint 1). Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐.
+- **2026-05-12** — Home Sprint 2 (post-feedback owner): tab transitions con `animation: 'shift'` + Float icon con `withRepeat(..., reverse=true)` oscilación continua. Aunque toca `app-tabs.tsx` (navegación global), el origen del feedback fue Home, así que queda en su sub-section.
