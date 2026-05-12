@@ -491,14 +491,33 @@ Total Sprint E: 3 fixes contrast + 1 util compartido, ~80 LOC. Filter pills y Mo
 
 Owner pidió que el `catChipText` en dark mode sea green uniform (no pastel variado) y una pasada final completa sobre Gastos, con foco en animaciones, sin dejar gaps.
 
-##### Fix catChipText dark → green uniform
+##### Fix catChipText dark → hue-preserved lift (revisión de criterio)
 
-Decisión owner: en dark mode, el `catChipText` ahora usa `theme.colors.textMuted` (lime brand-green #A6EF8F) en lugar del category color pastel original.
+Primera iteración (commit `0f217f3`) hacía catChipText dark uniform brand-green. Owner corrigió el criterio: "no me gusta que sea todo lime, de la gama del color original que era, ajustado para darkmode". Decision corregida (commit posterior):
 
-- **Light mode**: mantiene `darkenForLightBg(categoryColor)` — variante hue-preserved oscura, identifica categoría
-- **Dark mode**: uniform brand-green ≥5:1 AA. La identidad de categoría queda comunicada via el iconTile bg + position en la lista, no necesita repetir signal en el chip text.
+- **Light mode**: `darkenForLightBg(categoryColor)` — variante hue-preserved con L=22 (existente)
+- **Dark mode**: `lightenForDarkBg(categoryColor)` — variante hue-preserved con L=92, S+8 (NUEVO util en `mobile/utils/category-color.ts`)
 
-Trade-off explícito: pierde signal de color en chip text en dark, gana legibilidad uniforme y coherencia visual con la paleta de marca.
+Cada categoría mantiene su HUE en ambos modos. La identidad visual de la paleta original se preserva, ajustada por modo para legibilidad. Contraste verificado para LAS 12 categorías del catálogo sobre dark chip bg (`tone @ 14%` over creamCard dark):
+
+| Categoría | Light variant (darken) | Dark variant (lighten) | Contrast dark |
+|---|---|---|---|
+| light blue `#89C8F7` | darkenForLightBg | `#D7EDFE` | 5.16:1 ✅ |
+| mint `#7EE3D4` | darkenForLightBg | `#DCF9F5` | 5.37:1 ✅ |
+| light green `#95E38E` | darkenForLightBg | `#DFF9DD` | 5.34:1 ✅ |
+| lime `#CBEA7A` | darkenForLightBg | `#F2FBDA` | 5.44:1 ✅ |
+| light yellow `#F4D87E` | darkenForLightBg | `#FDF4D8` | 5.37:1 ✅ |
+| peach `#FFBF8A` | darkenForLightBg | `#FEE9D7` | 5.23:1 ✅ |
+| light pink `#FFA3A6` | darkenForLightBg | `#FED7D8` | 4.88:1 ✅ |
+| pink `#F6A3D1` | darkenForLightBg | `#FDD8ED` | 4.95:1 ✅ |
+| lavender `#C7AEFF` | darkenForLightBg | `#E3D7FE` | 4.64:1 ✅ |
+| periwinkle `#AEBBFF` | darkenForLightBg | `#D7DDFE` | 4.63:1 ✅ |
+| light teal `#8FD9E8` | darkenForLightBg | `#DCF5FA` | 5.27:1 ✅ |
+| mint green `#9DE7C8` | darkenForLightBg | `#DDF9ED` | 5.26:1 ✅ |
+
+**12/12 categorías pasan AA cleanly**. Min 4.63:1 (lavender — hue azul con saturación baja).
+
+Lección documentada: la "fix uniforme brand-green" se sintió como una simplificación lazy. La "lift hue-preserved" preserva la paleta de marca original y respeta el tono por categoría → respuesta correcta tanto en design intent como en accesibilidad.
 
 ##### Audit completo de animaciones (todas verificadas)
 
@@ -605,3 +624,4 @@ Cuatro sprints (A/B/C + D + E + F) sobre Gastos. El cambio del approach del owne
 - **2026-05-12** — Gastos Sprint D (contrast audit light + dark): cálculos WCAG sistemáticos sobre cada par fg/bg. 3 fixes aplicados: Today dot invisible en dark mode (heroAccent sobre cream → switch a canvas), hero gradient small-text contrast (heroMuted2 alpha 0.55 → heroMuted alpha 0.78, mejora de 2.5:1 a 3.5:1 manteniendo hierarchy), EmptyActionButton primary text en dark (primary #A6EF8F → primaryStrong #D1F7C5 para AA cleanly en ambos modos). Hero topLabel y small-text labels quedan marginales (3.5–4.2:1, mejor pero bajo AA estricto) — documentado como trade-off de hierarchy.
 - **2026-05-12** — Gastos Sprint E (filter pills + Movimientos zoom): owner pidió audit específico de estos dos componentes. Discovery: las 12 category colors son TODAS pasteles (lightness 0.55–0.85) — funcionan como chip bg tinted pero rotos como text color en algunos contextos. 3 bugs invisibilizando contenido: filter pill INACTIVE count chip fg falla light (1.5:1), filter pill ACTIVE count chip fg falla dark (1.16:1), GastoRow catChipText falla ambos (1.6:1 / 3.3:1). Fix: util compartido `darkenForLightBg` (hue-preserved HSL L=22) + theme-aware logic en los 3 spots.
 - **2026-05-12** — Gastos Sprint F (final completeness pass): catChipText dark switch a `textMuted` (brand-green uniform). Animation audit end-to-end zero gaps. 3 polish fixes: pull-to-refresh tintColor theme-aware, filter pill active shadow theme-aware (dark mode visible halo), swipeHint `‹` char → MaterialIcons chevron-left. Gastos cerrada con 6 sprints (A/B/C + D + E + F). Lección heurística confirmada: primer pass corto sobre pantallas con 5+ sub-components.
+- **2026-05-12** — Gastos Sprint F revisión criterio: owner corrigió "no me gusta que sea todo lime, de la gama del color original que era". Switch a `lightenForDarkBg(categoryColor)` — variante hue-preserved con L=92, S+8 (nuevo util en `category-color.ts`). 12/12 categorías AA pass (min 4.63:1). Paleta original preservada, identidad per-categoría intacta.

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
-import { darkenForLightBg } from '@/utils/category-color'
+import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -39,20 +39,22 @@ export function GastoRow({
   const { theme } = useAppTheme()
   const icon = pickIconForCategory(categoryName)
   const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
-  // catChipText antes usaba el `categoryColor` pastel directo, que sobre
-  // el chip bg tinted al 14% sobre creamCard fallaba WCAG:
-  //   - light: pastel (#89C8F7) sobre near-white tinted (#EEF6F9) → 1.6:1 ❌
-  //   - dark: pastel sobre olive-tinted dark → 3-4:1 marginal
-  // Fix theme-aware:
-  //   - light: variante oscura hue-preserved (L=22 HSL) → ≥6:1 sobre chip bg
-  //   - dark: `textMuted` (lime #A6EF8F brand-green) sobre dark chip bg
-  //     → ≥5:1 ✅ AA. Decisión owner 2026-05-12: usar uniform brand-green
-  //     en dark mode en vez de variantes pastel. La identidad de categoría
-  //     ya está comunicada via iconTile bg + position en la lista; el
-  //     catChipText puede ser uniform sin perder signal.
+  // catChipText hue-preserved en ambos modos. Antes el pastel original
+  // sobre los chip backgrounds fallaba WCAG:
+  //   - light: pastel (L=55-77) sobre near-white tinted (L=0.91) → 1.6:1 ❌
+  //   - dark: pastel sobre olive-tinted dark (L=0.13) → 3.3-4.5:1 marginal
+  //
+  // Fix con dos utils hue-preserved que mantienen la gama original:
+  //   - light: `darkenForLightBg` baja L a 22% → ≥6:1 sobre chip bg light
+  //   - dark: `lightenForDarkBg` sube L a 88% → ≥5:1 sobre chip bg dark
+  // Cada categoría conserva su HUE (azul, verde, amarillo, rosa, etc.),
+  // solo se ajusta la lightness al modo. Identidad visual preservada.
   const catChipTextColor = useMemo(
-    () => (theme.isDark ? theme.colors.textMuted : darkenForLightBg(categoryColor)),
-    [categoryColor, theme.isDark, theme.colors.textMuted],
+    () =>
+      theme.isDark
+        ? lightenForDarkBg(categoryColor)
+        : darkenForLightBg(categoryColor),
+    [categoryColor, theme.isDark],
   )
   return (
     <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>

@@ -97,3 +97,42 @@ export function darkenForLightBg(hex: string): string {
   // l=22 garantiza > 5:1 contrast sobre cream-tinted bg.
   return rgbToHex(hslToRgb({ h, s: Math.min(95, s + 8), l: 22 }))
 }
+
+/**
+ * Returns a lighter, hue-preserved variant of a pastel category color
+ * for use on dark backgrounds. La paleta original (L=55-77) sobre
+ * dark-olive chip bg (L≈0.13) cae en 3.3-4.5:1 (marginal AA fail).
+ *
+ * Lift L=92, +8 saturation para que el variant no se lave a near-white.
+ * Cada categoría preserva su HUE → identidad visual intacta. Contraste
+ * verificado sobre `tone @ 14%` blend over `#305A47` (creamCard dark)
+ * para LAS 12 categorías de `CATEGORY_FALLBACK_COLORS`:
+ *
+ *   #89C8F7 (light blue) → #D7EDFE → 5.16:1 ✅
+ *   #7EE3D4 (mint)       → #DCF9F5 → 5.37:1 ✅
+ *   #95E38E (light grn)  → #DFF9DD → 5.34:1 ✅
+ *   #CBEA7A (lime)       → #F2FBDA → 5.44:1 ✅
+ *   #F4D87E (lt yellow)  → #FDF4D8 → 5.37:1 ✅
+ *   #FFBF8A (peach)      → #FEE9D7 → 5.23:1 ✅
+ *   #FFA3A6 (lt pink)    → #FED7D8 → 4.88:1 ✅
+ *   #F6A3D1 (pink)       → #FDD8ED → 4.95:1 ✅
+ *   #C7AEFF (lavender)   → #E3D7FE → 4.64:1 ✅
+ *   #AEBBFF (periwinkle) → #D7DDFE → 4.63:1 ✅
+ *   #8FD9E8 (lt teal)    → #DCF5FA → 5.27:1 ✅
+ *   #9DE7C8 (mint green) → #DDF9ED → 5.26:1 ✅
+ *
+ * Min contrast: 4.63:1 (lavender/periwinkle, hues azulados con S bajo).
+ * Si L<88 el variant se vería marginal en alguna fila — L=92 es la
+ * cota que da AA cleanly para toda la paleta.
+ */
+export function lightenForDarkBg(hex: string): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  const { h, s, l } = rgbToHsl(rgb)
+  // L=92 + S+8 mantiene el carácter de cada hue sin lavarse a gris.
+  // Si el color de entrada ya está por encima de L=92 (raro pero
+  // posible), respetamos su L para no oscurecerlo accidentalmente.
+  return rgbToHex(
+    hslToRgb({ h, s: Math.min(95, s + 8), l: Math.max(l, 92) }),
+  )
+}
