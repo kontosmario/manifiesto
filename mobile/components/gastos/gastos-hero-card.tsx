@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -33,7 +34,7 @@ interface GastosHeroCardProps {
  * total visible, a summary chip (mov count · period · filter), and the
  * top 3 categories ranked by spend with animated progress bars.
  */
-export function GastosHeroCard({
+function GastosHeroCardImpl({
   totalVisible,
   summaryChip,
   topCategories,
@@ -202,3 +203,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
 })
+
+/**
+ * Memo wrap. GastosHeroCard es el componente más pesado de Gastos
+ * (LinearGradient + ShineOverlay + CardParticles + CountUpText x2 +
+ * CategoryWeightsList + GastosAverageBars). Sin memo se re-rendereaba
+ * en cada parent render del screen (scroll, tap, filter change),
+ * disparando re-evaluation de todas las animations internas.
+ *
+ * Props pasados son primitives o stable references via useMemo
+ * upstream (topCategories de useGastosController, averageDailyBars
+ * memoized). Shallow compare exacto.
+ */
+export const GastosHeroCard = memo(GastosHeroCardImpl)

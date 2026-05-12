@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
@@ -26,7 +26,7 @@ export interface GastoRowProps {
  * the Home ActivityRowV2 but with a colored category chip on the
  * subtitle line and the category color tinted into the icon tile.
  */
-export function GastoRow({
+function GastoRowImpl({
   title,
   categoryName,
   categoryColor,
@@ -164,3 +164,16 @@ const styles = StyleSheet.create({
   // proporcionales (1 vs 8 ocupan distintos pixels en defaults).
   amount: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
 })
+
+/**
+ * Memo wrap. GastoRow vive en SectionList virtualizada — cuando una
+ * row se recicla durante scroll o el parent re-renderea (filter
+ * toggle, day select, etc), TODAS las rows visibles se re-rendereaban
+ * con sus animations re-evaluating (status chip + cat chip
+ * darkenForLightBg memoization, hexAlpha calls, etc.). Memo cierra
+ * eso — solo rows con props cambiados re-renderean.
+ *
+ * Todos los props son primitives (title, categoryName, categoryColor,
+ * whoName, whoColor, amount, time, notes) → shallow comparison exacta.
+ */
+export const GastoRow = memo(GastoRowImpl)

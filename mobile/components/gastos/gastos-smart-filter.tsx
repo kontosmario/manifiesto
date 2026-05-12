@@ -64,12 +64,19 @@ export function GastosSmartFilter({
         >
           <View style={styles.rows}>
             <View style={styles.row}>
+              {/* `selectId` prop + `onSelect` callback en lugar de
+                  `onPress={() => onSelect(c.id)}` arrow inline. La
+                  arrow se creaba nueva por render, rompiendo el
+                  React.memo del pill. Ahora cada pill recibe primitives
+                  + el mismo `onSelect` reference → shallow compare
+                  exacto, memo funciona. */}
               <GastosFilterPill
                 active={selectedCategoryId == null}
                 label="Todas"
                 emoji="📋"
                 count={totalCount}
-                onPress={() => onSelect(null)}
+                selectId={null}
+                onSelect={onSelect}
               />
               {row1.map((c) => (
                 <GastosFilterPill
@@ -79,7 +86,8 @@ export function GastosSmartFilter({
                   emoji={pickIconForCategory(c.name)}
                   color={c.color}
                   count={c.count}
-                  onPress={() => onSelect(c.id)}
+                  selectId={c.id}
+                  onSelect={onSelect}
                 />
               ))}
             </View>
@@ -94,7 +102,8 @@ export function GastosSmartFilter({
                     emoji={pickIconForCategory(c.name)}
                     color={c.color}
                     count={c.count}
-                    onPress={() => onSelect(c.id)}
+                    selectId={c.id}
+                    onSelect={onSelect}
                   />
                 ))}
               </View>

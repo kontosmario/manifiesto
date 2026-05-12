@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import Animated, {
   Easing,
@@ -20,20 +20,36 @@ interface GastosFilterPillProps {
   emoji?: string
   color?: string
   small?: boolean
-  onPress?: () => void
+  /**
+   * Argumento que `onSelect` recibe cuando se presiona la pill.
+   * Para "Todas" usar `null`, para categoría específica usar su `id`.
+   * Tener el arg como prop (no en una arrow inline en el parent) es lo
+   * que permite que `React.memo` funcione — sin esto, cada render del
+   * SmartFilter creaba una new `onPress` arrow per pill, rompiendo el
+   * shallow compare.
+   */
+  selectId?: string | null
+  onSelect?: (id: string | null) => void
 }
 
 /** Rounded pill used in the category filter row + bottom sheet. */
-export function GastosFilterPill({
+function GastosFilterPillImpl({
   active,
   label,
   count,
   emoji,
   color,
   small = false,
-  onPress,
+  selectId = null,
+  onSelect,
 }: GastosFilterPillProps) {
   const { theme } = useAppTheme()
+  // Estabilidad: useCallback baked sobre selectId (primitivo string|null)
+  // + onSelect (stable useCallback'd upstream). Reemplaza la arrow
+  // inline del parent que rompía el memo.
+  const handlePress = useCallback(() => {
+    onSelect?.(selectId)
+  }, [onSelect, selectId])
 
   // ── Active/inactive transition ──────────────────────────────────
   // Driven by a single shared value: 0 = inactive, 1 = active. We
@@ -134,7 +150,7 @@ export function GastosFilterPill({
       layout={LinearTransition.duration(220)}
     >
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={() => {
           press.value = withTiming(0.96, {
             duration: motionDurations.micro,
@@ -210,3 +226,15 @@ const styles = StyleSheet.create({
   count: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999 },
   countText: { fontSize: 10, fontWeight: '700' },
 })
+
+/**
+ * Memo wrap. GastosFilterPill se renderea N veces en el filter row
+ * (una por categoría con expenses). Sin memo, cualquier change del
+ * parent (selectedCategoryId toggle, count update) re-rendereaba TODAS
+ * las pills con sus interpolateColor animations re-running.
+ *
+ * Props son primitives + un onPress callback (debe ser useCallback'd
+ * upstream — verificado en `gastos-smart-filter.tsx`). Shallow compare
+ * exacto.
+ */
+export const GastosFilterPill = memo(GastosFilterPillImpl)

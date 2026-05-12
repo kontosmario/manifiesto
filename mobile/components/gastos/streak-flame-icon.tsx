@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { AnimatedFlame, FLAME_PALETTE } from '@/components/gastos/animated-flame'
@@ -15,7 +16,7 @@ interface StreakFlameIconProps {
  * the glyph + aura and adds the theme-aware container chrome + day-count
  * badge around it.
  */
-export function StreakFlameIcon({ data, onPress }: StreakFlameIconProps) {
+function StreakFlameIconImpl({ data, onPress }: StreakFlameIconProps) {
   const { theme } = useAppTheme()
   const derived = deriveStreak(data)
   const palette = FLAME_PALETTE[derived.status]
@@ -116,3 +117,12 @@ const styles = StyleSheet.create({
     lineHeight: 11,
   },
 })
+
+/**
+ * Memo wrap. StreakFlameIcon mountéa AnimatedFlame internamente con
+ * ~23 useSharedValue + 5 useLoopAnimation. Sin memo, cada re-render
+ * del parent disparaba re-evaluation de TODOS sus animation hooks.
+ * Memo cierra eso — solo re-rendera cuando `data` cambia (lo cual
+ * trigerea internamente el `useEffect` de los loops).
+ */
+export const StreakFlameIcon = memo(StreakFlameIconImpl)
