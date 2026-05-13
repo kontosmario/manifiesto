@@ -1,10 +1,30 @@
 import { LogBox, Platform } from 'react-native'
+import { enableFreeze } from 'react-native-screens'
 // NOTE: do NOT install `expo-sqlite/localStorage`. The previous polyfill
 // persisted Supabase JWTs (access_token + refresh_token) into an
 // unencrypted SQLite database, which left them readable by any
 // process/backup with file-system access. Auth tokens now live in
 // Keychain via `mobile/lib/supabase-secure-storage.ts`.
 import 'react-native-url-polyfill/auto'
+
+// Activa el freezing de React subtrees para screens con
+// `freezeOnBlur: true`. Sin este flag global, todos los
+// `freezeOnBlur: true` en root-layout-shell + app-stack-shell eran
+// no-ops · los screens blurred seguían re-rendering con cada theme /
+// state / focus change, comiendo JS thread incluso cuando estaban
+// fuera de pantalla.
+//
+// Tabs tienen `freezeOnBlur: false` explícito (memory: rompe gestos
+// RNGH cuando true) así que enableFreeze() acá NO los afecta · sólo
+// activa el freezing en los Stack screens (settings, notifications,
+// modals add-expense / add-income / etc.) que SÍ declaran
+// `freezeOnBlur: true`. Net: massive perf win en navegación stack sin
+// breakage de gestos en tabs.
+//
+// Esto matchea el comportamiento que UITabBarController da por default
+// en NativeTabs (path A) · una de las razones por las que aquella
+// versión se sentía más rápida.
+enableFreeze()
 
 const ignoredExpoGlLogs = [
   "EXGL: gl.pixelStorei() doesn't support this parameter yet!",

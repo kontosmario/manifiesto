@@ -117,15 +117,31 @@ export function AppTabs() {
       tabBarItemStyle: tabBarUiStyles.item,
       tabBarStyle: buildFloatingTabBarStyle(theme),
       tabBarBackground: renderTabBarBackground,
-      // Tab transition: `shift` desliza el contenido del tab nuevo
-      // desde el lado correspondiente al orden (izquierda → derecha
-      // si vas a un tab posterior, vice versa). Esto da continuidad
-      // direccional Apple-HIG style cuando navegás Home → Gastos →
-      // Fijos → Control via tab bar o via `router.push` a una ruta
-      // de tab (ej. "Ver todos" link en Home). Default era 'none' —
-      // snap instantáneo que sentía jarring. `'shift'` cuesta una
-      // animación de 220ms run on UI thread, imperceptible en perf.
-      animation: 'shift' as const,
+      // ─── Speed boost (post-NativeTabs A/B test) ────────────────────
+      // Cuando probamos `NativeTabs` (path A), el owner notó que la
+      // navegación era "MUY SUPERIOR en rapidez". El boost no venía
+      // del Liquid Glass — venía de dos cosas que UITabBarController
+      // hace por default:
+      //   1. Pre-mount de los view controllers de cada tab (no lazy).
+      //   2. Switch instantáneo (zero animation JS).
+      // Replicamos ambos acá:
+      //
+      //   `lazy: false` · pre-monta los 5 tab screens al app start.
+      //   Cuando el user tap Gastos/Fijos/Control por primera vez, el
+      //   React tree YA está montado · sólo cambia el active screen ·
+      //   first-tap feel = instant en vez de 200-400ms de mount work.
+      //   La data ya viene hot por `useWarmTabsSnapshots()` así que
+      //   no hay RPC tampoco. El cost: ~80ms extra en app boot para
+      //   mountear los 4 tabs inactivos · trade-off net positivo.
+      lazy: false,
+      //
+      //   `animation: 'none'` · UITabBarController nativo NO anima
+      //   transición de tab. Salida instantánea. Antes teníamos `shift`
+      //   (220ms JS slide direccional Apple-HIG) que con screens cold
+      //   se sentía OK, pero ahora que están pre-mounted la animación
+      //   ES la fuente de "delay percibido". Quitándola: tap = active
+      //   tab visible en 1 frame. Match el feel native.
+      animation: 'none' as const,
     }),
     [theme, renderTabBarLabel],
   )

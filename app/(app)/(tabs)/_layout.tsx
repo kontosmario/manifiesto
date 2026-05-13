@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { AppNativeTabs } from '@/components/navigation/app-native-tabs'
+import { AppTabs } from '@/components/navigation/app-tabs'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   homeSnapshotQueryKey,
@@ -27,9 +27,5 @@ export default function TabsLayout() {
   // tap Gastos/Control, cache hot → screen renderea en 1 frame.
   useWarmTabsSnapshots()
 
-  // Path A · iOS 26 Liquid Glass nativo (NativeTabs alpha).
-  // Si necesitamos rollback rápido a la tab bar custom anterior, swap
-  // `AppNativeTabs` por `AppTabs` (de `@/components/navigation/app-tabs`).
-  // Ambos archivos viven en código.
-  return <AppNativeTabs />
+  return <AppTabs />
 }
