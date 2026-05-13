@@ -1053,6 +1053,47 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 
   Cero cambios estructurales — solo wording + jerarquía. La vista se siente más calmada, sin info repetida que el usuario tenga que filtrar mentalmente.
 
+- **2026-05-13** — **Etapa 11d · Jerarquía del hero · 3 cambios estructurales** (skill `/ui-ux-pro-max`). Owner pidió:
+  1. Eyebrow del hero pase a mostrar el ciclo cargado expandido
+  2. CycleRouteLine se mueva al slot donde estaba el subtitle
+  3. Reemplazar la ProgressBar lineal con pulse por algo más claro
+
+  Aplicado:
+
+  · **Eyebrow del hero** = `cycleEyebrow` (cycle label expandido). Helper `expandCycleLabel("20 abr → 20 may")` con map MONTH_SHORT→MONTH_LONG produce `"20 ABRIL → 20 MAYO"`. El eyebrow pasa a ser el dato único del card (el usuario ya está en la tab de Fijos, no necesita repetir "Gastos fijos").
+
+  · **CycleRouteLine subió al slot del subtitle**. Antes vivía bajo la ProgressBar; ahora bajo el eyebrow. Reemplaza el texto `"5 pendientes · 18 días al cierre"` con la representación visual del ciclo (stations ABR/MAY + dashed track + today marker + label "HOY · DÍA 12"). El estado pendientes pasa al montoSub + segments; el tiempo restante queda implícito por la posición del marker.
+
+  · **`resolveSubtitle()` eliminado**. La sub-line state-aware (8 casos de copy) ya no existe — la info del estado vive ahora en: badges (VENCIDOS/AL DÍA) + BreatheDot color-coded + título color + segments coloreados + urgency ring pulse. Todo visual, cero prosa state-aware.
+
+  · **PaymentSegments reemplaza ProgressBar**. Encoding 1:1 fijo↔segmento:
+    - `cantidadPagados` segmentos pintados accent (lime)
+    - `cantidadPendientes - cantidadVencidos` segmentos pintados muted (cream-alpha)
+    - `cantidadVencidos` segmentos pintados urgent (peach)
+    - Cada segmento `flex: 1` (auto-adapta width al número total de fijos)
+    - Gap 3pt entre segments, height 6pt, radius 3pt
+    - **Cero pulse, cero dot rider, cero animación continua**. Solo entrance subtle.
+    - Reduce visual encoding del 100% pagado a un patrón discreto donde el ojo cuenta cuántos lime hay. Owner: *"busquemos una mejor forma de expresarlo"*.
+
+  · **ProgressBar lineal eliminada** + clampPct helper + styles progressTrack/progressFill/progressDot + imports unused. La ProgressBar tenía pulse 1.2s continuous + dot rider con glow + scaleX fill animation — todo eliminado.
+
+  · `progressFooter` preserved con "57% pagado" + "Total $425.000" (sin colon).
+
+  · `diasRestantes` prop preservada en interface por backward compat pero ya no se renderea — el tiempo restante lo comunica la CycleRouteLine via el today marker.
+
+  Nueva jerarquía vertical del hero:
+  ```
+  Eyebrow + Badge  →  Cycle (20 ABRIL → 20 MAYO)
+  CycleRouteLine   →  Stations + Today marker + DÍA 12
+  Montos row       →  $245k pagado / $180k pendiente + counts inline
+  Segments         →  ●●●●● ○○○ ●● (1 segment per fijo, color = status)
+  Footer line      →  57% pagado · Total $425.000
+  Perforation      →  Boarding pass stub separator
+  Stub band        →  DINERO LIBRE + % del sueldo
+  ```
+
+  Pre/post LOC: hero card pasó de ~770 LOC a ~720 LOC (eliminé ProgressBar function + styles + clampPct + resolveSubtitle).
+
 - **2026-05-13** — **Etapa 10 · V3 promoted a producción** con rollback inmediato disponible:
   - Nuevo adapter `mobile/features/fijos/adapt-controller-to-hero-state.ts` que convierte el output del `useFijosController` real (summary + categoría map + advisor signals) al shape `HeroState` que consumen los componentes V3.
   - `HeroState` extendido con `itemsOverride?: unknown[]` para que el adapter inyecte la lista real. `buildFijoList` ahora prefiere el override si está presente, falla al mock cuando no.

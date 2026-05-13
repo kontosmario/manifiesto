@@ -1,14 +1,12 @@
-import { memo, useEffect, useState } from 'react'
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import { memo, useEffect } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
   LinearTransition,
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -21,7 +19,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
-import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { motionEasings } from '@/lib/motion/tokens'
 
 interface FijosHeroCardProps {
   mes?: string
@@ -55,7 +53,9 @@ interface FijosHeroCardProps {
  */
 function FijosHeroCardImpl({
   mes = 'Abril',
-  diasRestantes = 0,
+  // diasRestantes prop preservada en interface por backward compat
+  // pero ya no se renderea — la CycleRouteLine comunica el tiempo
+  // restante visualmente vía el today marker.
   totalFijos = 0,
   montoPagado = 0,
   cantidadPagados = 0,
@@ -114,27 +114,14 @@ function FijosHeroCardImpl({
     opacity: 0.12 + urgencyPulse.value * 0.3,
   }))
 
-  // Sub-line state-aware — reemplaza el "Quedan X días en el ciclo"
-  // estático con info más útil según el momento del ciclo. Cada caso
-  // dice algo distinto · ningún caso duplica info que ya esté en el
-  // badge (impeccable: no repetir el mismo dato en dos sitios).
-  const resolveSubtitle = (): string => {
-    if (isAllPaid && diasRestantes <= 1) {
-      return diasRestantes === 0 ? 'Todo pagado · cierre hoy' : 'Todo pagado · cobrás mañana'
-    }
-    if (isAllPaid) {
-      return `Todo pagado · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
-    }
-    if (hasOverdue) {
-      // Badge "X VENCIDOS" arriba ya cuenta los atrasados.
-      // Sub-line accionable: qué hacer + cuánto tiempo queda.
-      return `Resolvé los atrasados · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
-    }
-    if (notStarted) {
-      return `Recién arrancado · ${cantidadPendientes} pendientes`
-    }
-    return `${cantidadPendientes} ${cantidadPendientes === 1 ? 'pendiente' : 'pendientes'} · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
-  }
+  // Subtitle state-aware ELIMINADO en favor de la CycleRouteLine que
+  // ocupa ese slot. El estado lo comunican ahora: badge VENCIDOS/AL DÍA
+  // + BreatheDot color-coded + segments coloreados + urgency ring pulse.
+  // Texto state-aware → cero, todo visual.
+
+  // Expand cycle label corto ("20 abr → 20 may") a versión legible para
+  // el eyebrow ("20 ABRIL → 20 MAYO"). Mantiene el "→" como conector.
+  const cycleEyebrow = expandCycleLabel(mes)
 
   return (
     <RiseView delay={40}>
@@ -172,10 +159,11 @@ function FijosHeroCardImpl({
                 glow={statusColor}
               />
               <Text style={[styles.titulo, { color: statusColor }]}>
-                {/* "· {mes}" removido — la CycleRouteLine abajo ya
-                    muestra el ciclo (ABR 05 → MAY 05) con today marker.
-                    Impeccable: una sola surface por dato. */}
-                Gastos fijos
+                {/* Eyebrow es ahora el ciclo cargado expandido —
+                    "20 ABRIL → 20 MAYO" — en lugar del genérico
+                    "Gastos fijos". El usuario ya está en la tab de
+                    Fijos, el dato realmente único es el ciclo. */}
+                {cycleEyebrow}
               </Text>
             </View>
             {hasOverdue ? (
@@ -203,9 +191,19 @@ function FijosHeroCardImpl({
               </View>
             ) : null}
           </View>
-          <Text style={[styles.subtitulo, { color: theme.colors.heroMuted2 }]}>
-            {resolveSubtitle()}
-          </Text>
+          {/* CycleRouteLine ocupa el slot del subtitle viejo —
+              comunicación temporal del ciclo via boarding pass
+              graphic + today marker. Reemplaza el "X días al cierre"
+              de texto que vivía acá antes. */}
+          <CycleRouteLine
+            cycleLabel={mes}
+            cycleDayIndex={cycleDayIndex}
+            cycleDays={cycleDays}
+            accent={theme.colors.heroAccent}
+            mutedTrack="rgba(242,234,211,0.22)"
+            cream={theme.colors.heroText}
+            muted2={theme.colors.heroMuted2}
+          />
 
           <View style={styles.montosRow}>
             <View>
@@ -243,30 +241,26 @@ function FijosHeroCardImpl({
             </View>
           </View>
 
-          <ProgressBar porcentaje={porcentaje} accent={theme.colors.heroAccent} />
+          {/* Payment segments — reemplazan ProgressBar lineal/pulse.
+              Cada segmento = un fijo. Color encoding: lime pagado,
+              cream muted pendiente, peach vencido. Sin pulse, sin
+              dot rider. Mapeo 1:1 fijo↔segmento. */}
+          <PaymentSegments
+            cantidadPagados={cantidadPagados}
+            cantidadPendientes={cantidadPendientes}
+            cantidadVencidos={cantidadVencidos}
+            accent={theme.colors.heroAccent}
+            muted="rgba(242,234,211,0.22)"
+            urgent="#F2A78C"
+          />
           <View style={styles.progressFooter}>
             <Text style={[styles.progressPct, { color: theme.colors.heroAccent }]}>
               {porcentaje}% pagado
             </Text>
             <Text style={[styles.progressTotal, { color: theme.colors.heroMuted2 }]}>
-              Total: {formatMoney(totalFijos)}
+              Total {formatMoney(totalFijos)}
             </Text>
           </View>
-
-          {/* ── Route line ABR → MAY (boarding pass) ──────────────
-              Fusion con la variante Pasaje del ciclo. Una sola línea
-              de tiempo: stations + dashes con today marker. Eje
-              tiempo del ciclo, separado del eje pago (que es la
-              progress bar de arriba). */}
-          <CycleRouteLine
-            cycleLabel={mes}
-            cycleDayIndex={cycleDayIndex}
-            cycleDays={cycleDays}
-            accent={theme.colors.heroAccent}
-            mutedTrack="rgba(242,234,211,0.22)"
-            cream={theme.colors.heroText}
-            muted2={theme.colors.heroMuted2}
-          />
 
           {/* ── Perforation (boarding pass stub separator) ────────
               Notches semi-circulares en los bordes + dashes
@@ -330,105 +324,12 @@ function FijosHeroCardImpl({
   )
 }
 
-function ProgressBar({ porcentaje, accent }: { porcentaje: number; accent: string }) {
-  const reduced = useReducedMotion()
-  const progress = useSharedValue(reduced ? clampPct(porcentaje) : 0)
-  const dotScale = useSharedValue(reduced ? 1 : 0)
-  const dotGlow = useSharedValue(0.55)
+// ProgressBar (lineal con fill scaleX + dot rider con glow pulse) ELIMINADA.
+// Owner: "la línea que nos indica 100% pagado ese grafico lineal de pulso,
+// busquemos una mejor forma de expresarlo". Reemplazada por PaymentSegments
+// — encoding 1:1 fijo↔segmento sin pulso, más claro semánticamente.
 
-  useEffect(() => {
-    if (reduced) {
-      progress.value = clampPct(porcentaje)
-      dotScale.value = 1
-      return
-    }
-    progress.value = withDelay(
-      80,
-      // @motion-allow: 900ms one-shot progress fill on hero; deliberately faster than pulse (1200) for snappy intro
-      withTiming(clampPct(porcentaje), {
-        duration: 900,
-        easing: motionEasings.decelerate,
-      }),
-    )
-    dotScale.value = withDelay(
-      680,
-      // @motion-allow: bouncy first-paint celebration on Fijos hero, intentionally idiosyncratic
-      withSpring(1, { damping: 11, stiffness: 180, mass: 0.7 }),
-    )
-    dotGlow.value = withDelay(
-      900,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
-          withTiming(0.55, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
-        ),
-        -1,
-        true,
-      ),
-    )
-    return () => {
-      cancelAnimation(progress)
-      cancelAnimation(dotScale)
-      cancelAnimation(dotGlow)
-    }
-  }, [porcentaje, reduced, progress, dotScale, dotGlow])
-
-  // Fill uses scaleX (GPU transform, no layout). `transformOrigin: left`
-  // anchors the scale to the track's left edge.
-  const fillStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: progress.value }],
-  }))
-  // Dot rides the end of the fill. Previously this animated `left: %`
-  // which forces a per-frame layout pass on Android. We now measure
-  // the track once via onLayout and convert progress (0..1) into a
-  // pixel translateX — pure compositor work.
-  const [trackWidthPx, setTrackWidthPx] = useState(0)
-  const handleTrackLayout = (event: LayoutChangeEvent) => {
-    const w = event.nativeEvent.layout.width
-    if (w > 0 && w !== trackWidthPx) setTrackWidthPx(w)
-  }
-  const dotStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: progress.value * trackWidthPx - 7 },
-      { scale: dotScale.value },
-    ],
-    opacity: dotGlow.value,
-  }))
-
-  return (
-    <View
-      onLayout={handleTrackLayout}
-      style={[styles.progressTrack, { backgroundColor: 'rgba(255,255,255,0.12)' }]}
-    >
-      <Animated.View
-        style={[
-          styles.progressFill,
-          { backgroundColor: accent },
-          fillStyle,
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.progressDot,
-          {
-            backgroundColor: '#F2EAD3',
-            borderColor: accent,
-            shadowColor: accent,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.9,
-            shadowRadius: 4,
-            elevation: 3,
-          },
-          dotStyle,
-        ]}
-      />
-    </View>
-  )
-}
-
-function clampPct(p: number): number {
-  return Math.min(Math.max(p, 0), 100) / 100
-}
+// clampPct eliminado — helper que usaba la ProgressBar lineal antigua.
 
 /**
  * CycleRouteLine — fusion del boarding pass aesthetic en el hero.
@@ -549,6 +450,81 @@ function parseCycleStations(label: string): {
     from: parseSide(parts[0]),
     to: parseSide(parts[1]),
   }
+}
+
+const MONTH_LONG_BY_SHORT: Record<string, string> = {
+  ene: 'ENERO',
+  feb: 'FEBRERO',
+  mar: 'MARZO',
+  abr: 'ABRIL',
+  may: 'MAYO',
+  jun: 'JUNIO',
+  jul: 'JULIO',
+  ago: 'AGOSTO',
+  sep: 'SEPTIEMBRE',
+  oct: 'OCTUBRE',
+  nov: 'NOVIEMBRE',
+  dic: 'DICIEMBRE',
+}
+
+/**
+ * "20 abr → 20 may" → "20 ABRIL → 20 MAYO". Reemplaza el month-short
+ * por el month-long. Si la abreviación no matchea, retorna upper-case
+ * del input (fallback seguro).
+ */
+function expandCycleLabel(label: string): string {
+  return label.replace(/\b([a-z]{3})\b/g, (match) => MONTH_LONG_BY_SHORT[match] ?? match.toUpperCase())
+}
+
+/**
+ * PaymentSegments — reemplaza la ProgressBar lineal + pulse + dot rider.
+ * Cada segmento (1:1 con un fijo) se pinta según su status:
+ *   pagados                  → accent lime
+ *   pendientes (sin vencer)  → muted cream
+ *   vencidos                 → urgent peach
+ *
+ * Lineup: pagados primero (left), no-overdue pendientes en el medio,
+ * vencidos al final (right) para que la urgencia se lea visualmente
+ * como "lo último que falta". Stagger fade-in 30ms entre segmentos
+ * en mount — no pulse continuo, no dot rider.
+ *
+ * Encoding fuerte: ves "5 de 10 lime + 3 muted + 2 peach" y entendés
+ * el estado del ciclo sin leer números. Visual + semántico.
+ */
+function PaymentSegments({
+  cantidadPagados,
+  cantidadPendientes,
+  cantidadVencidos,
+  accent,
+  muted,
+  urgent,
+}: {
+  cantidadPagados: number
+  cantidadPendientes: number
+  cantidadVencidos: number
+  accent: string
+  muted: string
+  urgent: string
+}) {
+  const total = cantidadPagados + cantidadPendientes
+  if (total === 0) return null
+
+  const noOverduePending = Math.max(0, cantidadPendientes - cantidadVencidos)
+  const segments: Array<{ key: string; color: string }> = []
+  for (let i = 0; i < cantidadPagados; i++) segments.push({ key: `p${i}`, color: accent })
+  for (let i = 0; i < noOverduePending; i++) segments.push({ key: `n${i}`, color: muted })
+  for (let i = 0; i < cantidadVencidos; i++) segments.push({ key: `v${i}`, color: urgent })
+
+  return (
+    <View style={styles.segmentsRow}>
+      {segments.map((seg) => (
+        <View
+          key={seg.key}
+          style={[styles.segment, { backgroundColor: seg.color }]}
+        />
+      ))}
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -724,30 +700,23 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     lineHeight: 22,
   },
-  progressTrack: {
-    position: 'relative',
-    height: 8,
-    borderRadius: 99,
-    overflow: 'visible',
+  // progressTrack / progressFill / progressDot styles eliminados —
+  // pertenecían a la ProgressBar lineal con pulse que fue reemplazada
+  // por PaymentSegments (styles arriba).
+  // Payment segments — visual replacement de ProgressBar viejo.
+  // Cada segment flex:1 ocupa proporcionalmente su espacio. Gap 3pt
+  // entre segments para que se lean como ticks discretos.
+  segmentsRow: {
+    flexDirection: 'row',
+    gap: 3,
+    height: 6,
+    marginTop: 6,
     marginBottom: 6,
   },
-  progressFill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '100%',
-    borderRadius: 99,
-    transformOrigin: 'left' as const,
-  },
-  progressDot: {
-    position: 'absolute',
-    top: -3,
-    left: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+  segment: {
+    flex: 1,
+    height: '100%',
+    borderRadius: 3,
   },
   progressFooter: {
     flexDirection: 'row',
