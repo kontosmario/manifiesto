@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   StyleSheet,
   View,
@@ -206,7 +206,16 @@ export function CardParticles({
   )
 }
 
-function Particle({
+/**
+ * Particle render se memoiza · cuando el parent (HomeHeroCard,
+ * FijosHeroCard, etc) re-renderea, los `spec` items vienen del array
+ * memoized de CardParticles, `wave` es el mismo SharedValue (identity
+ * estable) y `reduced` no cambia → memo() skip salta TODO el body
+ * incluyendo el `useAnimatedStyle` hook registration. Net: 12-14
+ * Particles × N re-renders del parent = miles de hooks evitados
+ * durante scroll.
+ */
+const Particle = memo(function Particle({
   spec,
   wave,
   reduced,
@@ -270,4 +279,4 @@ function Particle({
       ]}
     />
   )
-}
+})

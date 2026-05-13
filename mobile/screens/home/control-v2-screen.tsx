@@ -318,7 +318,12 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           contentContainerStyle={styles.scrollContent}
           onScroll={onTourScroll}
           onContentSizeChange={onTourContentSizeChange}
-          scrollEventThrottle={64}
+          // 16ms throttle = 1 evento/frame a 60fps · matchea Home,
+          // Gastos y Fijos. Antes era 64ms (1 evento cada ~4 frames)
+          // → el tour scroll-to-anchor lagueaba contra la posición
+          // real, causando misses cuando el user scrollea rápido y
+          // tap "scroll to section" del Asistente.
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.stack}>

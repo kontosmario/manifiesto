@@ -1,24 +1,48 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { useAppTheme } from '@/theme/theme-provider'
+import { motionSprings } from '@/lib/motion/tokens'
 
 /**
- * V2 modernized tab icon (post-2026-05-13 Liquid Glass nav refactor).
+ * V1 modernized tab icon.
  *
- * Active state visual model:
- *   · Sliding Liquid Glass pill detrás del icon+label · vive en
- *     `TabBarPillIndicator` a nivel tab bar (no por-celda) y se
- *     desliza entre tabs como el segmented control nativo iOS.
+ * Active state visual model (post-2026-05-04 nav audit · restaurado
+ * tras prueba de pill en 97387ac):
+ *   · No pill background behind the icon (dropped Material 2 pattern)
  *   · Icon color shifts from `textMuted` to `primary`
- *   · Label bolds via `tab-label.tsx`
+ *   · A 4×4 brand dot sits above the icon as the focus indicator
+ *     (Cash App / Revolut convention — calmer than a pill, owner pick)
+ *   · Label bolds via tab-label.tsx (separate component)
  *
- * Idle state es visualmente quiet — solo color del icon cambia,
- * sin ornament por-celda. El active-state ornament VIVE EN EL PILL,
- * no acá. Reemplazó al `focusDot` 4×4 Cash App style que estaba
- * separado por tab.
+ * Idle state is visually quiet — only the icon is colored, no
+ * decoration. Combined con `tab-label.tsx`, the active tab reads:
+ * primary-coloured icon + dot above + bold label.
  */
+
+function useFocusProgress(focused: boolean) {
+  const reduceMotion = useReducedMotion()
+  const progress = useSharedValue(focused ? 1 : 0)
+
+  useEffect(() => {
+    const target = focused ? 1 : 0
+    if (reduceMotion) {
+      progress.value = target
+      return
+    }
+    progress.value = withSpring(target, motionSprings.tabIcon)
+  }, [focused, progress, reduceMotion])
+
+  return progress
+}
 
 function TabIconFrame({
   children,
@@ -30,9 +54,27 @@ function TabIconFrame({
   showAlert?: boolean
 }) {
   const { theme } = useAppTheme()
+  const progress = useFocusProgress(focused)
+
+  // Active focus dot above the icon. Fades + scales in on focus, out
+  // on blur. Spring runs on UI thread vía Reanimated worklet.
+  const dotAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0, 1]) }],
+  }))
 
   return (
     <View style={styles.iconSlot}>
+      {/* V1 primary focus dot — the only active-state ornament. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.focusDot,
+          { backgroundColor: theme.colors.primary },
+          dotAnimatedStyle,
+        ]}
+      />
+
       <View style={styles.iconCenter}>{children}</View>
 
       {/* Unread alert (Control tab when advisor has new high-priority
@@ -92,6 +134,13 @@ const styles = StyleSheet.create({
   iconSlot: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  focusDot: {
+    position: 'absolute',
+    top: -7,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   iconCenter: {
     width: 28,

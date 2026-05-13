@@ -56,18 +56,35 @@ function GastoRowImpl({
         : darkenForLightBg(categoryColor),
     [categoryColor, theme.isDark],
   )
+  // Pre-compute the rgba strings once per categoryColor change. Antes
+  // se llamaban `hexAlpha(categoryColor, 0.14)` y `0.22` INLINE en el
+  // JSX × 2 lugares (icon tile + cat chip) = 4 string parses + 4
+  // rgba allocs por cada render del row. Con SectionList virtualizada
+  // y row recycling durante scroll, esos parses se acumulan en el
+  // hot path. Memoizado → 0 parses durante scroll, solo cuando
+  // categoryColor cambia.
+  const tile = useMemo(
+    () => ({
+      bg: hexAlpha(categoryColor, 0.14),
+      border: hexAlpha(categoryColor, 0.22),
+    }),
+    [categoryColor],
+  )
+  // También memoizamos los style arrays para que la identity sea
+  // estable across renders → permite que children (View) memo skip
+  // re-render cuando el row no cambió de props.
+  const iconTileStyle = useMemo(
+    () => [styles.iconTile, { backgroundColor: tile.bg, borderColor: tile.border }],
+    [tile.bg, tile.border],
+  )
+  const catChipStyle = useMemo(
+    () => [styles.catChip, { backgroundColor: tile.bg, borderColor: tile.border }],
+    [tile.bg, tile.border],
+  )
   return (
     <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
       <View style={styles.iconWrap}>
-        <View
-          style={[
-            styles.iconTile,
-            {
-              backgroundColor: hexAlpha(categoryColor, 0.14),
-              borderColor: hexAlpha(categoryColor, 0.22),
-            },
-          ]}
-        >
+        <View style={iconTileStyle}>
           <Text style={styles.iconText}>{icon}</Text>
         </View>
         <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
@@ -77,15 +94,7 @@ function GastoRowImpl({
           {title}
         </Text>
         <View style={styles.subRow}>
-          <View
-            style={[
-              styles.catChip,
-              {
-                backgroundColor: hexAlpha(categoryColor, 0.14),
-                borderColor: hexAlpha(categoryColor, 0.22),
-              },
-            ]}
-          >
+          <View style={catChipStyle}>
             <Text style={[styles.catChipText, { color: catChipTextColor }]} numberOfLines={1}>
               {categoryName}
             </Text>
