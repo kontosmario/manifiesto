@@ -1039,9 +1039,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
                   <SettingsRow
-                    helper="Composición final del refactor de Fijos: solo los componentes seleccionados (Titular + Próximos y los que vayan sumándose). Selector de 6 estados con cascade entrance completa."
+                    helper="🎯 Vista completa orquestada: los 6 winners integrados como reemplazo del fijos-v2-screen real. Header pulse + Hero Titular + SmartAlerts + Próximos + Lista smart-sorted con Calendar markers."
+                    icon="dashboard"
+                    label="Fijos · Vista completa"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-vista-completa' as never)}
+                  />
+                  <SettingsRow
+                    helper="Composición incremental (legacy del workflow): solo Titular + Próximos. La 'Vista completa' arriba es la fuente de verdad final."
                     icon="check-circle-outline"
-                    label="Fijos · Selección final"
+                    label="Fijos · Selección final (incremental)"
                     onPress={() => router.push('/(app)/settings/dev/fijos-seleccion-final' as never)}
                   />
                   <SettingsRow

@@ -756,7 +756,8 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | **8a-v2** | Tabs v2 · 5 variantes más intuitivas (E · Smart sort winner) | ✅ WINNER | Etapa 8a rejection |
 | **8b** | FijoRow · 5 variantes (D · Calendar marker winner) | ✅ WINNER | Etapa 8a-v2 |
 | **8c** | Category groups · ELIMINADO del refactor | ⚪ N/A | E · Smart sort hace que agrupar por categoría ya no aplique |
-| **9** | FijosHeader · 5 variantes (Editorial / Stat-led / Search / Health pulse / Utility bar) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 8b |
+| **9** | FijosHeader · 5 variantes (D · Health pulse winner) | ✅ WINNER | Etapa 8b |
+| **9.5** | **Vista completa orquestada** — los 6 winners integrados, simula reemplazo del fijos-v2-screen | ✅ DONE preview · awaiting owner | Etapa 9 |
 | **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
 | **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
 | **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
@@ -837,11 +838,64 @@ Reemplaza al `FijosHeader` actual (title + subtitle genérico "Todo lo recurrent
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Editorial título + dato vivo** | title big 34pt + sub state-aware · add button minimal · restraint | `header-a-editorial.tsx` | ✅ DONE |
-| **B · Stat-led** | eyebrow tiny + monto $ big (32pt) como hero · jerarquía invertida · add FAB filled | `header-b-stat-led.tsx` | ✅ DONE |
-| **C · Header + search inline** | title compacto + count · search bar always-on · add integrado al search | `header-c-search.tsx` | ✅ DONE |
-| **D · Health pulse** | breathe dot color-coded (lime/amber/peach/red) al lado del title · sub state-aware | `header-d-health-pulse.tsx` | ✅ DONE |
-| **E · Compact + utility bar** | title 24pt chico + row de 3 utility icons (search · filter · add primary) | `header-e-utility-bar.tsx` | ✅ DONE |
+| **A · Editorial título + dato vivo** | title big 34pt + sub state-aware · add button minimal · restraint | `header-a-editorial.tsx` | rejected |
+| **B · Stat-led** | eyebrow tiny + monto $ big (32pt) como hero · jerarquía invertida · add FAB filled | `header-b-stat-led.tsx` | rejected |
+| **C · Header + search inline** | title compacto + count · search bar always-on · add integrado al search | `header-c-search.tsx` | rejected |
+| **D · Health pulse** 🏆 | breathe dot color-coded (lime/amber/peach/red) al lado del title · sub state-aware | `header-d-health-pulse.tsx` | ✅ WINNER (2026-05-13) |
+| **E · Compact + utility bar** | title 24pt chico + row de 3 utility icons (search · filter · add primary) | `header-e-utility-bar.tsx` | rejected |
+
+---
+
+## 🎯 Vista completa orquestada (Etapa 9.5)
+
+Owner pidió ver los 6 winners orquestados como reemplazo del `fijos-v2-screen` real. Vive en `/settings/dev/fijos-vista-completa` (Settings → Dev → **"Fijos · Vista completa"**).
+
+### Compilación de winners
+
+| # | Sección | Winner | Archivo |
+|---|---|---|---|
+| 1 | Header bar | D · Health pulse | `header-d-health-pulse.tsx` |
+| 2 | Hero card | Titular (Iteration 2 · A) | `titular-hero-live.tsx` |
+| 3 | SmartAlerts | A · Editorial inline | `smart-alerts-editorial-live.tsx` |
+| 4 | Próximos | A · Editorial list | `proximos-live.tsx` |
+| 5 | Lista completa | E · Smart sort + D · Calendar marker rows | `full-list-live.tsx` (compone Smart sort sorting + RowDayMarker rows) |
+
+### Orden vertical en la screen
+
+```
+[ Header (Health pulse)                  ]
+      ↓
+[ Hero Titular (gradient forest card)    ]
+      ↓
+[ SmartAlerts Editorial inline (cream)   ]   "TODO EN ORDEN" o avisos
+      ↓
+[ Próximos Editorial list (cream)        ]   top 3 upcoming
+      ↓
+[ Lista completa smart-sorted (cream)    ]   todos los fijos con day markers
+```
+
+### Choreography de entrada
+
+Cada sección entra con `FadeInDown.duration(420).delay(N)` orquestado:
+- Header: 0ms (inmediato)
+- Hero: 120ms delay
+- SmartAlerts: 240ms delay
+- Próximos: 360ms delay
+- Lista completa: 480ms delay
+
+Dentro de cada sección, los `RiseRow` internos siguen su propia cascada (row-by-row 60-80ms stagger). El efecto final: cada card aparece de arriba a abajo, y dentro de cada una las filas se revelan en orden.
+
+### Componente nuevo · `full-list-live.tsx`
+
+Une los dos winners de "lista" en uno solo: la lógica de Smart sort (sin tabs, sin filtros, sorted por urgencia con breakdown chips informativos) + las rows usando RowDayMarker (día del mes en caja como héroe visual). Cada fila tiene su propio RiseRow staggered 40ms.
+
+### Lo que falta — Etapa 10 (Promote)
+
+Cuando se promote a producción, hay que:
+1. Reemplazar las 5 componentes reales (`FijosHeader`, `FijosHeroCard`, `FijosSmartAlerts`, `FijosUpcomingStrip`, `FijosTabs + FijoCategoryGroups + FijoRow`) con los winners
+2. Conectar el `state` mock con `useFijosController` real (los winners ya están diseñados para recibir las mismas props derivadas del aggregate)
+3. Decidir si la fusión Editorial-inline + Editorial-list (SmartAlerts + Próximos) se materializa o quedan separadas — pendiente desde Etapa 7
+4. Evaluar backend value-adds (V1-V5 del doc) prioritizados al equipo
 
 Helpers nuevos:
 - `fijo-list-sample.ts` — 10 ítems mock con statuses adaptables al state
@@ -921,3 +975,5 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-13** — Etapa 8b: 5 variantes de **FijoRow** shipped. Reemplaza al FijoRow actual (448 LOC con emoji icon, status chip pastel, sparkline condicional, expand panel denso). Variantes: **A · Editorial row** (dot + name + label + amount, restraint puro), **B · Sparkline-hero** (mini-curva SVG de tendencia precio como visual primario), **C · Accent stripe** (stripe vertical color cat 2.5pt + two-line typography), **D · Calendar marker** (día del mes en caja a la izquierda como héroe visual), **E · Status icon-led** (icon tile check/clock/warning bg-tinted, pattern tasklist). Cero emojis (todas MaterialIcons), cero nested cards, cero status chip pastel. Todas theme-aware. Nueva dev route `/settings/dev/fijos-row-variants` con state selector + las 5 stacked renderizando las mismas 10 filas.
 - **2026-05-13** — **Owner picks 🏆 FijoRow · D · Calendar marker**. Razón implícita: el día del mes como héroe visual responde a la pregunta "cuándo paga esto?" sin requerir abrir nada. Etapa 9 arranca.
 - **2026-05-13** — Etapa 9: 5 variantes de **FijosHeader** shipped. Reemplaza al header actual (title + subtitle genérico "Todo lo recurrente en un solo lugar" + add button con sonar halo). Variantes: **A · Editorial título + dato vivo** (title big + sub state-aware con count/monto/vencidos según estado), **B · Stat-led** (eyebrow + monto $ big como hero, jerarquía invertida + add FAB filled), **C · Header + search inline** (title compacto + search bar always-on + add integrado al search), **D · Health pulse** (breathe dot color-coded como semáforo de salud del ciclo · lime/amber/peach/red), **E · Compact + utility bar** (title chico + 3 utility icons search/filter/add). Todas state-aware, todas reemplazan el subtitle genérico con dato útil. Nueva dev route `/settings/dev/fijos-header-variants`.
+- **2026-05-13** — **Owner picks 🏆 Header · D · Health pulse**. El semáforo del breathe dot comunica salud del ciclo en 1 glance sin texto.
+- **2026-05-13** — Etapa 9.5: **Vista completa orquestada** shipped. Composición end-to-end de los 6 winners (Header Health pulse + Hero Titular + SmartAlerts Editorial + Próximos Editorial + Smart sort + Calendar marker rows) en el orden del screen real. Nuevo componente `full-list-live.tsx` que une Smart sort sorting + RowDayMarker rows. Choreography section-by-section vía `FadeInDown.delay(N)` (120ms stagger entre cards) + cascade row-by-row interna de cada componente. Nueva dev route `/settings/dev/fijos-vista-completa` (Settings → Dev → "Fijos · Vista completa"). Esta es la fuente de verdad final del refactor — la Selección final incremental anterior queda como legacy del workflow. Próximo paso: Etapa 10 = promote a producción con `useFijosController` real.
