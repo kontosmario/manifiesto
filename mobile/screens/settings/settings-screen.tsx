@@ -1057,6 +1057,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-smart-alerts-variants' as never)}
                   />
                   <SettingsRow
+                    helper="5 variantes de FijosTabs (filtros todos/pendientes/pagados). A · Underline, B · Stacked bar, C · Big counts, D · Chip dropdown, E · Numeric ledger. Theme-aware."
+                    icon="tab"
+                    label="Tabs · 5 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-tabs-variants' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"

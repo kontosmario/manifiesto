@@ -752,7 +752,8 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | **5** | Refactor header del Titular: out "MANIFIESTO/edición", in "GASTOS FIJOS · {ciclo} + pace state-aware" | ✅ DONE | Etapa 4 |
 | **6** | **Próximos · editorial spread** (reemplaza FijosUpcomingStrip viejo) | ✅ DONE | Etapa 5 |
 | **7** | SmartAlerts · 5 variantes (Editorial / Stack / Marquee / Pills / Banner) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 6 |
-| **8** | Tabs + Category groups · refactor con criterio Spec | 🔴 TO DO | Etapa 7 |
+| **8a** | Tabs · 5 variantes (Underline / Stacked / BigCounts / Dropdown / Ledger) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 7 |
+| **8b** | Category groups + FijoRow · refactor con criterio Spec | 🔴 NEXT | Etapa 8a |
 | **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
 | **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
 | **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
@@ -781,11 +782,25 @@ Reemplaza al `FijosSmartAlerts` actual (horizontal rail con emojis 📅📈⚖�
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Editorial inline** | rows tipográficas (gramática Próximos) · default seguro | `smart-alerts-editorial-live.tsx` | ✅ DONE |
-| **B · Stack of notes** | papers apilados con tilt · spring entrance · tactil | `smart-alerts-stack-live.tsx` | ✅ DONE |
-| **C · Marquee headline** | 1 a la vez · auto-rota 6s · tap navega · DNA Wrapped | `smart-alerts-marquee-live.tsx` | ✅ DONE |
-| **D · Compact pills** | pills horizontales · tap expande detalle inline | `smart-alerts-pills-live.tsx` | ✅ DONE |
-| **E · Editorial banner** | summary headline + bullets · "esta semana: X y Y" | `smart-alerts-banner-live.tsx` | ✅ DONE |
+| **A · Editorial inline** 🏆 | rows tipográficas (gramática Próximos) · default seguro | `smart-alerts-editorial-live.tsx` | ✅ WINNER (2026-05-13) · fusión con Próximos a evaluar al integrar |
+| **B · Stack of notes** | papers apilados con tilt · spring entrance · tactil | `smart-alerts-stack-live.tsx` | rejected |
+| **C · Marquee headline** | 1 a la vez · auto-rota 6s · tap navega · DNA Wrapped | `smart-alerts-marquee-live.tsx` | rejected |
+| **D · Compact pills** | pills horizontales · tap expande detalle inline | `smart-alerts-pills-live.tsx` | rejected |
+| **E · Editorial banner** | summary headline + bullets · "esta semana: X y Y" | `smart-alerts-banner-live.tsx` | rejected |
+
+### Tabs · 5 variantes a comparar (vivo en `/settings/dev/fijos-tabs-variants`)
+
+Reemplaza al `FijosTabs` actual (4 pills horizontales con solid-ink active state + count chip dentro).
+
+| Variante | Idea | Archivo | Estado |
+|---|---|---|---|
+| **A · Underline switch** | labels + underline animado · editorial NY Times restraint puro | `tabs-underline-live.tsx` | ✅ DONE |
+| **B · Stacked composition** | barra horizontal proporcional · tap segmento filtra | `tabs-stacked-bar-live.tsx` | ✅ DONE |
+| **C · Big counts** | count grande (28pt) es el héroe · label eyebrow tiny | `tabs-big-counts-live.tsx` | ✅ DONE |
+| **D · Chip dropdown** | un solo chip + expand inline · footprint mínimo | `tabs-chip-dropdown-live.tsx` | ✅ DONE |
+| **E · Numeric ledger** | 4 columnas con count + label + monto · top-indicator estilo lápiz | `tabs-ledger-live.tsx` | ✅ DONE |
+
+Bucket "zombi" legacy queda fuera de A/C/D (queda en summary aggregate por compat). E lo reemplaza con "vencidos" — más útil hoy.
 
 Datos para alimentar las 5 variantes: nuevo campo `alerts: { hikes, signals }` en `HERO_STATES`. Cobertura de estados:
 
@@ -853,3 +868,5 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-12** — 3 variantes NUEVAS de "Próximos a pagar" + theme-aware contrast: **B · Proximity bars** (ancho de barra encoded urgencia, fill L→R), **C · Timeline horizontal** (línea HOY → FIN CICLO con 3 dots scale-in spring), **D · Hierarchy asimétrico** (el próximo en grande, los otros 2 compactos). Helper `buildProximosPalette` centraliza la paleta theme-aware (urgency / urgencyStrong / success / trackBg / barNear/Mid/Far) con contraste verificado AA o AAA sobre creamCard en light Y dark. Las 4 variantes consumen el mismo helper — cualquier componente futuro debe hacerlo también. Nueva dev route `/settings/dev/fijos-proximos-variants` para comparar lado-a-lado.
 - **2026-05-13** — **Owner confirma 🏆 A · Editorial list** como Próximos canon. Ya estaba siendo renderizada en `Selección final` desde antes vía `ProximosLive`, no requirió cambio extra. Etapa 7 arranca.
 - **2026-05-13** — Etapa 7: 5 variantes de **SmartAlerts** shipped. Reemplaza al `FijosSmartAlerts` viejo (rail con emojis 📅📈⚖️). Variantes: **A · Editorial inline** (rows tipográficas same DNA como Próximos), **B · Stack of notes** (papers stacked con tilt + spring entrance), **C · Marquee headline** (1 a la vez auto-rota 6s con crossfade · DNA Wrapped puro), **D · Compact pills** (horizontal pills + tap expande detalle), **E · Editorial banner** (summary headline + bullets). Todas state-aware con los 6 estados canónicos, todas consumen `buildProximosPalette` para contraste theme-aware. HERO_STATES extendido con `alerts: { hikes, signals }`. Nueva dev route `/settings/dev/fijos-smart-alerts-variants`.
+- **2026-05-13** — **Owner picks 🏆 SmartAlerts · A · Editorial inline**. Quote: *"editorial inline funciona, ademas es posible fusionarla con editorial list"*. Decisión de fusión Editorial-inline + Editorial-list (Próximos) queda como item arquitectónico a evaluar al integrar a la screen real (Etapa 10).
+- **2026-05-13** — Etapa 8a: 5 variantes de **FijosTabs** shipped. Reemplaza al `FijosTabs` viejo (4 pills horizontales con count chip dentro + solid-ink active). Variantes: **A · Underline switch** (NY Times editorial), **B · Stacked composition** (barra proporcional, tap segmento filtra), **C · Big counts** (count 28pt dominante, label eyebrow), **D · Chip dropdown** (1 chip + expand inline, restraint min), **E · Numeric ledger** (4 cols count + label + monto, top-indicator lápiz). Todas state-aware, todas consumen `buildProximosPalette`. Bucket "zombi" legacy reemplazado por "vencidos" en E. Nueva dev route `/settings/dev/fijos-tabs-variants`.
