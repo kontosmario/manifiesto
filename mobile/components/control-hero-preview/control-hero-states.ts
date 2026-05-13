@@ -60,6 +60,19 @@ export interface ControlHeroState {
   proximoFijo?: { name: string; days: number; amount: number } | null
   /** Cantidad de fijos vencidos del ciclo actual. */
   fijosVencidos?: number
+
+  // Summary fields pulled from other Control detail cards · alimentan
+  // chips y el insight line de la hero. Todos optional para no romper
+  // los mocks heredados — adapter `control-v2-hero.tsx` los pasa.
+  /** Δ% proyectado vs mes pasado · drive del chip vs mes en footer. */
+  vsMesDeltaPct?: number
+  /** True cuando vamos mejor que el mes pasado. */
+  vsMesMejor?: boolean
+  /** Acumulado del ciclo (Alcancía) · drive del insight line cuando
+   *  el monto es relevante. */
+  vault?: number
+  /** Nombre del mejor DOW · drive del insight cuando hoy ES ese DOW. */
+  mejorDowName?: string | null
 }
 
 const HORA_F = (h: number, m: number): number => h + m / 60
@@ -96,6 +109,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Muy bien',
     proximoFijo: { name: 'Netflix', days: 3, amount: 12_500 },
     fijosVencidos: 0,
+    vsMesDeltaPct: -8,
+    vsMesMejor: true,
+    vault: 42_000,
+    mejorDowName: 'Mar',
   },
   {
     id: 'al_dia_tarde',
@@ -128,6 +145,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Muy bien',
     proximoFijo: { name: 'Netflix', days: 3, amount: 12_500 },
     fijosVencidos: 0,
+    vsMesDeltaPct: -4,
+    vsMesMejor: true,
+    vault: 38_000,
+    mejorDowName: 'Mar',
   },
   {
     id: 'adelantado',
@@ -160,6 +181,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Excelente',
     proximoFijo: { name: 'Spotify', days: 5, amount: 5_200 },
     fijosVencidos: 0,
+    vsMesDeltaPct: -16,
+    vsMesMejor: true,
+    vault: 86_000,
+    mejorDowName: 'Mié',
   },
   {
     id: 'atrasado_leve',
@@ -192,6 +217,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Bien',
     proximoFijo: { name: 'Cable', days: 6, amount: 22_400 },
     fijosVencidos: 0,
+    vsMesDeltaPct: 6,
+    vsMesMejor: false,
+    vault: 14_000,
+    mejorDowName: 'Lun',
   },
   {
     id: 'atrasado_critico',
@@ -224,6 +253,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Regular',
     proximoFijo: { name: 'Cable', days: 0, amount: 22_400 },
     fijosVencidos: 1,
+    vsMesDeltaPct: 22,
+    vsMesMejor: false,
+    vault: 6_000,
+    mejorDowName: 'Jue',
   },
   {
     id: 'no_alcanza',
@@ -256,6 +289,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Atención',
     proximoFijo: { name: 'Cable', days: 0, amount: 22_400 },
     fijosVencidos: 2,
+    vsMesDeltaPct: 38,
+    vsMesMejor: false,
+    vault: 0,
+    mejorDowName: 'Lun',
   },
   {
     id: 'exhausto',
@@ -288,6 +325,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Atención',
     proximoFijo: null,
     fijosVencidos: 3,
+    vsMesDeltaPct: 64,
+    vsMesMejor: false,
+    vault: 0,
+    mejorDowName: 'Mar',
   },
   {
     id: 'inicio_ciclo',
@@ -320,5 +361,9 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     scoreLabel: 'Bien',
     proximoFijo: { name: 'Alquiler', days: 3, amount: 145_000 },
     fijosVencidos: 0,
+    vsMesDeltaPct: 0,
+    vsMesMejor: true,
+    vault: 5_000,
+    mejorDowName: null,
   },
 ]

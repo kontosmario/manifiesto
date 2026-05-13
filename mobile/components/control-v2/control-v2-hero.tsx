@@ -63,6 +63,12 @@ function ControlV2HeroImpl({
       dailyGoalAmount,
       score: view.score,
       scoreLabel: view.scoreLabel,
+      // Summary signals · alimentan chips e insight line del hero,
+      // pulled from las cards de detalle (Alcancía · VsMes · Patrón).
+      vsMesDeltaPct: view.vsMesDeltaPct,
+      vsMesMejor: view.vsMesMejor,
+      vault: view.vault,
+      mejorDowName: view.mejorDow?.name ?? null,
     }),
     [data, view, dailyGoalAmount, dayLabel],
   )

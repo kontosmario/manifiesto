@@ -56,14 +56,22 @@ export function ControlHeroTitular({ state }: Props) {
         delayMs={1000}
         periodMs={4200}
       />
-      <CardParticles count={12} accentColor={authTokens.peach} />
+      <CardParticles count={14} accentColor={authTokens.peach} />
 
       <RiseRow delay={0}>
         <View style={styles.headerRow}>
           <BreatheDot size={7} color={tone} glow={tone} />
-          <Text style={[styles.eyebrow, { color: tone }]}>
+          <Text style={[styles.eyebrow, { color: tone }]} numberOfLines={1}>
             {state.diaLabel}
           </Text>
+          <View style={styles.headerSpacer} />
+          {state.dailyGoalAmount != null ? (
+            <MetaChip
+              goal={state.dailyGoalAmount}
+              gastoHoy={state.gastoHoy}
+              palette={palette}
+            />
+          ) : null}
         </View>
       </RiseRow>
 
@@ -103,20 +111,104 @@ export function ControlHeroTitular({ state }: Props) {
             color={state.racha > 0 ? palette.positive : theme.colors.heroMuted2}
           />
           <Divider />
+          {state.vsMesDeltaPct != null ? (
+            <FooterStat
+              label="vs mes"
+              value={formatDeltaPct(state.vsMesDeltaPct)}
+              color={
+                state.vsMesMejor === true
+                  ? palette.positive
+                  : state.vsMesMejor === false
+                    ? palette.urgent
+                    : theme.colors.heroAccent
+              }
+            />
+          ) : (
+            <FooterStat
+              label="del cupo"
+              value={`${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`}
+              color={
+                state.gastoHoy > state.cupoDiario ? palette.urgent : theme.colors.heroAccent
+              }
+            />
+          )}
+          <Divider />
           <FooterStat
             label="al cobro"
             value={`${state.proximoSueldoEnDias}d`}
             color={theme.colors.heroText}
           />
-          <Divider />
-          <FooterStat
-            label="del cupo"
-            value={`${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`}
-            color={state.gastoHoy > state.cupoDiario ? palette.urgent : theme.colors.heroAccent}
-          />
         </View>
       </RiseRow>
+
+      {renderInsight(state) ? (
+        <RiseRow delay={480}>
+          <Text style={[styles.insight, { color: theme.colors.heroMuted2 }]} numberOfLines={1}>
+            {renderInsight(state)}
+          </Text>
+        </RiseRow>
+      ) : null}
     </LinearGradient>
+  )
+}
+
+/**
+ * Insight line · una sola pista state-aware que invita a explorar las
+ * cards de detalle abajo. Editorial restraint: solo aparece cuando
+ * agrega valor y NO cuando el state ya es urgente (no diluir).
+ */
+function renderInsight(state: ControlHeroState): string | null {
+  if (state.alreadyExhausted) return null
+  if (state.alcanzaElMes === false) return null
+  const vault = state.vault ?? 0
+  if (vault >= state.cupoDiario) {
+    return `Acumulaste ${formatMoneyShort(vault)} este ciclo`
+  }
+  return null
+}
+
+function formatDeltaPct(pct: number): string {
+  const rounded = Math.round(pct)
+  if (rounded === 0) return '='
+  return rounded > 0 ? `+${rounded}%` : `${rounded}%`
+}
+
+function formatMoneyShort(n: number): string {
+  const abs = Math.abs(n)
+  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (abs >= 10_000) return `$${Math.round(n / 1_000)}k`
+  return `$${Math.round(n).toLocaleString('es-AR')}`
+}
+
+/**
+ * META chip · pill discreta que muestra la meta diaria auto-impuesta
+ * cuando el user opted into el goal. Color encoded: lime mientras
+ * estás bajo la meta, peach cuando la pasaste.
+ */
+function MetaChip({
+  goal,
+  gastoHoy,
+  palette,
+}: {
+  goal: number
+  gastoHoy: number
+  palette: ReturnType<typeof buildControlHeroPalette>
+}) {
+  const over = gastoHoy > goal
+  const tint = over ? palette.urgent : palette.positive
+  return (
+    <View
+      style={[
+        styles.metaChip,
+        {
+          borderColor: `${tint}55`,
+          backgroundColor: `${tint}14`,
+        },
+      ]}
+    >
+      <Text style={[styles.metaChipLabel, { color: tint }]}>META</Text>
+      <Text style={[styles.metaChipValue, { color: tint }]}>{formatMoneyShort(goal)}</Text>
+    </View>
   )
 }
 
@@ -195,7 +287,7 @@ function RuleScale({ color, delay }: { color: string; delay: number }) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
-    padding: 20,
+    padding: 22,
     overflow: 'hidden',
     borderWidth: 1,
   },
@@ -203,6 +295,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  headerSpacer: { flex: 1 },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  metaChipLabel: {
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  metaChipValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: -0.1,
+    fontVariant: ['tabular-nums'],
+  },
+  insight: {
+    marginTop: 12,
+    fontSize: 11,
+    fontStyle: 'italic',
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   eyebrow: {
     fontSize: 11,
@@ -239,10 +359,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   numberValue: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: '900',
-    letterSpacing: -1.4,
-    lineHeight: 40,
+    letterSpacing: -1.6,
+    lineHeight: 44,
     fontVariant: ['tabular-nums'],
   },
   footerRow: {
