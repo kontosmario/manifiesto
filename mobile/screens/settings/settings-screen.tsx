@@ -1048,9 +1048,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="6 variantes del nuevo hero card de Control · A·Titular B·Velocímetro C·Termómetro D·Coach E·Periódico F·Reloj. Particles + state-aware + theme-aware. Owner pick."
                     icon="dashboard"
-                    isLast
                     label="Control · Hero · 6 variantes"
                     onPress={() => router.push('/(app)/settings/dev/control-hero-variants' as never)}
+                  />
+                  <SettingsRow
+                    helper="6 variantes RADICALES del Home hero card · A·Termómetro B·Reloj de Sol C·Diario D·Cofre E·Pulso F·Manifiesto. Cada una explora una dirección estética distinta de la del Fijos/Control template."
+                    icon="auto-awesome"
+                    isLast
+                    label="Home · Hero · 6 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/home-hero-variants' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
