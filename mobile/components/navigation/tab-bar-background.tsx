@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
+import { TabBarPillIndicator } from '@/components/navigation/tab-bar-pill-indicator'
 import { useAppTheme } from '@/theme/theme-provider'
 import { withAlpha } from '@/theme/color-utils'
 import { brand, radii } from '@/theme/palette'
@@ -69,6 +70,13 @@ export function TabBarBackground() {
           ]}
         />
       ) : null}
+
+      {/* Sliding Liquid Glass pill detrás del active tab. Mounted acá
+          (no en cada TabBarIcon) porque vive a nivel tab bar, no a
+          nivel celda — el pill SE DESLIZA entre celdas, persiste
+          across tab changes. Animado vía `motionSprings.tabShift`
+          (mismo rhythm que el `shift` content animation). */}
+      <TabBarPillIndicator />
 
       {/* Hairline brand accent on the top edge — Manifiesto signature line */}
       <LinearGradient
