@@ -762,9 +762,34 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | # | Componente | Reemplaza a | Archivo preview | Estado |
 |---|---|---|---|---|
 | 1 | Hero · El Titular | `FijosHeroCard` | `mobile/components/fijos-hero-preview/titular-hero-live.tsx` | ✅ WINNER |
-| 2 | Próximos · Editorial | `FijosUpcomingStrip` | `mobile/components/fijos-hero-preview/proximos-live.tsx` | ✅ DONE (2026-05-12) |
+| 2 | Próximos · Editorial (canon) | `FijosUpcomingStrip` | `mobile/components/fijos-hero-preview/proximos-live.tsx` | ✅ WINNER por defecto · 3 alternativas más a comparar |
 | 3 | _por definir_ | `FijosSmartAlerts` | _siguiente etapa_ | 🔴 |
 | 4 | _por definir_ | `FijosTabs` + `FijoCategoryGroups` | _siguiente etapa_ | 🔴 |
+
+### Próximos · 4 variantes a comparar (vivo en `/settings/dev/fijos-proximos-variants`)
+
+| Variante | Idea | Archivo | Estado |
+|---|---|---|---|
+| **A · Editorial list** | rows tipográficas con dividers thin · canon default | `proximos-live.tsx` | ✅ DONE |
+| **B · Proximity bars** | ancho de barra = urgencia · barra anima fill L→R | `proximos-bars-live.tsx` | ✅ DONE |
+| **C · Timeline horizontal** | línea HOY → FIN CICLO · 3 dots scale-in spring | `proximos-timeline-live.tsx` | ✅ DONE |
+| **D · Hierarchy asimétrico** | el próximo en grande, los otros 2 referencia compacta | `proximos-hierarchy-live.tsx` | ✅ DONE |
+
+### Theme-aware palette · contraste verificado
+
+Helper centralizado en `mobile/components/fijos-hero-preview/proximos-colors.ts` (`buildProximosPalette(theme)`). Las 4 variantes consumen la misma paleta:
+
+| Token | Light (sobre creamCard ~#FFFDF6) | Dark (sobre creamCard ~#2C3530) | Uso |
+|---|---|---|---|
+| `urgency` | `#B84014` (5.38:1 AA) | `#F2A78C` (6.8:1 AA) | vencidos label, HOY, hike badge, amount urgente |
+| `urgencyStrong` | `#8E2A0C` (7.8:1 AAA) | `#FFB59E` (8.1:1 AAA) | VENCIÓ HACE Xd label, hero amount overdue |
+| `urgencyBadgeBg` | `rgba(184,64,20,0.06)` | `rgba(242,167,140,0.12)` | hike badge bg |
+| `urgencyBadgeBorder` | `rgba(184,64,20,0.35)` | `rgba(242,167,140,0.45)` | hike badge border |
+| `success` | `#1F590D` (8.4:1 AAA) | `#A6EF8F` (7.4:1 AAA) | all-paid check, on-pace, timeline fill |
+| `trackBg` | `rgba(18,33,26,0.08)` | `rgba(242,234,211,0.10)` | bar track inactivo, timeline track |
+| `barNear / barMid / barFar` | red `#B84014` / amber `#C8841A` / green `#1F590D` | peach `#F2A78C` / amber `#F3BA57` / lime `#A6EF8F` | bar fill por proximidad |
+
+Cualquier componente futuro que necesite urgency / success / track debe usar este helper en lugar de hex literals.
 
 ---
 
@@ -800,3 +825,4 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-12** — Etapa 6 cerrada: **Próximos · Editorial** shipped (`proximos-live.tsx`). Reemplaza al `FijosUpcomingStrip` viejo (3 cards anidadas con emojis). Nuevo lenguaje: list editorial con eyebrow + rule + 3 rows tipográficas. State-aware (empty / all paid / vencidos / default). Badge inline `↑ +X%` para hikes. Compone bien con el Titular.
 - **2026-05-12** — Nueva dev route `/settings/dev/fijos-seleccion-final` con la composición de componentes seleccionados. Esta screen es la fuente de verdad del refactor — a medida que avanzan etapas, se suman componentes acá.
 - **2026-05-12** — Doc actualizado: criterio ganador formalizado como **SPEC reusable** (7 reglas: editorial Wrapped DNA, state-aware copy obligatoria, restraint, header pattern uniforme, motion language, color usage, layout & spacing). Aplicar a todos los componentes próximos del refactor (Fijos + otras pantallas).
+- **2026-05-12** — 3 variantes NUEVAS de "Próximos a pagar" + theme-aware contrast: **B · Proximity bars** (ancho de barra encoded urgencia, fill L→R), **C · Timeline horizontal** (línea HOY → FIN CICLO con 3 dots scale-in spring), **D · Hierarchy asimétrico** (el próximo en grande, los otros 2 compactos). Helper `buildProximosPalette` centraliza la paleta theme-aware (urgency / urgencyStrong / success / trackBg / barNear/Mid/Far) con contraste verificado AA o AAA sobre creamCard en light Y dark. Las 4 variantes consumen el mismo helper — cualquier componente futuro debe hacerlo también. Nueva dev route `/settings/dev/fijos-proximos-variants` para comparar lado-a-lado.

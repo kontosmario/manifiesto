@@ -1045,6 +1045,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-seleccion-final' as never)}
                   />
                   <SettingsRow
+                    helper="4 variantes de 'Próximos a pagar' lado-a-lado: A · Editorial (canon), B · Bars (proximity), C · Timeline, D · Hierarchy. Theme-aware contraste light + dark."
+                    icon="view-agenda"
+                    label="Próximos · 4 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-proximos-variants' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"

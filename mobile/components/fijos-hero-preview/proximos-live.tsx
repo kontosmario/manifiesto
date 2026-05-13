@@ -13,6 +13,7 @@ import { formatMoney } from '@/utils/money'
 import { motionEasings } from '@/lib/motion/tokens'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { buildProximosPalette } from './proximos-colors'
 import type { HeroState } from './hero-states'
 
 const ENTER = motionEasings.enterSmooth
@@ -77,6 +78,7 @@ export function ProximosLive({ state }: ProximosLiveProps) {
 
   // All-paid state — nothing upcoming this cycle
   if (state.isAllPaid) {
+    const palette = buildProximosPalette(theme)
     return (
       <View
         style={[
@@ -100,7 +102,7 @@ export function ProximosLive({ state }: ProximosLiveProps) {
         <RuleScale color={theme.colors.text} delay={80} />
         <RiseRow delay={160}>
           <View style={styles.allPaidRow}>
-            <MaterialIcons name="check-circle" size={18} color={theme.colors.heroAccent} />
+            <MaterialIcons name="check-circle" size={18} color={palette.success} />
             <Text style={[styles.allPaidText, { color: theme.colors.text }]}>
               No queda nada por pagar este ciclo.
             </Text>
@@ -172,14 +174,15 @@ function ProximoRow({
   delay: number
 }) {
   const { theme } = useAppTheme()
+  const palette = buildProximosPalette(theme)
   const press = usePressScale({ pressedScale: 0.98 })
 
   const labelText = formatLabel(item.days, item.isOverdue)
   const isUrgent = item.isOverdue || item.days <= 1
   const labelColor = item.isOverdue
-    ? '#C8341A'
+    ? palette.urgencyStrong
     : item.days <= 1
-    ? '#B84014'
+    ? palette.urgency
     : theme.colors.textMuted
 
   return (
@@ -210,9 +213,25 @@ function ProximoRow({
                 {item.name}
               </Text>
               {item.hikeDeltaPct ? (
-                <View style={[styles.hikeBadge, { borderColor: '#B84014' }]}>
-                  <MaterialIcons name="trending-up" size={10} color="#B84014" />
-                  <Text style={styles.hikeBadgeText}>+{item.hikeDeltaPct}%</Text>
+                <View
+                  style={[
+                    styles.hikeBadge,
+                    {
+                      borderColor: palette.urgencyBadgeBorder,
+                      backgroundColor: palette.urgencyBadgeBg,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="trending-up"
+                    size={10}
+                    color={palette.urgency}
+                  />
+                  <Text
+                    style={[styles.hikeBadgeText, { color: palette.urgency }]}
+                  >
+                    +{item.hikeDeltaPct}%
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -222,7 +241,7 @@ function ProximoRow({
             <Text
               style={[
                 styles.rowAmount,
-                { color: isUrgent ? '#B84014' : theme.colors.text },
+                { color: isUrgent ? palette.urgency : theme.colors.text },
               ]}
             >
               {formatMoney(item.amount)}
@@ -376,7 +395,6 @@ const styles = StyleSheet.create({
   hikeBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#B84014',
     fontVariant: ['tabular-nums'],
   },
   rowRight: {
