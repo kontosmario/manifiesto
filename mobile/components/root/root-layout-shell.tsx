@@ -59,31 +59,7 @@ export function RootLayoutShell() {
       <AppProviders>
         <ThemedRoot>
           <NotificationRouterBridge />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
-              animationMatchesGesture: true,
-              freezeOnBlur: true,
-              fullScreenGestureEnabled: false,
-              gestureEnabled: true,
-            }}
-          >
-            {/* `index` and `auth/callback` are NEVER user-visible
-                in steady state — index is `<AppEntryGate />` which
-                redirects on every mount, and auth/callback is the
-                OAuth landing that hands off immediately. We always
-                navigate to/from these screens with the warm splash
-                overlay covering the whole window. Animating their
-                push transitions is wasted UI-thread work that
-                contests the splash's halo pulse + breath worklets,
-                and the user perceives it as a frame stutter ~1-2s
-                into login (right when these transitions fire). The
-                navigations are instant now; the splash does all the
-                visual transition work on top. */}
-            <Stack.Screen name="index" options={{ animation: 'none' }} />
-            <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
-          </Stack>
+          <ThemedRootStack />
 
           {/*
             Global connectivity watcher: when NetInfo reports the
@@ -144,6 +120,48 @@ function ThemedRoot({ children }: PropsWithChildren) {
     <View style={[styles.root, { backgroundColor: theme.colors.canvas }]}>
       {children}
     </View>
+  )
+}
+
+/**
+ * Outer router `<Stack>` con `contentStyle` theme-aware. Tiene que ser
+ * un componente separado porque necesita `useAppTheme()` (que requiere
+ * estar dentro de `<AppProviders>`/`<AppThemeProvider>`).
+ *
+ * El `contentStyle.backgroundColor` cierra el white flash que se notaba
+ * en dark mode: native-stack default es blanco en el screen content
+ * container, y durante el slide entre dos screens hay un frame donde
+ * el container default se cuela como flash visible. Forest deep
+ * (#12211A) en dark mode · cream (#F4F2ED) en light. Match con el
+ * outer ThemedRoot para que NO haya seam entre capas.
+ */
+function ThemedRootStack() {
+  const { theme } = useAppTheme()
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+        animationMatchesGesture: true,
+        freezeOnBlur: true,
+        fullScreenGestureEnabled: false,
+        gestureEnabled: true,
+        contentStyle: { backgroundColor: theme.colors.canvas },
+      }}
+    >
+      {/* `index` and `auth/callback` are NEVER user-visible in steady
+          state — index is `<AppEntryGate />` which redirects on every
+          mount, and auth/callback is the OAuth landing that hands off
+          immediately. We always navigate to/from these screens with the
+          warm splash overlay covering the whole window. Animating their
+          push transitions is wasted UI-thread work that contests the
+          splash's halo pulse + breath worklets, and the user perceives
+          it as a frame stutter ~1-2s into login (right when these
+          transitions fire). The navigations are instant now; the splash
+          does all the visual transition work on top. */}
+      <Stack.Screen name="index" options={{ animation: 'none' }} />
+      <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
+    </Stack>
   )
 }
 

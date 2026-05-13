@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { Stack } from 'expo-router'
+import { useAppTheme } from '@/theme/theme-provider'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { AchievementUnlockBridge } from '@/components/bridges/achievement-unlock-bridge'
 import { CycleWrappedBridge } from '@/components/bridges/cycle-wrapped-bridge'
@@ -63,6 +64,11 @@ const MODAL_ANIMATION =
   Platform.OS === 'ios' ? ('default' as const) : ('slide_from_bottom' as const)
 
 export function AppStackShell() {
+  // Theme se lee acá para inyectar `contentStyle.backgroundColor` en el
+  // Stack — cierra el white flash entre push/pop screens en dark mode
+  // (native-stack default es blanco en el screen content container,
+  // visible durante el slide).
+  const { theme } = useAppTheme()
   // Fire the single snapshot RPC at the app-shell level, before any
   // screen or bridge mounts. The RPC seeds every downstream cache
   // (profile, family, expenses, fixed_expenses, family_finance, etc.),
@@ -165,6 +171,16 @@ export function AppStackShell() {
           freezeOnBlur: true,
           fullScreenGestureEnabled: false,
           gestureEnabled: true,
+          // Closes the white flash that was visible during stack
+          // push/pop in dark mode. Native-stack's screen content
+          // container defaults to white on iOS/Android; during the
+          // slide animation, the parent (this content container) is
+          // revealed for a frame as the outgoing screen exits and the
+          // incoming screen enters. Without an explicit theme-aware
+          // background, that frame shows white-on-dark on dark theme.
+          // Canvas match con `ThemedRoot` outer para que NO haya seam
+          // entre capas (root → stack → screen).
+          contentStyle: { backgroundColor: theme.colors.canvas },
         }}
       >
         {/* The `(tabs)` group is the first screen pushed onto this

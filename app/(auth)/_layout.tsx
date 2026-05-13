@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router'
+import { useAppTheme } from '@/theme/theme-provider'
 
 export default function AuthLayout() {
+  const { theme } = useAppTheme()
   return (
     <Stack
       screenOptions={{
@@ -16,6 +18,11 @@ export default function AuthLayout() {
         freezeOnBlur: true,
         fullScreenGestureEnabled: false,
         gestureEnabled: true,
+        // Sin contentStyle theme-aware, native-stack default (blanco)
+        // se cuela entre dos auth screens durante el fade y se nota como
+        // flash blanco en dark mode. Canvas match para que el seam
+        // desaparezca.
+        contentStyle: { backgroundColor: theme.colors.canvas },
       }}
     />
   )
