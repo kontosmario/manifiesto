@@ -1,9 +1,96 @@
 # Fijos · Refactor visual por etapas
 
-**Fecha**: 2026-05-12
+**Fecha de inicio**: 2026-05-12
+**Fecha de cierre**: 2026-05-13
 **Owner**: Mario
 **Skills aplicadas**: `/impeccable` · `/emil-design-eng` · `/ui-ux-pro-max` · `/frontend-design`
-**Alcance Etapa 1**: HERO CARD únicamente. Las siguientes etapas (alerts / upcoming strip / tabs / category groups / fijo row / header) se planifican después de que el hero quede confirmado.
+
+---
+
+## ✅ Estado final · TL;DR
+
+### Veredicto
+
+El refactor **no fue una reescritura** — fue una serie de **mejoras quirúrgicas sobre V2** después de que un intento de reescritura desde cero (V3) fuera rechazado y revertido.
+
+### Lo que está vivo en producción (commit `b2f2fe7`)
+
+Route: `app/(app)/(tabs)/fixed-expenses.tsx` → `FijosV2Screen`. Los componentes que renderean dentro son los siguientes (todos `mobile/components/fijos/`):
+
+| Componente | Estado | Mejoras |
+|---|---|---|
+| `fijos-header.tsx` | sin cambios | preservado del original |
+| `fijos-hero-card.tsx` | **refactor profundo** | eyebrow = cycle expandido · CycleRouteLine subió al slot del subtitle · PaymentSegments reemplazan ProgressBar lineal · perforación tipo boarding pass · urgency ring pulse · breathe dot color-coded · badges "VENCIDOS"/"AL DÍA" · shine + particles preservados |
+| `fijos-proximos-card.tsx` (NUEVO) | **fusión SmartAlerts + UpcomingStrip** | 3 próximos editorial + sub-section AVISOS inline · cero nested cards · cero emojis |
+| `fijos-tabs.tsx` | **refactor interno** | reusa `GastosFilterPill` (unifica filtros con Gastos) · colores semánticos por bucket |
+| `fijo-row.tsx` | **refactor sub-line** | status overlay mini-badge en el iconTile · catChip + dueLabel pattern de GastoRow · "Pagó día X" → "Pagado · día X" · expand actions preservados |
+| `fijos-smart-alerts.tsx` | **DESREFERENCIADO** | reemplazado por ProximosCard · queda en código para cleanup |
+| `fijos-upcoming-strip.tsx` | **DESREFERENCIADO** | reemplazado por ProximosCard · queda en código para cleanup |
+
+### Lo que sobrevive como dead code (cleanup pendiente)
+
+- `mobile/screens/home/fijos-v3-screen.tsx` + `mobile/features/fijos/adapt-controller-to-hero-state.ts` (V3 promote rechazado, rollback hecho)
+- `mobile/components/fijos-hero-preview/` (~30 archivos: variants experimentales — Titular live, Pasaje, Manifiesto, ProximosLive, RowDayMarker, Stack, Marquee, Pills, Banner, TabsV2*, Headers A/B/C/D/E, fijo-list-sample, etc)
+- 12 dev routes preview en `app/(app)/settings/dev/fijos-*` + sus screen counterparts en `mobile/screens/dev/`
+- `mobile/components/fijos/fijos-smart-alerts.tsx` + `mobile/components/fijos/fijos-upcoming-strip.tsx` (reemplazados por ProximosCard pero no eliminados)
+
+Total dead code aproximado: **~5000-6000 LOC**. Mantenido vivo porque las dev routes son útiles para análisis posterior y referencia futura. Cleanup pasa cuando el owner confirme.
+
+### Cómo se llegó acá · resumen del workflow
+
+1. **Etapas 0-9** · exploración masiva por variantes (Hero · 3+3 direcciones, Próximos · 4 variantes, SmartAlerts · 5, Tabs v1 · 5, Tabs v2 · 5, FijoRow · 5, Header · 5). Owner picked winners + dev preview routes creadas para cada.
+2. **Etapa 9.5** · vista completa orquestada con los 6 winners (`FijosVistaCompletaScreen`).
+3. **Etapa 9.5b** · correctiva por feedback "hemos perdido mucho" (faltaban animaciones del hero, fusión SmartAlerts+Próximos, acciones por row, grupos por categoría).
+4. **Etapa 10** · V3 promoted a producción con rollback inmediato disponible.
+5. **V3 rollback** · *"rollback, no me gusto"*. V3 distante del producto real. Decisión: mejoras quirúrgicas sobre V2, no reescritura.
+6. **Etapa 11** · 5 mejoras quirúrgicas a V2 (Hero state-aware + ProximosCard fused + Tabs unificado + FijoRow patterns + animaciones únicas).
+7. **Etapa 11b** · fusión Hero × Boarding pass aesthetic (CycleRouteLine + perforación).
+8. **Etapa 11c** · impeccable polish (8 fixes de wording + redundancias).
+9. **Etapa 11d** · jerarquía del hero reordenada (eyebrow = ciclo · route line subida · PaymentSegments reemplazan ProgressBar).
+
+### Estructura final visual del hero
+
+```
+┌────────────────────────────────────────────────────────┐
+│ ● 20 ABRIL → 20 MAYO          [AL DÍA / 2 VENCIDOS]    │  ← eyebrow = cycle
+│                                                        │
+│ ABR   ┄━━━━━━●━━━━━━━━━━━┄┄┄┄    MAY                   │  ← CycleRouteLine
+│ 05         HOY · DÍA 12                          05    │
+│                                                        │
+│ Ya pagaste              Te falta pagar                 │
+│ $245.000                $180.000                       │
+│ 5 pagados               5 pendientes                   │
+│                                                        │
+│ ▓▓▓▓▓ ▓▓▓▓▓ ░░░░░ ░░░░░ ░░░░░ ▒▒▒▒▒ ▒▒▒▒▒             │  ← PaymentSegments
+│ 57% pagado                       Total $425.000        │
+│                                                        │
+│╳─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─╳    │  ← perforation (boarding stub)
+│                                                        │
+│ DINERO LIBRE         de tu sueldo / 42% / va a fijos   │
+└────────────────────────────────────────────────────────┘
+```
+
+Plus: gradient forest + ShineOverlay + CardParticles + urgency ring pulse cuando hay vencidos.
+
+### Decisiones finales del producto (no del diseño)
+
+- **Lista por categorías**: el listado V2 sigue agrupando por categoría (FijoCategoryGroups + FijoRow). Smart sort fue rechazado como paradigma de organización en V3.
+- **Tabs (todos / pendientes / pagados / zombi)**: el filtro por status sigue presente, ahora con GastosFilterPill internamente.
+- **Acciones por row**: tap-expand de FijoRow con Pagar / Editar / Eliminar (preserved del V2 original).
+- **Swipe-to-delete**: preserved.
+- **Cycle label**: la abreviación del controller (`5 abr → 5 may`) se expande client-side en el hero a `20 ABRIL → 20 MAYO`.
+
+### Vocabulario unificado (Etapa 11c · impeccable)
+
+| Concepto | Canon | Surface |
+|---|---|---|
+| Status bucket pagado | "pagados" | tab, hero montoSub |
+| Status bucket por pagar | "pendientes" | tab, hero montoSub |
+| Status row paid | "Pagado · día X" | FijoRow dueLabel |
+| Status row overdue | "Vencido hace Xd" | FijoRow dueLabel |
+| Estado urgente badge | "VENCIDOS" | hero badge |
+| Estado positivo badge | "AL DÍA" | hero badge |
+| Cycle ya implicit | (sin "ESTE MES" / "este ciclo") | bottom row, empty states |
 
 ---
 
@@ -125,9 +212,11 @@ Mapeo exhaustivo de cada prop / data path que el hero usa **hoy**:
 
 ---
 
-## 🏆 WINNER · Iteration 2 · A — El Titular
+## 🏆 WINNER · Iteration 2 · A — El Titular (no shipped · partial survive)
 
 **Picked**: 2026-05-12 por owner. Quote: *"Ganador por excelencia, HERO - EL TITULAR, directo sencillo, completo y bastante informativo. Todo lo que buscamos."*
+
+> **Status final**: el Titular **no llegó a producción** porque vivía dentro de V3 y V3 fue revertido. Sin embargo, **varias ideas del Titular sobreviven en el V2 hero pulido**: state-aware copy, eyebrow con cycle expandido, badges "VENCIDOS"/"AL DÍA", urgency ring pulse, CycleRouteLine fusion (boarding pass). Lo que NO sobrevivió: el lenguaje de headline editorial (`Te quedan 5 fijos por pagar.` 34pt 900). V2 mantiene la jerarquía monto-grande original.
 
 ### Ajustes pedidos sobre el ganador
 
@@ -740,44 +829,62 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 
 ---
 
-## 🚦 Roadmap por etapas
+## 🚦 Roadmap por etapas · cronología completa
 
-| Etapa | Alcance | Estado | Dependencias |
-|---|---|---|---|
-| **0** | Análisis + propuesta de direcciones | ✅ DONE | — |
-| **1** | Iteration 1 (Ledger / Dial / Grid) — mocks estáticos | ✅ REJECTED por owner | — |
-| **2** | Iteration 2 (Titular / Pasaje / Manifiesto) — mocks estáticos | ✅ DONE | — |
-| **3** | Live preview con state explorer (6 estados × 3 variantes con motion) | ✅ DONE | Etapa 2 |
-| **4** | Owner picks Iteration 2 · A · El Titular | ✅ WINNER | Etapa 3 |
-| **5** | Refactor header del Titular: out "MANIFIESTO/edición", in "GASTOS FIJOS · {ciclo} + pace state-aware" | ✅ DONE | Etapa 4 |
-| **6** | **Próximos · editorial spread** (reemplaza FijosUpcomingStrip viejo) | ✅ DONE | Etapa 5 |
-| **7** | SmartAlerts · 5 variantes (Editorial / Stack / Marquee / Pills / Banner) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 6 |
-| **8a** | Tabs v1 · 5 variantes | ❌ REJECTED | Etapa 7 |
-| **8a-v2** | Tabs v2 · 5 variantes más intuitivas (E · Smart sort winner) | ✅ WINNER | Etapa 8a rejection |
-| **8b** | FijoRow · 5 variantes (D · Calendar marker winner) | ✅ WINNER | Etapa 8a-v2 |
-| **8c** | Category groups · ELIMINADO del refactor | ⚪ N/A | E · Smart sort hace que agrupar por categoría ya no aplique |
-| **9** | FijosHeader · 5 variantes (D · Health pulse winner) | ✅ WINNER | Etapa 8b |
-| **9.5** | **Vista completa orquestada** — los 6 winners integrados, simula reemplazo del fijos-v2-screen | ✅ DONE preview · awaiting owner | Etapa 9 |
-| **9.5b** | Correcciones owner: Hero animaciones (shine + particles + breathe) · Fusión SmartAlerts+Próximos · Row tap-expand actions · Lista por categorías | ✅ DONE | Etapa 9.5 |
-| **10** | **V3 production**: route switch a `FijosV3Screen` con `useFijosController` real · rollback inmediato a V2 disponible | ✅ DONE | Etapa 9.5b |
-| **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
-| **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
-| **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
+| Etapa | Alcance | Estado final |
+|---|---|---|
+| **0** | Análisis + propuesta de direcciones (V2 audit + criterio) | ✅ DONE |
+| **1** | Iteration 1 (Ledger / Dial / Grid) — mocks estáticos | ❌ REJECTED por owner |
+| **2** | Iteration 2 (Titular / Pasaje / Manifiesto) — mocks estáticos | ✅ DONE |
+| **3** | Live preview con state explorer (6 estados × 3 variantes con motion) | ✅ DONE |
+| **4** | Owner picks Iteration 2 · A · El Titular | ✅ PICK (preview-only) |
+| **5** | Refactor header del Titular: ciclo + pace state-aware | ✅ DONE (preview) |
+| **6** | Próximos · editorial spread (4 variantes) | ✅ A · Editorial WINNER (preview) |
+| **7** | SmartAlerts · 5 variantes | ✅ A · Editorial inline WINNER (preview) |
+| **8a** | Tabs v1 · 5 variantes (Underline/Stacked/BigCounts/Dropdown/Ledger) | ❌ REJECTED · "más intuitivo" |
+| **8a-v2** | Tabs v2 · 5 variantes más intuitivas (varias sin tabs) | ✅ E · Smart sort WINNER (preview) |
+| **8b** | FijoRow · 5 variantes (Editorial / Sparkline / Stripe / Calendar / Status) | ✅ D · Calendar marker WINNER (preview) |
+| **9** | FijosHeader · 5 variantes | ✅ D · Health pulse WINNER (preview) |
+| **9.5** | Vista completa orquestada con los 6 winners (`FijosVistaCompletaScreen`) | ✅ DONE (dev preview) |
+| **9.5b** | Correcciones: hero animations + fusión SmartAlerts+Próximos + row actions + grupos categoría | ✅ DONE |
+| **10** | V3 promoted a producción con rollback inmediato | ✅ DONE · luego ROLLBACK ("no me gusto") |
+| **10b** | **V3 rollback** (commit `73c8f38`) · route vuelve a `FijosV2Screen` | ✅ DONE |
+| **11** | **Mejoras quirúrgicas a V2** (Hero state-aware + ProximosCard fused + Tabs unificado + FijoRow patterns + animaciones únicas) | ✅ **SHIPPED** |
+| **11b** | Fusión Hero × Boarding pass (CycleRouteLine + perforación + StatCards eliminados) | ✅ **SHIPPED** |
+| **11c** | Impeccable polish (8 fixes de wording + redundancias) | ✅ **SHIPPED** |
+| **11d** | Jerarquía hero: eyebrow = ciclo · CycleRouteLine sube · PaymentSegments reemplazan ProgressBar | ✅ **SHIPPED** |
+| **12** (futuro) | Cleanup: borrar V3 + variants preview + dev routes + smart-alerts/upcoming-strip viejos | 🔴 PENDIENTE (~5000-6000 LOC dead code) |
+| **13** (futuro) | Backend value-adds (V1-V5) | 🔴 OPCIONAL · pick 1-2 alta-relación-valor/costo |
+
+### Distinción clave · "preview-winner" vs "shipped"
+
+- **preview-winner** = ganó la fase exploratoria, vivió en dev routes, **NO llegó a producción** porque V3 (la screen que los iba a montar) fue revertido.
+- **shipped** = vivo en producción (V2 con mejoras de Etapas 11/11b/11c/11d).
+
+Las ideas conceptuales de los preview-winners SÍ sobrevivieron parcialmente al ser absorbidas en las mejoras V2:
+- Titular hero state-aware copy → V2 hero badges + state-aware logic en montoSub
+- ProximosFused "AVISOS inline" → `fijos-proximos-card.tsx` de V2
+- Health pulse breathe dot color-coded → V2 hero breathe dot color-coded
+- Boarding pass route + perforation → V2 hero CycleRouteLine + perforation
 
 ### Componentes seleccionados (vivo en `/settings/dev/fijos-seleccion-final`)
 
 | # | Componente | Reemplaza a | Archivo preview | Estado |
 |---|---|---|---|---|
-| 1 | Hero · El Titular | `FijosHeroCard` | `mobile/components/fijos-hero-preview/titular-hero-live.tsx` | ✅ WINNER |
-| 2 | Próximos · Editorial (canon) | `FijosUpcomingStrip` | `mobile/components/fijos-hero-preview/proximos-live.tsx` | ✅ WINNER por defecto · 3 alternativas más a comparar |
-| 3 | _por definir_ | `FijosSmartAlerts` | _siguiente etapa_ | 🔴 |
-| 4 | _por definir_ | `FijosTabs` + `FijoCategoryGroups` | _siguiente etapa_ | 🔴 |
+| 1 | Hero · El Titular | `FijosHeroCard` | `mobile/components/fijos-hero-preview/titular-hero-live.tsx` | preview-winner · NO shipped (ideas absorbidas en V2 hero) |
+| 2 | Próximos · Editorial (canon) | `FijosUpcomingStrip` | `mobile/components/fijos-hero-preview/proximos-live.tsx` | preview-winner · NO shipped (idea absorbida en `fijos-proximos-card.tsx`) |
+| 3 | SmartAlerts · Editorial inline | `FijosSmartAlerts` | `mobile/components/fijos-hero-preview/smart-alerts-editorial-live.tsx` | preview-winner · NO shipped (fusionado en `fijos-proximos-card.tsx`) |
+| 4 | Tabs · Smart sort | `FijosTabs` + `FijoCategoryGroups` | `mobile/components/fijos-hero-preview/tabs-v2-smart-sort-live.tsx` | preview-winner · NO shipped (V2 mantiene FijosTabs + FijoCategoryGroups original) |
+| 5 | FijoRow · Calendar marker | `FijoRow` | `mobile/components/fijos-hero-preview/row-d-day-marker.tsx` | preview-winner · NO shipped (V2 mantiene FijoRow original con status overlay refactor) |
+| 6 | FijosHeader · Health pulse | `FijosHeader` | `mobile/components/fijos-hero-preview/header-d-health-pulse.tsx` | preview-winner · NO shipped (V2 mantiene FijosHeader original) |
+
+> **Nota**: las dev routes (`/settings/dev/fijos-seleccion-final`, `/settings/dev/fijos-vista-completa`, etc) siguen vivas en código para análisis y referencia futura. Cleanup pendiente (Etapa 12).
 
 ### Próximos · 4 variantes a comparar (vivo en `/settings/dev/fijos-proximos-variants`)
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Editorial list** 🏆 | rows tipográficas con dividers thin · canon | `proximos-live.tsx` | ✅ WINNER (2026-05-13) |
+| **A · Editorial list** | rows tipográficas con dividers thin · canon | `proximos-live.tsx` | preview-winner · **NO shipped** (V3 rolled back · idea de "fusión con AVISOS" sobrevive en `fijos-proximos-card.tsx` de V2) |
 | **B · Proximity bars** | ancho de barra = urgencia · barra anima fill L→R | `proximos-bars-live.tsx` | rejected |
 | **C · Timeline horizontal** | línea HOY → FIN CICLO · 3 dots scale-in spring | `proximos-timeline-live.tsx` | rejected |
 | **D · Hierarchy asimétrico** | el próximo en grande, los otros 2 referencia compacta | `proximos-hierarchy-live.tsx` | rejected |
@@ -788,7 +895,7 @@ Reemplaza al `FijosSmartAlerts` actual (horizontal rail con emojis 📅📈⚖�
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Editorial inline** 🏆 | rows tipográficas (gramática Próximos) · default seguro | `smart-alerts-editorial-live.tsx` | ✅ WINNER (2026-05-13) · fusión con Próximos a evaluar al integrar |
+| **A · Editorial inline** | rows tipográficas (gramática Próximos) · default seguro | `smart-alerts-editorial-live.tsx` | preview-winner · **NO shipped** · la fusión con Próximos se materializó en V2 vía `fijos-proximos-card.tsx` (Etapa 11) |
 | **B · Stack of notes** | papers apilados con tilt · spring entrance · tactil | `smart-alerts-stack-live.tsx` | rejected |
 | **C · Marquee headline** | 1 a la vez · auto-rota 6s · tap navega · DNA Wrapped | `smart-alerts-marquee-live.tsx` | rejected |
 | **D · Compact pills** | pills horizontales · tap expande detalle inline | `smart-alerts-pills-live.tsx` | rejected |
@@ -816,9 +923,9 @@ Segunda iteración: cuestiona el paradigma mismo. Varias NO usan tabs explícito
 | **B · Toggle binario** | segmented 2 estados · indicator desliza spring · default smart | `tabs-v2-toggle-live.tsx` | rejected |
 | **C · Inbox progresivo** | solo pendientes default + "Ver X pagados →" expand inline | `tabs-v2-inbox-live.tsx` | rejected |
 | **D · Time-grouped** | HOY · ESTA SEMANA · DESPUÉS · PAGADOS — sin estados, agrupado por tiempo | `tabs-v2-time-grouped-live.tsx` | rejected |
-| **E · Smart sort** 🏆 | sin filtros · lista única ordenada por urgencia · scroll = filtro mental | `tabs-v2-smart-sort-live.tsx` | ✅ WINNER (2026-05-13) · elimina FijosTabs + FijoCategoryGroups del refactor |
+| **E · Smart sort** | sin filtros · lista única ordenada por urgencia · scroll = filtro mental | `tabs-v2-smart-sort-live.tsx` | preview-winner · **NO shipped** (V3 rolled back, V2 mantiene FijosTabs con GastosFilterPill internamente) |
 
-> **Importante**: Smart sort elimina del refactor el concepto de "tabs" Y de "FijoCategoryGroups" (agrupar por categoría). La lista se ordena por urgencia, no por categoría. Las categorías sobreviven como dot color por row.
+> **Status final**: Smart sort fue el winner durante la fase exploratoria, pero al rechazarse V3 entero el patrón no llegó a producción. V2 mantiene su `FijosTabs` original con buckets (todos/pendientes/pagados/zombi), refactorizado en Etapa 11 para reusar `GastosFilterPill` internamente.
 
 ### FijoRow · 5 variantes a comparar (vivo en `/settings/dev/fijos-row-variants`)
 
@@ -829,7 +936,7 @@ Reemplaza al `FijoRow` actual (448 LOC con emoji icon, status chip pastel, spark
 | **A · Editorial row** | dot color + name + status label + amount · restraint puro | `row-a-editorial.tsx` | rejected |
 | **B · Sparkline-hero** | mini-curva SVG de tendencia entre name y amount · "la forma habla" | `row-b-sparkline.tsx` | rejected |
 | **C · Accent stripe** | stripe vertical color cat (2.5pt) + two-line typography | `row-c-stripe.tsx` | rejected |
-| **D · Calendar marker** 🏆 | día del mes en caja a la izquierda · ver cuándo paga sin leer | `row-d-day-marker.tsx` | ✅ WINNER (2026-05-13) |
+| **D · Calendar marker** | día del mes en caja a la izquierda · ver cuándo paga sin leer | `row-d-day-marker.tsx` | preview-winner · **NO shipped** (V3 rolled back · V2 mantiene FijoRow original con status overlay refactor de Etapa 11) |
 | **E · Status icon-led** | icon tile bg-tinted (check/clock/warning) · pattern tasklist | `row-e-status-icon.tsx` | rejected |
 
 Las 5 variantes resuelven los 4 elementos clave: cat color, name + hike, status + due label, amount. Pagados → opacidad reducida en todas. Cero emojis (todas usan MaterialIcons). Cero nested cards. Cero status chip pastel.
@@ -843,7 +950,7 @@ Reemplaza al `FijosHeader` actual (title + subtitle genérico "Todo lo recurrent
 | **A · Editorial título + dato vivo** | title big 34pt + sub state-aware · add button minimal · restraint | `header-a-editorial.tsx` | rejected |
 | **B · Stat-led** | eyebrow tiny + monto $ big (32pt) como hero · jerarquía invertida · add FAB filled | `header-b-stat-led.tsx` | rejected |
 | **C · Header + search inline** | title compacto + count · search bar always-on · add integrado al search | `header-c-search.tsx` | rejected |
-| **D · Health pulse** 🏆 | breathe dot color-coded (lime/amber/peach/red) al lado del title · sub state-aware | `header-d-health-pulse.tsx` | ✅ WINNER (2026-05-13) |
+| **D · Health pulse** | breathe dot color-coded (lime/amber/peach/red) al lado del title · sub state-aware | `header-d-health-pulse.tsx` | preview-winner · **NO shipped** (V3 rolled back · V2 mantiene FijosHeader original sin modificaciones) |
 | **E · Compact + utility bar** | title 24pt chico + row de 3 utility icons (search · filter · add primary) | `header-e-utility-bar.tsx` | rejected |
 
 ---
@@ -934,24 +1041,36 @@ Cualquier componente futuro que necesite urgency / success / track debe usar est
 
 ---
 
-## 🎯 Próximo paso — siguiente componente
+## 🎯 Próximos pasos · futuro
 
-Componentes ya en `Selección final`:
-1. ✅ Hero · El Titular (con header ajustado: ciclo + pace state-aware)
-2. ✅ Próximos · Editorial (reemplaza UpcomingStrip con 3 cards anidadas + emojis)
+Refactor cerrado · V2 con mejoras quirúrgicas en producción. Lo siguiente es opcional:
 
-**Siguiente decisión**: ¿qué hacemos con `FijosSmartAlerts`?
+### Cleanup (Etapa 12)
 
-- **Opción A**: mantener aparte. Si las hikes son una preocupación distinta a "qué pago próximo", separar conceptos en surfaces distintos respeta la jerarquía cognitiva.
-- **Opción B**: **mergear en Próximos** vía el `hikeDeltaPct` badge inline (el badge `↑ +12%` ya está renderizado en el Próximos del preview). Si el hike afecta a un fijo del top 3 upcoming, lo destaca en su row. Si afecta a uno fuera del top 3, lo subimos al top con override.
+Borrar dead code que sobrevive después del rollback V3:
 
-Mi recomendación: **B · merge**. Razones:
-- La SmartAlerts card actual es **conditional + solo visible cuando hay hikes**, fragmenta el layout (a veces sí, a veces no).
-- El badge `↑ +12%` dentro del row de Próximos ya da la info accionable (el fijo subió de precio + cuándo se paga).
-- Reduce 1 surface en el screen → más densidad útil sin agregar componentes.
-- Si hay hikes pero no están en el top 3 upcoming, ordenamos por urgencia (hike + days), no sólo by days.
+- `mobile/screens/home/fijos-v3-screen.tsx`
+- `mobile/features/fijos/adapt-controller-to-hero-state.ts`
+- `mobile/components/fijos-hero-preview/` (~30 archivos de variants experimentales)
+- `mobile/screens/dev/fijos-*-screen.tsx` (12 dev screens)
+- `app/(app)/settings/dev/fijos-*.tsx` (12 dev routes)
+- `mobile/components/fijos/fijos-smart-alerts.tsx` (reemplazado por ProximosCard)
+- `mobile/components/fijos/fijos-upcoming-strip.tsx` (reemplazado por ProximosCard)
+- Entries correspondientes en `mobile/screens/settings/settings-screen.tsx`
 
-Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate + diseñar como corresponda).
+Aproximado: **5000-6000 LOC** removibles sin afectar producción.
+
+### Backend value-adds (Etapa 13 · opcional)
+
+Las 5 propuestas siguen disponibles (ver sección 🧠 más abajo):
+
+1. `paid_on_time_streak` — gamification de pagos a tiempo
+2. `cycle_creep_delta` — detectar creep de fijos mes-a-mes (ya parcialmente cubierto por `summary.hikes`)
+3. `concentration_top3` — exposure asymmetric
+4. `paid_velocity_index` — semaphore color del breathe dot (ya implementado!)
+5. `fijos_snapshot` RPC — colapsar 4 queries en 1
+
+Prioridad sugerida: V5 (snapshot RPC) primero — patrón ya probado en Home / Gastos, mejora perceived perf significativamente.
 
 ---
 
