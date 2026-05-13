@@ -1,0 +1,421 @@
+# Fijos · Refactor visual por etapas
+
+**Fecha**: 2026-05-12
+**Owner**: Mario
+**Skills aplicadas**: `/impeccable` · `/emil-design-eng` · `/ui-ux-pro-max` · `/frontend-design`
+**Alcance Etapa 1**: HERO CARD únicamente. Las siguientes etapas (alerts / upcoming strip / tabs / category groups / fijo row / header) se planifican después de que el hero quede confirmado.
+
+---
+
+## 🎯 Objetivo del refactor
+
+Owner pidió que esta vista **se sienta como una vista a la que siempre vamos a ingresar** porque tiene un propósito concreto y recurrente: **revisar qué fijos están pagados y cuáles aún faltan en el ciclo**.
+
+El hero actual cumple en lo funcional pero cae en un patrón muy genérico de fintech (big number + small label + supporting stats + gradient accent). Es exactamente el _hero-metric template_ que `/impeccable` señala como **anti-patrón absoluto** (categoría "absolute bans"). Además anida dos cards (`StatCard`) dentro del hero card — otro absolute ban (`nested cards are always wrong`).
+
+> **Regla owner**: cero información perdida. Todo lo que hoy se muestra tiene que sobrevivir el rediseño — el énfasis y la jerarquía pueden cambiar, pero el dato no se descarta.
+
+---
+
+## 📐 Línea por línea — vista actual
+
+Walk-through completo de [fijos-hero-card.tsx](../mobile/components/fijos/fijos-hero-card.tsx) (493 LOC) + el screen que lo monta ([fijos-v2-screen.tsx](../mobile/screens/home/fijos-v2-screen.tsx)) + el aggregate que lo alimenta ([fijos-aggregates.model.ts](../mobile/features/fijos/fijos-aggregates.model.ts)) + el controller que materializa props ([use-fijos-controller.ts](../mobile/features/fijos/use-fijos-controller.ts)).
+
+### A · Estructura visual actual
+
+```
+┌───────────────────────────────────────────────────┐
+│ ● GASTOS FIJOS · ABR             ← eyebrow      ⬤ │  ← breathe dot
+│ Quedan 18 días en el ciclo       ← subtitle       │
+│                                                   │
+│ Ya pagaste              Te falta pagar            │
+│ $ 245.000               $ 180.000                 │
+│   (28pt bold)             (20pt bold, coral)      │
+│                                                   │
+│ ━━━━━━━━━━━━●─────────────────────  ← progress 57%│
+│ 57% pagado                       Total: $ 425.000 │
+│                                                   │
+│ ┌──────────┐ ┌──────────┐  ← nested cards (BAN)   │
+│ │ ✓ PAGADOS│ │ ! POR PAG│                         │
+│ │ 5        │ │ 3        │                         │
+│ │ listos   │ │ pendient.│                         │
+│ └──────────┘ └──────────┘                         │
+│                                                   │
+│ ─────────────────────────────────                 │
+│ DINERO LIBRE ESTE MES   de tu sueldo              │
+│ $ 380.000               42%                       │
+│                         va a fijos                │
+└───────────────────────────────────────────────────┘
+```
+
+### B · Inventario de datos consumidos
+
+Mapeo exhaustivo de cada prop / data path que el hero usa **hoy**:
+
+| Origen (controller) | Prop hero | Mostrado como | Líneas |
+|---|---|---|---|
+| `controller.cycleLabel` (e.g. "5 abr → 5 may") | `mes` (rebautizado como mes pero realmente es ciclo completo) | Eyebrow "GASTOS FIJOS · {mes}" | 88-90 |
+| `controller.summary.daysRemaining` | `diasRestantes` | Subtitle "Quedan X días en el ciclo" | 93-95 |
+| `controller.summary.total` | `totalFijos` | "Total: ${formatMoney}" + denominator del progress | 58, 126, 165 |
+| `controller.summary.paidAmount` | `montoPagado` | Numerador "Ya pagaste $X" (CountUp 28pt) | 102-107 |
+| Calculado: `total - paidAmount` | (interno) `montoPendiente` | "Te falta pagar $Y" (CountUp 20pt coral) | 59, 112-117 |
+| Calculado: `(paid/total)*100` | (interno) `porcentaje` | "X% pagado" + width del fill | 58, 120, 123 |
+| `controller.summary.paidItems.length` | `cantidadPagados` | StatCard left value | 132-138 |
+| `controller.summary.pendingItems.length + overdueItems.length` | `cantidadPendientes` | StatCard right value | 139-146 |
+| `controller.freeAfterFijos` | `dineroLibre` | "DINERO LIBRE ESTE MES $X" | 152-158 |
+| `controller.pctOfIncome` | `porcentajeSueldo` | "{X}% / de tu sueldo / va a fijos" (3-line stack derecha) | 161-169 |
+
+### C · Inventario de datos **no consumidos por el hero** (existen en el controller, viven en sub-componentes o se descartan)
+
+| Origen | Hoy se usa para | Potencial para hero |
+|---|---|---|
+| `summary.pendingAmount` / `overdueAmount` (separados) | El hero **funde** ambos en "te falta pagar" — pierde la distinción pending vs overdue | 🟢 Sí. La diferencia entre "pendiente sin atraso" y "vencido" es la única señal de urgencia real. Hoy queda invisibilizada. |
+| `summary.overdueItems.length` (separado) | Suma silenciosa en `cantidadPendientes` | 🟢 Sí. Si tenés 2 overdue, deberías verlo destacado, no mezclado. |
+| `summary.upcoming[]` (top 3 próximos) | `<FijosUpcomingStrip>` (sección siguiente) | 🟡 Posible cross-link. El hero podría adelantar "Próximo: Netflix en 3d". |
+| `summary.daysToNextPayment` | (no se renderea en ninguna parte hoy) | 🟢 Sí. Es el dato más procesable para el usuario que abre la app a revisar. |
+| `summary.hikes[]` (cambios de precio +5%) | `<FijosSmartAlerts>` | 🔴 No. Vive correctamente en su sección. |
+| `summary.todayDay` + `cycleStart` + `cycleDays` | `<FijosUpcomingStrip>` (calendar render) | 🟢 Sí — la geometría completa del ciclo abre la puerta a un hero radial / calendar-based en lugar de progress bar lineal. |
+| `controller.monthlyIncome` (raw) | (no se renderea, solo se usa para `pctOfIncome`) | 🟡 Posible. Mostrar el sueldo absoluto al lado del % a veces es más concreto. |
+| `controller.cycleStart` / `cycleEnd` / `cycleDays` | (no se renderea en hero, solo se usa para el `cycleLabel`) | 🟢 Sí. La fecha exacta de fin de ciclo es accionable ("hasta el 5 may"). |
+
+### D · Inventario de animaciones / interacciones (catálogo a preservar)
+
+| Sistema | Función actual | Reusar |
+|---|---|---|
+| `RiseView delay={40}` (wrapping outer) | Entrance del hero en la cascada del screen (50/120/200/280/360 ms…) | ✅ Mantener |
+| `Animated.View layout={LinearTransition.duration(260)}` | Suaviza height change cuando cambian los valores | ✅ Mantener |
+| `LinearGradient` con `theme.heroGradient` | Forest dark gradient (244235 → 1F590D → 297811 ×2) — mismo lenguaje de Home + Gastos | ✅ Mantener tema, evaluar curva |
+| `ShineOverlay` (sweep diagonal, periodMs 4200) | Capa de gloss premium | ⚠️ Evaluar — depende de dirección |
+| `CardParticles count=12 accentColor=peach` | Campo de luciérnagas | ⚠️ Evaluar — depende de dirección |
+| `BreatheDot 8pt` al lado del eyebrow | Señal de "vivo" | ✅ Reusar (lenguaje compartido) |
+| `CountUpText` en montoPagado / montoPendiente / dineroLibre / stat values | Conteo animado al mount + on data change | ✅ Mantener para todos los montos $ |
+| `ProgressBar` (scaleX 900ms + bouncy dot pulse 680ms + repeating glow) | Fill animado al mount con dot rider glow | ⚠️ Evaluar — depende de dirección (puede que el hero no tenga "progress bar" lineal en nuevo diseño) |
+| `motionEasings.decelerate` (ease-out fuerte) en progress fill | Curva personalizada del proyecto | ✅ Mantener para nuevas animaciones |
+
+### E · Diagnóstico — qué funciona y qué no
+
+**Funciona**:
+- Lenguaje visual cohesivo con Home + Gastos (gradient + shine + particles + breathe + count-up).
+- Cobertura de datos: total / pagado / pendiente / dinero libre / % sueldo / ciclo / días restantes / progreso — el hero ES un dashboard completo del estado del ciclo.
+- Cascade de motion en mount está bien orquestada (RiseView 40 → fill 80→980 → dot pulse 680 → loops).
+
+**Falla** (según `/impeccable` absolute bans + `/emil` craft principles + `/ui-ux-pro-max` rules):
+1. **`hero-metric template` (impeccable ban absoluto)** — big monto + label + supporting stats + gradient accent es el cliché SaaS exacto que la skill marca como "AI slop test fail". Esto es lo que hace que la vista se sienta intercambiable con cualquier otra finance app.
+2. **`nested cards always wrong` (impeccable ban absoluto)** — los dos `StatCard` flotan _dentro_ del hero card. Solución actual ofusca el espíritu del hero como "una sola sentencia visual".
+3. **Emoji-as-icon (ui-pro-max + impeccable)** — los caracteres `✓` y `!` están rendered como `Text` no como SVG icons. Material design ban.
+4. **Pending vs Overdue invisible** — la diferencia entre 2 pendientes-en-plazo y 2 vencidos se entierra. Es la única señal accionable real ("hay algo que YA tenías que pagar"). El hero hoy no lo señaliza.
+5. **`daysToNextPayment` no se muestra** — el dato más procesable para alguien que abre la app está calculado pero descartado.
+6. **`progressDot` con shadow + glow** — el dot rider del progress bar tiene un shadow elevation 3 que es una micro-decoración que no aporta señal. Emil rule: "every animation must express a cause-effect relationship, not just be decorative".
+7. **3 valores compitiendo por dominancia visual** — montoPagado (28pt) / dineroLibre (24pt) / stat values (26pt). El ojo no sabe dónde aterrizar primero.
+8. **Copy "ESTE MES" redundante** — el cycle label ya dice "5 abr → 5 may"; "DINERO LIBRE ESTE MES" duplica el contexto.
+9. **Bottom row con `borderTopColor`** — separador horizontal blanco/12% que parte la card en dos zonas, debilitando el sentido de "una sola unidad" que querría el hero.
+
+---
+
+## 🎨 3 direcciones conceptuales
+
+Cada dirección rompe el `hero-metric template` por construcción y propone un lenguaje visual diferente. **Las tres preservan los 11 datos** del inventario actual + suman al menos 2 datos no usados hoy. **Las tres mantienen el gradient forest + RiseView + CountUpText** para coherencia con Home / Gastos.
+
+> **Importante**: estas son direcciones conceptuales para que el owner elija. No son detail-locked — la dirección elegida pasa a una sesión de craft con render real.
+
+### 🅰️ Dirección A — "The Ledger"
+
+**Premisa**: el hero ES un extracto/recibo. Tipografía editorial, sin progress bar, sin nested cards. Información ordenada como una declaración financiera — el ratio paid/total se infiere de la jerarquía tipográfica, no de una barra.
+
+**Familia estética**: editorial-tipográfica · contable · _Monocle magazine_ meets _Things 3 receipt view_. Rompe con la categoría "fintech-saas-dashboard".
+
+**Estructura propuesta**:
+
+```
+┌───────────────────────────────────────────────────┐
+│ ABR — ciclo 5 abr / 5 may         · 18 días       │  ← eyebrow editorial
+│                                                   │
+│ FIJOS DEL CICLO                                   │  ← label restraint
+│ $ 425.000                                         │  ← total (24pt cream)
+│                                                   │
+│ ──────────────────────                            │  ← rule (1px @ 12% opacity)
+│                                                   │
+│ pagado          $ 245.000   ·  5 ítems            │
+│ por pagar       $ 142.000   ·  3 ítems            │
+│ vencido         $  38.000   ·  2 ítems  ← rojo    │  ← jerarquía por línea
+│                                                   │
+│ ──────────────────────                            │
+│                                                   │
+│ Libre del ciclo    $ 380.000  ·  42% va a fijos   │
+│                                                   │
+│ Próximo →  Netflix · 3 días · $ 12.500            │  ← upcoming primer item
+└───────────────────────────────────────────────────┘
+```
+
+**Cómo cubre el inventario**:
+- `total` se promociona a hero number (era denominator escondido).
+- Pending / Overdue separados explícitamente con sus montos + counts.
+- `daysToNextPayment` + primer item de `upcoming` se promueven al hero.
+- `freeAfterFijos` + `pctOfIncome` se compactan a una sola línea de cierre.
+- Progress bar visual se reemplaza por: cada línea de monto es proporcional al peso real (font-size sutil + bullet count). El ratio queda implícito.
+
+**Motion language**:
+- Mount: cascade vertical (RiseView 0/80/160/240/320/400 línea por línea).
+- CountUp en los 4 montos $.
+- Rule lines crecen de 0% a 100% width (`scaleX` 280ms ease-out-quart) escalonadas.
+- BreatheDot se mueve al pre-monto del overdue line solo si overdue > 0 (señal de urgencia direccional).
+
+**Pros**:
+- ✅ Rompe el `hero-metric template` (impeccable ban) por construcción.
+- ✅ Cero nested cards (impeccable ban).
+- ✅ Pending vs overdue queda explícito → más signal.
+- ✅ Editorial restraint diferencia la app de cualquier otra finance app.
+- ✅ Funciona en light y dark sin reinterpretar tonalidades (es type-driven).
+
+**Cons / riesgos**:
+- ⚠️ Sin progress bar puede sentirse menos "dashboard-like" — algunos usuarios esperan barra. Mitigación: la jerarquía tipográfica + rule lines reemplaza la métáfora visual.
+- ⚠️ Density alta: 4 zonas de info en lugar de las 3 actuales. Necesita espaciado riguroso.
+
+**Score por skill**:
+- `/impeccable`: ⭐⭐⭐⭐⭐ (editorial register que escapa categoría-reflex; no template; no nested cards)
+- `/emil`: ⭐⭐⭐⭐ (motion intencional; restraint sobre decoración)
+- `/ui-pro-max`: ⭐⭐⭐⭐ (typography hierarchy fuerte; line-length OK; falta solo affordance de tap si queremos hacer overdue tappable)
+
+---
+
+### 🅱️ Dirección B — "The Cycle Dial"
+
+**Premisa**: reemplazar la progress bar lineal por un **dial radial geométrico** que muestra simultáneamente:
+- El progreso del **ciclo de tiempo** (qué día del cycle estamos)
+- El progreso del **pago de fijos** (qué % está pagado)
+- Los **eventos discretos** (cada fijo upcoming es un tick en el arco)
+
+No es donut chart genérico. Es un dial con dos arcos concéntricos + 12 tick marks (un tick por día con un fijo). El día de hoy es un radio destacado.
+
+**Familia estética**: instrumento de precisión · _watch face_ · _Apple Watch activity rings reimagined for finance_. Rompe con "fintech navy + gold" porque mantiene el forest gradient pero el lenguaje no es dashboard, es **instrumento**.
+
+**Estructura propuesta**:
+
+```
+┌───────────────────────────────────────────────────┐
+│ GASTOS FIJOS · 5 abr → 5 may              ● vivo  │
+│                                                   │
+│         ╭───────────────╮                         │
+│        ╱                 ╲          $ 245.000     │
+│       │     ┌─────────┐   │         pagado        │
+│       │     │   57%   │   │                       │
+│       │     │  pagado │   │         $ 180.000     │
+│       │     │         │   │         por pagar     │
+│       │     │  18 días│   │           (2 vencidos)│
+│       │     │  hasta  │   │                       │
+│       │     │  5 may  │   │         Próximo:      │
+│       │     └─────────┘   │         Netflix · 3d  │
+│        ╲                 ╱                        │
+│         ╰───•──────•─────╯                        │
+│           ↑                                       │
+│       ticks = días con fijos                      │
+│       outer arc = paid/total                      │
+│       inner arc = cycle progress                  │
+│                                                   │
+│ ─────────────────────────                         │
+│ Libre del ciclo  $ 380.000      42% va a fijos    │
+└───────────────────────────────────────────────────┘
+```
+
+**Cómo cubre el inventario**:
+- Arco exterior = `paidPct` (animated stroke-dashoffset).
+- Arco interior = `(cycleDays - daysRemaining) / cycleDays`.
+- Ticks en el arco = `summary.upcoming` posicionados por `daysUntilDue` mapeado al ángulo.
+- Centro: 57% + 18 días + fin de ciclo (datos densos pero pequeños).
+- Derecha: paid / pending split + upcoming top-1.
+- Bottom row: libre + % sueldo (compactado en una línea, no separado por rule).
+
+**Motion language**:
+- Mount: ambos arcos animan `withTiming(progress, { duration: 1100, easing: motionEasings.decelerate })`.
+- Ticks aparecen como un stagger 60ms tras el arco completarse (`scale 0.4 → 1 + opacity 0 → 1`).
+- BreatheDot pulse migra al **tick del próximo fijo** (señalización direccional).
+- CountUp en montos.
+
+**Pros**:
+- ✅ Rompe el `hero-metric template` con un lenguaje gráfico (radial) en lugar de tipográfico.
+- ✅ Innovación visual real — no es un donut chart típico; es un dial con ticks específicos de los fijos reales.
+- ✅ Cubre simultáneamente "qué % pagué" + "cuánto del ciclo pasó" — dos preguntas distintas que el hero actual no resuelve juntas.
+- ✅ Direccionalidad del breathe dot → tick del próximo = "te falta este".
+
+**Cons / riesgos**:
+- ⚠️ Más complejo de implementar (SVG con react-native-svg, ángulos calculados, stroke-dashoffset animado).
+- ⚠️ Puede sentirse "watch-y" o "fitness-app-y" si no se ejecuta con precisión. Necesita restraint en el centro (no llenar).
+- ⚠️ Más alto en el viewport (las dimensiones del dial necesitan ~180×180) — hay que confirmar que cabe sin empujar las siguientes secciones fuera del fold.
+- ⚠️ Accesibilidad: necesita aria/accessibility composed labels para que VoiceOver lea "57% pagado, 18 días restantes, próximo fijo Netflix en 3 días".
+
+**Score por skill**:
+- `/impeccable`: ⭐⭐⭐⭐ (rompe categoría-reflex pero el donut/ring es reflejo training-data de "fitness/activity ring" — mitigado si los ticks son protagonistas, no decoración)
+- `/emil`: ⭐⭐⭐⭐⭐ (motion meaning altísimo: cada tick es un fijo real; dot direccional)
+- `/ui-pro-max`: ⭐⭐⭐⭐ (visual hierarchy clara; a11y necesita trabajo extra)
+
+---
+
+### 🅲 Dirección C — "The Calendar Grid"
+
+**Premisa**: el hero es una **mini-grid del ciclo** (28-31 cuadritos para los días del ciclo), con dots/heat indicando qué días tienen fijos. El día de hoy está destacado. Cada celda con un fijo tiene su color de categoría. Cada celda con fijo pagado tiene un check sutil, cada celda con fijo vencido un dot rojo.
+
+Esto colapsa hero + `FijosUpcomingStrip` (la siguiente sección) en una sola unidad. Habría que decidir si la strip se elimina o se reduce a "mes pasado" para comparación.
+
+**Familia estética**: calendar-as-hero · github-contribution-graph reimagined for finance · raw data made tactile. Rompe con "card-list-dashboard" por completo.
+
+**Estructura propuesta**:
+
+```
+┌───────────────────────────────────────────────────┐
+│ CICLO ABRIL · 5 abr → 5 may          18 días más  │
+│                                                   │
+│  L  M  M  J  V  S  D     ← weekday header         │
+│  ─  ─  ●  ─  ●  ─  ─                              │
+│  ─  ●  ─  ─  ─  ─  ✓     ← ya pasados con check   │
+│  ✓  ─  ─  ✓  ─  ─  ●     ← hoy = ring             │
+│  ●  ─  ─  ─  ─  ─  ─     ← futuro = dot color cat │
+│  ◯  ─  ─  ─  ─               ← último día = ring  │
+│                                                   │
+│   ● = fijo este día      ✓ = pagado     ⚠ = venció│
+│                                                   │
+│ ─────────────────────────────────                 │
+│ Pagado     Por pagar    Vencido     Libre         │
+│ $ 245.000  $ 142.000    $  38.000   $ 380.000     │
+│ 5 ítems    3 ítems      2 ítems     42% a fijos   │
+└───────────────────────────────────────────────────┘
+```
+
+**Cómo cubre el inventario**:
+- Cada celda = día del ciclo. Color = categoría del fijo de ese día (multi-fijo en mismo día → stack o dot+ring).
+- Today celda = ring outline + scale 1.1.
+- Estados por celda: paid (check), pending (dot color cat), overdue (red ring).
+- Bottom row: 4 columnas con los 4 totales (paid/pending/overdue/libre).
+- `pctOfIncome` baja a una línea muy sutil.
+- Sin progress bar — la grid ES el progress.
+
+**Motion language**:
+- Mount: stagger de celdas (left-to-right, top-to-bottom). 30ms por celda → ~120ms primera fila → ~840ms última (con cap).
+- Tap en celda con fijo → bottom sheet con detalle de ese día (los fijos que vencen). Tap on today → scroll smooth a la sección de "Por pagar".
+- Today ring pulse continuous (BreatheDot escalado a ring 22pt).
+
+**Pros**:
+- ✅ Rompe totalmente el `hero-metric template`. **Esto es la innovación más fuerte** de las 3.
+- ✅ El hero es **interactivo** — cada celda es tappable. Convierte el hero de "panel pasivo" a "navegador del ciclo".
+- ✅ Cubre la pregunta del owner directamente: "qué pagamos y qué nos falta" se ve en un golpe de vista (los checks vs los dots).
+- ✅ Colapsa duplicación con `FijosUpcomingStrip` (que hace algo parecido pero más chico). Posible simplificar / eliminar la strip.
+- ✅ Si el usuario tiene 8+ fijos en el ciclo, el grid revela patrones (quincenas, fin de mes, etc.) que ninguna otra dirección muestra.
+
+**Cons / riesgos**:
+- ⚠️ El hero crece en altura (~5-6 rows × 7 cols + headers + bottom row). Necesita confirmar que el screen sigue dando "fold" relevante.
+- ⚠️ Si el usuario tiene solo 2-3 fijos en el ciclo, la grid se siente "vacía" — necesita un empty-grid alternativo (e.g. concentración en una sola línea de "Próximos fijos").
+- ⚠️ A11y: 28-31 celdas requiere navigation thoughtful (accessibilityRole, focus order). Pero hay precedent con date pickers nativos.
+- ⚠️ Implementación moderada (es solo grid + estado por celda + tap handler).
+
+**Score por skill**:
+- `/impeccable`: ⭐⭐⭐⭐⭐ (rompe categoría-reflex Y reflex-2; ningún otro app financiera mainstream usa grid del ciclo como hero)
+- `/emil`: ⭐⭐⭐⭐⭐ (interaction-driven; cada celda es purpose-driven motion; today pulse es señal direccional)
+- `/ui-pro-max`: ⭐⭐⭐⭐⭐ (touch-target en cada celda; tap-feedback; clear interaction model; visual hierarchy fuerte)
+
+---
+
+## 🔬 Comparativa de las 3 direcciones
+
+| Dimensión | A · Ledger | B · Dial | C · Grid |
+|---|---|---|---|
+| Rompe `hero-metric template` | ✅ Por tipografía | ✅ Por gráfica | ✅ Por interacción |
+| Rompe `nested cards` | ✅ Cero cards anidadas | ✅ Cero cards anidadas | ✅ Cero cards anidadas |
+| Datos del hero actual preservados | 11/11 | 11/11 | 11/11 |
+| Datos nuevos surfaced | +3 (overdue separado, daysToNext, upcoming-1) | +3 (cycle progress arc, ticks por fijo, upcoming-1) | +5 (overdue separado, cycle layout completo, days con fijos, distribución temporal, upcoming-1) |
+| Interacción nueva | Posible tap en overdue line | Tap en ticks → detalle día | **Cada celda tappable** |
+| Innovación visual | Media — restraint editorial | Alta — instrumento gráfico | **Muy alta — interactive calendar hero** |
+| Complejidad implementación | **Baja** (solo type + rule lines) | Alta (SVG + ángulos) | Media (grid + tap handlers) |
+| Riesgo "se siente fitness app / dashboard" | Bajo | **Medio** (donut reflex) | Bajo |
+| Riesgo de empty state pobre | Bajo | Bajo | **Medio** (grid casi vacía con pocos fijos) |
+| Compatibilidad con dark mode actual | Excelente | Excelente | Excelente |
+| Permite mantener `ShineOverlay` / `CardParticles` | Sí (sutil) | Sí (detrás del dial) | Marginalmente (la grid compite) |
+
+**Recomendación honesta**: **C · Calendar Grid** si tenemos tiempo de iterar — es la que más responde a la frase del owner "**siempre vamos a ingresar porque debemos revisar qué pagamos y qué aún nos falta**". El hero se transforma en herramienta, no en panel.
+
+**Alternativa pragmática**: **A · Ledger** si queremos cerrar la etapa 1 rápido y validar el lenguaje editorial antes de invertir en interactividad — sirve también como base para que A+C convivan en el futuro (Ledger arriba, Grid abajo).
+
+**No recomiendo B · Dial primero** — el riesgo de donut-reflex + costo de implementación SVG vs el ganacial de signal no compensa cuando C lo cubre + es interactivo.
+
+---
+
+## 🧠 Backend value-add — propuestas
+
+El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesarias para la etapa 1 pero las dejo pre-evaluadas para futuras etapas.
+
+### V1 · `paid_on_time_streak` (per familia, per ciclo)
+
+**Qué**: contador de ciclos consecutivos donde el % de fijos pagados antes de su `next_due_on` superó un threshold (e.g. 90%).
+
+**Por qué**: el hero hoy te dice "cómo vas este ciclo". No te dice "tu récord". Un streak es coaching incentive sin tener que escribir copy ad-hoc.
+
+**Dónde vive**: tabla `family_finance` o tabla nueva `family_streaks` con columnas `(family_id, current_streak, longest_streak, last_evaluated_cycle)`. Computado nightly via cron / al cierre de cada ciclo.
+
+**Surface en hero**: badge sutil "5° ciclo seguido" al lado del cycle label.
+
+### V2 · `cycle_creep_delta`
+
+**Qué**: diferencia entre `summary.total` actual y el de los 1-3 ciclos anteriores. Sirve para detectar "tus fijos crecieron 12% en 3 ciclos sin que te dieras cuenta".
+
+**Por qué**: el hero hoy solo muestra el snapshot. Sin comparación cycle-over-cycle, los aumentos chiquitos se acumulan invisibles (los hikes individuales que SÍ se detectan son por item, no por total agregado).
+
+**Dónde vive**: agregado SQL en `home_snapshot` extendido o nuevo `fijos_snapshot`. Cycle aggregation desde `fixed_expense_payments` + history de `fixed_expenses.amount`.
+
+**Surface en hero**: micro-trend chip "↑ +8% vs ciclo anterior" al lado del total. Verde si bajó, rojo si subió.
+
+### V3 · `concentration_top3`
+
+**Qué**: % del `summary.total` que se va en los 3 fijos más caros. Si > 60%, surface como concentration risk.
+
+**Por qué**: una familia con 8 fijos donde 3 son el 70% tiene exposure asymmetric. Saberlo permite decisiones (renegociar el top, no el resto).
+
+**Dónde vive**: calculable client-side desde `items` ordenados desc. No requiere backend si lo hacemos en `summarizeFijos`. Mantener un threshold configurable.
+
+**Surface en hero**: en empty state del grid (dir C) o como línea adicional en ledger (dir A): "70% de tus fijos = Netflix + Personal + Alquiler".
+
+### V4 · `paid_velocity_index`
+
+**Qué**: ratio entre el % pagado hasta hoy del ciclo vs el % ideal de ritmo (e.g. cycleDay 18 de 30 → ideal pace = 60%; si pagaste 45%, ratio = 0.75 → "atrás del ritmo").
+
+**Por qué**: el % pagado por sí solo no dice si estás atrasado o adelantado **considerando el día del ciclo**. El velocity index lo hace.
+
+**Dónde vive**: client-side derivado, no requiere backend.
+
+**Surface en hero**: codiciable como semáforo del breathe dot color: verde si on-pace, amber si atrás, rojo si muy atrás. Cero copy adicional.
+
+### V5 · `fijos_snapshot` RPC
+
+**Qué**: extender el patrón snapshot RPC que ya existe en Home / Gastos (referenciado en memoria `project_snapshot_rpc_pattern`) a Fijos. Hoy el screen carga 4 queries separados: `fixedExpenses` + `categories` + `familyFinance` + `expenses` + `fixedExpensePayments`. Son 5 round-trips.
+
+**Por qué**: si el owner reporta que la vista tarda en aparecer al primer mount, este es el lever más fuerte. Memoria indica que ya se aplicó con éxito en Home + Gastos.
+
+**Dónde vive**: nueva RPC `fijos_snapshot(family_id)` en Supabase que devuelve `{ items, payments_this_cycle, commitment_expenses, categories, monthly_income, savings_goal }` en una sola call.
+
+**Surface en hero**: indirecto — los datos llegan más rápido, el hero pinta sin loading state si el seed es válido.
+
+**Coste**: alto-medio. Requiere SQL + integración en `useFijosController` con seed hook. Recomiendo dejarlo para Sprint dedicado posterior.
+
+---
+
+## 🚦 Roadmap por etapas
+
+| Etapa | Alcance | Estado | Dependencias |
+|---|---|---|---|
+| **0** | Análisis + propuesta de direcciones (este doc) | ✅ DONE | — |
+| **1** | Owner elige dirección. Mock visual estático del hero nuevo (sin animations todavía) | 🔴 ESPERANDO PICK | Owner pick |
+| **2** | Implementación del hero elegido con motion completa. Typecheck + lint clean | 🔴 TO DO | Etapa 1 OK |
+| **3** | Iteración post-feedback owner (1-2 sprints típicos) | 🔴 TO DO | Etapa 2 |
+| **4** | Cross-check: el resto de la vista (alerts/upcoming/tabs/groups) tiene que dialogar con el nuevo hero. Refactor cascada de lo que choca | 🔴 TO DO | Etapa 3 cerrada |
+| **5** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 4 |
+
+---
+
+## 🎯 Próximo paso — espero pick del owner
+
+Necesito tu pick entre **A · Ledger**, **B · Dial**, o **C · Grid**. Si querés que combinemos elementos (e.g. "Ledger + grid chiquito al costado") también es opción válida — la dirección elegida no es contractual, es punto de partida.
+
+Una vez elegida la dirección paso a Etapa 1: **mock visual estático del hero nuevo en código real**, sin animations todavía, para ver cómo se siente en pantalla. Si el feedback es positivo → Etapa 2 (motion completa + commit).
+
+---
+
+## 📝 Log
+
+- **2026-05-12** — Doc creado. Etapa 0 (análisis línea por línea + inventario de datos + 3 direcciones conceptuales + backend value-adds) cerrada. Esperando pick del owner.

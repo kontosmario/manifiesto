@@ -1035,9 +1035,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Dispara el Manifiesto Wrapped (recap del ciclo cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
                     icon="auto-stories"
-                    isLast
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
+                  />
+                  <SettingsRow
+                    helper="3 direcciones conceptuales para el refactor del hero de Fijos (Ledger / Dial / Grid). Mocks estáticos, sin motion. Owner pick → Etapa 2."
+                    icon="palette"
+                    isLast
+                    label="Preview · Hero Fijos"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-preview' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
