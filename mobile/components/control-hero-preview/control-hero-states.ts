@@ -47,6 +47,19 @@ export interface ControlHeroState {
   closedDays: number
   momentum: number // ratio last-7 vs prev-7
   noSpendCount: number
+
+  /** Meta diaria auto-impuesta. `null` si el user no configuró goal.
+   *  Cuando hay goal, pasa a ser el threshold "positive → caution"
+   *  antes del cupo real (typical: 80% del cupo real). */
+  dailyGoalAmount?: number | null
+  /** Score 0–100 del adapter · drive del badge en el masthead. */
+  score: number
+  scoreLabel: string
+  /** Próximo fijo a pagar (de la tab Fijos) — útil para chip "Netflix
+   *  en 3d" en el hero. `null` cuando no hay próximos. */
+  proximoFijo?: { name: string; days: number; amount: number } | null
+  /** Cantidad de fijos vencidos del ciclo actual. */
+  fijosVencidos?: number
 }
 
 const HORA_F = (h: number, m: number): number => h + m / 60
@@ -78,6 +91,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 9,
     momentum: 0.95,
     noSpendCount: 2,
+    dailyGoalAmount: 25_600, // 80% del cupo · el user opted into el goal
+    score: 82,
+    scoreLabel: 'Muy bien',
+    proximoFijo: { name: 'Netflix', days: 3, amount: 12_500 },
+    fijosVencidos: 0,
   },
   {
     id: 'al_dia_tarde',
@@ -105,6 +123,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 13,
     momentum: 1.02,
     noSpendCount: 3,
+    dailyGoalAmount: 25_600,
+    score: 76,
+    scoreLabel: 'Muy bien',
+    proximoFijo: { name: 'Netflix', days: 3, amount: 12_500 },
+    fijosVencidos: 0,
   },
   {
     id: 'adelantado',
@@ -132,6 +155,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 13,
     momentum: 0.88,
     noSpendCount: 4,
+    dailyGoalAmount: 25_600,
+    score: 91,
+    scoreLabel: 'Excelente',
+    proximoFijo: { name: 'Spotify', days: 5, amount: 5_200 },
+    fijosVencidos: 0,
   },
   {
     id: 'atrasado_leve',
@@ -159,6 +187,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 13,
     momentum: 1.12,
     noSpendCount: 2,
+    dailyGoalAmount: 25_600, // pasó la meta auto-impuesta
+    score: 58,
+    scoreLabel: 'Bien',
+    proximoFijo: { name: 'Cable', days: 6, amount: 22_400 },
+    fijosVencidos: 0,
   },
   {
     id: 'atrasado_critico',
@@ -186,6 +219,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 13,
     momentum: 1.34,
     noSpendCount: 1,
+    dailyGoalAmount: null, // sin goal · cupo real es el threshold
+    score: 38,
+    scoreLabel: 'Regular',
+    proximoFijo: { name: 'Cable', days: 0, amount: 22_400 },
+    fijosVencidos: 1,
   },
   {
     id: 'no_alcanza',
@@ -213,6 +251,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 13,
     momentum: 1.42,
     noSpendCount: 0,
+    dailyGoalAmount: null,
+    score: 22,
+    scoreLabel: 'Atención',
+    proximoFijo: { name: 'Cable', days: 0, amount: 22_400 },
+    fijosVencidos: 2,
   },
   {
     id: 'exhausto',
@@ -240,6 +283,11 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 21,
     momentum: 1.65,
     noSpendCount: 0,
+    dailyGoalAmount: null,
+    score: 8,
+    scoreLabel: 'Atención',
+    proximoFijo: null,
+    fijosVencidos: 3,
   },
   {
     id: 'inicio_ciclo',
@@ -267,5 +315,10 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
     closedDays: 1,
     momentum: 1.0,
     noSpendCount: 0,
+    dailyGoalAmount: null,
+    score: 65,
+    scoreLabel: 'Bien',
+    proximoFijo: { name: 'Alquiler', days: 3, amount: 145_000 },
+    fijosVencidos: 0,
   },
 ]

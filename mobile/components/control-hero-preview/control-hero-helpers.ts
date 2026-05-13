@@ -66,6 +66,25 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
+  // 4b. Meta diaria auto-impuesta · pasaste tu goal pero seguís bajo
+  //     el cupo real. Soft warning — el user opted into el goal, hay
+  //     que respetarlo como threshold primario antes que el cupo del
+  //     sistema.
+  if (
+    state.dailyGoalAmount != null &&
+    state.gastoHoy > state.dailyGoalAmount &&
+    state.gastoHoy <= state.cupoDiario
+  ) {
+    const excesoMeta = state.gastoHoy - state.dailyGoalAmount
+    return {
+      primary: 'Pasaste tu meta diaria.',
+      secondary: `Seguís bajo el cupo, pero superaste tu meta por ${formatMoneyCompact(excesoMeta)}.`,
+      status: 'caution',
+      primaryNumber: Math.max(0, state.libreHoy),
+      primaryLabel: 'LIBRE HOY',
+    }
+  }
+
   // 5. Adelantado · delta positivo amplio
   if (state.delta > state.cupoDiario * 0.3) {
     return {

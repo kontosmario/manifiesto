@@ -203,6 +203,55 @@ Cada variante con:
 
 ## 🎯 Próximo paso
 
-Owner explora las 6 variantes en `/settings/dev/control-hero-variants` y pickea winner. Una vez elegida, se promociona a producción reemplazando `ControlV2HoyCard` como el hero card principal (o se mantiene HoyCard como detail card abajo).
+Owner explora las variantes en `/settings/dev/control-hero-variants` y pickea winner. Una vez elegida, se promociona a producción reemplazando `ControlV2HoyCard` como el hero card principal (o se mantiene HoyCard como detail card abajo).
 
 La key decision posterior es si el winner **reemplaza** la HoyCard o **sustituye** al header bar `ControlV2Header`. Lo más natural: reemplaza la HoyCard. El header bar (título + score pill) se mantiene como navigation chrome.
+
+---
+
+## 🆕 Etapa 2 · Variant G · Coach × Magazine fusion (2026-05-13)
+
+Owner: *"me gusta la idea del coach llamado control, mezclado con magazine, y me gustaría ver una variante con todas las chips, estados y variantes disponibles según estados y todo lo que puede recibir, incluso la meta diaria auto-impuesta."*
+
+### Cambios
+
+- **`ControlHeroState` extendido** con campos showcase del data completo:
+  - `dailyGoalAmount?: number | null` · meta diaria auto-impuesta del user (vía `daily_budget_buffer_mode='percent'`)
+  - `score: number` + `scoreLabel: string` · score 0-100 del adapter
+  - `proximoFijo?: { name, days, amount } | null` · próximo fijo a pagar
+  - `fijosVencidos?: number` · count de fijos vencidos del ciclo
+
+  Los 8 estados preset populan todos estos campos · `al_dia`/`adelantado` tienen `dailyGoalAmount` seteado, `exhausto`/`no_alcanza` tienen `fijosVencidos > 0`.
+
+- **`resolveControlMessage`** extendido con caso **"pasaste tu meta diaria"**. Cuando `dailyGoalAmount` está seteado y `gastoHoy > dailyGoalAmount` pero `gastoHoy <= cupoDiario`:
+  > **"Pasaste tu meta diaria."** · *"Seguís bajo el cupo, pero superaste tu meta por $X."*
+
+  Status `caution` (peach amber) — soft warning. Respeta el goal auto-impuesto como threshold primario antes del cupo del sistema.
+
+- **Variante G · `ControlHeroCoachMagazine`** (commit pending). Fusión de los dos paradigmas:
+  - **Magazine flavor**: masthead con brand "CONTROL" + breathe dot + fecha + **score badge** (XX/100 + trending icon + label "Muy bien"); ticker stats footer con 4 mini stats (cobro · cupo/día · delta · momentum).
+  - **Coach flavor**: avatar circular con icon `psychology` (spring bounce-in entrance 220ms damping) + "Hoy te digo:" lead-in italic.
+  - **Editorial body**: headline state-aware 24pt + lead paragraph italic 13pt + primary number 32pt 900.
+
+  **ChipsRow horizontal scrollable** que showcasea TODOS los chips disponibles según estado:
+
+  | Chip | Visible cuando | Tone |
+  |---|---|---|
+  | 🚩 Meta `$25k/día` | `dailyGoalAmount != null` | lime si under · peach si over |
+  | ⚠ Vencidos `N` | `fijosVencidos > 0` | peach urgent |
+  | 🚫 Pasaste `el ciclo` | `alreadyExhausted` | peach urgent |
+  | 📅 Sin plata `día 24` | `!alcanzaElMes` y agotamiento < cierre | peach urgent |
+  | 🔥 Racha `5d` | `racha >= 3` | lime positive |
+  | 🏆 Ganadores `9/13` | `closedDays >= 7` | lime si ≥60% · muted si menos |
+  | 💰 Sin gasto `3d` | `noSpendCount > 0` | lime positive |
+  | ⏰ Netflix `3d` | `proximoFijo != null` | cream · peach si days ≤ 1 |
+
+  Los chips se renderean SOLO cuando aplican. Los estados `con_atraso`/`no_alcanza` y `al_dia_tarde` muestran 4-5 chips simultáneamente para validar el layout.
+
+  La variante mantiene · gradient forest · ShineOverlay · CardParticles count=**14** (un poco más densa que las 6 anteriores) · BreatheDot color-coded · CountUpText · cascade entrance 80ms stagger · theme-aware AA.
+
+- Posicionada **primera en la screen comparativa** (con marca ★) ya que es la winner conceptual del owner.
+
+### Próximos pasos posibles
+
+Owner valida la variante G end-to-end con los 8 estados. Si confirma, se promueve a producción reemplazando `ControlV2HoyCard`. Los 6 otros variants (A-F) quedan en código preview pero pueden borrarse en cleanup posterior.

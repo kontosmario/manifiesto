@@ -11,6 +11,7 @@ import { ControlHeroTermometro } from '@/components/control-hero-preview/control
 import { ControlHeroCoach } from '@/components/control-hero-preview/control-hero-d-coach'
 import { ControlHeroPeriodico } from '@/components/control-hero-preview/control-hero-e-periodico'
 import { ControlHeroReloj } from '@/components/control-hero-preview/control-hero-f-reloj'
+import { ControlHeroCoachMagazine } from '@/components/control-hero-preview/control-hero-g-coach-magazine'
 
 /**
  * 6 variantes del nuevo hero card de Control. Selector horizontal de
@@ -121,6 +122,14 @@ export function ControlHeroVariantsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <VariantLabel
+          letter="G"
+          name="Coach × Magazine ★"
+          tagline="fusion del Coach + Periódico · TODOS los chips state-aware (meta · racha · vencidos · ganadores · próximo · score · etc)"
+        />
+        <ControlHeroCoachMagazine key={`g-${key}`} state={active} />
+
+        <View style={styles.sep} />
         <VariantLabel letter="A" name="El Titular" tagline="magazine cover · state-aware headline + primary number + footer stats" />
         <ControlHeroTitular key={`a-${key}`} state={active} />
 
