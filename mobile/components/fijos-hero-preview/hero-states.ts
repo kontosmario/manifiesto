@@ -57,6 +57,27 @@ export interface HeroState {
     isOverdue?: boolean
   }>
 
+  // Smart alerts (3er componente del refactor — siguiente a Próximos).
+  // hikes: fijos que subieron de precio detectados +5% o más
+  // signals: contexto (semana cargada, ratio fijos/sueldo alto, streak)
+  alerts: {
+    hikes: Array<{
+      id: string
+      name: string
+      previousPrice: number
+      currentPrice: number
+      deltaPct: number
+      categoryColor: string
+    }>
+    signals: Array<{
+      id: string
+      kind: 'stress-week' | 'fijos-ratio' | 'streak' | 'cycle-creep'
+      title: string
+      body: string
+      urgency: 'alta' | 'media' | 'baja'
+    }>
+  }
+
   // Special flags
   isEmpty?: boolean
   isAllPaid?: boolean
@@ -94,6 +115,10 @@ export const HERO_STATES: HeroState[] = [
       { id: 'cable', name: 'Cable + Internet', days: 6, amount: 22_400, categoryColor: '#F2B58A' },
       { id: 'personal', name: 'Préstamo personal', days: 8, amount: 88_500, categoryColor: '#9FC9E4' },
     ],
+    alerts: {
+      hikes: [],
+      signals: [],
+    },
   },
   {
     id: 'al_dia',
@@ -126,6 +151,15 @@ export const HERO_STATES: HeroState[] = [
       { id: 'spotify', name: 'Spotify Familiar', days: 8, amount: 5_200, categoryColor: '#A6EF8F', hikeDeltaPct: 12 },
       { id: 'gym', name: 'Gimnasio', days: 12, amount: 18_000, categoryColor: '#F2B58A' },
     ],
+    alerts: {
+      hikes: [
+        { id: 'h-spotify', name: 'Spotify Familiar', previousPrice: 4_640, currentPrice: 5_200, deltaPct: 12, categoryColor: '#A6EF8F' },
+        { id: 'h-prepaga', name: 'Prepaga médica', previousPrice: 68_000, currentPrice: 78_900, deltaPct: 16, categoryColor: '#9FC9E4' },
+      ],
+      signals: [
+        { id: 's-stress', kind: 'stress-week', title: 'Semana cargada', body: 'Cuatro fijos vencen entre el 14 y el 17 de abril. Sumá $182.000 en 4 días.', urgency: 'media' },
+      ],
+    },
   },
   {
     id: 'con_atraso',
@@ -158,6 +192,15 @@ export const HERO_STATES: HeroState[] = [
       { id: 'cable', name: 'Cable + Internet', days: -2, amount: 22_400, categoryColor: '#F06A6A', isOverdue: true },
       { id: 'cable_today', name: 'Cobertura médica', days: 0, amount: 18_500, categoryColor: '#9FC9E4' },
     ],
+    alerts: {
+      hikes: [
+        { id: 'h-cable', name: 'Cable + Internet', previousPrice: 19_900, currentPrice: 22_400, deltaPct: 13, categoryColor: '#F2B58A' },
+      ],
+      signals: [
+        { id: 's-ratio', kind: 'fijos-ratio', title: 'Ratio fijos/sueldo alto', body: 'Tus fijos consumen el 42% del sueldo. Recomendado <35%.', urgency: 'alta' },
+        { id: 's-creep', kind: 'cycle-creep', title: 'Tus fijos crecen', body: 'Subieron $24.000 en los últimos 3 ciclos. Acumulado +6%.', urgency: 'media' },
+      ],
+    },
   },
   {
     id: 'todo_pagado',
@@ -186,6 +229,12 @@ export const HERO_STATES: HeroState[] = [
     paidPct: 100,
     nextItem: null,
     upcoming: [],
+    alerts: {
+      hikes: [],
+      signals: [
+        { id: 's-streak', kind: 'streak', title: 'Cuarto ciclo sin atrasos', body: 'Pagaste todo en hora 4 ciclos seguidos. Mantené el ritmo.', urgency: 'baja' },
+      ],
+    },
     isAllPaid: true,
   },
   {
@@ -215,6 +264,10 @@ export const HERO_STATES: HeroState[] = [
     paidPct: 0,
     nextItem: null,
     upcoming: [],
+    alerts: {
+      hikes: [],
+      signals: [],
+    },
     isEmpty: true,
   },
   {
@@ -244,6 +297,12 @@ export const HERO_STATES: HeroState[] = [
     paidPct: 100,
     nextItem: null,
     upcoming: [],
+    alerts: {
+      hikes: [],
+      signals: [
+        { id: 's-streak', kind: 'streak', title: 'Cuarto ciclo sin atrasos', body: 'Pagaste todo en hora 4 ciclos seguidos. Mantené el ritmo.', urgency: 'baja' },
+      ],
+    },
     isAllPaid: true,
   },
 ]

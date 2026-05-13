@@ -1051,6 +1051,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-proximos-variants' as never)}
                   />
                   <SettingsRow
+                    helper="5 variantes de 'SmartAlerts' (hikes + signals). A · Editorial inline, B · Stack of notes, C · Marquee headline, D · Compact pills, E · Editorial banner. Cubre 6 estados, theme-aware."
+                    icon="notifications-active"
+                    label="SmartAlerts · 5 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-smart-alerts-variants' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"
