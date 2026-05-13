@@ -73,7 +73,11 @@ export function ControlHeroCoachMagazine({ state }: Props) {
       <ShineOverlay width={430} height={420} tint={theme.colors.shineOverlay} delayMs={1000} periodMs={4200} />
       <CardParticles count={14} accentColor={authTokens.peach} />
 
-      {/* MASTHEAD · Magazine flavor · brand + fecha + score badge */}
+      {/* MASTHEAD · Magazine flavor · brand + fecha + edición tag.
+          ScoreBadge removido — el score ya vive en el header bar del
+          screen de Control, sin necesidad de duplicarlo acá. La
+          edición tag (mañana/tarde/noche) preserva el feel magazine
+          sin agregar info redundante. */}
       <RiseRow delay={0}>
         <View style={styles.masthead}>
           <View style={styles.brandRow}>
@@ -85,12 +89,9 @@ export function ControlHeroCoachMagazine({ state }: Props) {
               · {state.diaLabel}
             </Text>
           </View>
-          <ScoreBadge
-            score={state.score}
-            label={state.scoreLabel}
-            tone={tone}
-            cream={theme.colors.heroText}
-          />
+          <Text style={[styles.editionTag, { color: theme.colors.heroMuted2 }]}>
+            {editionLabelFor(state.horaActual)}
+          </Text>
         </View>
       </RiseRow>
 
@@ -148,7 +149,13 @@ export function ControlHeroCoachMagazine({ state }: Props) {
 
       {/* CHIPS state-aware · horizontal scrollable · TODO disponible */}
       <RiseRow delay={480}>
-        <ChipsRow state={state} palette={palette} cream={theme.colors.heroText} muted={theme.colors.heroMuted} muted2={theme.colors.heroMuted2} />
+        <ChipsRow
+          state={state}
+          palette={palette}
+          cream={theme.colors.heroText}
+          muted={theme.colors.heroMuted}
+          muted2={theme.colors.heroMuted2}
+        />
       </RiseRow>
 
       {/* TICKER footer · Magazine flavor · 4 mini stats */}
@@ -185,39 +192,18 @@ function formatPrimaryNumber(n: number, label: string): string {
   return formatMoney(Math.round(n))
 }
 
-// ── Score badge in the masthead ─────────────────────────────────────
+// ── Edition label helper · "EDICIÓN MAÑANA/TARDE/NOCHE" ──────────────
 
-function ScoreBadge({
-  score,
-  label,
-  tone,
-  cream,
-}: {
-  score: number
-  label: string
-  tone: string
-  cream: string
-}) {
-  const iconName: 'trending-up' | 'trending-flat' | 'trending-down' =
-    score >= 65 ? 'trending-up' : score >= 35 ? 'trending-flat' : 'trending-down'
-  return (
-    <View
-      style={[
-        styles.scoreBadge,
-        {
-          backgroundColor: 'rgba(15,42,30,0.32)',
-          borderColor: tone + '60',
-        },
-      ]}
-    >
-      <MaterialIcons name={iconName} size={11} color={tone} />
-      <Text style={[styles.scoreBadgeValue, { color: tone }]}>{score}</Text>
-      <Text style={[styles.scoreBadgeLabel, { color: cream }]}>· {label}</Text>
-    </View>
-  )
+function editionLabelFor(hour: number): string {
+  if (hour < 12) return 'EDICIÓN MAÑANA'
+  if (hour < 19) return 'EDICIÓN TARDE'
+  return 'EDICIÓN NOCHE'
 }
 
-// ── Chips row · state-aware · TODO disponible ───────────────────────
+// ── Chips row · state-aware · SOLO Control-domain ────────────────────
+// Fijos-related chips (vencidos · próximo fijo) removidos por owner:
+// "todo lo que sea relacionado a fijos no debe estar presente" — esa
+// info vive en la tab de Fijos, no se duplica en Control.
 
 interface ChipsRowProps {
   state: ControlHeroState
@@ -227,9 +213,11 @@ interface ChipsRowProps {
   muted2: string
 }
 
-function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
+function ChipsRow({ state, palette, muted, muted2 }: ChipsRowProps) {
   void muted
   // Compute chip list dinámica · cada chip aparece solo cuando aplica.
+  // Solo Control-domain: meta diaria · estado de ciclo · racha · ganadores
+  // · no-spend. Cero referencias a fijos.
   const chips: ChipDef[] = []
 
   // 1. Meta diaria auto-impuesta · alta prioridad cuando existe
@@ -243,17 +231,7 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
     })
   }
 
-  // 2. Vencidos · siempre relevante cuando hay
-  if ((state.fijosVencidos ?? 0) > 0) {
-    chips.push({
-      icon: 'warning',
-      label: 'Vencidos',
-      value: `${state.fijosVencidos}`,
-      tone: palette.urgent,
-    })
-  }
-
-  // 3. Exhausto · pasado del ciclo
+  // 2. Exhausto · pasado del ciclo
   if (state.alreadyExhausted) {
     chips.push({
       icon: 'block',
@@ -263,7 +241,7 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
     })
   }
 
-  // 4. Día de agotamiento · cuando NO alcanza al cobro
+  // 3. Día de agotamiento · cuando NO alcanza al cobro
   if (!state.alcanzaElMes && state.diaAgotamiento < state.diasMes) {
     chips.push({
       icon: 'event-busy',
@@ -273,7 +251,7 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
     })
   }
 
-  // 5. Racha · solo cuando es ≥ 3
+  // 4. Racha · solo cuando es ≥ 3
   if (state.racha >= 3) {
     chips.push({
       icon: 'whatshot',
@@ -283,7 +261,7 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
     })
   }
 
-  // 6. Días ganadores · solo cuando hay historial (≥ 7 días)
+  // 5. Días ganadores · solo cuando hay historial (≥ 7 días)
   if (state.closedDays >= 7) {
     chips.push({
       icon: 'emoji-events',
@@ -293,25 +271,13 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
     })
   }
 
-  // 7. No-spend · solo cuando > 0
+  // 6. No-spend · solo cuando > 0
   if (state.noSpendCount > 0) {
     chips.push({
       icon: 'savings',
       label: 'Sin gasto',
       value: `${state.noSpendCount}d`,
       tone: palette.positive,
-    })
-  }
-
-  // 8. Próximo fijo · siempre que exista
-  if (state.proximoFijo) {
-    const days = state.proximoFijo.days
-    const dayCopy = days === 0 ? 'hoy' : days === 1 ? 'mañana' : `${days}d`
-    chips.push({
-      icon: 'schedule',
-      label: state.proximoFijo.name,
-      value: dayCopy,
-      tone: days <= 1 ? palette.urgent : cream,
     })
   }
 
@@ -338,7 +304,7 @@ function ChipsRow({ state, palette, cream, muted, muted2 }: ChipsRowProps) {
 }
 
 interface ChipDef {
-  icon: 'flag' | 'warning' | 'block' | 'event-busy' | 'whatshot' | 'emoji-events' | 'savings' | 'schedule'
+  icon: 'flag' | 'block' | 'event-busy' | 'whatshot' | 'emoji-events' | 'savings'
   label: string
   value: string
   tone: string
@@ -463,26 +429,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     flexShrink: 1,
   },
-  scoreBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  scoreBadgeValue: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: -0.2,
-    fontVariant: ['tabular-nums'],
-  },
-  scoreBadgeLabel: {
+  editionTag: {
     fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    fontWeight: '900',
+    letterSpacing: 1.4,
   },
+  // scoreBadge / scoreBadgeValue / scoreBadgeLabel styles ELIMINADOS —
+  // el ScoreBadge se removió del masthead por feedback owner
+  // (duplicaba el score del header bar del screen). El edition tag de
+  // arriba reemplaza el slot derecho del masthead.
   rule: {
     width: 28,
     height: 2,

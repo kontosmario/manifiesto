@@ -255,3 +255,49 @@ Owner: *"me gusta la idea del coach llamado control, mezclado con magazine, y me
 ### Próximos pasos posibles
 
 Owner valida la variante G end-to-end con los 8 estados. Si confirma, se promueve a producción reemplazando `ControlV2HoyCard`. Los 6 otros variants (A-F) quedan en código preview pero pueden borrarse en cleanup posterior.
+
+---
+
+## 🪒 Etapa 3 · Variant G refinement (2026-05-13)
+
+Owner: *"me parece muy cargado de información ahora. Fijos vencidos no debe aparecer · PRÓXIMO tampoco · todo lo que sea relacionado a fijos no debe estar presente. Score level ya figura en la vista de control, no es necesario en la hero card."*
+
+Refinamientos sobre G:
+
+- **ScoreBadge del masthead REMOVIDO.** El score (XX/100 + label) ya vive en el `ControlV2Header` del screen — duplicarlo en el hero era ruido. Slot derecho del masthead pasa a tag editorial **"EDICIÓN MAÑANA/TARDE/NOCHE"** según hora actual (preserva el feel Magazine sin agregar info redundante).
+- **Chip "Vencidos N" REMOVIDO** del ChipsRow. Pertenece al dominio Fijos.
+- **Chip "Próximo Netflix 3d" REMOVIDO** del ChipsRow. Pertenece al dominio Fijos.
+- Los campos `state.score`, `state.scoreLabel`, `state.fijosVencidos`, `state.proximoFijo` se **mantienen en `ControlHeroState`** como vestigiales (opcionales) — no rompen nada y permiten futuras variantes que los quieran usar. Por ahora ningún variant los renderea.
+
+### ChipsRow final · solo Control-domain
+
+| Chip | Visible cuando | Tone |
+|---|---|---|
+| 🚩 Meta `$25k/día` | `dailyGoalAmount != null` | lime si under · peach si over-goal |
+| 🚫 Pasaste `el ciclo` | `alreadyExhausted` | peach urgent |
+| 📅 Sin plata `día 24` | `!alcanzaElMes` y agotamiento < cierre | peach urgent |
+| 🔥 Racha `5d` | `racha >= 3` | lime positive |
+| 🏆 Ganadores `9/13` | `closedDays >= 7` | lime si ≥60% · muted si menos |
+| 💰 Sin gasto `3d` | `noSpendCount > 0` | lime positive |
+
+6 chips posibles (era 8) · todos Control-domain. Estados maduros como `al_dia_tarde` o `con_atraso` muestran 3-4 simultáneamente. Inicios de ciclo muestran 0-1. Cero referencias a fijos.
+
+### Layout actualizado
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ● CONTROL · HOY · MIÉR 22              EDICIÓN TARDE     │  ← masthead simple
+│ ──                                                       │
+│ [🧠]  Hoy te digo:                                       │
+│ Vas adelantado.                                          │
+│ Tenés margen extra: $4.500 sobre el ritmo.               │
+│                                                          │
+│ LIBRE HOY                                                │
+│ $18.000                                                  │
+│                                                          │
+│ [🚩 $25k/día]  [🔥 5d]  [🏆 11/13]  [💰 4d]              │  ← solo Control chips
+│                                                          │
+│ COBRO  CUPO/DÍA  DELTA  MOMENTUM                         │
+│ 16d    $32k      +5k    ↓12%                             │
+└──────────────────────────────────────────────────────────┘
+```
