@@ -434,3 +434,15 @@ Los 8 mocks de `control-hero-states.ts` extendidos con valores realistas — el 
 Control hero **cerrado**. Variant A `ControlHeroTitular` ship en producción vía `control-v2-hero.tsx`. Variants B-G (~2000 LOC) quedan en preview por si owner quiere reabrir exploración futura — cleanup pendiente para release de simplificación.
 
 Próximo refactor: **HOME hero card**.
+
+---
+
+## 🪦 Etapa 6 · Home hero exploration descartada (2026-05-13)
+
+Después de cerrar Control, se exploraron 6 variantes radicales del **Home** hero card como ejercicio paralelo (Termómetro · Reloj de Sol · Diario · Cofre · Pulso · Manifiesto). El objetivo era despegar el Home del DNA visual compartido con Fijos/Control (gradient forest + ShineOverlay + CardParticles + 2-tile split).
+
+Owner: *"no me gusta ninguno, descarta esto. Estamos bien como estamos."*
+
+**Decisión final:** el `HomeHeroCard` actual se queda como está. Las 6 variantes del Home se borraron del repo en el commit posterior — no quedaron como preview vestigial porque, a diferencia de las B-G de Control, no apuntan a una pickeable futura.
+
+El Home hero queda **fuera del scope de refactors** hasta nuevo aviso. Los próximos refactors visuales se enfocan en otras superficies (navegación, transitions, etc).
