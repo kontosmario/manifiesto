@@ -1,0 +1,271 @@
+/**
+ * Estados representativos del día/ciclo del usuario para alimentar las
+ * 6 variantes del hero card de Control. Cada estado modela un momento
+ * que el usuario va a encontrar al abrir Control.
+ *
+ *   al_dia_temprano      mañana · gasté poquito · todo en orden
+ *   al_dia_tarde         tarde · vas en línea con el prorrateo
+ *   adelantado           gastaste menos que el prorrateo, tenés margen
+ *   atrasado_leve        gastaste un poco más que el ritmo de la hora
+ *   atrasado_critico     gastaste mucho más que el cupo de hoy
+ *   no_alcanza           a este ritmo no llegás al cobro
+ *   exhausto             ya te pasaste del cupo total del ciclo
+ *   inicio_ciclo         día 1-2 del ciclo, métricas sin sentido aún
+ */
+
+export interface ControlHeroState {
+  id: string
+  label: string
+  description: string
+
+  // Cupo del día
+  cupoDiario: number
+  gastoHoy: number
+  libreHoy: number // = cupoDiario - gastoHoy
+  delta: number // cupoHastaAhora - gastoHoy (positivo = adelantado)
+  estaOk: boolean
+  alreadyExhausted: boolean
+
+  // Tiempo
+  diaLabel: string
+  diaActual: number
+  diasMes: number
+  diasRestantes: number
+  proximoSueldoEnDias: number
+  horaActual: number
+  minActual: number
+  horaF: number
+
+  // Proyección
+  alcanzaElMes: boolean
+  diaAgotamiento: number // si seguís el ritmo, te quedás sin plata el día X
+  proyectadoMes: number
+
+  // Motivación
+  racha: number
+  diasGanadores: number
+  closedDays: number
+  momentum: number // ratio last-7 vs prev-7
+  noSpendCount: number
+}
+
+const HORA_F = (h: number, m: number): number => h + m / 60
+
+export const CONTROL_HERO_STATES: ControlHeroState[] = [
+  {
+    id: 'al_dia_temprano',
+    label: 'Al día (mañana)',
+    description: 'Día 10/30 · 09:30 · gastaste poquito hoy, recién arrancás el día',
+    cupoDiario: 32_000,
+    gastoHoy: 2_500,
+    libreHoy: 29_500,
+    delta: HORA_F(9, 30) / 24 * 32_000 - 2_500, // ~10k positive (adelantado)
+    estaOk: true,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MARTES 14',
+    diaActual: 10,
+    diasMes: 30,
+    diasRestantes: 20,
+    proximoSueldoEnDias: 20,
+    horaActual: 9,
+    minActual: 30,
+    horaF: HORA_F(9, 30),
+    alcanzaElMes: true,
+    diaAgotamiento: 30,
+    proyectadoMes: 880_000,
+    racha: 3,
+    diasGanadores: 7,
+    closedDays: 9,
+    momentum: 0.95,
+    noSpendCount: 2,
+  },
+  {
+    id: 'al_dia_tarde',
+    label: 'Al día (tarde)',
+    description: 'Día 14/30 · 18:00 · vas en línea con el prorrateo del día',
+    cupoDiario: 32_000,
+    gastoHoy: 22_000,
+    libreHoy: 10_000,
+    delta: HORA_F(18, 0) / 24 * 32_000 - 22_000, // ~2k positive
+    estaOk: true,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MIÉRCOLES 22',
+    diaActual: 14,
+    diasMes: 30,
+    diasRestantes: 16,
+    proximoSueldoEnDias: 16,
+    horaActual: 18,
+    minActual: 0,
+    horaF: HORA_F(18, 0),
+    alcanzaElMes: true,
+    diaAgotamiento: 30,
+    proyectadoMes: 940_000,
+    racha: 4,
+    diasGanadores: 9,
+    closedDays: 13,
+    momentum: 1.02,
+    noSpendCount: 3,
+  },
+  {
+    id: 'adelantado',
+    label: 'Adelantado',
+    description: 'Día 14/30 · 20:00 · gastaste menos del prorrateo, tenés margen',
+    cupoDiario: 32_000,
+    gastoHoy: 14_000,
+    libreHoy: 18_000,
+    delta: HORA_F(20, 0) / 24 * 32_000 - 14_000, // ~13k positive
+    estaOk: true,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MIÉRCOLES 22',
+    diaActual: 14,
+    diasMes: 30,
+    diasRestantes: 16,
+    proximoSueldoEnDias: 16,
+    horaActual: 20,
+    minActual: 0,
+    horaF: HORA_F(20, 0),
+    alcanzaElMes: true,
+    diaAgotamiento: 30,
+    proyectadoMes: 860_000,
+    racha: 5,
+    diasGanadores: 11,
+    closedDays: 13,
+    momentum: 0.88,
+    noSpendCount: 4,
+  },
+  {
+    id: 'atrasado_leve',
+    label: 'Atrasado leve',
+    description: 'Día 14/30 · 14:00 · gastaste un poco arriba del ritmo de la hora',
+    cupoDiario: 32_000,
+    gastoHoy: 25_000,
+    libreHoy: 7_000,
+    delta: HORA_F(14, 0) / 24 * 32_000 - 25_000, // ~-6k (atrasado leve)
+    estaOk: false,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MIÉRCOLES 22',
+    diaActual: 14,
+    diasMes: 30,
+    diasRestantes: 16,
+    proximoSueldoEnDias: 16,
+    horaActual: 14,
+    minActual: 0,
+    horaF: HORA_F(14, 0),
+    alcanzaElMes: true,
+    diaAgotamiento: 30,
+    proyectadoMes: 960_000,
+    racha: 2,
+    diasGanadores: 8,
+    closedDays: 13,
+    momentum: 1.12,
+    noSpendCount: 2,
+  },
+  {
+    id: 'atrasado_critico',
+    label: 'Atrasado crítico',
+    description: 'Día 14/30 · 11:00 · ya gastaste más del cupo de TODO el día',
+    cupoDiario: 32_000,
+    gastoHoy: 41_000,
+    libreHoy: -9_000,
+    delta: HORA_F(11, 0) / 24 * 32_000 - 41_000, // ~-26k atrasado
+    estaOk: false,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MIÉRCOLES 22',
+    diaActual: 14,
+    diasMes: 30,
+    diasRestantes: 16,
+    proximoSueldoEnDias: 16,
+    horaActual: 11,
+    minActual: 0,
+    horaF: HORA_F(11, 0),
+    alcanzaElMes: true,
+    diaAgotamiento: 28,
+    proyectadoMes: 980_000,
+    racha: 0,
+    diasGanadores: 6,
+    closedDays: 13,
+    momentum: 1.34,
+    noSpendCount: 1,
+  },
+  {
+    id: 'no_alcanza',
+    label: 'No alcanza al cobro',
+    description: 'Día 14/30 · venís gastando mucho · te quedás sin plata el día 24',
+    cupoDiario: 32_000,
+    gastoHoy: 38_000,
+    libreHoy: -6_000,
+    delta: HORA_F(15, 0) / 24 * 32_000 - 38_000,
+    estaOk: false,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · MIÉRCOLES 22',
+    diaActual: 14,
+    diasMes: 30,
+    diasRestantes: 16,
+    proximoSueldoEnDias: 16,
+    horaActual: 15,
+    minActual: 0,
+    horaF: HORA_F(15, 0),
+    alcanzaElMes: false,
+    diaAgotamiento: 24,
+    proyectadoMes: 1_120_000,
+    racha: 0,
+    diasGanadores: 4,
+    closedDays: 13,
+    momentum: 1.42,
+    noSpendCount: 0,
+  },
+  {
+    id: 'exhausto',
+    label: 'Exhausto (pasado del ciclo)',
+    description: 'Día 22/30 · ya gastaste $145k MÁS que el cupo total del ciclo',
+    cupoDiario: 32_000,
+    gastoHoy: 45_000,
+    libreHoy: -13_000,
+    delta: -50_000,
+    estaOk: false,
+    alreadyExhausted: true,
+    diaLabel: 'HOY · JUEVES 30',
+    diaActual: 22,
+    diasMes: 30,
+    diasRestantes: 8,
+    proximoSueldoEnDias: 8,
+    horaActual: 16,
+    minActual: 0,
+    horaF: HORA_F(16, 0),
+    alcanzaElMes: false,
+    diaAgotamiento: 20, // ya pasado
+    proyectadoMes: 1_280_000,
+    racha: 0,
+    diasGanadores: 5,
+    closedDays: 21,
+    momentum: 1.65,
+    noSpendCount: 0,
+  },
+  {
+    id: 'inicio_ciclo',
+    label: 'Inicio de ciclo',
+    description: 'Día 2/30 · recién arrancaste, casi sin métricas todavía',
+    cupoDiario: 32_000,
+    gastoHoy: 8_500,
+    libreHoy: 23_500,
+    delta: HORA_F(13, 0) / 24 * 32_000 - 8_500, // ~9k positive
+    estaOk: true,
+    alreadyExhausted: false,
+    diaLabel: 'HOY · LUNES 10',
+    diaActual: 2,
+    diasMes: 30,
+    diasRestantes: 28,
+    proximoSueldoEnDias: 28,
+    horaActual: 13,
+    minActual: 0,
+    horaF: HORA_F(13, 0),
+    alcanzaElMes: true,
+    diaAgotamiento: 30,
+    proyectadoMes: 880_000,
+    racha: 1,
+    diasGanadores: 1,
+    closedDays: 1,
+    momentum: 1.0,
+    noSpendCount: 0,
+  },
+]

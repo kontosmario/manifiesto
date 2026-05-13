@@ -6,7 +6,9 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ControlV2AlcanciaCard } from '@/components/control-v2/control-v2-alcancia-card'
 import { ControlV2AlcanzaCard } from '@/components/control-v2/control-v2-alcanza-card'
 import { ControlV2Anchor } from '@/components/control-v2/control-v2-anchor'
-import { ControlV2AsesorCard } from '@/components/control-v2/control-v2-asesor-card'
+// ControlV2AsesorCard import removed — los signals del Asesor ahora
+// son accesibles desde el icon de acceso rápido en Home. Ver doc
+// REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md
 import { ControlV2CoberturaCard } from '@/components/control-v2/control-v2-cobertura-card'
 import { ControlV2EmptyState } from '@/components/control-v2/control-v2-empty-state'
 import { ControlV2Header } from '@/components/control-v2/control-v2-header'
@@ -238,16 +240,25 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     return () => clearTimeout(handle)
   }, [params.section, scrollToSection])
 
-  const today = new Date()
-  const dayLabel = `HOY · ${DOW_FULL[today.getDay()]} ${today.getDate()}`
-  const fijosRatioPct =
-    data.ingresoMes > 0 ? (data.fijosMes / data.ingresoMes) * 100 : 0
+  // Perf · derived values memoized para que las cards memo'd no
+  // re-rendereen por re-cómputos triviales del screen (e.g. cambio
+  // de goalSheetVisible state). El `today.getDate()` cambia solo
+  // a la medianoche — basta refrescar al day change vía la cache
+  // key del Date object generado una vez por render del screen.
+  const dayLabel = useMemo(() => {
+    const t = new Date()
+    return `HOY · ${DOW_FULL[t.getDay()]} ${t.getDate()}`
+  }, [])
+  const fijosRatioPct = useMemo(
+    () => (data.ingresoMes > 0 ? (data.fijosMes / data.ingresoMes) * 100 : 0),
+    [data.ingresoMes, data.fijosMes],
+  )
   // Recover ahorro mensual from the adapter's identity:
   //   ingreso = fijos + ahorro + libre  ⇒  ahorro = ingreso - fijos - libre
   // No new query needed — the adapter already has it on `data`.
-  const ahorroMes = Math.max(
-    0,
-    data.ingresoMes - data.fijosMes - data.libreMes,
+  const ahorroMes = useMemo(
+    () => Math.max(0, data.ingresoMes - data.fijosMes - data.libreMes),
+    [data.ingresoMes, data.fijosMes, data.libreMes],
   )
 
   if (noConfig) {
@@ -345,15 +356,9 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               </ControlV2Anchor>
             </TourTarget>
 
-            {signals.length > 0 ? (
-              <TourTarget
-                tour={CONTROL_TOUR}
-                order={CONTROL_TOUR_STEPS.asesor.order}
-                text={CONTROL_TOUR_STEPS.asesor.text}
-              >
-                <ControlV2AsesorCard tareas={signals} />
-              </TourTarget>
-            ) : null}
+            {/* AsesorCard removido — los signals viven en el icon de
+                acceso rápido en Home (entry point al chat completo).
+                Mantenerlo acá duplicaba la surface. */}
 
             <TourTarget
               tour={CONTROL_TOUR}

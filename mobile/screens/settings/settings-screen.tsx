@@ -1038,78 +1038,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
+                  {/* Fijos dev rows removidas (2026-05-13) — refactor de
+                      Fijos cerrado en V2 con mejoras quirúrgicas. El
+                      workflow viejo de 12 dev routes con previews de
+                      variantes ya no tiene uso. Los archivos preview
+                      siguen vivos en código (`mobile/components/
+                      fijos-hero-preview/` + dev screens) para análisis
+                      posterior — cleanup pendiente. */}
                   <SettingsRow
-                    helper="🎯 Vista completa orquestada: los 6 winners integrados como reemplazo del fijos-v2-screen real. Header pulse + Hero Titular + SmartAlerts + Próximos + Lista smart-sorted con Calendar markers."
+                    helper="6 variantes del nuevo hero card de Control · A·Titular B·Velocímetro C·Termómetro D·Coach E·Periódico F·Reloj. Particles + state-aware + theme-aware. Owner pick."
                     icon="dashboard"
-                    label="Fijos · Vista completa"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-vista-completa' as never)}
-                  />
-                  <SettingsRow
-                    helper="Composición incremental (legacy del workflow): solo Titular + Próximos. La 'Vista completa' arriba es la fuente de verdad final."
-                    icon="check-circle-outline"
-                    label="Fijos · Selección final (incremental)"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-seleccion-final' as never)}
-                  />
-                  <SettingsRow
-                    helper="4 variantes de 'Próximos a pagar' lado-a-lado: A · Editorial (canon), B · Bars (proximity), C · Timeline, D · Hierarchy. Theme-aware contraste light + dark."
-                    icon="view-agenda"
-                    label="Próximos · 4 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-proximos-variants' as never)}
-                  />
-                  <SettingsRow
-                    helper="5 variantes de 'SmartAlerts' (hikes + signals). A · Editorial inline, B · Stack of notes, C · Marquee headline, D · Compact pills, E · Editorial banner. Cubre 6 estados, theme-aware."
-                    icon="notifications-active"
-                    label="SmartAlerts · 5 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-smart-alerts-variants' as never)}
-                  />
-                  <SettingsRow
-                    helper="5 variantes de FijosTabs (filtros todos/pendientes/pagados). A · Underline, B · Stacked bar, C · Big counts, D · Chip dropdown, E · Numeric ledger. Theme-aware."
-                    icon="tab"
-                    label="Tabs · 5 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-tabs-variants' as never)}
-                  />
-                  <SettingsRow
-                    helper="Tabs v2 (5 variantes más intuitivas, varias sin tabs explícitos): Bandeja simple, Toggle binario, Inbox progresivo, Time-grouped, Smart sort. Cada una renderea la lista real debajo."
-                    icon="view-day"
-                    label="Tabs v2 · 5 intuitivas"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-tabs-v2' as never)}
-                  />
-                  <SettingsRow
-                    helper="5 variantes de FijoRow (cada fila individual): A · Editorial, B · Sparkline-hero, C · Accent stripe, D · Calendar marker, E · Status icon-led. Theme-aware."
-                    icon="format-list-bulleted"
-                    label="FijoRow · 5 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-row-variants' as never)}
-                  />
-                  <SettingsRow
-                    helper="5 variantes del FijosHeader (top bar). A · Editorial título, B · Stat-led monto big, C · Search inline, D · Health pulse, E · Utility bar."
-                    icon="title"
-                    label="Header · 5 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-header-variants' as never)}
-                  />
-                  <SettingsRow
-                    helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
-                    icon="palette"
-                    label="Preview · Hero Fijos"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-preview' as never)}
-                  />
-                  <SettingsRow
-                    helper="Variante A live: magazine cover. Selector de 6 estados (inicio, al día, con atraso, todo pagado, sin fijos, fin de ciclo) con cascade entrance + CountUp + breathe-dot."
-                    icon="article"
-                    label="Live · Hero Titular"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-titular' as never)}
-                  />
-                  <SettingsRow
-                    helper="Variante B live: boarding pass. Route line se dibuja, today marker bounce-in + halo pulse, CountUp en montos."
-                    icon="confirmation-number"
-                    label="Live · Hero Pasaje"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-pasaje' as never)}
-                  />
-                  <SettingsRow
-                    helper="Variante C live: mini-Wrapped. 3 páginas auto-rotando 5s con progress bars, crossfade, long-press pausa, tap navega."
-                    icon="auto-stories"
                     isLast
-                    label="Live · Hero Manifiesto"
-                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-manifiesto' as never)}
+                    label="Control · Hero · 6 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/control-hero-variants' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
