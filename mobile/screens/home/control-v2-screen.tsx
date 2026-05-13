@@ -12,7 +12,11 @@ import { ControlV2Anchor } from '@/components/control-v2/control-v2-anchor'
 import { ControlV2CoberturaCard } from '@/components/control-v2/control-v2-cobertura-card'
 import { ControlV2EmptyState } from '@/components/control-v2/control-v2-empty-state'
 import { ControlV2Header } from '@/components/control-v2/control-v2-header'
-import { ControlV2HoyCard } from '@/components/control-v2/control-v2-hoy-card'
+import { ControlV2Hero } from '@/components/control-v2/control-v2-hero'
+// ControlV2HoyCard reemplazada por ControlV2Hero (variante A · El
+// Titular). HoyCard sigue en código para rollback rápido si fuera
+// necesario. Ver REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md
+// import { ControlV2HoyCard } from '@/components/control-v2/control-v2-hoy-card'
 import { ControlV2PatronCard } from '@/components/control-v2/control-v2-patron-card'
 import { ControlV2SemanaCard } from '@/components/control-v2/control-v2-semana-card'
 import { ControlV2VsMesCard } from '@/components/control-v2/control-v2-vsmes-card'
@@ -333,25 +337,17 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               text={CONTROL_TOUR_STEPS.hoy.text}
             >
               <ControlV2Anchor section="hoy">
-                <ControlV2HoyCard
-                  cupoDiario={data.cupoDiario}
-                  gastoHoy={data.gastoHoy}
-                  libreHoy={view.libreHoy}
-                  delta={view.delta}
-                  estaOk={view.estaOk}
-                  horaF={view.horaF}
-                  horaActual={data.horaActual}
-                  minActual={data.minActual}
-                  diaLabel={dayLabel}
-                  racha={view.racha}
-                  diasGanadores={view.diasGanadores}
-                  closedDays={view.closedDays}
-                  diasRestantes={view.diasRestantes}
-                  proximoSueldoEnDias={data.proximoSueldoEnDias}
-                  momentum={view.momentum}
-                  noSpendCount={view.noSpendCount}
-                  alreadyExhausted={view.alreadyExhausted}
+                {/* Hero card nueva · variante A · El Titular. Reemplaza
+                    al ControlV2HoyCard original que era "0 comprensible
+                    nada intuitivo" según owner. El nuevo hero comunica
+                    state-aware "qué tenés que saber sin vueltas":
+                    headline editorial + primary number + 3 mini stats
+                    + particles + shine + breathe dot color-coded. */}
+                <ControlV2Hero
+                  data={data}
+                  view={view}
                   dailyGoalAmount={dailyGoalAmount}
+                  dayLabel={dayLabel}
                 />
               </ControlV2Anchor>
             </TourTarget>

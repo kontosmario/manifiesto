@@ -143,8 +143,67 @@ Todas con:
 | 4 | Construir 6 variantes hero Control en `control-hero-preview/` | ✅ DONE |
 | 5 | Mount dev preview route con state selector | ✅ DONE |
 | 6 | Performance pass del screen (memo + useMemo audit) | ✅ DONE |
-| 7 | Owner pickea winner → integración a producción | 🟡 PENDING |
-| 8 | Update doc final | ✅ DONE (este update) |
+| 7 | Owner pickea winner → integración a producción | ✅ DONE · 🏆 **A · El Titular** ganadora |
+| 8 | Update doc final | ✅ DONE |
+| 9 | Cleanup variants no usadas (B · C · D · E · F · G) | 🔴 PENDIENTE |
+
+---
+
+## 🏆 Etapa 4 · Variant A · El Titular promoted a producción (2026-05-13)
+
+Owner: *"me termine deciciendo por la card A - EL TITULAR. integremos esta nueva hero card a Control."*
+
+Después de explorar G (Coach × Magazine fusion con chips) y refinarla, owner concluyó que **A · El Titular** ofrece la mejor relación claridad/restraint para el hero card. Promote a producción ejecutado.
+
+### Cambios shipped
+
+- **NUEVO** `mobile/components/control-v2/control-v2-hero.tsx` · production wrapper que adapta el output del `useControlV2Data` (data + view + dailyGoalAmount + dayLabel) al shape `ControlHeroState` que consume `ControlHeroTitular` desde preview. `memo()` wrapped + `useMemo` para el state shape · estabilidad garantizada para shallow compare upstream.
+
+- `control-v2-screen.tsx` · `ControlV2HoyCard` reemplazada por `<ControlV2Hero>`. Mantiene los wraps `<TourTarget>` + `<ControlV2Anchor section="hoy">` originales · el tour guiado y el scroll-to-section siguen funcionando.
+
+- **ControlV2HoyCard NO eliminada** del filesystem. Import comentado en el screen con nota de rollback. Si surge un bug crítico en device, descomentar 2 líneas (el import + el JSX wrap) restaura la HoyCard vieja.
+
+### Lo que el usuario va a ver ahora en Control
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Control                    [score pill]  ← ControlV2Header
+│                                                          │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ ● HOY · MIÉR 22                                      │ │  ← NUEVO HERO
+│ │ ──                                                   │ │
+│ │ Vas bien hoy.                                        │ │  ← headline state-aware
+│ │ $18.000 para el resto del día · 16 días al cobro.    │ │  ← secondary
+│ │                                                      │ │
+│ │ LIBRE HOY                                            │ │
+│ │ $18.000                                              │ │  ← primary number
+│ │                                                      │ │
+│ │ racha │ al cobro │ del cupo                          │ │  ← 3 mini stats
+│ │ 5d    │ 16d      │ 56%                               │ │
+│ └──────────────────────────────────────────────────────┘ │
+│                                                          │
+│ [AlcanzaCard]  ← detail card                             │
+│ [AlcanciaCard] ← detail card                             │
+│ [SemanaCard]                                             │
+│ [VsMesCard]                                              │
+│ [PatronCard]                                             │
+│ [CoberturaCard]                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+Plus: gradient forest + ShineOverlay sweep + CardParticles (12 luciérnagas peach) + BreatheDot color-coded por status (lime/amber/peach) + CountUpText + cascade entrance.
+
+### Próximo paso · cleanup (opcional)
+
+Cuando confirme en device que A está estable, ejecutar cleanup:
+
+- Borrar variants B-G de `mobile/components/control-hero-preview/`
+- Borrar `mobile/screens/dev/control-hero-variants-screen.tsx`
+- Borrar `app/(app)/settings/dev/control-hero-variants.tsx`
+- Quitar entry de Settings → Dev
+- Mantener `control-hero-a-titular.tsx`, `control-hero-states.ts`, `control-hero-helpers.ts` ya que son las dependencias del production wrapper
+
+Aproximado: **~2000 LOC** removibles después del cleanup.
 
 ---
 
