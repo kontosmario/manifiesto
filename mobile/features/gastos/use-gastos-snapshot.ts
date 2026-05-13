@@ -262,3 +262,40 @@ export function useGastosSnapshot(args: UseGastosSnapshotArgs) {
     },
   })
 }
+
+/**
+ * Prefetch helper — fires el snapshot RPC + seedea las caches consumer
+ * sin requerir que ningún consumer hook esté montado. Lo usa el tabs
+ * layout para calentar el cache mientras el user todavía está mirando
+ * Home, así cuando tocan Gastos el `<GastosV2ScreenContent>` gate
+ * resuelve en 1 frame contra cache hot.
+ *
+ * Idempotente: si la key ya está en cache fresh (staleTime), no
+ * dispara nada · React Query handles dedupe.
+ */
+export async function prefetchGastosSnapshot(
+  client: QueryClient,
+  args: UseGastosSnapshotArgs,
+): Promise<void> {
+  if (!args.familyId) return
+  const cycleStartIso = args.cycleStart.toISOString()
+  const cycleEndIso = args.cycleEnd.toISOString()
+  const todayIso = localIsoDate(args.today)
+  await client.prefetchQuery({
+    queryKey: gastosSnapshotQueryKey(
+      args.familyId,
+      args.userId,
+      cycleStartIso,
+      cycleEndIso,
+      todayIso,
+      args.cupoDiario,
+      null,
+    ),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const payload = await fetchGastosSnapshot(args)
+      seedCaches(client, payload, args, cycleStartIso, cycleEndIso, todayIso)
+      return payload
+    },
+  })
+}

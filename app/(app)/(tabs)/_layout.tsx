@@ -6,6 +6,7 @@ import {
   homeSnapshotQueryKey,
   fetchHomeSnapshot,
 } from '@/features/home/use-home-snapshot'
+import { useWarmTabsSnapshots } from '@/hooks/use-warm-tabs-snapshots'
 
 export default function TabsLayout() {
   const queryClient = useQueryClient()
@@ -19,6 +20,12 @@ export default function TabsLayout() {
       staleTime: 60_000,
     })
   }, [queryClient, userId])
+
+  // Warm-up de los snapshots de Gastos + Control después que Home
+  // renderea. Diferido vía InteractionManager — corre cuando el UI
+  // thread está idle, no compite con la primera frame. Cuando el user
+  // tap Gastos/Control, cache hot → screen renderea en 1 frame.
+  useWarmTabsSnapshots()
 
   return <AppTabs />
 }

@@ -12,7 +12,7 @@
 
 import { useMemo } from 'react'
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
@@ -499,24 +499,42 @@ interface ControlIntelligencePayload {
 export const controlIntelligenceQueryKey = (familyId?: string) =>
   ['control-intelligence', familyId ?? null] as const
 
+async function fetchControlIntelligencePayload(
+  familyId: string,
+): Promise<ControlIntelligencePayload> {
+  const [summaries, limits, velocity] = await Promise.all([
+    fetchSummaries(familyId),
+    fetchLimits(familyId),
+    fetchVelocity(familyId),
+  ])
+  return { summaries, limits, velocity }
+}
+
 function useControlIntelligence(familyId: string) {
   return useQuery<ControlIntelligencePayload>({
     queryKey: controlIntelligenceQueryKey(familyId),
     enabled: Boolean(familyId),
-    queryFn: async () => {
-      // The data is also embedded in home_snapshot; this is a direct
-      // fallback for when the user navigates before the snapshot has
-      // been refetched. Each of the 3 tables is tiny — the joined
-      // cost is negligible.
-      const [summaries, limits, velocity] = await Promise.all([
-        fetchSummaries(familyId),
-        fetchLimits(familyId),
-        fetchVelocity(familyId),
-      ])
-      return { summaries, limits, velocity }
-    },
+    queryFn: () => fetchControlIntelligencePayload(familyId),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
+  })
+}
+
+/**
+ * Prefetch helper — calenta el cache de control-intelligence sin
+ * requerir que `useControlV2Data` esté montado. Lo dispara el tabs
+ * layout post-home, así cuando el user toca el tab Control la data
+ * ya está hot y el screen renderea instantáneo.
+ */
+export async function prefetchControlIntelligence(
+  client: QueryClient,
+  familyId: string,
+): Promise<void> {
+  if (!familyId) return
+  await client.prefetchQuery({
+    queryKey: controlIntelligenceQueryKey(familyId),
+    queryFn: () => fetchControlIntelligencePayload(familyId),
+    staleTime: 5 * 60_000,
   })
 }
 
