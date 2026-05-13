@@ -1039,7 +1039,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
                   <SettingsRow
-                    helper="3 direcciones conceptuales para el refactor del hero de Fijos (Titular / Pasaje / Manifiesto). Mocks estáticos."
+                    helper="Composición final del refactor de Fijos: solo los componentes seleccionados (Titular + Próximos y los que vayan sumándose). Selector de 6 estados con cascade entrance completa."
+                    icon="check-circle-outline"
+                    label="Fijos · Selección final"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-seleccion-final' as never)}
+                  />
+                  <SettingsRow
+                    helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"
                     onPress={() => router.push('/(app)/settings/dev/fijos-hero-preview' as never)}

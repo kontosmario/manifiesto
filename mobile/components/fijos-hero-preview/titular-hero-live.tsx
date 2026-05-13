@@ -48,27 +48,23 @@ export function TitularHeroLive({ state }: TitularHeroLiveProps) {
       end={{ x: 0.9, y: 1 }}
       style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
     >
-      {/* Eyebrow editorial */}
+      {/* Header de dos líneas — line 1: ciclo del usuario, line 2:
+          días restantes + dato valioso state-aware (pace, vencidos,
+          guía empty, etc). Sin brand mark, sin "edición" — info útil
+          directamente. */}
       <RiseRow delay={0}>
-        <View style={styles.eyebrowRow}>
-          <Text style={[styles.brand, { color: theme.colors.heroAccent }]}>
-            MANIFIESTO
+        <View style={styles.headerBlock}>
+          <Text style={[styles.cycleTitle, { color: theme.colors.heroAccent }]}>
+            GASTOS FIJOS · {state.cycleLabel.toUpperCase()}
           </Text>
-          <Text style={[styles.sep, { color: theme.colors.heroMuted2 }]}>·</Text>
-          <Text style={[styles.edition, { color: theme.colors.heroMuted2 }]}>
-            edición {state.monthLong.toLowerCase()}
-          </Text>
-          <View style={{ flex: 1 }} />
-          <Text style={[styles.days, { color: theme.colors.heroMuted2 }]}>
-            {state.isEmpty
-              ? `${state.daysRemaining} días al cierre`
-              : `${state.daysRemaining} días al cierre`}
+          <Text style={[styles.cycleSub, { color: theme.colors.heroMuted2 }]}>
+            {resolveCycleSub(state)}
           </Text>
         </View>
       </RiseRow>
 
       {/* Rule scaleX */}
-      <RuleScale color={theme.colors.heroAccent} delay={60} />
+      <RuleScale color={theme.colors.heroAccent} delay={80} />
 
       {/* Headline state-aware */}
       <RiseRow delay={140}>
@@ -163,6 +159,52 @@ export function TitularHeroLive({ state }: TitularHeroLiveProps) {
       </RiseRow>
     </LinearGradient>
   )
+}
+
+// ── Header sub-line state resolver ────────────────────────────────
+// "Quedan X días · {dato valioso}". El dato valioso adapta al estado:
+//   inicio          → "todo por pagar"
+//   al_dia          → pace vs cycle (adelantado / atrasado / en línea)
+//   con_atraso      → "{N} en atraso"
+//   todo_pagado     → "ciclo cerrado anticipado"
+//   sin_fijos       → "cargá tus primeros fijos"
+//   fin_ciclo       → "cobrás mañana" / "cobrás hoy"
+
+function resolveCycleSub(state: HeroState): string {
+  const daysCopy =
+    state.daysRemaining === 0
+      ? 'Hoy cierra el ciclo'
+      : state.daysRemaining === 1
+      ? 'Queda 1 día'
+      : `Quedan ${state.daysRemaining} días`
+
+  if (state.isEmpty) {
+    return `${daysCopy} · cargá tus primeros fijos`
+  }
+  if (state.isAllPaid && state.daysRemaining <= 1) {
+    return `${daysCopy} · cobrás ${state.daysRemaining === 0 ? 'hoy' : 'mañana'}`
+  }
+  if (state.isAllPaid) {
+    return `${daysCopy} · ciclo cerrado anticipado`
+  }
+  if (state.cantidadVencidos > 0) {
+    return `${daysCopy} · ${state.cantidadVencidos} en atraso`
+  }
+  if (state.cycleDayIndex <= 3 && state.cantidadPagados === 0) {
+    return `${daysCopy} · todo por pagar`
+  }
+  // Pace: compara cuánto pagaste vs cuánto del ciclo transcurrió.
+  // Si vas más adelantado de lo "esperado", surface lime. Si vas más
+  // atrás, surface peach. Si estás en línea, neutral.
+  const cyclePct = Math.round((state.cycleDayIndex / state.cycleDays) * 100)
+  const paceDelta = state.paidPct - cyclePct
+  if (paceDelta >= 8) {
+    return `${daysCopy} · adelantado ${Math.abs(paceDelta)}pts`
+  }
+  if (paceDelta <= -8) {
+    return `${daysCopy} · atrasado ${Math.abs(paceDelta)}pts`
+  }
+  return `${daysCopy} · en línea con el ciclo`
 }
 
 // ── Headline state resolver ───────────────────────────────────────
@@ -370,29 +412,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+  headerBlock: {
+    marginBottom: 12,
   },
-  brand: {
+  cycleTitle: {
     fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 2.4,
+    letterSpacing: 1.8,
   },
-  sep: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  edition: {
-    fontSize: 11,
+  cycleSub: {
+    fontSize: 12,
     fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  days: {
-    fontSize: 11,
-    fontWeight: '600',
+    marginTop: 4,
+    letterSpacing: 0.1,
   },
   rule: {
     width: 32,

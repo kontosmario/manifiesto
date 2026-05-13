@@ -125,6 +125,99 @@ Mapeo exhaustivo de cada prop / data path que el hero usa **hoy**:
 
 ---
 
+## 🏆 WINNER · Iteration 2 · A — El Titular
+
+**Picked**: 2026-05-12 por owner. Quote: *"Ganador por excelencia, HERO - EL TITULAR, directo sencillo, completo y bastante informativo. Todo lo que buscamos."*
+
+### Ajustes pedidos sobre el ganador
+
+| Ajuste | Antes (preview v1) | Después (final) |
+|---|---|---|
+| Brand mark "MANIFIESTO" en header | sí (11pt 900 letter-spacing 2.4) | **fuera** |
+| "edición abril" en header | sí (italic muted) | **fuera** |
+| Línea de título | "MANIFIESTO · edición abril · X días al cierre" | **"GASTOS FIJOS · 5 ABR → 5 MAY"** (rescatado del hero viejo) |
+| Línea sub | inexistente | **"Quedan X días · {dato valioso state-aware}"** |
+| Dato valioso line 2 | n/a | pace vs ciclo / vencidos / empty CTA / cobrás mañana, etc |
+
+### Pace datum state-aware (línea 2 del header)
+
+| Estado | Sub copy |
+|---|---|
+| empty | `Quedan X días · cargá tus primeros fijos` |
+| fin_ciclo + isAllPaid + ≤1 día | `Queda 1 día · cobrás mañana` |
+| isAllPaid (general) | `Quedan X días · ciclo cerrado anticipado` |
+| con_atraso (vencidos > 0) | `Quedan X días · {N} en atraso` |
+| inicio (day ≤3, 0 pagados) | `Quedan X días · todo por pagar` |
+| default | calc `pace = paidPct − cyclePct` → `adelantado Ypts` (≥8) / `atrasado Ypts` (≤−8) / `en línea con el ciclo` (resto) |
+
+---
+
+## 📐 Criterio ganador — SPEC reusable
+
+Esta sección **define el criterio editorial** que ganó. Aplicar el mismo criterio a todos los componentes próximos del refactor (Próximos, SmartAlerts, Tabs, Category groups, Header bar). Si querés introducir un componente nuevo en cualquier pantalla del app, este es el filtro.
+
+### 1. Lenguaje editorial · Wrapped DNA
+
+- **Una idea dominante por componente**. No tablero, no widget grid.
+- **Eyebrow tiny ALL CAPS** (10-11pt, weight 900, letter-spacing 1.8-2.4).
+- **Headline editorial big type** cuando aplica (32-40pt, weight 900, tracking -1.4 a -2).
+- **Rule short decorative** (28-32×2pt) entre eyebrow y headline, scaleX entrance.
+- **Subhead 14pt weight 500 line-height 19** debajo del headline cuando hace falta contexto.
+
+### 2. State-aware copy obligatoria
+
+Cualquier sentencia visible del componente **adapta al estado del usuario**. No copy genérica fallback. Mínimo cubre los 6 estados canónicos:
+- `inicio` (día ≤3 del ciclo, nada pagado)
+- `al_dia` (on-pace, cero vencidos)
+- `con_atraso` (vencidos > 0) — urgency color peach + dot pulse
+- `todo_pagado` (100% antes del cierre)
+- `sin_fijos` (empty state)
+- `fin_ciclo` (último día del ciclo)
+
+### 3. Restraint sobre decoración
+
+- **Cero nested cards** (ban absoluto impeccable). Si un componente necesita "tile interno", convertirlo en row + divider o background tint.
+- **Cero emojis como icons**. Usar MaterialIcons, dots de color, o tipografía pura.
+- **Cero "ESTE MES" / "MENSUAL" redundante** cuando el header ya dice el ciclo.
+- **Editorial restraint** sobre badge-pill-chip-soup. Cada chip tiene que ganar su lugar.
+
+### 4. Header pattern (uniforme entre componentes)
+
+```
+EYEBROW · {ciclo o contexto}        ← ALL CAPS 10-11pt 900
+{sub line con dato valioso}          ← state-aware 12pt 600
+──                                   ← rule decorative 28pt scaleX
+{cuerpo del componente}
+```
+
+### 5. Motion language
+
+- **Cascade entrance** row-por-row (60-80ms stagger).
+- `ease-out-expo` (`motionEasings.enterSmooth` — cubic-bezier(0.16, 1, 0.3, 1)) en todo lo que entra.
+- `withDelay + withTiming(460ms)` standard para opacity + translateY.
+- **Rule** anima `scaleX` con `transformOrigin: 'left'` (540ms).
+- **CountUp** en todo monto $.
+- **BreatheDot pulse** solo cuando hay urgency (vencidos / próximo HOY).
+- **Reduced motion** = todos los valores iniciales pasan al estado final (zero motion).
+
+### 6. Color usage
+
+- **Gradient forest** (`theme.colors.heroGradient`) para componentes "hero-tier" (Titular).
+- **CreamCard background** para componentes de soporte (Próximos, lista, tabs).
+- **Peach (`#FFB59E` light / `#B84014` dark sólido) = urgencia**. Solo vencidos / today HOY.
+- **Lime (`#A6EF8F`) = positivo**. Solo all-paid / al día.
+- **Cream foundation (`#F2EAD3` / `theme.colors.heroText`) = neutral default**.
+
+### 7. Layout & spacing
+
+- **Card radius 20-24px**.
+- **Padding 18-22px**.
+- **Section gap 12px** entre componentes en el stack.
+- **Inter-row gap 0** dentro de un componente — usar `divider` thin (1px @ 40% opacity) entre rows.
+- **Tabular nums** para todo número.
+
+---
+
 ## 🎨 Iteration 2 — 3 direcciones nuevas (Wrapped DNA)
 
 El Wrapped del producto tiene una gramática editorial específica:
@@ -651,20 +744,48 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 
 | Etapa | Alcance | Estado | Dependencias |
 |---|---|---|---|
-| **0** | Análisis + propuesta de direcciones (este doc) | ✅ DONE | — |
-| **1** | Owner elige dirección. Mock visual estático del hero nuevo (sin animations todavía) | 🔴 ESPERANDO PICK | Owner pick |
-| **2** | Implementación del hero elegido con motion completa. Typecheck + lint clean | 🔴 TO DO | Etapa 1 OK |
-| **3** | Iteración post-feedback owner (1-2 sprints típicos) | 🔴 TO DO | Etapa 2 |
-| **4** | Cross-check: el resto de la vista (alerts/upcoming/tabs/groups) tiene que dialogar con el nuevo hero. Refactor cascada de lo que choca | 🔴 TO DO | Etapa 3 cerrada |
-| **5** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 4 |
+| **0** | Análisis + propuesta de direcciones | ✅ DONE | — |
+| **1** | Iteration 1 (Ledger / Dial / Grid) — mocks estáticos | ✅ REJECTED por owner | — |
+| **2** | Iteration 2 (Titular / Pasaje / Manifiesto) — mocks estáticos | ✅ DONE | — |
+| **3** | Live preview con state explorer (6 estados × 3 variantes con motion) | ✅ DONE | Etapa 2 |
+| **4** | Owner picks Iteration 2 · A · El Titular | ✅ WINNER | Etapa 3 |
+| **5** | Refactor header del Titular: out "MANIFIESTO/edición", in "GASTOS FIJOS · {ciclo} + pace state-aware" | ✅ DONE | Etapa 4 |
+| **6** | **Próximos · editorial spread** (reemplaza FijosUpcomingStrip viejo) | ✅ DONE | Etapa 5 |
+| **7** | SmartAlerts editorial — si se mantiene aparte; sino merge en Próximos como `hikeDeltaPct` badge inline | 🔴 NEXT | Etapa 6 |
+| **8** | Tabs + Category groups · refactor con criterio Spec | 🔴 TO DO | Etapa 7 |
+| **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
+| **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
+| **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
+
+### Componentes seleccionados (vivo en `/settings/dev/fijos-seleccion-final`)
+
+| # | Componente | Reemplaza a | Archivo preview | Estado |
+|---|---|---|---|---|
+| 1 | Hero · El Titular | `FijosHeroCard` | `mobile/components/fijos-hero-preview/titular-hero-live.tsx` | ✅ WINNER |
+| 2 | Próximos · Editorial | `FijosUpcomingStrip` | `mobile/components/fijos-hero-preview/proximos-live.tsx` | ✅ DONE (2026-05-12) |
+| 3 | _por definir_ | `FijosSmartAlerts` | _siguiente etapa_ | 🔴 |
+| 4 | _por definir_ | `FijosTabs` + `FijoCategoryGroups` | _siguiente etapa_ | 🔴 |
 
 ---
 
-## 🎯 Próximo paso — espero pick del owner
+## 🎯 Próximo paso — siguiente componente
 
-Necesito tu pick entre **A · Ledger**, **B · Dial**, o **C · Grid**. Si querés que combinemos elementos (e.g. "Ledger + grid chiquito al costado") también es opción válida — la dirección elegida no es contractual, es punto de partida.
+Componentes ya en `Selección final`:
+1. ✅ Hero · El Titular (con header ajustado: ciclo + pace state-aware)
+2. ✅ Próximos · Editorial (reemplaza UpcomingStrip con 3 cards anidadas + emojis)
 
-Una vez elegida la dirección paso a Etapa 1: **mock visual estático del hero nuevo en código real**, sin animations todavía, para ver cómo se siente en pantalla. Si el feedback es positivo → Etapa 2 (motion completa + commit).
+**Siguiente decisión**: ¿qué hacemos con `FijosSmartAlerts`?
+
+- **Opción A**: mantener aparte. Si las hikes son una preocupación distinta a "qué pago próximo", separar conceptos en surfaces distintos respeta la jerarquía cognitiva.
+- **Opción B**: **mergear en Próximos** vía el `hikeDeltaPct` badge inline (el badge `↑ +12%` ya está renderizado en el Próximos del preview). Si el hike afecta a un fijo del top 3 upcoming, lo destaca en su row. Si afecta a uno fuera del top 3, lo subimos al top con override.
+
+Mi recomendación: **B · merge**. Razones:
+- La SmartAlerts card actual es **conditional + solo visible cuando hay hikes**, fragmenta el layout (a veces sí, a veces no).
+- El badge `↑ +12%` dentro del row de Próximos ya da la info accionable (el fijo subió de precio + cuándo se paga).
+- Reduce 1 surface en el screen → más densidad útil sin agregar componentes.
+- Si hay hikes pero no están en el top 3 upcoming, ordenamos por urgencia (hike + days), no sólo by days.
+
+Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate + diseñar como corresponda).
 
 ---
 
@@ -673,3 +794,9 @@ Una vez elegida la dirección paso a Etapa 1: **mock visual estático del hero n
 - **2026-05-12** — Doc creado. Etapa 0 (análisis línea por línea + inventario de datos + 3 direcciones conceptuales + backend value-adds) cerrada. Esperando pick del owner.
 - **2026-05-12** — Preview screen `/settings/dev/fijos-hero-preview` mounted con Iteration 1 (Ledger / Dial / Grid).
 - **2026-05-12** — Owner rechazó Iteration 1: "*ninguno me gusta. Mejor organizado, más fácil, CUALQUIERA debe entenderlo, UNICO, creatividad como el Wrapped mensual*". Estudio del Wrapped → DNA editorial extraída → Iteration 2 propuesta con 3 direcciones nuevas: **A · El Titular** (magazine cover headline state-aware), **B · Pasaje del ciclo** (boarding pass aesthetic), **C · Manifiesto Diario** (mini-Wrapped en hero). Preview screen actualizado.
+- **2026-05-12** — Live preview screens montadas: 3 dev routes (`/settings/dev/fijos-hero-{titular|pasaje|manifiesto}`) con selector de 6 estados (inicio / al día / con atraso / todo pagado / sin fijos / fin de ciclo) y motion completa por variante. Cada cambio de estado replay entrance vía `key={stateId-nonce}`.
+- **2026-05-12** — **Owner picks 🏆 A · El Titular**: *"Ganador por excelencia. Directo, sencillo, completo y bastante informativo."* Ajustes pedidos: fuera "MANIFIESTO" + "edición abril", in "GASTOS FIJOS · {ciclo cargado}" + sub-line state-aware con pace vs ciclo.
+- **2026-05-12** — Etapa 5 cerrada: header del Titular reworked. Line 1 = ciclo del usuario. Line 2 = días + dato valioso state-aware (pace adelantado/atrasado/en línea, vencidos count, empty CTA, cobrás mañana, etc).
+- **2026-05-12** — Etapa 6 cerrada: **Próximos · Editorial** shipped (`proximos-live.tsx`). Reemplaza al `FijosUpcomingStrip` viejo (3 cards anidadas con emojis). Nuevo lenguaje: list editorial con eyebrow + rule + 3 rows tipográficas. State-aware (empty / all paid / vencidos / default). Badge inline `↑ +X%` para hikes. Compone bien con el Titular.
+- **2026-05-12** — Nueva dev route `/settings/dev/fijos-seleccion-final` con la composición de componentes seleccionados. Esta screen es la fuente de verdad del refactor — a medida que avanzan etapas, se suman componentes acá.
+- **2026-05-12** — Doc actualizado: criterio ganador formalizado como **SPEC reusable** (7 reglas: editorial Wrapped DNA, state-aware copy obligatoria, restraint, header pattern uniforme, motion language, color usage, layout & spacing). Aplicar a todos los componentes próximos del refactor (Fijos + otras pantallas).

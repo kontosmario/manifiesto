@@ -41,8 +41,21 @@ export interface HeroState {
   pctSueldo: number
   paidPct: number
 
-  // Próximo item
+  // Próximo item (single, para hero "PRÓXIMO" line)
   nextItem: { name: string; days: number; amount: number; dayOfWeek: string } | null
+
+  // Top 3 upcoming items (para componente "Próximos" editorial).
+  // Cuando hay vencidos, los más vencidos van primero con isOverdue=true.
+  // `days` negativo = vencido hace N días.
+  upcoming: Array<{
+    id: string
+    name: string
+    days: number
+    amount: number
+    categoryColor: string
+    hikeDeltaPct?: number
+    isOverdue?: boolean
+  }>
 
   // Special flags
   isEmpty?: boolean
@@ -76,6 +89,11 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 42,
     paidPct: 0,
     nextItem: { name: 'Alquiler', days: 3, amount: 145_000, dayOfWeek: 'lunes' },
+    upcoming: [
+      { id: 'alquiler', name: 'Alquiler', days: 3, amount: 145_000, categoryColor: '#A6EF8F' },
+      { id: 'cable', name: 'Cable + Internet', days: 6, amount: 22_400, categoryColor: '#F2B58A' },
+      { id: 'personal', name: 'Préstamo personal', days: 8, amount: 88_500, categoryColor: '#9FC9E4' },
+    ],
   },
   {
     id: 'al_dia',
@@ -103,6 +121,11 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 42,
     paidPct: 51,
     nextItem: { name: 'Netflix', days: 3, amount: 12_500, dayOfWeek: 'viernes' },
+    upcoming: [
+      { id: 'netflix', name: 'Netflix', days: 3, amount: 12_500, categoryColor: '#E5B6E5' },
+      { id: 'spotify', name: 'Spotify Familiar', days: 8, amount: 5_200, categoryColor: '#A6EF8F', hikeDeltaPct: 12 },
+      { id: 'gym', name: 'Gimnasio', days: 12, amount: 18_000, categoryColor: '#F2B58A' },
+    ],
   },
   {
     id: 'con_atraso',
@@ -130,6 +153,11 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 42,
     paidPct: 29,
     nextItem: { name: 'Cable', days: 0, amount: 18_500, dayOfWeek: 'hoy' },
+    upcoming: [
+      { id: 'expensa', name: 'Expensas', days: -5, amount: 28_000, categoryColor: '#F06A6A', isOverdue: true },
+      { id: 'cable', name: 'Cable + Internet', days: -2, amount: 22_400, categoryColor: '#F06A6A', isOverdue: true },
+      { id: 'cable_today', name: 'Cobertura médica', days: 0, amount: 18_500, categoryColor: '#9FC9E4' },
+    ],
   },
   {
     id: 'todo_pagado',
@@ -157,6 +185,7 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 42,
     paidPct: 100,
     nextItem: null,
+    upcoming: [],
     isAllPaid: true,
   },
   {
@@ -185,6 +214,7 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 0,
     paidPct: 0,
     nextItem: null,
+    upcoming: [],
     isEmpty: true,
   },
   {
@@ -213,6 +243,7 @@ export const HERO_STATES: HeroState[] = [
     pctSueldo: 42,
     paidPct: 100,
     nextItem: null,
+    upcoming: [],
     isAllPaid: true,
   },
 ]
