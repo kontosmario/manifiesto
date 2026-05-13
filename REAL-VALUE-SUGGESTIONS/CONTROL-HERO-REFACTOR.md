@@ -360,3 +360,77 @@ Refinamientos sobre G:
 │ 16d    $32k      +5k    ↓12%                             │
 └──────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🪒 Etapa 5 · Polish del Titular · summary signals + meta chip (2026-05-13)
+
+Owner: *"tratemos de que la información que mostramos realmente tenga relevancia, podemos obtener un resumen de todas las demás tarjetas de control para mostrar en la hero card... podemos integrar /impeccable y /ui-ux-pro-max para pulir y destacar más la card hero? Además, cuando configuramos la meta diaria, no se ve reflejada en la card."*
+
+### Bug fix · META chip visible cuando hay daily goal
+
+`dailyGoalAmount` se pasaba bien al state pero variant A solo lo usaba indirectamente vía `resolveControlMessage` (cambia el copy a "Pasaste tu meta diaria" cuando hay goal y `gastoHoy > goal`). No había NINGUNA representación visible cuando el user opted-in al goal pero estaba bajo el threshold.
+
+**Fix:** META chip en el eyebrow row (derecha) cuando `dailyGoalAmount != null`. Color-encoded:
+
+- Lime `#A6EF8F` mientras `gastoHoy <= goal` (bajo la meta · todo bien)
+- Peach `#F2A78C` cuando `gastoHoy > goal` (pasó la meta)
+
+Pill discreta: `META · $25.6k` · 8pt label · 11pt value tabular · tint translúcido + border al 33%. No compite con el `diaLabel` izquierda.
+
+### Summary signals pulled de las detail cards
+
+El owner pidió que las cards de detalle pasen a ser **visualización plena** y la hero **sintetice lo importante**. Cambios:
+
+- **Footer · "del cupo" → "vs mes"** (Δ% proyectado vs mes pasado). El % del cupo ya está implícito en el LIBRE HOY arriba (si `libreHoy < 0` ya sabés que estás sobre el cupo). El delta vs mes pasado es señal **más actionable** y no se ve en ningún otro lugar visible de la hero.
+
+  Color: lime si `vsMesMejor === true`, peach si false, accent neutral si flat. Formato `+12%` / `-8%` / `=`.
+
+- **Insight line nueva** (sutil, italic, debajo del footer): `"Acumulaste $X este ciclo"` cuando `vault >= cupoDiario` (un día completo de cupo ahorrado).
+
+  Editorial restraint:
+  - Solo aparece si NO es urgent state (`alreadyExhausted` o `!alcanzaElMes`). En urgencia, la motivación distrae — el copy principal manda.
+  - Texto italic + heroMuted2 + 11pt → se lee como pista, no compite con la headline.
+  - Invita a explorar la card Alcancía sin necesidad de CTA explícito.
+
+### Visual prominence (impeccable polish)
+
+| Antes | Después | Razón |
+|---|---|---|
+| `padding: 20` | `padding: 22` | hero merece breathing room mayor que las detail cards (16-18) |
+| `CardParticles count={12}` | `count={14}` | densidad sutilmente mayor sin ruido |
+| `fontSize: 36 / lineHeight: 40` | `fontSize: 40 / lineHeight: 44` | primary number escala con el rango de la card como el hero merece |
+| `letterSpacing: -1.4` | `letterSpacing: -1.6` | tracking más agresivo en números grandes — editorial |
+
+### Adapter actualizado
+
+`ControlHeroState` extendido con campos opcionales: `vsMesDeltaPct`, `vsMesMejor`, `vault`, `mejorDowName`. `control-v2-hero.tsx` los pasa desde `view.vsMesDeltaPct`, `view.vsMesMejor`, `view.vault`, `view.mejorDow.name`.
+
+Los 8 mocks de `control-hero-states.ts` extendidos con valores realistas — el variants-screen sigue reflejando el mismo footer + insight que producción.
+
+### Resultado · Layout final del Titular
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ● HOY · MARTES 14                          META · $25.6k │  ← META chip cuando hay goal
+│ ──                                                       │
+│                                                          │
+│ Vas adelantado.                                          │
+│ Tenés margen extra: $13k sobre el ritmo.                 │
+│                                                          │
+│ LIBRE HOY                                                │
+│ $18.000                                                  │  ← 40pt
+│                                                          │
+│ ──────────────────────────────────────                   │
+│ RACHA    VS MES    AL COBRO                              │
+│ 3d       -8%       16d                                   │
+│                                                          │
+│ Acumulaste $42.000 este ciclo                            │  ← insight line (cuando vault ≥ cupo)
+└──────────────────────────────────────────────────────────┘
+```
+
+### Estado del refactor
+
+Control hero **cerrado**. Variant A `ControlHeroTitular` ship en producción vía `control-v2-hero.tsx`. Variants B-G (~2000 LOC) quedan en preview por si owner quiere reabrir exploración futura — cleanup pendiente para release de simplificación.
+
+Próximo refactor: **HOME hero card**.
