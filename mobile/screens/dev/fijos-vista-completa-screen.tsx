@@ -9,8 +9,7 @@ import { Screen } from '@/components/ui/screen'
 import { HERO_STATES } from '@/components/fijos-hero-preview/hero-states'
 import { HeaderHealthPulse } from '@/components/fijos-hero-preview/header-d-health-pulse'
 import { TitularHeroLive } from '@/components/fijos-hero-preview/titular-hero-live'
-import { SmartAlertsEditorialLive } from '@/components/fijos-hero-preview/smart-alerts-editorial-live'
-import { ProximosLive } from '@/components/fijos-hero-preview/proximos-live'
+import { ProximosFusedLive } from '@/components/fijos-hero-preview/proximos-fused-live'
 import { FullListLive } from '@/components/fijos-hero-preview/full-list-live'
 import { useAppTheme } from '@/theme/theme-provider'
 import { triggerHaptic } from '@/lib/haptics'
@@ -149,28 +148,19 @@ export function FijosVistaCompletaScreen() {
           <TitularHeroLive state={active} />
         </Animated.View>
 
-        {/* Section 3 · SmartAlerts */}
+        {/* Section 3 · Próximos a pagar (fusión SmartAlerts + Próximos) */}
         <Animated.View
-          key={`alerts-${key}`}
+          key={`prox-${key}`}
           entering={FadeInDown.duration(420).delay(240)}
           style={styles.section}
         >
-          <SmartAlertsEditorialLive state={active} />
+          <ProximosFusedLive state={active} />
         </Animated.View>
 
-        {/* Section 4 · Próximos */}
-        <Animated.View
-          key={`prox-${key}`}
-          entering={FadeInDown.duration(420).delay(360)}
-          style={styles.section}
-        >
-          <ProximosLive state={active} />
-        </Animated.View>
-
-        {/* Section 5 · FullList (Smart sort + Calendar marker rows) */}
+        {/* Section 4 · FullList (categorías + smart sort + acciones por row) */}
         <Animated.View
           key={`list-${key}`}
-          entering={FadeInDown.duration(420).delay(480)}
+          entering={FadeInDown.duration(420).delay(360)}
           style={styles.section}
         >
           <FullListLive state={active} />

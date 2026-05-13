@@ -5,16 +5,18 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
+import { BreatheDot } from '@/components/home/animated/breathe-dot'
+import { CardParticles } from '@/components/ui/card-particles'
 import { CountUpText } from '@/components/home/animated/count-up-text'
+import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
 import { motionEasings } from '@/lib/motion/tokens'
+import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { HeroState } from './hero-states'
 
@@ -48,15 +50,33 @@ export function TitularHeroLive({ state }: TitularHeroLiveProps) {
       end={{ x: 0.9, y: 1 }}
       style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
     >
-      {/* Header de dos líneas — line 1: ciclo del usuario, line 2:
-          días restantes + dato valioso state-aware (pace, vencidos,
-          guía empty, etc). Sin brand mark, sin "edición" — info útil
-          directamente. */}
+      {/* Capas decorativas — mismas que el FijosHeroCard real:
+          ShineOverlay (sweep diagonal) + CardParticles (luciérnagas
+          twinkling). Detrás del contenido, sin pointer-events. */}
+      <ShineOverlay
+        width={430}
+        height={360}
+        tint={theme.colors.shineOverlay}
+        delayMs={1000}
+        periodMs={4200}
+      />
+      <CardParticles count={12} accentColor={authTokens.peach} />
+
+      {/* Header de dos líneas — line 1: ciclo del usuario + breathe dot,
+          line 2: días restantes + dato valioso state-aware. Sin brand
+          mark, sin "edición" — info útil directamente. */}
       <RiseRow delay={0}>
         <View style={styles.headerBlock}>
-          <Text style={[styles.cycleTitle, { color: theme.colors.heroAccent }]}>
-            GASTOS FIJOS · {state.cycleLabel.toUpperCase()}
-          </Text>
+          <View style={styles.headerEyebrowRow}>
+            <BreatheDot
+              size={7}
+              color={theme.colors.heroAccent}
+              glow={theme.colors.heroAccent}
+            />
+            <Text style={[styles.cycleTitle, { color: theme.colors.heroAccent }]}>
+              GASTOS FIJOS · {state.cycleLabel.toUpperCase()}
+            </Text>
+          </View>
           <Text style={[styles.cycleSub, { color: theme.colors.heroMuted2 }]}>
             {resolveCycleSub(state)}
           </Text>
@@ -83,7 +103,7 @@ export function TitularHeroLive({ state }: TitularHeroLiveProps) {
 
           {headline.urgent ? (
             <View style={styles.urgencyRow}>
-              <BreatheDot color="#FFB59E" />
+              <BreatheDot size={7} color="#FFB59E" glow="#FFB59E" />
               <Text style={[styles.urgencyText, { color: '#FFB59E' }]}>
                 resolvé primero los vencidos
               </Text>
@@ -321,57 +341,6 @@ function RuleScale({ color, delay }: { color: string; delay: number }) {
   )
 }
 
-// ── BreatheDot ────────────────────────────────────────────────────
-
-function BreatheDot({ color }: { color: string }) {
-  const reduced = useReducedMotion()
-  const scale = useSharedValue(1)
-  const opacity = useSharedValue(0.85)
-
-  useEffect(() => {
-    if (reduced) return
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.22, { duration: 900, easing: motionEasings.warm }),
-        withTiming(1, { duration: 900, easing: motionEasings.warm }),
-      ),
-      -1,
-      true,
-    )
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 900, easing: motionEasings.warm }),
-        withTiming(0.6, { duration: 900, easing: motionEasings.warm }),
-      ),
-      -1,
-      true,
-    )
-    return () => {
-      cancelAnimation(scale)
-      cancelAnimation(opacity)
-    }
-  }, [reduced, scale, opacity])
-
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }))
-
-  return (
-    <Animated.View
-      style={[
-        {
-          width: 7,
-          height: 7,
-          borderRadius: 4,
-          backgroundColor: color,
-        },
-        style,
-      ]}
-    />
-  )
-}
-
 // ── Footer metric con CountUp ─────────────────────────────────────
 
 function FooterMetric({
@@ -414,6 +383,11 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     marginBottom: 12,
+  },
+  headerEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   cycleTitle: {
     fontSize: 11,

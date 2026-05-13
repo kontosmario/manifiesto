@@ -1,7 +1,9 @@
+import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { formatMoney } from '@/utils/money'
+import { triggerHaptic } from '@/lib/haptics'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { buildProximosPalette } from './proximos-colors'
@@ -9,6 +11,11 @@ import type { FijoItem } from './fijo-list-sample'
 
 interface RowDayMarkerProps {
   item: FijoItem
+  /** When true (default), the row is tap-expandable to reveal action
+   *  buttons (registrar pago / editar / eliminar). When false the row
+   *  is read-only (used in Próximos section where we don't want
+   *  actions). */
+  withActions?: boolean
 }
 
 /**
@@ -24,13 +31,20 @@ interface RowDayMarkerProps {
  *
  * El día está en CAJA cuadrada estilo "ticket/agenda".
  */
-export function RowDayMarker({ item }: RowDayMarkerProps) {
+export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
   const { theme } = useAppTheme()
   const palette = buildProximosPalette(theme)
   const press = usePressScale({ pressedScale: 0.98 })
+  const [expanded, setExpanded] = useState(false)
 
   const isPaid = item.status === 'paid'
   const isOverdue = item.status === 'overdue'
+
+  const handleTap = useCallback(() => {
+    if (!withActions) return
+    void triggerHaptic('selection')
+    setExpanded((v) => !v)
+  }, [withActions])
 
   const dayBoxStyle = isOverdue
     ? {
@@ -62,19 +76,22 @@ export function RowDayMarker({ item }: RowDayMarkerProps) {
       : `En ${item.daysUntil} días · ${item.category}`
 
   return (
-    <Pressable
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, día ${item.dayOfMonth}, ${label}, ${formatMoney(item.amount)}`}
-    >
-      <Animated.View
-        style={[
-          styles.row,
-          press.animatedStyle,
-          isPaid ? { opacity: 0.6 } : null,
-        ]}
+    <Animated.View layout={LinearTransition.duration(240)}>
+      <Pressable
+        onPress={handleTap}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${item.name}, día ${item.dayOfMonth}, ${label}, ${formatMoney(item.amount)}${withActions ? ', tocá para acciones' : ''}`}
       >
+        <Animated.View
+          style={[
+            styles.row,
+            press.animatedStyle,
+            isPaid && !expanded ? { opacity: 0.6 } : null,
+          ]}
+        >
         <View
           style={[
             styles.dayBox,
@@ -133,9 +150,110 @@ export function RowDayMarker({ item }: RowDayMarkerProps) {
             {label}
           </Text>
         </View>
-        <Text style={[styles.amount, { color: theme.colors.text }]}>
-          {formatMoney(item.amount)}
-        </Text>
+          <Text style={[styles.amount, { color: theme.colors.text }]}>
+            {formatMoney(item.amount)}
+          </Text>
+          {withActions ? (
+            <MaterialIcons
+              name={expanded ? 'expand-less' : 'expand-more'}
+              size={18}
+              color={theme.colors.textMuted}
+              style={styles.chevron}
+            />
+          ) : null}
+        </Animated.View>
+      </Pressable>
+
+      {/* Action panel — tap-to-expand. Replaces the destructive swipe of
+          the old FijoRow. Mark paid (primary, only if pending) + Editar
+          + Eliminar. */}
+      {expanded && withActions ? (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(140)}
+          style={[
+            styles.actionsRow,
+            { borderTopColor: theme.colors.line },
+          ]}
+        >
+          {!isPaid ? (
+            <ActionButton
+              icon="check"
+              label="Pagar"
+              primary
+              palette={palette}
+              theme={theme}
+            />
+          ) : null}
+          <ActionButton
+            icon="edit"
+            label="Editar"
+            palette={palette}
+            theme={theme}
+          />
+          <ActionButton
+            icon="delete-outline"
+            label="Eliminar"
+            destructive
+            palette={palette}
+            theme={theme}
+          />
+        </Animated.View>
+      ) : null}
+    </Animated.View>
+  )
+}
+
+function ActionButton({
+  icon,
+  label,
+  primary,
+  destructive,
+  palette,
+  theme,
+}: {
+  icon: 'check' | 'edit' | 'delete-outline'
+  label: string
+  primary?: boolean
+  destructive?: boolean
+  palette: ReturnType<typeof buildProximosPalette>
+  theme: ReturnType<typeof useAppTheme>['theme']
+}) {
+  const press = usePressScale({ pressedScale: 0.96 })
+  const bg = primary
+    ? palette.success
+    : destructive
+    ? palette.urgencyBadgeBg
+    : 'transparent'
+  const border = primary
+    ? palette.success
+    : destructive
+    ? palette.urgencyBadgeBorder
+    : theme.colors.line
+  const fg = primary
+    ? theme.isDark
+      ? '#0F2E1F'
+      : '#FFFBF2'
+    : destructive
+    ? palette.urgency
+    : theme.colors.text
+  return (
+    <Pressable
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={styles.actionBtnWrap}
+    >
+      <Animated.View
+        style={[
+          styles.actionBtn,
+          { backgroundColor: bg, borderColor: border },
+          press.animatedStyle,
+        ]}
+      >
+        <MaterialIcons name={icon} size={14} color={fg} />
+        <Text style={[styles.actionLabel, { color: fg }]}>{label}</Text>
       </Animated.View>
     </Pressable>
   )
@@ -204,5 +322,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
+  },
+  chevron: {
+    marginLeft: 2,
+    opacity: 0.6,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingTop: 10,
+    paddingBottom: 8,
+    paddingLeft: 48,
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+  },
+  actionBtnWrap: {
+    flex: 1,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  actionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
 })
