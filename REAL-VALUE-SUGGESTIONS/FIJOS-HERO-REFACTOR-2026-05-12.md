@@ -112,13 +112,265 @@ Mapeo exhaustivo de cada prop / data path que el hero usa **hoy**:
 
 ---
 
-## 🎨 3 direcciones conceptuales
+## 🎨 Iteration 1 — REJECTED por owner
 
-Cada dirección rompe el `hero-metric template` por construcción y propone un lenguaje visual diferente. **Las tres preservan los 11 datos** del inventario actual + suman al menos 2 datos no usados hoy. **Las tres mantienen el gradient forest + RiseView + CountUpText** para coherencia con Home / Gastos.
+> Las tres direcciones de la primera tanda (A · Ledger, B · Cycle Dial, C · Calendar Grid — secciones más abajo) fueron rechazadas por owner. Feedback: "*ninguno me gusta. Mejor organizado, mejor distribuido, fácil de leer, fácil de entender, CUALQUIERA debe poder entenderlo. Buscamos algo ÚNICO. Con la creatividad del Wrapped mensual — eso era INSPIRACIÓN.*"
+>
+> Diagnóstico de por qué fallaron:
+> - **A · Ledger**: demasiado denso en data, parece extracto bancario serio — no editorial-vivo como Wrapped.
+> - **B · Dial**: el reflejo "fitness ring / activity dial" sigue siendo training-data obvio. Cae en el segundo-nivel del category-reflex check.
+> - **C · Grid**: la grid de 30 celdas requiere "decodificación" — no es entendible en 2 segundos.
+>
+> Las 3 caen en el patrón "dashboard panel" cuando la inspiración Wrapped pide **portada editorial / momento de lectura**.
+
+---
+
+## 🎨 Iteration 2 — 3 direcciones nuevas (Wrapped DNA)
+
+El Wrapped del producto tiene una gramática editorial específica:
+- **Una idea por escena** — sin grids de widgets compitiendo
+- **Headline big editorial type** (40-60pt, weight 900, tracking -2)
+- **Eyebrow tiny ALL CAPS** (11pt, 900, tracking 2.4)
+- **Color committed por escena** — background es el tinte
+- **Brand mark "MANIFIESTO"** como sello
+- **Reading-paced** — el usuario LEE, no decodifica
+- **Restraint sobre decoración** — un elemento dominante, dos de soporte
+
+Las 3 direcciones nuevas heredan esa gramática y la adaptan al hero (que vive permanente en el screen, no es modal one-shot). El gradient forest se mantiene para coherencia con Home / Gastos.
+
+### 🅰️ Dirección A — "El Titular"
+
+**Premisa**: el hero es una **portada editorial**. Lee el estado del ciclo y escribe **una sola sentencia** que cualquiera entiende en 2 segundos. Como la portada de un diario que te dice "qué pasó", no como un dashboard que te exige interpretar widgets.
+
+**Familia estética**: editorial restraint · magazine cover · _The New York Times A1 above-the-fold_ pero en finanzas personales. Aprovecha el cream + forest committed del Wrapped.
+
+**Estructura**:
+
+```
+┌────────────────────────────────────────────────┐
+│ MANIFIESTO · edición abril   ·   18 días al... │  ← eyebrow editorial
+│ ──                                              │  ← rule 32×2pt cream-accent
+│                                                 │
+│ Te quedan 5                                     │  ← HEADLINE
+│ fijos por pagar.                                │     34pt · weight 900 · tracking -1.4
+│                                                 │
+│ $180.000 en lo que resta del ciclo.             │  ← subhead 14pt cream-muted
+│                                                 │
+│ ─────────────────────────                       │
+│ PAGADO       │  LIBRE       │  DEL SUELDO       │
+│ $245.000     │  $380.000    │  42%              │  ← 3 footer metrics
+│              │              │                   │
+│ → PRÓXIMO   Netflix en 3 días · $12.500         │  ← actionable bottom line
+└────────────────────────────────────────────────┘
+```
+
+**State-aware headline** (lee el estado y elige la sentencia más urgente):
+
+| Estado | Headline | Tono |
+|---|---|---|
+| Hay vencidos | "Tenés **2 fijos** vencidos." | Peach-strong sobre forest (urgencia) |
+| Hay pendientes (sin vencidos) | "Te quedan **5** fijos por pagar." | Cream (neutral) |
+| Todo pagado | "Estás al día." | Lime accent (positivo) |
+
+**Cómo cubre el inventario**: los 11 datos sobreviven repartidos en headline + subhead + 3-metric footer + bottom line. **Suma 2 datos nuevos**: la separación vencidos vs pendientes explícita y el `daysToNextPayment` con el item.
+
+**Motion language**:
+- Mount: cascade RiseView (eyebrow 0 → rule scaleX 60 → headline 140 → subhead 220 → footer 300 → bottom line 380).
+- CountUp en los $ del footer.
+- Cuando el estado cambia (e.g. user paga un fijo), el headline hace **cross-fade + blur 2px** durante 220ms hacia la nueva sentencia. Inspiración Emil ("blur masks imperfect transitions").
+- BreatheDot color-coded migra según estado (cream / peach / lime).
+
+**Pros**:
+- ✅ **Cualquiera lo entiende en 2 segundos** — es una sentencia.
+- ✅ Editorial restraint puro — un elemento dominante, dos de soporte.
+- ✅ Rompe `hero-metric template` por construcción.
+- ✅ Implementación baja — type + 3 columns + bottom line.
+- ✅ Match perfecto con Wrapped DNA.
+
+**Cons / riesgos**:
+- ⚠️ Pierde la "spectacle" — el hero se siente más calmo, menos "wow". Pero esto puede ser exactamente lo que el producto necesita después de la sobre-decoración del actual.
+- ⚠️ Necesita lógica de copy state-aware bien escrita (no genérica).
+
+**Score**:
+- `/impeccable`: ⭐⭐⭐⭐⭐ (editorial register escapa categoría-reflex y reflex-2; no template; no nested cards)
+- `/emil`: ⭐⭐⭐⭐⭐ (motion meaningful: el cross-fade del headline ES la cause-effect del pago)
+- `/ui-pro-max`: ⭐⭐⭐⭐⭐ (readable-font-size; visual-hierarchy clarísima; touch-target del bottom line)
+
+---
+
+### 🅱️ Dirección B — "Pasaje del ciclo"
+
+**Premisa**: el pay-cycle ES un viaje de payday a payday. ABR → MAY como una ruta. **Hoy** es el sello de embarque, los fijos son las paradas. **Boarding pass aesthetic**. Universal — todos sabemos leer un pasaje.
+
+**Familia estética**: travel-document · boarding-pass · _Apple Wallet ticket_. Rompe completamente con cualquier convención de finance app. Es un objeto físico-emocional, no un panel.
+
+**Estructura**:
+
+```
+┌────────────────────────────────────────────────┐
+│ ▪ MANIFIESTO            PASAJE DEL CICLO       │  ← brand + label
+│                                                 │
+│ ABR    ┄┄┄┄━━━━━━●━━━━━━┄┄┄┄┄┄┄┄    MAY        │  ← route line
+│ 05            HOY · día 12                  05 │
+│                                                 │
+│ PAGADO         PRÓXIMO          POR PAGAR      │  ← 3-col ticket info
+│ $245.000       Netflix          $180.000       │
+│ 5 ítems        en 3d · $12.500  5 ítems        │
+│                                                 │
+│ ╳ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ╳        │  ← PERFORATION (ticket stub)
+│                                                 │
+│ ESTADO                      LIBRE DEL CICLO    │  ← stub band
+│ ● 2 vencidos · $38k         $380.000           │
+│                             42% del sueldo a   │
+│                                       fijos    │
+└────────────────────────────────────────────────┘
+```
+
+**Detalle visual**:
+- Route line: 28 dashes pequeños. Los dashes detrás del today marker son lime (already-traveled), los dashes después son cream-12% (yet-to-travel).
+- Today marker: dot 14pt lime con border cream-paper 2pt. Marca el punto exacto del ciclo.
+- Perforación: notches semi-circulares en los bordes (negative space) + dashes horizontales. Visualmente "cortable" como un ticket de avión.
+- Stub band debajo: la zona "que te quedás" después de cortar el ticket. Estado urgente + libre.
+
+**Cómo cubre el inventario**: 11/11 datos. **Suma 3 datos nuevos**: el `daysToNextPayment` con el item en column PRÓXIMO, el cycle progress visual en la route line, y la separación explícita vencidos.
+
+**Motion language**:
+- Mount: el route line se "dibuja" izq→der (`scaleX` 800ms ease-out-expo). El today marker hace bounce-in (`scale 0 → 1.12 → 1` spring) cuando llega su posición.
+- Cuando today avanza un día (mount diario), el marker se desliza con spring damping 14.
+- Cuando pagás un fijo, los dashes correspondientes a su día parpadean lime (1 cycle, 220ms each) y luego se quedan lime fijo.
+- Perforation: estática (es chrome del "objeto").
+- CountUp en los $ de las columnas.
+
+**Pros**:
+- ✅ **Único** — ninguna finance app del mainstream usa boarding-pass como hero.
+- ✅ Metáfora universal: todos viajamos, todos sabemos leer un pasaje.
+- ✅ El time axis horizontal es **intuitivo** — la vida es lineal.
+- ✅ La perforación da una "tactilidad" que hace el hero memorable.
+- ✅ Permite ver simultáneamente el **eje tiempo** (route line) + el **eje dinero** (3 cols).
+
+**Cons / riesgos**:
+- ⚠️ Si el usuario nunca viajó en avión / no le hace clic la metáfora — pero esto es rare en target Argentina urbano.
+- ⚠️ Implementación media — la perforación con notches + dashes pixel-perfect requiere atención.
+- ⚠️ El today marker label necesita lógica de centrado cuando está cerca de los bordes (clamp).
+
+**Score**:
+- `/impeccable`: ⭐⭐⭐⭐⭐ (rompe categoría-reflex Y reflex-2; metáfora travel evita "fintech navy+gold" Y "editorial-cream-cliche")
+- `/emil`: ⭐⭐⭐⭐⭐ (motion intencional: route-draw direccional, today-bounce significa "hoy llegaste", marker-glide diario)
+- `/ui-pro-max`: ⭐⭐⭐⭐⭐ (visual-hierarchy fuerte; time-as-axis intuitivo; touch-targets en cada col)
+
+---
+
+### 🅲 Dirección C — "Manifiesto Diario"
+
+**Premisa**: el hero ES un **mini-Wrapped** en place. 3 páginas con gramática stories (progress bars top + brand mark + una sentencia cada una), auto-rotando cada 5 segundos. Tap left/right navega manual. Es **literalmente** la DNA del Wrapped collapsed en un hero tile.
+
+**Familia estética**: editorial-stories · _Spotify Wrapped 2024_ pero en finanzas personales y cream-on-paper. Aprovecha que el usuario ya conoce la gramática del Wrapped mensual (consistency wins).
+
+**Estructura** — 3 páginas que rotan:
+
+```
+PÁGINA 1 — "El estado"
+┌────────────────────────────────────────────────┐
+│ ████████  ──────  ──────                       │  ← 3 progress bars (Wrapped grammar)
+│ MANIFIESTO · ABRIL                              │  ← brand mark
+│                                                 │
+│ HOY                                             │  ← eyebrow tiny
+│                                                 │
+│ 5 fijos                                         │  ← HERO 40pt
+│ por pagar.                                      │
+│ ──                                              │  ← rule
+│ $180.000 en lo que resta del ciclo.             │  ← kicker
+│ 2 vencidos.                                     │
+└────────────────────────────────────────────────┘
+
+PÁGINA 2 — "El próximo"
+┌────────────────────────────────────────────────┐
+│ ████████  ████████  ──────                     │
+│ MANIFIESTO · ABRIL                              │
+│                                                 │
+│ PRÓXIMO                                         │
+│                                                 │
+│ Netflix                                         │
+│ en 3 días.                                      │
+│ ──                                              │
+│ $12.500 · este viernes.                         │
+└────────────────────────────────────────────────┘
+
+PÁGINA 3 — "El ciclo"
+┌────────────────────────────────────────────────┐
+│ ████████  ████████  ████████                   │
+│ MANIFIESTO · ABRIL                              │
+│                                                 │
+│ CICLO ABRIL                                     │
+│                                                 │
+│ 18 días                                         │
+│ restantes.                                      │
+│ ──                                              │
+│ Vas 57% pagado. Libre $380.000.                 │
+└────────────────────────────────────────────────┘
+```
+
+**Color treatment**: background cream-paper (`#FFFBF2` light, `#2A3A2F` dark) — committed paper para diferenciarse de la cascada de forest-gradient del resto del screen. Es el único hero del app que NO usa el gradient forest. Statement.
+
+**Cómo cubre el inventario**: 11/11 datos repartidos en 3 páginas. **Suma 2 datos nuevos**: separación vencidos explícita + day-of-week del próximo.
+
+**Motion language** (gramática Wrapped completa portada):
+- Progress bars 5s linear cada uno. Auto-advance.
+- Crossfade entre páginas 360ms ease-out-expo (idéntico al Wrapped modal).
+- Long-press pausa (haptic selection). Tap left/right navega manual.
+- Hero text rise 8pt + opacity 0→1 al entrar.
+- Si reduced-motion: bars instant 100%, no auto-advance.
+
+**Pros**:
+- ✅ **Consistency total con Wrapped** — usuario reconoce la gramática.
+- ✅ Una idea por página = anyone gets it.
+- ✅ Editorial restraint máximo.
+- ✅ El cream-paper background **rompe** el monotono visual del screen (todo el resto es forest gradient), genera respiración.
+- ✅ Permite **adaptive copy** por página — cada page resuelve una pregunta distinta.
+
+**Cons / riesgos**:
+- ⚠️ **Interaction overhead** — el usuario que abre el screen quiere VER de un vistazo. Si tiene que esperar la rotación o tappear, fricción. Mitigación: la página 1 default es el estado, lo más importante.
+- ⚠️ Auto-rotación puede ser molesta en sessions largas — necesita pausar cuando el screen está scrolleado abajo (perdió foco).
+- ⚠️ Si reduced-motion: usuario tiene que tappear para ver páginas 2 y 3 → potencial info-loss. Mitigación: surfaces los 3 cards estáticos uno abajo del otro en reduced-motion.
+- ⚠️ Implementación más alta (state machine de páginas + progress driver + gesture handlers).
+
+**Score**:
+- `/impeccable`: ⭐⭐⭐⭐⭐ (editorial register puro; Wrapped consistency)
+- `/emil`: ⭐⭐⭐⭐ (motion-meaning fuerte pero auto-advance puede frustrar si la app espera del user que actúe)
+- `/ui-pro-max`: ⭐⭐⭐⭐ (gesture-feedback OK; reduced-motion necesita trabajo extra)
+
+---
+
+## 🔬 Comparativa Iteration 2
+
+| Dimensión | A · Titular | B · Pasaje | C · Manifiesto |
+|---|---|---|---|
+| "Anyone gets it en 2s" | ✅✅✅ (es una sentencia) | ✅✅ (es un pasaje, leés de izq a der) | ✅✅ (una idea por pág, pero hay que esperar / tappear) |
+| Unicidad real | Alta — editorial state-aware copy | **Muy alta** — boarding pass en finance app es inusitado | Alta — Wrapped DNA en hero permanente |
+| Wrapped consistency | ⭐⭐⭐⭐ (DNA editorial completa) | ⭐⭐⭐ (cambia paradigm) | ⭐⭐⭐⭐⭐ (es literalmente Wrapped grammar) |
+| Implementación | **Baja** | Media | Alta |
+| Riesgo "se siente template" | Bajo | Muy bajo | Bajo |
+| Necesita interaction | No | No | **Sí (rotation)** |
+| Datos visibles simultáneos | 11 (todos en un golpe) | 11 (todos en un golpe) | 5-7 por página (rota) |
+| Mejor para... | Vista de uso permanente, glance-and-go | Quien quiere ver el ciclo como objeto/journey | Quien valora la consistency con el Wrapped y la one-idea-at-a-time |
+
+**Recomendación honesta**:
+
+🅰️ **El Titular** si querés **rápido + máximo signal + lectura natural**. Es la dirección con menor riesgo, máxima legibilidad, y la que más permite mostrar todo en un golpe sin que el usuario interactúe. Es lo que más respeta tu frase "*siempre vamos a ingresar para revisar qué pagamos y qué nos falta*" — abre, leés una sentencia, sabés qué hacer.
+
+🅱️ **El Pasaje** si querés **innovación memorable + metáfora que se cuenta**. Es la dirección que **más se diferencia** del resto del app y del mercado. El boarding pass es objeto que invita a "guardarlo", "compartirlo", "verlo cada día". Riesgo: la metáfora puede sentirse forzada si no se ejecuta con precisión (la perforación tiene que ser perfecta).
+
+🅲 **Manifiesto** si querés **consistency total con Wrapped + storytelling editorial**. Pero pensemos si el hero **siempre-presente** debe ser slideshow — Wrapped es one-shot mensual, el hero es diario.
+
+---
 
 > **Importante**: estas son direcciones conceptuales para que el owner elija. No son detail-locked — la dirección elegida pasa a una sesión de craft con render real.
 
-### 🅰️ Dirección A — "The Ledger"
+## 🗑️ Iteration 1 — propuestas rechazadas (referencia histórica)
+
+Las 3 propuestas iniciales se mantienen abajo solo para traceability. Owner rechazó las 3. Saltear a "Iteration 2" si solo te interesa lo vigente.
+
+### 🅰️ Dirección A — "The Ledger" (REJECTED)
 
 **Premisa**: el hero ES un extracto/recibo. Tipografía editorial, sin progress bar, sin nested cards. Información ordenada como una declaración financiera — el ratio paid/total se infiere de la jerarquía tipográfica, no de una barra.
 
@@ -178,7 +430,7 @@ Cada dirección rompe el `hero-metric template` por construcción y propone un l
 
 ---
 
-### 🅱️ Dirección B — "The Cycle Dial"
+### 🅱️ Dirección B — "The Cycle Dial" (REJECTED)
 
 **Premisa**: reemplazar la progress bar lineal por un **dial radial geométrico** que muestra simultáneamente:
 - El progreso del **ciclo de tiempo** (qué día del cycle estamos)
@@ -250,7 +502,7 @@ No es donut chart genérico. Es un dial con dos arcos concéntricos + 12 tick ma
 
 ---
 
-### 🅲 Dirección C — "The Calendar Grid"
+### 🅲 Dirección C — "The Calendar Grid" (REJECTED)
 
 **Premisa**: el hero es una **mini-grid del ciclo** (28-31 cuadritos para los días del ciclo), con dots/heat indicando qué días tienen fijos. El día de hoy está destacado. Cada celda con un fijo tiene su color de categoría. Cada celda con fijo pagado tiene un check sutil, cada celda con fijo vencido un dot rojo.
 
@@ -419,3 +671,5 @@ Una vez elegida la dirección paso a Etapa 1: **mock visual estático del hero n
 ## 📝 Log
 
 - **2026-05-12** — Doc creado. Etapa 0 (análisis línea por línea + inventario de datos + 3 direcciones conceptuales + backend value-adds) cerrada. Esperando pick del owner.
+- **2026-05-12** — Preview screen `/settings/dev/fijos-hero-preview` mounted con Iteration 1 (Ledger / Dial / Grid).
+- **2026-05-12** — Owner rechazó Iteration 1: "*ninguno me gusta. Mejor organizado, más fácil, CUALQUIERA debe entenderlo, UNICO, creatividad como el Wrapped mensual*". Estudio del Wrapped → DNA editorial extraída → Iteration 2 propuesta con 3 direcciones nuevas: **A · El Titular** (magazine cover headline state-aware), **B · Pasaje del ciclo** (boarding pass aesthetic), **C · Manifiesto Diario** (mini-Wrapped en hero). Preview screen actualizado.
