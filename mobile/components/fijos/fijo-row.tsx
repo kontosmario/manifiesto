@@ -1,12 +1,14 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
+import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -60,27 +62,38 @@ function FijoRowImpl({
   const initialStatusRef = useRef(status)
   const confettiPulse =
     status === 'paid' && initialStatusRef.current !== 'paid' ? 1 : 0
-  const statusLabel =
-    status === 'paid' ? 'Pagado' : status === 'overdue' ? 'Vencido' : 'Pendiente'
-  // Status chip theme-aware. Antes era light-only: chip bg pastel claro
-  // (#EAFBE4/#F8D1C3/#FCEAE3) + text dark (#297811/#973511). En dark mode
-  // ese chip pastel claro flotaba sobre el card forest medium — visualmente
-  // disonante y rompía la harmonía del card.
-  // Dark mode: usamos dark-tinted bg + light-tinted text (mismo patrón que
-  // los mood cells del calendar). Cada estado tiene su par AA-verified.
-  const statusStyle = theme.isDark
-    ? status === 'paid'
-      ? { bg: '#1F4530', color: '#A6EF8F' }     // dark-green bg + lime text
-      : status === 'overdue'
-        ? { bg: '#4A2418', color: '#F2A78C' }   // dark-red bg + peach text
-        : { bg: '#3A2A22', color: '#F2A78C' }   // dark-amber bg + peach text
-    : status === 'paid'
-      ? { bg: '#EAFBE4', color: '#297811' }     // light-green + forest text
-      : status === 'overdue'
-        ? { bg: '#F8D1C3', color: '#973511' }   // light-pink + dark-red text
-        : { bg: '#FCEAE3', color: '#973511' }   // light-peach + dark-red text
-  const statusColor = statusStyle.color
-  const statusBg = statusStyle.bg
+
+  // Status visual movido del chip pastel a una OVERLAY mini-badge en la
+  // iconWrap (similar al WhoPaidAvatar de GastoRow). Reduce ruido visual
+  // en la sub-line + libera espacio para que el catChip respire como
+  // en Gastos. Theme-aware overlay:
+  //   paid     → check verde sobre lime tile
+  //   overdue  → warning peach
+  //   pending  → schedule muted (sutil, no compite)
+  const statusOverlay = (() => {
+    if (status === 'paid') {
+      return {
+        icon: 'check' as const,
+        bg: theme.isDark ? '#1F4530' : '#EAFBE4',
+        fg: theme.isDark ? '#A6EF8F' : '#297811',
+        border: theme.isDark ? '#A6EF8F' : '#297811',
+      }
+    }
+    if (status === 'overdue') {
+      return {
+        icon: 'warning' as const,
+        bg: theme.isDark ? '#4A2418' : '#F8D1C3',
+        fg: theme.isDark ? '#F2A78C' : '#973511',
+        border: theme.isDark ? '#F2A78C' : '#973511',
+      }
+    }
+    return {
+      icon: 'schedule' as const,
+      bg: theme.colors.pageBg,
+      fg: theme.colors.textMuted,
+      border: theme.colors.line,
+    }
+  })()
 
   const diffDays = item.dayOfMonth - todayDay
   const dueLabel =
@@ -91,6 +104,16 @@ function FijoRowImpl({
         : diffDays === 0
           ? 'Vence hoy'
           : `Vence en ${diffDays}d`
+
+  // catChipText hue-preserved (mismo helper que GastoRow). Antes el
+  // pastel original sobre tinted bg light fallaba contraste 1.6:1.
+  const catChipTextColor = useMemo(
+    () =>
+      theme.isDark
+        ? lightenForDarkBg(categoryColor)
+        : darkenForLightBg(categoryColor),
+    [categoryColor, theme.isDark],
+  )
 
   // Swipe reveals only "Eliminar". Edit + Registrar pago live inside
   // the tap-to-expand details panel.
@@ -154,8 +177,31 @@ function FijoRowImpl({
               >
                 <Text style={styles.iconText}>{emoji}</Text>
               </View>
-              {/* Zombie badge removed — auditing moved to the family-transparent
-                  audit flow in the Asistente. Cards no longer flag zombies inline. */}
+              {/* Status overlay (slot del WhoPaidAvatar en GastoRow).
+                  Mini-badge con icon redondo bordeado theme-aware: check
+                  lime para paid, warning peach para overdue, schedule
+                  muted para pending. Reemplaza el chunky statusChip
+                  pastel de antes — libera la sub-line para que el
+                  catChip respire como en Gastos. */}
+              <View
+                style={[
+                  styles.statusOverlay,
+                  {
+                    backgroundColor: statusOverlay.bg,
+                    borderColor: statusOverlay.border,
+                  },
+                ]}
+                accessibilityRole="text"
+                accessibilityLabel={`Estado: ${
+                  status === 'paid' ? 'pagado' : status === 'overdue' ? 'vencido' : 'pendiente'
+                }`}
+              >
+                <MaterialIcons
+                  name={statusOverlay.icon}
+                  size={10}
+                  color={statusOverlay.fg}
+                />
+              </View>
             </View>
 
             <View style={styles.body}>
@@ -167,20 +213,31 @@ function FijoRowImpl({
                   <TrendBadge deltaPct={item.trendDeltaPct} />
                 ) : null}
               </View>
-              <View style={styles.metaRow}>
+              {/* Sub-line GastoRow-like: catChip + dueLabel separados por
+                  middle dot. Misma jerarquía que el row de gastos —
+                  unifica el lenguaje visual entre las dos pantallas. */}
+              <View style={styles.subRow}>
                 <View
-                  style={[styles.statusChip, { backgroundColor: statusBg }]}
-                  accessibilityRole="text"
-                  accessibilityLabel={`Estado: ${statusLabel}`}
+                  style={[
+                    styles.catChip,
+                    {
+                      backgroundColor: hexAlpha(categoryColor, 0.14),
+                      borderColor: hexAlpha(categoryColor, 0.22),
+                    },
+                  ]}
                 >
-                  <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+                  <Text
+                    style={[styles.catChipText, { color: catChipTextColor }]}
+                    numberOfLines={1}
+                  >
+                    {categoryName}
+                  </Text>
                 </View>
-                <Text style={[styles.metaDot, { color: theme.colors.textMuted }]}>·</Text>
                 <Text
                   style={[styles.metaText, { color: theme.colors.textMuted }]}
                   numberOfLines={1}
                 >
-                  {dueLabel}
+                  · {dueLabel}
                 </Text>
               </View>
             </View>
@@ -379,9 +436,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: { fontSize: 18 },
-  // zombieBadge styles eliminados — el zombie badge se removió cuando
-  // el audit migró al family-transparent Asistente flow (comment en
-  // línea 130). Eran ~14 LOC de dead style.
+  // Status overlay — mini-badge en la esquina del iconTile (slot del
+  // WhoPaidAvatar en GastoRow). Pequeño, bordereado theme-aware, leído
+  // como una "etiqueta cosida" al icono.
+  statusOverlay: {
+    position: 'absolute',
+    bottom: -3,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   body: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
@@ -391,10 +459,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  statusChip: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999 },
-  statusText: { fontSize: 10, fontWeight: '700' },
-  metaDot: { fontSize: 11 },
+  // Sub-line GastoRow-like: catChip + meta dot + dueLabel. Misma altura
+  // y spacing que en gasto-row para que las dos pantallas se sientan
+  // un solo idioma.
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  catChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  catChipText: { fontSize: 10, fontWeight: '700' },
   metaText: { fontSize: 11, flexShrink: 1 },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
   // Tabular nums para columna right-aligned de montos entre rows

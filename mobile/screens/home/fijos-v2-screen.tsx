@@ -7,8 +7,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { FijosHeader } from '@/components/fijos/fijos-header'
 import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
-import { FijosSmartAlerts } from '@/components/fijos/fijos-smart-alerts'
-import { FijosUpcomingStrip } from '@/components/fijos/fijos-upcoming-strip'
+import { FijosProximosCard } from '@/components/fijos/fijos-proximos-card'
 import { FijosTabs } from '@/components/fijos/fijos-tabs'
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
 import {
@@ -187,30 +186,32 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               cantidadPendientes={
                 controller.summary.pendingItems.length + controller.summary.overdueItems.length
               }
+              cantidadVencidos={controller.summary.overdueItems.length}
               dineroLibre={controller.freeAfterFijos}
               porcentajeSueldo={controller.pctOfIncome}
             />
           </Animated.View>
         </TourTarget>
-        <Animated.View layout={sectionLayout}>
-          <FijosSmartAlerts
-            hikes={controller.summary.hikes}
-            advisorSignals={advisorSignals}
-            onOpenHike={handleEdit}
-          />
-        </Animated.View>
         <TourTarget
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.calendar.order}
           text={FIJOS_TOUR_STEPS.calendar.text}
-          // Match FijosUpcomingStrip's outer borderRadius (14).
-          highlight={{ borderRadius: 18, padding: 6 }}
+          // FijosProximosCard tiene borderRadius 18 — el highlight cubre
+          // la card completa con pad para hilar el border.
+          highlight={{ borderRadius: 22, padding: 6 }}
         >
           <Animated.View layout={sectionLayout}>
-            <FijosUpcomingStrip
+            {/* Fusión SmartAlerts + UpcomingStrip en una sola card editorial:
+                top section = próximos a pagar, sub-section AVISOS = hikes
+                + advisor signals. Reemplaza las 2 cards que ocupaban demasiado
+                footprint vertical conceptualmente similar. */}
+            <FijosProximosCard
               upcoming={controller.summary.upcoming}
+              hikes={controller.summary.hikes}
+              advisorSignals={advisorSignals}
               todayDay={controller.summary.todayDay}
               categoriesById={categoriesById}
+              onOpenHike={handleEdit}
             />
           </Animated.View>
         </TourTarget>

@@ -986,6 +986,38 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
   - `row-d-day-marker.tsx`: agregado **tap-expand** con panel de acciones (Pagar primary + Editar + Eliminar destructive). Chevron expand-more/expand-less. Action buttons usan press scale 0.96. La prop `withActions={false}` permite ocultarlos en contextos read-only (e.g. Próximos).
   - `full-list-live.tsx`: refactorizada para agrupar por **categoría**. Cada categoría tiene su sub-header (color dot + nombre + count + total). Grupos ordenados por urgencia (los que tienen vencidos primero). Dentro de cada grupo, smart sort por urgencia. Restaura el FijoCategoryGroups que el owner extrañaba.
   - `fijos-vista-completa-screen.tsx`: actualizada para usar `ProximosFusedLive` en lugar de SmartAlerts + Próximos separados. La vista pasa de 5 secciones a **4 secciones**: Header → Hero → Próximos fused → Lista por categorías. Choreography reajustada: delays 0/120/240/360ms.
+- **2026-05-13** — **Etapa 11 · Mejoras quirúrgicas a V2** (commit pending). Owner pidió 5 mejoras puntuales:
+  1. **Hero más dinámica e intuitiva** — indicar estado (al día / falta X / vencidos)
+  2. **Mejorar SmartAlerts + UpcomingStrip** (ocupaban demasiado espacio)
+  3. **Unificar filtro con el de Gastos** (reusar el componente que ya existe)
+  4. **Listado con lógica de GastoRow** fusionada con lo de Fijos
+  5. **Animaciones únicas + consistentes**
+
+  Aplicado:
+
+  · `fijos-hero-card.tsx` — Sub-line **state-aware** (reemplaza "Quedan X días en el ciclo" estático con copia por estado: "Todo pagado · cobrás mañana" / "2 vencidos · 3 por pagar" / "Recién arrancado · X fijos por delante" / "Faltan X · Y días al cierre"). Breathe dot + título color-coded por urgencia (peach vencidos / lime in-progress / muted not-started). Dos badges nuevos a la derecha del título: `2 VENCIDOS` (peach) cuando hay atraso · `AL DÍA` (lime) cuando todo pagado. **Toque único**: cuando hay vencidos, un **urgency ring** (border overlay 1.5pt peach) hace un pulse calm 2.4s warm cycle — respira urgencia ambient sin distraer. Reduced-motion respect.
+
+  · `fijos-proximos-card.tsx` **NUEVO** — Fusión SmartAlerts + UpcomingStrip en una sola card editorial:
+    - Top section: 3 próximos (rows tipográficas, dot color + nombre + amount, sin nested cards, sin emojis).
+    - Sub-divider "AVISOS" + lista compacta de hikes + signals con icon tile 20pt + texto inline ("Spotify +12% · $4.640 → $5.200").
+    - Cuando no hay avisos, la sub-section no se renderea.
+    - Cuando no hay próximos (all-paid), check + msg calmo.
+    - Dismiss button preservado para hikes (mismo `useHikeDismissStore`).
+    - Cascade entrance row-by-row 40-60ms stagger.
+    - Reemplaza `fijos-smart-alerts.tsx` + `fijos-upcoming-strip.tsx` en el screen (archivos viejos quedan en código por ahora, cleanup pendiente).
+
+  · `fijos-tabs.tsx` — Refactor interno para **reusar `GastosFilterPill`** del filtro de Gastos. Misma morph active/inactive, mismo press feedback, mismo handling de contraste. Buckets: todos / pendientes / pagados / zombi. Color semántico por bucket alimentado al pill (`pendientes=peach`, `pagados=lime`, `zombi=plum`, `todos=neutral`). Unifica el lenguaje visual de filtros entre Gastos y Fijos.
+
+  · `fijo-row.tsx` — Patterns de `GastoRow` aplicados:
+    - **Status chip pastel** (Pagado / Vencido / Pendiente pill) reemplazado con un **mini overlay redondo** en la esquina del iconTile (slot del WhoPaidAvatar de GastoRow). Icon MaterialIcons (check / warning / schedule) bordereado theme-aware. Reduce ruido visual y libera espacio en la sub-line.
+    - **Sub-line refactor** a `catChip + dueLabel` con middle dot — misma estructura visual que GastoRow. `catChipText` ahora usa `darkenForLightBg` / `lightenForDarkBg` para contraste hue-preserved (mismo helper que GastoRow).
+    - Tap-expand y action panel preservados (registrar pago + editar + eliminar).
+    - Swipe-to-delete preservado.
+
+  · `fijos-v2-screen.tsx` — Pasa `cantidadVencidos` al hero (antes lumped en `cantidadPendientes`). Reemplaza `<FijosSmartAlerts>` + `<FijosUpcomingStrip>` por `<FijosProximosCard>` con los mismos datos.
+
+  Animaciones consistentes: todas las nuevas usan `motionEasings.enterSmooth` (ease-out-expo) para entradas. RiseView wraps para sections, animations internas con cascade row-by-row 40-80ms stagger. Reduced-motion respect en cada componente nuevo.
+
 - **2026-05-13** — **Etapa 10 · V3 promoted a producción** con rollback inmediato disponible:
   - Nuevo adapter `mobile/features/fijos/adapt-controller-to-hero-state.ts` que convierte el output del `useFijosController` real (summary + categoría map + advisor signals) al shape `HeroState` que consumen los componentes V3.
   - `HeroState` extendido con `itemsOverride?: unknown[]` para que el adapter inyecte la lista real. `buildFijoList` ahora prefiere el override si está presente, falla al mock cuando no.
@@ -993,3 +1025,4 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
   - `RowDayMarker` + `FullListLive` extendidos con props `onMarkPaid`/`onEdit`/`onDelete`/`pendingFixedExpenseId` — pasados desde V3 a cada row.
   - `HeaderHealthPulse` recibe `onPressAdd` opcional.
   - Route `app/(app)/(tabs)/fixed-expenses.tsx` switchea a `FijosV3Screen`. **V2 sigue vivo en código** — rollback inmediato editando 2 líneas (comentar import V3 + descomentar V2 + revertir el `<FijosV3Screen>` a `<FijosV2Screen>`).
+- **2026-05-13** — **V3 rollback completo** (commit `73c8f38`). Owner: *"rollback, no me gusto"*. Route vuelve a `FijosV2Screen`. V3 + componentes preview siguen vivos en código para análisis posterior. Decisión: V3 era un rediseño desde cero, sentido **distante** del producto que el usuario ya conoce. Próxima iteración → **mejoras quirúrgicas sobre V2** sin reemplazar nada estructuralmente.

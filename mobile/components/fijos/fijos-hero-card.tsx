@@ -30,6 +30,10 @@ interface FijosHeroCardProps {
   montoPagado?: number
   cantidadPagados?: number
   cantidadPendientes?: number
+  /** Subset de pendientes que están vencidos. Cuando > 0, el hero entra
+   *  en estado urgente: dot color peach, badge "X VENCIDOS" al lado del
+   *  título, sub-line state-aware con el count de atrasados. */
+  cantidadVencidos?: number
   dineroLibre?: number
   porcentajeSueldo?: number
 }
@@ -51,12 +55,78 @@ function FijosHeroCardImpl({
   montoPagado = 0,
   cantidadPagados = 0,
   cantidadPendientes = 0,
+  cantidadVencidos = 0,
   dineroLibre = 0,
   porcentajeSueldo = 0,
 }: FijosHeroCardProps) {
   const { theme } = useAppTheme()
   const porcentaje = totalFijos > 0 ? Math.round((montoPagado / totalFijos) * 100) : 0
   const montoPendiente = Math.max(0, totalFijos - montoPagado)
+  // Derived state — el hero se viste según urgencia:
+  //   isAllPaid     → todo pagado este ciclo (celebración sutil)
+  //   hasOverdue    → al menos un vencido (peach, urgent)
+  //   notStarted    → ciclo recién arrancado (muted, sin pagar nada todavía)
+  //   inProgress    → ritmo normal (heroAccent default)
+  const isAllPaid = cantidadPendientes === 0 && cantidadPagados > 0
+  const hasOverdue = cantidadVencidos > 0
+  const notStarted = cantidadPagados === 0 && cantidadVencidos === 0 && cantidadPendientes > 0
+
+  // Status color drive: breathe dot + título color + (futuro) badge tint
+  const statusColor = hasOverdue
+    ? '#F2A78C' // peach (urgent)
+    : notStarted
+      ? theme.colors.heroMuted // muted (just started)
+      : theme.colors.heroAccent // lime (in-progress / paid)
+
+  // ── Unique touch · urgency border pulse ───────────────────────────
+  // Cuando hay vencidos, el accent ring del hero hace un pulse calmo
+  // pero notorio (alpha 0.12 → 0.42 → 0.12 en 2.4s warm). No es un
+  // halo aparte, es un overlay sutil que respira con urgencia. Detrás
+  // de las particles y el shine para que no compita con ellos.
+  const reduced = useReducedMotion()
+  const urgencyPulse = useSharedValue(0)
+  useEffect(() => {
+    if (!hasOverdue || reduced) {
+      cancelAnimation(urgencyPulse)
+      urgencyPulse.value = 0
+      return
+    }
+    urgencyPulse.value = withRepeat(
+      withSequence(
+        // @motion-allow: 2400ms calm-urgent pulse — más lento que el breathe dot
+        // para que se lea como urgencia ambient, no como flashing distractor
+        withTiming(1, { duration: 1200, easing: motionEasings.warm }),
+        withTiming(0, { duration: 1200, easing: motionEasings.warm }),
+      ),
+      -1,
+      false,
+    )
+    return () => cancelAnimation(urgencyPulse)
+  }, [hasOverdue, reduced, urgencyPulse])
+  const urgencyRingStyle = useAnimatedStyle(() => ({
+    opacity: 0.12 + urgencyPulse.value * 0.3,
+  }))
+
+  // Sub-line state-aware — reemplaza el "Quedan X días en el ciclo"
+  // estático con info más útil según el momento del ciclo.
+  const resolveSubtitle = (): string => {
+    if (isAllPaid && diasRestantes <= 1) {
+      return diasRestantes === 0 ? 'Todo pagado · cierre hoy' : 'Todo pagado · cobrás mañana'
+    }
+    if (isAllPaid) {
+      return `Todo pagado · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
+    }
+    if (hasOverdue) {
+      const otros = cantidadPendientes - cantidadVencidos
+      const venc = `${cantidadVencidos} ${cantidadVencidos === 1 ? 'vencido' : 'vencidos'}`
+      const resto = otros > 0 ? ` · ${otros} por pagar` : ''
+      return `${venc}${resto}`
+    }
+    if (notStarted) {
+      return `Recién arrancado · ${cantidadPendientes} fijos por delante`
+    }
+    return `Faltan ${cantidadPendientes} · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
+  }
 
   return (
     <RiseView delay={40}>
@@ -67,6 +137,14 @@ function FijosHeroCardImpl({
           end={{ x: 0.9, y: 1 }}
           style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
         >
+          {/* Urgency ring · pulsa peach calm cuando hay vencidos. Detrás
+              del shine y las particles. PointerEvents none. */}
+          {hasOverdue ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.urgencyRing, urgencyRingStyle]}
+            />
+          ) : null}
           <ShineOverlay
             width={430}
             height={360}
@@ -82,16 +160,40 @@ function FijosHeroCardImpl({
             <View style={styles.headerLeft}>
               <BreatheDot
                 size={8}
-                color={theme.colors.heroAccent}
-                glow={theme.colors.heroAccent}
+                color={statusColor}
+                glow={statusColor}
               />
-              <Text style={[styles.titulo, { color: theme.colors.heroAccent }]}>
+              <Text style={[styles.titulo, { color: statusColor }]}>
                 Gastos fijos · {mes}
               </Text>
             </View>
+            {hasOverdue ? (
+              <View
+                style={[
+                  styles.urgentBadge,
+                  { backgroundColor: 'rgba(240,106,106,0.18)', borderColor: 'rgba(240,106,106,0.5)' },
+                ]}
+                accessibilityLabel={`${cantidadVencidos} ${cantidadVencidos === 1 ? 'vencido' : 'vencidos'}`}
+              >
+                <Text style={styles.urgentBadgeText}>
+                  {cantidadVencidos} {cantidadVencidos === 1 ? 'VENCIDO' : 'VENCIDOS'}
+                </Text>
+              </View>
+            ) : null}
+            {isAllPaid ? (
+              <View
+                style={[
+                  styles.celebrateBadge,
+                  { backgroundColor: 'rgba(166,239,143,0.18)', borderColor: 'rgba(166,239,143,0.45)' },
+                ]}
+                accessibilityLabel="Todo al día"
+              >
+                <Text style={styles.celebrateBadgeText}>AL DÍA</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={[styles.subtitulo, { color: theme.colors.heroMuted2 }]}>
-            Quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'} en el ciclo
+            {resolveSubtitle()}
           </Text>
 
           <View style={styles.montosRow}>
@@ -320,6 +422,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
+  // Urgency ring — overlay absolute con border peach que pulsa cuando
+  // hay vencidos. Detrás del contenido, pointerEvents=none.
+  urgencyRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#F2A78C',
+    zIndex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -332,6 +447,30 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.6,
     textTransform: 'uppercase',
+  },
+  urgentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  urgentBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    color: '#FFB59E',
+  },
+  celebrateBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  celebrateBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    color: '#A6EF8F',
   },
   subtitulo: {
     fontSize: 12,
