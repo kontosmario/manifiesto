@@ -75,36 +75,36 @@ Cada pantalla se evalúa en estos 7 ejes. Cada eje recibe ✅ pass / 🟡 mid / 
 
 ## 📊 Status board
 
-| # | Pantalla | Ruta | Tier | Estado | Score antes | Score después |
-|---|---------|------|------|--------|-------------|---------------|
-| 1 | Home | `/(tabs)/home` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 2 | Gastos v2 | `/(tabs)/expenses` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | ✅ DONE | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 4 | Control v2 | `/(tabs)/insights` | T1 | ✅ DONE | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | — | — |
-| 6 | Asistente | `/asistente` (modal) | T2 | 🔴 TO DO | — | — |
-| 7 | Notificaciones | `/notifications` | T2 | 🔴 TO DO | — | — |
-| 8 | Historial gastos | `/expenses-history` | T2 | 🔴 TO DO | — | — |
-| 9 | Filtros gastos | `/expense-filters` (modal) | T2 | 🔴 TO DO | — | — |
-| 10 | Categorías gastos | `/expense-categories` (modal) | T2 | 🔴 TO DO | — | — |
-| 11 | Coach signal | `/coach/[signalId]` (modal) | T2 | 🔴 TO DO | — | — |
-| 12 | Add fijo | `/add-fixed-expense` (modal) | T2 | 🔴 TO DO | — | — |
-| 13 | Add income | `/add-income` (modal) | T2 | 🔴 TO DO | — | — |
-| 14 | Settings root | `/settings` | T3 | 🔴 TO DO | — | — |
-| 15 | Logros gallery | `/settings/achievements` | T3 | 🟢 LIKELY OK (polished 2026-05-12) | — | — |
-| 16 | Ediciones | `/settings/editions` | T3 | 🟢 LIKELY OK (built 2026-05-12) | — | — |
-| 17 | Savings goal | `/savings-goal` | T3 | 🔴 TO DO | — | — |
-| 18 | Family admin | `/settings/family-admin` | T3 | 🔴 TO DO | — | — |
-| 19 | Asistente prefs | `/settings/asistente` | T3 | 🔴 TO DO | — | — |
-| 20 | Notifs prefs | `/settings/notifications` | T3 | 🔴 TO DO | — | — |
-| 21 | Household setup | `/household-setup` (modal) | T3 | 🔴 TO DO | — | — |
-| 22 | Plan / Billing | `/settings/plan` | T3 | 🔴 TO DO | — | — |
-| 23 | Welcome | `/(auth)/welcome` | T4 | 🔴 TO DO | — | — |
-| 24 | Login | `/(auth)/login` | T4 | 🔴 TO DO | — | — |
-| 25 | Signup | `/(auth)/signup` | T4 | 🔴 TO DO | — | — |
-| 26 | Forgot/Reset/Join/Callback | varios | T4 | 🔴 TO DO | — | — |
-| 27 | Onboarding | `/onboarding` (modal) | T4 | 🔴 TO DO | — | — |
-| 28 | Blocking screen | shared | T5 | 🔴 TO DO | — | — |
+| # | Pantalla | Ruta | Tier | Visual | Perf | Score antes | Score después |
+|---|---------|------|------|--------|------|-------------|---------------|
+| 1 | Home | `/(tabs)/home` | T1 | ✅ DONE | ✅ DONE (P1) | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 2 | Gastos v2 | `/(tabs)/expenses` | T1 | ✅ DONE | ✅ DONE (P2) | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 3 | Fijos v2 | `/(tabs)/fixed-expenses` | T1 | ✅ DONE | ✅ DONE (P3) | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 4 | Control v2 | `/(tabs)/insights` | T1 | ✅ DONE | ✅ DONE (P4) | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 6 | Asistente | `/asistente` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 7 | Notificaciones | `/notifications` | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 8 | Historial gastos | `/expenses-history` | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 9 | Filtros gastos | `/expense-filters` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 10 | Categorías gastos | `/expense-categories` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 11 | Coach signal | `/coach/[signalId]` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 12 | Add fijo | `/add-fixed-expense` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 13 | Add income | `/add-income` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 14 | Settings root | `/settings` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 15 | Logros gallery | `/settings/achievements` | T3 | 🟢 LIKELY OK (polished 2026-05-12) | 🔴 TO DO | — | — |
+| 16 | Ediciones | `/settings/editions` | T3 | 🟢 LIKELY OK (built 2026-05-12) | 🔴 TO DO | — | — |
+| 17 | Savings goal | `/savings-goal` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 18 | Family admin | `/settings/family-admin` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 19 | Asistente prefs | `/settings/asistente` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 20 | Notifs prefs | `/settings/notifications` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 21 | Household setup | `/household-setup` (modal) | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 22 | Plan / Billing | `/settings/plan` | T3 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 23 | Welcome | `/(auth)/welcome` | T4 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 24 | Login | `/(auth)/login` | T4 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 25 | Signup | `/(auth)/signup` | T4 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 26 | Forgot/Reset/Join/Callback | varios | T4 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 27 | Onboarding | `/onboarding` (modal) | T4 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 28 | Blocking screen | shared | T5 | 🔴 TO DO | 🔴 TO DO | — | — |
 
 **Tiers**:
 - **T1** (5): core daily-use (tabs + add-expense modal). Mayor visibilidad → audit primero.
@@ -258,6 +258,19 @@ Resultado: si los 6 más recientes eran 5 fijos auto-pagados + 1 gasto manual, e
 ##### Score final
 
 ⭐⭐⭐⭐⭐ confirmado (con 🟡 G2 dark mode flash como ítem global pendiente).
+
+#### Performance (Sprint P1 — commit `832fee3`)
+
+4 memoization fixes — ver [Sprint P1 — Home](#sprint-p1--home) para detalles.
+
+| # | Fix | Archivo |
+|---|---|---|
+| P1 | `?? []` arrays memoizados (familyMembers, expensesData, fixedExpensesData) | `home-dashboard.tsx` |
+| P2 | `hasManualExpense` `.some()` cacheado con `useMemo` | `home-dashboard.tsx` |
+| P3 | `HomeHeroCard` envuelto en `memo()` | `home-hero-card.tsx` |
+| P4 | `ActivityRowV2` envuelto en `memo()` | `activity-row-v2.tsx` |
+
+Constraint cumplida: zero downgrade animation / styles.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -564,6 +577,19 @@ Total Sprint F: 4 fixes (catChipText dark + 3 polish) + animation audit completo
 
 Cuatro sprints (A/B/C + D + E + F) sobre Gastos. El cambio del approach del owner ("re-audit con lupa" + "contrast deep dive" + "filter+movimientos zoom" + "final completeness") expuso que **el primer pass siempre queda corto** sobre pantallas con 5+ sub-components interactivos. Lección heurística confirmada y documentada.
 
+#### Performance (Sprint P2 — commit `0375cee`)
+
+4 memoization fixes — ver [Sprint P2 — Gastos](#sprint-p2--gastos) para detalles.
+
+| # | Fix | Archivo |
+|---|---|---|
+| P1 | `GastoRow` envuelto en `memo()` | `gasto-row.tsx` |
+| P2 | `GastosFilterPill` API refactor (`selectId` + `onSelect`) + `memo()` | `gastos-filter-pill.tsx`, `gastos-smart-filter.tsx` |
+| P3 | `GastosHeroCard` envuelto en `memo()` | `gastos-hero-card.tsx` |
+| P4 | `StreakFlameIcon` envuelto en `memo()` (protege ~23 useSharedValue + 5 useLoopAnimation del AnimatedFlame interno) | `streak-flame-icon.tsx` |
+
+Constraint cumplida: zero downgrade animation / styles.
+
 <!-- ────────────────────────────────────────────────────────── -->
 
 ### 3. Fijos v2 `/(tabs)/fixed-expenses`
@@ -628,6 +654,17 @@ Mismo patrón que el calendar mood cells de Gastos. Cada par AA-verified.
 Fijos partió de un score más bajo (⭐⭐⭐) que Gastos (⭐⭐⭐⭐) — más interaction debt acumulada en sub-componentes interactivos sin press feedback, más colores hardcoded en estados de status/trend, dead code de feature deprecada (zombie). Con las 3 sprints alcanzó paridad ⭐⭐⭐⭐⭐ con Home y Gastos. Total ~250 LOC de cambios distribuidos en 8 archivos.
 
 Lección reforzada: las pantallas con muchos estados visuales (status: paid/overdue/pending + trend: up/down/flat) tienden a acumular más colores hardcoded que las pantallas con menos estados. Audit checklist incluye "every state has a theme-aware pair" desde ahora.
+
+#### Performance (Sprint P3 — commit `c4ffd4c`)
+
+2 memoization fixes — ver [Sprint P3 — Fijos](#sprint-p3--fijos) para detalles.
+
+| # | Fix | Archivo |
+|---|---|---|
+| P1 | `FijoRow` envuelto en `memo()` (lista 5–30 items con TrendBadge + statusChip + sparkline) | `fijo-row.tsx` |
+| P2 | `FijosHeroCard` envuelto en `memo()` | `fijos-hero-card.tsx` |
+
+Constraint cumplida: zero downgrade animation / styles.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
@@ -700,6 +737,25 @@ Control v2 partió de un score ⭐⭐⭐⭐ por:
 Las 7 fixes (6 press + 1 shadow) son polish-level. Total ~80 LOC distribuidos en 5 archivos.
 
 Lección reforzada: **pantallas grandes ≠ pantallas con muchos issues**. Control tiene 10K LOC pero solo 6 surfaces interactivas. La métrica importante es el "interaction surface count", no el LOC count.
+
+#### Performance (Sprint P4 — commit `535d8d2`)
+
+8 cards memoizadas con pattern uniforme. Ver [Sprint P4 — Control v2](#sprint-p4--control-v2) para detalles.
+
+| Card | Razón |
+|---|---|
+| `ControlV2HoyCard` | Cierre del día — datos + animaciones |
+| `ControlV2VsMesCard` | Comparativa mes pasado vs actual con varios sub-tiles |
+| `ControlV2AsesorCard` | Coaching tip + estado emocional + acciones |
+| `ControlV2PatronCard` | Día predominante de gastos + insights |
+| `ControlV2AlcanzaCard` | Proyección de cuándo llega la plata |
+| `ControlV2SemanaCard` | Gastado vs presupuesto semanal con barras + BreatheDot |
+| `ControlV2CoberturaCard` | % de ingresos que cubre fijos |
+| `ControlV2AlcanciaCard` | Estado ahorros con Pressables + useState locales |
+
+Pattern aplicado: import `memo`, rename `export function ControlV2XCard` → `function ControlV2XCardImpl`, append `export const ControlV2XCard = memo(ControlV2XCardImpl)` al final del archivo.
+
+Constraint cumplida: zero downgrade animation / styles. `ForecastSparkline` ya estaba memo'd previamente.
 
 <!-- ────────────────────────────────────────────────────────── -->
 
