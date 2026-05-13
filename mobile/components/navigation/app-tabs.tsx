@@ -8,6 +8,7 @@ import {
   TabLabel,
   tabBarUiStyles,
 } from '@/components/navigation/app-tabs-ui'
+import { TabBarPressable } from '@/components/navigation/tab-bar-pressable'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
 import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
@@ -55,6 +56,12 @@ const MemoTabBarBackground = memo(TabBarBackground)
 const renderTabBarBackground = () => <MemoTabBarBackground />
 const renderAddExpenseButton = (props: BottomTabBarButtonProps) => (
   <AddExpenseTabButton {...props} />
+)
+// Wrap los 4 tabs no-FAB con press feedback (scale 0.94 + spring). El
+// FAB tiene su propio button con burst ring — no usa este. Definido
+// module-level para que el reference sea stable across renders.
+const renderTabBarButton = (props: BottomTabBarButtonProps) => (
+  <TabBarPressable {...props} />
 )
 
 interface TabIconRenderProps {
@@ -125,14 +132,26 @@ export function AppTabs() {
 
   return (
     <Tabs screenListeners={tabHaptics} screenOptions={screenOptions}>
-      <Tabs.Screen name="home" options={{ title: 'Inicio', tabBarIcon: renderHomeIcon }} />
-      <Tabs.Screen name="expenses" options={{ title: 'Gastos', tabBarIcon: renderExpensesIcon }} />
+      <Tabs.Screen
+        name="home"
+        options={{ title: 'Inicio', tabBarIcon: renderHomeIcon, tabBarButton: renderTabBarButton }}
+      />
+      <Tabs.Screen
+        name="expenses"
+        options={{ title: 'Gastos', tabBarIcon: renderExpensesIcon, tabBarButton: renderTabBarButton }}
+      />
       <Tabs.Screen
         name="add"
         options={{ title: 'Agregar', tabBarButton: renderAddExpenseButton, tabBarIcon: renderAddIcon }}
       />
-      <Tabs.Screen name="fixed-expenses" options={{ title: 'Fijos', tabBarIcon: renderFijosIcon }} />
-      <Tabs.Screen name="insights" options={{ title: 'Control', tabBarIcon: renderInsightsIcon }} />
+      <Tabs.Screen
+        name="fixed-expenses"
+        options={{ title: 'Fijos', tabBarIcon: renderFijosIcon, tabBarButton: renderTabBarButton }}
+      />
+      <Tabs.Screen
+        name="insights"
+        options={{ title: 'Control', tabBarIcon: renderInsightsIcon, tabBarButton: renderTabBarButton }}
+      />
     </Tabs>
   )
 }
