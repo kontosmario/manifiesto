@@ -1039,11 +1039,29 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
                   <SettingsRow
-                    helper="3 direcciones conceptuales para el refactor del hero de Fijos (Ledger / Dial / Grid). Mocks estáticos, sin motion. Owner pick → Etapa 2."
+                    helper="3 direcciones conceptuales para el refactor del hero de Fijos (Titular / Pasaje / Manifiesto). Mocks estáticos."
                     icon="palette"
-                    isLast
                     label="Preview · Hero Fijos"
                     onPress={() => router.push('/(app)/settings/dev/fijos-hero-preview' as never)}
+                  />
+                  <SettingsRow
+                    helper="Variante A live: magazine cover. Selector de 6 estados (inicio, al día, con atraso, todo pagado, sin fijos, fin de ciclo) con cascade entrance + CountUp + breathe-dot."
+                    icon="article"
+                    label="Live · Hero Titular"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-titular' as never)}
+                  />
+                  <SettingsRow
+                    helper="Variante B live: boarding pass. Route line se dibuja, today marker bounce-in + halo pulse, CountUp en montos."
+                    icon="confirmation-number"
+                    label="Live · Hero Pasaje"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-pasaje' as never)}
+                  />
+                  <SettingsRow
+                    helper="Variante C live: mini-Wrapped. 3 páginas auto-rotando 5s con progress bars, crossfade, long-press pausa, tap navega."
+                    icon="auto-stories"
+                    isLast
+                    label="Live · Hero Manifiesto"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-hero-manifiesto' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
