@@ -1018,6 +1018,19 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 
   Animaciones consistentes: todas las nuevas usan `motionEasings.enterSmooth` (ease-out-expo) para entradas. RiseView wraps para sections, animations internas con cascade row-by-row 40-80ms stagger. Reduced-motion respect en cada componente nuevo.
 
+- **2026-05-13** — **Etapa 11b · Hero × Boarding pass fusion**. Owner pidió fusión del hero actual con el aesthetic del boarding pass (Iteration 2 · variant B que había sido rejected en favor del Titular). Aplicado quirúrgicamente sobre `fijos-hero-card.tsx`:
+  - **Eliminadas las 2 `StatCard` nested** (impeccable absolute ban: `nested cards are always wrong`). Sus counts ("5 PAGADOS / 3 POR PAGAR") absorbed inline como `montoSub` debajo de cada monto en la montosRow ("5 gastos" / "5 pendientes · 2 venc.").
+  - **NUEVO `CycleRouteLine`** insertado entre el `progressFooter` y el `bottomRow`. Línea de tiempo con estaciones origen + destino derivadas de parsear `cycleLabel` ("5 abr → 5 may" → "ABR · 05" / "MAY · 05"). Track de 24 dashes — los pasados se pintan lime `heroAccent`, los futuros muted cream. Today marker dot 14pt bordereado cream se posiciona a `cycleDayIndex / cycleDays`. Label "DÍA X / Y" debajo del marker (clampeado para no clipear edges).
+  - **NUEVA `perforation`** entre la route line y el bottom row. Notches semi-circulares en los bordes (negative space con el primer color del heroGradient) + 22 dashes horizontales tipo ticket perforado. Reemplaza el `borderTop` blanco-12% del bottomRow viejo con un divider con personalidad de boarding stub. Bleed -20pt hacia los bordes del card para que los notches se sienten "cortados" del rectángulo.
+  - `bottomRow` ahora se lee como la **stub band** del pasaje (DINERO LIBRE + % del sueldo). Sin border porque la perforación lo separa visualmente.
+  - Nuevas props: `cycleDayIndex` (default 1) + `cycleDays` (default 30). Screen wirea `cycleDays - daysRemaining` para el index.
+
+  Dos ejes ahora coexisten en el hero sin competir:
+  - **Eje pago** = ProgressBar (lime fill thick, % pagado)
+  - **Eje tiempo** = CycleRouteLine (dashes thin, día del ciclo)
+
+  La fusión retiene: gradient forest + ShineOverlay + CardParticles + urgency ring pulse + breathe dot color-coded + state-aware sub-line + badges (vencidos / al día). Suma: tactilidad boarding-pass + métrica de tiempo del ciclo + cero nested cards.
+
 - **2026-05-13** — **Etapa 10 · V3 promoted a producción** con rollback inmediato disponible:
   - Nuevo adapter `mobile/features/fijos/adapt-controller-to-hero-state.ts` que convierte el output del `useFijosController` real (summary + categoría map + advisor signals) al shape `HeroState` que consumen los componentes V3.
   - `HeroState` extendido con `itemsOverride?: unknown[]` para que el adapter inyecte la lista real. `buildFijoList` ahora prefiere el override si está presente, falla al mock cuando no.

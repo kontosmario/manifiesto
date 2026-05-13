@@ -36,6 +36,11 @@ interface FijosHeroCardProps {
   cantidadVencidos?: number
   dineroLibre?: number
   porcentajeSueldo?: number
+  /** Día actual del ciclo (1..cycleDays). Drive del today marker en la
+   *  route line ABR → MAY del boarding pass. */
+  cycleDayIndex?: number
+  /** Total de días del ciclo. Default 30. */
+  cycleDays?: number
 }
 
 /**
@@ -58,6 +63,8 @@ function FijosHeroCardImpl({
   cantidadVencidos = 0,
   dineroLibre = 0,
   porcentajeSueldo = 0,
+  cycleDayIndex = 1,
+  cycleDays = 30,
 }: FijosHeroCardProps) {
   const { theme } = useAppTheme()
   const porcentaje = totalFijos > 0 ? Math.round((montoPagado / totalFijos) * 100) : 0
@@ -206,6 +213,11 @@ function FijosHeroCardImpl({
                 format={(n) => formatMoney(n)}
                 style={[styles.montoPagado, { color: theme.colors.heroText }]}
               />
+              {/* Item count absorbed del StatCard viejo "Pagados". Sin
+                  nested card, inline como sub-label del monto. */}
+              <Text style={[styles.montoSub, { color: theme.colors.heroAccent }]}>
+                {cantidadPagados} {cantidadPagados === 1 ? 'gasto' : 'gastos'}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
@@ -216,6 +228,14 @@ function FijosHeroCardImpl({
                 format={(n) => formatMoney(n)}
                 style={[styles.montoPendiente, { color: '#F2A78C' }]}
               />
+              {/* Item count absorbed del StatCard viejo "Por pagar".
+                  Si hay vencidos, los desglosa inline. */}
+              <Text style={[styles.montoSub, { color: '#F2A78C' }]}>
+                {cantidadPendientes} {cantidadPendientes === 1 ? 'pendiente' : 'pendientes'}
+                {cantidadVencidos > 0
+                  ? ` · ${cantidadVencidos} venc.`
+                  : ''}
+              </Text>
             </View>
           </View>
 
@@ -229,26 +249,53 @@ function FijosHeroCardImpl({
             </Text>
           </View>
 
-          <View style={styles.statsRow}>
-            <StatCard
-              label="Pagados"
-              value={cantidadPagados}
-              sublabel="gastos listos"
-              accent={theme.colors.heroAccent}
-              accentBg="rgba(166,239,143,0.10)"
-              icon="check"
+          {/* ── Route line ABR → MAY (boarding pass) ──────────────
+              Fusion con la variante Pasaje del ciclo. Una sola línea
+              de tiempo: stations + dashes con today marker. Eje
+              tiempo del ciclo, separado del eje pago (que es la
+              progress bar de arriba). */}
+          <CycleRouteLine
+            cycleLabel={mes}
+            cycleDayIndex={cycleDayIndex}
+            cycleDays={cycleDays}
+            accent={theme.colors.heroAccent}
+            mutedTrack="rgba(242,234,211,0.22)"
+            cream={theme.colors.heroText}
+            muted2={theme.colors.heroMuted2}
+          />
+
+          {/* ── Perforation (boarding pass stub separator) ────────
+              Notches semi-circulares en los bordes + dashes
+              horizontales. Substituye al borderTop hardcoded
+              "rgba(255,255,255,0.12)" del bottomRow viejo con un
+              divider con personalidad. */}
+          <View style={styles.perforation}>
+            <View
+              style={[
+                styles.perfNotchLeft,
+                { backgroundColor: theme.colors.heroGradient[0] },
+              ]}
             />
-            <StatCard
-              label="Por pagar"
-              value={cantidadPendientes}
-              sublabel="pendientes"
-              accent="#F2A78C"
-              accentBg="rgba(242,167,140,0.12)"
-              icon="warning"
+            <View style={styles.perfDashes}>
+              {Array.from({ length: 22 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.perfDash,
+                    { backgroundColor: 'rgba(242,234,211,0.30)' },
+                  ]}
+                />
+              ))}
+            </View>
+            <View
+              style={[
+                styles.perfNotchRight,
+                { backgroundColor: theme.colors.heroGradient[0] },
+              ]}
             />
           </View>
 
-          <View style={[styles.bottomRow, { borderTopColor: 'rgba(255,255,255,0.12)' }]}>
+          <View style={styles.bottomRow}>
             <View>
               <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
                 DINERO LIBRE ESTE MES
@@ -377,42 +424,125 @@ function clampPct(p: number): number {
   return Math.min(Math.max(p, 0), 100) / 100
 }
 
-function StatCard({
-  label,
-  value,
-  sublabel,
+/**
+ * CycleRouteLine — fusion del boarding pass aesthetic en el hero.
+ * Renderea la geometría del ciclo como una ruta: estación origen +
+ * dashed track + today marker + estación destino. Eje TIEMPO, separado
+ * del eje pago (que cubre la ProgressBar de arriba).
+ *
+ * Parsea el cycleLabel canonical "DD MON → DD MON" para extraer las
+ * dos estaciones. Today marker se posiciona a `cycleDayIndex / cycleDays`
+ * a lo largo del track, con label "día X / Y" debajo.
+ *
+ * Cero animation interna de entrada — el wrap RiseView del hero ya
+ * envuelve esto. Mantiene el motion budget del card bajo control.
+ */
+function CycleRouteLine({
+  cycleLabel,
+  cycleDayIndex,
+  cycleDays,
   accent,
-  accentBg,
-  icon,
+  mutedTrack,
+  cream,
+  muted2,
 }: {
-  label: string
-  value: number
-  sublabel: string
+  cycleLabel: string
+  cycleDayIndex: number
+  cycleDays: number
   accent: string
-  accentBg: string
-  icon: 'check' | 'warning'
+  mutedTrack: string
+  cream: string
+  muted2: string
 }) {
+  const stations = parseCycleStations(cycleLabel)
+  const safePct = Math.max(0, Math.min(100, (cycleDayIndex / cycleDays) * 100))
+  const DASH_COUNT = 24
+
+  // Clamp label position al rango [0%, 82%] para que no se clipée en el
+  // borde derecho cuando estamos cerca del final del ciclo.
+  const labelLeft = Math.max(0, Math.min(82, safePct - 8))
+
   return (
-    <View
-      style={[
-        styles.statCard,
-        { borderColor: accent + '55', backgroundColor: accentBg },
-      ]}
-    >
-      <View style={styles.statCardHeader}>
-        <View style={[styles.iconBadge, { backgroundColor: accent }]}>
-          <Text style={styles.iconText}>{icon === 'check' ? '✓' : '!'}</Text>
-        </View>
-        <Text style={[styles.statLabel, { color: accent }]}>{label}</Text>
+    <View style={styles.routeLine}>
+      <View style={styles.station}>
+        <Text style={[styles.stationCode, { color: cream }]}>
+          {stations.from.code}
+        </Text>
+        <Text style={[styles.stationDate, { color: muted2 }]}>
+          {stations.from.date}
+        </Text>
       </View>
-      <CountUpText
-        value={value}
-        format={(n) => String(n)}
-        style={styles.statValue}
-      />
-      <Text style={[styles.statSublabel, { color: accent }]}>{sublabel}</Text>
+
+      <View style={styles.routeTrack}>
+        <View style={styles.routeDashes}>
+          {Array.from({ length: DASH_COUNT }).map((_, i) => {
+            const dashPct = (i / (DASH_COUNT - 1)) * 100
+            const isPast = dashPct <= safePct
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.routeDash,
+                  { backgroundColor: isPast ? accent : mutedTrack },
+                ]}
+              />
+            )
+          })}
+        </View>
+        <View
+          style={[
+            styles.todayMarker,
+            {
+              left: `${safePct}%`,
+              backgroundColor: accent,
+              borderColor: cream,
+            },
+          ]}
+          pointerEvents="none"
+        />
+        <Text
+          style={[
+            styles.todayLabel,
+            { color: accent, left: `${labelLeft}%` },
+          ]}
+        >
+          DÍA {cycleDayIndex} / {cycleDays}
+        </Text>
+      </View>
+
+      <View style={styles.station}>
+        <Text style={[styles.stationCode, { color: cream }]}>
+          {stations.to.code}
+        </Text>
+        <Text style={[styles.stationDate, { color: muted2 }]}>
+          {stations.to.date}
+        </Text>
+      </View>
     </View>
   )
+}
+
+/**
+ * Parsea "5 abr → 5 may" → { from: { code: 'ABR', date: '05' }, ... }
+ * Si no parsea (cycle label custom o vacío), devuelve fallback dignos.
+ */
+function parseCycleStations(label: string): {
+  from: { code: string; date: string }
+  to: { code: string; date: string }
+} {
+  const parts = label.split('→').map((s) => s.trim())
+  const parseSide = (side: string | undefined) => {
+    if (!side) return { code: '--', date: '--' }
+    const [dateRaw, monRaw] = side.split(/\s+/)
+    return {
+      code: (monRaw ?? '---').toUpperCase().slice(0, 3),
+      date: dateRaw ? String(dateRaw).padStart(2, '0') : '--',
+    }
+  }
+  return {
+    from: parseSide(parts[0]),
+    to: parseSide(parts[1]),
+  }
 }
 
 const styles = StyleSheet.create({
@@ -483,6 +613,95 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 10,
   },
+  montoSub: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginTop: 3,
+  },
+  // ── Boarding pass route line + perforation ──────────────────
+  routeLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  station: { alignItems: 'center' },
+  stationCode: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  stationDate: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    marginTop: 1,
+  },
+  routeTrack: {
+    flex: 1,
+    height: 22,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  routeDashes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 1.5,
+    gap: 2,
+  },
+  routeDash: {
+    flex: 1,
+    height: 1.5,
+  },
+  todayMarker: {
+    position: 'absolute',
+    top: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    marginLeft: -7,
+  },
+  todayLabel: {
+    position: 'absolute',
+    top: 18,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  perforation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 14,
+    marginHorizontal: -20, // bleed a los bordes del card (padding=20)
+    marginBottom: 12,
+    marginTop: 2,
+  },
+  perfNotchLeft: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginLeft: -7,
+  },
+  perfNotchRight: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: -7,
+  },
+  perfDashes: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+  },
+  perfDash: {
+    flex: 1,
+    height: 1,
+  },
   montoLabel: {
     fontSize: 11,
     marginBottom: 2,
@@ -536,59 +755,16 @@ const styles = StyleSheet.create({
   progressTotal: {
     fontSize: 11,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  statCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
-  },
-  statCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  iconBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#12211A',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: '#F2EAD3',
-    lineHeight: 28,
-  },
-  statSublabel: {
-    fontSize: 11,
-    marginTop: 2,
-    fontWeight: '600',
-  },
+  // statsRow + statCard + iconBadge + statLabel + statValue + statSublabel
+  // styles eliminados — las 2 StatCard nested (impeccable ban) fueron
+  // absorbidas en montoSub inline + reemplazadas por la CycleRouteLine
+  // boarding pass.
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
+    // Sin borderTopWidth — la perforation arriba ya hace el divider
+    // con personalidad de boarding pass stub.
   },
   bottomLabel: {
     fontSize: 10,

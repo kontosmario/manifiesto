@@ -189,6 +189,14 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               cantidadVencidos={controller.summary.overdueItems.length}
               dineroLibre={controller.freeAfterFijos}
               porcentajeSueldo={controller.pctOfIncome}
+              // Boarding-pass route line · drive del today marker en
+              // el track ABR → MAY. Day index derivado del summary
+              // (cycleDays total - daysRemaining = días recorridos).
+              cycleDayIndex={Math.max(
+                1,
+                controller.cycleDays - controller.summary.daysRemaining,
+              )}
+              cycleDays={controller.cycleDays}
             />
           </Animated.View>
         </TourTarget>
