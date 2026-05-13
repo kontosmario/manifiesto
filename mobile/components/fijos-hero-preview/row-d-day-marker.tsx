@@ -16,6 +16,13 @@ interface RowDayMarkerProps {
    *  is read-only (used in Próximos section where we don't want
    *  actions). */
   withActions?: boolean
+  /** Optional handlers for action buttons. When omitted, buttons render
+   *  decoratively (preview mode). */
+  onMarkPaid?: (id: string) => void
+  onEdit?: (id: string) => void
+  onDelete?: (id: string) => void
+  /** When true, hides actions (e.g. while a mutation is in flight). */
+  isPending?: boolean
 }
 
 /**
@@ -31,7 +38,14 @@ interface RowDayMarkerProps {
  *
  * El día está en CAJA cuadrada estilo "ticket/agenda".
  */
-export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
+export function RowDayMarker({
+  item,
+  withActions = true,
+  onMarkPaid,
+  onEdit,
+  onDelete,
+  isPending = false,
+}: RowDayMarkerProps) {
   const { theme } = useAppTheme()
   const palette = buildProximosPalette(theme)
   const press = usePressScale({ pressedScale: 0.98 })
@@ -166,7 +180,8 @@ export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
 
       {/* Action panel — tap-to-expand. Replaces the destructive swipe of
           the old FijoRow. Mark paid (primary, only if pending) + Editar
-          + Eliminar. */}
+          + Eliminar. Handlers wired via props para producción; en preview
+          quedan no-op (decorativos). */}
       {expanded && withActions ? (
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -179,10 +194,12 @@ export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
           {!isPaid ? (
             <ActionButton
               icon="check"
-              label="Pagar"
+              label={isPending ? 'Pagando…' : 'Pagar'}
               primary
               palette={palette}
               theme={theme}
+              disabled={isPending}
+              onPress={() => onMarkPaid?.(item.id)}
             />
           ) : null}
           <ActionButton
@@ -190,6 +207,8 @@ export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
             label="Editar"
             palette={palette}
             theme={theme}
+            disabled={isPending}
+            onPress={() => onEdit?.(item.id)}
           />
           <ActionButton
             icon="delete-outline"
@@ -197,6 +216,8 @@ export function RowDayMarker({ item, withActions = true }: RowDayMarkerProps) {
             destructive
             palette={palette}
             theme={theme}
+            disabled={isPending}
+            onPress={() => onDelete?.(item.id)}
           />
         </Animated.View>
       ) : null}
@@ -209,6 +230,8 @@ function ActionButton({
   label,
   primary,
   destructive,
+  disabled,
+  onPress,
   palette,
   theme,
 }: {
@@ -216,6 +239,8 @@ function ActionButton({
   label: string
   primary?: boolean
   destructive?: boolean
+  disabled?: boolean
+  onPress?: () => void
   palette: ReturnType<typeof buildProximosPalette>
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
@@ -239,16 +264,19 @@ function ActionButton({
     : theme.colors.text
   return (
     <Pressable
+      onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       style={styles.actionBtnWrap}
     >
       <Animated.View
         style={[
           styles.actionBtn,
-          { backgroundColor: bg, borderColor: border },
+          { backgroundColor: bg, borderColor: border, opacity: disabled ? 0.5 : 1 },
           press.animatedStyle,
         ]}
       >

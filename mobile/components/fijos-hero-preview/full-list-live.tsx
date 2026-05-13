@@ -10,6 +10,13 @@ import type { HeroState } from './hero-states'
 
 interface FullListLiveProps {
   state: HeroState
+  /** Production handlers — forwardeados a cada RowDayMarker. En preview
+   *  (HERO_STATES presets) quedan undefined → acciones no-op. */
+  onMarkPaid?: (id: string) => void
+  onEdit?: (id: string) => void
+  onDelete?: (id: string) => void
+  /** ID del fijo con mutation in-flight (delete/markPaid) */
+  pendingFixedExpenseId?: string | null
 }
 
 /**
@@ -25,7 +32,13 @@ interface FullListLiveProps {
  * Restaura las acciones por item + la separación por categorías que
  * el owner extrañaba del FijoRow + FijoCategoryGroups originales.
  */
-export function FullListLive({ state }: FullListLiveProps) {
+export function FullListLive({
+  state,
+  onMarkPaid,
+  onEdit,
+  onDelete,
+  pendingFixedExpenseId,
+}: FullListLiveProps) {
   const { theme } = useAppTheme()
   const palette = buildProximosPalette(theme)
   const items = buildFijoList(state)
@@ -151,7 +164,13 @@ export function FullListLive({ state }: FullListLiveProps) {
             {g.items.map((item, idx) => (
               <View key={item.id}>
                 <RiseRow delay={200 + gIdx * 100 + idx * 50}>
-                  <RowDayMarker item={item} />
+                  <RowDayMarker
+                    item={item}
+                    onMarkPaid={onMarkPaid}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    isPending={pendingFixedExpenseId === item.id}
+                  />
                 </RiseRow>
                 {idx < g.items.length - 1 ? (
                   <View

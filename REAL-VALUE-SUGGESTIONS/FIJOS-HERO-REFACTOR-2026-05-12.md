@@ -758,6 +758,8 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | **8c** | Category groups · ELIMINADO del refactor | ⚪ N/A | E · Smart sort hace que agrupar por categoría ya no aplique |
 | **9** | FijosHeader · 5 variantes (D · Health pulse winner) | ✅ WINNER | Etapa 8b |
 | **9.5** | **Vista completa orquestada** — los 6 winners integrados, simula reemplazo del fijos-v2-screen | ✅ DONE preview · awaiting owner | Etapa 9 |
+| **9.5b** | Correcciones owner: Hero animaciones (shine + particles + breathe) · Fusión SmartAlerts+Próximos · Row tap-expand actions · Lista por categorías | ✅ DONE | Etapa 9.5 |
+| **10** | **V3 production**: route switch a `FijosV3Screen` con `useFijosController` real · rollback inmediato a V2 disponible | ✅ DONE | Etapa 9.5b |
 | **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
 | **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
 | **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
@@ -984,3 +986,10 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
   - `row-d-day-marker.tsx`: agregado **tap-expand** con panel de acciones (Pagar primary + Editar + Eliminar destructive). Chevron expand-more/expand-less. Action buttons usan press scale 0.96. La prop `withActions={false}` permite ocultarlos en contextos read-only (e.g. Próximos).
   - `full-list-live.tsx`: refactorizada para agrupar por **categoría**. Cada categoría tiene su sub-header (color dot + nombre + count + total). Grupos ordenados por urgencia (los que tienen vencidos primero). Dentro de cada grupo, smart sort por urgencia. Restaura el FijoCategoryGroups que el owner extrañaba.
   - `fijos-vista-completa-screen.tsx`: actualizada para usar `ProximosFusedLive` en lugar de SmartAlerts + Próximos separados. La vista pasa de 5 secciones a **4 secciones**: Header → Hero → Próximos fused → Lista por categorías. Choreography reajustada: delays 0/120/240/360ms.
+- **2026-05-13** — **Etapa 10 · V3 promoted a producción** con rollback inmediato disponible:
+  - Nuevo adapter `mobile/features/fijos/adapt-controller-to-hero-state.ts` que convierte el output del `useFijosController` real (summary + categoría map + advisor signals) al shape `HeroState` que consumen los componentes V3.
+  - `HeroState` extendido con `itemsOverride?: unknown[]` para que el adapter inyecte la lista real. `buildFijoList` ahora prefiere el override si está presente, falla al mock cuando no.
+  - Nueva screen `mobile/screens/home/fijos-v3-screen.tsx` que monta los 4 componentes V3 (HeaderHealthPulse + TitularHeroLive + ProximosFusedLive + FullListLive) con datos reales, mutations cableadas (`useRecordFixedExpensePayment` + `useDeleteFixedExpense`), tour targets preservados, ErrorState + handlers de press/haptic.
+  - `RowDayMarker` + `FullListLive` extendidos con props `onMarkPaid`/`onEdit`/`onDelete`/`pendingFixedExpenseId` — pasados desde V3 a cada row.
+  - `HeaderHealthPulse` recibe `onPressAdd` opcional.
+  - Route `app/(app)/(tabs)/fixed-expenses.tsx` switchea a `FijosV3Screen`. **V2 sigue vivo en código** — rollback inmediato editando 2 líneas (comentar import V3 + descomentar V2 + revertir el `<FijosV3Screen>` a `<FijosV2Screen>`).

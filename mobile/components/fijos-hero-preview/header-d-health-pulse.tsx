@@ -19,6 +19,7 @@ import type { HeroState } from './hero-states'
 
 interface HeaderDProps {
   state: HeroState
+  onPressAdd?: () => void
 }
 
 /**
@@ -34,7 +35,7 @@ interface HeaderDProps {
  * Sub-line state-aware acompaña como contexto narrativo. Pulse es
  * continuous warm 1.6s loop. Cualquiera capta el "semáforo" en 1s.
  */
-export function HeaderHealthPulse({ state }: HeaderDProps) {
+export function HeaderHealthPulse({ state, onPressAdd }: HeaderDProps) {
   const { theme } = useAppTheme()
   const palette = buildProximosPalette(theme)
   const press = usePressScale({ pressedScale: 0.94 })
@@ -59,6 +60,7 @@ export function HeaderHealthPulse({ state }: HeaderDProps) {
 
       <RiseRow delay={140}>
         <Pressable
+          onPress={onPressAdd}
           onPressIn={press.onPressIn}
           onPressOut={press.onPressOut}
           accessibilityRole="button"

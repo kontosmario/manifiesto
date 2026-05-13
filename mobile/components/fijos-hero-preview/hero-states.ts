@@ -81,6 +81,15 @@ export interface HeroState {
   // Special flags
   isEmpty?: boolean
   isAllPaid?: boolean
+
+  /**
+   * Production override · cuando el state proviene del controller real
+   * (vía adaptControllerToHeroState), se inyectan los ítems reales acá.
+   * En dev / HERO_STATES presets queda undefined y FullList usa el
+   * mock `buildFijoList(state)`. Tipo `unknown` para evitar el import
+   * cíclico — FullList castea al shape correcto.
+   */
+  itemsOverride?: unknown[]
 }
 
 export const HERO_STATES: HeroState[] = [

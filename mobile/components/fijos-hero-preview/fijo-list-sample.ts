@@ -29,12 +29,14 @@ const BASE: FijoItem[] = [
 ]
 
 /**
- * Devuelve una lista de 10 fijos consistente con el HeroState dado.
- * El estado controla el split pagados / pendientes / vencidos para
- * que las 5 variantes muestren data coherente con el resto de los
- * componentes (hero + próximos + alerts).
+ * Devuelve la lista de fijos para un HeroState. Si el state trae
+ * `itemsOverride` (producción vía adaptControllerToHeroState), usa
+ * esa. Si no, mockea según el preset id (dev / variants screens).
  */
 export function buildFijoList(state: HeroState): FijoItem[] {
+  if (Array.isArray(state.itemsOverride)) {
+    return state.itemsOverride as FijoItem[]
+  }
   if (state.isEmpty) return []
 
   if (state.id === 'inicio') {
