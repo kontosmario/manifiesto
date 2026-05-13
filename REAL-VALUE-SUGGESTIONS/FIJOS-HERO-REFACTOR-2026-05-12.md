@@ -788,19 +788,33 @@ Reemplaza al `FijosSmartAlerts` actual (horizontal rail con emojis 📅📈⚖�
 | **D · Compact pills** | pills horizontales · tap expande detalle inline | `smart-alerts-pills-live.tsx` | rejected |
 | **E · Editorial banner** | summary headline + bullets · "esta semana: X y Y" | `smart-alerts-banner-live.tsx` | rejected |
 
-### Tabs · 5 variantes a comparar (vivo en `/settings/dev/fijos-tabs-variants`)
+### Tabs v1 · 5 variantes (rechazadas — vivo en `/settings/dev/fijos-tabs-variants`)
 
-Reemplaza al `FijosTabs` actual (4 pills horizontales con solid-ink active state + count chip dentro).
+Reemplazaba al `FijosTabs` actual. Owner rechazó las 5 por demasiado abstractas — todas eran "filter selectors" con paradigma de tab/bucket. Quote: *"no me gusto ninguno, en esto si te pido algo mas intuitivo para el usuario"*.
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Underline switch** | labels + underline animado · editorial NY Times restraint puro | `tabs-underline-live.tsx` | ✅ DONE |
-| **B · Stacked composition** | barra horizontal proporcional · tap segmento filtra | `tabs-stacked-bar-live.tsx` | ✅ DONE |
-| **C · Big counts** | count grande (28pt) es el héroe · label eyebrow tiny | `tabs-big-counts-live.tsx` | ✅ DONE |
-| **D · Chip dropdown** | un solo chip + expand inline · footprint mínimo | `tabs-chip-dropdown-live.tsx` | ✅ DONE |
-| **E · Numeric ledger** | 4 columnas con count + label + monto · top-indicator estilo lápiz | `tabs-ledger-live.tsx` | ✅ DONE |
+| **A · Underline switch** | labels + underline animado | `tabs-underline-live.tsx` | rejected |
+| **B · Stacked composition** | barra horizontal proporcional · tap segmento filtra | `tabs-stacked-bar-live.tsx` | rejected |
+| **C · Big counts** | count grande (28pt) es el héroe | `tabs-big-counts-live.tsx` | rejected |
+| **D · Chip dropdown** | un solo chip + expand inline | `tabs-chip-dropdown-live.tsx` | rejected |
+| **E · Numeric ledger** | 4 columnas con count + label + monto | `tabs-ledger-live.tsx` | rejected |
 
-Bucket "zombi" legacy queda fuera de A/C/D (queda en summary aggregate por compat). E lo reemplaza con "vencidos" — más útil hoy.
+### Tabs v2 · 5 variantes más intuitivas (vivo en `/settings/dev/fijos-tabs-v2`)
+
+Segunda iteración: cuestiona el paradigma mismo. Varias NO usan tabs explícitos. Cada una renderea la LISTA real debajo para evaluar end-to-end.
+
+| Variante | Paradigma | Archivo | Estado |
+|---|---|---|---|
+| **A · Bandeja simple** | sin tabs · 2 secciones (Por pagar / Pagados collapsable) | `tabs-v2-bandeja-live.tsx` | ✅ DONE |
+| **B · Toggle binario** | segmented 2 estados · indicator desliza spring · default smart | `tabs-v2-toggle-live.tsx` | ✅ DONE |
+| **C · Inbox progresivo** | solo pendientes default + "Ver X pagados →" expand inline | `tabs-v2-inbox-live.tsx` | ✅ DONE |
+| **D · Time-grouped** | HOY · ESTA SEMANA · DESPUÉS · PAGADOS — sin estados, agrupado por tiempo | `tabs-v2-time-grouped-live.tsx` | ✅ DONE |
+| **E · Smart sort** | sin filtros · lista única ordenada por urgencia · scroll = filtro mental | `tabs-v2-smart-sort-live.tsx` | ✅ DONE |
+
+Helpers nuevos:
+- `fijo-list-sample.ts` — 10 ítems mock con statuses adaptables al state
+- `fijo-row-mini.tsx` — row simplificado (no es el FijoRow real de prod, solo para preview)
 
 Datos para alimentar las 5 variantes: nuevo campo `alerts: { hikes, signals }` en `HERO_STATES`. Cobertura de estados:
 
@@ -870,3 +884,5 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-13** — Etapa 7: 5 variantes de **SmartAlerts** shipped. Reemplaza al `FijosSmartAlerts` viejo (rail con emojis 📅📈⚖️). Variantes: **A · Editorial inline** (rows tipográficas same DNA como Próximos), **B · Stack of notes** (papers stacked con tilt + spring entrance), **C · Marquee headline** (1 a la vez auto-rota 6s con crossfade · DNA Wrapped puro), **D · Compact pills** (horizontal pills + tap expande detalle), **E · Editorial banner** (summary headline + bullets). Todas state-aware con los 6 estados canónicos, todas consumen `buildProximosPalette` para contraste theme-aware. HERO_STATES extendido con `alerts: { hikes, signals }`. Nueva dev route `/settings/dev/fijos-smart-alerts-variants`.
 - **2026-05-13** — **Owner picks 🏆 SmartAlerts · A · Editorial inline**. Quote: *"editorial inline funciona, ademas es posible fusionarla con editorial list"*. Decisión de fusión Editorial-inline + Editorial-list (Próximos) queda como item arquitectónico a evaluar al integrar a la screen real (Etapa 10).
 - **2026-05-13** — Etapa 8a: 5 variantes de **FijosTabs** shipped. Reemplaza al `FijosTabs` viejo (4 pills horizontales con count chip dentro + solid-ink active). Variantes: **A · Underline switch** (NY Times editorial), **B · Stacked composition** (barra proporcional, tap segmento filtra), **C · Big counts** (count 28pt dominante, label eyebrow), **D · Chip dropdown** (1 chip + expand inline, restraint min), **E · Numeric ledger** (4 cols count + label + monto, top-indicator lápiz). Todas state-aware, todas consumen `buildProximosPalette`. Bucket "zombi" legacy reemplazado por "vencidos" en E. Nueva dev route `/settings/dev/fijos-tabs-variants`.
+- **2026-05-13** — Owner rechaza Tabs v1. Quote: *"no me gusto ninguno, en esto si te pido algo mas intuitivo para el usuario"*. Diagnóstico: las 5 eran todas "filter selectors" con paradigma de tab/bucket — la abstracción misma del filtro es lo que no es intuitivo. Etapa 8a-v2 arranca: **cuestionar el paradigma mismo**.
+- **2026-05-13** — Etapa 8a-v2: 5 variantes Tabs más intuitivas, varias **sin tabs explícitos**. **A · Bandeja simple** (sin tabs, 2 secciones Por pagar / Pagados collapsable), **B · Toggle binario** (segmented 2 estados con indicator desliza spring), **C · Inbox progresivo** (solo pendientes default + "Ver X pagados →" expand), **D · Time-grouped** (HOY / ESTA SEMANA / DESPUÉS / PAGADOS — el usuario piensa en tiempo, no en buckets), **E · Smart sort** (sin filtros, lista única ordenada por urgencia, scroll = filtro mental). Cada variante renderea la LISTA real (10 ítems mock vía `fijo-list-sample.ts` + `fijo-row-mini.tsx`) debajo del mecanismo para evaluar end-to-end. Nueva dev route `/settings/dev/fijos-tabs-v2`.

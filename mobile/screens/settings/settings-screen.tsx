@@ -1063,6 +1063,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-tabs-variants' as never)}
                   />
                   <SettingsRow
+                    helper="Tabs v2 (5 variantes más intuitivas, varias sin tabs explícitos): Bandeja simple, Toggle binario, Inbox progresivo, Time-grouped, Smart sort. Cada una renderea la lista real debajo."
+                    icon="view-day"
+                    label="Tabs v2 · 5 intuitivas"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-tabs-v2' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"
