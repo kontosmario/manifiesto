@@ -96,9 +96,13 @@ function FijoRowImpl({
   })()
 
   const diffDays = item.dayOfMonth - todayDay
+  // Unified register · adjective + "·" + detail para paid/overdue,
+  // verbo "Vence + detail" para hoy/futuro. Antes "Pagó día 5" rompía
+  // el patrón en tercera persona — ahora "Pagado · día 5" se lee como
+  // los otros estados.
   const dueLabel =
     status === 'paid'
-      ? `Pagó día ${item.dayOfMonth}`
+      ? `Pagado · día ${item.dayOfMonth}`
       : diffDays < 0
         ? `Vencido hace ${Math.abs(diffDays)}d`
         : diffDays === 0

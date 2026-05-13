@@ -115,7 +115,9 @@ function FijosHeroCardImpl({
   }))
 
   // Sub-line state-aware — reemplaza el "Quedan X días en el ciclo"
-  // estático con info más útil según el momento del ciclo.
+  // estático con info más útil según el momento del ciclo. Cada caso
+  // dice algo distinto · ningún caso duplica info que ya esté en el
+  // badge (impeccable: no repetir el mismo dato en dos sitios).
   const resolveSubtitle = (): string => {
     if (isAllPaid && diasRestantes <= 1) {
       return diasRestantes === 0 ? 'Todo pagado · cierre hoy' : 'Todo pagado · cobrás mañana'
@@ -124,15 +126,14 @@ function FijosHeroCardImpl({
       return `Todo pagado · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
     }
     if (hasOverdue) {
-      const otros = cantidadPendientes - cantidadVencidos
-      const venc = `${cantidadVencidos} ${cantidadVencidos === 1 ? 'vencido' : 'vencidos'}`
-      const resto = otros > 0 ? ` · ${otros} por pagar` : ''
-      return `${venc}${resto}`
+      // Badge "X VENCIDOS" arriba ya cuenta los atrasados.
+      // Sub-line accionable: qué hacer + cuánto tiempo queda.
+      return `Resolvé los atrasados · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
     }
     if (notStarted) {
-      return `Recién arrancado · ${cantidadPendientes} fijos por delante`
+      return `Recién arrancado · ${cantidadPendientes} pendientes`
     }
-    return `Faltan ${cantidadPendientes} · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
+    return `${cantidadPendientes} ${cantidadPendientes === 1 ? 'pendiente' : 'pendientes'} · ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} al cierre`
   }
 
   return (
@@ -171,7 +172,10 @@ function FijosHeroCardImpl({
                 glow={statusColor}
               />
               <Text style={[styles.titulo, { color: statusColor }]}>
-                Gastos fijos · {mes}
+                {/* "· {mes}" removido — la CycleRouteLine abajo ya
+                    muestra el ciclo (ABR 05 → MAY 05) con today marker.
+                    Impeccable: una sola surface por dato. */}
+                Gastos fijos
               </Text>
             </View>
             {hasOverdue ? (
@@ -214,9 +218,11 @@ function FijosHeroCardImpl({
                 style={[styles.montoPagado, { color: theme.colors.heroText }]}
               />
               {/* Item count absorbed del StatCard viejo "Pagados". Sin
-                  nested card, inline como sub-label del monto. */}
+                  nested card, inline como sub-label del monto.
+                  Vocabulary: "pagados / pendientes" canon — alineado
+                  con el tab pill correspondiente. */}
               <Text style={[styles.montoSub, { color: theme.colors.heroAccent }]}>
-                {cantidadPagados} {cantidadPagados === 1 ? 'gasto' : 'gastos'}
+                {cantidadPagados} {cantidadPagados === 1 ? 'pagado' : 'pagados'}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -229,12 +235,10 @@ function FijosHeroCardImpl({
                 style={[styles.montoPendiente, { color: '#F2A78C' }]}
               />
               {/* Item count absorbed del StatCard viejo "Por pagar".
-                  Si hay vencidos, los desglosa inline. */}
+                  Cuando hay vencidos, el badge "X VENCIDOS" arriba
+                  los contabiliza — no duplicamos esa info acá. */}
               <Text style={[styles.montoSub, { color: '#F2A78C' }]}>
                 {cantidadPendientes} {cantidadPendientes === 1 ? 'pendiente' : 'pendientes'}
-                {cantidadVencidos > 0
-                  ? ` · ${cantidadVencidos} venc.`
-                  : ''}
               </Text>
             </View>
           </View>
@@ -298,7 +302,9 @@ function FijosHeroCardImpl({
           <View style={styles.bottomRow}>
             <View>
               <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
-                DINERO LIBRE ESTE MES
+                {/* "ESTE MES" removido — impeccable rule: redundante con
+                    el eyebrow "GASTOS FIJOS · ABRIL" del header. */}
+                DINERO LIBRE
               </Text>
               <CountUpText
                 value={dineroLibre}
@@ -506,7 +512,7 @@ function CycleRouteLine({
             { color: accent, left: `${labelLeft}%` },
           ]}
         >
-          DÍA {cycleDayIndex} / {cycleDays}
+          HOY · DÍA {cycleDayIndex}
         </Text>
       </View>
 

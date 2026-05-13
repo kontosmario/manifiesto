@@ -1031,6 +1031,28 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 
   La fusión retiene: gradient forest + ShineOverlay + CardParticles + urgency ring pulse + breathe dot color-coded + state-aware sub-line + badges (vencidos / al día). Suma: tactilidad boarding-pass + métrica de tiempo del ciclo + cero nested cards.
 
+- **2026-05-13** — **Etapa 11c · Impeccable polish** (wording + redundancias). Owner: *"revisemos patrones repetitivos, wording repetitivo, queremos que sea claro para el usuario"*. Pase quirúrgico sobre las copy + jerarquía del Fijos screen V2 buscando ban absoluto de impeccable: cada dato vive en UNA surface canónica, sin duplicaciones.
+
+  Fixes aplicados:
+
+  1. **Eyebrow hero simplificado**: `Gastos fijos · 5 abr → 5 may` → `Gastos fijos`. El ciclo (5 abr → 5 may) ya es la canon de la `CycleRouteLine` abajo, con today marker visual — no hace falta repetirlo arriba como texto.
+
+  2. **Sub-line hero (cuando hasOverdue) sin duplicar vencidos**: antes `${cantidadVencidos} vencidos · ${otros} por pagar`, ahora `Resolvé los atrasados · ${diasRestantes} días al cierre`. El badge `2 VENCIDOS` arriba ya contabiliza los atrasados — la sub-line pasa a accionable.
+
+  3. **Sub-line default unificada al canon "pendientes"**: antes `Faltan 5 · 18 días al cierre`, ahora `5 pendientes · 18 días al cierre`. Vocabulario unificado con los tabs (que ya dicen "Pendientes") y con el montoSub.
+
+  4. **MontoSub vocabulario consistente**: antes `5 gastos` / `5 pendientes · 2 venc.`, ahora `5 pagados` / `5 pendientes`. Sustantivos simétricos pagados/pendientes. La info de vencidos vive en el badge del header, no se duplica acá.
+
+  5. **`DINERO LIBRE ESTE MES` → `DINERO LIBRE`**. Violación directa del impeccable rule "ESTE MES / MENSUAL redundante cuando el header ya dice el ciclo". El eyebrow + route line ya establecen el ciclo.
+
+  6. **Route line label `DÍA 12 / 30` → `HOY · DÍA 12`**. Más natural, menos numérico. El "/30" es implícito por la longitud del track.
+
+  7. **FijoRow dueLabel registro unificado**: antes `Pagó día 5` (3ra persona awkward), ahora `Pagado · día 5` (adjetivo + detalle). Patrón consistente con `Vencido hace 5d` y `Vence en 5d`.
+
+  8. **ProximosCard empty copy**: `No queda nada por pagar este ciclo.` → `Sin pendientes. Volvé a chequear en unos días.` Quita "este ciclo" redundante + suma una sugerencia accionable.
+
+  Cero cambios estructurales — solo wording + jerarquía. La vista se siente más calmada, sin info repetida que el usuario tenga que filtrar mentalmente.
+
 - **2026-05-13** — **Etapa 10 · V3 promoted a producción** con rollback inmediato disponible:
   - Nuevo adapter `mobile/features/fijos/adapt-controller-to-hero-state.ts` que convierte el output del `useFijosController` real (summary + categoría map + advisor signals) al shape `HeroState` que consumen los componentes V3.
   - `HeroState` extendido con `itemsOverride?: unknown[]` para que el adapter inyecte la lista real. `buildFijoList` ahora prefiere el override si está presente, falla al mock cuando no.

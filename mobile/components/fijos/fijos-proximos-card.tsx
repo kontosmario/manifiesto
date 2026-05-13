@@ -146,7 +146,7 @@ export function FijosProximosCard({
           <View style={styles.calmRow}>
             <MaterialIcons name="check-circle" size={18} color={theme.colors.primary} />
             <Text style={[styles.calmText, { color: theme.colors.text }]}>
-              No queda nada por pagar este ciclo.
+              Sin pendientes. Volvé a chequear en unos días.
             </Text>
           </View>
         )}
