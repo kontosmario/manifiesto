@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -43,7 +43,7 @@ interface ControlV2PatronCardProps {
  *  · Si hoy es el peor día, agrega callout secundario "Hoy es X,
  *    tu día más caro — cuidalo".
  */
-export function ControlV2PatronCard({
+function ControlV2PatronCardImpl({
   dows,
   peorDow,
   mejorDow,
@@ -683,3 +683,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
 })
+
+// Memo: Patron evalúa día predominante de gastos + insights. Sin
+// memo cada render reevaluaba el cálculo y el array de tiles.
+export const ControlV2PatronCard = memo(ControlV2PatronCardImpl)

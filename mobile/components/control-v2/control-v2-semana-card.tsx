@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -47,7 +48,7 @@ const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
  *    proyecta el ahorro acumulado al cierre del ciclo (`delta ×
  *    diasRestantes`). Conecta con la lógica de Alcancía.
  */
-export function ControlV2SemanaCard({
+function ControlV2SemanaCardImpl({
   last7,
   cupoDiario,
   avgU7,
@@ -645,3 +646,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 })
+
+// Memo: Semana muestra gastado vs presupuesto semanal con barras
+// y BreatheDot. Sin memo cada render del parent reevaluaba todo.
+export const ControlV2SemanaCard = memo(ControlV2SemanaCardImpl)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -63,7 +63,7 @@ interface ControlV2AlcanciaCardProps {
  *         vista con el sistema de gamificación real.
  *  · MaterialIcons para todos los glyphs (sin emojis).
  */
-export function ControlV2AlcanciaCard({
+function ControlV2AlcanciaCardImpl({
   familyId,
   userId,
   goal,
@@ -493,3 +493,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 })
+
+// Memo: Alcancia tiene Pressables + Alert handler. Sin memo cada
+// render del parent recreaba el árbol incluyendo los useState locales.
+export const ControlV2AlcanciaCard = memo(ControlV2AlcanciaCardImpl)

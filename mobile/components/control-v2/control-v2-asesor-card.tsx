@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { memo, useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
@@ -68,7 +68,7 @@ const BUBBLE_BODY = '#3B6D57'                            // surface-700 (textMut
  * The ALL-cards grid + per-row swipe + per-row CTA pattern lives now
  * in the dedicated chat screen. From Control we only show the teaser.
  */
-export function ControlV2AsesorCard({
+function ControlV2AsesorCardImpl({
   tareas,
 }: ControlV2AsesorCardProps) {
   const dismissed = useDismissedIds()
@@ -742,3 +742,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
   },
 })
+
+// Memo: Asesor renderea coaching tip + estado emocional + acciones.
+// Sin memo, cada render del parent reevaluaba todo el árbol.
+export const ControlV2AsesorCard = memo(ControlV2AsesorCardImpl)

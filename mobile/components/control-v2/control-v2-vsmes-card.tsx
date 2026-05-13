@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -79,7 +80,7 @@ interface ControlV2VsMesCardProps {
  * Empty state explains the close lifecycle so first-cycle users
  * know exactly what unlocks the comparison.
  */
-export function ControlV2VsMesCard({
+function ControlV2VsMesCardImpl({
   hasPreviousMonth,
   mesPasadoNombre,
   mesPasadoTotal,
@@ -923,3 +924,8 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 })
+
+// Memo: VsMes renderea comparativa mes pasado vs actual con varios
+// sub-tiles y format calls. Sin memo, cada render del parent
+// reevaluaba todo el árbol incluso si los datos no cambiaron.
+export const ControlV2VsMesCard = memo(ControlV2VsMesCardImpl)

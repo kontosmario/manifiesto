@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -65,7 +66,7 @@ function safePct(n: number): number {
  *    `sobrantePresupuestadoMes` + `restanteMes`, not just the binary
  *    `alcanzaElMes`.
  */
-export function ControlV2AlcanzaCard({
+function ControlV2AlcanzaCardImpl({
   alcanzaElMes,
   alreadyExhausted,
   hasReliableProjection,
@@ -625,3 +626,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 })
+
+// Memo: Alcanza proyecta hasta cuándo llega la plata. Card de
+// solo-lectura — el render entero se puede saltar si nada cambió.
+export const ControlV2AlcanzaCard = memo(ControlV2AlcanzaCardImpl)

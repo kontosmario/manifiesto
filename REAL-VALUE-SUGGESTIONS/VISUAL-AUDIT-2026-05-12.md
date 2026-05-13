@@ -761,6 +761,47 @@ Sin cambios visuales / animaciones — solo eliminación de trabajo redundante.
 
 Constraints respetados: cero downgrade animation, styles intactos, RiseView cascade preservada, todos los `useCallback`/`useMemo` existentes mantienen su shape.
 
+### Sprint P2 — Gastos
+
+**4 fixes shipped** sobre `gastos-hero-card.tsx` + `gasto-row.tsx` + `streak-flame-icon.tsx` + `gastos-filter-pill.tsx` + `gastos-smart-filter.tsx`:
+
+| Fix | Antes | Después | Impact |
+|---|---|---|---|
+| **P1 — `GastoRow` no memo** | Lista densa (snapshot devuelve hasta 120 expenses con scroll virtualizado) sin memo, cada parent render disparaba reconciliation de todas las rows visibles + sus children (catChip, swipe handlers) | `memo(GastoRowImpl)` | Solo rows con props cambiados re-renderean. Especialmente fuerte cuando expenseAccent / familyMembersById se mantienen estables. |
+| **P2 — `GastosFilterPill` no memo + onPress unstable** | Pills inline `onPress={() => onSelectCategory(id)}` creaba new callback per render → rompía memo aunque lo agregáramos | API refactor: `selectId` + `onSelect` props; internal `useCallback([onSelect, selectId])` + `memo()` wrap | Pills (8–15 visibles) ya no re-renderean salvo cuando `selected` cambia. |
+| **P3 — `GastosHeroCard` no memo** | Hero con sumas, badges y animations gets re-rendered por cada parent action (filter tap, scroll, telemetry) | `memo(GastosHeroCardImpl)` | Solo recomputa cuando datos hero cambian. |
+| **P4 — `StreakFlameIcon` no memo** | Header button mountéa AnimatedFlame con ~23 `useSharedValue` + 5 `useLoopAnimation`. Cada parent render del Gastos screen disparaba re-evaluation de TODOS los animation hooks | `memo(StreakFlameIconImpl)` | Animation hooks solo se re-evalúan cuando `data` cambia (lo cual trigerea internamente el useEffect de los loops). |
+
+### Sprint P3 — Fijos
+
+**2 fixes shipped** sobre `fijo-row.tsx` + `fijos-hero-card.tsx`:
+
+| Fix | Antes | Después | Impact |
+|---|---|---|---|
+| **P1 — `FijoRow` no memo** | Lista de fijos (5–30 items típicos) con TrendBadge + statusChip + sparkline → cada parent re-render disparaba reconciliation completa | `memo(FijoRowImpl)` | Rows estables saltan reconciliation. |
+| **P2 — `FijosHeroCard` no memo** | Hero con muchos cálculos derived + animated dot | `memo(FijosHeroCardImpl)` | Solo re-renderea cuando datos hero cambian. |
+
+### Sprint P4 — Control v2
+
+**8 cards memo'd** (`hoy`, `vsmes`, `asesor`, `patron`, `alcanza`, `semana`, `cobertura`, `alcancia`):
+
+Cada card es read-only y bastante pesado (sub-tiles, formatters, BreatheDot, gradient backgrounds). El parent `control-v2-screen.tsx` re-rendea cuando cualquier query refetcha — sin memo, las 8 cards re-renderean en cascada incluso si solo una query cambió.
+
+Pattern aplicado uniforme: import `memo`, rename `export function ControlV2XCard` → `function ControlV2XCardImpl`, append `export const ControlV2XCard = memo(ControlV2XCardImpl)` al final del archivo.
+
+| Card | Razón |
+|---|---|
+| **HoyCard** | Cierre del día — datos + animaciones |
+| **VsMesCard** | Comparativa mes pasado/actual con varios sub-tiles |
+| **AsesorCard** | Coaching tip + estado emocional + acciones |
+| **PatronCard** | Día predominante de gastos + insights |
+| **AlcanzaCard** | Proyección de cuándo llega la plata |
+| **SemanaCard** | Gastado vs presupuesto semanal con barras + BreatheDot |
+| **CoberturaCard** | % de ingresos que cubre fijos |
+| **AlcanciaCard** | Estado ahorros con Pressables + useState |
+
+Total Sprint P1–P4: **18 componentes memoizados** sobre las 4 pantallas T1. Zero visual / animation downgrades. Typecheck + lint clean.
+
 ## 📝 Log de cambios
 
 - **2026-05-12** — Doc creado. 28 pantallas catalogadas, rubric establecido, status board inicializado.
@@ -777,3 +818,4 @@ Constraints respetados: cero downgrade animation, styles intactos, RiseView casc
 - **2026-05-12** — Gastos Sprint F revisión criterio: owner corrigió "no me gusta que sea todo lime, de la gama del color original que era". Switch a `lightenForDarkBg(categoryColor)` — variante hue-preserved con L=92, S+8 (nuevo util en `category-color.ts`). 12/12 categorías AA pass (min 4.63:1). Paleta original preservada, identidad per-categoría intacta.
 - **2026-05-12** — Pantalla 3/28 (Fijos v2) auditada con lupa desde el primer pase. 30+ findings granulares organizados en 3 sprints: A (8 press feedbacks), B (statusChip + TrendBadge + 2 shadows + FijoTrendSpark theme-aware), C (4 tabular nums + chevron rotation + dead code + 2 a11y labels). Score ⭐⭐⭐ → ⭐⭐⭐⭐⭐. Lección reforzada: estados visuales múltiples (status, trend) propician más hardcoded colors.
 - **2026-05-12** — Pantalla 4/28 (Control v2) auditada — 10,002 LOC en 21 archivos pero solo 6 Pressables user-facing (los 6 cards informacionales grandes son read-only). Sprint A: 6 press scales (header×2, asesor, alcancia upgrade, empty-state). Sprint B: anchor shadowColor theme-aware. Score ⭐⭐⭐⭐ → ⭐⭐⭐⭐⭐. Lección: pantallas grandes ≠ pantallas con muchos issues — métrica importante es interaction surface count.
+- **2026-05-12** — Performance Audit Sprints P1–P4 line-by-line sobre las 4 T1: Home (4 fixes — `?? []` memoization, `hasManualExpense` memo, HeroCard + ActivityRowV2 memo), Gastos (4 fixes — GastoRow + GastosFilterPill API refactor + HeroCard + StreakFlameIcon memo), Fijos (2 fixes — FijoRow + FijosHeroCard memo), Control v2 (8 cards memo'd con pattern uniforme). Total **18 componentes memoizados**. Zero visual / animation downgrades. Typecheck + lint clean en cada sprint.

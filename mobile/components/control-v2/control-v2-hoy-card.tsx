@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -91,7 +91,7 @@ interface ControlV2HoyCardProps {
  *   · 3 stats chips (racha, días bajo cupo, días al cobro).
  *   · Smart hint with tone-tinted accent stripe.
  */
-export function ControlV2HoyCard({
+function ControlV2HoyCardImpl({
   cupoDiario,
   gastoHoy,
   libreHoy,
@@ -1745,3 +1745,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 })
+
+// Memo: HoyCard es el principal card de Control (1747 LOC, gradient
+// shell + ProgressBar animado + glow + descriptors + a11y composite).
+// Sin memo cada parent render reevaluaba todos los hooks internos.
+export const ControlV2HoyCard = memo(ControlV2HoyCardImpl)

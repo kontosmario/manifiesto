@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -46,7 +47,7 @@ interface SegmentTone {
  *    misma data, alineados visualmente con el segment correspondiente
  *    del bar.
  */
-export function ControlV2CoberturaCard({
+function ControlV2CoberturaCardImpl({
   fijosMes,
   ahorroMes,
   libreMes,
@@ -509,3 +510,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 })
+
+// Memo: Cobertura muestra qué % de ingresos cubre fijos. Card de
+// solo-lectura — render seguro de saltar si los datos no cambian.
+export const ControlV2CoberturaCard = memo(ControlV2CoberturaCardImpl)
