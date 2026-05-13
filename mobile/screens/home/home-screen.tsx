@@ -134,7 +134,14 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // Assistant pending count — same source the Control card uses, so the
   // badge stays in sync with what the user will see when they open the
   // sheet. Filter dismissed in case some were swiped away from Control.
-  const { signals: assistantSignals } = useControlV2Data(familyId)
+  //
+  // `defer: true` · la badge no es decision-grade en la primera frame
+  // (queda en 0 hasta que cargue, ~600ms después del mount). Defer evita
+  // que el chain de queries pesado (controlIntelligence + summaries +
+  // limits + velocity + notifications) compita por JS thread con la
+  // navegación / first-paint del Home. Cuando Home tira prefetch en
+  // tabs layout, esto se vuelve casi-instantáneo igual.
+  const { signals: assistantSignals } = useControlV2Data(familyId, null, { defer: true })
   const assistantDismissed = useDismissedIds()
   const assistantPendingCount = assistantSignals.filter((t) => {
     const key = t.action?.kind === 'dismiss' ? t.action.dismissId : t.id
