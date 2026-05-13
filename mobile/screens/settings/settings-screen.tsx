@@ -1075,6 +1075,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-row-variants' as never)}
                   />
                   <SettingsRow
+                    helper="5 variantes del FijosHeader (top bar). A · Editorial título, B · Stat-led monto big, C · Search inline, D · Health pulse, E · Utility bar."
+                    icon="title"
+                    label="Header · 5 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-header-variants' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"

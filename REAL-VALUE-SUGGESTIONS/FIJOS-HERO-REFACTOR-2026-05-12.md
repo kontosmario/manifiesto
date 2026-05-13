@@ -754,8 +754,9 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | **7** | SmartAlerts · 5 variantes (Editorial / Stack / Marquee / Pills / Banner) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 6 |
 | **8a** | Tabs v1 · 5 variantes | ❌ REJECTED | Etapa 7 |
 | **8a-v2** | Tabs v2 · 5 variantes más intuitivas (E · Smart sort winner) | ✅ WINNER | Etapa 8a rejection |
-| **8b** | FijoRow · 5 variantes (Editorial / Sparkline / Stripe / Day marker / Status icon) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 8a-v2 |
+| **8b** | FijoRow · 5 variantes (D · Calendar marker winner) | ✅ WINNER | Etapa 8a-v2 |
 | **8c** | Category groups · ELIMINADO del refactor | ⚪ N/A | E · Smart sort hace que agrupar por categoría ya no aplique |
+| **9** | FijosHeader · 5 variantes (Editorial / Stat-led / Search / Health pulse / Utility bar) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 8b |
 | **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
 | **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
 | **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
@@ -822,13 +823,25 @@ Reemplaza al `FijoRow` actual (448 LOC con emoji icon, status chip pastel, spark
 
 | Variante | Idea | Archivo | Estado |
 |---|---|---|---|
-| **A · Editorial row** | dot color + name + status label + amount · restraint puro | `row-a-editorial.tsx` | ✅ DONE |
-| **B · Sparkline-hero** | mini-curva SVG de tendencia entre name y amount · "la forma habla" | `row-b-sparkline.tsx` | ✅ DONE |
-| **C · Accent stripe** | stripe vertical color cat (2.5pt) + two-line typography | `row-c-stripe.tsx` | ✅ DONE |
-| **D · Calendar marker** | día del mes en caja a la izquierda · ver cuándo paga sin leer | `row-d-day-marker.tsx` | ✅ DONE |
-| **E · Status icon-led** | icon tile bg-tinted (check/clock/warning) · pattern tasklist | `row-e-status-icon.tsx` | ✅ DONE |
+| **A · Editorial row** | dot color + name + status label + amount · restraint puro | `row-a-editorial.tsx` | rejected |
+| **B · Sparkline-hero** | mini-curva SVG de tendencia entre name y amount · "la forma habla" | `row-b-sparkline.tsx` | rejected |
+| **C · Accent stripe** | stripe vertical color cat (2.5pt) + two-line typography | `row-c-stripe.tsx` | rejected |
+| **D · Calendar marker** 🏆 | día del mes en caja a la izquierda · ver cuándo paga sin leer | `row-d-day-marker.tsx` | ✅ WINNER (2026-05-13) |
+| **E · Status icon-led** | icon tile bg-tinted (check/clock/warning) · pattern tasklist | `row-e-status-icon.tsx` | rejected |
 
 Las 5 variantes resuelven los 4 elementos clave: cat color, name + hike, status + due label, amount. Pagados → opacidad reducida en todas. Cero emojis (todas usan MaterialIcons). Cero nested cards. Cero status chip pastel.
+
+### FijosHeader · 5 variantes a comparar (vivo en `/settings/dev/fijos-header-variants`)
+
+Reemplaza al `FijosHeader` actual (title + subtitle genérico "Todo lo recurrente en un solo lugar" + add button con sonar halo continuous). El subtitle viejo no aporta info útil — todas las variantes nuevas lo reemplazan con dato state-aware.
+
+| Variante | Idea | Archivo | Estado |
+|---|---|---|---|
+| **A · Editorial título + dato vivo** | title big 34pt + sub state-aware · add button minimal · restraint | `header-a-editorial.tsx` | ✅ DONE |
+| **B · Stat-led** | eyebrow tiny + monto $ big (32pt) como hero · jerarquía invertida · add FAB filled | `header-b-stat-led.tsx` | ✅ DONE |
+| **C · Header + search inline** | title compacto + count · search bar always-on · add integrado al search | `header-c-search.tsx` | ✅ DONE |
+| **D · Health pulse** | breathe dot color-coded (lime/amber/peach/red) al lado del title · sub state-aware | `header-d-health-pulse.tsx` | ✅ DONE |
+| **E · Compact + utility bar** | title 24pt chico + row de 3 utility icons (search · filter · add primary) | `header-e-utility-bar.tsx` | ✅ DONE |
 
 Helpers nuevos:
 - `fijo-list-sample.ts` — 10 ítems mock con statuses adaptables al state
@@ -906,3 +919,5 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-13** — Etapa 8a-v2: 5 variantes Tabs más intuitivas, varias **sin tabs explícitos**. **A · Bandeja simple** (sin tabs, 2 secciones Por pagar / Pagados collapsable), **B · Toggle binario** (segmented 2 estados con indicator desliza spring), **C · Inbox progresivo** (solo pendientes default + "Ver X pagados →" expand), **D · Time-grouped** (HOY / ESTA SEMANA / DESPUÉS / PAGADOS — el usuario piensa en tiempo, no en buckets), **E · Smart sort** (sin filtros, lista única ordenada por urgencia, scroll = filtro mental). Cada variante renderea la LISTA real (10 ítems mock vía `fijo-list-sample.ts` + `fijo-row-mini.tsx`) debajo del mecanismo para evaluar end-to-end. Nueva dev route `/settings/dev/fijos-tabs-v2`.
 - **2026-05-13** — **Owner picks 🏆 Tabs v2 · E · Smart sort**. Decisión secundaria: elimina del refactor el concepto de FijoCategoryGroups (la lista se ordena por urgencia, no por categoría). La categoría sobrevive como dot color por row. Etapa 8c (Category groups) marcada N/A.
 - **2026-05-13** — Etapa 8b: 5 variantes de **FijoRow** shipped. Reemplaza al FijoRow actual (448 LOC con emoji icon, status chip pastel, sparkline condicional, expand panel denso). Variantes: **A · Editorial row** (dot + name + label + amount, restraint puro), **B · Sparkline-hero** (mini-curva SVG de tendencia precio como visual primario), **C · Accent stripe** (stripe vertical color cat 2.5pt + two-line typography), **D · Calendar marker** (día del mes en caja a la izquierda como héroe visual), **E · Status icon-led** (icon tile check/clock/warning bg-tinted, pattern tasklist). Cero emojis (todas MaterialIcons), cero nested cards, cero status chip pastel. Todas theme-aware. Nueva dev route `/settings/dev/fijos-row-variants` con state selector + las 5 stacked renderizando las mismas 10 filas.
+- **2026-05-13** — **Owner picks 🏆 FijoRow · D · Calendar marker**. Razón implícita: el día del mes como héroe visual responde a la pregunta "cuándo paga esto?" sin requerir abrir nada. Etapa 9 arranca.
+- **2026-05-13** — Etapa 9: 5 variantes de **FijosHeader** shipped. Reemplaza al header actual (title + subtitle genérico "Todo lo recurrente en un solo lugar" + add button con sonar halo). Variantes: **A · Editorial título + dato vivo** (title big + sub state-aware con count/monto/vencidos según estado), **B · Stat-led** (eyebrow + monto $ big como hero, jerarquía invertida + add FAB filled), **C · Header + search inline** (title compacto + search bar always-on + add integrado al search), **D · Health pulse** (breathe dot color-coded como semáforo de salud del ciclo · lime/amber/peach/red), **E · Compact + utility bar** (title chico + 3 utility icons search/filter/add). Todas state-aware, todas reemplazan el subtitle genérico con dato útil. Nueva dev route `/settings/dev/fijos-header-variants`.
