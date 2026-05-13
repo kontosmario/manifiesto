@@ -752,8 +752,10 @@ El owner aceptó sugerencias que agreguen valor al backend. Estas no son necesar
 | **5** | Refactor header del Titular: out "MANIFIESTO/edición", in "GASTOS FIJOS · {ciclo} + pace state-aware" | ✅ DONE | Etapa 4 |
 | **6** | **Próximos · editorial spread** (reemplaza FijosUpcomingStrip viejo) | ✅ DONE | Etapa 5 |
 | **7** | SmartAlerts · 5 variantes (Editorial / Stack / Marquee / Pills / Banner) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 6 |
-| **8a** | Tabs · 5 variantes (Underline / Stacked / BigCounts / Dropdown / Ledger) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 7 |
-| **8b** | Category groups + FijoRow · refactor con criterio Spec | 🔴 NEXT | Etapa 8a |
+| **8a** | Tabs v1 · 5 variantes | ❌ REJECTED | Etapa 7 |
+| **8a-v2** | Tabs v2 · 5 variantes más intuitivas (E · Smart sort winner) | ✅ WINNER | Etapa 8a rejection |
+| **8b** | FijoRow · 5 variantes (Editorial / Sparkline / Stripe / Day marker / Status icon) — esperando pick | 🟡 DONE preview · awaiting owner | Etapa 8a-v2 |
+| **8c** | Category groups · ELIMINADO del refactor | ⚪ N/A | E · Smart sort hace que agrupar por categoría ya no aplique |
 | **9** | Header bar + FAB botón "+" del screen | 🔴 TO DO | Etapa 8 |
 | **10** | Promover componentes seleccionados al `FijosHeroCard` / `FijosUpcomingStrip` / `FijosSmartAlerts` reales + integración con `useFijosController` | 🔴 TO DO | Etapa 9 |
 | **11** | Opcional — backend value-adds (V1-V5). Pick 1-2 alta-relación-valor/costo | 🔴 TO DO | Etapa 10 |
@@ -806,11 +808,27 @@ Segunda iteración: cuestiona el paradigma mismo. Varias NO usan tabs explícito
 
 | Variante | Paradigma | Archivo | Estado |
 |---|---|---|---|
-| **A · Bandeja simple** | sin tabs · 2 secciones (Por pagar / Pagados collapsable) | `tabs-v2-bandeja-live.tsx` | ✅ DONE |
-| **B · Toggle binario** | segmented 2 estados · indicator desliza spring · default smart | `tabs-v2-toggle-live.tsx` | ✅ DONE |
-| **C · Inbox progresivo** | solo pendientes default + "Ver X pagados →" expand inline | `tabs-v2-inbox-live.tsx` | ✅ DONE |
-| **D · Time-grouped** | HOY · ESTA SEMANA · DESPUÉS · PAGADOS — sin estados, agrupado por tiempo | `tabs-v2-time-grouped-live.tsx` | ✅ DONE |
-| **E · Smart sort** | sin filtros · lista única ordenada por urgencia · scroll = filtro mental | `tabs-v2-smart-sort-live.tsx` | ✅ DONE |
+| **A · Bandeja simple** | sin tabs · 2 secciones (Por pagar / Pagados collapsable) | `tabs-v2-bandeja-live.tsx` | rejected |
+| **B · Toggle binario** | segmented 2 estados · indicator desliza spring · default smart | `tabs-v2-toggle-live.tsx` | rejected |
+| **C · Inbox progresivo** | solo pendientes default + "Ver X pagados →" expand inline | `tabs-v2-inbox-live.tsx` | rejected |
+| **D · Time-grouped** | HOY · ESTA SEMANA · DESPUÉS · PAGADOS — sin estados, agrupado por tiempo | `tabs-v2-time-grouped-live.tsx` | rejected |
+| **E · Smart sort** 🏆 | sin filtros · lista única ordenada por urgencia · scroll = filtro mental | `tabs-v2-smart-sort-live.tsx` | ✅ WINNER (2026-05-13) · elimina FijosTabs + FijoCategoryGroups del refactor |
+
+> **Importante**: Smart sort elimina del refactor el concepto de "tabs" Y de "FijoCategoryGroups" (agrupar por categoría). La lista se ordena por urgencia, no por categoría. Las categorías sobreviven como dot color por row.
+
+### FijoRow · 5 variantes a comparar (vivo en `/settings/dev/fijos-row-variants`)
+
+Reemplaza al `FijoRow` actual (448 LOC con emoji icon, status chip pastel, sparkline condicional, expand panel denso, swipe). Cada variante explora un paradigma visual distinto:
+
+| Variante | Idea | Archivo | Estado |
+|---|---|---|---|
+| **A · Editorial row** | dot color + name + status label + amount · restraint puro | `row-a-editorial.tsx` | ✅ DONE |
+| **B · Sparkline-hero** | mini-curva SVG de tendencia entre name y amount · "la forma habla" | `row-b-sparkline.tsx` | ✅ DONE |
+| **C · Accent stripe** | stripe vertical color cat (2.5pt) + two-line typography | `row-c-stripe.tsx` | ✅ DONE |
+| **D · Calendar marker** | día del mes en caja a la izquierda · ver cuándo paga sin leer | `row-d-day-marker.tsx` | ✅ DONE |
+| **E · Status icon-led** | icon tile bg-tinted (check/clock/warning) · pattern tasklist | `row-e-status-icon.tsx` | ✅ DONE |
+
+Las 5 variantes resuelven los 4 elementos clave: cat color, name + hike, status + due label, amount. Pagados → opacidad reducida en todas. Cero emojis (todas usan MaterialIcons). Cero nested cards. Cero status chip pastel.
 
 Helpers nuevos:
 - `fijo-list-sample.ts` — 10 ítems mock con statuses adaptables al state
@@ -886,3 +904,5 @@ Esperando tu confirmación para arrancar la etapa 7 (decidir merge vs separate +
 - **2026-05-13** — Etapa 8a: 5 variantes de **FijosTabs** shipped. Reemplaza al `FijosTabs` viejo (4 pills horizontales con count chip dentro + solid-ink active). Variantes: **A · Underline switch** (NY Times editorial), **B · Stacked composition** (barra proporcional, tap segmento filtra), **C · Big counts** (count 28pt dominante, label eyebrow), **D · Chip dropdown** (1 chip + expand inline, restraint min), **E · Numeric ledger** (4 cols count + label + monto, top-indicator lápiz). Todas state-aware, todas consumen `buildProximosPalette`. Bucket "zombi" legacy reemplazado por "vencidos" en E. Nueva dev route `/settings/dev/fijos-tabs-variants`.
 - **2026-05-13** — Owner rechaza Tabs v1. Quote: *"no me gusto ninguno, en esto si te pido algo mas intuitivo para el usuario"*. Diagnóstico: las 5 eran todas "filter selectors" con paradigma de tab/bucket — la abstracción misma del filtro es lo que no es intuitivo. Etapa 8a-v2 arranca: **cuestionar el paradigma mismo**.
 - **2026-05-13** — Etapa 8a-v2: 5 variantes Tabs más intuitivas, varias **sin tabs explícitos**. **A · Bandeja simple** (sin tabs, 2 secciones Por pagar / Pagados collapsable), **B · Toggle binario** (segmented 2 estados con indicator desliza spring), **C · Inbox progresivo** (solo pendientes default + "Ver X pagados →" expand), **D · Time-grouped** (HOY / ESTA SEMANA / DESPUÉS / PAGADOS — el usuario piensa en tiempo, no en buckets), **E · Smart sort** (sin filtros, lista única ordenada por urgencia, scroll = filtro mental). Cada variante renderea la LISTA real (10 ítems mock vía `fijo-list-sample.ts` + `fijo-row-mini.tsx`) debajo del mecanismo para evaluar end-to-end. Nueva dev route `/settings/dev/fijos-tabs-v2`.
+- **2026-05-13** — **Owner picks 🏆 Tabs v2 · E · Smart sort**. Decisión secundaria: elimina del refactor el concepto de FijoCategoryGroups (la lista se ordena por urgencia, no por categoría). La categoría sobrevive como dot color por row. Etapa 8c (Category groups) marcada N/A.
+- **2026-05-13** — Etapa 8b: 5 variantes de **FijoRow** shipped. Reemplaza al FijoRow actual (448 LOC con emoji icon, status chip pastel, sparkline condicional, expand panel denso). Variantes: **A · Editorial row** (dot + name + label + amount, restraint puro), **B · Sparkline-hero** (mini-curva SVG de tendencia precio como visual primario), **C · Accent stripe** (stripe vertical color cat 2.5pt + two-line typography), **D · Calendar marker** (día del mes en caja a la izquierda como héroe visual), **E · Status icon-led** (icon tile check/clock/warning bg-tinted, pattern tasklist). Cero emojis (todas MaterialIcons), cero nested cards, cero status chip pastel. Todas theme-aware. Nueva dev route `/settings/dev/fijos-row-variants` con state selector + las 5 stacked renderizando las mismas 10 filas.

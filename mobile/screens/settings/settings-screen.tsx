@@ -1069,6 +1069,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/fijos-tabs-v2' as never)}
                   />
                   <SettingsRow
+                    helper="5 variantes de FijoRow (cada fila individual): A · Editorial, B · Sparkline-hero, C · Accent stripe, D · Calendar marker, E · Status icon-led. Theme-aware."
+                    icon="format-list-bulleted"
+                    label="FijoRow · 5 variantes"
+                    onPress={() => router.push('/(app)/settings/dev/fijos-row-variants' as never)}
+                  />
+                  <SettingsRow
                     helper="3 direcciones conceptuales del hero (referencia histórica: Iteration 1 rejected, Iteration 2 mocks estáticos)."
                     icon="palette"
                     label="Preview · Hero Fijos"
