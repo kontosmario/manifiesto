@@ -34,11 +34,12 @@ alter table public.families
 - Familias existentes → `'shared'` por default (sin cambio de comportamiento).
 - **RLS:** sin policies nuevas. `kind` se lee con las policies de select de familia ya existentes. No hay UPDATE desde cliente en v1.
 
-**RPC `bootstrap_family`** (en migración nueva, `create or replace`):
-- Agregar parámetro opcional `p_kind text default 'shared'` con `check`/clamp a `('solo','shared')`.
-- Insertar `families.kind = p_kind`.
-- Firma retro-compatible: los callers actuales (sin el param) siguen creando `'shared'`.
-- Revisar la firma real actual antes de editar (`sql/supabase.sql` + migración donde se define) para no romper grants ni el `security definer`.
+**RPC `set_family_kind(p_kind text)`** (nueva, en la misma migración):
+- En vez de recrear `bootstrap_family` (cuerpo ~100 líneas con la lista de categorías default — riesgoso de repetir), se agrega una RPC chica e isolada.
+- `security definer`, `set search_path = public`. Setea `families.kind = p_kind` para la familia del caller **solo si es owner** (`is_family_owner`). Clamp/`check` a `('solo','shared')`; valor inválido → `'shared'`.
+- Grants: `revoke all from public` + `grant execute to authenticated`.
+- **Flujo solo:** `bootstrap_family()` (crea familia `'shared'` por default) → `set_family_kind('solo')`. Dos llamadas, en onboarding (one-time). El path familia no llama a `set_family_kind` (queda `'shared'`).
+- Evita tocar `bootstrap_family` y no requiere policy UPDATE nueva sobre `families`.
 
 ---
 
@@ -91,9 +92,9 @@ Pasos actuales ([onboarding-screen.tsx:61-729](../../../mobile/screens/home/onbo
 
 ## 8. Copy
 
-- No hay framework i18n. Centralizar las strings dependientes del modo en `mobile/lib/copy/account-kind.ts` (mapa por `kind`). Componentes leen `isSolo ? copy.solo : copy.shared`.
-- **Tono solo:** personal/neutral ("tu plata", "tu mes", "tu cuenta"), sin "familia/nuestro/hogar".
-- Inventario inicial (~15-20 keys) a confirmar durante implementación: saludo/contexto Home, títulos de secciones Settings, labels de onboarding step 3, accesibilidad del strip.
+- No hay framework i18n. La cantidad real de strings dependientes del modo es chica (~6-8: header del step 3, "Yo solo"/"Con mi familia", subtítulo del hero de Settings, título del grupo "Hogar"→"Tu cuenta", "Mi aporte mensual"→"Ingreso mensual"). Se resuelven **inline** con `isSolo ? ... : ...` en cada componente (YAGNI: no se justifica un módulo de copy separado).
+- La lógica `isSolo`/`normalizeAccountKind` sí se centraliza en `mobile/features/family/account-kind.ts` (helper puro, testeable).
+- **Tono solo:** personal/neutral ("tu plata", "tu cuenta"), sin "familia/nuestro/hogar". Respetar `guard:forbidden-copy` (ver `tests/unit/copy-glossary.test.ts`).
 
 ---
 
@@ -130,11 +131,12 @@ Conversión solo→compartido (invitar después), pymes/negocio, monetización, 
 
 | Capa | Archivo | Cambio |
 |---|---|---|
-| DB | `supabase/migrations/20260522010000_families_kind_and_bootstrap.sql` (nuevo) | columna `kind` + `bootstrap_family(p_kind)` |
+| DB | `supabase/migrations/20260522010000_families_kind.sql` (nuevo) | columna `kind` + RPC `set_family_kind` |
+| Cliente | `mobile/features/family/use-family-actions.ts` | mutation `useSetFamilyKind` |
 | DB | `sql/supabase.sql` | nota baseline (no es ruta de apply) |
 | Cliente | `mobile/features/family/use-family.ts` | retornar `kind` |
+| Cliente | `mobile/features/family/account-kind.ts` (nuevo) | helper puro `isSolo`/`normalizeAccountKind` (+ test) |
 | Cliente | `mobile/features/family/use-is-solo.ts` (nuevo) | hook derivado |
-| Cliente | `mobile/features/family/use-family-actions.ts` | `bootstrap_family` con `p_kind` |
 | Cliente | `mobile/features/onboarding/use-onboarding-state.ts` | `accountKind` en draft |
 | Cliente | `mobile/components/home/onboarding/step-family.tsx` | panel modo Solo/Familia |
 | Cliente | `mobile/screens/home/onboarding-screen.tsx` | `canContinue` + branch solo |
