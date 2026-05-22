@@ -19,49 +19,55 @@ interface FamilyStripProps {
   daysUntilPayday: number | null
   paydayPending: boolean
   onPaydayPress?: () => void
+  /** Cuando es false (modo solo), oculta avatares y 'Miembros · N' pero conserva el PaydayPill. */
+  showMembers?: boolean
 }
 
 const MAX_AVATARS = 4
 
-export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress }: FamilyStripProps) {
+export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress, showMembers = true }: FamilyStripProps) {
   const { theme } = useAppTheme()
   const visible = members.slice(0, MAX_AVATARS)
   const overflow = members.length - visible.length
   return (
     <RiseView delay={100}>
       <View style={styles.row}>
-        <View
-          style={styles.avatars}
-          accessible
-          accessibilityLabel={`Miembros del hogar: ${members.length === 0 ? 'ninguno' : members.map((m) => m.name).join(', ')}.`}
-        >
-          {visible.map((m, i) => (
-            <View key={m.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
-              {m.avatarSlug ? (
-                <AvatarAnimal
-                  slug={m.avatarSlug}
-                  size={26}
-                  ringColor={theme.colors.ringBg}
-                />
-              ) : (
-                <Avatar
-                  name={m.name}
-                  color={m.color}
-                  size={26}
-                  ringColor={theme.colors.ringBg}
-                />
-              )}
+        {showMembers ? (
+          <>
+            <View
+              style={styles.avatars}
+              accessible
+              accessibilityLabel={`Miembros del hogar: ${members.length === 0 ? 'ninguno' : members.map((m) => m.name).join(', ')}.`}
+            >
+              {visible.map((m, i) => (
+                <View key={m.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
+                  {m.avatarSlug ? (
+                    <AvatarAnimal
+                      slug={m.avatarSlug}
+                      size={26}
+                      ringColor={theme.colors.ringBg}
+                    />
+                  ) : (
+                    <Avatar
+                      name={m.name}
+                      color={m.color}
+                      size={26}
+                      ringColor={theme.colors.ringBg}
+                    />
+                  )}
+                </View>
+              ))}
+              {overflow > 0 ? (
+                <View style={[styles.overflow, { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.ringBg }]}>
+                  <Text style={[styles.overflowText, { color: theme.colors.text }]}>+{overflow}</Text>
+                </View>
+              ) : null}
             </View>
-          ))}
-          {overflow > 0 ? (
-            <View style={[styles.overflow, { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.ringBg }]}>
-              <Text style={[styles.overflowText, { color: theme.colors.text }]}>+{overflow}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={[styles.familyLabel, { color: theme.colors.textMuted }]}>
-          Miembros · <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
-        </Text>
+            <Text style={[styles.familyLabel, { color: theme.colors.textMuted }]}>
+              Miembros · <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
+            </Text>
+          </>
+        ) : null}
         <View style={styles.spacer} />
         <PaydayPillV2 daysUntilPayday={daysUntilPayday} isPending={paydayPending} onPress={onPaydayPress} />
       </View>

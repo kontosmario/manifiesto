@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
+import { useIsSolo } from '@/features/family/use-is-solo'
 import {
   buildCycleStartingBalanceInput,
   useUpsertFamilyFinance,
@@ -116,6 +117,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
+  const isSolo = useIsSolo(userId)
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
   const recentExpensesQuery = useRecentExpenses(familyId, 6)
@@ -317,6 +319,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           recentExpenses={recentExpenses}
           categoryNameById={categoryNameById}
           familyId={familyId}
+          isSolo={isSolo}
           displayName={displayName}
           unreadNotificationsCount={unreadNotificationsCount}
           assistantPendingCount={assistantPendingCount}

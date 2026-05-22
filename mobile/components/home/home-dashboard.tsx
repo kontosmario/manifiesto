@@ -59,6 +59,9 @@ interface HomeDashboardProps {
   recentExpenses: Expense[]
   categoryNameById: Map<string, string>
   familyId: string
+  /** Modo solo: el usuario es una familia invisible de 1 (kind='solo').
+   *  Oculta los avatares de miembros en el FamilyStrip. */
+  isSolo: boolean
   displayName: string
   unreadNotificationsCount?: number
   assistantPendingCount?: number
@@ -94,6 +97,7 @@ export function HomeDashboard({
   recentExpenses,
   categoryNameById,
   familyId,
+  isSolo,
   displayName,
   unreadNotificationsCount = 0,
   assistantPendingCount = 0,
@@ -592,6 +596,7 @@ export function HomeDashboard({
           daysUntilPayday={days}
           paydayPending={pending}
           onPaydayPress={handleChipConfirmTracked}
+          showMembers={!isSolo}
         />
       </TourTarget>
       <TourTarget
