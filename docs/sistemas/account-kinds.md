@@ -37,9 +37,18 @@ El modelo sigue siendo el mismo (`families`/`family_members`/`family_finance`): 
 
 Solo se setea en el onboarding (elección explícita "Yo solo"). No hay UPDATE desde cliente fuera de eso. Familias existentes quedan `'shared'` (cero regresión).
 
+## Conversión de tipo de cuenta
+
+Cambiar el tipo desde Settings, en ambos sentidos (diseño aprobado — ver [spec-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/spec-conversion-cuenta-v1.md)):
+
+- **Soltero → Familia:** flip a `shared` vía `set_family_kind('shared')`; aparecen los settings de familia. No destructivo.
+- **Familia (owner) → Soltero:** RPC `convert_family_to_solo()` — quita a los demás miembros (que vuelven a onboardear, con `onboarding_completed_at` reseteado), invalida invites pendientes y deja la familia en `kind='solo'`. Los gastos/config quedan con el owner. Destructivo → confirmación fuerte.
+- **Miembro no-dueño → Soltero:** flujo existente "Salir del hogar" (`leave_current_family`) → re-onboarding → elige "Yo solo".
+
+> Estado: especificado/planificado. Marcar como implementado al cerrar el plan correspondiente.
+
 ## Limitaciones (v1)
 
-- **No hay conversión solo→compartido** todavía: un soltero no puede invitar a nadie. Es un fast-follow. La elección en onboarding es explícita, así que el riesgo de quedar "atrapado" es bajo.
 - Pymes/negocio: fase 2 (decisión de producto separada). Cuando se haga, `families.kind` evoluciona a `workspaces.type`.
 
 ## Referencias
