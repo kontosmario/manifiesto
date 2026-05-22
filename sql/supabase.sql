@@ -31,6 +31,9 @@ $$;
 -- -----------------------
 -- Tables
 -- -----------------------
+-- NOTE: la columna families.kind ('solo'|'shared') y la RPC set_family_kind
+-- viven en la migración 20260522010000_families_kind.sql (este baseline está
+-- desincronizado; las migraciones son la ruta canónica de apply).
 create table if not exists public.families (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
