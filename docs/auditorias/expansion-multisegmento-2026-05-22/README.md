@@ -181,11 +181,11 @@ Estimaciones de los agentes; ordenadas por ROI (valor/esfuerzo).
 - Decidir **C2** (comprar Apple Developer) — desbloquea submit/IAP/push iOS.
 - Password policy + C6 Android manifest. Horas.
 
-### Fase 1 — Solteros (3-4 semanas) · *mayor ROI*
-- Onboarding con segmentación (Solo/Familia/Negocio) y branch sin paso "familia".
-- Familia invisible de 1 (lite) **o** workspace abstraction si se va a pymes pronto (§3).
-- Copy condicional + ocultar UI de familia (FamilyStrip, invitar, admin) en modo solo.
-- Renombrar logros con "fijo"; validar asistente en contexto de 1 persona.
+### Fase 1 — Solteros (3-4 semanas) · *mayor ROI* · 🟢 **EN CURSO (v1 implementada 2026-05-22)**
+- ✅ Onboarding con segmentación (Solo / Familia) y branch sin paso "familia".
+- ✅ Familia invisible de 1 (lite, `families.kind`). Ver [spec](spec-modo-soltero-v1.md) · [plan](plan-modo-soltero-v1.md) · [sistema](../../sistemas/account-kinds.md).
+- ✅ Copy condicional + ocultar UI de familia (FamilyStrip, invitar, admin) en modo solo.
+- ⏳ Pendiente fast-follow: conversión solo→compartido (invitar después); validar asistente/logros en contexto de 1 persona; QA manual en simulador.
 - **Meta:** signup→primer gasto >60%, time-to-value <2 min.
 
 ### Fase 2 — Aceptación masiva / pulido (2-3 semanas) · *en paralelo*

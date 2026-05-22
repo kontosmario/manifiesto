@@ -4,6 +4,8 @@
 > Generado por exploración directa del código vía 7 agentes paralelos + síntesis.
 >
 > ⚠️ **Nota (2026-05-22):** foto al commit `7962ea2`, **antes** de la limpieza del doc 09. El 2026-05-22 se ejecutó esa limpieza (156 archivos eliminados) y se reorganizó la documentación bajo `docs/`. Varios archivos de código citados aquí (los listados en [09](09-candidatos-a-eliminar.md)) ya no existen — esperable en una foto fechada.
+>
+> 🆕 **Novedad post-foto (2026-05-22):** se cerró la vuln RLS de `expenses` (migración `20260522000000`) y se implementó el **modo soltero / familia invisible** (`families.kind`, onboarding Solo/Familia, UI de familia oculta en Home/Settings). Doc canónico: [sistemas/account-kinds.md](../../sistemas/account-kinds.md). Esta foto no refleja esos cambios.
 
 ---
 

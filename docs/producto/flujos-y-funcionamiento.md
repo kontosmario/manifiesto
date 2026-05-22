@@ -6,6 +6,8 @@
 
 Documento funcional detallado del comportamiento actual de `Manifiesto Mobile`, basado en el código vigente.
 
+> 🆕 **Modo soltero (2026-05-22):** el onboarding ahora ramifica en el paso 3 entre "Yo solo" y "Con mi familia o pareja". En modo solo (`families.kind='solo'`) se omite crear/unirse a familia y la UI de familia queda oculta en Home y Settings. Detalle: [sistemas/account-kinds.md](../sistemas/account-kinds.md).
+
 ---
 
 ## 1. Objetivo de este documento
