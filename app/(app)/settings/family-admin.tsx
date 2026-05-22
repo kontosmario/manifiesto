@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router'
 import { RequireAuth } from '@/components/guards'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { FamilyAdminScreen } from '@/screens/settings/family-admin-screen'
+import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 
 interface GuardedProps {
@@ -11,6 +12,11 @@ interface GuardedProps {
 
 function OwnerGuarded({ userId, familyId }: GuardedProps) {
   const roleQuery = useMyFamilyRole(userId, familyId)
+  const isSolo = useIsSolo(userId)
+
+  if (isSolo) {
+    return <Redirect href="/(app)/settings" />
+  }
 
   if (roleQuery.isLoading) {
     return <BlockingScreenView message="Verificando permisos..." />

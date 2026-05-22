@@ -36,6 +36,7 @@ import {
 } from '@/features/family/use-family-actions'
 import { useFamilyMemberStats } from '@/features/family/use-family-admin'
 import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
+import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import {
   buildFamilyFinanceInput,
@@ -108,6 +109,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const roleQuery = useMyFamilyRole(userId, familyId)
   const role = roleQuery.data
   const isOwner = role === 'owner'
+  const isSolo = useIsSolo(userId)
   const memberStatsQuery = useFamilyMemberStats()
   // Active members = role !== 'blocked'. We use the RPC which gives
   // blocked_at status; fall back to 0 while loading. We only need this
@@ -702,11 +704,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   {displayName.trim() || 'Perfil sin nombre'}
                 </Text>
                 <Text style={[styles.heroSub, { color: theme.colors.textMuted }]}>
-                  {totalMembers === 1
-                    ? 'Hogar individual'
-                    : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
+                  {isSolo
+                    ? 'Tu cuenta personal'
+                    : totalMembers === 1
+                      ? 'Hogar individual'
+                      : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
                 </Text>
-                {isOwner ? (
+                {isOwner && !isSolo ? (
                   <View
                     style={[
                       styles.ownerPill,
@@ -767,12 +771,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     ? undefined
                     : 'Estos valores los configura el dueño de la familia.'
                 }
-                title="Hogar"
+                title={isSolo ? 'Tu cuenta' : 'Hogar'}
               >
                 <SettingsRow
                   helper={householdTotalSubtitle}
                   icon="attach-money"
-                  label="Mi aporte mensual"
+                  label={isSolo ? 'Ingreso mensual' : 'Mi aporte mensual'}
                   onPress={() => setIncomeSheetOpen(true)}
                   value={myContributionValue}
                 />
@@ -828,6 +832,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             </RiseView>
 
             {/* 4. FAMILIA */}
+            {!isSolo ? (
             <RiseView delay={320}>
               <SettingsGroup title="Familia">
                 <SettingsRow
@@ -866,6 +871,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 */}
               </SettingsGroup>
             </RiseView>
+            ) : null}
 
             {/* 4b. ASISTENTE */}
             <RiseView delay={300}>
