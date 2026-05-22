@@ -878,6 +878,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 4. FAMILIA */}
             {!isSolo ? (
+            <>
             <RiseView delay={320}>
               <SettingsGroup title="Familia">
                 <SettingsRow
@@ -891,15 +892,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     icon="group"
                     label="Gestionar miembros"
                     onPress={() => router.push('/settings/family-admin' as never)}
-                  />
-                ) : null}
-                {isOwner ? (
-                  <SettingsRow
-                    destructive
-                    icon="person-remove"
-                    label="Pasar a cuenta individual"
-                    helper="Quita a los demás miembros y deja la cuenta solo para vos."
-                    onPress={handleConfirmConvertToSolo}
                   />
                 ) : null}
                 <SettingsRow
@@ -925,6 +917,21 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 */}
               </SettingsGroup>
             </RiseView>
+            {isOwner ? (
+              <RiseView delay={340}>
+                <SettingsGroup title="Tipo de cuenta">
+                  <SettingsRow
+                    destructive
+                    icon="person-remove"
+                    isLast
+                    label="Pasar a cuenta individual"
+                    helper="Quita a los demás miembros y deja la cuenta solo para vos."
+                    onPress={handleConfirmConvertToSolo}
+                  />
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
+            </>
             ) : (
               <RiseView delay={320}>
                 <SettingsGroup title="Tipo de cuenta">
