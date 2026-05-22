@@ -42,10 +42,10 @@ Solo se setea en el onboarding (elección explícita "Yo solo"). No hay UPDATE d
 Cambiar el tipo desde Settings, en ambos sentidos (diseño aprobado — ver [spec-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/spec-conversion-cuenta-v1.md)):
 
 - **Soltero → Familia:** flip a `shared` vía `set_family_kind('shared')`; aparecen los settings de familia. No destructivo.
-- **Familia (owner) → Soltero:** RPC `convert_family_to_solo()` — quita a los demás miembros (que vuelven a onboardear, con `onboarding_completed_at` reseteado), invalida invites pendientes y deja la familia en `kind='solo'`. Los gastos/config quedan con el owner. Destructivo → confirmación fuerte.
+- **Familia (owner) → Soltero:** RPC `convert_family_to_solo()` (hook `useConvertToSolo`) — quita a los demás miembros (que vuelven a onboardear, con `onboarding_completed_at` reseteado), invalida invites pendientes y deja la familia en `kind='solo'`. Los gastos/config quedan con el owner. Destructivo → confirmación fuerte. UI: Settings → grupo "Familia" → fila "Pasar a cuenta individual".
 - **Miembro no-dueño → Soltero:** flujo existente "Salir del hogar" (`leave_current_family`) → re-onboarding → elige "Yo solo".
 
-> Estado: especificado/planificado. Marcar como implementado al cerrar el plan correspondiente.
+> Estado: ✅ **implementado (2026-05-22)**. RPCs `convert_family_to_solo` + `set_family_kind`; hooks `useConvertToSolo`/`useConvertToFamily`; UI en `settings-screen.tsx` (grupo "Tipo de cuenta" para solteros, fila "Pasar a cuenta individual" para owners). Plan: [plan-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/plan-conversion-cuenta-v1.md).
 
 ## Limitaciones (v1)
 

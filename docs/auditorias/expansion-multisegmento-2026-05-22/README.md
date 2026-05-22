@@ -185,7 +185,8 @@ Estimaciones de los agentes; ordenadas por ROI (valor/esfuerzo).
 - ✅ Onboarding con segmentación (Solo / Familia) y branch sin paso "familia".
 - ✅ Familia invisible de 1 (lite, `families.kind`). Ver [spec](spec-modo-soltero-v1.md) · [plan](plan-modo-soltero-v1.md) · [sistema](../../sistemas/account-kinds.md).
 - ✅ Copy condicional + ocultar UI de familia (FamilyStrip, invitar, admin) en modo solo.
-- ⏳ Pendiente fast-follow: conversión solo→compartido (invitar después); validar asistente/logros en contexto de 1 persona; QA manual en simulador.
+- ✅ Conversión de tipo de cuenta en ambos sentidos (familia↔soltero) — ver [spec](spec-conversion-cuenta-v1.md) · [plan](plan-conversion-cuenta-v1.md) · [sistema](../../sistemas/account-kinds.md).
+- ⏳ Pendiente fast-follow: validar asistente/logros en contexto de 1 persona; QA manual en simulador.
 - **Meta:** signup→primer gasto >60%, time-to-value <2 min.
 
 ### Fase 2 — Aceptación masiva / pulido (2-3 semanas) · *en paralelo*
