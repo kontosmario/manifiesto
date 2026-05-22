@@ -22,11 +22,11 @@ Acciones diferidas del hardening del 2026-05-07/08. **Ninguna es bloqueante**: e
 
 ### Pendings reales que quedan (no bloqueantes)
 
-> **Nota 2026-05-22 — vuln RLS `expenses` ABIERTA:** las policies `expenses_update_members` y `expenses_delete_members` (baseline migration `20260413154000`) usan `is_family_member(family_id)` sin restricción de `created_by`. Cualquier miembro activo puede editar o borrar gastos de otro miembro de la misma familia. Ninguna migración posterior la tighteneó. Ver §15 abajo.
+> **Nota 2026-05-22 — vuln RLS `expenses` ✅ CERRADA:** las policies `expenses_update_members` y `expenses_delete_members` ahora restringen UPDATE/DELETE a `created_by = auth.uid()` (o al owner de la familia vía `is_family_owner`). Fix en la migración [`20260522000000_fix_expenses_rls_owner_scope.sql`](../../supabase/migrations/20260522000000_fix_expenses_rls_owner_scope.sql). **Pendiente de deploy** (`supabase db push`). Ver §15 abajo.
 
 | # | Item | Severidad | Esfuerzo | Sección |
 |---|---|---|---|---|
-| 15 | RLS expenses: cualquier miembro edita/borra gastos ajenos | **High** | ~30 min migration | [§15](#15-rls-expenses-cualquier-miembro-editaborra-gastos-ajenos) |
+| 15 | ✅ RLS expenses: cualquier miembro edita/borra gastos ajenos — **CERRADO** (migración `20260522000000`, pendiente deploy) | **High** | hecho | [§15](#15-rls-expenses-cualquier-miembro-editaborra-gastos-ajenos) |
 | 1 | Password policy (10 chars + complejidad) | Medium | 30s | [§1](#1-password-policy-dashboard-30s) |
 | 5 | Verificar usuario `aye.tello18` en prod | Medium | 1 min | [§5](#5-verificación-del-usuario-de-test-ayetello18gmailcom) |
 | 9 | Universal Links iOS (en lugar de custom scheme) | Medium | requiere dominio | [§9](#9-universal-links-en-lugar-de-custom-scheme-ios--m-2) |
@@ -239,13 +239,13 @@ select * from cron.job;
 
 ### 15. RLS expenses: cualquier miembro edita/borra gastos ajenos
 
-**Estado:** ABIERTO — verificado 2026-05-22
+**Estado:** ✅ CERRADO en código 2026-05-22 (migración `20260522000000_fix_expenses_rls_owner_scope.sql`) — **pendiente de deploy** (`supabase db push` / `npm run supabase:remote:db:push`).
 **Severidad:** High
-**Descripción:** Las policies `expenses_update_members` y `expenses_delete_members` definidas en la baseline migration (`20260413154000_mobile_baseline.sql`) solo comprueban `is_family_member(family_id)`. Ninguna migración posterior las tighteneó. Esto significa que cualquier miembro activo de la familia puede, via PostgREST directo, editar o borrar gastos de otro miembro de la misma familia.
+**Descripción:** Las policies `expenses_update_members` y `expenses_delete_members` definidas en la baseline migration (`20260413154000_mobile_baseline.sql`) solo comprobaban `is_family_member(family_id)`. Ninguna migración posterior las había tightheneado. Esto significaba que cualquier miembro activo de la familia podía, via PostgREST directo, editar o borrar gastos de otro miembro de la misma familia.
 
-**Impacto práctico hoy:** con 2 usuarios en prod (ambos de confianza), el riesgo es teórico. Cuando haya más miembros en una familia, un miembro podría borrar o modificar gastos ajenos.
+**Impacto práctico hoy:** con 2 usuarios en prod (ambos de confianza), el riesgo era teórico. Cuando haya más miembros en una familia, un miembro podría borrar o modificar gastos ajenos. Crítico de cara a B2B/pymes (audit trail / integridad de datos).
 
-**Fix sugerido:** nueva migration que restrinja UPDATE a `created_by = auth.uid()` (o al owner de la familia) y DELETE ídem. Ejemplo:
+**Fix aplicado:** la migración mantiene `is_family_member(family_id)` y agrega `(created_by = auth.uid() or is_family_owner(family_id))` en UPDATE (using + with check) y DELETE (using). El `with check` también evita reasignar un gasto a otra familia. Equivalente al ejemplo de abajo, conservando el chequeo de membresía:
 
 ```sql
 drop policy if exists "expenses_update_members" on public.expenses;

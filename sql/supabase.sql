@@ -1278,6 +1278,10 @@ with check (
   and created_by = auth.uid()
 );
 
+-- NOTE: este snapshot es un baseline desincronizado respecto de las migraciones
+-- (es el flujo canónico: ver docs/operaciones/setup-entorno.md). El scope correcto
+-- de update/delete (solo autor o owner) vive en la migración
+-- 20260522000000_fix_expenses_rls_owner_scope.sql.
 drop policy if exists "expenses_update_members" on public.expenses;
 create policy "expenses_update_members"
 on public.expenses
