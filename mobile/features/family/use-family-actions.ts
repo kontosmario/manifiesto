@@ -8,6 +8,10 @@ import { profileQueryKey } from '@/features/profile/use-profile'
 import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications'
 import { supabase } from '@/lib/supabase'
 import { familyQueryKey } from '@/features/family/use-family'
+import { familyMembersKey } from '@/features/family/use-family-members'
+import { familyMembersDetailKey } from '@/features/family/use-family-members-detail'
+import { familyAdminMemberStatsQueryKey } from '@/features/family/use-family-admin'
+import { homeSnapshotQueryKey } from '@/features/home/use-home-snapshot'
 import type { AccountKind } from '@/features/family/account-kind'
 
 interface FamilyRpcResult {
@@ -268,6 +272,53 @@ export function useSetFamilyKind(userId?: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) })
+    },
+  })
+}
+
+/** Owner-only: convierte la familia a modo solo (familia invisible de 1).
+ *  Quita a los demás miembros en el backend (vuelven a onboardear) y deja
+ *  kind='solo'. El owner CONSERVA sus datos — por eso solo invalidamos
+ *  (no removeQueries) lo que cambió: tipo de cuenta, miembros, ingreso. */
+export function useConvertToSolo(userId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('convert_family_to_solo')
+      if (error) throw error
+      return pickRpcResult(data)
+    },
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: familyMembersKey(result.family_id) }),
+        queryClient.invalidateQueries({ queryKey: familyMembersDetailKey(result.family_id) }),
+        queryClient.invalidateQueries({ queryKey: familyAdminMemberStatsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: familyFinanceQueryKey(result.family_id) }),
+        queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
+      ])
+    },
+  })
+}
+
+/** Soltero → Familia: pasa el espacio a kind='shared' (no destructivo).
+ *  Reusa la RPC set_family_kind. Invalida tipo de cuenta + home snapshot
+ *  para que aparezca la UI de familia. */
+export function useConvertToFamily(userId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('set_family_kind', { p_kind: 'shared' as AccountKind })
+      if (error) throw error
+      return (typeof data === 'string' ? data : 'shared') as AccountKind
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
+      ])
     },
   })
 }
