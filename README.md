@@ -1,183 +1,28 @@
 # Manifiesto Mobile
 
-App mobile-only para gastos familiares compartidos. La base web/Ionic fue migrada a React Native con Expo Router, Supabase y una UI nueva enfocada en teléfono.
+App mobile-only de **gastos familiares compartidos** (Expo + React Native + Expo Router + Supabase, es-AR).
 
-## Stack actual
-- Expo + React Native + TypeScript
-- Expo Router
-- Supabase
-- TanStack React Query
-- Expo Notifications
-- Dark mode persistente
+## 🚀 Quick start
 
-## Estructura
-- `app/`: rutas de Expo Router
-- `mobile/screens/`: pantallas
-- `mobile/components/`: UI y modales
-- `mobile/features/`: hooks y lógica de negocio por dominio
-- `mobile/lib/`: Supabase, runtime y helpers compartidos
-- `sql/supabase.sql`: esquema completo de base de datos y RLS
-- `supabase/functions/send-family-push/`: edge function para push Expo
-- `legacy-web-src/`: código web anterior, conservado solo como referencia
-
-## Requisitos
-- Node 22
-- Docker Desktop
-- Xcode para iOS local
-- Android Studio para Android local
-- Expo Go o un development build
-- Dispositivo físico para probar push notifications
-
-## Variables de entorno
-Crear `.env` a partir de `.env.example`:
-
-```env
-EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
-EXPO_PUBLIC_EAS_PROJECT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-EXPO_PUBLIC_AUTH_REDIRECT_PATH=auth/callback
-```
-
-## Levantar la app
 ```bash
 nvm use 22
 npm install
-npm run start
+npm run start      # · npm run ios · npm run android
 ```
 
-Atajos:
+Antes necesitás un `.env` (a partir de `.env.example`). Setup completo (env vars, Supabase CLI, push, deep linking, CI) en **[docs/operaciones/setup-entorno.md](docs/operaciones/setup-entorno.md)**.
 
-```bash
-npm run ios
-npm run android
-```
+## 📚 Documentación
 
-## Scripts
-```bash
-npm run start
-npm run ios
-npm run android
-npm run lint
-npm run typecheck
-npm run supabase -- --version
-npm run supabase:remote:login
-npm run supabase:remote:link
-npm run supabase:db:push
-npm run supabase:functions:deploy
-```
+Toda la documentación vive en **[`docs/`](docs/README.md)**. Puntos de entrada:
 
-## Configuración de Supabase
-La CLI de Supabase ya queda instalada como dependencia local del proyecto. No hace falta instalar nada global.
+- **Estado actual del proyecto** (cada vista, componente, servicio) → [docs/ESTADO-DEL-PROYECTO](docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/00-INDICE.md)
+- **Índice maestro de toda la doc** → [docs/README.md](docs/README.md)
+- **Reglas de código** → [docs/arquitectura/code-rules.md](docs/arquitectura/code-rules.md)
+- **Setup y entorno** → [docs/operaciones/setup-entorno.md](docs/operaciones/setup-entorno.md)
 
-Chequeo rápido:
+## Stack
 
-```bash
-npm run supabase -- --version
-```
+Expo · React Native · TypeScript · Expo Router · Supabase (Postgres/RLS/RPC/Edge/cron) · TanStack React Query · Reanimated v4 · Expo Notifications · dark mode persistente.
 
-Como el foco del repo es operar contra el proyecto online, dejé un wrapper remoto que lee credenciales desde `.env.supabase`.
-
-1. Crear `.env.supabase` a partir de `.env.supabase.example`.
-2. Completar:
-   - `SUPABASE_ACCESS_TOKEN`
-   - `SUPABASE_DB_PASSWORD`
-   - `SUPABASE_PROJECT_REF` ya viene sembrado con el ref actual del proyecto.
-3. `.env.supabase` queda ignorado por git; es sólo para operar la CLI desde este repo.
-
-Flujo remoto recomendado:
-
-```bash
-npm run supabase:remote:login
-npm run supabase:remote:link
-npm run supabase:remote:db:push
-npm run supabase:remote:functions:deploy
-```
-
-También podés usar el wrapper genérico:
-
-```bash
-npm run supabase:remote -- db pull
-npm run supabase:remote -- secrets set CLAVE=valor
-npm run supabase:remote -- functions deploy send-family-push
-```
-
-Si querés saltear el wrapper, la CLI base sigue disponible:
-
-```bash
-npm run supabase -- migration new nombre_de_migracion
-npm run supabase -- db diff
-npm run supabase -- functions logs send-family-push --project-ref xaquigyhylzvuyfslkqq
-```
-
-Notas:
-- `supabase:remote:login` usa `SUPABASE_ACCESS_TOKEN`.
-- `supabase:remote:db:push` y `db pull` usan `SUPABASE_DB_PASSWORD`.
-- `functions deploy` usa `SUPABASE_PROJECT_REF` y no depende del stack local.
-- Las migraciones del proyecto viven en `supabase/migrations/`.
-- `sql/supabase.sql` sigue siendo el snapshot completo del esquema, pero el flujo normal ahora debería pasar por migraciones + CLI.
-
-Configuración funcional mínima del proyecto remoto:
-- Habilitar `Authentication -> Providers -> Email`.
-- En `Authentication -> URL Configuration`, agregar `manifiesto://auth/callback`.
-
-## Email de confirmación
-- El template local de registro vive en `supabase/templates/confirmation.html`.
-- Los templates futuros de `reset password` y `magic link` viven en `supabase/templates/recovery.html` y `supabase/templates/magic-link.html`.
-- `supabase/config.toml` ya apunta ese template a `auth.email.template.confirmation`.
-- También quedaron configurados `auth.email.template.recovery` y `auth.email.template.magic_link`.
-- En local, `auth.email.enable_confirmations = true`, así que el signup requiere confirmar el email antes de iniciar sesión.
-- Para ver el correo durante desarrollo local, levantá Supabase y abrí Inbucket en `http://127.0.0.1:54324`.
-- Hoy la UI de la app no expone `magic link` ni `reset password`, pero el branding del mail ya queda preparado para cuando esos flujos se habiliten.
-- Si querés usar el mismo diseño en el proyecto remoto administrado por Supabase:
-  - copiar los HTML a `Authentication -> Email Templates -> Confirm signup`, `Reset password` y `Magic Link`,
-  - configurar SMTP propio en `Authentication -> Settings -> SMTP`,
-  - y mantener `manifiesto://auth/callback` dentro de `URL Configuration`.
-
-## Push notifications mobile
-La tabla `push_subscriptions` soporta `provider = 'expo'` y la edge function puede enviar notificaciones a Expo Push.
-
-Secrets mínimos de la Edge Function:
-
-```bash
-npm run supabase:remote -- secrets set SUPABASE_URL=https://tu-proyecto.supabase.co
-npm run supabase:remote -- secrets set SUPABASE_ANON_KEY=tu_anon_key
-npm run supabase:remote -- secrets set SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
-```
-
-Secrets opcionales si querés seguir soportando suscripciones web heredadas:
-
-```bash
-npm run supabase:remote -- secrets set WEB_PUSH_VAPID_PUBLIC_KEY=<public_key>
-npm run supabase:remote -- secrets set WEB_PUSH_VAPID_PRIVATE_KEY=<private_key>
-npm run supabase:remote -- secrets set WEB_PUSH_CONTACT_EMAIL=tu-email@dominio.com
-```
-
-Notas:
-- Expo Push requiere dispositivo físico.
-- Para obtener un token estable del proyecto, completá `EXPO_PUBLIC_EAS_PROJECT_ID`.
-- `eas.json` ya viene preparado con perfiles `development`, `preview` y `production`.
-
-## Auth y deep linking
-- La app usa el scheme `manifiesto://`.
-- El callback de confirmación/email entra por `manifiesto://auth/callback`.
-- El redirect se arma desde `EXPO_PUBLIC_AUTH_REDIRECT_PATH`.
-
-## CI
-El workflow web de GitHub Pages fue removido. Ahora el repo tiene un workflow mobile de verificación en `.github/workflows/mobile-ci.yml` que corre:
-- `npm run lint`
-- `npm run typecheck`
-
-## Estado de la migración
-La migración principal ya quedó enfocada en mobile:
-- autenticación
-- crear/unirse a familia
-- dashboard de gastos
-- categorías
-- gastos fijos
-- insights
-- notificaciones
-- settings
-- dark mode
-- push Expo
-
-El código web anterior no participa del build actual.
+Estructura del código: `app/` (rutas expo-router) · `mobile/` (`screens/`, `components/`, `features/`, `lib/`, `theme/`, `hooks/`) · `supabase/` (migraciones + edge functions).

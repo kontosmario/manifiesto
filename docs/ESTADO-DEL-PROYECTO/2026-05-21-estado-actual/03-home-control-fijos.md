@@ -1,0 +1,543 @@
+# Dominio Home · Control · Gastos Fijos
+
+> Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/
+
+---
+
+## 1. Visión general
+
+### Qué muestran las tres pantallas
+
+| Pantalla | Tab | Propósito |
+|---|---|---|
+| **Home** | Inicio | Panorama del ciclo: sueldo disponible hoy, resumen de variables + fijos, meta de ahorro, actividad reciente (últimos 6 gastos manuales). |
+| **Control** | Control | Vista analítica del ciclo: cuánto tenés hoy (`libreHoy`), proyección al cierre, alcancía (ahorro real acumulado), semana, vs. mes anterior, patrón por día-de-semana, cobertura fijos/ahorro/libre. |
+| **Fijos (V2)** | Fijos | Gestión de gastos recurrentes del ciclo: hero tipo boarding-pass con el estado del ciclo, próximos a pagar + alertas, lista por categoría con mark-paid/confetti, alta/edición/eliminación. |
+
+### Cómo se relacionan
+
+```
+home_snapshot RPC (1 round-trip)
+       │
+       ├── seedCaches → ReactQuery (useHomeSnapshot)
+       │        ├── profile, family, familyFinance
+       │        ├── expenses (120 rows, pre-filtradas)
+       │        ├── fixedExpenses + fixedExpensePayments
+       │        ├── categories (expense + fixed_expense)
+       │        ├── notifications (top-80 + unread count)
+       │        ├── familyMembers + familyMembersDetail
+       │        ├── savingsGoal, myFamilyRole, pushSubscription
+       │        └── Control layer: monthlySummariesHistory,
+       │                            categoryLimits, velocityToday,
+       │                            advisorSignalDismissals
+       │
+       ├── Home monta con caches calientes → 0 requests adicionales
+       ├── useWarmTabsSnapshots() (post-Home first-paint):
+       │        ├── prefetchGastosSnapshot (tab Gastos)
+       │        └── prefetchControlIntelligence (tab Control)
+       │
+       ├── AppTabs con lazy: false → pre-monta todas las tabs al boot
+       │        → 1er tap a cualquier tab = instantáneo
+       │
+       └── Realtime: useHomeRealtime suscribe a expenses/
+                     fixed_expenses/savings_goals/notifications
+                     → invalida caches en mutaciones de familia
+```
+
+### Flujo de datos del sueldo/cobro
+
+1. `SalaryConfirmationSheet` (flujo recurrente) o `OnboardingAvailableSheet` (primer cobro) se abre automáticamente post-payday desde `HomeDashboard`.
+2. El usuario confirma el monto recibido → `buildCycleStartingBalanceInput` → `useUpsertFamilyFinance` → RPC + invalidación de caches.
+3. El DB trigger `trg_family_finance_salary_confirm` cierra el ciclo anterior sincrónicamente con el upsert.
+4. 700ms después del haptic, `HomeDashboard.fireWrappedForClosedCycle` refetch `controlIntelligenceQueryKey` y, si hay gastos en el ciclo cerrado, dispara `triggerCycleWrapped` → el Wrapped del ciclo (documentado aparte).
+
+---
+
+## 2. Home screen — Anatomía sección por sección
+
+**Route**: [`app/(app)/(tabs)/home.tsx`](../../../app/(app)/(tabs)/home.tsx)  
+**Screen**: [`mobile/screens/home/home-screen.tsx`](../../../mobile/screens/home/home-screen.tsx)  
+**Dashboard**: [`mobile/components/home/home-dashboard.tsx`](../../../mobile/components/home/home-dashboard.tsx)
+
+### Gate de snapshot
+
+`HomeScreen` renderiza `null` hasta que `snapshot.data` existe (i.e. `useHomeSnapshot` completó y `seedCaches` pobló los caches). Sin este gate los sub-hooks disparan ~7 requests duplicados en cold start.
+
+### Secciones (top → bottom, según `HomeDashboard`)
+
+| # | Slot | Componente | Propósito |
+|---|---|---|---|
+| S1 | Header | `HomeHeader` | Saludo contextual por hora + 3 iconos: notificaciones (badge), asistente (badge), ajustes |
+| S2 | FamilyStrip | `FamilyStrip` + `PaydayPillV2` | Avatares de miembros de la familia + pill de payday (días hasta cobro / "cobrar hoy") |
+| S3 | Hero | `HomeHeroCard` | Monto disponible hoy, cupo diario, proyección al cierre, chip de ahorro (si configurado), trend vs. ciclo anterior |
+| S5 | MonthSummary | `MonthSummaryCard` | Dos paneles side-by-side: Variables (total + top categoría chip) y Fijos (total + próximo fijo chip) |
+| S6 | Meta | `MetaCard` / `MetaEmptyCard` | Progreso de la meta de ahorro + "Agregar ahorro" inline (`QuickAddSavingsSheet`). Si no hay meta: card vacía con CTA |
+| S7 | Actividad | `HomeActivitySection` | Últimos 6 gastos manuales (filter `commitment_id == null`), cada uno en `ActivityRowV2`, swipe para eliminar |
+| — | Sheets | `HomeDashboardSheets` | `OnboardingAvailableSheet` (primer ciclo) o `SalaryConfirmationSheet` (ciclos recurrentes). Lazy-mounted. |
+
+### Detalles del Hero (S3)
+
+`HomeHeroCard` recibe `HomeHeroMetrics` desde `useHomeMetrics`. Incluye:
+- Monto disponible con `CountUpText` (Reanimated worklet-safe, formatea en JS thread via `runOnJS`).
+- `BreatheDot` color-coded: verde = ok, peach = payday pendiente.
+- Chip `savingsChip` = "Apartando ahorro · $X" cuando hay meta configurada.
+- `projectedCloseTrend` = fracción vs. ciclo anterior (flechita +/-%).
+- Pulse warning cuando `paydayPending`.
+- ShineOverlay + HeroAurora + CardParticles (animaciones decorativas).
+
+### Flujo de la confirmación de cobro
+
+```
+FamilyStrip.onPaydayPress → HomeDashboard.handleChipConfirmTracked
+  → isCycleBalanceSheetOpen = true
+  → HomeDashboardSheets (lazy mount)
+    → OnboardingAvailableSheet (si storedCycleAnchor == null)
+       o SalaryConfirmationSheet (flujo recurrente)
+  → onSaveBalance(amount) → confirmCycleStartingBalance(amount)
+    → upsertFamilyFinanceMutation.mutate(buildCycleStartingBalanceInput(...))
+  → onSuccess → triggerHaptic('success') + fireWrappedForClosedCycle()
+```
+
+### Telemetría de sesión
+
+`useHomeTelemetry` emite `home.opened` al mount y `home.closed` al unmount. Si el usuario no toca nada: `home.left_without_tap`. Cada elemento tapeable llama `trackTap(elementId, slot)` que emite `home.element_tapped`. `useTrackElement` emite `home.element_shown` para chips informativos (e.g. forecast trend).
+
+### Scroll y tour
+
+`Screen` usa `scrollEventThrottle={16}` (1 evento/frame a 60fps). El ref del ScrollView se registra en `useRegisterTourScrollView(HOME_TOUR)` para que el tour guiado auto-scrollee a cada step. Bottom detection via `distanceFromBottom <= 40` emite `home.scrolled_to_bottom`.
+
+---
+
+## 3. Control v2 — Vista de control de presupuesto
+
+**Route**: [`app/(app)/(tabs)/insights.tsx`](../../../app/(app)/(tabs)/insights.tsx) (la tab se llama "Control" en UI, "insights" en el router)  
+**Screen**: [`mobile/screens/home/control-v2-screen.tsx`](../../../mobile/screens/home/control-v2-screen.tsx)
+
+### Cards montadas (top → bottom)
+
+| Componente | Sección anchor | Qué muestra |
+|---|---|---|
+| `ControlV2Header` | — | Score pill (0-100) + scoreLabel + entry a `DailyGoalSheet` cuando `goalEditable` |
+| `ControlV2Hero` (**nuevo**) | `hoy` | "TL;DR del día": headline state-aware + cupo diario + gasto hoy + libre hoy + BreatheDot + ShineOverlay + CardParticles. Wrappea `ControlHeroTitular` (variante A). |
+| `ControlV2AlcanzaCard` | `alcanza` | Proyección: "¿llegás al mes?" + día de agotamiento proyectado + ritmo vs cupo |
+| `ControlV2AlcanciaCard` | `alcancia` | Ahorro real acumulado (`vault`), racha bajo cupo, días ganadores, no-spend count |
+| `ControlV2SemanaCard` | `semana` | Últimos 7 días vs 7 previos, momentum, avg7 |
+| `ControlV2VsMesCard` | `vsmes` | Comparación vs. ciclo cerrado anterior: delta %, proyectado vs real, top categoría, savingsDelta |
+| `ControlV2PatronCard` | `patron` | Patrón por día de semana (dow), peor/mejor día, avg global |
+| `ControlV2CoberturaCard` | `cobertura` | Distribución fijos/ahorro/libre sobre ingreso total, ratio %, cupo diario |
+
+**Nota**: `ControlV2AsesorCard` fue eliminada del layout. Los signals del Asesor se acceden desde el ícono de acceso rápido en Home (botón Asistente). Ver REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md.
+
+### Scroll anchoring y deep links
+
+`ControlV2Screen` maneja su propio `ScrollView` (no usa el de `Screen`) para poder hacer scroll-to-section. `ControlAnchorsContext` provee `registerOffset` + `scrollToSection` a todos los `ControlV2Anchor` wrappers. El Asistente hace push con `?section=semana` etc. → el screen honra el param vía `useLocalSearchParams` + `scrollToSection` con 200ms defer post-mount.
+
+### Hero card (variante A · El Titular)
+
+`ControlV2Hero` adapta `data` + `view` del hook al shape `ControlHeroState` y renderiza `ControlHeroTitular` (de `components/control-hero-preview/control-hero-a-titular.tsx`). La variante A fue elegida por el owner tras comparar 7 variantes en la pantalla dev `settings/dev/control-hero-variants`. El wrapper `ControlV2HeroImpl` (en `components/control-v2/control-v2-hero.tsx`) es el bridge entre el adapter y el componente de preview que pasó a producción.
+
+### DailyGoalSheet
+
+Sheet modal (no inline) para configurar "mi meta diaria" = buffer de gasto. Lee `daily_budget_buffer_mode` y `daily_budget_buffer_value` de `familyFinance`. Escribe via `upsertFamilyFinance.mutateAsync`. Bloqueado durante racha rota en ventana de 14 días de recuperación (`goalEditable` derivado de `streakQuery.data`).
+
+### Advisor notification sync
+
+`useAdvisorNotificationSync` está montado en ControlV2Screen (no en el Asesor): pipe de alta-prioridad de signals del advisor hacia el feed de notificaciones in-app y (si `confidence >= 0.85`) push. De-duplicado por dispositivo con cooldown de 18h por signal id.
+
+---
+
+## 4. Gastos Fijos
+
+### Screens activas vs. legacy
+
+| Screen | Archivo | Ruteada LIVE | Notas |
+|---|---|---|---|
+| **FijosV2Screen** | [`mobile/screens/home/fijos-v2-screen.tsx`](../../../mobile/screens/home/fijos-v2-screen.tsx) | ✅ **LIVE** | Importada por `app/(app)/(tabs)/fixed-expenses.tsx` |
+| ~~FijosV3Screen~~ | ~~`mobile/screens/home/fijos-v3-screen.tsx`~~ | 🗑️ **Eliminado 2026-05-22** | V3 fue revertida. Eliminado junto con el cluster fijos-hero-preview (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
+| AddFijoV2Screen | [`mobile/screens/home/add-fijo-v2-screen.tsx`](../../../mobile/screens/home/add-fijo-v2-screen.tsx) | ✅ **LIVE** | Modal `/add-fixed-expense`. Soporta create + edit (vía param `id`). |
+
+### Anatomía de FijosV2Screen (secciones top → bottom)
+
+| Sección | Componente | Propósito |
+|---|---|---|
+| Header | `FijosHeader` | Título + botón circular de alta (ref expuesto al tour) |
+| Hero | `FijosHeroCard` | Boarding pass: cycle route line, montos pagados/pendientes, PaymentSegments (1:1 fijo/segmento), dinero libre, % del sueldo |
+| Próximos | `FijosProximosCard` | Fusión de SmartAlerts + UpcomingStrip: top 3 próximos a vencer + sub-section "AVISOS" (hikes + signals del advisor) |
+| Tabs | `FijosTabs` | Filtros: Todos / Pendientes / Pagados / Zombis. Usa `GastosFilterPill` internamente (unifica lenguaje visual con Gastos) |
+| Lista | `FijoCategoryGroups` | Lista de `FijoRow` agrupados por categoría |
+
+### FijosHeroCard — detalles clave
+
+- `CycleRouteLine`: boarding-pass con estaciones (ABR → MAY), dashes coloreados (lime = pasado, muted = futuro), today-marker circular en `cycleDayIndex/cycleDays * 100%`.
+- `PaymentSegments`: reemplazó la `ProgressBar` lineal con pulse. Cada segmento = 1 fijo. Colores: lime (pagado), muted cream (pendiente), peach (vencido). Ordenados: pagados primero, pendientes en el medio, vencidos al final.
+- `urgencyRing`: overlay Reanimated que pulsa peach (1.2s cada mitad) cuando hay vencidos. `withRepeat(withSequence(...), -1)`.
+- Badges: "N VENCIDOS" (peach) o "AL DÍA" (lime).
+- Eyebrow = ciclo expandido ("20 ABRIL → 20 MAYO" en lugar del genérico "Gastos fijos").
+
+### FijoRow — detalles clave
+
+- Tap → expand panel de detalles (frecuencia, kind, próx. vencimiento, categoría) + acciones ("✓ Registrar pago" + "Editar").
+- Swipe left → "Eliminar" (solo eliminar; editar vive en el expand panel).
+- `ConfettiBurst`: renderizado por row. Se dispara en el flip de status `pending/overdue → paid` durante la vida del componente (no en cold open). Ref `initialStatusRef` previene confetti en rows ya pagadas al montar.
+- `TrendBadge`: visible cuando `|trendDeltaPct| >= 1`. Colores theme-aware.
+- `statusOverlay`: mini-badge en la esquina del iconTile (check/warning/schedule), reemplazó el chip pastel de antes.
+- Press scales: 3 instancias (`cardPress 0.98`, `actionPrimaryPress 0.96`, `actionSecondaryPress 0.96`).
+- Wrapped en `memo` para evitar re-renders en cascada.
+
+### AddFijoV2Screen
+
+Formulario modal con:
+- `InAppNumpad` numérico.
+- Nombre con `TextInput`.
+- `CategoryHorizontalRail` (selector de categoría).
+- `SuggestedAmountStrip` (sugerencias de monto).
+- `AmountCard` (preview del monto).
+- `StickyFooter` con CTA de guardar.
+- Soporte edit: si `fixedExpenseId` está presente, pre-carga el fijo existente via `useFixedExpenses` y submite via `useUpdateFixedExpense`.
+- Soporte prefill desde Asistente: params `amount` y `description` en la URL.
+
+### Componentes fijos desreferenciados (dead code)
+
+`FijosSmartAlerts` y `FijosUpcomingStrip` (en `components/fijos/`) fueron reemplazados por `FijosProximosCard`. 🗑️ **Eliminados 2026-05-22** (Bucket 1 de [09](09-candidatos-a-eliminar.md)).
+
+---
+
+## 5. Inventario de componentes
+
+### 5.1 components/home/ (73 archivos post-limpieza 2026-05-22)
+
+| Archivo | Propósito | Usado por |
+|---|---|---|
+| `activity-row-v2.tsx` | Fila de gasto en el feed de actividad. SwipeableRow + expand. | `HomeActivitySection` |
+| `add-expense-advisor-banner.tsx` | Banner del asesor para sugerir cargar un gasto | (no verificado) |
+| `add-expense-dashboard.tsx` | Dashboard de carga de gastos | (no verificado) |
+| `ambient-blobs.tsx` | 3 blobs de color que flotan como fondo. `position: absolute`. | `HomeScreen`, `FijosV2Screen`, `ControlV2Screen` |
+| `amount-card.tsx` | Tarjeta de preview del monto en formularios. | `AddFijoV2Screen`, add-expense |
+| `animated/breathe-dot.tsx` | Dot que respira (Reanimated `withRepeat`). Coloreado por estado. | `HomeHeroCard`, `FijosHeroCard`, `ControlV2*` |
+| `animated/count-up-text.tsx` | Texto numérico con animación count-up (Reanimated). | Heroes (Home, Fijos, Control) |
+| `animated/float-view.tsx` | View con animación de flotación suave. | `MetaCard` |
+| `animated/rise-view.tsx` | Wrapper con entrada slide-up + fade. Usado para cascada stagger. | Heroes, cards de Fijos |
+| `animated/shine-overlay.tsx` | Overlay diagonal tipo lente reflectiva. `LinearTransition`. | `HomeHeroCard`, `FijosHeroCard`, `MetaCard` |
+| `animated/slide-in-view.tsx` | Entrada slide + fade configurable. | (no verificado) |
+| `category-horizontal-rail.tsx` | Rail horizontal de chips de categoría. | Formularios de add |
+| `commitment-preview-row.tsx` | Row de preview de un commitment (fijo) | (no verificado) |
+| `control-action-card.tsx` | Card de acción del control (CTA del asesor) | (no verificado) |
+| `control-forecast-strip.tsx` | Strip de forecast del control | (no verificado) |
+| ~~`control-hero-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
+| `control-history-ribbon.tsx` | Ribbon de historial del control | (no verificado) |
+| ~~`control-months-section.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
+| `control-mood-orb.tsx` | Orbe de mood del control | (no verificado) |
+| ~~`control-plan-section.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
+| `control-pressure-meter.tsx` | Medidor de presión del control | (no verificado) |
+| `control-primitives.tsx` | Primitivos visuales compartidos del control | (no verificado) |
+| ~~`control-sections.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — barrel huérfano (0 imports) |
+| `control-signal-tile.tsx` | Tile de signal del asesor | (no verificado) |
+| ~~`control-today-section.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
+| `control-visual-utils.ts` | Utilidades visuales del control | (no verificado) |
+| `control-visuals.tsx` | Componentes visuales del control | (no verificado) |
+| `cycle-balance-prompt-sheet.tsx` | `OnboardingAvailableSheet` + `SalaryConfirmationSheet`. Dos variantes mutuamente excluyentes del prompt de cobro. | `HomeDashboardSheets` |
+| `daily-budget-ring-chart.tsx` | Gráfico tipo ring del presupuesto diario | (no verificado) |
+| `daily-budget-ring.model.ts` | Modelo del ring del presupuesto diario | (no verificado) |
+| `daily-budget-ring.tsx` | Ring animado del presupuesto diario | (no verificado) |
+| `daily-budget-suggestion-card.tsx` | Card de sugerencia del presupuesto diario | (no verificado) |
+| `description-row.tsx` | Fila de descripción | (no verificado) |
+| `expense-editor-modal.tsx` | Modal para editar un gasto existente | (no verificado) |
+| `expense-history-content-card.tsx` | Card de contenido del historial de gastos | (no verificado) |
+| `expense-history-hero-card.tsx` | Hero card del historial de gastos | (no verificado) |
+| `expense-history-list.tsx` | Lista del historial de gastos | (no verificado) |
+| `expense-history-row-actions.tsx` | Acciones de una fila del historial | (no verificado) |
+| `expense-history-row-card.tsx` | Card de fila del historial | (no verificado) |
+| `expense-history-row.tsx` | Fila del historial de gastos | (no verificado) |
+| `expense-history-section-header.tsx` | Header de sección del historial | (no verificado) |
+| `expense-history-toolbar.tsx` | Toolbar del historial de gastos | (no verificado) |
+| `expense-intelligence-panel.tsx` | Panel de inteligencia de gastos | (no verificado) |
+| `expense-intelligence-suggestion-card.tsx` | Card de sugerencia de inteligencia | (no verificado) |
+| `family-strip.tsx` | Strip horizontal de avatares familiares + `PaydayPillV2`. Max 4 avatares + overflow count. | `HomeDashboard` |
+| `greeting-header.tsx` | Saludo contextual por hora del día ("Buenos días", etc.) | `HomeHeader` |
+| `hero-aurora.tsx` | 3 blobs de aurora dentro del hero card | `HomeHeroCard` |
+| ~~`hero-stat.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — 0 imports (el `HeroStat` vivo es el de `settings-primitives`) |
+| `home-activity-section.tsx` | Sección de actividad: lista de `ActivityRowV2` o empty/error/loading state | `HomeDashboard` |
+| `home-assistant-button.tsx` | Botón circular del asistente con badge de pending count | `HomeHeader` |
+| `home-circle-button.tsx` | Botón circular genérico (notificaciones, ajustes) | `HomeHeader` |
+| `home-dashboard-sheets.tsx` | Lazy-mount de las sheets de ciclo (salary vs onboarding) | `HomeDashboard` |
+| `home-dashboard.tsx` | Orquestador principal del Home: todas las secciones + sheets + telemetría | `HomeScreen` |
+| `home-header.tsx` | Header: `GreetingHeader` + `HomeAssistantButton` + `HomeCircleButton` × 2 | `HomeDashboard` |
+| `home-hero-card.tsx` | Hero card del Home: disponible hoy + cupo diario + proyección + shine + aurora + particles | `HomeDashboard` |
+| `home-hero-savings-helpers.ts` | Helpers para el chip de ahorro en el hero | `HomeDashboard` |
+| `home-next-fixed-fallback.ts` | Fallback del "próximo fijo" cuando no hay fijos | `HomeDashboard` |
+| `home-next-fixed-helpers.ts` | Helpers para computar el próximo fijo del ciclo | `HomeDashboard` |
+| `home-top-category-helpers.ts` | Helpers para computar la top categoría del ciclo | `HomeDashboard` |
+| `meta-card.tsx` | Card de meta de ahorro: progreso + FloatView + `QuickAddSavingsSheet` | `HomeDashboard` |
+| `meta-empty-card.tsx` | Estado vacío de la meta (sin goal configurado) | `HomeDashboard` |
+| ~~`mini-bars.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — 0 imports |
+| `month-summary-card.tsx` | Dos paneles side-by-side: Variables (top categoría chip) + Fijos (próximo fijo chip) | `HomeDashboard` |
+| `notes-row.tsx` | Fila de notas | (no verificado) |
+| `notification-feed-list.tsx` | Lista del feed de notificaciones | `NotificationsScreen` |
+| `notifications-filter-pills.tsx` | Pills de filtro de notificaciones | `NotificationsScreen` |
+| `notifications-hero.tsx` | Hero card de la pantalla de notificaciones | `NotificationsScreen` |
+| `onboarding/step-avatar.tsx` | Step del wizard: selección de avatar | `OnboardingScreen` |
+| `onboarding/step-chrome.tsx` | Step del wizard: chrome/shell de step | `OnboardingScreen` |
+| `onboarding/step-family-summary.tsx` | Step del wizard: resumen familiar | `OnboardingScreen` |
+| `onboarding/step-family.tsx` | Step del wizard: familia | `OnboardingScreen` |
+| `onboarding/step-income-contribution.tsx` | Step del wizard: contribución de ingreso | `OnboardingScreen` |
+| `onboarding/step-income.tsx` | Step del wizard: ingreso | `OnboardingScreen` |
+| `onboarding/step-savings.tsx` | Step del wizard: ahorro | `OnboardingScreen` |
+| `onboarding/step-welcome.tsx` | Step del wizard: bienvenida | `OnboardingScreen` |
+| `payday-pill-v2.tsx` | Pill de payday (días al cobro / "Cobrá hoy" / "N días sin cobrar") | `FamilyStrip` |
+| `projection-wait-copy.ts` | Copy para el estado de "esperando proyección" | `HomeHeroCard` |
+| `quick-add-savings-sheet.tsx` | Sheet para agregar ahorro rápido desde el MetaCard | `MetaCard` |
+| `suggested-amount-strip.tsx` | Strip de montos sugeridos en formularios | `AddFijoV2Screen`, add-expense |
+| `who-paid-avatar.tsx` | Avatar del miembro que pagó en ActivityRow | `ActivityRowV2` |
+
+**Total verificado**: 80 archivos (lista completa, algunos propósitos marcados "(no verificado)" porque no fueron leídos en detalle — sus nombres son descriptivos).
+
+### 5.2 components/control-v2/ (22 archivos post-limpieza 2026-05-22) — ✅ LIVE
+
+| Archivo | Propósito |
+|---|---|
+| `add-fixed-quick-sheet.tsx` | Sheet de alta rápida de fijo desde Control |
+| `asesor-action-meta.ts` | Metadata de acciones del asesor |
+| `asesor-bubble-meta.ts` | Metadata de bubbles del asesor |
+| `asesor-signal-meta.ts` | Metadata de signals del asesor |
+| `control-v2-alcancia-card.tsx` | Card de alcancía (ahorro acumulado, racha, dias ganadores) |
+| `control-v2-alcanza-card.tsx` | Card de proyección (¿llegás al mes?) |
+| `control-v2-anchor.tsx` | Wrapper que registra el offset Y de una sección para scroll-to-section |
+| ~~`control-v2-asesor-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — removida del layout y del código |
+| `control-v2-cobertura-card.tsx` | Card de cobertura: distribución fijos/ahorro/libre |
+| `control-v2-empty-state.tsx` | Empty state cuando falta ingreso o gastos |
+| `control-v2-header.tsx` | Header con score pill + entry a DailyGoalSheet |
+| `control-v2-hero.tsx` | Production wrapper: adapta data+view → ControlHeroState → renderiza `ControlHeroTitular` |
+| ~~`control-v2-hoy-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — rollback-kept; owner confirmó descarte |
+| `control-v2-patron-card.tsx` | Card de patrón por día de semana |
+| `control-v2-placeholder.tsx` | Placeholder para secciones sin datos suficientes |
+| `control-v2-semana-card.tsx` | Card de la semana (últimos 7 días) |
+| `control-v2-tokens.ts` | Design tokens del control |
+| `control-v2-vsmes-card.tsx` | Card de comparación vs mes anterior |
+| `daily-goal-sheet.tsx` | Sheet de "mi meta diaria" (buffer mode) |
+| `fixed-expense-quick-edit-sheet.tsx` | Sheet de edición rápida de fijo |
+| ~~`forecast-sparkline.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — 0 imports |
+| `global-advisor-action-host.tsx` | Host global del dispatcher de acciones del asesor |
+| `member-warning-sheet.tsx` | Sheet de alerta para miembros con gasto alto |
+| `savings-goal-quick-edit-sheet.tsx` | Sheet de edición rápida de meta de ahorro |
+| `zombie-feed-section.tsx` | Sección de subscripciones zombie en Control |
+
+### 5.3 components/control-hero-preview/ (3 archivos) — ✅ LIVE (solo variante A y helpers)
+
+> **Limpieza 2026-05-22:** el directorio pasó de 9 archivos a 3. Las variantes B-G fueron eliminadas junto con la ruta dev `control-hero-variants` y su screen. Solo quedan los 3 archivos LIVE.
+
+| Archivo | Estado |
+|---|---|
+| `control-hero-a-titular.tsx` | ✅ **LIVE** — renderizada por `ControlV2Hero` en producción |
+| ~~`control-hero-b-velocimetro.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| ~~`control-hero-c-termometro.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| ~~`control-hero-d-coach.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| ~~`control-hero-e-periodico.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| ~~`control-hero-f-reloj.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| ~~`control-hero-g-coach-magazine.tsx`~~ | 🗑️ **Eliminado 2026-05-22** |
+| `control-hero-helpers.ts` | ✅ compartido (usado por variante A en producción) |
+| `control-hero-states.ts` | ✅ define `ControlHeroState` type (usado en producción por `control-v2-hero.tsx`) |
+
+~~**Ruta dev**: `app/(app)/settings/dev/control-hero-variants.tsx` → `ControlHeroVariantsScreen`.~~ → 🗑️ **Eliminada 2026-05-22**.
+
+### 5.4 components/fijos/ (7 archivos) — ✅ LIVE
+
+> **Limpieza 2026-05-22:** `fijos-smart-alerts.tsx` y `fijos-upcoming-strip.tsx` eliminados (Bucket 1 de [09](09-candidatos-a-eliminar.md)).
+
+| Archivo | Estado | Propósito |
+|---|---|---|
+| `fijo-category-groups.tsx` | ✅ LIVE | Agrupa `FijoRow` por categoría. Tab-aware (filtra según `FijosTab`). |
+| `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + SwipeableRow. |
+| `fijo-trend-spark.tsx` | ✅ LIVE | Sparkline de tendencia de precio (usado dentro de `FijoRow`). |
+| `fijos-header.tsx` | ✅ LIVE | Header de la pantalla con botón de alta. |
+| `fijos-hero-card.tsx` | ✅ LIVE | Hero tipo boarding pass. |
+| `fijos-proximos-card.tsx` | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (creado en Etapa 11). |
+| `fijos-tabs.tsx` | ✅ LIVE | Tabs de filtro (Todos/Pendientes/Pagados/Zombis). |
+
+### ~~5.5 components/fijos-hero-preview/ (41 archivos)~~ — 🗑️ ELIMINADO 2026-05-22
+
+El directorio completo fue eliminado en la limpieza del 2026-05-22 (Bucket 1 de [09](09-candidatos-a-eliminar.md)): ~5000-6000 LOC de variantes de diseño exploradas durante el refactor de Fijos (Etapas 0-10). Junto con él se eliminaron las 12 rutas dev `app/(app)/settings/dev/fijos-*`, las 12 dev screens `mobile/screens/dev/fijos-*`, `FijosV3Screen`, `adapt-controller-to-hero-state.ts` y los dos componentes huérfanos de `components/fijos/` (total ≈68 archivos del cluster).
+
+Subcategorías de archivos en `fijos-hero-preview/`:
+
+| Categoría | Archivos | Descripción |
+|---|---|---|
+| Hero variants | `manifiesto-hero-live`, `pasaje-hero-live`, `titular-hero-live` | 3 variantes de hero completo |
+| Header variants | `header-a-editorial`, `header-b-stat-led`, `header-c-search`, `header-d-health-pulse`, `header-e-utility-bar` | 5 variantes de header |
+| Row variants | `row-a-editorial`, `row-b-sparkline`, `row-c-stripe`, `row-d-day-marker`, `row-e-status-icon` | 5 variantes de fijo-row |
+| Próximos variants | `proximos-live`, `proximos-bars-live`, `proximos-fused-live`, `proximos-hierarchy-live`, `proximos-timeline-live` | 5 variantes del card de próximos |
+| SmartAlerts variants | `smart-alerts-banner-live`, `smart-alerts-editorial-live`, `smart-alerts-marquee-live`, `smart-alerts-pills-live`, `smart-alerts-stack-live` | 5 variantes de smart alerts |
+| Tabs variants | `tabs-big-counts-live`, `tabs-chip-dropdown-live`, `tabs-ledger-live`, `tabs-stacked-bar-live`, `tabs-underline-live` | 5 variantes de tabs v1 |
+| Tabs v2 variants | `tabs-v2-bandeja-live`, `tabs-v2-inbox-live`, `tabs-v2-smart-sort-live`, `tabs-v2-time-grouped-live`, `tabs-v2-toggle-live` | 5 variantes de tabs v2 |
+| Lista completa | `full-list-live` | Vista completa orquestada (V3) — usada por `FijosV3Screen` (dead code) |
+| Helpers / data | `fijo-list-sample`, `fijo-row-mini`, `hero-states`, `proximos-colors`, `smart-alerts-helpers`, `state-selector`, `tabs-helpers` | Tipos, datos mock, helpers |
+
+### ~~5.6 components/fixed-expenses/~~ — 🗑️ ELIMINADO 2026-05-22
+
+`fixed-expense-form.tsx` (único archivo, 0 imports) fue eliminado (Bucket 2 de [09](09-candidatos-a-eliminar.md)). Formulario legacy anterior a `AddFijoV2Screen`.
+
+---
+
+## 6. Features y modelos
+
+### 6.1 features/home/ (11 archivos)
+
+| Archivo | Propósito |
+|---|---|
+| `add-expense-model.ts` | Modelo para la carga de gastos |
+| `home-aggregates.model.ts` | Tipos `MonthlyComparison`, `computeMonthlyComparison`. `StreakExpense`. |
+| `home-dashboard-model.ts` | Lógica de `isPaydayPending`, `daysUntilPayday`, `getPaydayCycle`, `classifyDashboardError`. |
+| `home-telemetry-helpers.ts` | Helpers para formatear eventos de telemetría del Home |
+| `log-home-event.ts` | Función que dispara eventos de telemetría del Home a Supabase/telemetry |
+| `use-home-metrics.ts` | Agrega `HomeHeroMetrics` y `HomeMonthSummary` desde los caches. |
+| `use-home-realtime.ts` | Suscripción realtime a expenses/fixed_expenses/savings_goals/notifications para invalidar caches en tiempo real |
+| `use-home-snapshot.ts` | Hook principal: `useHomeSnapshot(userId)` + `fetchHomeSnapshot()` + `seedCaches()`. El corazón del patrón Snapshot RPC. |
+| `use-home-telemetry.ts` | Sesión de telemetría: `sessionId`, `markTapped()`, emite `home.opened`/`home.closed`/`home.left_without_tap` |
+| `use-monthly-expense-comparison.ts` | Compara gastos del ciclo actual vs anterior |
+| `use-track-element.ts` | Hook para rastrear visibilidad de elementos (emite `home.element_shown`) |
+
+### 6.2 features/fixed-expenses/ (15 archivos)
+
+| Archivo | Propósito |
+|---|---|
+| `commitment-cycle-summary.ts` | Modelo de resumen del ciclo para commitments |
+| `commitment-date-utils.ts` | Utilidades de fechas para commitments |
+| `commitment-types.ts` | Tipos base de commitments |
+| `commitment-utils.ts` | Utilidades generales de commitments (`DerivedFixedExpense`, `FixedExpenseCycleSummary`) |
+| `fixed-expense-editor-model.ts` | Modelo del editor de fijo |
+| `fixed-expense-payment.model.ts` | Modelo del pago de fijo (`FixedExpensePayment`, `FixedExpensePaymentRow`, `mapFixedExpensePaymentRow`) |
+| `fixed-expense-payment.repository.ts` | Repositorio de pagos de fijos |
+| `fixed-expense-query-keys.ts` | Query keys para React Query |
+| `fixed-expense-repository.model.ts` | Mapper `asFixedExpense` |
+| `fixed-expense-repository.ts` | Repositorio Supabase: CRUD de fijos |
+| `fixed-expense-types.ts` | Tipos base: `FixedExpense`, `FixedExpenseFrequency`, `FixedExpenseKind` |
+| `fixed-expenses-screen-model.ts` | `buildFixedExpensesSections` (modelo de secciones — upstream/posible legacy de V1; en uso indirecto) |
+| `use-fixed-expense-editor-form.ts` | Hook del formulario del editor |
+| `use-fixed-expense-payments.ts` | Hook `useFixedExpensePayments` (scoped al ciclo actual) |
+| `use-fixed-expenses.ts` | Hooks `useFixedExpenses`, `useCreateFixedExpense`, `useUpdateFixedExpense`, `useDeleteFixedExpense`, `useRecordFixedExpensePayment` |
+
+### 6.3 features/fijos/ (3 archivos)
+
+> **Limpieza 2026-05-22:** `adapt-controller-to-hero-state.ts` eliminado (solo lo usaba `FijosV3Screen`, ya eliminado).
+
+| Archivo | Propósito |
+|---|---|
+| ~~`adapt-controller-to-hero-state.ts`~~ | 🗑️ **Eliminado 2026-05-22** — solo lo usaba `FijosV3Screen` |
+| `fijos-aggregates.model.ts` | Tipos `FijoItem`, `FijoHikeAlert`, `FijosCycleSummary`, `summarizeFijos`. Motor de clasificación de fijos (paid/pending/overdue/zombie). |
+| `use-fijos-controller.ts` | Controller principal: agrega datos de múltiples hooks → `UseFijosControllerResult`. Incluye tab state, filtrado, grupos por categoría, cycleLabel. |
+| `use-hike-dismiss-store.ts` | Store device-local (SecureStore) para dismissal de alertas de aumento de precio. Key = `{ [fixedExpenseId]: precioAlDismiss }`. Re-surfacea si el precio cambia. |
+
+### 6.4 features/finance/ (3 archivos)
+
+| Archivo | Propósito |
+|---|---|
+| `family-finance.model.ts` | Tipos `FinanceStoragePayload`, `FamilyFinance`, `UpsertFamilyFinanceInput`. Builders: `buildFamilyFinanceInput`, `buildCycleStartingBalanceInput`, `buildSalaryConfirmationInput`. |
+| `family-finance.repository.ts` | `fetchFamilyFinance`, `upsertFamilyFinance` — acceso directo a Supabase. |
+| `use-family-finance.ts` | `useFamilyFinance(familyId)` (staleTime 5min), `useUpsertFamilyFinance(familyId)` con invalidación. Re-exporta helpers del modelo. |
+
+**Lógica financiera clave** (documentada brevemente; el motor completo puede estar en un doc separado):
+- `monthly_income`: ingreso configurado por ciclo.
+- `savings_goal`: meta de ahorro mensual (monto absoluto) + `savings_goal_percent`.
+- `current_cycle_starting_balance`: override del usuario al confirmar cobro.
+- `current_cycle_anchor`: fecha YYYY-MM-DD que "ancla" el ciclo actual.
+- `last_salary_confirmed_at`: timestamp del último cobro confirmado.
+- Fórmula canónica del cupo: `libre = income − fijos − ahorro; cupoDiario = libre / cycleDays`.
+
+---
+
+## 7. Datos y snapshot
+
+### 7.1 home_snapshot RPC
+
+**Archivo**: [`mobile/features/home/use-home-snapshot.ts`](../../../mobile/features/home/use-home-snapshot.ts)
+
+El patrón Snapshot RPC colapsa N round-trips en 1. La función `fetchHomeSnapshot()` llama `supabase.rpc('home_snapshot')` y recibe en un solo payload:
+
+| Slice | Query key seedada |
+|---|---|
+| `profile` | `profileQueryKey(userId)` |
+| `family` | `familyQueryKey(userId)` |
+| `family_finance` | `familyFinanceQueryKey(familyId)` |
+| `fixed_expenses` | `fixedExpenseQueryKeys.family(familyId)` |
+| `expenses` (120 rows) | `expenseQueryKeys.list(familyId)` + `expenseQueryKeys.recent(familyId, 6)` (pre-filtradas sin commitment_id) |
+| `categories_expense` | `categoriesQueryKey(familyId, 'expense')` |
+| `categories_fixed_expense` | `categoriesQueryKey(familyId, 'fixed_expense')` |
+| `notifications` (top-80) | `notificationQueryKeys.list(familyId, userId, 80)` |
+| `unread_notification_count` | `notificationQueryKeys.unreadCount(familyId, userId)` |
+| `family_members` | `familyMembersKey(familyId)` + `familyMembersDetailKey(familyId)` |
+| `savings_goal` | `savingsGoalQueryKey(familyId)` |
+| `fixed_expense_payments` | `fixedExpensePaymentsKey(familyId, cycleStart, cycleEnd)` |
+| `has_push_subscription` | `pushSubscriptionQueryKey(familyId, userId)` |
+| `monthly_summaries_history` + `category_limits` + `velocity_today` | `controlIntelligenceQueryKey(familyId)` (Control layer — migración 20260514010000) |
+| `advisor_signal_dismissals` | `seedAdvisorDismissals` (in-memory store) |
+
+**Política del cache**: `staleTime: 60_000`, `gcTime: 5min`, `refetchOnWindowFocus: true`, `refetchOnReconnect: true`.
+
+**Bug histórico resuelto**: Las `expenseQueryKeys.recent` pre-filtran `commitment_id` dentro del `seedCaches` (no en el consumidor) para garantizar 6 gastos manuales reales en el primer paint del feed de actividad.
+
+**Backward compatibility**: Los slices del Control layer (`monthly_summaries_history`, `category_limits`, `velocity_today`) son opcionales (`?`) en el payload type — si el RPC en un env viejo no los devuelve, el seed los skipea y los hooks consumidores hacen su fetch directo.
+
+### 7.2 Prefetch y warm tabs
+
+**Archivo**: [`mobile/hooks/use-warm-tabs-snapshots.ts`](../../../mobile/hooks/use-warm-tabs-snapshots.ts)
+
+`useWarmTabsSnapshots()` se monta en `AppTabs` (el componente de la barra de tabs). Difiere via `InteractionManager.runAfterInteractions()` para correr después que Home pintó su primer frame.
+
+| Prefetch | Función | Propósito |
+|---|---|---|
+| Gastos | `prefetchGastosSnapshot(queryClient, {...})` | Calienta el snapshot del tab Gastos con el cupoDiario calculado |
+| Control | `prefetchControlIntelligence(queryClient, familyId)` | Calienta la inteligencia del asesor (monthly summaries + limits + velocity) |
+
+Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pendiente (mismo queryKey).
+
+### 7.3 Pre-mount de tabs
+
+`AppTabs` usa `lazy: false` para pre-mountar los 5 tab screens al app boot (~80ms extra), y `animation: 'none'` para hacer el switch de tab en 1 frame (sin slide de 220ms). Replica el comportamiento de `UITabBarController` nativo que fue observado en el A/B test de `NativeTabs`.
+
+### 7.4 Realtime
+
+`useHomeRealtime(familyId)` suscribe a eventos de Supabase Realtime en las tablas `expenses`, `fixed_expenses`, `savings_goals`, y `notifications`. Cuando un miembro de la familia hace un cambio, los caches del Home se invalidan automáticamente sin pull-to-refresh.
+
+---
+
+## 8. Estado vs deuda técnica
+
+### Estado por screen/flujo
+
+| Item | Estado | Notas |
+|---|---|---|
+| **HomeScreen** | ✅ LIVE | Full-featured. Snapshot gate, telemetría, tour, realtime, salary confirmation. |
+| **HomeDashboard** | ✅ LIVE | Todas las secciones activas. `ControlV2AsesorCard` removida de Home (vive en Asistente). |
+| **HomeHeroCard** | ✅ LIVE | Redesigned. ShineOverlay + aurora + particles + CountUpText + savingsChip + trend. |
+| **MonthSummaryCard** | ✅ LIVE | Top categoría chip + próximo fijo chip + fallbacks. |
+| **MetaCard / MetaEmptyCard** | ✅ LIVE | MetaCard con QuickAddSavings. |
+| **HomeActivitySection** | ✅ LIVE | ActivityRowV2 con swipe-delete. |
+| **SalaryConfirmationSheet / OnboardingAvailableSheet** | ✅ LIVE | Lazy-mounted. Dispara Wrapped post-save. |
+| **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. |
+| **ControlV2Hero (variante A)** | ✅ LIVE | `ControlHeroTitular` en producción via `ControlV2Hero` adapter. |
+| ~~**ControlV2HoyCard**~~ | 🗑️ Eliminado 2026-05-22 | En código para rollback rápido → owner descartó. |
+| ~~**ControlV2AsesorCard**~~ | 🗑️ Eliminado 2026-05-22 | Removida del layout; señales viven en Home→Asistente. |
+| **FijosV2Screen** | ✅ LIVE | La screen ruteada en producción. |
+| ~~**FijosV3Screen**~~ | 🗑️ Eliminado 2026-05-22 | Revertida. Cluster completo eliminado (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
+| **FijosHeroCard** | ✅ LIVE | Boarding pass + urgency ring + PaymentSegments + CycleRouteLine. |
+| **FijosProximosCard** | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (Etapa 11). |
+| **FijosTabs** | ✅ LIVE | Reutiliza GastosFilterPill. |
+| **FijoRow** | ✅ LIVE | Expand panel + ConfettiBurst + statusOverlay + catChip + TrendBadge. |
+| ~~**FijosSmartAlerts**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
+| ~~**FijosUpcomingStrip**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
+| **AddFijoV2Screen** | ✅ LIVE | Create + edit. Prefill desde Asistente. |
+| ~~**fijos-hero-preview/ (41 archivos)**~~ | 🗑️ Eliminado 2026-05-22 | Cluster completo eliminado (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
+| ~~**control-hero-preview/ variantes B-G**~~ | 🗑️ Eliminado 2026-05-22 | Solo quedan A + helpers (LIVE). |
+| **home_snapshot RPC** | ✅ LIVE | 1 round-trip. Seedea ~14 caches. Control layer incluido (migración 20260514010000). |
+| **useWarmTabsSnapshots** | ✅ LIVE | Prefetch de Gastos + Control post-Home-first-paint. |
+| **lazy: false + animation: none** | ✅ LIVE | Pre-mount + switch instantáneo de tabs (replicando NativeTabs feel). |
+
+### Deuda técnica identificada
+
+| Deuda | Severidad | Notas |
+|---|---|---|
+| ~~Dead code de `fijos-hero-preview/`~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22 (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
+| ~~Dead code de `FijosV3Screen` + `adaptControllerToHeroState`~~ | ✅ RESUELTO | 🗑️ Eliminados 2026-05-22. |
+| ~~`fixed-expense-form.tsx` en `components/fixed-expenses/`~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22 (Bucket 2 de [09](09-candidatos-a-eliminar.md)). |
+| ~~`FijosSmartAlerts` y `FijosUpcomingStrip`~~ | ✅ RESUELTO | 🗑️ Eliminados 2026-05-22. |
+| Muchos archivos en `components/home/` sin verificar uso live | 🟡 BAJA | ~20 archivos con nombre de "control-*" que pueden ser de iteraciones previas del Control card in-Home. Pendiente de verificar. |
+| ~~`control-v2-asesor-card.tsx` en el código pero removida del layout~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22. |

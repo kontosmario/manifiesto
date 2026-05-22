@@ -1035,22 +1035,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Dispara el Manifiesto Wrapped (recap del ciclo cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
                     icon="auto-stories"
+                    isLast
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
-                  />
-                  {/* Fijos dev rows removidas (2026-05-13) — refactor de
-                      Fijos cerrado en V2 con mejoras quirúrgicas. El
-                      workflow viejo de 12 dev routes con previews de
-                      variantes ya no tiene uso. Los archivos preview
-                      siguen vivos en código (`mobile/components/
-                      fijos-hero-preview/` + dev screens) para análisis
-                      posterior — cleanup pendiente. */}
-                  <SettingsRow
-                    helper="6 variantes del nuevo hero card de Control · A·Titular B·Velocímetro C·Termómetro D·Coach E·Periódico F·Reloj. Particles + state-aware + theme-aware. Owner pick."
-                    icon="dashboard"
-                    isLast
-                    label="Control · Hero · 6 variantes"
-                    onPress={() => router.push('/(app)/settings/dev/control-hero-variants' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
