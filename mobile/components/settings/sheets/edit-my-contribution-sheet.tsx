@@ -12,6 +12,8 @@ interface EditMyContributionSheetProps {
   currentValue: number
   householdTotal: number
   isSaving: boolean
+  /** Modo solo: copy personal sin "hogar/aporte/miembros". */
+  isSolo?: boolean
   onClose: () => void
   onSave: (nextValue: number) => void
 }
@@ -21,6 +23,7 @@ export function EditMyContributionSheet({
   currentValue,
   householdTotal,
   isSaving,
+  isSolo = false,
   onClose,
   onSave,
 }: EditMyContributionSheetProps) {
@@ -46,20 +49,32 @@ export function EditMyContributionSheet({
   return (
     <NumericEditSheet
       visible={visible}
-      title="Mi aporte mensual"
-      subtitle="Es lo que tú aportas al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro."
+      title={isSolo ? 'Ingreso mensual' : 'Mi aporte mensual'}
+      subtitle={
+        isSolo
+          ? 'Es tu ingreso mensual. Lo usamos para calcular tu presupuesto.'
+          : 'Es lo que tú aportas al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro.'
+      }
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-      displayEyebrow="MI APORTE"
+      displayEyebrow={isSolo ? 'INGRESO' : 'MI APORTE'}
       displayPlaceholder="$ 0"
       helper={
         isValid
-          ? `Total del hogar: ${currencyFormatter.format(projectedTotal)}.`
+          ? isSolo
+            ? undefined
+            : `Total del hogar: ${currencyFormatter.format(projectedTotal)}.`
           : 'Ingresa un monto válido (puede ser 0).'
       }
-      errorText={showError ? 'El aporte no puede ser negativo.' : undefined}
-      saveLabel="Guardar aporte"
+      errorText={
+        showError
+          ? isSolo
+            ? 'El ingreso no puede ser negativo.'
+            : 'El aporte no puede ser negativo.'
+          : undefined
+      }
+      saveLabel={isSolo ? 'Guardar' : 'Guardar aporte'}
       saveDisabled={!hasChanged}
       isSaving={isSaving}
       onSave={() => {

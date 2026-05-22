@@ -654,7 +654,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     <Screen
       canGoBack
       contentContainerStyle={styles.screenContent}
-      subtitle="Preferencias del hogar, tu perfil y la configuración base de la familia."
+      subtitle={
+        isSolo
+          ? 'Tu perfil y la configuración base de tu cuenta.'
+          : 'Preferencias del hogar, tu perfil y la configuración base de la familia.'
+      }
       title="Ajustes"
     >
       {/* Mute the 19 descendant RiseViews during the ~340ms native
@@ -673,7 +677,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           <ErrorState
             description={getErrorMessage(
               settingsLoadError,
-              'No pudimos cargar ajustes, métricas y preferencias del hogar.',
+              isSolo
+                ? 'No pudimos cargar ajustes, métricas y preferencias de tu cuenta.'
+                : 'No pudimos cargar ajustes, métricas y preferencias del hogar.',
             )}
             title="No pudimos abrir ajustes"
             onAction={() => {
@@ -698,7 +704,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 ]}
               >
                 <Text style={[styles.heroEyebrow, { color: theme.colors.textMuted }]}>
-                  TU HOGAR
+                  {isSolo ? 'TU CUENTA' : 'TU HOGAR'}
                 </Text>
                 <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
                   {displayName.trim() || 'Perfil sin nombre'}
@@ -774,7 +780,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 title={isSolo ? 'Tu cuenta' : 'Hogar'}
               >
                 <SettingsRow
-                  helper={householdTotalSubtitle}
+                  helper={isSolo ? undefined : householdTotalSubtitle}
                   icon="attach-money"
                   label={isSolo ? 'Ingreso mensual' : 'Mi aporte mensual'}
                   onPress={() => setIncomeSheetOpen(true)}
@@ -1184,6 +1190,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         currentValue={myContribution}
         householdTotal={financeSnapshot.monthlyIncome}
         isSaving={updateMyContributionMutation.isPending}
+        isSolo={isSolo}
         onClose={() => setIncomeSheetOpen(false)}
         onSave={handleSaveMyContribution}
         visible={incomeSheetOpen}
