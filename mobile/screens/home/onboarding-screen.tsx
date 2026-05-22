@@ -663,6 +663,7 @@ function renderStep(
           familyId={state.familyId}
           onFamilyReady={actions.setFamily}
           onJoinPeek={actions.setPendingFamily}
+          onAccountKind={actions.setAccountKind}
           isRejoin={ctx.isRejoin}
           closedByOwner={ctx.closedByOwner}
         />

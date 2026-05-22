@@ -7,8 +7,10 @@ import { TextField } from '@/components/ui/text-field'
 import {
   useBootstrapFamily,
   usePeekFamilyInvite,
+  useSetFamilyKind,
   type FamilyPeek,
 } from '@/features/family/use-family-actions'
+import type { AccountKind } from '@/features/family/account-kind'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import { triggerHaptic } from '@/lib/haptics'
@@ -27,11 +29,13 @@ interface StepFamilyProps {
    *  insert is deferred to step 5 (Confirmar y unirme). The user is
    *  NOT a member yet at this point. */
   onJoinPeek: (peek: FamilyPeek) => void
+  /** Fija el accountKind en el draft del onboarding (para copy). */
+  onAccountKind: (kind: AccountKind) => void
   isRejoin?: boolean
   closedByOwner?: boolean
 }
 
-type Panel = 'root' | 'create' | 'join'
+type Panel = 'mode' | 'root' | 'create' | 'join'
 
 export function StepFamily({
   userId,
@@ -39,6 +43,7 @@ export function StepFamily({
   familyId,
   onFamilyReady,
   onJoinPeek,
+  onAccountKind,
   isRejoin = false,
   closedByOwner = false,
 }: StepFamilyProps) {
@@ -47,12 +52,13 @@ export function StepFamily({
   // Single-use invite code lookup. Replaces the legacy
   // peek_family_by_code which used the persistent `families.code`.
   const peek = usePeekFamilyInvite()
+  const setKind = useSetFamilyKind(userId)
   const [panel, setPanel] = useState<Panel>(() =>
-    familyMode === 'created' ? 'create' : familyMode === 'joined' ? 'join' : 'root',
+    familyMode === 'created' ? 'create' : familyMode === 'joined' ? 'join' : 'mode',
   )
   const [codeInput, setCodeInput] = useState('')
 
-  const busy = bootstrap.isPending || peek.isPending
+  const busy = bootstrap.isPending || peek.isPending || setKind.isPending
   const alreadyDone = familyMode !== 'none' && Boolean(familyId)
 
   const handleCreate = async () => {
@@ -61,10 +67,26 @@ export function StepFamily({
       const result = await bootstrap.mutateAsync()
       void triggerHaptic('success')
       onFamilyReady('created', result.family_id)
+      onAccountKind('shared')
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
       Alert.alert('No pudimos crear la familia', getErrorMessage(error, errorMessages.server))
+    }
+  }
+
+  const handleSolo = async () => {
+    void triggerHaptic('selection')
+    try {
+      const result = await bootstrap.mutateAsync()
+      await setKind.mutateAsync('solo')
+      onAccountKind('solo')
+      void triggerHaptic('success')
+      onFamilyReady('created', result.family_id)
+      setPanel('create')
+    } catch (error) {
+      void triggerHaptic('error')
+      Alert.alert('No pudimos crear tu cuenta', getErrorMessage(error, errorMessages.server))
     }
   }
 
@@ -90,13 +112,17 @@ export function StepFamily({
   return (
     <View style={styles.stack}>
       <RiseView>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Familia</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          {panel === 'mode' ? 'Empecemos' : 'Familia'}
+        </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          {closedByOwner
-            ? 'Tu hogar anterior fue cerrado. Armemos uno propio o súmate a otro con su código.'
-            : isRejoin
-              ? 'Puedes empezar un hogar nuevo o sumarte a otro con su código.'
-              : 'Empieza una familia o súmate a una existente.'}
+          {panel === 'mode'
+            ? '¿Cómo vas a usar Manifiesto?'
+            : closedByOwner
+              ? 'Tu hogar anterior fue cerrado. Armemos uno propio o súmate a otro con su código.'
+              : isRejoin
+                ? 'Puedes empezar un hogar nuevo o sumarte a otro con su código.'
+                : 'Empieza una familia o súmate a una existente.'}
         </Text>
         {closedByOwner ? (
           <Text style={[styles.rejoinHint, { color: theme.colors.textMuted }]}>
@@ -138,6 +164,56 @@ export function StepFamily({
               </Text>
             ) : null}
           </View>
+        </Animated.View>
+      ) : panel === 'mode' ? (
+        <Animated.View
+          key="mode"
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(140)}
+          layout={LinearTransition.duration(240)}
+          style={styles.optionStack}
+        >
+          <Pressable
+            onPress={() => void handleSolo()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Usar la app yo solo"
+            style={[
+              styles.optionCard,
+              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+            ]}
+          >
+            <Text style={styles.optionEmoji}>👤</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Yo solo</Text>
+              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
+                Gestiono mi plata solo.
+              </Text>
+            </View>
+            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setPanel('root')}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Usar la app con mi familia o pareja"
+            style={[
+              styles.optionCard,
+              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+            ]}
+          >
+            <Text style={styles.optionEmoji}>👨‍👩‍👧</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>
+                Con mi familia o pareja
+              </Text>
+              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
+                Compartimos los gastos.
+              </Text>
+            </View>
+            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
+          </Pressable>
         </Animated.View>
       ) : panel === 'root' ? (
         <Animated.View
@@ -187,6 +263,15 @@ export function StepFamily({
               </Text>
             </View>
             <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setPanel('mode')}
+            style={[styles.ghostButton, { borderColor: theme.colors.line }]}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+          >
+            <Text style={[styles.ghostButtonText, { color: theme.colors.text }]}>Volver</Text>
           </Pressable>
         </Animated.View>
       ) : panel === 'join' ? (

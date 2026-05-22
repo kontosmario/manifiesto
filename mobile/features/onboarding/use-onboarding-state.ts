@@ -1,6 +1,7 @@
 import { useMemo, useReducer } from 'react'
 import type { AvatarSlug } from '@/assets/avatars'
 import { randomAvatarSlug } from '@/assets/avatars'
+import type { AccountKind } from '@/features/family/account-kind'
 import type { FamilyPeek } from '@/features/family/use-family-actions'
 
 export type OnboardingStepId = 1 | 2 | 3 | 4 | 5
@@ -11,6 +12,8 @@ export interface OnboardingDraft {
   displayName: string
   avatarSlug: AvatarSlug
   familyMode: 'none' | 'created' | 'joined'
+  /** 'solo' cuando el usuario eligió "Yo solo" en el step 3. Maneja el copy del onboarding; la UI interior deriva de families.kind. */
+  accountKind: AccountKind
   familyId: string | null
   monthlyIncomeRaw: string
   salaryPaymentDay: number
@@ -41,6 +44,7 @@ type Action =
   | { type: 'setDisplayName'; value: string }
   | { type: 'setAvatar'; slug: AvatarSlug }
   | { type: 'setFamily'; mode: 'created' | 'joined'; familyId: string }
+  | { type: 'setAccountKind'; value: AccountKind }
   | { type: 'setMonthlyIncome'; value: string }
   | { type: 'setSalaryDay'; value: number }
   | { type: 'setSavingsPercent'; value: number }
@@ -57,6 +61,7 @@ function createInitialDraft(): OnboardingDraft {
     displayName: '',
     avatarSlug: randomAvatarSlug(),
     familyMode: 'none',
+    accountKind: 'shared',
     familyId: null,
     monthlyIncomeRaw: '',
     salaryPaymentDay: 1,
@@ -94,6 +99,8 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
         familyMode: action.mode,
         familyId: action.familyId,
       }
+    case 'setAccountKind':
+      return { ...state, accountKind: action.value }
     case 'setMonthlyIncome':
       return { ...state, monthlyIncomeRaw: action.value }
     case 'setSalaryDay':
@@ -150,6 +157,7 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
       setAvatar: (slug: AvatarSlug) => dispatch({ type: 'setAvatar', slug }),
       setFamily: (mode: 'created' | 'joined', familyId: string) =>
         dispatch({ type: 'setFamily', mode, familyId }),
+      setAccountKind: (value: AccountKind) => dispatch({ type: 'setAccountKind', value }),
       setMonthlyIncome: (value: string) => dispatch({ type: 'setMonthlyIncome', value }),
       setSalaryDay: (value: number) => dispatch({ type: 'setSalaryDay', value }),
       setSavingsPercent: (value: number) => dispatch({ type: 'setSavingsPercent', value }),
