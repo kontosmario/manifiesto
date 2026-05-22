@@ -31,6 +31,9 @@ interface StepFamilyProps {
   onJoinPeek: (peek: FamilyPeek) => void
   /** Fija el accountKind en el draft del onboarding (para copy). */
   onAccountKind: (kind: AccountKind) => void
+  /** accountKind actual del draft — neutraliza el copy de la card de
+   *  confirmación en modo solo (sin "familia"/"invitar"). */
+  accountKind: AccountKind
   isRejoin?: boolean
   closedByOwner?: boolean
 }
@@ -44,6 +47,7 @@ export function StepFamily({
   onFamilyReady,
   onJoinPeek,
   onAccountKind,
+  accountKind,
   isRejoin = false,
   closedByOwner = false,
 }: StepFamilyProps) {
@@ -156,9 +160,13 @@ export function StepFamily({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.confirmTitle, { color: theme.colors.text }]}>
-              {familyMode === 'created' ? '¡Tu familia ya está creada!' : '¡Listo, te sumaste!'}
+              {accountKind === 'solo'
+                ? '¡Listo! Tu cuenta está creada.'
+                : familyMode === 'created'
+                  ? '¡Tu familia ya está creada!'
+                  : '¡Listo, te sumaste!'}
             </Text>
-            {familyMode === 'created' ? (
+            {familyMode === 'created' && accountKind !== 'solo' ? (
               <Text style={[styles.confirmHint, { color: theme.colors.textMuted }]}>
                 Cuando quieras invitar a alguien, genera un código desde Ajustes.
               </Text>
