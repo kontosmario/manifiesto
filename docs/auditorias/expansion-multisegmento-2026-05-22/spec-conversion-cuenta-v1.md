@@ -94,7 +94,7 @@ Nueva sección **"Tipo de cuenta"** (o filas dentro de los grupos existentes), d
 
 - **Soltero:** fila "Compartir con mi familia o pareja" → confirmación liviana (Alert simple) → `convertToFamily` → invalida caches; aparece el grupo "Familia". Opcional: abrir el sheet de invitar al terminar.
 - **Familia + owner:** fila destructiva (roja) "Pasar a cuenta individual" → **Alert de confirmación fuerte** explicando: "Se quitará a los demás miembros y tendrán que volver a configurar su cuenta. Los gastos y la configuración compartida quedan con vos. Esta acción no se puede deshacer." → `convertToSolo` → la app queda en modo solo (el grupo "Familia" desaparece, hero pasa a "Tu cuenta", etc.).
-- **Familia + NO owner:** no muestra "Pasar a soltero". Mantiene "Salir del hogar" (existente), con un helper que aclare: "Si salís, podés volver a empezar como cuenta individual."
+- **Familia + NO owner:** no muestra "Pasar a soltero". Mantiene "Salir del hogar" (existente, sin cambios). Un helper aclaratorio ("podés volver a empezar como cuenta individual") es **opcional** y queda fuera de v1 (YAGNI).
 
 Placement sugerido: para soltero, una fila en el grupo "Tu cuenta"; para familia-owner, la fila va en el grupo "Familia" (junto a invitar/gestionar) o en una sección propia "Tipo de cuenta". A definir en el plan según el layout real.
 
