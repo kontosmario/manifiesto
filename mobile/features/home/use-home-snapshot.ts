@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
 import { familyQueryKey, type FamilyInfo } from '@/features/family/use-family'
+import { normalizeAccountKind } from '@/features/family/account-kind'
 import {
   familyFinanceQueryKey,
   type FamilyFinance,
@@ -64,6 +65,7 @@ interface RawNotificationSlice {
 // shape evolution.
 interface RawFamilySlice {
   familyId: string
+  kind?: string | null
 }
 
 interface HomeSnapshotPayload {
@@ -275,7 +277,7 @@ function toFamilyFinance(raw: FinanceStoragePayload | null): FamilyFinance {
  */
 function toFamilyInfo(raw: RawFamilySlice | null): FamilyInfo | null {
   if (!raw) return null
-  return { familyId: raw.familyId }
+  return { familyId: raw.familyId, kind: normalizeAccountKind(raw.kind) }
 }
 
 function seedCaches(

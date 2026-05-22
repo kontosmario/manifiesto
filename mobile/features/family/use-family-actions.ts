@@ -8,6 +8,7 @@ import { profileQueryKey } from '@/features/profile/use-profile'
 import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications'
 import { supabase } from '@/lib/supabase'
 import { familyQueryKey } from '@/features/family/use-family'
+import type { AccountKind } from '@/features/family/account-kind'
 
 interface FamilyRpcResult {
   family_id: string
@@ -249,6 +250,24 @@ export function useLeaveCurrentFamily(userId?: string) {
           queryKey: pushSubscriptionQueryKey(result.family_id, userId),
         }),
       ])
+    },
+  })
+}
+
+/** Setea families.kind ('solo'|'shared') para la familia del caller
+ *  (owner-only en el backend). Usado por el onboarding del modo solo
+ *  justo después de bootstrap_family(). Invalida la cache de familia. */
+export function useSetFamilyKind(userId?: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (kind: AccountKind) => {
+      const { data, error } = await supabase.rpc('set_family_kind', { p_kind: kind })
+      if (error) throw error
+      return (typeof data === 'string' ? data : kind) as AccountKind
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) })
     },
   })
 }
