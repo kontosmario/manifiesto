@@ -31,6 +31,8 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useRequestAccountDeletion } from '@/features/auth/use-delete-account'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
+  useConvertToFamily,
+  useConvertToSolo,
   useLeaveCurrentFamily,
   useUpdateMyIncomeContribution,
 } from '@/features/family/use-family-actions'
@@ -127,6 +129,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const updateDisplayNameMutation = useUpdateDisplayName(userId)
   const updateAvatarMutation = useUpdateAvatarAnimal(userId)
   const leaveFamilyMutation = useLeaveCurrentFamily(userId)
+  const convertToSolo = useConvertToSolo(userId)
+  const convertToFamily = useConvertToFamily(userId)
   const enablePushMutation = useEnablePushNotifications()
   const hasPushSubscriptionQuery = useHasPushSubscription(familyId, userId)
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
@@ -493,6 +497,41 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     )
   }, [isOwnerDestroyFlow, runLeaveFamily])
 
+  const handleConfirmConvertToSolo = useCallback(() => {
+    Alert.alert(
+      'Pasar a cuenta individual',
+      'Se quitará a los demás miembros y tendrán que volver a configurar su cuenta. Los gastos y la configuración compartida quedan con vos. Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Pasar a individual',
+          style: 'destructive',
+          onPress: () =>
+            convertToSolo.mutate(undefined, {
+              onError: (error) => void showError(error, 'No pudimos cambiar el tipo de cuenta.'),
+            }),
+        },
+      ],
+    )
+  }, [convertToSolo, showError])
+
+  const handleConfirmConvertToFamily = useCallback(() => {
+    Alert.alert(
+      'Compartir con tu familia',
+      'Tu cuenta pasa a modo familiar. Vas a poder invitar a otras personas y compartir los gastos.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Activar',
+          onPress: () =>
+            convertToFamily.mutate(undefined, {
+              onError: (error) => void showError(error, 'No pudimos cambiar el tipo de cuenta.'),
+            }),
+        },
+      ],
+    )
+  }, [convertToFamily, showError])
+
   const handleConfirmLogout = useCallback(() => {
     Alert.alert('Cerrar sesión', 'Vas a salir de la app en este dispositivo.', [
       { style: 'cancel', text: 'Cancelar' },
@@ -854,6 +893,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/settings/family-admin' as never)}
                   />
                 ) : null}
+                {isOwner ? (
+                  <SettingsRow
+                    destructive
+                    icon="person-remove"
+                    label="Pasar a cuenta individual"
+                    helper="Quita a los demás miembros y deja la cuenta solo para vos."
+                    onPress={handleConfirmConvertToSolo}
+                  />
+                ) : null}
                 <SettingsRow
                   destructive
                   helper={
@@ -877,7 +925,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 */}
               </SettingsGroup>
             </RiseView>
-            ) : null}
+            ) : (
+              <RiseView delay={320}>
+                <SettingsGroup title="Tipo de cuenta">
+                  <SettingsRow
+                    icon="group-add"
+                    isLast
+                    label="Compartir con mi familia o pareja"
+                    helper="Activá el modo familiar para invitar y compartir gastos."
+                    onPress={handleConfirmConvertToFamily}
+                  />
+                </SettingsGroup>
+              </RiseView>
+            )}
 
             {/* 4b. ASISTENTE */}
             <RiseView delay={300}>
