@@ -219,13 +219,19 @@ const ANDROID_REQUIRES_WEAK_BIOMETRIC =
   Platform.Version < 30
 
 export async function authenticateBiometricAccess(
-  options?: { promptMessage?: string },
+  options?: { promptMessage?: string; disableDeviceFallback?: boolean },
 ) {
+  // When the caller wants a strict biometric gate (no device-passcode
+  // fallback — used by the app-lock screen) we also clear fallbackLabel
+  // so the OS doesn't offer "Usar código"; the in-app "Usar contraseña"
+  // button is the escape hatch instead.
+  const disableDeviceFallback = options?.disableDeviceFallback ?? false
   return await LocalAuthentication.authenticateAsync({
     promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
     cancelLabel: 'Cancelar',
-    fallbackLabel: Platform.OS === 'ios' ? 'Usar código' : undefined,
-    disableDeviceFallback: false,
+    fallbackLabel:
+      disableDeviceFallback || Platform.OS !== 'ios' ? undefined : 'Usar código',
+    disableDeviceFallback,
     biometricsSecurityLevel: ANDROID_REQUIRES_WEAK_BIOMETRIC ? 'weak' : 'strong',
   })
 }
