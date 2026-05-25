@@ -32,6 +32,7 @@ import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
+import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { resolveLoginActionView } from '@/features/auth/login-action-view'
 import { useLoginController } from '@/features/auth/use-login-controller'
 import {
@@ -276,50 +277,48 @@ export function LoginScreen() {
   const triggerFaceID = useCallback(async () => {
     if (status !== 'idle' || isBusy) return
     await triggerHaptic('selection')
+    actions.clearFeedback()
     setStatus('scanning')
     try {
       if (isLockMode) {
-        // App-lock unlock path: just authenticate Face ID, then
-        // mark the app unlocked and route home. No Supabase
-        // refresh — the session is already valid; this gate is
-        // purely a per-launch security re-confirmation. On cancel
-        // we fall through to 'idle' so the user sees the full
-        // login hero with retry CTA + secondary buttons.
+        // App-lock unlock path: strict biometric gate (no device-passcode
+        // fallback). On success mark unlocked + route home. On failure we
+        // stay on the lock screen (idle) with the CTA + "Usar contraseña"
+        // escape; surface differentiated copy for a lockout.
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
+          disableDeviceFallback: true,
         })
         if (result.success) {
           await triggerHaptic('success')
-          // Show the fern transition splash so the user sees the
-          // same visual handshake as a fresh sign-in (Face ID OK →
-          // fern → home), not a bare route change. AppEntryGate
-          // calls `markAuthTransitionLoaded` once routing settles.
           showAuthTransitionSplash()
           markAppUnlocked()
           router.replace('/')
           return
         }
+        const feedback = biometricFeedbackForError(result.error, biometricState.label)
+        if (feedback) actions.setInfoMessage(feedback.message)
         setStatus('idle')
         return
       }
       await actions.handleBiometricSignIn()
-      // `handleBiometricSignIn` swallows every non-success path
-      // internally — cancellations, stale credentials, and network
-      // failures all return normally instead of throwing. On actual
-      // success the controller navigates the user away (this screen
-      // unmounts), so reaching this line means the prompt was
-      // cancelled or failed silently. Reset to 'idle' so the CTA
-      // stops saying "Entrando…" and the user can retry.
+      // handleBiometricSignIn swallows every non-success path internally
+      // (cancel / stale creds / network) and returns. On success it
+      // navigates away (this screen unmounts). Reaching here = cancelled
+      // or failed silently → reset to idle so the user can retry.
       setStatus('idle')
     } catch {
-      // Defensive: handleBiometricSignIn doesn't throw today, but
-      // if that ever changes, fall back to the password form so
-      // the user has a path forward.
+      // Defensive: handleBiometricSignIn doesn't throw today. In sign-in
+      // mode fall back to the password form so the user has a path
+      // forward; in lock mode stay on the lock screen (the password
+      // escape is already visible there).
       setStatus('idle')
-      userPickedModeRef.current = true
-      setFormMode('use-password')
+      if (!isLockMode) {
+        userPickedModeRef.current = true
+        setFormMode('use-password')
+      }
     }
-  }, [actions, isBusy, status, isLockMode, router])
+  }, [actions, isBusy, status, isLockMode, router, biometricState.label])
 
   // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
   // Guarded by a ref so a setState-driven re-render (e.g. status flips
@@ -634,6 +633,12 @@ export function LoginScreen() {
               </>
             ) : actionView === 'face-id' ? (
               <>
+                {errorMessage ? (
+                  <FeedbackPill intent="error" message={errorMessage} />
+                ) : null}
+                {!errorMessage && infoMessage ? (
+                  <FeedbackPill intent="info" message={infoMessage} />
+                ) : null}
                 <Pressable
                   accessibilityLabel={ctaLabel}
                   accessibilityRole="button"
