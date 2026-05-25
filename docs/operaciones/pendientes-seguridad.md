@@ -284,3 +284,26 @@ Solo para referencia (no son pendings, ya están en producción):
 - ✅ Account deletion flow completo (migraciones `20260517000000`, `20260518000000`, `20260518010000`): soft-delete 30d, RPC `request_account_deletion` + `cancel_account_deletion`, cron processor, lockdown service_role-only para funciones admin. Cierra App Store Guideline 5.1.1(v).
 
 <!-- ✓ Contrastado contra código el 2026-05-22 -->
+
+---
+
+## Auditoría de login + biometría — 2026-05-24
+
+Auditoría del flujo Face ID / app-lock a raíz de un bug reportado (el CTA Face ID desaparecía al cancelar la biometría con sesión activa).
+
+### Cerrado en esta auditoría
+- ✅ **CTA Face ID desaparece en lock mode al cancelar** — el botón estaba condicionado al re-sondeo async `hasSavedBiometric`, que podía dar `false` transitoriamente y dejar solo "Usar contraseña"/"Cambiar cuenta". Fix: helper puro `resolveLoginActionView` con invariante de lock mode (CTA siempre disponible) + auto-fire en lock mode independiente del re-sondeo. Archivos: [login-action-view.ts](../../mobile/features/auth/login-action-view.ts), [login-screen.tsx](../../mobile/screens/auth/login-screen.tsx). Tests: `tests/unit/login-action-view.test.ts`.
+- ✅ **`getBiometricLoginState` todo-o-nada** — `Promise.all` + catch único colapsaba todo a `false` ante un fallo transitorio de cualquier read. Migrado a `Promise.allSettled` (degrada solo la señal que falla). [biometric-auth.ts](../../mobile/lib/biometric-auth.ts). Tests: `tests/unit/biometric-login-state.test.ts`.
+- ✅ **Effect de `status` con closure stale** (botón podía quedar deshabilitado tras cancelar) — reescrito con updaters funcionales, sin `eslint-disable` de deps. [login-screen.tsx](../../mobile/screens/auth/login-screen.tsx).
+
+### Gaps abiertos (no bloqueantes, sin fix en esta pasada)
+| Item | Severidad | Nota |
+|---|---|---|
+| Sin re-lock al volver de background | Media-Alta | El app-lock solo corre en cold start ([app-lock-state.ts](../../mobile/features/auth/app-lock-state.ts) lo documenta). Para app financiera conviene un `AppState` listener que `resetAppLock()` tras N seg en background. |
+| `disableDeviceFallback: false` en el gate de app-lock | Media | El **passcode del dispositivo** pasa el gate, no solo biometría ([biometric-auth.ts](../../mobile/lib/biometric-auth.ts)). Decisión de producto: aceptable (norma iOS) vs. biometría estricta. |
+| iOS lockout no se mensajea distinto | Media | Tras fallos repetidos `authenticateAsync` devuelve `lockout`/`lockout_permanent`; hoy se trata igual que cualquier no-success. Falta copy "Face ID bloqueado, usá tu contraseña". |
+| Lock-mode `catch` cae a password form | Media | Si `authenticateBiometricAccess` lanza en lock mode, manda al form de contraseña a un usuario ya autenticado ([login-screen.tsx](../../mobile/screens/auth/login-screen.tsx) `triggerFaceID` catch). |
+| Estado `'authed'` muerto | Baja | El tipo `Status` incluye `'authed'` (checkmark + "Entrando…") pero `setStatus('authed')` nunca se llama. |
+| `useAuthBiometricAutoSignIn` no-op cableado | Baja | Hook es no-op pero sigue recibiendo un `enabled` computado que no hace nada. |
+
+<!-- ✓ Auditoría contrastada contra código el 2026-05-24 -->

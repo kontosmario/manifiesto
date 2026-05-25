@@ -115,6 +115,7 @@ AppEntryGate
   - **First-time** (sin sesión previa en dispositivo): hero genérico "Hola de vuelta" con Fern logo. Directamente abre `formMode='change-account'`.
   - **App-lock** (`?lock=1`): mismo hero returning, pero Face ID solo llama `authenticateBiometricAccess` + `markAppUnlocked` + `router.replace('/')` sin Supabase refresh.
   - **Auto-biometric** (`?autoBiometric=1`): dispara `triggerFaceID()` automáticamente al montar (una sola vez, guarda con `autoBiometricFiredRef`).
+- **Qué bloque de acción se muestra:** decidido por el helper puro `resolveLoginActionView({ formMode, isLockMode, hasSavedBiometric, isReturningUser })` ([login-action-view.ts](../../../mobile/features/auth/login-action-view.ts), testeado). **Invariante de lock mode:** en `?lock=1` el CTA "Entrar con Face ID" se muestra SIEMPRE (no condicionado al re-sondeo `hasSavedBiometric`), porque AppEntryGate solo entra a lock mode si la biometría está habilitada. Esto corrige un bug donde, al cancelar el Face ID con sesión válida, el re-sondeo async podía dar `false` y esconder el CTA dejando solo "Usar contraseña"/"Cambiar cuenta" (sin sentido para un usuario ya logueado). El auto-fire en lock mode tampoco espera al re-sondeo.
 - **Formulario password:** dos sub-modos:
   - `use-password`: solo campo contraseña (email pre-rellenado desde cache). Incluye "¿Olvidaste tu contraseña?" → `push('/(auth)/forgot-password')`.
   - `change-account`: email + contraseña.
@@ -226,7 +227,7 @@ Implementado en [`biometric-auth.ts`](../../../mobile/lib/biometric-auth.ts) con
 - `auth.biometric.credentials` → `{ email, refreshToken }` (SecureStore).
 - `auth.biometric.metadata` → `{ email }` (SecureStore, legible sin el token completo para mostrar el hero personalizado).
 
-**`getBiometricLoginState()`:** consulta en paralelo `SecureStore.isAvailableAsync()`, `LocalAuthentication.hasHardwareAsync()`, `LocalAuthentication.isEnrolledAsync()`, `supportedAuthenticationTypesAsync()` + metadata.
+**`getBiometricLoginState()`:** consulta en paralelo `SecureStore.isAvailableAsync()`, `LocalAuthentication.hasHardwareAsync()`, `LocalAuthentication.isEnrolledAsync()`, `supportedAuthenticationTypesAsync()` + metadata. Usa **`Promise.allSettled`** (no `Promise.all` + catch único): un read que falla de forma transitoria degrada solo esa señal en vez de colapsar todo a `false` — clave para que un hipo de SecureStore no flipee `hasSavedCredentials`/`isAvailable` y esconda el CTA en la pantalla de bloqueo. Cubierto por `tests/unit/biometric-login-state.test.ts`.
 
 **Labels auto-detectados:**
 - `FACIAL_RECOGNITION` → "Face ID" (iOS) / "reconocimiento facial" (Android).

@@ -96,26 +96,35 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
     }
   }
 
-  try {
-    const [isSecureStoreAvailable, hasHardware, isEnrolled, supportedTypes, metadata] = await Promise.all([
-      SecureStore.isAvailableAsync(),
-      LocalAuthentication.hasHardwareAsync(),
-      LocalAuthentication.isEnrolledAsync(),
-      LocalAuthentication.supportedAuthenticationTypesAsync(),
-      readBiometricMetadata(),
-    ])
+  // Probe each signal INDEPENDENTLY. A previous `Promise.all` + single
+  // `catch` was all-or-nothing: if any one of the five reads rejected
+  // (a transient SecureStore / LocalAuthentication hiccup) the whole
+  // function returned `{ isAvailable: false, hasSavedCredentials: false }`.
+  // On the lock screen that flipped `hasSavedBiometric` to false mid-
+  // session and hid the only valid action (the Face ID CTA). With
+  // `allSettled` a single failing read degrades just that signal — the
+  // others (notably the saved-credential metadata) survive.
+  const [secureStore, hardware, enrolled, types, metadata] = await Promise.allSettled([
+    SecureStore.isAvailableAsync(),
+    LocalAuthentication.hasHardwareAsync(),
+    LocalAuthentication.isEnrolledAsync(),
+    LocalAuthentication.supportedAuthenticationTypesAsync(),
+    readBiometricMetadata(),
+  ])
 
-    return {
-      hasSavedCredentials: Boolean(metadata),
-      isAvailable: isSecureStoreAvailable && hasHardware && isEnrolled,
-      label: resolveBiometricLabel(supportedTypes),
-    }
-  } catch {
-    return {
-      hasSavedCredentials: false,
-      isAvailable: false,
-      label: getDefaultBiometricLabel(),
-    }
+  const settledValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
+    result.status === 'fulfilled' ? result.value : fallback
+
+  const isSecureStoreAvailable = settledValue(secureStore, false)
+  const hasHardware = settledValue(hardware, false)
+  const isEnrolled = settledValue(enrolled, false)
+  const supportedTypes = settledValue(types, [] as LocalAuthentication.AuthenticationType[])
+  const savedMetadata = settledValue(metadata, null)
+
+  return {
+    hasSavedCredentials: Boolean(savedMetadata),
+    isAvailable: isSecureStoreAvailable && hasHardware && isEnrolled,
+    label: resolveBiometricLabel(supportedTypes),
   }
 }
 
