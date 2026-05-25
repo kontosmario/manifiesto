@@ -207,6 +207,7 @@ export function useLoginController() {
       handleViewportLayout: keyboardActions.handleViewportLayout,
       setDisplayName,
       setEmail,
+      setErrorMessage,
       setInfoMessage,
       setPassword: setPasswordValue,
       updateMode,

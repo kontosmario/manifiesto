@@ -296,8 +296,19 @@ export function LoginScreen() {
           router.replace('/')
           return
         }
+        // Warning haptic for genuine failures (not user-initiated cancels),
+        // matching the sign-in path's feedback.
+        if (
+          result.error !== 'user_cancel' &&
+          result.error !== 'system_cancel'
+        ) {
+          void triggerHaptic('warning')
+        }
         const feedback = biometricFeedbackForError(result.error, biometricState.label)
-        if (feedback) actions.setInfoMessage(feedback.message)
+        // A lockout is a warning state — surface it as an error pill so the
+        // icon/colour match its severity (the face-id view only has
+        // error/info intents).
+        if (feedback) actions.setErrorMessage(feedback.message)
         setStatus('idle')
         return
       }
