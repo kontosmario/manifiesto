@@ -71,6 +71,13 @@ export function RootLayoutShell() {
             for the entire app. Renders nothing of its own.
           */}
           <GlobalConnectivityWatcher />
+
+          {/*
+            Background re-lock watcher: re-arms the per-launch app-lock
+            (resetAppLock + replace('/')) when the app returns from
+            background after >60s, so AppEntryGate re-prompts Face ID.
+            Renders nothing of its own.
+          */}
           <BackgroundRelockWatcher />
 
           {/*
