@@ -245,7 +245,7 @@ Implementado en [`biometric-auth.ts`](../../../mobile/lib/biometric-auth.ts) con
 
 **Setup automático:** tras un sign-in manual exitoso, `persistBiometricCredentials` pregunta si habilitar biometría (`authenticateBiometricAccess({ promptMessage: "Activa Face ID para entrar más rápido" })`).
 
-**App-lock:** módulo [`app-lock-state.ts`](../../../mobile/features/auth/app-lock-state.ts) — store module-level en memoria (resets en cold start). `markAppUnlocked()` / `resetAppLock()` / `useAppLockState()`. NO implementa re-lock por backgrounding.
+**App-lock:** módulo [`app-lock-state.ts`](../../../mobile/features/auth/app-lock-state.ts) — store module-level en memoria (resets en cold start). `markAppUnlocked()` / `resetAppLock()` / `useAppLockState()`. **Re-lock por background:** [`background-relock-watcher.tsx`](../../../mobile/components/root/background-relock-watcher.tsx) (montado en RootLayoutShell) re-arma el lock vía `resetAppLock()` + `router.replace('/')` si la app estuvo > 60s en background (helper puro `shouldRelock` en [`background-relock.ts`](../../../mobile/features/auth/background-relock.ts)). El gate de app-lock usa `disableDeviceFallback: true` (solo biometría; el escape es "Usar contraseña", que re-autentica con la contraseña de la cuenta). Copy de lockout diferenciada vía `biometricFeedbackForError`. El status local del login es `'idle' | 'scanning'` (el estado `'authed'` se eliminó: el transition splash ya cubre el éxito).
 
 **Auto-sign-in:** `useAuthBiometricAutoSignIn` está **deshabilitado** (no-op). Face ID solo se dispara al tocar el botón explícito o via `?autoBiometric=1`.
 
