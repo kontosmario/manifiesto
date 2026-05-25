@@ -40,9 +40,9 @@ export function BackgroundRelockWatcher() {
         leftActiveAtRef.current = null
         if (relock) {
           resetAppLock()
-          // Safe to call router here: this watcher is mounted inside
-          // the root Stack (RootLayoutShell), so the router is ready by
-          // the time any foreground event fires.
+          // Safe to call router here: this watcher is mounted in the root
+          // layout (RootLayoutShell), so the navigation context is ready
+          // before any foreground event can fire.
           router.replace('/')
         }
         return

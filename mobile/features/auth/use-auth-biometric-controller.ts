@@ -150,7 +150,7 @@ export function useAuthBiometricController({
             biometricResult.error,
             biometricState.label,
           )
-          if (feedback) onInfoMessage(feedback.message)
+          if (feedback) onErrorMessage(feedback.message)
           return
         }
 
