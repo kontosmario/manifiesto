@@ -10,6 +10,7 @@ import Animated, {
 import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
+import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
@@ -70,6 +71,7 @@ export function RootLayoutShell() {
             for the entire app. Renders nothing of its own.
           */}
           <GlobalConnectivityWatcher />
+          <BackgroundRelockWatcher />
 
           {/*
             Cold-start splash: shown ONCE per app launch, fades itself
