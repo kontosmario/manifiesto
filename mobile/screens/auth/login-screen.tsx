@@ -58,9 +58,8 @@ const DARK_GREEN = authTokens.welcomeBg
 const CREAM = authTokens.surfaceCream
 const PEACH = authTokens.peach
 const CLAY = authTokens.clay
-const FOCUS = authTokens.focusRing
 
-type Status = 'idle' | 'scanning' | 'authed'
+type Status = 'idle' | 'scanning'
 type FormMode = 'use-password' | 'change-account' | null
 
 /**
@@ -73,7 +72,7 @@ type FormMode = 'use-password' | 'change-account' | null
  *
  * The actual Face ID handshake is delegated to `useLoginController` →
  * `actions.handleBiometricSignIn`, which prompts Local Authentication and
- * signs in via the saved password. UI state (`scanning`/`authed`) is local
+ * signs in via the saved password. UI state (`scanning`) is local
  * and synced from controller flags.
  */
 export function LoginScreen() {
@@ -199,7 +198,7 @@ export function LoginScreen() {
   // updaters for BOTH branches so we never read `status` from a stale
   // closure (the previous version did, behind an eslint-disable, which
   // made the scanning→idle reset race-prone after a cancel and could
-  // leave the CTA stuck disabled). 'authed' is terminal and left alone.
+  // leave the CTA stuck disabled).
   useEffect(() => {
     if (controller.isBusy) {
       setStatus((prev) => (prev === 'idle' ? 'scanning' : prev))
@@ -446,13 +445,11 @@ export function LoginScreen() {
   }, [actions])
 
   const ctaLabel =
-    status === 'authed'
-      ? 'Entrando…'
-      : status === 'scanning'
-        ? 'Reconociendo'
-        : `Entrar con ${biometricState.label || 'Face ID'}`
+    status === 'scanning'
+      ? 'Reconociendo'
+      : `Entrar con ${biometricState.label || 'Face ID'}`
 
-  const ctaBg = status === 'authed' ? FOCUS : DARK_GREEN
+  const ctaBg = DARK_GREEN
 
   // Which action block to render. Centralised in a pure helper so the
   // lock-mode invariant (Face ID CTA always available — see
@@ -534,17 +531,7 @@ export function LoginScreen() {
                       end={{ x: 1, y: 1 }}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    {status === 'authed' ? (
-                      <Svg width={44} height={44} viewBox="0 0 44 44" fill="none">
-                        <Path
-                          d="M11 22l8 8 14-16"
-                          stroke={CREAM}
-                          strokeWidth={3.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </Svg>
-                    ) : lastUserAvatarSlug ? (
+                    {lastUserAvatarSlug ? (
                       // Personalized animal avatar from the cached
                       // profile — set after every successful session.
                       <AvatarAnimal
