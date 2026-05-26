@@ -42,6 +42,11 @@ export function useCompleteOnboarding(userId?: string) {
       )
       await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
 
+      // TEMP_DIAG_TOURS_2026-05-26: confirm onSuccess is firing + resets run.
+      if (__DEV__) {
+        console.warn('[diag complete-onboarding] onSuccess fired', { userId, completedAt })
+      }
+
       // Reset tour-seen flags so the home/gastos/fijos/control tours
       // auto-fire for this brand-new account. The flags live device-wide
       // in SecureStore; a previous user (or test) on this device could
@@ -52,6 +57,10 @@ export function useCompleteOnboarding(userId?: string) {
       // evaluates against the now-recent onboarding timestamp (this user
       // is "new", not "existing", so backfill should be a no-op).
       await deletePersistentValue('tours-backfill-done')
+      // TEMP_DIAG_TOURS_2026-05-26
+      if (__DEV__) {
+        console.warn('[diag complete-onboarding] tours reset done')
+      }
     },
   })
 }
