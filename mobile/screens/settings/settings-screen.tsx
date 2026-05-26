@@ -56,7 +56,7 @@ import {
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
-import { resetAllTours } from '@/features/tours'
+import { ALL_TOUR_KEYS, resetAllTours, resetTourSeen, TOUR_KEYS } from '@/features/tours'
 import {
   setAssistantDemoMode,
   useAssistantDemoMode,
@@ -456,6 +456,31 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       'Listo',
       'La próxima vez que abras Inicio, Gastos, Fijos y Control vas a ver el tutorial guiado.',
     )
+  }, [])
+
+  // Ayuda · Tutoriales — re-watch a single tour or all four.
+  // Resets the "seen" flag then navigates to the relevant tab so
+  // `useScreenTour` fires the auto-start on next focus.
+  const handleRewatchTour = useCallback(
+    async (tourKey: (typeof ALL_TOUR_KEYS)[number]) => {
+      await resetTourSeen(tourKey)
+      const target =
+        tourKey === TOUR_KEYS.home
+          ? '/(app)/(tabs)/home'
+          : tourKey === TOUR_KEYS.gastos
+            ? '/(app)/(tabs)/expenses'
+            : tourKey === TOUR_KEYS.fijos
+              ? '/(app)/(tabs)/fixed-expenses'
+              : '/(app)/(tabs)/insights'
+      router.push(target)
+    },
+    [router],
+  )
+
+  const handleResetAllTours = useCallback(async () => {
+    await resetAllTours()
+    // No navigation: the user stays where they are. Next visit to each
+    // screen will auto-fire its tour.
   }, [])
 
   // Owner-with-members destructive flow lives in a dedicated sheet so
@@ -985,7 +1010,43 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 6. APARIENCIA */}
+            {/* 6. AYUDA · TUTORIALES */}
+            <RiseView delay={320}>
+              <SettingsGroup
+                title="Ayuda"
+                footer="Volvé a ver cualquier tutorial cuando quieras."
+              >
+                <SettingsRow
+                  icon="home"
+                  label="Ver tutorial de Inicio"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.home)}
+                />
+                <SettingsRow
+                  icon="receipt-long"
+                  label="Ver tutorial de Gastos"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.gastos)}
+                />
+                <SettingsRow
+                  icon="event-repeat"
+                  label="Ver tutorial de Fijos"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.fijos)}
+                />
+                <SettingsRow
+                  icon="insights"
+                  label="Ver tutorial de Control"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.control)}
+                />
+                <SettingsRow
+                  icon="restart-alt"
+                  label="Volver a ver todos los tutoriales"
+                  helper="Resetea los 4 tutoriales — el próximo ingreso a cada pantalla los vuelve a mostrar."
+                  onPress={() => void handleResetAllTours()}
+                  isLast
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 7. APARIENCIA */}
             <RiseView delay={320}>
               <SettingsGroup footer={`Tema actual: ${themeValue}.`} title="Apariencia">
                 <View style={styles.appearanceInner}>
