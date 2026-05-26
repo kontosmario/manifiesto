@@ -120,9 +120,6 @@ export function HomeDashboard({
   const { theme } = useAppTheme()
   const today = useCurrentDate()
   const queryClient = useQueryClient()
-  // Auto-start the Home guided tour on first visit. Hook is a no-op
-  // if the tour was already seen or globally disabled in Settings.
-  useScreenTour(HOME_TOUR)
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
 
   // ─── Tour targets that can't be wrapped via <TourTarget> ────────
@@ -221,6 +218,15 @@ export function HomeDashboard({
   )
   const onboardingSkippedViaExpense = storedCycleAnchor == null && hasManualExpense
   const isOnboardingFlow = storedCycleAnchor == null
+  // Auto-start the Home guided tour on first visit. Hook is a no-op
+  // if the tour was already seen or globally disabled in Settings.
+  // Gated on !isOnboardingFlow: we wait for the user to confirm the
+  // cycle starting balance before firing the tour. Otherwise the tour
+  // overlay and the saldo-CTA bottom sheet stack as two Modals (iOS
+  // gets glitched: scrim renders invisible, touches captured silently).
+  // Once the balance is confirmed, isOnboardingFlow flips false and
+  // the tour fires normally.
+  useScreenTour(HOME_TOUR, { enabled: !isOnboardingFlow })
 
   // Side-effect: when the user dropped the onboarding sheet by
   // adding an expense, write a neutral cycle anchor in the
