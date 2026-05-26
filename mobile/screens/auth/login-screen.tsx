@@ -32,6 +32,8 @@ import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
+import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
+import { resolveLoginActionView } from '@/features/auth/login-action-view'
 import { useLoginController } from '@/features/auth/use-login-controller'
 import {
   isAppleSignInAvailable,
@@ -56,9 +58,8 @@ const DARK_GREEN = authTokens.welcomeBg
 const CREAM = authTokens.surfaceCream
 const PEACH = authTokens.peach
 const CLAY = authTokens.clay
-const FOCUS = authTokens.focusRing
 
-type Status = 'idle' | 'scanning' | 'authed'
+type Status = 'idle' | 'scanning'
 type FormMode = 'use-password' | 'change-account' | null
 
 /**
@@ -71,7 +72,7 @@ type FormMode = 'use-password' | 'change-account' | null
  *
  * The actual Face ID handshake is delegated to `useLoginController` →
  * `actions.handleBiometricSignIn`, which prompts Local Authentication and
- * signs in via the saved password. UI state (`scanning`/`authed`) is local
+ * signs in via the saved password. UI state (`scanning`) is local
  * and synced from controller flags.
  */
 export function LoginScreen() {
@@ -193,14 +194,19 @@ export function LoginScreen() {
   // Local UI status reflects the biometric submission.
   const [status, setStatus] = useState<Status>('idle')
 
+  // Sync local `status` to the controller's busy flag. Uses functional
+  // updaters for BOTH branches so we never read `status` from a stale
+  // closure (the previous version did, behind an eslint-disable, which
+  // made the scanning→idle reset race-prone after a cancel and could
+  // leave the CTA stuck disabled).
   useEffect(() => {
-    if (controller.biometricState && controller.isBusy) {
+    if (controller.isBusy) {
       setStatus((prev) => (prev === 'idle' ? 'scanning' : prev))
-    } else if (!controller.isBusy && status === 'scanning') {
-      // controller stopped — assume the prompt closed
-      setStatus('idle')
+    } else {
+      // controller stopped — assume the prompt closed; drop back to idle
+      // if we were mid-scan so the CTA re-enables for a retry.
+      setStatus((prev) => (prev === 'scanning' ? 'idle' : prev))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controller.isBusy])
 
   // Greeting prefers the cached display name (set after every successful
@@ -270,50 +276,59 @@ export function LoginScreen() {
   const triggerFaceID = useCallback(async () => {
     if (status !== 'idle' || isBusy) return
     await triggerHaptic('selection')
+    actions.clearFeedback()
     setStatus('scanning')
     try {
       if (isLockMode) {
-        // App-lock unlock path: just authenticate Face ID, then
-        // mark the app unlocked and route home. No Supabase
-        // refresh — the session is already valid; this gate is
-        // purely a per-launch security re-confirmation. On cancel
-        // we fall through to 'idle' so the user sees the full
-        // login hero with retry CTA + secondary buttons.
+        // App-lock unlock path: strict biometric gate (no device-passcode
+        // fallback). On success mark unlocked + route home. On failure we
+        // stay on the lock screen (idle) with the CTA + "Usar contraseña"
+        // escape; surface differentiated copy for a lockout.
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
+          disableDeviceFallback: true,
         })
         if (result.success) {
           await triggerHaptic('success')
-          // Show the fern transition splash so the user sees the
-          // same visual handshake as a fresh sign-in (Face ID OK →
-          // fern → home), not a bare route change. AppEntryGate
-          // calls `markAuthTransitionLoaded` once routing settles.
           showAuthTransitionSplash()
           markAppUnlocked()
           router.replace('/')
           return
         }
+        // Warning haptic for genuine failures (not user-initiated cancels),
+        // matching the sign-in path's feedback.
+        if (
+          result.error !== 'user_cancel' &&
+          result.error !== 'system_cancel'
+        ) {
+          void triggerHaptic('warning')
+        }
+        const feedback = biometricFeedbackForError(result.error, biometricState.label)
+        // A lockout is a warning state — surface it as an error pill so the
+        // icon/colour match its severity (the face-id view only has
+        // error/info intents).
+        if (feedback) actions.setErrorMessage(feedback.message)
         setStatus('idle')
         return
       }
       await actions.handleBiometricSignIn()
-      // `handleBiometricSignIn` swallows every non-success path
-      // internally — cancellations, stale credentials, and network
-      // failures all return normally instead of throwing. On actual
-      // success the controller navigates the user away (this screen
-      // unmounts), so reaching this line means the prompt was
-      // cancelled or failed silently. Reset to 'idle' so the CTA
-      // stops saying "Entrando…" and the user can retry.
+      // handleBiometricSignIn swallows every non-success path internally
+      // (cancel / stale creds / network) and returns. On success it
+      // navigates away (this screen unmounts). Reaching here = cancelled
+      // or failed silently → reset to idle so the user can retry.
       setStatus('idle')
     } catch {
-      // Defensive: handleBiometricSignIn doesn't throw today, but
-      // if that ever changes, fall back to the password form so
-      // the user has a path forward.
+      // Defensive: handleBiometricSignIn doesn't throw today. In sign-in
+      // mode fall back to the password form so the user has a path
+      // forward; in lock mode stay on the lock screen (the password
+      // escape is already visible there).
       setStatus('idle')
-      userPickedModeRef.current = true
-      setFormMode('use-password')
+      if (!isLockMode) {
+        userPickedModeRef.current = true
+        setFormMode('use-password')
+      }
     }
-  }, [actions, isBusy, status, isLockMode, router])
+  }, [actions, isBusy, status, isLockMode, router, biometricState.label])
 
   // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
   // Guarded by a ref so a setState-driven re-render (e.g. status flips
@@ -323,12 +338,16 @@ export function LoginScreen() {
   useEffect(() => {
     if (autoBiometricFiredRef.current) return
     if (params.autoBiometric !== '1') return
-    if (!hasSavedBiometric) return
+    // In lock mode we KNOW biometrics are enrolled (AppEntryGate only
+    // routes here when shouldUseBiometric === true), so don't wait on
+    // the async re-probe — fire as soon as we can. In sign-in mode we
+    // still gate on the saved-credential probe.
+    if (!isLockMode && !hasSavedBiometric) return
     if (isBusy || status !== 'idle') return
     autoBiometricFiredRef.current = true
     router.setParams({ autoBiometric: undefined })
     void triggerFaceID()
-  }, [params.autoBiometric, hasSavedBiometric, isBusy, status, router, triggerFaceID])
+  }, [params.autoBiometric, hasSavedBiometric, isLockMode, isBusy, status, router, triggerFaceID])
 
   const handleSwitchAccount = useCallback(() => {
     void triggerHaptic('selection')
@@ -426,13 +445,21 @@ export function LoginScreen() {
   }, [actions])
 
   const ctaLabel =
-    status === 'authed'
-      ? 'Entrando…'
-      : status === 'scanning'
-        ? 'Reconociendo'
-        : `Entrar con ${biometricState.label || 'Face ID'}`
+    status === 'scanning'
+      ? 'Reconociendo'
+      : `Entrar con ${biometricState.label || 'Face ID'}`
 
-  const ctaBg = status === 'authed' ? FOCUS : DARK_GREEN
+  const ctaBg = DARK_GREEN
+
+  // Which action block to render. Centralised in a pure helper so the
+  // lock-mode invariant (Face ID CTA always available — see
+  // login-action-view.ts) is explicit and regression-tested.
+  const actionView = resolveLoginActionView({
+    formMode,
+    isLockMode,
+    hasSavedBiometric,
+    isReturningUser,
+  })
 
   const body = (
     <>
@@ -504,17 +531,7 @@ export function LoginScreen() {
                       end={{ x: 1, y: 1 }}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    {status === 'authed' ? (
-                      <Svg width={44} height={44} viewBox="0 0 44 44" fill="none">
-                        <Path
-                          d="M11 22l8 8 14-16"
-                          stroke={CREAM}
-                          strokeWidth={3.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </Svg>
-                    ) : lastUserAvatarSlug ? (
+                    {lastUserAvatarSlug ? (
                       // Personalized animal avatar from the cached
                       // profile — set after every successful session.
                       <AvatarAnimal
@@ -584,7 +601,7 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.actionsStack}>
-          {formMode ? (
+          {actionView === 'password-form' && formMode ? (
               <>
                 <PasswordForm
                   mode={formMode}
@@ -612,8 +629,14 @@ export function LoginScreen() {
                   />
                 ) : null}
               </>
-            ) : hasSavedBiometric ? (
+            ) : actionView === 'face-id' ? (
               <>
+                {errorMessage ? (
+                  <FeedbackPill intent="error" message={errorMessage} />
+                ) : null}
+                {!errorMessage && infoMessage ? (
+                  <FeedbackPill intent="info" message={infoMessage} />
+                ) : null}
                 <Pressable
                   accessibilityLabel={ctaLabel}
                   accessibilityRole="button"
@@ -677,7 +700,7 @@ export function LoginScreen() {
                   />
                 ) : null}
               </>
-            ) : isReturningUser ? (
+            ) : actionView === 'secondary-only' ? (
               // Cached profile from a previous login but biometric isn't
               // saved (or the device doesn't support it). Skip the
               // Face ID CTA and show just the secondary actions.
@@ -714,7 +737,9 @@ export function LoginScreen() {
                 </Pressable>
               </View>
             ) : null}
-            {!formMode && appleAvailable && !hasSavedBiometric ? (
+            {actionView !== 'password-form' &&
+            actionView !== 'face-id' &&
+            appleAvailable ? (
               <AppleSignInRow
                 busy={appleSigningIn}
                 error={appleError}

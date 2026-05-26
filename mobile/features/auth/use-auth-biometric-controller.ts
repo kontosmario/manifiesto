@@ -16,6 +16,7 @@ import {
   hideAuthTransitionSplash,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
+import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { getErrorMessage } from '@/utils/error-message'
@@ -145,6 +146,11 @@ export function useAuthBiometricController({
           ) {
             void triggerHaptic('warning')
           }
+          const feedback = biometricFeedbackForError(
+            biometricResult.error,
+            biometricState.label,
+          )
+          if (feedback) onErrorMessage(feedback.message)
           return
         }
 

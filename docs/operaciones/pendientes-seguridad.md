@@ -284,3 +284,28 @@ Solo para referencia (no son pendings, ya están en producción):
 - ✅ Account deletion flow completo (migraciones `20260517000000`, `20260518000000`, `20260518010000`): soft-delete 30d, RPC `request_account_deletion` + `cancel_account_deletion`, cron processor, lockdown service_role-only para funciones admin. Cierra App Store Guideline 5.1.1(v).
 
 <!-- ✓ Contrastado contra código el 2026-05-22 -->
+
+---
+
+## Auditoría de login + biometría — 2026-05-24
+
+Auditoría del flujo Face ID / app-lock a raíz de un bug reportado (el CTA Face ID desaparecía al cancelar la biometría con sesión activa).
+
+### Cerrado en esta auditoría
+- ✅ **CTA Face ID desaparece en lock mode al cancelar** — el botón estaba condicionado al re-sondeo async `hasSavedBiometric`, que podía dar `false` transitoriamente y dejar solo "Usar contraseña"/"Cambiar cuenta". Fix: helper puro `resolveLoginActionView` con invariante de lock mode (CTA siempre disponible) + auto-fire en lock mode independiente del re-sondeo. Archivos: [login-action-view.ts](../../mobile/features/auth/login-action-view.ts), [login-screen.tsx](../../mobile/screens/auth/login-screen.tsx). Tests: `tests/unit/login-action-view.test.ts`.
+- ✅ **`getBiometricLoginState` todo-o-nada** — `Promise.all` + catch único colapsaba todo a `false` ante un fallo transitorio de cualquier read. Migrado a `Promise.allSettled` (degrada solo la señal que falla). [biometric-auth.ts](../../mobile/lib/biometric-auth.ts). Tests: `tests/unit/biometric-login-state.test.ts`.
+- ✅ **Effect de `status` con closure stale** (botón podía quedar deshabilitado tras cancelar) — reescrito con updaters funcionales, sin `eslint-disable` de deps. [login-screen.tsx](../../mobile/screens/auth/login-screen.tsx).
+- ✅ **Re-lock por background (60s)** — `background-relock-watcher.tsx` (+ helper puro `shouldRelock` en `background-relock.ts`, montado en `root-layout-shell.tsx`) re-arma el app-lock al volver de >60s en background.
+- ✅ **Gate de app-lock biométrico estricto** — `disableDeviceFallback: true` en lock mode (sin passcode del dispositivo); escape vía "Usar contraseña" que re-autentica. Param nuevo en `authenticateBiometricAccess`.
+- ✅ **Copy de iOS lockout** — `biometric-feedback.ts` (`biometricFeedbackForError`) cableado en lock mode (error pill + haptic) y en sign-in mode.
+- ✅ **lock-mode `catch` ya no dumpea a password form** — en lock mode un fallo deja al usuario en el lock screen con el escape visible.
+- ✅ **Estado `'authed'` muerto eliminado** — status del login simplificado a `'idle' | 'scanning'`.
+
+### Gaps abiertos (no bloqueantes, sin fix en esta pasada)
+| Item | Severidad | Nota |
+|---|---|---|
+| Blur de privacidad en app-switcher | Baja | Sin overlay al pasar al app-switcher de iOS, la última pantalla (potencialmente con datos financieros) queda visible en el thumbnail. |
+| Biometría estricta en login sin sesión | Baja | En el flujo de sign-in sin sesión (usuario nuevo / sin credenciales guardadas) `disableDeviceFallback` es `false` — el passcode del dispositivo pasa el gate de setup. Decisión de producto pendiente. |
+| `useAuthBiometricAutoSignIn` no-op cableado | Baja | Hook es no-op pero sigue recibiendo un `enabled` computado que no hace nada. |
+
+<!-- ✓ Auditoría contrastada contra código el 2026-05-24 -->

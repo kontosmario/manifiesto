@@ -16,9 +16,11 @@
 //   again. (Without this, the in-process state would survive a
 //   sign-out + sign-in cycle and the new user would skip the gate.)
 //
-//   Foreground-from-background re-lock is NOT implemented here. If
-//   we want that later, an AppState listener can call `resetAppLock`
-//   when the app has been backgrounded longer than N seconds.
+//   Foreground-from-background re-lock IS implemented (2026-05-24):
+//   `background-relock-watcher.tsx` calls `resetAppLock()` +
+//   `router.replace('/')` when the app returns to foreground after
+//   more than BACKGROUND_RELOCK_THRESHOLD_MS (60s) in background. The
+//   pure decision lives in `background-relock.ts`.
 
 import { useSyncExternalStore } from 'react'
 

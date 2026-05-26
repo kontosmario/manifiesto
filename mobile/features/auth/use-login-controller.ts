@@ -198,6 +198,7 @@ export function useLoginController() {
     useReferenceSignInLayout,
     emailInputRef,
     actions: {
+      clearFeedback,
       dismissKeyboard: keyboardActions.dismissKeyboard,
       handleBiometricSignIn,
       handleFieldBlur: keyboardActions.handleFieldBlur,
@@ -206,6 +207,8 @@ export function useLoginController() {
       handleViewportLayout: keyboardActions.handleViewportLayout,
       setDisplayName,
       setEmail,
+      setErrorMessage,
+      setInfoMessage,
       setPassword: setPasswordValue,
       updateMode,
     },

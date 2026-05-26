@@ -115,6 +115,7 @@ AppEntryGate
   - **First-time** (sin sesión previa en dispositivo): hero genérico "Hola de vuelta" con Fern logo. Directamente abre `formMode='change-account'`.
   - **App-lock** (`?lock=1`): mismo hero returning, pero Face ID solo llama `authenticateBiometricAccess` + `markAppUnlocked` + `router.replace('/')` sin Supabase refresh.
   - **Auto-biometric** (`?autoBiometric=1`): dispara `triggerFaceID()` automáticamente al montar (una sola vez, guarda con `autoBiometricFiredRef`).
+- **Qué bloque de acción se muestra:** decidido por el helper puro `resolveLoginActionView({ formMode, isLockMode, hasSavedBiometric, isReturningUser })` ([login-action-view.ts](../../../mobile/features/auth/login-action-view.ts), testeado). **Invariante de lock mode:** en `?lock=1` el CTA "Entrar con Face ID" se muestra SIEMPRE (no condicionado al re-sondeo `hasSavedBiometric`), porque AppEntryGate solo entra a lock mode si la biometría está habilitada. Esto corrige un bug donde, al cancelar el Face ID con sesión válida, el re-sondeo async podía dar `false` y esconder el CTA dejando solo "Usar contraseña"/"Cambiar cuenta" (sin sentido para un usuario ya logueado). El auto-fire en lock mode tampoco espera al re-sondeo.
 - **Formulario password:** dos sub-modos:
   - `use-password`: solo campo contraseña (email pre-rellenado desde cache). Incluye "¿Olvidaste tu contraseña?" → `push('/(auth)/forgot-password')`.
   - `change-account`: email + contraseña.
@@ -226,7 +227,7 @@ Implementado en [`biometric-auth.ts`](../../../mobile/lib/biometric-auth.ts) con
 - `auth.biometric.credentials` → `{ email, refreshToken }` (SecureStore).
 - `auth.biometric.metadata` → `{ email }` (SecureStore, legible sin el token completo para mostrar el hero personalizado).
 
-**`getBiometricLoginState()`:** consulta en paralelo `SecureStore.isAvailableAsync()`, `LocalAuthentication.hasHardwareAsync()`, `LocalAuthentication.isEnrolledAsync()`, `supportedAuthenticationTypesAsync()` + metadata.
+**`getBiometricLoginState()`:** consulta en paralelo `SecureStore.isAvailableAsync()`, `LocalAuthentication.hasHardwareAsync()`, `LocalAuthentication.isEnrolledAsync()`, `supportedAuthenticationTypesAsync()` + metadata. Usa **`Promise.allSettled`** (no `Promise.all` + catch único): un read que falla de forma transitoria degrada solo esa señal en vez de colapsar todo a `false` — clave para que un hipo de SecureStore no flipee `hasSavedCredentials`/`isAvailable` y esconda el CTA en la pantalla de bloqueo. Cubierto por `tests/unit/biometric-login-state.test.ts`.
 
 **Labels auto-detectados:**
 - `FACIAL_RECOGNITION` → "Face ID" (iOS) / "reconocimiento facial" (Android).
@@ -244,7 +245,7 @@ Implementado en [`biometric-auth.ts`](../../../mobile/lib/biometric-auth.ts) con
 
 **Setup automático:** tras un sign-in manual exitoso, `persistBiometricCredentials` pregunta si habilitar biometría (`authenticateBiometricAccess({ promptMessage: "Activa Face ID para entrar más rápido" })`).
 
-**App-lock:** módulo [`app-lock-state.ts`](../../../mobile/features/auth/app-lock-state.ts) — store module-level en memoria (resets en cold start). `markAppUnlocked()` / `resetAppLock()` / `useAppLockState()`. NO implementa re-lock por backgrounding.
+**App-lock:** módulo [`app-lock-state.ts`](../../../mobile/features/auth/app-lock-state.ts) — store module-level en memoria (resets en cold start). `markAppUnlocked()` / `resetAppLock()` / `useAppLockState()`. **Re-lock por background:** [`background-relock-watcher.tsx`](../../../mobile/components/root/background-relock-watcher.tsx) (montado en RootLayoutShell) re-arma el lock vía `resetAppLock()` + `router.replace('/')` si la app estuvo > 60s en background (helper puro `shouldRelock` en [`background-relock.ts`](../../../mobile/features/auth/background-relock.ts)). El gate de app-lock usa `disableDeviceFallback: true` (solo biometría; el escape es "Usar contraseña", que re-autentica con la contraseña de la cuenta). Copy de lockout diferenciada vía `biometricFeedbackForError`. El status local del login es `'idle' | 'scanning'` (el estado `'authed'` se eliminó: el transition splash ya cubre el éxito).
 
 **Auto-sign-in:** `useAuthBiometricAutoSignIn` está **deshabilitado** (no-op). Face ID solo se dispara al tocar el botón explícito o via `?autoBiometric=1`.
 
