@@ -314,6 +314,14 @@ Adicionalmente, `getBiometricLoginState` consulta una flag persistente en AsyncS
 
 - **Back en step 1:** Alert con opciones "Seguir aquí" (cancel) / "Cerrar sesión" (destructivo → `logoutSession` → welcome).
 
+**Success screen post-wizard** ([`onboarding-success-screen.tsx`](../../../mobile/screens/home/onboarding-success-screen.tsx), ruta [`/(app)/onboarding-success`](../../../app/(app)/onboarding-success.tsx)): pantalla intermedia entre el step 5 del wizard y Home. Muestra avatar + saludo personalizado por modo (solo vs familia, derivado vía [`onboardingSuccessCopy`](../../../mobile/features/onboarding/success-copy.ts)) + CTA "Empezar" tap-to-continue. `useCompleteOnboarding` ahora hace `setQueryData` síncrono sobre el profile cache antes de invalidar, así `RequireAuth` ve `onboarding_completed_at` set y no bouncea a la ruta de wizard.
+
+**Auto-fire de tours** ([`useScreenTour`](../../../mobile/features/tours/use-screen-tour.ts)): ya cableado en `home-dashboard.tsx`, `gastos-v2-screen.tsx`, `fijos-v2-screen.tsx`, `control-v2-screen.tsx`. Primera visita a cada screen fira el tour respectivo (gated por `getToursEnabled` + `getTourSeen` + splash hidden). Marca `seen` on stop. **Backfill para usuarios existentes:** [`use-backfill-existing-user.ts`](../../../mobile/features/tours/use-backfill-existing-user.ts), invocado en `AppEntryGate`, marca los 4 tours como seen para cualquier usuario cuyo `onboarding_completed_at` sea anterior a `TOURS_FEATURE_DEPLOYED_AT` (constante en [`backfill-config.ts`](../../../mobile/features/tours/backfill-config.ts)). Idempotente vía flag persistente `tours-backfill-done`.
+
+**Hero del Home** ([`home-hero-card.tsx`](../../../mobile/components/home/home-hero-card.tsx)): recibe `heroMode` ({kind, memberCount, familyName, userFirstName}) y usa [`familyModeHeroCopy`](../../../mobile/features/family/family-mode-copy.ts) para resolver eyebrow + título contextual al modo (`'Tu espacio personal'` + nombre del usuario en solo, `'Tu familia'` + nombre o `N miembros` en shared).
+
+**CTA de saldo inicial** ([`starting-balance-cta.tsx`](../../../mobile/components/home/starting-balance-cta.tsx)): card destacada con pulse sutil + `TourTarget`. `home-dashboard.tsx` la renderiza cuando `isOnboardingFlow && !onboardingSkippedViaExpense && monthlyIncome > 0`. Tap → abre el cycle balance sheet existente (`setCycleBalanceSheetOpen(true)`).
+
 ---
 
 ### Household Setup (`/(app)/household-setup`) ✅ LIVE
