@@ -6,7 +6,7 @@ describe('onboardingSuccessCopy', () => {
     expect(
       onboardingSuccessCopy({ kind: 'solo', firstName: 'Mario' }),
     ).toEqual({
-      eyebrow: 'Bienvenido a Manifiesto',
+      eyebrow: 'Ya estás en Manifiesto',
       title: '¡Listo, Mario!',
       subtitle: 'Tu espacio personal ya está armado. Vamos a Home.',
       ctaLabel: 'Empezar',
@@ -17,7 +17,7 @@ describe('onboardingSuccessCopy', () => {
     expect(
       onboardingSuccessCopy({ kind: 'solo', firstName: '' }),
     ).toEqual({
-      eyebrow: 'Bienvenido a Manifiesto',
+      eyebrow: 'Ya estás en Manifiesto',
       title: '¡Listo!',
       subtitle: 'Tu espacio personal ya está armado. Vamos a Home.',
       ctaLabel: 'Empezar',
@@ -28,7 +28,7 @@ describe('onboardingSuccessCopy', () => {
     expect(
       onboardingSuccessCopy({ kind: 'shared', firstName: 'Mario' }),
     ).toEqual({
-      eyebrow: 'Bienvenido a Manifiesto',
+      eyebrow: 'Ya estás en Manifiesto',
       title: '¡Listo, Mario!',
       subtitle: 'Tu familia ya está armada. Vamos a Home.',
       ctaLabel: 'Empezar',
@@ -39,7 +39,7 @@ describe('onboardingSuccessCopy', () => {
     expect(
       onboardingSuccessCopy({ kind: 'shared', firstName: '' }),
     ).toEqual({
-      eyebrow: 'Bienvenido a Manifiesto',
+      eyebrow: 'Ya estás en Manifiesto',
       title: '¡Listo!',
       subtitle: 'Tu familia ya está armada. Vamos a Home.',
       ctaLabel: 'Empezar',

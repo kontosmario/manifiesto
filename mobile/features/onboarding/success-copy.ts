@@ -23,7 +23,7 @@ export function onboardingSuccessCopy(
       ? 'Tu espacio personal ya está armado. Vamos a Home.'
       : 'Tu familia ya está armada. Vamos a Home.'
   return {
-    eyebrow: 'Bienvenido a Manifiesto',
+    eyebrow: 'Ya estás en Manifiesto',
     title,
     subtitle,
     ctaLabel: 'Empezar',

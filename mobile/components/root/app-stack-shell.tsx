@@ -207,6 +207,13 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="onboarding-success"
+          options={{
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="add-expense"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',

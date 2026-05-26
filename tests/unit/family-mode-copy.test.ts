@@ -26,7 +26,7 @@ describe('familyModeHeroCopy', () => {
       }),
     ).toEqual({
       eyebrow: 'Tu espacio personal',
-      title: 'Bienvenido',
+      title: '¡Hola!',
     })
   })
 

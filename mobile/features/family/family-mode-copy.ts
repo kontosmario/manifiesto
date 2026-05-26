@@ -21,7 +21,7 @@ export function familyModeHeroCopy(input: FamilyModeHeroInput): FamilyModeHeroCo
   if (input.kind === 'solo') {
     return {
       eyebrow: 'Tu espacio personal',
-      title: input.userFirstName ?? 'Bienvenido',
+      title: input.userFirstName ?? '¡Hola!',
     }
   }
   return {
