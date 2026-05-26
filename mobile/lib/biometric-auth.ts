@@ -21,6 +21,11 @@
 import { Platform } from 'react-native'
 import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
+import {
+  clearBiometricEnabledFlag,
+  isBiometricEnabledFlagSet,
+  setBiometricEnabledFlag,
+} from '@/features/auth/biometric-enabled-flag'
 
 const BIOMETRIC_CREDENTIALS_KEY = 'auth.biometric.credentials'
 const BIOMETRIC_METADATA_KEY = 'auth.biometric.metadata'
@@ -104,12 +109,13 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
   // session and hid the only valid action (the Face ID CTA). With
   // `allSettled` a single failing read degrades just that signal — the
   // others (notably the saved-credential metadata) survive.
-  const [secureStore, hardware, enrolled, types, metadata] = await Promise.allSettled([
+  const [secureStore, hardware, enrolled, types, metadata, enabledFlag] = await Promise.allSettled([
     SecureStore.isAvailableAsync(),
     LocalAuthentication.hasHardwareAsync(),
     LocalAuthentication.isEnrolledAsync(),
     LocalAuthentication.supportedAuthenticationTypesAsync(),
     readBiometricMetadata(),
+    isBiometricEnabledFlagSet(),
   ])
 
   const settledValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
@@ -120,9 +126,16 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
   const isEnrolled = settledValue(enrolled, false)
   const supportedTypes = settledValue(types, [] as LocalAuthentication.AuthenticationType[])
   const savedMetadata = settledValue(metadata, null)
+  const flagIsSet = settledValue(enabledFlag, false)
 
+  // `hasSavedCredentials` is the OR of two signals so a transient
+  // SecureStore failure can't collapse it to false and bypass the
+  // app-lock gate. The keychain metadata is the source of truth when
+  // readable; the AsyncStorage flag is a non-encrypted mirror that
+  // survives a flaky keychain read. Both are set on save and cleared
+  // on logout in lock-step.
   return {
-    hasSavedCredentials: Boolean(savedMetadata),
+    hasSavedCredentials: Boolean(savedMetadata) || flagIsSet,
     isAvailable: isSecureStoreAvailable && hasHardware && isEnrolled,
     label: resolveBiometricLabel(supportedTypes),
   }
@@ -144,6 +157,7 @@ export async function saveBiometricCredentials(input: BiometricCredentialsPayloa
     } satisfies BiometricMetadataPayload),
     credentialStoreOptions,
   )
+  await setBiometricEnabledFlag()
 }
 
 /**
@@ -169,6 +183,7 @@ export async function clearBiometricCredentials() {
   await Promise.all([
     SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY),
     SecureStore.deleteItemAsync(BIOMETRIC_METADATA_KEY),
+    clearBiometricEnabledFlag(),
   ])
 }
 
