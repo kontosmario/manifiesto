@@ -30,6 +30,7 @@ import { motionDurations } from '@/lib/motion/tokens'
 interface WelcomeScreenProps {
   onCreate: () => void
   onLogin: () => void
+  isBusy?: boolean
 }
 
 
@@ -48,7 +49,7 @@ interface WelcomeScreenProps {
  * - Particles: each translates Y on a 10–14s sine cycle.
  * All loops are disabled under `useReducedMotion`.
  */
-export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
+export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScreenProps) {
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const reduced = useReducedMotion()
@@ -115,8 +116,8 @@ export function WelcomeScreen({ onCreate, onLogin }: WelcomeScreenProps) {
               { paddingBottom: Math.max(insets.bottom + 12, 24) },
             ]}
           >
-            <PrimaryCta label="Empezar" onPress={onCreate} />
-            <SecondaryCta label="Ya tengo cuenta" onPress={onLogin} />
+            <PrimaryCta label="Empezar" onPress={isBusy ? () => {} : onCreate} />
+            <SecondaryCta label="Ya tengo cuenta" onPress={isBusy ? () => {} : onLogin} />
 
             <Text style={styles.dataDisclosure}>
               Solo guardamos tu email y lo que cargues acá (gastos, fijos, miembros del hogar). Nada se vende.
