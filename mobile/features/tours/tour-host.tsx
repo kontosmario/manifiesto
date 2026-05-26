@@ -455,20 +455,6 @@ export function TourHost() {
     opacity: scrimO.value * finalScrimOpacity,
   }))
 
-  // TEMP_DIAG_TOURS_2026-05-26
-  useEffect(() => {
-    if (!__DEV__) return
-    if (!visible) return
-    console.warn('[diag tour-host] visible, scrim starting animation', {
-      reduced,
-      finalScrimOpacity,
-    })
-    const t = setTimeout(() => {
-      console.warn('[diag tour-host] after 500ms scrimO.value =', scrimO.value)
-    }, 500)
-    return () => clearTimeout(t)
-  }, [visible, reduced, finalScrimOpacity, scrimO])
-
   const tooltipAnimatedStyle = useAnimatedStyle(() => ({
     opacity: tooltipO.value,
     transform: [{ translateY: tooltipY.value }],
@@ -493,13 +479,7 @@ export function TourHost() {
           `scrimOpacity` cap. */}
       <Pressable
         accessibilityLabel="Cerrar tutorial"
-        onPress={() => {
-          // TEMP_DIAG_TOURS_2026-05-26
-          if (__DEV__) {
-            console.warn('[diag tour-host] scrim tapped — stopping tour')
-          }
-          stop(false)
-        }}
+        onPress={() => stop(false)}
         style={StyleSheet.absoluteFill}
       >
         <Animated.View

@@ -36,15 +36,6 @@ export function useBackfillExistingUser(
         toursDeployedAt: TOURS_FEATURE_DEPLOYED_AT,
         backfillAlreadyDone,
       })
-      // TEMP_DIAG_TOURS_2026-05-26
-      if (__DEV__) {
-        console.warn('[diag backfill] decision', {
-          onboardingCompletedAt,
-          backfillAlreadyDone,
-          toursDeployedAt: TOURS_FEATURE_DEPLOYED_AT,
-          decision,
-        })
-      }
       if (cancelled) return
       if (decision) {
         await Promise.all(ALL_TOUR_KEYS.map((key) => setTourSeen(key)))

@@ -109,10 +109,6 @@ export function TourProvider({
 
   const start = useCallback((tour: TourKey, fromIndex = 0) => {
     const list = stepsRef.current.get(tour) ?? []
-    // TEMP_DIAG_TOURS_2026-05-26
-    if (__DEV__) {
-      console.warn('[diag tour-provider] start called', { tour, registeredSteps: list.length, fromIndex })
-    }
     if (list.length === 0) return
     setActiveTour(tour)
     setActiveIndex(Math.max(0, Math.min(fromIndex, list.length - 1)))

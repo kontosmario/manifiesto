@@ -142,26 +142,13 @@ export function useScreenTour(
     if (startedRef.current) return
     startedRef.current = true
 
-    // TEMP_DIAG_TOURS_2026-05-26
-    if (__DEV__) {
-      console.warn('[diag tour-auto] entering async block', { tour, isFocused, splashHidden, forceStart })
-    }
-
     let cancelled = false
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     void (async () => {
       const enabled = await getToursEnabled()
-      // TEMP_DIAG_TOURS_2026-05-26
-      if (__DEV__) {
-        console.warn('[diag tour-auto]', tour, 'enabled =', enabled)
-      }
       if (cancelled || !enabled) return
       if (!forceStart) {
         const seen = await getTourSeen(tour)
-        // TEMP_DIAG_TOURS_2026-05-26
-        if (__DEV__) {
-          console.warn('[diag tour-auto]', tour, 'seen =', seen)
-        }
         if (cancelled || seen) return
       }
       timeoutId = setTimeout(async () => {
@@ -173,10 +160,6 @@ export function useScreenTour(
         // is mid-page.
         await resetScrollToTop(tour)
         if (cancelled) return
-        // TEMP_DIAG_TOURS_2026-05-26
-        if (__DEV__) {
-          console.warn('[diag tour-auto]', tour, 'calling ctx.start')
-        }
         ctxRef.current.start(tour)
       }, startDelayMs)
     })()
