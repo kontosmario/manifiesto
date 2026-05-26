@@ -67,7 +67,12 @@ export function RequireAuth({ children }: RequireAuthProps) {
 }
 
 export function RequireGuest({
-  allowFamilylessSession = false,
+  // Accepted for backward compatibility — no longer affects routing.
+  // `AppEntryGate` (the destination of the redirect below) is the
+  // single source of truth for signed-in routing (lock / onboarding /
+  // join / home), so this flag is no-op here.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  allowFamilylessSession: _allowFamilylessSession = false,
   children,
 }: {
   allowFamilylessSession?: boolean
@@ -75,30 +80,28 @@ export function RequireGuest({
 }) {
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
-  const userId = session?.user.id
-  const familyQuery = useFamily(userId)
-  const family = familyQuery.data ?? null
-  const isLoading = sessionQuery.isLoading || (Boolean(userId) && familyQuery.isLoading)
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
-    if (!isLoading && shouldShowAuthTransitionSplash) {
+    if (!sessionQuery.isLoading && shouldShowAuthTransitionSplash) {
       markAuthTransitionLoaded()
     }
-  }, [isLoading, shouldShowAuthTransitionSplash])
+  }, [sessionQuery.isLoading, shouldShowAuthTransitionSplash])
 
-  if (isLoading) {
+  if (sessionQuery.isLoading) {
     // Same rationale as RequireAuth above — yield to the warm
     // overlay; don't mount a duplicate splash underneath.
     return <BlockingScreenView message="Preparando tu sesión..." />
   }
 
-  if (session && family) {
-    return <Redirect href="/(app)/(tabs)/home" />
-  }
-
-  if (session && !family && !allowFamilylessSession) {
-    return <Redirect href="/(auth)/join" />
+  // Route signed-in users through AppEntryGate (the `/` index) so the
+  // app-lock gate, onboarding check, family check, and home routing
+  // are all decided in ONE place. Previously this redirected straight
+  // to home/join, which let a user bypass the lock screen by
+  // navigating through any guest route (e.g. cancel Face ID →
+  // back to welcome → "Ya tengo cuenta" → bypass).
+  if (session) {
+    return <Redirect href="/" />
   }
 
   return children
