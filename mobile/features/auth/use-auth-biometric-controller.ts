@@ -138,18 +138,6 @@ export function useAuthBiometricController({
       try {
         const biometricResult = await authenticateBiometricAccess()
 
-        // TEMP_DIAG_BIOMETRIC_2026-05-26: log result so we can diagnose why
-        // the prompt isn't appearing on certain devices. Remove once diagnosed.
-        if (__DEV__) {
-          console.warn('[diag biometric sign-in]', {
-            success: biometricResult.success,
-            error: biometricResult.success ? undefined : biometricResult.error,
-            isAvailable: biometricState.isAvailable,
-            hasSavedCredentials: biometricState.hasSavedCredentials,
-            label: biometricState.label,
-          })
-        }
-
         if (!biometricResult.success) {
           if (
             !options?.isAutomatic &&
