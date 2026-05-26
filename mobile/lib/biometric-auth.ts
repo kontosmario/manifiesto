@@ -21,6 +21,7 @@
 import { Platform } from 'react-native'
 import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
+import Constants from 'expo-constants'
 import {
   clearBiometricEnabledFlag,
   isBiometricEnabledFlagSet,
@@ -216,6 +217,11 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   }
 }
 
+// Expo Go's runtime identifier. Used to soften `disableDeviceFallback`
+// so biometric flows can be tested with the device passcode in Expo
+// Go (whose host binary lacks NSFaceIDUsageDescription on SDK 54).
+const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient'
+
 // Android API 30 (Android 11) introduced support for
 // `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` as a combined authenticator.
 // On API 29 (Android 10) AndroidX's `BiometricPrompt.PromptInfo.Builder.build()`
@@ -240,7 +246,20 @@ export async function authenticateBiometricAccess(
   // fallback — used by the app-lock screen) we also clear fallbackLabel
   // so the OS doesn't offer "Usar código"; the in-app "Usar contraseña"
   // button is the escape hatch instead.
-  const disableDeviceFallback = options?.disableDeviceFallback ?? false
+  const requestedDisableFallback = options?.disableDeviceFallback ?? false
+  // Expo Go softening: the host binary's Info.plist lacks
+  // `NSFaceIDUsageDescription` on SDK 54, so strict biometric calls
+  // fail upfront with `missing_usage_description` and no prompt is
+  // shown. Allowing the device-passcode fallback in Expo Go lets devs
+  // test the full auth flow end-to-end without spinning up a dev
+  // client. In every other runtime (dev client, EAS, store builds)
+  // the caller's choice is honored as-is.
+  const disableDeviceFallback = IS_EXPO_GO ? false : requestedDisableFallback
+  if (__DEV__ && IS_EXPO_GO && requestedDisableFallback) {
+    console.warn(
+      '[biometric] Expo Go detected — softening disableDeviceFallback to false so the device-passcode fallback can be tested. The strict gate is preserved in dev-client / EAS / store builds.',
+    )
+  }
   return await LocalAuthentication.authenticateAsync({
     promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
     cancelLabel: 'Cancelar',
