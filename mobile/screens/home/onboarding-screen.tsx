@@ -46,7 +46,7 @@ import {
   useUpdateDisplayName,
 } from '@/features/profile/use-profile'
 import { logoutSession } from '@/features/auth/logout'
-import { hideAuthTransitionSplash, showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
@@ -255,19 +255,13 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       if (state.familyMode === 'joined' && state.pendingFamily) {
         const contribution =
           state.contributesIncome === true ? monthlyIncome : 0
-        showAuthTransitionSplash()
-        try {
-          await consumeInvite.mutateAsync({
-            code: state.pendingFamily.family_code,
-            monthlyIncomeContribution: contribution,
-          })
-          await completeOnboarding.mutateAsync()
-          void triggerHaptic('success')
-          router.replace('/(app)/onboarding-success')
-        } catch (error) {
-          hideAuthTransitionSplash()
-          throw error
-        }
+        await consumeInvite.mutateAsync({
+          code: state.pendingFamily.family_code,
+          monthlyIncomeContribution: contribution,
+        })
+        await completeOnboarding.mutateAsync()
+        void triggerHaptic('success')
+        router.replace('/(app)/onboarding-success')
         return
       }
 
@@ -320,17 +314,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         })
       }
 
-      // Show the splash BEFORE completing onboarding so the
-      // queryClient.setQueryData in onSuccess (which triggers the
-      // Redirect to Home in app/(app)/onboarding.tsx) is already
-      // covered — no Home flash between wizard and success screen.
-      showAuthTransitionSplash()
-      try {
-        await completeOnboarding.mutateAsync()
-      } catch (error) {
-        hideAuthTransitionSplash()
-        throw error
-      }
+      await completeOnboarding.mutateAsync()
       void triggerHaptic('success')
       router.replace('/(app)/onboarding-success')
     } catch (error) {
