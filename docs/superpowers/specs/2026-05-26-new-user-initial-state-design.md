@@ -30,7 +30,12 @@
 
 ## 2. Contexto del código (estado actual relevante)
 
-- **`mobile/features/tours/`** — infra de tours ya existe: `TourProvider` (React context) + `<TourTarget>` (wrap UI elements) + `useScreenTour()` con `start()/next()/prev()/stop()`. Persistencia en SecureStore key `tour.{tourKey}.seen`. 4 tours definidos: `home-tour.ts`, `gastos-tour.ts`, `fijos-tour.ts`, `control-tour.ts`. **Sin trigger de auto-fire en ningún lado.**
+- **`mobile/features/tours/`** — infra COMPLETA y ya cableada (no como decía el Explore agent inicial):
+  - `useScreenTour(tourKey)` ya tiene **auto-start on focus** ([use-screen-tour.ts:117-156](../../../mobile/features/tours/use-screen-tour.ts#L117-L156)), gates por `getToursEnabled()` + `getTourSeen()` + espera al splash. Marca `seen` on stop.
+  - Ya invocado en las 4 screens: `home-dashboard.tsx:124` (HOME), `gastos-v2-screen.tsx:135`, `fijos-v2-screen.tsx:44`, `control-v2-screen.tsx:75`.
+  - `persistence.ts` expone `getTourSeen / setTourSeen / resetTourSeen / resetAllTours / getToursEnabled / setToursEnabled` — basados en `@/lib/persistent-kv` (SecureStore), key prefix `tour-seen.{tourKey}`.
+  - 4 tours definidos: `home-tour.ts`, `gastos-tour.ts`, `fijos-tour.ts`, `control-tour.ts`.
+  - **Lo único que falta:** UI en Settings para re-firar (cluster D) + backfill para usuarios existentes (gating del deploy date).
 - **`mobile/screens/home/onboarding-screen.tsx`** — wizard de 5 steps. Step 5 (StepSavings creator / StepFamilySummary joiner) llama `completeOnboarding()` → splash → `router.replace('/(app)/(tabs)/home')`. **Sin momento de éxito entre el splash y Home.**
 - **Home hero** — [`home-hero-card.tsx`](../../../mobile/components/home/home-hero-card.tsx) ya tiene un `onPressConfigureIncome` para CTAs de setup (income vacío). Buen patrón a seguir para el de saldo.
 - **`isSolo` ya disponible** en [`home-dashboard.tsx:62,100,599`](../../../mobile/components/home/home-dashboard.tsx#L62) (deriva de `families.kind`), hoy solo se usa para ocultar avatares en modo solo (`showMembers={!isSolo}`). El hero NO usa este flag para copy todavía.
@@ -40,67 +45,63 @@
 
 ---
 
-## 3. Cluster A — Auto-disparo de tours
+## 3. Cluster A — Backfill para usuarios existentes (auto-fire ya está vivo)
 
-### Helper puro `mobile/features/tours/should-auto-fire-tour.ts` (nuevo)
-
-```ts
-export interface AutoFireInput {
-  tourSeen: boolean | null
-  onboardingCompletedAt: string | null
-  toursDeployedAt: string  // constant ISO timestamp
-}
-
-export type AutoFireDecision =
-  | { action: 'fire' }
-  | { action: 'backfill-as-seen' }
-  | { action: 'noop' }
-
-export function shouldAutoFireTour(input: AutoFireInput): AutoFireDecision
-```
-
-**Reglas:**
-- `tourSeen === true` → `'noop'` (ya visto).
-- `onboardingCompletedAt === null` → `'noop'` (aún en wizard, no toca).
-- `onboardingCompletedAt < toursDeployedAt` → `'backfill-as-seen'` (usuario existente; marcar visto sin disparar).
-- En cualquier otro caso → `'fire'`.
-
-Puro, testeable, sin React.
+El auto-fire ya funciona vía `useScreenTour` en las 4 screens. **Lo único que necesitamos agregar** es un backfill one-shot para que usuarios cuyo `onboarding_completed_at` es ANTERIOR al deploy de esta feature no reciban tours retroactivos.
 
 ### Constante `TOURS_FEATURE_DEPLOYED_AT`
 
-En `mobile/features/tours/auto-fire-config.ts`:
+En `mobile/features/tours/backfill-config.ts` (nuevo):
 ```ts
-// ISO timestamp from when this feature shipped. Users whose
-// `onboarding_completed_at` is strictly before this skip the
-// retroactive auto-fire (backfilled silently as seen).
+// ISO timestamp del primer deploy de la feature de tours auto-fire +
+// success screen. Usuarios cuyo onboarding_completed_at sea estrictamente
+// anterior se backfillean (todos los tours marcados como seen) en el
+// primer arranque de la app post-deploy. Ajustar la fecha al mergear.
 export const TOURS_FEATURE_DEPLOYED_AT = '2026-05-27T00:00:00Z'
 ```
-(Fecha exacta = día del primer deploy; ajustar al mergear.)
 
-### Hook `useAutoFireTour(tourKey)` (nuevo)
+### Helper puro `mobile/features/tours/should-backfill-tours.ts` (nuevo)
 
-`mobile/features/tours/use-auto-fire-tour.ts`:
-- Lee `tour.{key}.seen` del SecureStore (one-shot al montar).
-- Lee `profiles.onboarding_completed_at` del query cache (`useMyProfile`).
-- Compone `AutoFireInput`, llama `shouldAutoFireTour`, ejecuta:
-  - `'fire'` → marcar `seen=true` defensivamente AND `useScreenTour().start()`.
-  - `'backfill-as-seen'` → solo marca `seen=true` en SecureStore (silencioso).
-  - `'noop'` → nada.
-- Usa `useFocusEffect` para que aplique al focusear la screen (no solo al mount).
-- Idempotente: si ya disparó en esta vida del componente, no re-dispara.
+```ts
+export interface BackfillInput {
+  onboardingCompletedAt: string | null
+  toursDeployedAt: string
+  backfillAlreadyDone: boolean
+}
 
-### Wiring en las 4 screens
-
-En cada screen (`home-screen.tsx`, `gastos-screen.tsx`, `fijos-screen.tsx`, `control-screen.tsx`) agregar UNA línea:
-```tsx
-useAutoFireTour('home')   // o 'gastos' / 'fijos' / 'control'
+export function shouldBackfillToursAsSeen(input: BackfillInput): boolean
 ```
+
+**Reglas (en orden):**
+- `backfillAlreadyDone === true` → `false` (no repetir).
+- `onboardingCompletedAt === null` → `false` (usuario en mid-wizard; nada que backfillear).
+- `onboardingCompletedAt < toursDeployedAt` → `true` (usuario existente, marcar todos los tours seen).
+- En cualquier otro caso → `false` (usuario nuevo, dejar que el auto-fire haga lo suyo).
+
+Puro, testeable, sin React.
+
+### Trigger del backfill `mobile/features/tours/use-backfill-existing-user.ts` (nuevo)
+
+Hook chico (`useEffect` deps `[profile?.onboarding_completed_at]`):
+- Lee `tours-backfill-done` flag del KV (clave nueva).
+- Lee `profile.onboarding_completed_at` del query cache.
+- Compone `BackfillInput`, llama `shouldBackfillToursAsSeen`.
+- Si `true`: `Promise.all(ALL_TOUR_KEYS.map(setTourSeen))` + setear `tours-backfill-done=1`.
+- Si `false` AND `backfillAlreadyDone === false` AND el profile cargó: setear `tours-backfill-done=1` (cierra el ciclo para nuevos usuarios también; nunca volvemos a chequear).
+- Idempotente: una vez seteado el flag, el hook hace nada.
+
+### Wiring del backfill
+
+Una sola invocación en `mobile/components/root/app-entry-gate.tsx`, dentro del componente:
+```tsx
+useBackfillExistingUser(profileQuery.data?.onboarding_completed_at ?? null)
+```
+(El backfill se evalúa cada vez que el profile cambia, pero el flag persiste, así que en la práctica corre una vez por install.)
 
 ### Tests
 
-- Unit de `shouldAutoFireTour`: 5 casos (seen → noop, sin onboarding → noop, onboarding viejo → backfill, onboarding reciente → fire, onboarding NULL → noop).
-- El hook no se unit-testea (efecto + SecureStore + nav); la lógica vive en el helper puro.
+- Unit de `shouldBackfillToursAsSeen`: 4 casos (already done → false, onboarding NULL → false, onboarding viejo → true, onboarding reciente → false).
+- El hook no se unit-testea (efecto + I/O); la lógica vive en el helper puro.
 
 ---
 
@@ -209,12 +210,11 @@ Agregar (en `mobile/screens/settings/settings-screen.tsx` o sub-componente) un g
 
 ### Reset helper
 
-`mobile/features/tours/reset-tour-seen.ts` (nuevo):
-```ts
-export async function resetTourSeen(tourKey: TourKey): Promise<void>
-export async function resetAllTourSeen(): Promise<void>
-```
-Borra el SecureStore key `tour.{key}.seen`.
+Ya existen en [`mobile/features/tours/persistence.ts`](../../../mobile/features/tours/persistence.ts):
+- `resetTourSeen(tourKey: TourKey): Promise<void>`
+- `resetAllTours(): Promise<void>` (también re-habilita el toggle global por las dudas)
+
+**No hay que crearlos.** Solo importarlos en el Settings.
 
 ### Interacción con el auto-fire
 
@@ -240,12 +240,10 @@ El hook `useAutoFireTour` re-lee `tour.{key}.seen` al focusear. Tras un reset de
 
 | Capa | Archivo | Cambio |
 |---|---|---|
-| Cliente | `mobile/features/tours/auto-fire-config.ts` (nuevo) | Constante `TOURS_FEATURE_DEPLOYED_AT` |
-| Cliente | `mobile/features/tours/should-auto-fire-tour.ts` (nuevo) | Helper puro `shouldAutoFireTour` |
-| Cliente | `mobile/features/tours/use-auto-fire-tour.ts` (nuevo) | Hook que cablea helper + SecureStore + `useScreenTour` |
-| Cliente | `mobile/features/tours/reset-tour-seen.ts` (nuevo) | Helpers `resetTourSeen` / `resetAllTourSeen` |
-| Cliente | `mobile/screens/home/home-screen.tsx` (modify) | `useAutoFireTour('home')` |
-| Cliente | `mobile/screens/{gastos,fijos,control}-screen.tsx` (modify) | `useAutoFireTour('gastos'|'fijos'|'control')` |
+| Cliente | `mobile/features/tours/backfill-config.ts` (nuevo) | Constante `TOURS_FEATURE_DEPLOYED_AT` |
+| Cliente | `mobile/features/tours/should-backfill-tours.ts` (nuevo) | Helper puro `shouldBackfillToursAsSeen` |
+| Cliente | `mobile/features/tours/use-backfill-existing-user.ts` (nuevo) | Hook que ejecuta el backfill one-shot |
+| Cliente | `mobile/components/root/app-entry-gate.tsx` (modify) | Invoca `useBackfillExistingUser(...)` |
 | Cliente | `mobile/features/family/family-mode-copy.ts` (nuevo) | Helper puro `familyModeHeroCopy` |
 | Cliente | `mobile/components/home/home-hero.tsx` (modify) | Usa `familyModeHeroCopy` |
 | Cliente | `mobile/components/home/home-dashboard.tsx` (modify) | Renderiza CTA de saldo si `starting_balance IS NULL` |
@@ -254,10 +252,9 @@ El hook `useAutoFireTour` re-lee `tour.{key}.seen` al focusear. Tras un reset de
 | Cliente | `app/(app)/onboarding-success.tsx` (nuevo) | Route wrapper |
 | Cliente | `mobile/features/onboarding/use-complete-onboarding.ts` (modify) | Redirige a `/onboarding-success` en vez de a home |
 | Cliente | `mobile/screens/settings/settings-screen.tsx` (modify) | Sección "Ayuda · Tutoriales" con 5 rows |
-| Tests | `tests/unit/should-auto-fire-tour.test.ts` (nuevo) | 5 casos del helper |
+| Tests | `tests/unit/should-backfill-tours.test.ts` (nuevo) | 4 casos del helper de backfill |
 | Tests | `tests/unit/family-mode-copy.test.ts` (nuevo) | 4 casos del copy del hero |
 | Tests | `tests/unit/onboarding-success-copy.test.ts` (nuevo) | 4 casos del copy de success |
-| Tests | `tests/unit/reset-tour-seen.test.ts` (nuevo) | reset individual + reset all |
 | Docs | `docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/02-auth-onboarding.md` (modify) | Documentar el flujo nuevo de success + tour |
 | Docs | `docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/06-settings-engagement.md` (modify) | Documentar la sección "Ayuda · Tutoriales" |
 
