@@ -288,6 +288,17 @@ export function LoginScreen() {
           promptMessage: 'Desbloqueá Manifiesto',
           disableDeviceFallback: true,
         })
+        // TEMP_DIAG_BIOMETRIC_2026-05-26: log result so we can diagnose why
+        // the prompt isn't appearing on certain devices. Remove once diagnosed.
+        if (__DEV__) {
+          console.warn('[diag biometric lock]', {
+            success: result.success,
+            error: result.success ? undefined : result.error,
+            isAvailable: biometricState.isAvailable,
+            hasSavedCredentials: biometricState.hasSavedCredentials,
+            label: biometricState.label,
+          })
+        }
         if (result.success) {
           await triggerHaptic('success')
           showAuthTransitionSplash()

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 
 describe('biometricFeedbackForError', () => {
+  // ── Lockout ──────────────────────────────────────────────────────────────
   it('lockout → copy diferenciada con el label', () => {
     expect(biometricFeedbackForError('lockout', 'Face ID')).toEqual({
       message: 'Face ID está bloqueado por varios intentos. Usá tu contraseña para entrar.',
@@ -14,6 +15,7 @@ describe('biometricFeedbackForError', () => {
     })
   })
 
+  // ── Cancels / silent ─────────────────────────────────────────────────────
   it('user_cancel → null (silencioso)', () => {
     expect(biometricFeedbackForError('user_cancel', 'Face ID')).toBeNull()
   })
@@ -22,8 +24,47 @@ describe('biometricFeedbackForError', () => {
     expect(biometricFeedbackForError('system_cancel', 'Face ID')).toBeNull()
   })
 
-  it('error desconocido o undefined → null', () => {
-    expect(biometricFeedbackForError('authentication_failed', 'Face ID')).toBeNull()
+  it('app_cancel → null (silencioso)', () => {
+    expect(biometricFeedbackForError('app_cancel', 'Face ID')).toBeNull()
+  })
+
+  it('user_fallback → null (el usuario eligió el fallback in-app, el formulario de contraseña lo maneja)', () => {
+    expect(biometricFeedbackForError('user_fallback', 'Face ID')).toBeNull()
+  })
+
+  // ── Unavailability ────────────────────────────────────────────────────────
+  it('not_available → mensaje de ajustes con el label', () => {
+    expect(biometricFeedbackForError('not_available', 'Face ID')).toEqual({
+      message: 'Face ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+    })
+  })
+
+  it('not_enrolled → mensaje de ajustes con el label', () => {
+    expect(biometricFeedbackForError('not_enrolled', 'Touch ID')).toEqual({
+      message: 'Touch ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+    })
+  })
+
+  it('passcode_not_set → mensaje de ajustes con el label', () => {
+    expect(biometricFeedbackForError('passcode_not_set', 'Face ID')).toEqual({
+      message: 'Face ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+    })
+  })
+
+  // ── Catch-all / undefined ─────────────────────────────────────────────────
+  it('authentication_failed (error desconocido) → mensaje genérico de fallback', () => {
+    expect(biometricFeedbackForError('authentication_failed', 'Face ID')).toEqual({
+      message: 'No pudimos iniciar Face ID. Usá tu contraseña para entrar.',
+    })
+  })
+
+  it('cualquier otro código no reconocido → mensaje genérico de fallback', () => {
+    expect(biometricFeedbackForError('unknown_error_code', 'Touch ID')).toEqual({
+      message: 'No pudimos iniciar Touch ID. Usá tu contraseña para entrar.',
+    })
+  })
+
+  it('undefined → null (defensivo, no debería ocurrir para non-success)', () => {
     expect(biometricFeedbackForError(undefined, 'Face ID')).toBeNull()
   })
 })
