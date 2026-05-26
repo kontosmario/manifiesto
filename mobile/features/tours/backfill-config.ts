@@ -8,4 +8,4 @@
 // usando sin que el auto-fire los molestara.
 //
 // Ajustar al día efectivo del merge.
-export const TOURS_FEATURE_DEPLOYED_AT = '2026-05-27T00:00:00Z'
+export const TOURS_FEATURE_DEPLOYED_AT = '2026-05-26T00:00:00Z'

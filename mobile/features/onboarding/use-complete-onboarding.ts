@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
+import { resetAllTours } from '@/features/tours/persistence'
+import { deletePersistentValue } from '@/lib/persistent-kv'
 
 /**
  * Flips `profiles.onboarding_completed_at` to `now()` for the current
@@ -28,10 +30,9 @@ export function useCompleteOnboarding(userId?: string) {
       return completedAt
     },
     onSuccess: async (completedAt) => {
-      // Write the cache SYNCHRONOUSLY before invalidation so the next
-      // render of `RequireAuth` (on the success route) sees the new
-      // timestamp and doesn't bounce the user back to /(app)/onboarding.
-      // The async invalidate kicks off a background refetch to confirm.
+      // Sync cache write FIRST so the new RequireAuth render on the
+      // success route sees onboarding_completed_at set (prevents bounce
+      // back to /(app)/onboarding).
       queryClient.setQueryData<Profile | undefined>(
         profileQueryKey(userId),
         (prev) =>
@@ -40,6 +41,17 @@ export function useCompleteOnboarding(userId?: string) {
             : prev,
       )
       await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+
+      // Reset tour-seen flags so the home/gastos/fijos/control tours
+      // auto-fire for this brand-new account. The flags live device-wide
+      // in SecureStore; a previous user (or test) on this device could
+      // have left them set, which would otherwise suppress tours for
+      // anyone signing up afterwards.
+      await resetAllTours()
+      // Also clear the backfill-done flag so the AppEntryGate hook re-
+      // evaluates against the now-recent onboarding timestamp (this user
+      // is "new", not "existing", so backfill should be a no-op).
+      await deletePersistentValue('tours-backfill-done')
     },
   })
 }
