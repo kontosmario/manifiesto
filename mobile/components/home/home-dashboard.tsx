@@ -18,6 +18,7 @@ import { useTrackElement } from '@/features/home/use-track-element'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
+import { StartingBalanceCta } from '@/components/home/starting-balance-cta'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
@@ -608,6 +609,14 @@ export function HomeDashboard({
           showMembers={!isSolo}
         />
       </TourTarget>
+      {isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0 ? (
+        <View style={{ marginBottom: 12 }}>
+          <StartingBalanceCta
+            tourOrder={99}
+            onPress={() => setCycleBalanceSheetOpen(true)}
+          />
+        </View>
+      ) : null}
       <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
