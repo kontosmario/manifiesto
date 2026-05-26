@@ -65,9 +65,14 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
     ? profile.avatar_animal
     : null
 
-  const handleContinue = useCallback(() => {
+  const handleContinue = useCallback(async () => {
     void triggerHaptic('selection')
     showAuthTransitionSplash()
+    // Wait for the splash overlay's fade-in to complete (FADE_IN_MS=220
+    // in root-layout-shell.tsx) before navigating, so the destination
+    // mounts UNDER a fully-opaque splash. Without this delay the Home
+    // screen is visible behind a still-fading splash for ~220ms.
+    await new Promise<void>((resolve) => setTimeout(resolve, 240))
     router.replace('/(app)/(tabs)/home')
   }, [router])
 
@@ -118,7 +123,7 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
           accessibilityRole="button"
           accessibilityLabel={copy.ctaLabel}
           hitSlop={DEFAULT_HIT_SLOP}
-          onPress={handleContinue}
+          onPress={() => void handleContinue()}
           style={({ pressed }) => [
             styles.cta,
             { backgroundColor: DARK_GREEN, opacity: pressed ? 0.92 : 1 },
