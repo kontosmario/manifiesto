@@ -37,6 +37,21 @@ vi.mock('expo-secure-store', () => ({
   deleteItemAsync: () => Promise.resolve(),
 }))
 
+const asState = { enabled: false }
+
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: (key: string) =>
+      Promise.resolve(key === 'auth.biometric.enabled' && asState.enabled ? '1' : null),
+    setItem: () => Promise.resolve(),
+    removeItem: () => Promise.resolve(),
+  },
+}))
+
+vi.mock('expo-constants', () => ({
+  default: { executionEnvironment: 'standalone' },
+}))
+
 import { getBiometricLoginState } from '@/lib/biometric-auth'
 
 afterEach(() => {
@@ -47,6 +62,7 @@ afterEach(() => {
   ssState.available = true
   ssState.metadata = null
   ssState.throwGet = false
+  asState.enabled = false
 })
 
 describe('getBiometricLoginState', () => {
@@ -85,5 +101,13 @@ describe('getBiometricLoginState', () => {
     const state = await getBiometricLoginState()
     expect(state.isAvailable).toBe(false)
     expect(state.hasSavedCredentials).toBe(true)
+  })
+
+  it('REGRESIÓN: si el metadata read falla pero la flag está set, hasSavedCredentials sigue true (defense in depth)', async () => {
+    ssState.throwGet = true   // metadata read rejects
+    asState.enabled = true    // flag mirror says biometric is enabled
+    const state = await getBiometricLoginState()
+    expect(state.hasSavedCredentials).toBe(true) // ← clave: NO colapsa a false
+    expect(state.isAvailable).toBe(true)         // hardware/enroll OK
   })
 })

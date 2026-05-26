@@ -23,7 +23,7 @@ export function AppEntryGate() {
   // in parallel with the session check so by the time we know the
   // user has no session, we usually already know whether biometrics
   // are set up.
-  const biometric = useColdStartBiometricCheck()
+  const biometric = useColdStartBiometricCheck(userId ?? null)
   // App-lock gate: even when the session is valid we require a
   // biometric re-confirmation on every cold start (banking-app
   // pattern). `useAppLockState` starts at `false` after the JS
