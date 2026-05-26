@@ -309,3 +309,22 @@ Auditoría del flujo Face ID / app-lock a raíz de un bug reportado (el CTA Face
 | `useAuthBiometricAutoSignIn` no-op cableado | Baja | Hook es no-op pero sigue recibiendo un `enabled` computado que no hace nada. |
 
 <!-- ✓ Auditoría contrastada contra código el 2026-05-24 -->
+
+---
+
+## Auditoría de login + biometría — 2026-05-26
+
+Continuación de la auditoría del 2026-05-24. Cierra 3 bugs de comportamiento detectados al probar en device, incluyendo un **bypass crítico del gate de app-lock**.
+
+### Cerrado en esta auditoría
+- 🔒 **CRÍTICO — Bypass del app-lock vía `RequireGuest`** — el guard redirigía signed-in users directo a `/(app)/(tabs)/home`, saltando el chequeo de lock que solo vive en `AppEntryGate`. Reproducción: cancelar Face ID → "Volver" → welcome → "Ya tengo cuenta" → Home sin autenticar. Fix: `RequireGuest` ahora redirige a `/` (AppEntryGate decide). [`guards.tsx`](../../mobile/components/guards.tsx)
+- ✅ **Race post-logout: avatar/nombre del usuario anterior** — `clearLastUserProfile()` era fire-and-forget en el handler de `SIGNED_OUT`. Fix: `logout.ts` ahora awaitea explícitamente el cleanup antes de `onSuccess()`. [`logout.ts`](../../mobile/features/auth/logout.ts)
+- ✅ **`useColdStartBiometricCheck` stale post-logout** — el hook cacheaba `shouldUseBiometric: true` en memoria con deps `[]`. Tras logout AppEntryGate seguía rutando a login. Fix: el hook es reactivo a `sessionUserId` y re-evalúa cuando cambia la sesión. [`use-cold-start-biometric-check.ts`](../../mobile/features/auth/use-cold-start-biometric-check.ts)
+- ✅ **Defense-in-depth: flag persistente de biometría** — un read transient-fallido de SecureStore en cold start colapsaba `hasSavedCredentials` a false y bypaseaba el lock. Ahora una flag en AsyncStorage actúa como tie-breaker (`hasSavedCredentials = Boolean(metadata) || flagIsSet`). [`biometric-enabled-flag.ts`](../../mobile/features/auth/biometric-enabled-flag.ts)
+- ✅ **Silencio total en fallos biométricos no-lockout** — `missing_usage_description`, `not_available`, etc. dejaban al usuario mirando un botón muerto. `biometricFeedbackForError` ahora cubre todos los códigos con copy útil + catch-all. [`biometric-feedback.ts`](../../mobile/features/auth/biometric-feedback.ts)
+- 🧪 **Expo Go testability** — `disableDeviceFallback` se ablanda automáticamente cuando `executionEnvironment === 'storeClient'` (Expo Go SDK 54 no incluye `NSFaceIDUsageDescription`). En dev client / EAS / store builds el flag del caller se respeta. Permite probar el flujo biométrico end-to-end sin spinear dev build. [`biometric-auth.ts`](../../mobile/lib/biometric-auth.ts)
+
+### Gaps que siguen abiertos
+Sin cambios respecto al 2026-05-24: blur de privacidad en app-switcher, biometría estricta en login sin sesión, `useAuthBiometricAutoSignIn` no-op cableado.
+
+<!-- ✓ Auditoría contrastada contra código el 2026-05-26 -->
