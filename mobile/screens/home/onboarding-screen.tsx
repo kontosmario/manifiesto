@@ -262,7 +262,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         await completeOnboarding.mutateAsync()
         void triggerHaptic('success')
         showAuthTransitionSplash()
-        router.replace('/(app)/(tabs)/home')
+        router.replace('/(app)/onboarding-success')
         return
       }
 
@@ -317,11 +317,11 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
 
       await completeOnboarding.mutateAsync()
       void triggerHaptic('success')
-      // Cover the onboarding → home transition with the brand splash
+      // Cover the onboarding → success transition with the brand splash
       // so the user sees one fluid hand-off into the app, not a
       // skeleton flash while the home queries warm up.
       showAuthTransitionSplash()
-      router.replace('/(app)/(tabs)/home')
+      router.replace('/(app)/onboarding-success')
     } catch (error) {
       void triggerHaptic('error')
       Alert.alert('No pudimos terminar el setup', getErrorMessage(error, errorMessages.server))

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { profileQueryKey } from '@/features/profile/use-profile'
+import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
 
 /**
  * Flips `profiles.onboarding_completed_at` to `now()` for the current
@@ -27,7 +27,18 @@ export function useCompleteOnboarding(userId?: string) {
 
       return completedAt
     },
-    onSuccess: async () => {
+    onSuccess: async (completedAt) => {
+      // Write the cache SYNCHRONOUSLY before invalidation so the next
+      // render of `RequireAuth` (on the success route) sees the new
+      // timestamp and doesn't bounce the user back to /(app)/onboarding.
+      // The async invalidate kicks off a background refetch to confirm.
+      queryClient.setQueryData<Profile | undefined>(
+        profileQueryKey(userId),
+        (prev) =>
+          prev
+            ? { ...prev, onboarding_completed_at: completedAt }
+            : prev,
+      )
       await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
     },
   })
