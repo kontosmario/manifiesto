@@ -19,7 +19,7 @@ export function AppEntryGate() {
   const familyQuery = useFamily(userId)
   const family = familyQuery.data ?? null
   const profileQuery = useMyProfile(userId)
-  useBackfillExistingUser(profileQuery.data?.onboarding_completed_at ?? null)
+  useBackfillExistingUser(profileQuery.data?.onboarding_completed_at)
   // Cold-start biometric probe — read once, used to decide between
   // the welcome hero and the login auto-biometric route below. Runs
   // in parallel with the session check so by the time we know the
