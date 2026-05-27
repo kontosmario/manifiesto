@@ -208,12 +208,19 @@ export function SignupScreen() {
       }
 
       showAuthTransitionSplash()
-      // Hand off to the 5-step onboarding wizard. Step 3 (StepFamily)
-      // covers the create-vs-join family decision, so we skip the
-      // dedicated /(auth)/join screen entirely for new accounts.
-      router.replace(
-        resolution.type === 'onboarding' ? resolution.href : '/(app)/onboarding',
-      )
+      // Hand off to the pre-onboarding biometric-setup gate. AppEntryGate
+      // falls through to /(app)/onboarding if the user already saw the
+      // biometric-setup screen (flag set). Apple/Google + magic-link
+      // flows hit the same gate via cold-start.
+      //
+      // We route directly instead of dispatching on `resolution.type`:
+      // `email-confirmation` returns early above (line 203), so by here
+      // `resolution.type` is provably `'onboarding'` with
+      // `href === '/(app)/biometric-setup'`. Hard-coding the destination
+      // avoids the dead-code ternary that earlier hid a routing bug
+      // (the ternary would re-resolve to `/(app)/onboarding` if the
+      // shared `resolveAuthSubmitResolution` href ever drifted again).
+      router.replace('/(app)/biometric-setup')
     } catch (error) {
       await triggerHaptic('error')
       setErrorMessage(getErrorMessage(error, 'No pudimos crear tu cuenta.'))
@@ -248,11 +255,12 @@ export function SignupScreen() {
         if (result.status === 'signed-in') {
           await triggerHaptic('success')
           showAuthTransitionSplash()
-          // Apple/Google sign-up = same as email signup → 5-step
-          // onboarding handles family + profile. The session arrives
-          // already email-confirmed (provider-verified), so we never
-          // need to route through /(auth)/join for these.
-          router.replace('/(app)/onboarding')
+          // Apple/Google sign-up = same as email signup → biometric-setup
+          // gate first (activate Face ID), then 5-step onboarding handles
+          // family + profile. The session arrives already email-confirmed
+          // (provider-verified), so we never need to route through
+          // /(auth)/join for these.
+          router.replace('/(app)/biometric-setup')
           return
         }
         if (result.status === 'cancelled') {

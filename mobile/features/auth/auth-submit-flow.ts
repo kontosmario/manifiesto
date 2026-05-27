@@ -8,12 +8,15 @@ export type AuthSubmitResolution =
       type: 'signed-in'
     }
   | {
-      // Newly created accounts go straight into the 5-step onboarding
-      // wizard (welcome → avatar → family → sueldo → ahorros). The
-      // family decision is part of step 3, so we do NOT route through
-      // /(auth)/join — that screen is reserved for established users
-      // who somehow lost their family (RequireAuth fallback).
-      href: '/(app)/onboarding'
+      // Newly created accounts go through the pre-onboarding biometric
+      // setup gate first (activate Face ID before the wizard), then
+      // into the 5-step onboarding wizard (welcome → avatar → family
+      // → sueldo → ahorros). The family decision is part of step 3, so
+      // we do NOT route through /(auth)/join — that screen is reserved
+      // for established users who somehow lost their family
+      // (RequireAuth fallback). AppEntryGate falls through to
+      // /(app)/onboarding if the user already saw biometric-setup.
+      href: '/(app)/biometric-setup'
       type: 'onboarding'
     }
   | {
@@ -42,7 +45,7 @@ export function resolveAuthSubmitResolution({
   }
 
   return {
-    href: '/(app)/onboarding',
+    href: '/(app)/biometric-setup',
     type: 'onboarding',
   }
 }

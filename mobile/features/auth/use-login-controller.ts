@@ -98,10 +98,11 @@ export function useLoginController() {
   } = biometricActions
   // Used by `useLoginSubmit` when a sign-up resolution returns the
   // onboarding href. The name keeps "join" for back-compat with the
-  // existing call sites; the destination is now /(app)/onboarding
-  // (the 5-step wizard owns the family decision in step 3).
+  // existing call sites; the destination is now /(app)/biometric-setup
+  // (the pre-onboarding biometric activation gate; AppEntryGate falls
+  // through to /(app)/onboarding once the flag is set).
   const navigateToJoin = useCallback(
-    (href: '/(app)/onboarding') => {
+    (href: '/(app)/biometric-setup') => {
       showAuthTransitionSplash()
       router.replace(href)
     },

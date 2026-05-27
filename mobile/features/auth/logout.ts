@@ -8,6 +8,16 @@ export async function logoutSession(input: {
   const { clearLastUserProfile } = await import('@/lib/last-user-cache')
   const { resetAllTours } = await import('@/features/tours/persistence')
   const { deletePersistentValue } = await import('@/lib/persistent-kv')
+  const { clearBiometricSetupShown } = await import(
+    '@/features/auth/biometric-setup-flag'
+  )
+
+  // Capture userId BEFORE signOut so we can namespace the per-user
+  // flag clear. After signOut the session is null and we'd lose
+  // the ability to target the right key.
+  const sessionResponse = await supabase.auth.getSession()
+  const userId = sessionResponse.data.session?.user.id ?? null
+
   const { error } = await supabase.auth.signOut()
 
   if (error) {
@@ -31,6 +41,12 @@ export async function logoutSession(input: {
   // hook re-evaluates against whoever signs in next.
   await resetAllTours()
   await deletePersistentValue('tours-backfill-done')
+  // Pre-onboarding biometric-setup flag (per-user). If the user
+  // signed out mid-onboarding without seeing the screen, they should
+  // see it again on the next login.
+  if (userId) {
+    await clearBiometricSetupShown(userId)
+  }
   // Re-arm the app-lock gate so the next session (if a different
   // user signs in on the same device, or the same user signs back
   // in) goes through the biometric re-confirmation again.
