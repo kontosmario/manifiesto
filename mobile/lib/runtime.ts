@@ -6,6 +6,50 @@ import { enableFreeze } from 'react-native-screens'
 // process/backup with file-system access. Auth tokens now live in
 // Keychain via `mobile/lib/supabase-secure-storage.ts`.
 import 'react-native-url-polyfill/auto'
+// Polyfill 1 — ensure globalThis.crypto + getRandomValues exist on Hermes.
+// expo-standard-web-crypto is pure-JS (no native module); it checks if
+// `crypto` is already defined and skips installation in that case.
+import { polyfillWebCrypto } from 'expo-standard-web-crypto'
+import {
+  digestStringAsync,
+  CryptoDigestAlgorithm,
+  CryptoEncoding,
+} from 'expo-crypto'
+polyfillWebCrypto()
+// Polyfill 2 — ensure crypto.subtle.digest exists for Supabase PKCE S256.
+// Hermes has no SubtleCrypto, so @supabase/auth-js falls back to PKCE
+// "plain" and emits a WARN. We install a minimal shim backed by
+// expo-crypto's native digestStringAsync so S256 is used instead.
+//
+// expo-crypto.digestStringAsync returns a lower-case HEX string; Supabase
+// expects an ArrayBuffer, so we convert hex → Uint8Array → ArrayBuffer.
+if (typeof crypto !== 'undefined' && typeof crypto.subtle === 'undefined') {
+  const hexToBuffer = (hex: string): ArrayBuffer => {
+    const bytes = new Uint8Array(hex.length / 2)
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+    }
+    return bytes.buffer
+  }
+  ;(crypto as unknown as { subtle: SubtleCrypto }).subtle = {
+    digest: async (algorithm: AlgorithmIdentifier, data: BufferSource): Promise<ArrayBuffer> => {
+      const algoName =
+        typeof algorithm === 'string' ? algorithm : (algorithm as Algorithm).name
+      const hex = await digestStringAsync(
+        algoName as CryptoDigestAlgorithm,
+        // data is a Uint8Array from TextEncoder; decode to a binary string
+        // so expo-crypto hashes the same bytes Supabase encoded.
+        typeof data === 'string'
+          ? data
+          : Array.from(new Uint8Array(data as ArrayBuffer))
+              .map((b) => String.fromCharCode(b))
+              .join(''),
+        { encoding: CryptoEncoding.HEX },
+      )
+      return hexToBuffer(hex)
+    },
+  } as unknown as SubtleCrypto
+}
 
 // Activa el freezing de React subtrees para screens con
 // `freezeOnBlur: true`. Sin este flag global, todos los
