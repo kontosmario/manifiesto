@@ -7,6 +7,7 @@ export async function logoutSession(input: {
   const { resetAppLock } = await import('@/features/auth/app-lock-state')
   const { clearLastUserProfile } = await import('@/lib/last-user-cache')
   const { resetAllTours } = await import('@/features/tours/persistence')
+  const { clearAllTourPending } = await import('@/features/tours/tour-pending-store')
   const { deletePersistentValue } = await import('@/lib/persistent-kv')
   const { clearBiometricSetupShown } = await import(
     '@/features/auth/biometric-setup-flag'
@@ -38,14 +39,19 @@ export async function logoutSession(input: {
   //   • `resetAllTours()` clears only `tours-disabled` (the per-user
   //     "seen" flags moved to backend on 2026-05-27; backend persists
   //     across sessions/devices, so we don't touch them on logout)
+  //   • `clearAllTourPending()` wipes every `tour-seen-pending.<key>`.
+  //     Critical: without this, a pending flag from user A would be
+  //     drained on user B's next launch under user B's auth.uid(),
+  //     marking user B as having seen a tour they never saw.
   //   • `tour-seen.migration-v2-done` is cleared so the one-shot
-  //     migration re-evaluates against the next user's device state
-  //     (e.g. iCloud restore of SecureStore left flags from another
-  //     install)
+  //     legacy migration re-evaluates against the next user's device
+  //     state (e.g. iCloud restore of SecureStore left flags from
+  //     another install)
   //   • `tours-backfill-done` was the pre-2026-05-27 device-local
   //     backfill flag; we delete it defensively in case of leftover
   //     residuals from a stale install
   await resetAllTours()
+  await clearAllTourPending()
   await deletePersistentValue('tour-seen.migration-v2-done')
   await deletePersistentValue('tours-backfill-done')
   // Pre-onboarding biometric-setup flag (per-user). If the user

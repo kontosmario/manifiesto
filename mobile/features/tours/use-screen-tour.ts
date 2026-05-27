@@ -107,6 +107,14 @@ export function useScreenTour(
   const splash = useAuthTransitionSplash()
   const splashHidden = splash.phase === 'hidden'
   const toursSeen = useToursSeen()
+  // Extract primitives BEFORE the effect so its deps reflect actual
+  // changes (true→false) rather than the `toursSeen` object identity
+  // (fresh each render). Without this the auto-start effect re-runs
+  // on every parent re-render — its cleanup cancels the 600ms timeout,
+  // the next run sees `startedRef.current === true` and bails, and
+  // the tour never fires.
+  const tourSeen = toursSeen.isSeen(tour)
+  const toursSeenLoading = toursSeen.isLoading
   const markSeenMutation = useMarkTourSeen()
   const ctxRef = useRef(ctx)
   ctxRef.current = ctx
@@ -154,10 +162,11 @@ export function useScreenTour(
       if (cancelled || !enabled) return
       if (!forceStart) {
         // Wait for the profile load to resolve before deciding. While
-        // loading, `isSeen` returns true (conservative), so the early-
-        // return below already covers that case.
-        if (toursSeen.isLoading) return
-        if (toursSeen.isSeen(tour)) return
+        // loading, `tourSeen` is true (conservative — see
+        // useToursSeen), so the early-return below already covers
+        // that case.
+        if (toursSeenLoading) return
+        if (tourSeen) return
       }
       timeoutId = setTimeout(async () => {
         if (cancelled) return
@@ -176,7 +185,7 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour, toursSeen])
+  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour, tourSeen, toursSeenLoading])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')

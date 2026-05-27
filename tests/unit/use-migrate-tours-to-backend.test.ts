@@ -26,7 +26,7 @@ beforeEach(() => {
 })
 
 describe('runToursMigrationOnce', () => {
-  it('no-ops when migration-v2-done flag is set', async () => {
+  it('skips legacy migration when migration-v2-done flag is set', async () => {
     kvStore.set('tour-seen.migration-v2-done', '1')
     kvStore.set('tour-seen.home', '1')
     const qc = new QueryClient()
@@ -35,6 +35,28 @@ describe('runToursMigrationOnce', () => {
     // Pre-existing legacy flag is left alone (will be picked up on a
     // future run if the migration-done flag ever gets cleared).
     expect(kvStore.get('tour-seen.home')).toBe('1')
+  })
+
+  it('drains pending fallback EVEN WHEN migration-v2-done is already set', async () => {
+    // This is the critical post-migration retry path. A failed
+    // useMarkTourSeen mutation after legacy migration completed must
+    // still be retried on the next launch.
+    kvStore.set('tour-seen.migration-v2-done', '1')
+    kvStore.set('tour-seen-pending.gastos', '1')
+    const qc = new QueryClient()
+    await runToursMigrationOnce({ userId: 'u1', queryClient: qc })
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledWith('mark_tour_seen', { tour_key: 'gastos' })
+    expect(kvStore.has('tour-seen-pending.gastos')).toBe(false)
+  })
+
+  it('leaves a failed pending in place for the next launch', async () => {
+    kvStore.set('tour-seen.migration-v2-done', '1')
+    kvStore.set('tour-seen-pending.control', '1')
+    rpcMock.mockResolvedValue({ error: new Error('network down') })
+    const qc = new QueryClient()
+    await runToursMigrationOnce({ userId: 'u1', queryClient: qc })
+    expect(kvStore.get('tour-seen-pending.control')).toBe('1')
   })
 
   it('hoists local tour-seen.* flags to the backend and sets migration-done', async () => {
@@ -86,12 +108,16 @@ describe('runToursMigrationOnce', () => {
     expect(kvStore.get('tour-seen.migration-v2-done')).toBe('1')
   })
 
-  it('dedups when the same key appears in both legacy and pending stores', async () => {
+  it('processes the same key in both legacy + pending stores (idempotent server-side)', async () => {
+    // Legacy migration and pending drain are independent phases, so
+    // when the same key appears in both stores it gets two RPC calls
+    // in a single run. The RPC is COALESCE-idempotent (preserves
+    // first-seen), so the over-call is safe — both flags get cleaned.
     kvStore.set('tour-seen.home', '1')
     kvStore.set('tour-seen-pending.home', '1')
     const qc = new QueryClient()
     await runToursMigrationOnce({ userId: 'u1', queryClient: qc })
-    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledTimes(2)
     expect(rpcMock).toHaveBeenCalledWith('mark_tour_seen', { tour_key: 'home' })
     expect(kvStore.has('tour-seen.home')).toBe(false)
     expect(kvStore.has('tour-seen-pending.home')).toBe(false)

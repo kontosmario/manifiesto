@@ -36,3 +36,17 @@ export async function getPendingTours(): Promise<TourKey[]> {
   }
   return result
 }
+
+/**
+ * Clear every pending-tour key. Called on logout so a user's failed-
+ * sync flags don't leak into the next session: without this, user A
+ * dismissing a tour offline → logout → user B logs in on the same
+ * device → the migration drain would call `mark_tour_seen` under
+ * user B's auth.uid(), marking user B as having seen a tour they
+ * never saw.
+ */
+export async function clearAllTourPending(): Promise<void> {
+  for (const key of ALL_TOUR_KEYS) {
+    await deletePersistentValue(pendingKey(key))
+  }
+}
