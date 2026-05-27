@@ -208,11 +208,12 @@ export function SignupScreen() {
       }
 
       showAuthTransitionSplash()
-      // Hand off to the 5-step onboarding wizard. Step 3 (StepFamily)
-      // covers the create-vs-join family decision, so we skip the
-      // dedicated /(auth)/join screen entirely for new accounts.
+      // Hand off to the pre-onboarding biometric-setup gate. AppEntryGate
+      // will fall through to /(app)/onboarding if the user already saw
+      // the biometric-setup screen (flag set). Apple/Google + magic-link
+      // flows hit the same gate via cold-start.
       router.replace(
-        resolution.type === 'onboarding' ? resolution.href : '/(app)/onboarding',
+        resolution.type === 'onboarding' ? resolution.href : '/(app)/biometric-setup',
       )
     } catch (error) {
       await triggerHaptic('error')
@@ -248,11 +249,12 @@ export function SignupScreen() {
         if (result.status === 'signed-in') {
           await triggerHaptic('success')
           showAuthTransitionSplash()
-          // Apple/Google sign-up = same as email signup → 5-step
-          // onboarding handles family + profile. The session arrives
-          // already email-confirmed (provider-verified), so we never
-          // need to route through /(auth)/join for these.
-          router.replace('/(app)/onboarding')
+          // Apple/Google sign-up = same as email signup → biometric-setup
+          // gate first (activate Face ID), then 5-step onboarding handles
+          // family + profile. The session arrives already email-confirmed
+          // (provider-verified), so we never need to route through
+          // /(auth)/join for these.
+          router.replace('/(app)/biometric-setup')
           return
         }
         if (result.status === 'cancelled') {
