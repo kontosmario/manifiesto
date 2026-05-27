@@ -78,11 +78,11 @@ export function buildResetAllToursSeenMutation(
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData<Profile | null>(queryKey) ?? null
       if (previous) {
-        const next: Profile = { ...previous }
-        for (const k of ALL_TOUR_KEYS) {
-          ;(next as Record<string, unknown>)[COLUMN_FOR[k]] = null
-        }
-        queryClient.setQueryData(queryKey, next)
+        const nulled = ALL_TOUR_KEYS.reduce<Profile>(
+          (acc, k) => ({ ...acc, [COLUMN_FOR[k]]: null }),
+          previous,
+        )
+        queryClient.setQueryData(queryKey, nulled)
       }
       return { previous }
     },
