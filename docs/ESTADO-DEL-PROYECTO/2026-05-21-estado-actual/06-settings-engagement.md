@@ -29,7 +29,7 @@ app/(app)/savings-goal.tsx          → SavingsGoalScreen (desde "Meta activa" r
 | Achievements / Logros | Server-side (triggers SQL) | Realtime → AchievementUnlockBridge → modal + galería |
 | Manifiesto Wrapped | Post-cobro / Ediciones tap | CycleWrappedBridge → CycleWrappedModal (5 escenas) |
 | Ediciones | `monthly_summaries` via Supabase | EditionsScreen → archivo navegable |
-| Tours / Walkthroughs | Primera visita por tab | TourProvider / TourHost overlay + SecureStore |
+| Tours / Walkthroughs | Primera visita por tab | TourProvider / TourHost overlay; estado "visto" en backend (`profiles._tour_seen_at`, 2026-05-27) |
 | Subscriptions-zombie | Detección en gastos fijos | ZombieFeedSection en Asistente + Control |
 | Telemetría | Mount/unmount de pantallas | `home_telemetry` tabla vía RPC |
 
@@ -61,7 +61,7 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 2 | **Hogar** | Mi aporte mensual, Día de cobro, Cotización USD, Meta de ahorro %, Buffer diario | Sheets: `EditMyContributionSheet`, `EditPaydaySheet`, `EditUsdRateSheet`, `EditSavingsPercentSheet`, `EditBufferSheet`. Rows deshabilitados para `role !== 'owner'` con hint "Solo el dueño puede editar" |
 | 3 | **Metas de ahorro** | Meta activa (subtitle con emoji + progreso) | Navega a `/savings-goal`; disabled para miembro |
 | 4 | **Familia** | Invitar a alguien, Gestionar miembros (solo owner), Salir / Eliminar hogar | "Invitar" genera código efímero vía `ShareInviteSheet`. "Gestionar" navega a `/settings/family-admin`. La fila destructiva adapta label y helper según `isOwnerDestroyFlow` |
-| 4b | **Asistente** | Preferencias del asistente, Reactivar visitas guiadas | "Reactivar" llama `resetAllTours()` + `Alert` confirmación |
+| 4b | **Asistente** | Preferencias del asistente, Reactivar visitas guiadas | "Reactivar" llama `useResetTourSeen().resetAll()` (RPC backend) + `resetAllTours()` (toggle local) + `Alert` confirmación |
 | 5 | **Notificaciones** | Gestionar notificaciones, Habilitar push | Push muestra "Dev build" si `!supportsRemotePushNotifications` (Expo Go SDK 53+). Valor: "Activo" / "Activar" |
 | 5b | **Ayuda · Tutoriales** | "Ver tutorial de Inicio/Gastos/Fijos/Control" (x4) + "Volver a ver todos" | Ver detalle abajo |
 | 6 | **Apariencia** | `SegmentedControl` Sistema / Claro / Oscuro | Persiste en `ThemeProvider` |
@@ -75,8 +75,8 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 10 | **Cuenta** | Cerrar sesión, Eliminar cuenta | "Eliminar cuenta" → `DeleteAccountConfirmSheet` → RPC marca cuenta para borrar en 30 días → logout automático |
 
 **Ayuda · Tutoriales** — nuevo grupo en Settings (entre Notificaciones y Apariencia) con 5 rows:
-- "Ver tutorial de Inicio/Gastos/Fijos/Control" — cada uno llama `resetTourSeen({key})` (de [`tours/persistence.ts`](../../../mobile/features/tours/persistence.ts)) y navega al tab correspondiente. El auto-fire del hook re-dispara el tour.
-- "Volver a ver todos los tutoriales" — llama `resetAllTours` que además re-habilita el toggle global. No navega (silent reset; el próximo focus a cada screen dispara).
+- "Ver tutorial de Inicio/Gastos/Fijos/Control" — cada uno llama `useResetTourSeen().resetOne(key)` (RPC `reset_tour_seen` + optimistic update del profile cache) y navega al tab correspondiente. El auto-fire del hook re-dispara el tour. **Cross-device:** el reset persiste en backend, así que también re-dispara en otros devices del mismo user.
+- "Volver a ver todos los tutoriales" — llama `useResetTourSeen().resetAll()` (RPC `reset_all_tours_seen`) + `resetAllTours()` (limpia `tours-disabled` device-local). No navega (silent reset; el próximo focus a cada screen dispara).
 No requiere migración ni cambio de schema. Convive con la entry "Reactivar visitas guiadas" del grupo Asistente (UX distinta: esa muestra `Alert.alert` de confirmación, la nueva es silent).
 
 **Footer:** `Manifiesto X.Y.Z (build N)` — versión real via `expo-constants` + `expo-application`.
@@ -369,8 +369,22 @@ TourProvider (en app-providers.tsx, wrappea toda la app)
   └── TourTarget (HOC por step) — ref al View + config
 
 useScreenTour(key) — auto-start en primera visita + mark seen on dismiss
-persistence.ts — SecureStore: 'tour-seen.{key}' = '1', 'tours-disabled' = '1'
+useToursSeen() / useMarkTourSeen() / useResetTourSeen()
+                — read/write contra columnas en `profiles` (backend)
+persistence.ts — SecureStore: SOLO `tours-disabled` = '1' (toggle global)
 ```
+
+### 🆕 2026-05-27 — Backend sync
+
+El estado "tour visto" vive ahora en `profiles.{home,gastos,fijos,control}_tour_seen_at` (timestamptz). La app lee vía `useToursSeen` (deriva del profile cached por React Query) y muta vía `useMarkTourSeen` / `useResetTourSeen` (RPCs SECURITY DEFINER: `mark_tour_seen`, `reset_tour_seen`, `reset_all_tours_seen`).
+
+**Por qué:** logout antes borraba `tour-seen.*` y el siguiente login del mismo usuario veía los tours otra vez. Ahora el estado vive en el server: un user que vio el tour, hace logout, y se vuelve a loguear → no ve el tour. Mismo user en otro device tampoco.
+
+**Fallback offline:** si el RPC de `useMarkTourSeen` falla por red caída, se guarda `tour-seen-pending.<key>` en SecureStore y se reintenta en el próximo launch via `useMigrateToursToBackend` (que además hoistea flags legacy `tour-seen.*` de installs pre-2026-05-27, idempotente con el flag `tour-seen.migration-v2-done`).
+
+**Logout** ya no borra el estado de tours (backend persiste). Solo limpia el toggle device-local `tours-disabled` y el flag de migración para que el próximo user re-evalúe.
+
+El toggle global `tours-disabled` (sin UI todavía) sigue device-local en SecureStore.
 
 ### 4 tours activos
 
@@ -386,15 +400,15 @@ persistence.ts — SecureStore: 'tour-seen.{key}' = '1', 'tours-disabled' = '1'
 - Auto-start en `isFocused` + `splash.phase === 'hidden'` + `!startedRef.current`
 - Espera `startDelayMs` (default 600ms) para que RiseView + skeleton-to-data settle antes de medir
 - Llama `resetScrollToTop(tour)` antes de iniciar → garantiza que el primer step mida contra layout unscrolled
-- Marca como seen en `stop()` via `setTourSeen(tour)` (SecureStore)
+- Marca como seen en `stop()` via `useMarkTourSeen().mutate(tour)` (RPC + optimistic update del profile cache)
 - Flag global `tours-disabled` → aun si un tour no fue visto, no auto-arranca
 
 ### Persistencia
 
-- iOS: SecureStore → persiste reinstalación (Keychain)
-- Android: AsyncStorage equivalente → se resetea con wipe
-- Reset individual: `deletePersistentValue(seenKey)` (no escribe string vacío — iOS Keychain lo ignoraría silenciosamente)
-- Reset masivo: `resetAllTours()` — borra todos los flags + elimina `tours-disabled`
+- **Per-tour "seen" state:** backend (`profiles.{home,gastos,fijos,control}_tour_seen_at`). Persistente cross-device, cross-logout, cross-reinstall.
+- **Toggle global `tours-disabled`:** device-local en SecureStore (iOS: Keychain; Android: equivalente). Sin UI todavía; reset en logout.
+- **Pending fallback:** `tour-seen-pending.<key>` en SecureStore cuando el RPC `mark_tour_seen` falla. Reintentado por `useMigrateToursToBackend` en el próximo cold-start.
+- **Migration flag:** `tour-seen.migration-v2-done` en SecureStore. One-shot por install: hoistea cualquier flag legacy `tour-seen.*` + pending al backend, después se marca como done. Reset en logout para que un cambio de user re-evalúe.
 
 ### Reactivar desde Settings
 

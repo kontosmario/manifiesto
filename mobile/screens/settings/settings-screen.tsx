@@ -56,7 +56,8 @@ import {
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
-import { ALL_TOUR_KEYS, resetAllTours, resetTourSeen, TOUR_KEYS } from '@/features/tours'
+import { ALL_TOUR_KEYS, resetAllTours, TOUR_KEYS } from '@/features/tours'
+import { useResetTourSeen } from '@/features/tours/use-reset-tour-seen'
 import {
   setAssistantDemoMode,
   useAssistantDemoMode,
@@ -136,6 +137,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const familyMembersDetailQuery = useFamilyMembersDetail(familyId)
   const updateMyContributionMutation = useUpdateMyIncomeContribution(userId, familyId)
+  const tourResets = useResetTourSeen()
   const myContribution = useMemo(() => {
     const me = (familyMembersDetailQuery.data ?? []).find(
       (m) => m.userId === userId,
@@ -450,20 +452,21 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // after a long break or for users who want a refresher.
   const handleResetTours = useCallback(async () => {
     void triggerHaptic('selection')
+    await tourResets.resetAll()
     await resetAllTours()
     void triggerHaptic('success')
     Alert.alert(
       'Listo',
       'La próxima vez que abras Inicio, Gastos, Fijos y Control vas a ver el tutorial guiado.',
     )
-  }, [])
+  }, [tourResets])
 
   // Ayuda · Tutoriales — re-watch a single tour or all four.
   // Resets the "seen" flag then navigates to the relevant tab so
   // `useScreenTour` fires the auto-start on next focus.
   const handleRewatchTour = useCallback(
     async (tourKey: (typeof ALL_TOUR_KEYS)[number]) => {
-      await resetTourSeen(tourKey)
+      await tourResets.resetOne(tourKey)
       const target =
         tourKey === TOUR_KEYS.home
           ? '/(app)/(tabs)/home'
@@ -474,14 +477,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               : '/(app)/(tabs)/insights'
       router.push(target)
     },
-    [router],
+    [router, tourResets],
   )
 
   const handleResetAllTours = useCallback(async () => {
+    await tourResets.resetAll()
     await resetAllTours()
     // No navigation: the user stays where they are. Next visit to each
     // screen will auto-fire its tour.
-  }, [])
+  }, [tourResets])
 
   // Owner-with-members destructive flow lives in a dedicated sheet so
   // we can collect a typed-confirmation phrase. Anyone else (member,

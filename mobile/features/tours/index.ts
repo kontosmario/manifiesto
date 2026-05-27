@@ -13,11 +13,8 @@ export {
 } from './tour-keys'
 export {
   getToursEnabled,
-  getTourSeen,
   resetAllTours,
-  resetTourSeen,
   setToursEnabled,
-  setTourSeen,
 } from './persistence'
 export type {
   HighlightStyle,

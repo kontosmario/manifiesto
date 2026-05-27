@@ -8,6 +8,8 @@
 > 🆕 **Novedad post-foto (2026-05-22):** se cerró la vuln RLS de `expenses` (migración `20260522000000`) y se implementó el **modo soltero / familia invisible** (`families.kind`, onboarding Solo/Familia, UI de familia oculta en Home/Settings). Doc canónico: [sistemas/account-kinds.md](../../sistemas/account-kinds.md). Esta foto no refleja esos cambios.
 >
 > 🆕 **Novedad post-foto (2026-05-27):** **Pre-onboarding biometric setup** — toda cuenta nueva pasa por una pantalla intermedia `/(app)/biometric-setup` (entre signup y wizard) para activar Face ID conscientemente. Controlada por `AppEntryGate` con flag per-user en SecureStore; cubre email+password, Apple, Google y magic-link confirm. Detalle en [02 § "Pre-onboarding biometric setup"](02-auth-onboarding.md#pre-onboarding-biometric-setup--live-2026-05-27).
+>
+> 🆕 **Novedad post-foto (2026-05-27, parte 2):** **Tour-seen backend sync** — el estado "tour visto" se movió de SecureStore device-local a 4 columnas timestamptz en `profiles` (`home_tour_seen_at`, `gastos_tour_seen_at`, `fijos_tour_seen_at`, `control_tour_seen_at`) + 3 RPCs (`mark_tour_seen`, `reset_tour_seen`, `reset_all_tours_seen`). Logout deja de borrar el estado (backend persiste cross-session/device); migración one-shot por device hoistea flags legacy al backend. Resuelve el bug "después de logout veo el tour de nuevo". Detalle en [06 § "Tours / Walkthroughs"](06-settings-engagement.md#7-tours--walkthroughs).
 
 ---
 

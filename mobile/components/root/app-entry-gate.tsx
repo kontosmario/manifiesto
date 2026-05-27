@@ -8,7 +8,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
-import { useBackfillExistingUser } from '@/features/tours/use-backfill-existing-user'
+import { useMigrateToursToBackend } from '@/features/tours/use-migrate-tours-to-backend'
 import {
   getIsAuthTransitionSplashVisible,
   markAuthTransitionLoaded,
@@ -21,7 +21,10 @@ export function AppEntryGate() {
   const familyQuery = useFamily(userId)
   const family = familyQuery.data ?? null
   const profileQuery = useMyProfile(userId)
-  useBackfillExistingUser(profileQuery.data?.onboarding_completed_at)
+  // Migrate any legacy device-local `tour-seen.*` flags (pre-2026-05-27)
+  // and retry any pending fallbacks to the backend. One-shot per
+  // install; flag-gated so subsequent launches are no-ops.
+  useMigrateToursToBackend(userId)
   // Cold-start biometric probe — read once, used to decide between
   // the welcome hero and the login auto-biometric route below. Runs
   // in parallel with the session check so by the time we know the
