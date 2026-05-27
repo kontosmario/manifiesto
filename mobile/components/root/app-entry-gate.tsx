@@ -36,32 +36,36 @@ export function AppEntryGate() {
   const isAppUnlocked = useAppLockState()
   // Flag read for the pre-onboarding biometric-setup gate. We resolve
   // it lazily here (no separate hook file) because the result only
-  // influences one routing branch. While loading, treat as
-  // "not loaded" so `shouldShowBiometricSetup` returns false and the
-  // gate keeps rendering the loading state — prevents a redirect
-  // flicker when the flag is actually `true` but the read hasn't
-  // resolved yet.
-  const [biometricSetupShown, setBiometricSetupShown] = useState(false)
-  const [biometricSetupFlagLoaded, setBiometricSetupFlagLoaded] = useState(false)
+  // influences one routing branch.
+  //
+  // Storage shape: { userId, shown } — keying the latest probe by
+  // userId lets us derive `biometricSetupShown` / `biometricSetupFlagLoaded`
+  // without explicitly resetting state when userId changes. That avoids
+  // the `react-hooks/set-state-in-effect` lint flag and the dual setState
+  // calls on user-change. While the read for the current userId is in
+  // flight (or hasn't started), `flagLoaded` is false and
+  // `shouldShowBiometricSetup` returns false → gate keeps loading,
+  // preventing a redirect flicker when the flag is actually `true` but
+  // the read hasn't resolved yet.
+  const [latestProbe, setLatestProbe] = useState<{
+    userId: string
+    shown: boolean
+  } | null>(null)
   useEffect(() => {
-    // No userId yet → nothing to read; mark as "loaded=false" so
-    // gate stays in loading and re-checks once userId resolves.
-    if (!userId) {
-      setBiometricSetupShown(false)
-      setBiometricSetupFlagLoaded(false)
-      return
-    }
+    if (!userId) return
     let cancelled = false
-    setBiometricSetupFlagLoaded(false)
     void getBiometricSetupShown(userId).then((value) => {
       if (cancelled) return
-      setBiometricSetupShown(value)
-      setBiometricSetupFlagLoaded(true)
+      setLatestProbe({ userId, shown: value })
     })
     return () => {
       cancelled = true
     }
   }, [userId])
+  const probeMatchesCurrentUser =
+    latestProbe !== null && latestProbe.userId === userId
+  const biometricSetupShown = probeMatchesCurrentUser && latestProbe.shown
+  const biometricSetupFlagLoaded = probeMatchesCurrentUser
   const isLoading =
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||

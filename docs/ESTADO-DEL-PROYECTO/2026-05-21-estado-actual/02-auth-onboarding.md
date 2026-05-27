@@ -131,12 +131,12 @@ AppEntryGate
 - **Email normalizado:** `normalizeEmail()` = trim + lowercase.
 - **Supabase call:** `supabase.auth.signUp({ email, password, options: { emailRedirectTo, data: { display_name } } })`.
 - **Resolución:**
-  - `hasSession=true` → `showAuthTransitionSplash()` → `router.replace('/(app)/onboarding')`.
+  - `hasSession=true` → `showAuthTransitionSplash()` → `router.replace('/(app)/biometric-setup')` (gate pre-onboarding; ver sección "Pre-onboarding biometric setup" abajo).
   - `hasSession=false` → panel "Revisá tu mail" con email enmascarado (`jo***@gmail.com`), botón "Reenviar email" con cooldown 60s (timer visible), botón "Cambiar email".
 - **Reenvío:** `supabase.auth.resend({ type: 'signup', email })` via `useResendSignupEmail`.
 - **Apple:** `isAppleSignInAvailable()` → botón negro "Continuar con Apple". Si no disponible, `Alert`.
 - **Google:** `isGoogleSignInConfigured()` (requiere `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` + módulo nativo). Botón con "G" oficial.
-- **Social result:** `signed-in` → `router.replace('/(app)/onboarding')`. `cancelled` → silencioso. `unavailable` → `setErrorMessage`.
+- **Social result:** `signed-in` → `router.replace('/(app)/biometric-setup')`. `cancelled` → silencioso. `unavailable` → `setErrorMessage`.
 - **Guard:** `RequireGuest allowFamilylessSession`.
 - **Fineprint:** links a Términos y Privacidad.
 
@@ -262,6 +262,41 @@ Adicionalmente, `getBiometricLoginState` consulta una flag persistente en AsyncS
 ---
 
 ## 4. Onboarding y Household Setup
+
+### Pre-onboarding biometric setup ✅ LIVE (2026-05-27)
+
+**Ruta:** `/(app)/biometric-setup` → `BiometricSetupScreen` ([biometric-setup-screen.tsx](../../../mobile/screens/auth/biometric-setup-screen.tsx)).
+
+**Propósito:** toda cuenta nueva pasa por esta pantalla **antes** del wizard de onboarding para tomar una decisión consciente sobre Face ID. Sin este step, la activación quedaba escondida en Settings → Seguridad (alto drop-off) y el primer cold-start post-onboarding no tenía App Lock.
+
+**Dos modos** (decididos al montar leyendo `getBiometricLoginState()`):
+- **Modo A** — `isAvailable=true`. Hero icon `scan-circle-outline`, título "Activá Face ID" (label dinámico), body "Entrá más rápido y con más seguridad.", CTA primario `Activar Face ID` + ghost `Ahora no`.
+  - **Activar** → `activateBiometricForSession(email)` ([activate-biometric-for-session.ts](../../../mobile/features/auth/activate-biometric-for-session.ts)) dispara el prompt nativo y guarda el refresh token en Keychain vía `saveBiometricCredentials`. Avanza al wizard sin importar el resultado.
+  - **Ahora no** → solo marca el flag y avanza.
+- **Modo B** — `isAvailable=false` (device sin biometría enrolada). Hero icon `lock-closed-outline`, título "Activalo cuando quieras", body "Tu dispositivo no tiene Face ID configurado. Podés activarlo más adelante desde Ajustes → Seguridad.", CTA único `Continuar`.
+
+**Gating:** la decisión "mostrar/no mostrar" vive en la pure fn `shouldShowBiometricSetup({ sessionUserId, onboardingCompletedAt, biometricSetupShown, biometricSetupFlagLoaded })` ([should-show-biometric-setup.ts](../../../mobile/features/auth/should-show-biometric-setup.ts)) y se ejecuta dentro de `AppEntryGate` ANTES del redirect a `/(app)/onboarding`. Retorna true cuando hay sesión + onboarding incompleto + flag false + flag-loaded true.
+
+**Flag:** `biometric-setup-shown:<userId>` en SecureStore vía `mobile/lib/persistent-kv.ts` (mismo patrón que `tour-seen.*` y `tours-backfill-done`). API en [biometric-setup-flag.ts](../../../mobile/features/auth/biometric-setup-flag.ts):
+- `getBiometricSetupShown(userId)` / `markBiometricSetupShown(userId)` / `clearBiometricSetupShown(userId)`
+- Empty userId → no-op (defensivo)
+- Se marca cuando el usuario interactúa con cualquier CTA (Activar éxito, Activar fail, Ahora no, Continuar)
+- Se limpia en `logoutSession` ([logout.ts](../../../mobile/features/auth/logout.ts)) → `userId` capturado **antes** de `supabase.auth.signOut()` para namespacing correcto
+
+**Cobertura de flujos:**
+- Email+password signup → redirect directo (`signup-screen.tsx` línea ~215)
+- Apple/Google signup → redirect directo (`signup-screen.tsx` línea ~256)
+- Magic link confirm → vuelve a la app con sesión; AppEntryGate intercepta vía cold-start
+- Hot-restart durante setup → cold-start → AppEntryGate vuelve a routear ahí
+- Logout mid-setup → flag limpiado → siguiente login → vuelve a aparecer
+- Returners con `onboarding_completed_at` → JAMÁS lo ven (regla `!onboardingCompletedAt`)
+- Reinstalación → flag inexistente → vuelve a aparecer (device-specific, deseado)
+
+**Tests:** unit tests para `biometric-setup-flag` (6 casos: get/mark/clear/aislamiento/empty-userId guards) y `should-show-biometric-setup` (8 combinaciones de inputs). El activate helper es I/O-pesado y se cubre con smoke manual.
+
+**No hay back gesture** en la stack screen (`gestureEnabled: false, fullScreenGestureEnabled: false` en `app-stack-shell.tsx`), igual que `onboarding` y `onboarding-success`.
+
+---
 
 ### Onboarding — Wizard 5 pasos
 
