@@ -472,14 +472,15 @@ export function TourHost() {
       transparent
       visible
     >
-      {/* Scrim — Pressable wrapper for tap-to-dismiss; a single
-          SVG Path with `fillRule="evenodd"` paints the scrim and
-          subtracts the rounded cutout. The Animated.View's opacity
-          drives both the show/hide fade and the configured
-          `scrimOpacity` cap. */}
+      {/* Scrim — blocks all underlying touches but does NOT dismiss on tap.
+          Dismissal is intentionally restricted to the "Saltar" button in the
+          tooltip (consistent with explicit-action UX). The Pressable (no
+          onPress) still captures taps so the user can't interact with the
+          masked UI underneath. A single SVG Path with `fillRule="evenodd"`
+          paints the scrim and subtracts the rounded cutout. The
+          Animated.View's opacity drives both the show/hide fade and the
+          configured `scrimOpacity` cap. */}
       <Pressable
-        accessibilityLabel="Cerrar tutorial"
-        onPress={() => stop(false)}
         style={StyleSheet.absoluteFill}
       >
         <Animated.View
