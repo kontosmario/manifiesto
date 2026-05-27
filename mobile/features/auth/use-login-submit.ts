@@ -20,7 +20,7 @@ interface UseLoginSubmitInput {
   onErrorMessage: (message: string) => void
   onInfoMessage: (message: string) => void
   onModeChange: (mode: AuthMode) => void
-  onNavigateToJoin: (href: '/(app)/onboarding') => void
+  onNavigateToJoin: (href: '/(app)/biometric-setup') => void
   onSignedIn: () => void
   onPasswordReset: () => void
   password: string

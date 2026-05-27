@@ -31,6 +31,16 @@ export type ActivateBiometricResult =
 export async function activateBiometricForSession(
   email: string,
 ): Promise<ActivateBiometricResult> {
+  // Defensive guard for edge providers (e.g. Apple Sign-In with email
+  // hidden when the session somehow surfaces without a relay address).
+  // `saveBiometricCredentials` silently no-ops on empty email, which
+  // would otherwise leave us reporting 'activated' while no credentials
+  // were stored. Treat as 'unavailable' so the caller (screen) plays
+  // the warning haptic and advances without false confidence.
+  if (!email) {
+    return 'unavailable'
+  }
+
   const state = await getBiometricLoginState()
 
   if (!state.isAvailable) {

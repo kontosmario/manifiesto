@@ -209,12 +209,18 @@ export function SignupScreen() {
 
       showAuthTransitionSplash()
       // Hand off to the pre-onboarding biometric-setup gate. AppEntryGate
-      // will fall through to /(app)/onboarding if the user already saw
-      // the biometric-setup screen (flag set). Apple/Google + magic-link
+      // falls through to /(app)/onboarding if the user already saw the
+      // biometric-setup screen (flag set). Apple/Google + magic-link
       // flows hit the same gate via cold-start.
-      router.replace(
-        resolution.type === 'onboarding' ? resolution.href : '/(app)/biometric-setup',
-      )
+      //
+      // We route directly instead of dispatching on `resolution.type`:
+      // `email-confirmation` returns early above (line 203), so by here
+      // `resolution.type` is provably `'onboarding'` with
+      // `href === '/(app)/biometric-setup'`. Hard-coding the destination
+      // avoids the dead-code ternary that earlier hid a routing bug
+      // (the ternary would re-resolve to `/(app)/onboarding` if the
+      // shared `resolveAuthSubmitResolution` href ever drifted again).
+      router.replace('/(app)/biometric-setup')
     } catch (error) {
       await triggerHaptic('error')
       setErrorMessage(getErrorMessage(error, 'No pudimos crear tu cuenta.'))
