@@ -48,10 +48,15 @@ export default function OnboardingRoute() {
     return <Redirect href="/(auth)/welcome" />
   }
 
-  // If onboarding is already complete, bounce to Home so this route
-  // is effectively unreachable once done.
+  // If onboarding is already complete, route to the welcome screen.
+  // During the wizard's own handleFinish, this fires the moment the
+  // mutation's setQueryData flips the cache; redirecting to the
+  // welcome screen (instead of home) ensures no flash of Home between
+  // "wizard finishes" and "welcome screen visible". A returning user
+  // who manually navigates here also lands on the welcome screen,
+  // which is a benign brief moment before they tap "Empezar" to home.
   if (profileQuery.data?.onboarding_completed_at) {
-    return <Redirect href="/(app)/(tabs)/home" />
+    return <Redirect href="/(app)/onboarding-success" />
   }
 
   return (

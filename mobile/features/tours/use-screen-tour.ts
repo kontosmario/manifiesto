@@ -60,6 +60,16 @@ interface UseScreenTourOptions {
    * "Reactivar visitas guiadas" flow in Settings.
    */
   forceStart?: boolean
+  /**
+   * When false, suppress the auto-start effect entirely (caller is
+   * still responsible for not calling `start` imperatively). Used to
+   * delay the home tour until the user has confirmed the cycle
+   * starting balance, so the tour overlay doesn't stack on top of
+   * the cycle-balance sheet (iOS Modal glitches when stacked, leaving
+   * the tour scrim invisible but touch-blocking).
+   * Default true (auto-fires normally).
+   */
+  enabled?: boolean
 }
 
 /**
@@ -81,7 +91,7 @@ interface UseScreenTourOptions {
  */
 export function useScreenTour(
   tour: TourKey,
-  { startDelayMs = 600, forceStart = false }: UseScreenTourOptions = {},
+  { startDelayMs = 600, forceStart = false, enabled = true }: UseScreenTourOptions = {},
 ): { start: () => Promise<void> } {
   const ctx = useTour()
   const isFocused = useIsFocused()
@@ -115,6 +125,11 @@ export function useScreenTour(
 
   // Auto-start on focus.
   useEffect(() => {
+    if (!enabled) {
+      // Reset so when enabled flips true, the effect can fire fresh.
+      startedRef.current = false
+      return
+    }
     if (!isFocused) {
       startedRef.current = false
       return
@@ -153,7 +168,7 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [forceStart, isFocused, splashHidden, startDelayMs, tour])
+  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')

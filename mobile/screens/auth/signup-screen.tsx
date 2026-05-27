@@ -35,7 +35,10 @@ import { usePasswordSignUp, useResendSignupEmail } from '@/features/auth/use-aut
 import { resolveAuthSubmitResolution } from '@/features/auth/auth-submit-flow'
 import { normalizeEmail } from '@/features/auth/auth-flow'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
-import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import {
+  hideAuthTransitionSplash,
+  showAuthTransitionSplash,
+} from '@/lib/auth-transition-splash'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
@@ -126,6 +129,9 @@ export function SignupScreen() {
   }, [confirmationEmail, resendCooldownSeconds, resendSignupEmail])
 
   const handleChangeEmail = useCallback(() => {
+    // Clear any lingering splash from the prior submit/confirmation
+    // attempt so the form re-appears cleanly.
+    hideAuthTransitionSplash()
     setConfirmationEmail(null)
     setResendAvailableAt(0)
     setInfoMessage(null)
@@ -144,6 +150,9 @@ export function SignupScreen() {
   )
 
   const handleBack = useCallback(() => {
+    // Clear any lingering splash from the prior submit/confirmation
+    // attempt so the form re-appears cleanly.
+    hideAuthTransitionSplash()
     void triggerHaptic('light')
     if (router.canGoBack()) router.back()
     else router.replace('/(auth)/welcome')
@@ -652,7 +661,7 @@ interface FadeInUpProps {
   children: React.ReactNode
 }
 
-function FadeInUp({ delay = 0, duration = 500, reduced, style, children }: FadeInUpProps) {
+function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeInUpProps) {
   const y = useSharedValue(reduced ? 0 : 10)
   const opacity = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {

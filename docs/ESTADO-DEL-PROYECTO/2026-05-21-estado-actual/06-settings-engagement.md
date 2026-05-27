@@ -63,6 +63,7 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 4 | **Familia** | Invitar a alguien, Gestionar miembros (solo owner), Salir / Eliminar hogar | "Invitar" genera código efímero vía `ShareInviteSheet`. "Gestionar" navega a `/settings/family-admin`. La fila destructiva adapta label y helper según `isOwnerDestroyFlow` |
 | 4b | **Asistente** | Preferencias del asistente, Reactivar visitas guiadas | "Reactivar" llama `resetAllTours()` + `Alert` confirmación |
 | 5 | **Notificaciones** | Gestionar notificaciones, Habilitar push | Push muestra "Dev build" si `!supportsRemotePushNotifications` (Expo Go SDK 53+). Valor: "Activo" / "Activar" |
+| 5b | **Ayuda · Tutoriales** | "Ver tutorial de Inicio/Gastos/Fijos/Control" (x4) + "Volver a ver todos" | Ver detalle abajo |
 | 6 | **Apariencia** | `SegmentedControl` Sistema / Claro / Oscuro | Persiste en `ThemeProvider` |
 | 6b | **Animaciones** | `SegmentedControl` Reducir / Auto / Todas | `MotionPreference`: `always` / `auto` / `never` |
 | 6c | **Acceso rápido** | Toggle biometría (Face ID / Fingerprint) | Lee/escribe refresh token en SecureStore via `biometric-auth.ts`. Disabled si el dispositivo no tiene biometría enrollada |
@@ -72,6 +73,11 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 8b | **Tu plan** | Plan del hogar ("Ver planes") | Navega a `/settings/plan` (billing MOCK) |
 | 9 | **Ayuda y legal** | Contactar soporte (mailto), Política de privacidad, Términos de uso | `buildSupportMailto` incluye version + build + userId en el subject |
 | 10 | **Cuenta** | Cerrar sesión, Eliminar cuenta | "Eliminar cuenta" → `DeleteAccountConfirmSheet` → RPC marca cuenta para borrar en 30 días → logout automático |
+
+**Ayuda · Tutoriales** — nuevo grupo en Settings (entre Notificaciones y Apariencia) con 5 rows:
+- "Ver tutorial de Inicio/Gastos/Fijos/Control" — cada uno llama `resetTourSeen({key})` (de [`tours/persistence.ts`](../../../mobile/features/tours/persistence.ts)) y navega al tab correspondiente. El auto-fire del hook re-dispara el tour.
+- "Volver a ver todos los tutoriales" — llama `resetAllTours` que además re-habilita el toggle global. No navega (silent reset; el próximo focus a cada screen dispara).
+No requiere migración ni cambio de schema. Convive con la entry "Reactivar visitas guiadas" del grupo Asistente (UX distinta: esa muestra `Alert.alert` de confirmación, la nueva es silent).
 
 **Footer:** `Manifiesto X.Y.Z (build N)` — versión real via `expo-constants` + `expo-application`.
 

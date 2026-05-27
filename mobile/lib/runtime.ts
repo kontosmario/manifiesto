@@ -7,6 +7,17 @@ import { enableFreeze } from 'react-native-screens'
 // Keychain via `mobile/lib/supabase-secure-storage.ts`.
 import 'react-native-url-polyfill/auto'
 
+// NOTE about the Supabase WARN "WebCrypto API is not supported. Code
+// challenge method will default to use plain instead of sha256":
+// Hermes has no `crypto.subtle`, so @supabase/auth-js falls back to
+// PKCE "plain" (still secure: the code_verifier never leaves the
+// device). It's a benign warning. We tried polyfilling via
+// `expo-standard-web-crypto` + a manual `subtle.digest` shim, but that
+// package depends on the native module `ExpoCryptoAES` which is NOT
+// in the current dev-client build — bundling crashed the whole app.
+// Live with the warning until we rebuild the dev client (or until
+// Expo ships a pure-JS subtle.digest in expo-crypto).
+
 // Activa el freezing de React subtrees para screens con
 // `freezeOnBlur: true`. Sin este flag global, todos los
 // `freezeOnBlur: true` en root-layout-shell + app-stack-shell eran

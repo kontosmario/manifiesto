@@ -18,6 +18,7 @@ import { useTrackElement } from '@/features/home/use-track-element'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
+import { StartingBalanceCta } from '@/components/home/starting-balance-cta'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
@@ -119,9 +120,6 @@ export function HomeDashboard({
   const { theme } = useAppTheme()
   const today = useCurrentDate()
   const queryClient = useQueryClient()
-  // Auto-start the Home guided tour on first visit. Hook is a no-op
-  // if the tour was already seen or globally disabled in Settings.
-  useScreenTour(HOME_TOUR)
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
 
   // ─── Tour targets that can't be wrapped via <TourTarget> ────────
@@ -220,6 +218,15 @@ export function HomeDashboard({
   )
   const onboardingSkippedViaExpense = storedCycleAnchor == null && hasManualExpense
   const isOnboardingFlow = storedCycleAnchor == null
+  // Auto-start the Home guided tour on first visit. Hook is a no-op
+  // if the tour was already seen or globally disabled in Settings.
+  // Gated on !isOnboardingFlow: we wait for the user to confirm the
+  // cycle starting balance before firing the tour. Otherwise the tour
+  // overlay and the saldo-CTA bottom sheet stack as two Modals (iOS
+  // gets glitched: scrim renders invisible, touches captured silently).
+  // Once the balance is confirmed, isOnboardingFlow flips false and
+  // the tour fires normally.
+  useScreenTour(HOME_TOUR, { enabled: !isOnboardingFlow })
 
   // Side-effect: when the user dropped the onboarding sheet by
   // adding an expense, write a neutral cycle anchor in the
@@ -554,6 +561,15 @@ export function HomeDashboard({
       homeMetrics.hero.projectionReliable && projectedCloseTrend != null,
   })
 
+  // Derive the user's first name from the full displayName prop.
+  // Used by familyModeHeroCopy to personalise the hero title in
+  // solo mode (e.g. "Mario" instead of "Bienvenido").
+  const userFirstName = (() => {
+    const raw = displayName.trim()
+    const first = raw.split(/\s+/)[0]
+    return first || null
+  })()
+
   // "Apartando ahorro" chip — read-only caption inside the hero,
   // visible when the user has configured a monthly savings target.
   // The dashboard model already prorates for cycle-balance overrides
@@ -599,6 +615,14 @@ export function HomeDashboard({
           showMembers={!isSolo}
         />
       </TourTarget>
+      {isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0 ? (
+        <View style={{ marginBottom: 12 }}>
+          <StartingBalanceCta
+            tourOrder={99}
+            onPress={() => setCycleBalanceSheetOpen(true)}
+          />
+        </View>
+      ) : null}
       <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
@@ -609,6 +633,12 @@ export function HomeDashboard({
           onPressConfigureIncome={handlePressConfigureIncome}
           projectedCloseTrend={projectedCloseTrend}
           savingsChip={savingsChip}
+          heroMode={{
+            kind: isSolo ? 'solo' : 'shared',
+            memberCount: familyMembers.length,
+            familyName: null,
+            userFirstName,
+          }}
         />
       </TourTarget>
       {/* Variables + Fijos halves of MonthSummaryCard register as
