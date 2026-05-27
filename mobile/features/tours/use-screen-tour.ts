@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useIsFocused } from '@react-navigation/native'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
-import { getToursEnabled, getTourSeen, setTourSeen } from './persistence'
+import { getToursEnabled } from './persistence'
+import { useMarkTourSeen } from './use-mark-tour-seen'
+import { useToursSeen } from './use-tours-seen'
 import { useTour } from './tour-context'
 import { getTourScrollEntry } from './tour-scroll-registry'
 import type { TourKey } from './tour-keys'
@@ -104,6 +106,8 @@ export function useScreenTour(
   // hides, and gate the start on `phase === 'hidden'`.
   const splash = useAuthTransitionSplash()
   const splashHidden = splash.phase === 'hidden'
+  const toursSeen = useToursSeen()
+  const markSeenMutation = useMarkTourSeen()
   const ctxRef = useRef(ctx)
   ctxRef.current = ctx
   const startedRef = useRef(false)
@@ -117,11 +121,12 @@ export function useScreenTour(
     if (isOurs) {
       wasActiveRef.current = true
     } else if (wasActiveRef.current && ctx.activeTour === null) {
-      // Just stopped from being our tour.
+      // Just stopped from being our tour. Mark on the backend (optimistic
+      // update keeps `useToursSeen` consistent immediately).
       wasActiveRef.current = false
-      void setTourSeen(tour)
+      markSeenMutation.mutate(tour)
     }
-  }, [ctx.activeTour, tour])
+  }, [ctx.activeTour, tour, markSeenMutation])
 
   // Auto-start on focus.
   useEffect(() => {
@@ -148,8 +153,11 @@ export function useScreenTour(
       const enabled = await getToursEnabled()
       if (cancelled || !enabled) return
       if (!forceStart) {
-        const seen = await getTourSeen(tour)
-        if (cancelled || seen) return
+        // Wait for the profile load to resolve before deciding. While
+        // loading, `isSeen` returns true (conservative), so the early-
+        // return below already covers that case.
+        if (toursSeen.isLoading) return
+        if (toursSeen.isSeen(tour)) return
       }
       timeoutId = setTimeout(async () => {
         if (cancelled) return
@@ -168,7 +176,7 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour])
+  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour, toursSeen])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')
