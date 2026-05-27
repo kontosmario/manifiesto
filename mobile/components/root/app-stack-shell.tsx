@@ -214,6 +214,13 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="biometric-setup"
+          options={{
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="add-expense"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
