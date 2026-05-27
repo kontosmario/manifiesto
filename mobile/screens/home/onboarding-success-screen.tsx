@@ -13,13 +13,14 @@ import { onboardingSuccessCopy } from '@/features/onboarding/success-copy'
 import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import { authTokens } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
 const CREAM = authTokens.surfaceCream
 const PEACH = authTokens.peach
 const CLAY = authTokens.clay
 const DARK_GREEN = authTokens.welcomeBg
+const TEXT_ON_CREAM = authTokens.welcomeBg          // brand dark green for body text on cream canvas
+const TEXT_ON_CREAM_SOFT = 'rgba(14,58,38,0.6)'     // soft variant: same green with 60% alpha
 
 /**
  * Post-onboarding success screen. Sits between the wizard's last step
@@ -37,7 +38,6 @@ export function OnboardingSuccessScreen() {
 
 function OnboardingSuccessBody({ userId }: { userId: string }) {
   const router = useRouter()
-  const { theme } = useAppTheme()
   const isSolo = useIsSolo(userId)
   const profileQuery = useMyProfile(userId)
   const profile = profileQuery.data
@@ -75,18 +75,18 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
       <StatusBar style="dark" />
       <View style={styles.hero}>
         <RiseView delay={100} duration={620} style={styles.eyebrowSlot}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
+          <Text style={[styles.eyebrow, { color: TEXT_ON_CREAM_SOFT }]}>
             {copy.eyebrow}
           </Text>
         </RiseView>
 
-        <RiseView delay={250} duration={620} style={styles.titleSlot}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
+        <RiseView delay={180} duration={620} style={styles.titleSlot}>
+          <Text style={[styles.title, { color: TEXT_ON_CREAM }]}>
             {copy.title}
           </Text>
         </RiseView>
 
-        <RiseView delay={400} duration={700} style={styles.avatarSlot}>
+        <RiseView delay={260} duration={620} style={styles.avatarSlot}>
           <View style={styles.avatarShell}>
             <LinearGradient
               colors={[PEACH, CLAY]}
@@ -105,14 +105,14 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
           </View>
         </RiseView>
 
-        <RiseView delay={560} duration={620} style={styles.subtitleSlot}>
-          <Text style={[styles.subtitle, { color: theme.colors.textSoft }]}>
+        <RiseView delay={340} duration={620} style={styles.subtitleSlot}>
+          <Text style={[styles.subtitle, { color: TEXT_ON_CREAM_SOFT }]}>
             {copy.subtitle}
           </Text>
         </RiseView>
       </View>
 
-      <RiseView delay={760} duration={520} style={styles.ctaSlot}>
+      <RiseView delay={420} duration={620} style={styles.ctaSlot}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={copy.ctaLabel}

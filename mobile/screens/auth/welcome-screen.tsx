@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
+import { StatusBar } from 'expo-status-bar'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -69,6 +70,7 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
 
   return (
     <View style={styles.root}>
+      <StatusBar style="light" />
       <AuroraLayer width={width} height={height} />
       <ParticleLayer width={width} height={height} reduced={reduced} />
 
