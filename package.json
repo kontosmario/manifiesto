@@ -65,7 +65,6 @@
     "expo-router": "~6.0.23",
     "expo-secure-store": "~15.0.8",
     "expo-sqlite": "~16.0.10",
-    "expo-standard-web-crypto": "^56.0.3",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
     "react": "19.1.0",
