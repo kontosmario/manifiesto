@@ -6,6 +6,8 @@
 > ⚠️ **Nota (2026-05-22):** foto al commit `7962ea2`, **antes** de la limpieza del doc 09. El 2026-05-22 se ejecutó esa limpieza (156 archivos eliminados) y se reorganizó la documentación bajo `docs/`. Varios archivos de código citados aquí (los listados en [09](09-candidatos-a-eliminar.md)) ya no existen — esperable en una foto fechada.
 >
 > 🆕 **Novedad post-foto (2026-05-22):** se cerró la vuln RLS de `expenses` (migración `20260522000000`) y se implementó el **modo soltero / familia invisible** (`families.kind`, onboarding Solo/Familia, UI de familia oculta en Home/Settings). Doc canónico: [sistemas/account-kinds.md](../../sistemas/account-kinds.md). Esta foto no refleja esos cambios.
+>
+> 🆕 **Novedad post-foto (2026-05-27):** **Pre-onboarding biometric setup** — toda cuenta nueva pasa por una pantalla intermedia `/(app)/biometric-setup` (entre signup y wizard) para activar Face ID conscientemente. Controlada por `AppEntryGate` con flag per-user en SecureStore; cubre email+password, Apple, Google y magic-link confirm. Detalle en [02 § "Pre-onboarding biometric setup"](02-auth-onboarding.md#pre-onboarding-biometric-setup--live-2026-05-27).
 
 ---
 
@@ -24,7 +26,7 @@ Cada documento cubre un dominio del producto, con:
 | # | Documento | Cubre |
 |---|-----------|-------|
 | 01 | [Arquitectura, stack, navegación, estado y theme](01-arquitectura-stack-navegacion-estado.md) | Stack técnico, dependencias, expo-router layouts, navegación custom, theme system, providers, query-client, runtime/lib infra, stores de estado, hooks globales |
-| 02 | [Auth y Onboarding](02-auth-onboarding.md) | Welcome, login, signup, join, forgot/reset password, callback OAuth, Apple/Google Sign-In, biometría, onboarding, household setup, account deletion UI |
+| 02 | [Auth y Onboarding](02-auth-onboarding.md) | Welcome, login, signup, join, forgot/reset password, callback OAuth, Apple/Google Sign-In, biometría, **pre-onboarding biometric-setup gate** (2026-05-27), onboarding wizard, household setup, account deletion UI |
 | 03 | [Home, Control y Fijos](03-home-control-fijos.md) | Home screen, Control v2 (+ hero), gastos fijos (fijos v2/v3, alta de fijo), todos los componentes de home |
 | 04 | [Gastos y flujos de alta](04-gastos-add-flows.md) | Lista de gastos / gastos v2, alta de gasto e ingreso, historial, filtros, categorías, notas |
 | 05 | [Insights, Asistente y Coach](05-insights-asistente-coach.md) | Motor de señales, asistente financiero heurístico, coach mode, achievements, streaks, finance |

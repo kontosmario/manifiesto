@@ -49,12 +49,12 @@ AppEntryGate (root layout)
        │
   ┌────┴───────────────────────────────────────────────────┐
   │ hasSession=true → showAuthTransitionSplash             │
-  │      └─ router.replace('/(app)/onboarding')            │
+  │      └─ router.replace('/(app)/biometric-setup')       │
   │                                                        │
   │ hasSession=false (email sin confirmar)                 │
   │      └─ panel "Revisá tu mail" + resend con cooldown   │
   └────────────────────────────────────────────────────────┘
-  Social (Apple/Google) → signInWithIdToken → router.replace('/(app)/onboarding')
+  Social (Apple/Google) → signInWithIdToken → router.replace('/(app)/biometric-setup')
 ```
 
 ### Cold start con sesión válida
@@ -66,7 +66,9 @@ AppEntryGate
        │        └─ Face ID OK → markAppUnlocked → router.replace('/')
        │
        └─ profileQuery.onboarding_completed_at?
-               NO  → /(app)/onboarding
+               NO  → ¿biometric-setup-shown:<userId>?
+                       NO  → /(app)/biometric-setup    (pre-onboarding Face ID gate, 2026-05-27)
+                       YES → /(app)/onboarding          (wizard de 5 pasos)
                YES → /(app)/(tabs)/home
 ```
 
@@ -92,6 +94,7 @@ AppEntryGate
 | `/(auth)/forgot-password` | [forgot-password.tsx](../../../app/(auth)/forgot-password.tsx) | [forgot-password-screen.tsx](../../../mobile/screens/auth/forgot-password-screen.tsx) | Solicita email y envía link de reset. |
 | `app/auth/callback` | [callback.tsx](../../../app/auth/callback.tsx) | [auth-callback-screen.tsx](../../../mobile/screens/auth/auth-callback-screen.tsx) | Intercepta deep link de confirmación de email (PKCE). |
 | `app/auth/reset-password` | [reset-password.tsx](../../../app/auth/reset-password.tsx) | [reset-password-screen.tsx](../../../mobile/screens/auth/reset-password-screen.tsx) | Recibe `?code=` del link de reset, intercambia PKCE, formulario nueva contraseña. |
+| `/(app)/biometric-setup` 🆕 | [biometric-setup.tsx](../../../app/(app)/biometric-setup.tsx) | [biometric-setup-screen.tsx](../../../mobile/screens/auth/biometric-setup-screen.tsx) | Gate pre-onboarding para activar Face ID (modo A) o informar que no hay biometría enrolada (modo B). 2026-05-27. |
 | `/(app)/onboarding` | [onboarding.tsx](../../../app/(app)/onboarding.tsx) | [onboarding-screen.tsx](../../../mobile/screens/home/onboarding-screen.tsx) | Wizard de 5 pasos post-signup. |
 | `/(app)/household-setup` | [household-setup.tsx](../../../app/(app)/household-setup.tsx) | [household-setup-screen.tsx](../../../mobile/screens/settings/household-setup-screen.tsx) | Re-configuración del hogar (desde Settings). |
 
