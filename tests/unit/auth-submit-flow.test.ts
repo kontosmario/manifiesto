@@ -26,15 +26,17 @@ describe('auth-submit-flow', () => {
     })
   })
 
-  it('deriva al onboarding después del signup con sesión', () => {
-    // Post-refactor: sign-up with a session no longer routes to /(auth)/join — it goes through the onboarding wizard.
+  it('deriva al pre-onboarding biometric-setup después del signup con sesión', () => {
+    // Sign-up with a session goes through /(app)/biometric-setup (the
+    // pre-onboarding Face ID activation gate); AppEntryGate falls
+    // through to /(app)/onboarding once the flag is set.
     expect(
       resolveAuthSubmitResolution({
         hasSession: true,
         mode: 'sign-up',
       }),
     ).toEqual({
-      href: '/(app)/onboarding',
+      href: '/(app)/biometric-setup',
       type: 'onboarding',
     })
   })
