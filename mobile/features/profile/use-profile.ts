@@ -41,6 +41,22 @@ export interface Profile {
    * again.
    */
   family_closed_by_owner_at?: string | null
+  /**
+   * Per-tour "seen" timestamps. Source of truth for whether
+   * `useScreenTour` auto-fires (NULL = not seen → auto-fire;
+   * timestamp = seen → skip). Settled by the `mark_tour_seen` /
+   * `reset_tour_seen` / `reset_all_tours_seen` RPCs.
+   *
+   * Optional in the type because the `home_snapshot` RPC seeds the
+   * cache with the original 5 profile columns. The first explicit
+   * `useMyProfile` fetch after mount populates these fields. While
+   * unset, `useToursSeen` defaults to `isSeen=true` (conservative;
+   * avoids re-firing during the brief load window).
+   */
+  home_tour_seen_at?: string | null
+  gastos_tour_seen_at?: string | null
+  fijos_tour_seen_at?: string | null
+  control_tour_seen_at?: string | null
 }
 
 export const profileQueryKey = (userId?: string) => ['profile', userId] as const
@@ -61,7 +77,7 @@ export function useMyProfile(userId?: string) {
       const { data, error } = await supabase
         .from('profiles')
         .select(
-          'id, display_name, created_at, avatar_animal, onboarding_completed_at, previously_onboarded, family_closed_by_owner_at, timezone',
+          'id, display_name, created_at, avatar_animal, onboarding_completed_at, previously_onboarded, family_closed_by_owner_at, timezone, home_tour_seen_at, gastos_tour_seen_at, fijos_tour_seen_at, control_tour_seen_at',
         )
         .eq('id', userId)
         .maybeSingle()
