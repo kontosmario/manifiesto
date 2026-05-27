@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAppLockState } from '@/features/auth/app-lock-state'
+import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
+import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
 import { useFamily } from '@/features/family/use-family'
@@ -32,6 +34,34 @@ export function AppEntryGate() {
   // runtime initializes and flips to `true` once the user passes
   // Face ID / Touch ID via the lock screen below.
   const isAppUnlocked = useAppLockState()
+  // Flag read for the pre-onboarding biometric-setup gate. We resolve
+  // it lazily here (no separate hook file) because the result only
+  // influences one routing branch. While loading, treat as
+  // "not loaded" so `shouldShowBiometricSetup` returns false and the
+  // gate keeps rendering the loading state — prevents a redirect
+  // flicker when the flag is actually `true` but the read hasn't
+  // resolved yet.
+  const [biometricSetupShown, setBiometricSetupShown] = useState(false)
+  const [biometricSetupFlagLoaded, setBiometricSetupFlagLoaded] = useState(false)
+  useEffect(() => {
+    // No userId yet → nothing to read; mark as "loaded=false" so
+    // gate stays in loading and re-checks once userId resolves.
+    if (!userId) {
+      setBiometricSetupShown(false)
+      setBiometricSetupFlagLoaded(false)
+      return
+    }
+    let cancelled = false
+    setBiometricSetupFlagLoaded(false)
+    void getBiometricSetupShown(userId).then((value) => {
+      if (cancelled) return
+      setBiometricSetupShown(value)
+      setBiometricSetupFlagLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
   const isLoading =
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||
@@ -42,7 +72,14 @@ export function AppEntryGate() {
     // before the SecureStore read could let AppEntryGate redirect
     // to home with `biometric.shouldUseBiometric === false` (the
     // stale initial value), skipping the lock gate entirely.
-    (biometric.status === 'loading' && !isAppUnlocked)
+    (biometric.status === 'loading' && !isAppUnlocked) ||
+    // Wait for the biometric-setup flag whenever it can change the
+    // routing decision: we have a userId AND onboarding isn't yet
+    // marked complete. Otherwise the read is irrelevant and we skip
+    // the wait to keep returning users fast.
+    (Boolean(userId) &&
+      !profileQuery.data?.onboarding_completed_at &&
+      !biometricSetupFlagLoaded)
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
@@ -100,6 +137,16 @@ export function AppEntryGate() {
   // profile + finance setup. Mirrors the same precedence used in
   // `RequireAuth` (mobile/components/guards.tsx).
   if (profileQuery.data && !profileQuery.data.onboarding_completed_at) {
+    if (
+      shouldShowBiometricSetup({
+        sessionUserId: userId,
+        onboardingCompletedAt: profileQuery.data.onboarding_completed_at,
+        biometricSetupShown,
+        biometricSetupFlagLoaded,
+      })
+    ) {
+      return <Redirect href="/(app)/biometric-setup" />
+    }
     return <Redirect href="/(app)/onboarding" />
   }
 
