@@ -34,12 +34,19 @@ export async function logoutSession(input: {
   // previous user's avatar/name from the last-user cache).
   await clearBiometricCredentials()
   await clearLastUserProfile()
-  // Tours-seen flags (`tour-seen.{key}`) are device-scoped in SecureStore.
-  // On logout we wipe them so a subsequent signup OR login (this user
-  // or another) gets the same fresh tour experience as a first install.
-  // The `tours-backfill-done` flag is also wiped so the AppEntryGate
-  // hook re-evaluates against whoever signs in next.
+  // Tours device-local cleanup:
+  //   • `resetAllTours()` clears only `tours-disabled` (the per-user
+  //     "seen" flags moved to backend on 2026-05-27; backend persists
+  //     across sessions/devices, so we don't touch them on logout)
+  //   • `tour-seen.migration-v2-done` is cleared so the one-shot
+  //     migration re-evaluates against the next user's device state
+  //     (e.g. iCloud restore of SecureStore left flags from another
+  //     install)
+  //   • `tours-backfill-done` was the pre-2026-05-27 device-local
+  //     backfill flag; we delete it defensively in case of leftover
+  //     residuals from a stale install
   await resetAllTours()
+  await deletePersistentValue('tour-seen.migration-v2-done')
   await deletePersistentValue('tours-backfill-done')
   // Pre-onboarding biometric-setup flag (per-user). If the user
   // signed out mid-onboarding without seeing the screen, they should
