@@ -30,7 +30,12 @@ export const MetaEmptyCard = memo(function MetaEmptyCard() {
         style={({ pressed }) => [
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            // Dark mode: align with the ACTIVIDAD empty-state surface
+            // (surfaceMuted) for a consistent muted-green Home. Light
+            // mode keeps creamCard.
+            backgroundColor: theme.isDark
+              ? theme.colors.surfaceMuted
+              : theme.colors.creamCard,
             borderColor: theme.colors.line,
           },
           pressed && { opacity: 0.85 },

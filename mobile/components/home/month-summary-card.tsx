@@ -386,7 +386,13 @@ function SummaryPanel({
       style={[
         styles.panel,
         {
-          backgroundColor: theme.colors.creamCard,
+          // Dark mode: match the ACTIVIDAD empty-state card's muted
+          // surface (surfaceMuted) instead of the brighter creamCard
+          // forest green, so the Home cards read as one calm family at
+          // night. Light mode keeps creamCard unchanged.
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
           borderColor: tone.border,
         },
       ]}
