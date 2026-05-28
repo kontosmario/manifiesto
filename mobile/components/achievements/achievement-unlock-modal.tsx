@@ -23,11 +23,34 @@ interface AchievementUnlockModalProps {
   onDismiss: () => void
 }
 
-const TIER_RING: Record<AchievementTier, { from: string; to: string; ring: string }> = {
-  bronze: { from: '#F2B58A', to: '#E07A3F', ring: 'rgba(242,181,138,0.40)' },
-  silver: { from: '#D8DCE6', to: '#A0A8B8', ring: 'rgba(216,220,230,0.45)' },
-  gold: { from: '#F4D26B', to: '#C29D2A', ring: 'rgba(244,210,107,0.45)' },
-  legendary: { from: '#A6EF8F', to: '#329315', ring: 'rgba(166,239,143,0.55)' },
+// Per-tier celebration tones. `to` drives the drawn ring stroke + the
+// tier pill text; `ring` drives the aurora bloom + pill background.
+//
+// Theme-aware on purpose: in light mode the metallic endpoints read on
+// the cream card. In DARK the celebration card is the forest creamCard
+// (#305A47), where the light dark-endpoints muddy out — legendary's
+// #329315 nearly vanished into the card. Following the color-palette
+// rule "use the brighter shade in dark", dark uses the LUMINOUS end of
+// each tier so the ring + pill pop as distinct, premium metallics
+// against the near-black/forest celebration surface.
+type TierTone = { to: string; ring: string }
+
+const TIER_RING_LIGHT: Record<AchievementTier, TierTone> = {
+  bronze: { to: '#E07A3F', ring: 'rgba(242,181,138,0.40)' },
+  silver: { to: '#A0A8B8', ring: 'rgba(216,220,230,0.45)' },
+  gold: { to: '#C29D2A', ring: 'rgba(244,210,107,0.45)' },
+  legendary: { to: '#329315', ring: 'rgba(166,239,143,0.55)' },
+}
+
+const TIER_RING_DARK: Record<AchievementTier, TierTone> = {
+  bronze: { to: '#F0B486', ring: 'rgba(240,180,134,0.32)' },
+  silver: { to: '#CBD2DE', ring: 'rgba(203,210,222,0.32)' },
+  gold: { to: '#F2D173', ring: 'rgba(242,209,115,0.34)' },
+  legendary: { to: '#B6F0A0', ring: 'rgba(166,239,143,0.42)' },
+}
+
+function resolveTierTone(tier: AchievementTier, isDark: boolean): TierTone {
+  return (isDark ? TIER_RING_DARK : TIER_RING_LIGHT)[tier]
 }
 
 /**
@@ -100,7 +123,7 @@ export function AchievementUnlockModal({
 
   if (!item) return null
 
-  const tier = TIER_RING[item.tier]
+  const tier = resolveTierTone(item.tier, theme.isDark)
 
   return (
     <Animated.View
