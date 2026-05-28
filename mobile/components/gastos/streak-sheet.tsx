@@ -901,7 +901,10 @@ const styles = StyleSheet.create({
   },
   heroNumberRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // Center the focal dial, the big day number, and the "días" label on
+    // a common axis so the flame (centered in its 84px dial) lines up
+    // with the number's optical center rather than floating above it.
+    alignItems: 'center',
     gap: 6,
     marginBottom: 4,
   },
@@ -927,7 +930,7 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
     lineHeight: 48,
   },
-  heroDaysLabel: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
+  heroDaysLabel: { fontSize: 15, fontWeight: '600' },
   heroHeadline: { fontSize: 13, fontWeight: '700', marginTop: 2 },
   levelBadge: {
     borderRadius: 12,
