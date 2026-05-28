@@ -544,7 +544,12 @@ const styles = StyleSheet.create({
     // leaves a visible gap between the end of the scroll region and
     // the tab bar. The inner ScrollView handles tab clearance via
     // `scrollContent.paddingBottom` below.
-    paddingTop: 4,
+    //
+    // paddingTop 14 matches Home / Gastos / Fijos (their
+    // `screenContent.paddingTop`) so the header sits at the exact same
+    // height on every tab — no vertical "jump" when navigating between
+    // sections.
+    paddingTop: 14,
     paddingBottom: 0,
     flex: 1,
   },
