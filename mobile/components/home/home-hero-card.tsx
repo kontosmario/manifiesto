@@ -24,7 +24,6 @@ import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { useAppTheme } from '@/theme/theme-provider'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
-import { familyModeHeroCopy } from '@/features/family/family-mode-copy'
 
 interface HomeHeroCardProps {
   data: HomeHeroMetrics
@@ -41,14 +40,6 @@ interface HomeHeroCardProps {
    *  variable spending. `null` hides the chip — used when savings
    *  isn't configured or income is missing. */
   savingsChip?: SavingsHeroChip | null
-  /** Family mode + identity for the eyebrow/title contextual copy.
-   *  Pure-input shape; the hero composes the copy via familyModeHeroCopy. */
-  heroMode: {
-    kind: 'solo' | 'shared'
-    memberCount: number
-    familyName: string | null
-    userFirstName: string | null
-  }
 }
 
 /**
@@ -62,10 +53,8 @@ function HomeHeroCardImpl({
   onPressConfigureIncome,
   projectedCloseTrend = null,
   savingsChip = null,
-  heroMode,
 }: HomeHeroCardProps) {
   const { theme } = useAppTheme()
-  const heroCopy = familyModeHeroCopy(heroMode)
   const reduceMotion = useReducedMotion()
   const projPositive = data.projectedClose >= 0
   const projColor = projPositive ? theme.colors.heroAccent : '#F8D1C3'
@@ -235,16 +224,6 @@ function HomeHeroCardImpl({
           </Pressable>
         ) : (
         <>
-        <RiseView>
-          <View style={styles.heroCopyBlock}>
-            <Text style={[styles.eyebrow, { color: theme.colors.heroAccent }]}>
-              {heroCopy.eyebrow}
-            </Text>
-            <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
-              {heroCopy.title}
-            </Text>
-          </View>
-        </RiseView>
         <RiseView delay={40}>
           {/*
             Top row: label on the left, compact day-counter chip on
@@ -730,24 +709,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     marginTop: 3,
-  },
-  // Family mode eyebrow + title block — sits above the "Saldo del mes"
-  // label row in the income-configured state. Surfaces the user's
-  // personal space name (solo) or family name/member count (shared).
-  heroCopyBlock: {
-    marginBottom: 10,
-  },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    opacity: 0.7,
-  },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginTop: 2,
   },
 })
