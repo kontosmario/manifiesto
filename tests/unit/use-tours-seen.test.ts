@@ -78,4 +78,22 @@ describe('useToursSeen', () => {
     expect(result.isSeen('fijos')).toBe(false)
     expect(result.isSeen('control')).toBe(false)
   })
+
+  it('returns isSeen=true when a column is undefined (cache seeded by home_snapshot without tour cols)', () => {
+    // Simulates the sub-second window after `home_snapshot` RPC has
+    // seeded the profile with the original 5 cols but the explicit
+    // `useMyProfile` fetch with the extended select hasn't completed
+    // yet. The 4 tour cols are `undefined`. Conservative: treat as
+    // seen so the tour doesn't fire transiently.
+    setup({
+      profile: {
+        // 4 tour cols are intentionally absent (undefined)
+      },
+    })
+    const result = useToursSeen()
+    expect(result.isSeen('home')).toBe(true)
+    expect(result.isSeen('gastos')).toBe(true)
+    expect(result.isSeen('fijos')).toBe(true)
+    expect(result.isSeen('control')).toBe(true)
+  })
 })
