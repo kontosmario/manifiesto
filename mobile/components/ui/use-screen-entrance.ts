@@ -17,9 +17,9 @@ interface UseScreenEntranceOptions {
    * screens: they're pre-mounted + detached, so this mount-only rise
    * fires on the FIRST native attach (first visit) and moves the
    * already-laid-out content from translateY 18 up to 0 — the
-   * "first-load content jump" the user sees. Tabs get their arrival
-   * motion from `useTabFocusFade` (a directional translateX reveal)
-   * instead, so stacking this rise on top is both redundant and janky.
+   * "first-load content jump" the user sees. Tabs get their entrance
+   * from the opacity-only `useTabScreenEntrance` instead, so stacking
+   * this translate rise on top is both redundant and janky.
    */
   skip?: boolean
 }
