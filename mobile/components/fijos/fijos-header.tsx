@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { RiseView } from '@/components/home/animated/rise-view'
+import { TabSectionHeader } from '@/components/ui/tab-section-header'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -85,20 +85,12 @@ export function FijosHeader({
   const press = usePressScale({ pressedScale: 0.94 })
 
   return (
-    <RiseView>
-      <View style={styles.row}>
-        <View style={styles.titleBlock}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-          {subtitle ? (
-            <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>{subtitle}</Text>
-          ) : null}
-        </View>
-
-        <View
-          ref={addButtonRef}
-          collapsable={false}
-          style={styles.addButtonStage}
-        >
+    <TabSectionHeader
+      title={title}
+      subtitle={subtitle}
+      rightRef={addButtonRef}
+      right={
+        <View style={styles.addButtonStage}>
           <Animated.View
             pointerEvents="none"
             style={[
@@ -145,8 +137,8 @@ export function FijosHeader({
             </Animated.View>
           </Pressable>
         </View>
-      </View>
-    </RiseView>
+      }
+    />
   )
 }
 
@@ -164,20 +156,12 @@ const PlusIcon = ({ color }: { color: string }) => (
 )
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: 2,
-  },
-  titleBlock: { flex: 1 },
-  title: { fontSize: 34, fontWeight: '800', letterSpacing: -1.2, lineHeight: 34 },
-  subtitle: { fontSize: 13, marginTop: 6, lineHeight: 18, maxWidth: 260 },
+  // Title/subtitle + row geometry now live in TabSectionHeader. The
+  // stage only positions the halo rings around the 38px add button;
+  // its top/left margin is provided by the shell's right slot.
   addButtonStage: {
     width: BUTTON_SIZE,
     height: BUTTON_SIZE,
-    marginTop: 14,
-    marginLeft: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },

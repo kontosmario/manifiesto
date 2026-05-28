@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
-import { RiseView } from '@/components/home/animated/rise-view'
+import { TabSectionHeader } from '@/components/ui/tab-section-header'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -63,61 +63,12 @@ export function ControlV2Header({
   const goalChipPress = usePressScale({ pressedScale: 0.94 })
   const scorePillPress = usePressScale({ pressedScale: 0.96 })
   return (
-    <RiseView>
-      <View style={styles.root}>
-        <View style={styles.textCol}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            {controlV2Copy.title}
-          </Text>
-          <Text
-            style={[styles.subtitle, { color: theme.colors.textMuted }]}
-            numberOfLines={1}
-          >
-            {controlV2Copy.subtitle}
-          </Text>
-          {goalActive ? (
-            <Pressable
-              onPress={handlePress}
-              onPressIn={goalChipPress.onPressIn}
-              onPressOut={goalChipPress.onPressOut}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`Mi meta diaria: ${formatMoneyShort(
-                dailyGoalAmount as number,
-              )}. Tocá para ajustarla.`}
-            >
-              <Animated.View
-                style={[
-                  styles.goalChip,
-                  {
-                    backgroundColor: theme.colors.primarySurface,
-                    borderColor: theme.colors.heroAccent,
-                  },
-                  goalChipPress.animatedStyle,
-                ]}
-              >
-                <MaterialIcons
-                  name="flag"
-                  size={11}
-                  color={theme.isDark ? theme.colors.heroAccent : theme.colors.primaryStrong}
-                />
-                <Text
-                  style={[
-                    styles.goalChipText,
-                    {
-                      color: theme.isDark
-                        ? theme.colors.heroAccent
-                        : theme.colors.primaryStrong,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  Mi meta · {formatMoneyShort(dailyGoalAmount as number)}/día
-                </Text>
-              </Animated.View>
-            </Pressable>
-          ) : null}
-        </View>
+    <TabSectionHeader
+      title={controlV2Copy.title}
+      subtitle={controlV2Copy.subtitle}
+      subtitleNumberOfLines={1}
+      rightClearance={8}
+      right={
         <Pressable
           onPress={handlePress}
           onPressIn={goalEditable && onPressGoal ? scorePillPress.onPressIn : undefined}
@@ -155,8 +106,51 @@ export function ControlV2Header({
             />
           </Animated.View>
         </Pressable>
-      </View>
-    </RiseView>
+      }
+    >
+      {goalActive ? (
+        <Pressable
+          onPress={handlePress}
+          onPressIn={goalChipPress.onPressIn}
+          onPressOut={goalChipPress.onPressOut}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Mi meta diaria: ${formatMoneyShort(
+            dailyGoalAmount as number,
+          )}. Tocá para ajustarla.`}
+        >
+          <Animated.View
+            style={[
+              styles.goalChip,
+              {
+                backgroundColor: theme.colors.primarySurface,
+                borderColor: theme.colors.heroAccent,
+              },
+              goalChipPress.animatedStyle,
+            ]}
+          >
+            <MaterialIcons
+              name="flag"
+              size={11}
+              color={theme.isDark ? theme.colors.heroAccent : theme.colors.primaryStrong}
+            />
+            <Text
+              style={[
+                styles.goalChipText,
+                {
+                  color: theme.isDark
+                    ? theme.colors.heroAccent
+                    : theme.colors.primaryStrong,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              Mi meta · {formatMoneyShort(dailyGoalAmount as number)}/día
+            </Text>
+          </Animated.View>
+        </Pressable>
+      ) : null}
+    </TabSectionHeader>
   )
 }
 
@@ -368,29 +362,9 @@ function hslToRgb({ h, s, l }: HSL): RGB {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  textCol: {
-    flex: 1,
-  },
-  title: {
-    // Match the Asistente header (26pt) so the two screens read as a
-    // visual pair when the user toggles between Control and Asistente.
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -1,
-    lineHeight: 30,
-  },
-  subtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 6,
-    maxWidth: 220,
-  },
+  // Title / subtitle / row geometry now live in TabSectionHeader so
+  // Control's header matches Home, Gastos and Fijos exactly (34px
+  // display title, shared right-slot alignment).
   // Compact score pill — icon + number only. Tighter padding (10/6
   // vs the previous 12/7) shrinks the footprint to ~58pt wide so
   // there's clear horizontal space for the discoverability pulse
@@ -436,13 +410,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    // Right inset so the outer pulse ring (-6pt expansion) plus its
-    // own border (1pt) clear the screen's right gutter without
-    // clipping. The Screen component owns the screen-edge padding,
-    // but iOS rounds slightly tighter on smaller devices and any
-    // horizontal hairline shadow can graze the safe-area; an extra
-    // 8pt inset gives consistent breathing room across devices.
-    marginRight: 8,
+    // The right-gutter clearance for the pulse ring now comes from the
+    // shell's `rightClearance={8}` (TabSectionHeader right slot), so it
+    // matches the spacing logic shared with the other tab headers.
   },
   // Pulse ring — fixed bounds so it never scales beyond the screen
   // gutter. Single hairline border at -4pt inset that only animates
