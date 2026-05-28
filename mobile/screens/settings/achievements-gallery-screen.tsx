@@ -6,8 +6,10 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
@@ -402,6 +404,7 @@ interface AchievementCardProps {
 
 function AchievementCard({ item }: AchievementCardProps) {
   const { theme } = useAppTheme()
+  const reduced = useReducedMotion()
   // Press feedback per Emil: scale to 0.97 with fast ease-out.
   // usePressScale already encapsulates the spring; we just spread its
   // animatedStyle onto the Pressable wrapper.
@@ -409,6 +412,42 @@ function AchievementCard({ item }: AchievementCardProps) {
 
   const tone = tierTone(item.tier)
   const earned = item.earned
+  // Sheen sweep only for earned gold/legendary — premium tiers deserve
+  // a special entrance. A translucent highlight band slides across once
+  // on mount (transform+opacity only, GPU-safe). Under reduced motion
+  // the sheen stays invisible (opacity 0, no motion).
+  const isPremium = earned && (item.tier === 'gold' || item.tier === 'legendary')
+  const sheenX = useSharedValue(-120)
+  const sheenOpacity = useSharedValue(0)
+
+  useEffect(() => {
+    if (!isPremium || reduced) return
+    sheenX.value = -120
+    sheenOpacity.value = 0
+    // Delay slightly so the RiseView stagger entrance lands first.
+    sheenOpacity.value = withDelay(
+      180,
+      withTiming(1, { duration: 60, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
+    )
+    sheenX.value = withDelay(
+      180,
+      withTiming(340, {
+        duration: 520,
+        easing: Easing.bezier(0.16, 1, 0.30, 1),
+      }),
+    )
+    // Fade the sheen out near the end so it doesn't linger.
+    sheenOpacity.value = withDelay(
+      500,
+      withTiming(0, { duration: 160, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPremium, reduced])
+
+  const sheenStyle = useAnimatedStyle(() => ({
+    opacity: sheenOpacity.value,
+    transform: [{ translateX: sheenX.value }],
+  }))
 
   return (
     <Animated.View style={press.animatedStyle}>
@@ -517,6 +556,16 @@ function AchievementCard({ item }: AchievementCardProps) {
             </Text>
           ) : null}
         </View>
+
+        {/* Sheen sweep — gold/legendary only, single-shot on entrance.
+            Positioned absolutely so it overlays the full card without
+            affecting layout. ClipRect comes from card's overflow:hidden. */}
+        {isPremium ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.sheenBand, sheenStyle]}
+          />
+        ) : null}
       </Pressable>
     </Animated.View>
   )
@@ -694,6 +743,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     minHeight: 84, // ≥44pt + body, comfortable touch target
+    overflow: 'hidden', // clips the sheen sweep to the card boundary
   },
   cardIconWrap: {
     position: 'relative',
@@ -770,5 +820,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  // Sheen sweep — gold/legendary earned cards only, clipped by card overflow:hidden.
+  // A diagonal-ish translucent band that slides left→right once on entrance.
+  sheenBand: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 60,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    // Skew gives a diagonal slash rather than a square beam.
+    transform: [{ skewX: '-20deg' }],
   },
 })

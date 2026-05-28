@@ -2,15 +2,17 @@ import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { motionSprings } from '@/lib/motion'
 import type { AchievementViewItem, AchievementTier } from '@/features/achievements/use-achievements'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -50,30 +52,40 @@ export function AchievementUnlockModal({
   // phase across slow devices.
   const t = useSharedValue(0)
   const iconScale = useSharedValue(0.85)
+  // Halo progress: 0 → 1. Drives both scale (0.6→1.5) and opacity (0.5→0)
+  // via interpolation so only transform+opacity are on the GPU path.
+  const halo = useSharedValue(0)
 
   useEffect(() => {
     if (!item) return
     void triggerHaptic('success')
-    // Sequence: scrim+card enter, icon bounce, then auto-dismiss timer.
+    // Sequence: scrim+card enter, icon spring pop + halo radiate.
     if (reduced) {
       t.value = 1
       iconScale.value = 1
+      // halo stays at 0 (invisible) under reduced motion
       return
     }
     t.value = 0
     iconScale.value = 0.85
+    halo.value = 0
     t.value = withTiming(1, {
       duration: 380,
       easing: Easing.bezier(0.16, 1, 0.30, 1),
     })
-    iconScale.value = withDelay(
+    // Spring pop — feels alive, interruptible (Emil: springs for elements
+    // that should feel "alive"). celebrate token: mass 0.8, damping 14,
+    // stiffness 260 — gives a snappy but slightly overshooting pop.
+    iconScale.value = withDelay(120, withSpring(1, motionSprings.celebrate))
+    // Radial glow halo — single-shot ease-out pulse over 520ms.
+    halo.value = withDelay(
       120,
-      withSequence(
-        withTiming(1.12, { duration: 280, easing: Easing.bezier(0.34, 1.56, 0.64, 1) }),
-        withTiming(1, { duration: 200, easing: Easing.bezier(0.45, 0, 0.55, 1) }),
-      ),
+      withTiming(1, {
+        duration: 520,
+        easing: Easing.bezier(0.16, 1, 0.30, 1),
+      }),
     )
-  }, [item, reduced, t, iconScale])
+  }, [item, reduced, t, iconScale, halo])
 
   // Auto-dismiss timer (4 seconds). User can also tap to dismiss
   // earlier. Cleared on unmount + on item change.
@@ -93,6 +105,11 @@ export function AchievementUnlockModal({
   }))
   const iconAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: iconScale.value }],
+  }))
+
+  const haloAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(halo.value, [0, 1], [0.5, 0]),
+    transform: [{ scale: interpolate(halo.value, [0, 1], [0.6, 1.5]) }],
   }))
 
   if (!item) return null
@@ -127,6 +144,14 @@ export function AchievementUnlockModal({
         </Text>
 
         <View style={styles.iconWrap}>
+          {/* Radial glow halo — scales out while fading, single-shot. */}
+          <Animated.View
+            style={[
+              styles.iconHalo,
+              { backgroundColor: tier.ring },
+              haloAnimatedStyle,
+            ]}
+          />
           <View
             style={[
               styles.iconRing,
@@ -219,6 +244,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.45,
     shadowRadius: 24,
+  },
+  iconHalo: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
   },
   iconBubble: {
     width: 96,
