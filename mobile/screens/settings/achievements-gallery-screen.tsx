@@ -11,6 +11,8 @@ import Animated, {
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { ErrorState } from '@/components/ui/error-state'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
@@ -45,6 +47,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  *     am I" without a numerical bar — pattern over progress.
  */
 export function AchievementsGalleryScreen() {
+  const { theme } = useAppTheme()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
   const { data, isLoading, error } = useAchievements(userId)
@@ -68,7 +71,11 @@ export function AchievementsGalleryScreen() {
 
   if (error && !data) {
     return (
-      <Screen title="Logros" canGoBack>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        title="Logros"
+        canGoBack
+      >
         <ErrorState
           title="No pudimos cargar tus logros"
           description="Probá de nuevo en un momento."
@@ -79,12 +86,14 @@ export function AchievementsGalleryScreen() {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Logros"
       subtitle="Hitos que vas desbloqueando a medida que usás Manifiesto."
       canGoBack
     >
       {isLoading || !data ? null : (
         <View style={styles.stack}>
+          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
           <RiseView>
             <ProgressHero
               earnedCount={data.earnedCount}

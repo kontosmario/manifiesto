@@ -6,6 +6,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { MetaCard } from '@/components/home/meta-card'
 import { SavingsAdvisorStrip } from '@/components/settings/savings-advisor-strip'
 import {
@@ -36,20 +37,31 @@ interface SavingsGoalScreenProps {
 
 export function SavingsGoalScreen({ familyId }: SavingsGoalScreenProps) {
   const router = useRouter()
+  const { theme } = useAppTheme()
   const goalQuery = useSavingsGoal(familyId)
   const existing = goalQuery.data ?? null
   const isLoading = goalQuery.isLoading
 
   if (isLoading) {
     return (
-      <Screen contentContainerStyle={styles.screenContent} title="Meta de ahorro" canGoBack>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screenContent}
+        title="Meta de ahorro"
+        canGoBack
+      >
         <LoadingBlock label="Cargando meta..." />
       </Screen>
     )
   }
 
   return (
-    <Screen contentContainerStyle={styles.screenContent} title="Meta de ahorro" canGoBack>
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      contentContainerStyle={styles.screenContent}
+      title="Meta de ahorro"
+      canGoBack
+    >
       <SavingsGoalEditor
         familyId={familyId}
         existing={existing}
@@ -170,7 +182,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
 
   return (
     <View style={styles.stack}>
-      <AmbientBlobs />
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
       {/* HERO — live preview */}
       <RiseView>

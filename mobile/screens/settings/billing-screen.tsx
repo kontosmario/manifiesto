@@ -32,7 +32,7 @@ import {
 } from '@/features/billing/billing-plans'
 import { useBilling } from '@/features/billing/use-billing'
 import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 
 // ─── Tokens premium dark forest, alineados con Asesor card ───
 const HERO_GRADIENT = ['#0F2D06', '#1F590D', '#297811'] as const
@@ -41,6 +41,7 @@ const ACCENT = '#A6EF8F' // primary-300
 const CREAM = '#F2EAD3'
 
 export function BillingScreen() {
+  const { theme } = useAppTheme()
   const billing = useBilling()
   const monthly = BILLING_PLANS['hogar-mensual']
   const yearly = BILLING_PLANS['hogar-anual']
@@ -103,12 +104,13 @@ export function BillingScreen() {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack
       title="Tu plan"
       contentContainerStyle={styles.screenContent}
     >
       <View style={styles.stack}>
-        <AmbientBlobs />
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
         <RiseView>
           <CompactHero status={billing.status} />

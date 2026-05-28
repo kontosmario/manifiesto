@@ -22,10 +22,11 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
 import { SectionHeader } from '@/components/ui/section-header'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { inferPersona, PERSONA_PROFILES } from '@/features/insights/persona'
@@ -157,10 +158,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Asistente"
       subtitle="Cómo se comporta y qué patrones priorizar"
       canGoBack
     >
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       <RiseView delay={80}>
         <SectionHeader title="Perfil inferido" />
         <View

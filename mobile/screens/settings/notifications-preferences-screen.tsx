@@ -11,6 +11,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { ModalCard } from '@/components/ui/modal-card'
 import { SectionHeader } from '@/components/ui/section-header'
 import { Screen } from '@/components/ui/screen'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { SettingsRow, SettingsSwitchRow } from '@/components/settings/settings-primitives'
 import {
   NOTIFICATION_KIND_GROUPS,
@@ -21,7 +22,7 @@ import {
 import { NOTIFICATION_GROUP_LABELS, type NotificationGroup } from '@/utils/notifications'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 
 type CheckinSlot = 'morning' | 'midday' | 'evening'
 
@@ -160,12 +161,14 @@ export function NotificationsPreferencesScreen() {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack
       contentContainerStyle={styles.screenContent}
       title="Notificaciones"
       subtitle="Elige qué te llega, cuándo y por dónde."
     >
       <View style={styles.stack}>
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <RiseView>
           <View style={styles.section}>
             <SectionHeader

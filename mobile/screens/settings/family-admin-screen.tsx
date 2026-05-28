@@ -18,6 +18,7 @@ import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import {
   useBlockMember,
   useFamilyMemberStats,
@@ -381,9 +382,13 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
 
   if (statsQuery.isError && !statsQuery.data) {
     return (
-      <Screen scrollable={false} contentContainerStyle={styles.screenContent}>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        scrollable={false}
+        contentContainerStyle={styles.screenContent}
+      >
         <View style={styles.stack}>
-          <AmbientBlobs />
+          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
           <RiseView>
             <View style={styles.topRow}>
               <Pressable
@@ -424,9 +429,13 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   }
 
   return (
-    <Screen scrollable={false} contentContainerStyle={styles.screenContent}>
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      scrollable={false}
+      contentContainerStyle={styles.screenContent}
+    >
       <View style={styles.stack}>
-        <AmbientBlobs />
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <FlatList
           data={members}
           keyExtractor={(item) => item.userId}
