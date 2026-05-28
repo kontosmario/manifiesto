@@ -82,7 +82,16 @@ function GastoRowImpl({
     [tile.bg, tile.border],
   )
   return (
-    <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
+    <View
+      style={[
+        styles.row,
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+        },
+      ]}
+    >
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
           <Text style={styles.iconText}>{icon}</Text>

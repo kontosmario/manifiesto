@@ -157,6 +157,16 @@ export const radii = {
   pill:  999,
 } as const
 
+// Dark-mode canvas for the primary tab screens (Home, Gastos, Fijos,
+// Control). A near-black with a whisper of brand green (never pure
+// #000). User feedback: the global forest-green dark background
+// (#12211A) plus the bright aurora glows read as "too green" and tired
+// the eye. These screens override their <Screen backgroundColor> to
+// this value in dark mode; the muted-green surfaces (surfaceMuted
+// #0F2E1F) float on top. The global `background` token is untouched so
+// Settings, onboarding, and modal flows keep the forest canvas.
+export const DARK_TAB_CANVAS = '#0A0F0C'
+
 const baseTheme = {
   spacing: {
     xxs: 4,

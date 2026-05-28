@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
 import { formatMoneyShort } from '@/utils/money'
 
@@ -173,7 +174,7 @@ function ControlV2CoberturaCardImpl({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: palette.border,
           },
         ]}
@@ -230,7 +231,11 @@ function ControlV2CoberturaCardImpl({
             style={[
               styles.overrideRow,
               {
-                backgroundColor: theme.colors.surfaceMuted,
+                // Dark: recede to the near-black canvas so this well
+                // reads as inset below the surfaceMuted card.
+                backgroundColor: theme.isDark
+                  ? DARK_TAB_CANVAS
+                  : theme.colors.surfaceMuted,
                 borderColor: theme.colors.border,
               },
             ]}
@@ -256,7 +261,9 @@ function ControlV2CoberturaCardImpl({
           style={[
             styles.barOuter,
             {
-              backgroundColor: theme.colors.surfaceMuted,
+              backgroundColor: theme.isDark
+                ? DARK_TAB_CANVAS
+                : theme.colors.surfaceMuted,
               borderColor: theme.colors.border,
             },
           ]}

@@ -191,7 +191,12 @@ function GridMode({
     <View
       style={[
         styles.card,
-        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
       ]}
     >
       <View style={styles.header}>
@@ -442,7 +447,12 @@ function FocusMode({
     <View
       style={[
         styles.card,
-        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
       ]}
     >
       <View style={styles.header}>

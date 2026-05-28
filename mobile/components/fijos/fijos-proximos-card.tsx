@@ -101,7 +101,9 @@ export function FijosProximosCard({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark
+              ? theme.colors.surfaceMuted
+              : theme.colors.creamCard,
             borderColor: theme.colors.line,
           },
         ]}

@@ -5,6 +5,7 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ControlV2Placeholder } from '@/components/control-v2/control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
 import type { DowBucket } from '@/features/insights/control-v2-mock'
 
@@ -186,7 +187,7 @@ function ControlV2PatronCardImpl({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: palette.border,
           },
         ]}
@@ -281,7 +282,12 @@ function ControlV2PatronCardImpl({
           style={[
             styles.chartFrame,
             {
-              backgroundColor: theme.colors.surfaceMuted,
+              // Dark: recede to the near-black canvas (inset well below
+              // the surfaceMuted card). The avgTag / todayCallout on top
+              // keep surfaceMuted so they pop above this well.
+              backgroundColor: theme.isDark
+                ? DARK_TAB_CANVAS
+                : theme.colors.surfaceMuted,
               borderColor: theme.colors.border,
             },
           ]}

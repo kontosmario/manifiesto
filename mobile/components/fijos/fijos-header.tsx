@@ -127,7 +127,9 @@ export function FijosHeader({
               style={[
                 styles.addButton,
                 {
-                  backgroundColor: theme.colors.creamCard,
+                  backgroundColor: theme.isDark
+                    ? theme.colors.surfaceMuted
+                    : theme.colors.creamCard,
                   // Shadow theme-aware. Antes hardcoded `rgba(15,42,30,0.08)`
                   // → invisible en dark mode sobre canvas dark. Light:
                   // forest shadow below button. Dark: lime halo de menor

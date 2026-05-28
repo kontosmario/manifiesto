@@ -147,7 +147,9 @@ function FijoRowImpl({
           style={[
             styles.card,
             {
-              backgroundColor: theme.colors.creamCard,
+              backgroundColor: theme.isDark
+                ? theme.colors.surfaceMuted
+                : theme.colors.creamCard,
               shadowColor: theme.colors.text,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: open ? (theme.isDark ? 0.32 : 0.18) : 0,

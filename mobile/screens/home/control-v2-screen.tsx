@@ -22,6 +22,8 @@ import { ControlV2SemanaCard } from '@/components/control-v2/control-v2-semana-c
 import { ControlV2VsMesCard } from '@/components/control-v2/control-v2-vsmes-card'
 import { DailyGoalSheet } from '@/components/control-v2/daily-goal-sheet'
 import { Screen } from '@/components/ui/screen'
+import { useAppTheme } from '@/theme/theme-provider'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import {
   buildFamilyFinanceInput,
   useFamilyFinance,
@@ -71,6 +73,7 @@ const DOW_FULL = [
  */
 export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const router = useRouter()
+  const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
   const { data, view, signals, noConfig } = useControlV2Data(familyId)
@@ -273,11 +276,17 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     // y las cards que requieren historial muestran su propio
     // placeholder ("Día X de N").
     return (
-      <Screen contentContainerStyle={styles.screen} scrollable={false}>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screen}
+        scrollable={false}
+      >
         {/* Mounted at the Screen level (outside the ScrollView) so the
             absolute-positioned blobs fill the full viewport and don't
-            scroll with the content or get clipped to the stack View. */}
-        <AmbientBlobs />
+            scroll with the content or get clipped to the stack View.
+            Dark mode uses the 'calm' tone (faint forest halos on the
+            near-black canvas); light keeps the bright aurora. */}
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -308,11 +317,17 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
 
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
-      <Screen contentContainerStyle={styles.screen} scrollable={false}>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screen}
+        scrollable={false}
+      >
         {/* Mounted at the Screen level (outside the ScrollView) so the
             absolute-positioned blobs fill the full viewport and don't
-            scroll with the content or get clipped to the stack View. */}
-        <AmbientBlobs />
+            scroll with the content or get clipped to the stack View.
+            Dark mode uses the 'calm' tone (faint forest halos on the
+            near-black canvas); light keeps the bright aurora. */}
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}

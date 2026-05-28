@@ -28,6 +28,8 @@ import {
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
+import { useAppTheme } from '@/theme/theme-provider'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 
 interface FijosV2ScreenProps {
   familyId: string
@@ -40,6 +42,7 @@ interface FijosV2ScreenProps {
  */
 export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const router = useRouter()
+  const { theme } = useAppTheme()
   // Auto-start the Fijos guided tour on first visit. No-op once seen.
   useScreenTour(FIJOS_TOUR)
   // ScrollView ref so the tour can auto-scroll to each step's target.
@@ -134,7 +137,11 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   if (controller.error && controller.allItems.length === 0 && !controller.isLoading) {
     return (
-      <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screenContent}
+        scrollable={false}
+      >
         <ErrorState
           description={getErrorMessage(controller.error, errorMessages.server)}
           title="No pudimos cargar tus fijos"
@@ -147,10 +154,13 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       contentContainerStyle={styles.screenContent}
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
-      backgroundSlot={<AmbientBlobs />}
+      // Dark mode uses the 'calm' tone (faint forest halos on the
+      // near-black canvas); light keeps the bright aurora.
+      backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       scrollRef={tourScrollRef}
       onScroll={onTourScroll}
       onContentSizeChange={onTourContentSizeChange}
