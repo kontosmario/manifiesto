@@ -284,17 +284,20 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={
-        // Light mode keeps the warm aurora ambience. Dark mode drops
-        // BOTH the backdrop and the aurora blobs: their green/peach
-        // glows were the main source of the "too green" canvas the
-        // user flagged. A flat near-black reads calmer and lets the
-        // muted-green surfaces carry the brand.
-        !theme.isDark ? (
+        // Light mode keeps the warm aurora ambience (backdrop + bright
+        // blobs). Dark mode drops the backdrop and swaps the blobs to
+        // the 'calm' tone: faint forest-green halos on the near-black
+        // canvas. The original bright mint/peach aurora was the main
+        // source of the "too green" fatigue; the calm halos add gentle
+        // depth that echoes the card surface without the saturation.
+        theme.isDark ? (
+          <AmbientBlobs tone="calm" />
+        ) : (
           <>
             <AmbientBackdrop variant="home" />
             <AmbientBlobs />
           </>
-        ) : null
+        )
       }
       refreshControl={
         <RefreshControl
