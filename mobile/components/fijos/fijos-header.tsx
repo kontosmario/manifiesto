@@ -9,6 +9,11 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
+import {
+  CIRCLE_BUTTON_SHADOW,
+  CIRCLE_BUTTON_SIZE,
+  circleButtonSurface,
+} from '@/components/ui/circle-button-chrome'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -25,7 +30,7 @@ interface FijosHeaderProps {
   addButtonRef?: React.RefObject<View | null>
 }
 
-const BUTTON_SIZE = 38
+const BUTTON_SIZE = CIRCLE_BUTTON_SIZE
 
 export function FijosHeader({
   title = 'Fijos',
@@ -119,16 +124,11 @@ export function FijosHeader({
               style={[
                 styles.addButton,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  // Shadow theme-aware. Antes hardcoded `rgba(15,42,30,0.08)`
-                  // → invisible en dark mode sobre canvas dark. Light:
-                  // forest shadow below button. Dark: lime halo de menor
-                  // alpha para lift tonal sobre forest canvas.
-                  boxShadow: theme.isDark
-                    ? '0px 2px 6px rgba(166,239,143,0.18)'
-                    : '0px 2px 6px rgba(15,42,30,0.08)',
+                  // Shared circle chrome — identical surface + shadow to
+                  // the Home / Gastos / Control header buttons so the +
+                  // joins the one circular family.
+                  backgroundColor: circleButtonSurface(theme.isDark, theme.colors),
+                  boxShadow: CIRCLE_BUTTON_SHADOW,
                 },
                 press.animatedStyle,
               ]}
