@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
@@ -290,6 +291,38 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     : biometricState.hasSavedCredentials
       ? 'Activado'
       : 'Desactivado'
+
+  const [pinIsSet, setPinIsSet] = useState(false)
+  const refreshPinState = useCallback(async () => {
+    const { getPinLockState } = await import('@/lib/pin-lock')
+    const s = await getPinLockState()
+    setPinIsSet(s.isSet)
+  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPinState()
+    }, [refreshPinState]),
+  )
+
+  const handlePinPress = useCallback(() => {
+    if (!pinIsSet) {
+      router.push('/(app)/pin-setup')
+      return
+    }
+    Alert.alert('PIN de acceso', '¿Qué querés hacer?', [
+      { text: 'Cambiar PIN', onPress: () => router.push('/(app)/pin-setup') },
+      {
+        text: 'Quitar PIN',
+        style: 'destructive',
+        onPress: async () => {
+          const { clearPin } = await import('@/lib/pin-lock')
+          await clearPin()
+          await refreshPinState()
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ])
+  }, [pinIsSet, router, refreshPinState])
 
   const supportsPushActivation = supportsRemotePushNotifications
   const shouldShowErrorState = Boolean(
@@ -1116,11 +1149,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!biometricState.isAvailable}
                   icon="fingerprint"
-                  isLast
                   isLoading={isBiometricBusy}
                   label={`Entrar con ${biometricState.label}`}
                   onPress={handleBiometricToggle}
                   value={biometricRowValue}
+                />
+                <SettingsRow
+                  icon="dialpad"
+                  isLast
+                  label="PIN de acceso"
+                  onPress={handlePinPress}
+                  value={pinIsSet ? 'Activado' : 'Desactivado'}
                 />
               </SettingsGroup>
             </RiseView>

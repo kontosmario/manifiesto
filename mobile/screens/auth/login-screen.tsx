@@ -365,6 +365,20 @@ export function LoginScreen() {
   // (paridad con providers sociales ofrecidos en signup). El handler
   // delega en `signInWithApple` y deja que el AppLayout detecte la
   // sesión nueva — no necesitamos redirigir manualmente.
+  const [pinAvailable, setPinAvailable] = useState(false)
+  useEffect(() => {
+    if (!isLockMode) return
+    let cancelled = false
+    void import('@/lib/pin-lock').then(({ getPinLockState }) =>
+      getPinLockState().then((s) => {
+        if (!cancelled) setPinAvailable(s.isSet)
+      }),
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [isLockMode])
+
   const [appleAvailable, setAppleAvailable] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -675,6 +689,23 @@ export function LoginScreen() {
                       Usar contraseña
                     </Text>
                   </Pressable>
+                  {isLockMode && pinAvailable ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Desbloquear con PIN"
+                      hitSlop={DEFAULT_HIT_SLOP}
+                      onPress={() => router.push('/(auth)/pin-unlock')}
+                      style={({ pressed }) => [
+                        styles.secondaryButton,
+                        { borderColor: theme.colors.line },
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
+                        Usar PIN
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     accessibilityLabel="Cambiar cuenta"
                     accessibilityRole="button"

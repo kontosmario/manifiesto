@@ -33,7 +33,9 @@ export async function logoutSession(input: {
   // mount — clearing them here with explicit awaits eliminates the
   // window where the login screen could read stale data (e.g. the
   // previous user's avatar/name from the last-user cache).
+  const { clearPin } = await import('@/lib/pin-lock')
   await clearBiometricCredentials()
+  await clearPin()
   await clearLastUserProfile()
   // Tours device-local cleanup:
   //   • `resetAllTours()` clears only `tours-disabled` (the per-user
