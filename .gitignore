@@ -57,3 +57,6 @@ tmp/
 # clones.
 *.zip
 backups/
+
+# Supabase CLI temp files
+supabase/.temp/
