@@ -15,7 +15,7 @@ import { useRouter, useSegments } from 'expo-router'
 import { ModalGrabHandle } from '@/components/ui/modal-grab-handle'
 import { ScreenHeader } from '@/components/ui/screen-header'
 import { useScreenEntrance } from '@/components/ui/use-screen-entrance'
-import { useTabFocusFade } from '@/components/ui/use-tab-focus-fade'
+import { useTabScreenEntrance } from '@/components/ui/use-tab-screen-entrance'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useIsAnyModalOpen } from '@/lib/modal-visibility'
@@ -92,16 +92,19 @@ export function Screen({
   const bottomPadding = baseBottomPadding + numpadOffset
   const { contentAnimatedStyle, headerAnimatedStyle } = useScreenEntrance({
     reducedMotion: isReducedMotionEnabled,
+    // Tab screens are pre-mounted + detached; this mount-only rise would
+    // fire on their first native attach and jump the content up from
+    // translateY 18. Tabs use the opacity-only `useTabScreenEntrance`
+    // below instead, so skip the generic translate rise here.
+    skip: isTabScreen,
   })
-  // Directional reveal on tab switches: opacity floor → 1 + a small
-  // translateX shift in the direction of the tab order so the user
-  // feels lateral movement between sections (Inicio → Gastos slides
-  // in from the right; Gastos → Inicio from the left). No-op on
-  // mount or stack pops. Tab screens opt in automatically via
-  // `isTabScreen`. The hook returns a single Reanimated worklet style
-  // that combines opacity + translateX in one animated pass.
-  const tabFocusMotion = useTabFocusFade()
-  const tabFocusStyle = isTabScreen ? tabFocusMotion.style : null
+  // Calm, professional first-load entrance for tab screens: a single
+  // opacity fade (no translate → no position jolt on the first attach
+  // of a detached tab). Replaces the old translateX `useTabFocusFade`,
+  // whose instant position snap was the remaining "first-load jolt".
+  // First focus fades in; later switches are instant.
+  const tabEntrance = useTabScreenEntrance(isTabScreen)
+  const tabFocusStyle = isTabScreen ? tabEntrance.style : null
 
   // When a ModalCard is open on top, suspend the Screen's keyboard
   // avoidance so the content behind the sheet doesn't jump up when
