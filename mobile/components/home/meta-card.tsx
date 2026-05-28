@@ -17,6 +17,7 @@ import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -68,6 +69,9 @@ function MetaCardImpl({
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const isDark = theme.isDark
+  // Tactile scale on the "Agregar ahorro" CTA — opacity dimming alone
+  // didn't register as a press; the spring scale makes the tap felt.
+  const quickAddPress = usePressScale({ pressedScale: 0.96 })
 
   const pct = Math.min(100, Math.round((goal.currentAmount / goal.goalAmount) * 100))
   const remaining = Math.max(0, goal.goalAmount - goal.currentAmount)
@@ -251,22 +255,27 @@ function MetaCardImpl({
               {enableQuickAdd && !isComplete ? (
                 <Pressable
                   onPress={handleQuickAddPress}
+                  onPressIn={quickAddPress.onPressIn}
+                  onPressOut={quickAddPress.onPressOut}
                   accessibilityRole="button"
                   accessibilityLabel="Agregar ahorro a esta meta"
                   hitSlop={6}
-                  style={({ pressed }) => [
-                    styles.actionPill,
-                    {
-                      backgroundColor: actionBg,
-                      borderColor: actionBorder,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
                 >
-                  <MaterialIcons name="savings" size={14} color={accentFg} />
-                  <Text style={[styles.actionPillText, { color: accentFg }]}>
-                    Agregar ahorro
-                  </Text>
+                  <Animated.View
+                    style={[
+                      styles.actionPill,
+                      {
+                        backgroundColor: actionBg,
+                        borderColor: actionBorder,
+                      },
+                      quickAddPress.animatedStyle,
+                    ]}
+                  >
+                    <MaterialIcons name="savings" size={14} color={accentFg} />
+                    <Text style={[styles.actionPillText, { color: accentFg }]}>
+                      Agregar ahorro
+                    </Text>
+                  </Animated.View>
                 </Pressable>
               ) : null}
             </View>
