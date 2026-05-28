@@ -111,7 +111,7 @@ function ControlV2AlcanciaCardImpl({
   const tileBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,42,30,0.08)'
   const muted = theme.colors.textMuted
   const text = theme.colors.text
-  const cardBg = theme.colors.creamCard
+  const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   const goalPct =
     goal != null

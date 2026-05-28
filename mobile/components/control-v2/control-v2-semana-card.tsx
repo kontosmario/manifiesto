@@ -5,6 +5,7 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ControlV2Placeholder } from '@/components/control-v2/control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
 import type { DayDetail } from '@/features/insights/control-v2-mock'
 
@@ -237,7 +238,7 @@ function ControlV2SemanaCardImpl({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: palette.border,
           },
         ]}
@@ -296,7 +297,12 @@ function ControlV2SemanaCardImpl({
           style={[
             styles.chartFrame,
             {
-              backgroundColor: theme.colors.surfaceMuted,
+              // Dark: recede to the near-black canvas (inset well below
+              // the surfaceMuted card). The cupoTag on top keeps
+              // surfaceMuted so it pops above this well.
+              backgroundColor: theme.isDark
+                ? DARK_TAB_CANVAS
+                : theme.colors.surfaceMuted,
               borderColor: theme.colors.border,
             },
           ]}

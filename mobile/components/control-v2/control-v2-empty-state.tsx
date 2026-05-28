@@ -30,7 +30,10 @@ export function ControlV2EmptyState({
   onPressAddExpense,
 }: ControlV2EmptyStateProps) {
   const { theme } = useAppTheme()
-  const shellBg = theme.isDark ? '#305A47' : '#FFFBF2'  // V1 creamCard dark / kept light
+  // Dark: muted surface (#0F2E1F) to match the rest of the near-black
+  // Control canvas — was hardcoded to the old creamCard dark (#305A47),
+  // which now reads too bright. Light keeps the cream shell.
+  const shellBg = theme.isDark ? theme.colors.surfaceMuted : '#FFFBF2'  // surfaceMuted dark / cream light
   const shellBorder = theme.isDark ? '#244235' : '#D5E6DF'  // V1 surface-900 / surface-200
   const accent = theme.colors.text
   const muted = theme.colors.textMuted
