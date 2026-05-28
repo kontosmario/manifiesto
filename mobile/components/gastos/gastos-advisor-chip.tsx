@@ -116,7 +116,9 @@ export function GastosAdvisorChip({
           style={[
             styles.row,
             {
-              backgroundColor: theme.colors.creamCard,
+              backgroundColor: theme.isDark
+                ? theme.colors.surfaceMuted
+                : theme.colors.creamCard,
               borderColor: theme.colors.line,
             },
             press.animatedStyle,

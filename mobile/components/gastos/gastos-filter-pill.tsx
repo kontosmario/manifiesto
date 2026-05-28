@@ -71,7 +71,14 @@ function GastosFilterPillImpl({
   // before the filter actually applies.
   const press = useSharedValue(1)
 
-  const inactiveBg = theme.colors.creamCard
+  // Dark mode: inactive pills match the muted card surface
+  // (surfaceMuted) so they sit in the same family as the near-black
+  // canvas instead of the brighter creamCard. Shared with Fijos tabs —
+  // both screens get the consistent treatment. `activeFg` below stays
+  // creamCard (it's the label color on the active dark pill).
+  const inactiveBg = theme.isDark
+    ? theme.colors.surfaceMuted
+    : theme.colors.creamCard
   const activeBg = theme.colors.text
   const inactiveBorder = theme.colors.line
   const activeBorder = theme.colors.text

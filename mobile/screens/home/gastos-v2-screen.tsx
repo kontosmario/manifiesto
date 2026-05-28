@@ -18,6 +18,7 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
@@ -451,7 +452,18 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       // → no entering animation; user toggles a filter → 500ms window
       // where new sections fade in.
       <Animated.View
-        style={[styles.groupHeader, { backgroundColor: theme.colors.background }]}
+        // Sticky date-group header: its opaque bg must match the canvas
+        // so scrolling rows slide cleanly under it. On the near-black
+        // dark canvas that means DARK_TAB_CANVAS, not the forest
+        // `background` token.
+        style={[
+          styles.groupHeader,
+          {
+            backgroundColor: theme.isDark
+              ? DARK_TAB_CANVAS
+              : theme.colors.background,
+          },
+        ]}
         entering={rowAnimationEnabled ? FadeIn.duration(160) : undefined}
         exiting={FadeOut.duration(120)}
         layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
@@ -469,7 +481,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         </Text>
       </Animated.View>
     ),
-    [theme.colors.background, theme.colors.text, theme.colors.textSoft, rowAnimationEnabled],
+    [theme.isDark, theme.colors.background, theme.colors.text, theme.colors.textSoft, rowAnimationEnabled],
   )
 
   const keyExtractor = useCallback((item: Expense) => item.id, [])
@@ -714,7 +726,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     controller.expenses.length === 0
   ) {
     return (
-      <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screenContent}
+        scrollable={false}
+      >
         <ErrorState
           description={getErrorMessage(controller.error, errorMessages.server)}
           title="No pudimos cargar tus gastos"
@@ -727,11 +743,17 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   }
 
   return (
-    <Screen scrollable={false} contentContainerStyle={styles.screenContent}>
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      scrollable={false}
+      contentContainerStyle={styles.screenContent}
+    >
       {/* Mounted as a Screen-level sibling (not inside the SectionList
           header) so the absolute-positioned blobs fill the whole canvas
-          instead of getting clipped to the ListHeaderComponent cell. */}
-      <AmbientBlobs />
+          instead of getting clipped to the ListHeaderComponent cell.
+          Dark mode uses the 'calm' tone (faint forest halos on the
+          near-black canvas); light keeps the bright aurora. */}
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       {/* `tourMeasureRef` wires this `flex:1` host as the registry's
           measurement target for the scrollable surface. The `list`
           step's highlight is registered separately (TourTarget around
@@ -758,7 +780,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               style={[
                 styles.emptyCard,
                 {
-                  backgroundColor: theme.colors.creamCard,
+                  backgroundColor: theme.isDark
+                    ? theme.colors.surfaceMuted
+                    : theme.colors.creamCard,
                   borderColor: theme.colors.line,
                 },
               ]}
