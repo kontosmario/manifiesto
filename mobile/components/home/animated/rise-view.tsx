@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import { Platform, View, type ViewStyle } from 'react-native'
 import Animated, { Keyframe, ReduceMotion } from 'react-native-reanimated'
+import { motionDurations, motionEasings } from '@/lib/motion'
 
 interface RiseViewProps {
   delay?: number
@@ -79,7 +80,11 @@ export function RiseViewGate({
  */
 export function RiseView({
   delay = 0,
-  duration = 700,
+  // 320ms (motionDurations.deliberate) — content entrances settle
+  // fast enough to feel responsive (Emil: UI motion stays sub-300ish).
+  // The previous 700ms made every screen's content "float" in slowly,
+  // which read as sluggish/clunky after navigation.
+  duration = motionDurations.deliberate,
   translateY = 14,
   style,
   children,
@@ -92,7 +97,15 @@ export function RiseView({
     () =>
       new Keyframe({
         0: { opacity: 0, transform: [{ translateY }] },
-        100: { opacity: 1, transform: [{ translateY: 0 }] },
+        // ease-out-expo on the entry segment: most of the rise + fade
+        // happens up front, then settles softly — feels snappy and
+        // intentional. Without an explicit easing the Keyframe
+        // interpolated linearly, which read as mechanical/lifeless.
+        100: {
+          opacity: 1,
+          transform: [{ translateY: 0 }],
+          easing: motionEasings.enterSmooth,
+        },
       })
         .duration(duration)
         .delay(delay)
