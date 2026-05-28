@@ -561,15 +561,6 @@ export function HomeDashboard({
       homeMetrics.hero.projectionReliable && projectedCloseTrend != null,
   })
 
-  // Derive the user's first name from the full displayName prop.
-  // Used by familyModeHeroCopy to personalise the hero title in
-  // solo mode (e.g. "Mario" instead of "Bienvenido").
-  const userFirstName = (() => {
-    const raw = displayName.trim()
-    const first = raw.split(/\s+/)[0]
-    return first || null
-  })()
-
   // "Apartando ahorro" chip — read-only caption inside the hero,
   // visible when the user has configured a monthly savings target.
   // The dashboard model already prorates for cycle-balance overrides
@@ -633,12 +624,6 @@ export function HomeDashboard({
           onPressConfigureIncome={handlePressConfigureIncome}
           projectedCloseTrend={projectedCloseTrend}
           savingsChip={savingsChip}
-          heroMode={{
-            kind: isSolo ? 'solo' : 'shared',
-            memberCount: familyMembers.length,
-            familyName: null,
-            userFirstName,
-          }}
         />
       </TourTarget>
       {/* Variables + Fijos halves of MonthSummaryCard register as
