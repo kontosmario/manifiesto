@@ -184,7 +184,7 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
   return (
     <LinearGradient
       colors={[
-        theme.colors.creamCard,
+        theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
         theme.colors.pageBg,
       ]}
       start={{ x: 0, y: 0 }}
@@ -274,7 +274,7 @@ function StarterNudge({ nextItem }: StarterNudgeProps) {
       style={[
         starterStyles.card,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
@@ -474,7 +474,7 @@ function AchievementCard({ item }: AchievementCardProps) {
         style={({ pressed }) => [
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: earned ? tone.border : theme.colors.line,
             opacity: earned ? 1 : 0.62,
           },

@@ -283,7 +283,9 @@ function PlanTile({
           {
             backgroundColor: selected
               ? theme.colors.creamCard
-              : theme.colors.creamSoft,
+              : theme.isDark
+                ? theme.colors.surfaceMuted
+                : theme.colors.creamSoft,
             borderColor: selected ? theme.colors.primary : theme.colors.line,
             borderWidth: selected ? 1.6 : 1,
           },
@@ -419,7 +421,7 @@ function PlanDetail({ selectedPlan }: { selectedPlan: BillingPlan }) {
       style={[
         styles.detailWrap,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
@@ -603,7 +605,7 @@ function TrustPills() {
           style={[
             styles.pill,
             {
-              backgroundColor: theme.colors.creamCard,
+              backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
               borderColor: theme.colors.line,
             },
           ]}
@@ -669,7 +671,7 @@ function CompactFaq() {
         style={[
           styles.faqCard,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: theme.colors.line,
           },
         ]}

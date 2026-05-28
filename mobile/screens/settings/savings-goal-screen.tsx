@@ -204,7 +204,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
           style={[
             styles.insightCard,
             {
-              backgroundColor: theme.colors.creamCard,
+              backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
               borderColor: theme.colors.line,
               borderRadius: theme.radii.xl,
             },

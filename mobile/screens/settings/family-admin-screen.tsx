@@ -326,7 +326,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
               style={({ pressed }) => [
                 styles.backPill,
                 {
-                  backgroundColor: theme.colors.creamCard,
+                  backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
                   borderColor: theme.colors.line,
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 },
@@ -342,7 +342,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
             style={[
               styles.hero,
               {
-                backgroundColor: theme.colors.creamCard,
+                backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
                 borderColor: theme.colors.line,
               },
             ]}
@@ -399,7 +399,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
                 style={({ pressed }) => [
                   styles.backPill,
                   {
-                    backgroundColor: theme.colors.creamCard,
+                    backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
                     borderColor: theme.colors.line,
                     transform: [{ scale: pressed ? 0.97 : 1 }],
                   },
@@ -499,7 +499,7 @@ function MemberCard({ member, isMe, onPressActions }: MemberCardProps) {
       style={[
         styles.card,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: isBlocked ? theme.colors.peachSoft : theme.colors.line,
           opacity: isBlocked ? 0.6 : 1,
         },

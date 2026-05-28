@@ -158,7 +158,7 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
       style={[
         styles.masthead,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
@@ -224,7 +224,7 @@ function EditionRow({ edition, onPress }: EditionRowProps) {
         style={({ pressed }) => [
           styles.row,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: theme.colors.line,
             opacity: pressed ? 0.92 : 1,
           },

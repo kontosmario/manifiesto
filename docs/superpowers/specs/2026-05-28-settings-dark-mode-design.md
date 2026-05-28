@@ -8,9 +8,12 @@
 
 Que el cluster de pantallas de Ajustes use en dark mode el mismo canvas near-black (`DARK_TAB_CANVAS #0A0F0C`) + ambient blobs `calm` que las tabs principales (home/gastos/fijos/control), en vez del canvas forest `#12211A` que las hace ver "demasiado verde y cansa la vista" (mismo feedback que motivó el rediseño de las tabs).
 
-## Insight clave
+## Insight clave (corregido 2026-05-28)
 
-Home usa **el mismo** `creamCard #305A47` para sus cards que Ajustes. Lo que hace que home lea limpio NO es un color de card distinto — es el **canvas near-black detrás**. Por lo tanto NO se re-tunean colores de superficie (`creamCard`, `surfaceMuted`, `line`); solo cambia el canvas + el tono de los blobs. Light mode queda 100% intacto.
+Dos cosas hacen falta para matchear home en dark:
+
+1. **Canvas near-black** (`DARK_TAB_CANVAS`) — saca el forest `#12211A` que cansaba la vista.
+2. **Tono de las cards = `surfaceMuted` `#0F2E1F`** (el mismo verde oscuro que la card de actividad / empty-state de home, ver `mobile/components/ui/empty-state.tsx`). El primer pase usó `creamCard #305A47` (verde más claro) creyendo que home lo usaba; en realidad las cards "recesivas" de home (actividad, listas) usan `surfaceMuted`. `creamCard` se reserva para hero/feature cards puntuales. En dark, las cards del cluster Ajustes pasan a `surfaceMuted`; los icon-tiles de `SettingsRow` suben a `creamCard` para no perderse sobre el fondo más oscuro. Light mode queda 100% intacto (sigue `creamCard`/`creamSoft`).
 
 ## House-style a replicar (idéntico a las 4 tabs)
 

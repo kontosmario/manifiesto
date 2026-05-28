@@ -48,7 +48,12 @@ export function SettingsGroup({ title, footer, children, style }: SettingsGroupP
         style={[
           styles.groupCard,
           {
-            backgroundColor: theme.colors.creamCard,
+            // Dark: match the home cards' muted-green surface
+            // (surfaceMuted #0F2E1F — same as the activity/empty-state
+            // card) on the near-black canvas, instead of the lighter
+            // creamCard #305A47 which read too bright/mismatched.
+            // Light keeps creamCard (the warm paper card).
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: theme.colors.line,
           },
         ]}
@@ -137,7 +142,11 @@ export function SettingsRow({
         style={[
           styles.iconWrap,
           {
-            backgroundColor: theme.colors.creamSoft,
+            // On dark the card is now surfaceMuted (#0F2E1F); the old
+            // creamSoft (#0E1A15) icon tile would vanish against it, so
+            // use the lighter creamCard (#305A47) as the tile to keep it
+            // legible. Light keeps creamSoft.
+            backgroundColor: theme.isDark ? theme.colors.creamCard : theme.colors.creamSoft,
             borderColor: theme.colors.line,
           },
         ]}
@@ -242,7 +251,11 @@ export function SettingsSwitchRow({
         style={[
           styles.iconWrap,
           {
-            backgroundColor: theme.colors.creamSoft,
+            // On dark the card is now surfaceMuted (#0F2E1F); the old
+            // creamSoft (#0E1A15) icon tile would vanish against it, so
+            // use the lighter creamCard (#305A47) as the tile to keep it
+            // legible. Light keeps creamSoft.
+            backgroundColor: theme.isDark ? theme.colors.creamCard : theme.colors.creamSoft,
             borderColor: theme.colors.line,
           },
         ]}
