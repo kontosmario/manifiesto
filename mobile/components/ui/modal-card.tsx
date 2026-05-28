@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type PropsWithChildren } from 'react'
+import { useCallback, useEffect, useState, type PropsWithChildren, type ReactNode } from 'react'
 import {
   Keyboard,
   Modal,
@@ -60,6 +60,13 @@ interface ModalCardProps extends PropsWithChildren {
    *   CTAs become tappable on the next frame.
    */
   inline?: boolean
+  /**
+   * Optional pinned footer. Rendered OUTSIDE the scrollable content,
+   * flush to the bottom of the sheet (above the safe-area padding), so
+   * a primary CTA stays visible regardless of how tall/scrollable the
+   * body is. When omitted, the sheet is body-only (backward compatible).
+   */
+  footer?: ReactNode
 }
 
 const DISMISS_DISTANCE = 120
@@ -83,6 +90,7 @@ export function ModalCard({
   subtitle,
   onClose,
   inline = false,
+  footer,
   children,
 }: ModalCardProps) {
   const { theme } = useAppTheme()
@@ -293,6 +301,7 @@ export function ModalCard({
             ) : null}
           </View>
           <ScrollView
+            style={styles.scroll}
             contentContainerStyle={styles.content}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             keyboardShouldPersistTaps="handled"
@@ -300,6 +309,16 @@ export function ModalCard({
           >
             {children}
           </ScrollView>
+          {footer ? (
+            <View
+              style={[
+                styles.footerBlock,
+                { borderTopColor: theme.colors.line },
+              ]}
+            >
+              {footer}
+            </View>
+          ) : null}
         </Animated.View>
       </GestureDetector>
     </GestureHandlerRootView>
@@ -375,10 +394,21 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
   },
+  scroll: {
+    // Let the body shrink so a pinned footer stays on-screen; without
+    // this the ScrollView would size to content and push the footer
+    // past the sheet's maxHeight.
+    flexShrink: 1,
+  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
     gap: 16,
+  },
+  footerBlock: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 })

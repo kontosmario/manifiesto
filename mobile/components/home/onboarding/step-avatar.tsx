@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import {
   AVATAR_LABELS,
@@ -58,7 +58,14 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
           </Text>
         </View>
 
-        <View style={styles.grid}>
+        {/* Grid horizontal: 3 filas fijas que se desplazan a lo ancho.
+            Mantiene el alto del sheet acotado (el footer "Guardar" queda
+            siempre visible) y permite recorrer los 42 sin scroll vertical. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.gridContent}
+        >
           {AVATAR_SLUGS.map((slug) => {
             const on = slug === selected
             return (
@@ -78,14 +85,14 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
               >
                 <AvatarAnimal
                   slug={slug}
-                  size={52}
+                  size={44}
                   tint={on ? theme.colors.creamCard : theme.colors.text}
                   backgroundTint="transparent"
                 />
               </Pressable>
             )
           })}
-        </View>
+        </ScrollView>
       </RiseView>
     </View>
   )
@@ -113,15 +120,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   gridCount: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
-  grid: {
-    flexDirection: 'row',
+  // Column-wrap inside a horizontal ScrollView: items flow top→bottom
+  // filling 3 rows, then wrap into the next column → content grows
+  // horizontally and the ScrollView pans across it. Height = 3 cells +
+  // 2 gaps so exactly 3 rows fit.
+  gridContent: {
+    flexDirection: 'column',
     flexWrap: 'wrap',
-    gap: 8,
+    alignContent: 'flex-start',
+    height: 64 * 3 + 10 * 2,
+    gap: 10,
+    paddingRight: 4,
   },
   gridCell: {
-    width: '22.5%',
-    aspectRatio: 1,
-    borderRadius: 14,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
