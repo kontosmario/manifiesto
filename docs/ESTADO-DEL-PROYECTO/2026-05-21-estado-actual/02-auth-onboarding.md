@@ -62,8 +62,12 @@ AppEntryGate (root layout)
 ```
 AppEntryGate
        │
-       ├─ biometricLock=true → /(auth)/login?lock=1
-       │        └─ Face ID OK → markAppUnlocked → router.replace('/')
+       ├─ (biometric.shouldUseBiometric || pin.isSet) && !isAppUnlocked → lock
+       │        ├─ biometría seteada → /(auth)/login?autoBiometric=1&lock=1
+       │        │        └─ Face ID OK → markAppUnlocked → router.replace('/')
+       │        │        └─ (con PIN seteado también: botón "Usar PIN" → /(auth)/pin-unlock)
+       │        └─ solo PIN → /(auth)/pin-unlock
+       │                 └─ PIN OK → markAppUnlocked → router.replace('/')
        │
        └─ profileQuery.onboarding_completed_at?
                NO  → ¿biometric-setup-shown:<userId>?
@@ -78,6 +82,19 @@ AppEntryGate
 - En `SIGNED_OUT`: limpia todas las queries (excepto `auth`), elimina el caché persistido de AsyncStorage, borra `lastUserProfile` de SecureStore.
 - La sesión se persiste automáticamente por el cliente Supabase (SecureStore en native vía `supabase-secure-storage.ts`).
 - El refresh token rotativo se almacena también en SecureStore como `auth.biometric.credentials` para el flujo biométrico; se actualiza tras cada `auth.refreshSession` exitoso.
+
+### PIN de acceso (4 dígitos) ✅ LIVE (2026-05-28)
+
+Método de bloqueo **independiente** de la biometría. El usuario puede tener biometría, PIN, ambos o ninguno. La app se bloquea en cold-start (sesión válida) si hay **cualquiera** de los dos.
+
+- **Storage** ([pin-lock.ts](../../../mobile/lib/pin-lock.ts)): SHA-256 salteado (`js-sha256`, pure-JS, sin módulo nativo — Hermes no tiene `crypto.subtle` y `expo-standard-web-crypto` ya crasheó una vez) en SecureStore `WHEN_UNLOCKED_THIS_DEVICE_ONLY` + flag espejo en AsyncStorage (`app-lock.pin.enabled`, [pin-enabled-flag.ts](../../../mobile/features/auth/pin-enabled-flag.ts)) como tie-breaker contra lecturas flaky del keychain. API: `setPin`, `verifyPin`, `clearPin`, `getPinLockState(): { isSet }`.
+- **Threat model:** lock *casual* (alguien levanta el teléfono desbloqueado), no defensa criptográfica — el secreto real (refresh token) ya vive en el keychain. El hash solo evita guardar el PIN en claro; el salt evita reuso de rainbow tables entre dispositivos.
+- **Cold-start probe** ([use-pin-lock-check.ts](../../../mobile/features/auth/use-pin-lock-check.ts)): espejo de `useColdStartBiometricCheck`, keyed por session user; reporta `loading` durante el re-sondeo para que el gate no rutee con un `isSet` stale.
+- **Gate** ([app-entry-gate.tsx](../../../mobile/components/root/app-entry-gate.tsx)): `(biometric.shouldUseBiometric || pin.isSet) && !isAppUnlocked` → biometría tiene precedencia (ruta al login lock, con botón "Usar PIN"); solo-PIN ruta a `/(auth)/pin-unlock`. El PIN solo desbloquea una sesión ya válida, nunca la restaura.
+- **UI:** `PinPad` (4 dots + keypad circular, shake en error — [pin-pad.tsx](../../../mobile/components/auth/pin-pad.tsx), lógica pura testeada en [pin-pad-model.ts](../../../mobile/components/auth/pin-pad-model.ts)); `pin-setup` (enter + confirm); `pin-unlock` (lock screen, escape "Olvidé mi PIN · usar contraseña" → logout, sin límite de intentos).
+- **Alta:** biometric-setup ofrece "Usar un PIN" (modo A) / "Crear un PIN" (modo B) → `pin-setup?next=onboarding`.
+- **Settings:** fila "PIN de acceso" en el grupo "Acceso rápido" (set / cambiar / quitar vía Alert).
+- **Recovery:** logout limpia el PIN ([logout.ts](../../../mobile/features/auth/logout.ts) → `clearPin()`), porque es device-local. "Olvidé mi PIN" → logout → re-login con contraseña → setear uno nuevo.
 
 ---
 
@@ -94,7 +111,9 @@ AppEntryGate
 | `/(auth)/forgot-password` | [forgot-password.tsx](../../../app/(auth)/forgot-password.tsx) | [forgot-password-screen.tsx](../../../mobile/screens/auth/forgot-password-screen.tsx) | Solicita email y envía link de reset. |
 | `app/auth/callback` | [callback.tsx](../../../app/auth/callback.tsx) | [auth-callback-screen.tsx](../../../mobile/screens/auth/auth-callback-screen.tsx) | Intercepta deep link de confirmación de email (PKCE). |
 | `app/auth/reset-password` | [reset-password.tsx](../../../app/auth/reset-password.tsx) | [reset-password-screen.tsx](../../../mobile/screens/auth/reset-password-screen.tsx) | Recibe `?code=` del link de reset, intercambia PKCE, formulario nueva contraseña. |
-| `/(app)/biometric-setup` 🆕 | [biometric-setup.tsx](../../../app/(app)/biometric-setup.tsx) | [biometric-setup-screen.tsx](../../../mobile/screens/auth/biometric-setup-screen.tsx) | Gate pre-onboarding para activar Face ID (modo A) o informar que no hay biometría enrolada (modo B). 2026-05-27. |
+| `/(app)/biometric-setup` 🆕 | [biometric-setup.tsx](../../../app/(app)/biometric-setup.tsx) | [biometric-setup-screen.tsx](../../../mobile/screens/auth/biometric-setup-screen.tsx) | Gate pre-onboarding para activar Face ID (modo A) o informar que no hay biometría enrolada (modo B). Ambos modos ofrecen "Usar/Crear un PIN" → `pin-setup?next=onboarding`. 2026-05-27. |
+| `/(app)/pin-setup` 🆕 | [pin-setup.tsx](../../../app/(app)/pin-setup.tsx) | [pin-setup-screen.tsx](../../../mobile/screens/auth/pin-setup-screen.tsx) | Seteo de PIN de 4 dígitos (enter + confirm). Honra `?next=onboarding` (alta) si no, vuelve atrás (Settings). 2026-05-28. |
+| `/(auth)/pin-unlock` 🆕 | [pin-unlock.tsx](../../../app/(auth)/pin-unlock.tsx) | [pin-unlock-screen.tsx](../../../mobile/screens/auth/pin-unlock-screen.tsx) | Lock screen dedicada por PIN (cold-start solo-PIN, o "Usar PIN" desde el login lock). Escape "Olvidé mi PIN" → logout. `gestureEnabled: false`. 2026-05-28. |
 | `/(app)/onboarding` | [onboarding.tsx](../../../app/(app)/onboarding.tsx) | [onboarding-screen.tsx](../../../mobile/screens/home/onboarding-screen.tsx) | Wizard de 5 pasos post-signup. |
 | `/(app)/household-setup` | [household-setup.tsx](../../../app/(app)/household-setup.tsx) | [household-setup-screen.tsx](../../../mobile/screens/settings/household-setup-screen.tsx) | Re-configuración del hogar (desde Settings). |
 
