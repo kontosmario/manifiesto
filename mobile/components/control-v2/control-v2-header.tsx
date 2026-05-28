@@ -13,6 +13,12 @@ import Animated, {
 } from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
+import {
+  CIRCLE_BUTTON_RADIUS,
+  CIRCLE_BUTTON_SHADOW,
+  CIRCLE_BUTTON_SIZE,
+  circleButtonSurface,
+} from '@/components/ui/circle-button-chrome'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -103,6 +109,7 @@ export function ControlV2Header({
               score={score}
               tone={scoreTone}
               isDark={theme.isDark}
+              surface={circleButtonSurface(theme.isDark, theme.colors)}
             />
           </Animated.View>
         </Pressable>
@@ -218,69 +225,45 @@ function ScorePill({
   score,
   tone,
   isDark,
+  surface,
 }: {
   score: number
   tone: string
   isDark: boolean
+  surface: string
 }) {
-  // Translate the score into a visual cue:
-  //   ≥ 65 trending-up,  35–64 trending-flat,  < 35 trending-down.
-  // Matches the qualitative buckets the score adapter uses
-  // (Excelente / Muy bien / Bien / Regular / Atención).
-  const iconName: keyof typeof MaterialIcons.glyphMap =
-    score >= 65 ? 'trending-up' : score >= 35 ? 'trending-flat' : 'trending-down'
-
   // ── Contrast strategy ──────────────────────────────────────────
-  // The pill bg is tone @ 14% over the screen surface — close in
-  // hue to the tone itself. Using `tone` directly for icon/text
-  // would fail WCAG AA on light mode (audited 2.10–4.03 :1 across
-  // green/yellow/red — see scripts/contrast-audit if regressing).
-  //
-  //   Light mode: derive a darker variant via HSL → L≈22 lifts the
-  //                pair to 6.85:1 (green), 7.53:1 (yellow),
-  //                10.24:1 (red). Comfortable AA across the board.
+  // The number sits on the neutral circular surface (shared with every
+  // other header button). The score's QUALITY is carried by the digit
+  // colour (green / yellow / red tone).
+  //   Light mode: derive a darker tone variant via HSL → L≈22 so the
+  //                number passes WCAG AA on the cream surface.
   //   Dark mode:  the input tones are already light enough on the
-  //                forest-tinted bg (4.91–7.63 :1). Use as-is.
+  //                muted dark surface. Use as-is.
   const fg = isDark ? tone : darkenToneForText(tone)
-  const bg = withAlpha(tone, 0x24)
-  const border = withAlpha(tone, 0x60)
 
-  // Compact form: icon + number only. The qualitative tag
-  // ("MUY BIEN" etc.) was visually redundant with the trend icon and
-  // pushed the pill width past 130pt — no room for a discoverability
-  // pulse without clipping at the screen's right gutter. The
-  // qualitative copy still lives in the parent Pressable's
-  // accessibilityLabel for screen readers.
+  // 38×38 neutral circle — identical chrome to the Home / Fijos /
+  // Gastos header buttons. The score number is centred; the trend icon
+  // and the tone-tinted pill were dropped so Control's affordance joins
+  // the one circular family. The qualitative tag still lives in the
+  // parent Pressable's accessibilityLabel for screen readers.
   return (
     <View
-      style={[styles.pill, { backgroundColor: bg, borderColor: border }]}
+      style={[styles.scoreCircle, { backgroundColor: surface }]}
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
     >
-      <MaterialIcons name={iconName} size={14} color={fg} />
       <CountUpText
         value={score}
         duration={1000}
         format={(n) => String(n)}
-        style={[styles.pillValue, { color: fg }]}
+        style={[styles.scoreValue, { color: fg }]}
       />
     </View>
   )
 }
 
 // ─── Colour helpers ─────────────────────────────────────────────────
-
-/**
- * Append a 1-byte alpha component to a 6-digit hex colour.
- * `withAlpha('#2E7D5B', 0x24)` → `#2E7D5B24` (≈ 14% opacity).
- * Returns the input unchanged when it isn't a recognised 6-digit hex
- * (rgba strings, named colours, etc. are passed through).
- */
-function withAlpha(hex: string, alphaByte: number): string {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return hex
-  const aa = alphaByte.toString(16).padStart(2, '0').toUpperCase()
-  return `${hex}${aa}`
-}
 
 /**
  * Derive an AA-passing text colour for the score pill in light mode.
@@ -365,25 +348,21 @@ const styles = StyleSheet.create({
   // Title / subtitle / row geometry now live in TabSectionHeader so
   // Control's header matches Home, Gastos and Fijos exactly (34px
   // display title, shared right-slot alignment).
-  // Compact score pill — icon + number only. Tighter padding (10/6
-  // vs the previous 12/7) shrinks the footprint to ~58pt wide so
-  // there's clear horizontal space for the discoverability pulse
-  // before the screen's right safe area, and the visual weight
-  // matches the more restrained role the pill now plays in the
-  // header (no longer a multi-word badge).
-  pill: {
-    flexDirection: 'row',
+  // 38×38 neutral score circle — identical chrome to the Home / Fijos
+  // / Gastos header buttons (shared circle-button-chrome). The score
+  // number is centred and tone-coloured; no pill, no border.
+  scoreCircle: {
+    width: CIRCLE_BUTTON_SIZE,
+    height: CIRCLE_BUTTON_SIZE,
+    borderRadius: CIRCLE_BUTTON_RADIUS,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
+    justifyContent: 'center',
+    boxShadow: CIRCLE_BUTTON_SHADOW,
   },
-  pillValue: {
-    fontSize: 14,
+  scoreValue: {
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
   goalChip: {
