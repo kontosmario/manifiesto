@@ -38,6 +38,12 @@ export function HomeAssistantButton({
   pendingCount = 0,
 }: HomeAssistantButtonProps) {
   const { theme } = useAppTheme()
+  // Dark mode: match the Home cards' muted surface (surfaceMuted)
+  // instead of creamCard, so the assistant button joins the same calm
+  // green family on the near-black canvas. Light mode keeps creamCard.
+  const buttonSurface = theme.isDark
+    ? theme.colors.surfaceMuted
+    : theme.colors.creamCard
   const count = pendingCount > 9 ? '9+' : String(pendingCount)
   const showBadge = pendingCount > 0
   return (
@@ -52,7 +58,7 @@ export function HomeAssistantButton({
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: buttonSurface,
           opacity: pressed ? 0.9 : 1,
         },
       ]}
@@ -74,7 +80,7 @@ export function HomeAssistantButton({
             styles.badge,
             {
               backgroundColor: BADGE_BG,
-              borderColor: theme.colors.creamCard,
+              borderColor: buttonSurface,
             },
           ]}
         >

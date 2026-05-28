@@ -37,6 +37,17 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 
+// Home-only dark canvas: a near-black with a whisper of brand green
+// (never pure #000). User feedback: the forest-green dark background
+// (theme.colors.background #12211A) plus the ambient aurora blobs read
+// as "too green" and tired the eye. Scoped to Home for now via a
+// Screen backgroundColor override; the global token is untouched so
+// other screens keep the forest canvas. The muted-green surfaces
+// (surfaceMuted #0F2E1F: cards, header buttons, payday chip) now float
+// on this near-black, which makes them read as one calm family and
+// lets the eye rest on the empty canvas between them.
+const HOME_DARK_CANVAS = '#0A0F0C'
+
 interface HomeScreenProps {
   userId: string
   familyId: string
@@ -256,6 +267,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? HOME_DARK_CANVAS : undefined}
       contentContainerStyle={styles.screenContent}
       onScroll={handleScroll}
       // Tour math reads `scrollYRef.current` to compute each step's
@@ -272,10 +284,17 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       // Rendered behind the ScrollView (not inside it) so the auroras
       // cover the full viewport and don't scroll with the content.
       backgroundSlot={
-        <>
-          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-          <AmbientBlobs />
-        </>
+        // Light mode keeps the warm aurora ambience. Dark mode drops
+        // BOTH the backdrop and the aurora blobs: their green/peach
+        // glows were the main source of the "too green" canvas the
+        // user flagged. A flat near-black reads calmer and lets the
+        // muted-green surfaces carry the brand.
+        !theme.isDark ? (
+          <>
+            <AmbientBackdrop variant="home" />
+            <AmbientBlobs />
+          </>
+        ) : null
       }
       refreshControl={
         <RefreshControl

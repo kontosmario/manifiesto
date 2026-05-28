@@ -45,7 +45,15 @@ export function PaydayPillV2({ daysUntilPayday, isPending = false, onPress }: Pa
           borderColor: 'rgba(242,167,140,0.45)',
         }
       : {
-          backgroundColor: theme.colors.creamCard,
+          // Dark mode: match the Home cards' muted surface
+          // (surfaceMuted) so the read-only "sueldo en X días" chip
+          // joins the same calm green family on the near-black canvas.
+          // Light mode keeps creamCard. The accent (payday-pending)
+          // state above keeps its peach tint — it's an intentional
+          // call-to-action, not a neutral surface.
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
   ]
