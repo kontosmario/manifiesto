@@ -18,7 +18,10 @@ export function SlideInView({ delay = 0, duration = 600, translateX = -10, style
   useEffect(() => {
     if (reduced) return
     x.value = withDelay(delay, withTiming(0, { duration, easing: Easing.out(Easing.cubic) }))
-    opacity.value = withDelay(delay, withTiming(1, { duration }))
+    // Match the translateX easing — without it the opacity interpolated
+    // linearly while the position eased out, so the fade and the slide
+    // drifted out of sync (content looked "milky" before it landed).
+    opacity.value = withDelay(delay, withTiming(1, { duration, easing: Easing.out(Easing.cubic) }))
   }, [delay, duration, reduced, x, opacity])
   const animated = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }], opacity: opacity.value }))
   return <Animated.View style={[style, animated]}>{children}</Animated.View>
