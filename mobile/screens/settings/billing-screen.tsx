@@ -127,7 +127,7 @@ export function BillingScreen() {
         </RiseView>
 
         <RiseView delay={200}>
-          <SharedFeatures />
+          <PlanDetail selectedPlan={selectedPlan} />
         </RiseView>
 
         <RiseView delay={260}>
@@ -402,48 +402,111 @@ function SelectIndicator({ selected }: { selected: boolean }) {
   )
 }
 
-// ─── Shared features (one tight strip, valid for both planes) ─────
-function SharedFeatures() {
+// ─── Plan detail (highlights del plan seleccionado, diff anual) ───
+// annualOnly se computa una sola vez: items que están en annual pero no en monthly.
+const _monthly = BILLING_PLANS['hogar-mensual']
+const _annual = BILLING_PLANS['hogar-anual']
+const ANNUAL_ONLY_SET = new Set(
+  _annual.highlights.filter((h) => !(_monthly.highlights as readonly string[]).includes(h)),
+)
+
+function PlanDetail({ selectedPlan }: { selectedPlan: BillingPlan }) {
   const { theme } = useAppTheme()
-  const lines: ReadonlyArray<{
-    icon: keyof typeof MaterialIcons.glyphMap
-    text: string
-  }> = [
-    {
-      icon: 'auto-awesome',
-      text: 'Te decimos cuánto puedes gastar hoy.',
-    },
-    {
-      icon: 'family-restroom',
-      text: 'Todos en casa ven los mismos números, en pesos y dólares.',
-    },
-    {
-      icon: 'lock',
-      text: 'Cancelas cuando quieras, sin llamadas ni vueltas.',
-    },
-  ]
+  const isAnnual = selectedPlan.cycle === 'yearly'
+
   return (
     <View
       style={[
-        styles.featuresStrip,
+        styles.detailWrap,
         {
-          backgroundColor: theme.colors.creamSoft,
+          backgroundColor: theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
     >
-      {lines.map((line) => (
-        <View key={line.text} style={styles.featureLine}>
+      {/* Header: nombre + tagline */}
+      <View style={styles.detailHeader}>
+        <Text style={[styles.detailName, { color: theme.colors.text }]}>
+          {selectedPlan.name}
+        </Text>
+        <Text style={[styles.detailTagline, { color: theme.colors.textMuted }]}>
+          {selectedPlan.tagline}
+        </Text>
+      </View>
+
+      <View
+        style={[styles.detailDivider, { backgroundColor: theme.colors.line }]}
+      />
+
+      {/* Eyebrow "Qué incluye" */}
+      <Text style={[styles.detailEyebrow, { color: theme.colors.textMuted }]}>
+        QUÉ INCLUYE
+      </Text>
+
+      {/* Checklist */}
+      <View style={styles.detailList}>
+        {selectedPlan.highlights.map((feature) => {
+          const isExclusive = isAnnual && ANNUAL_ONLY_SET.has(feature)
+          return (
+            <View key={feature} style={styles.detailRow}>
+              <MaterialIcons
+                name="check-circle"
+                size={16}
+                color={theme.colors.primary}
+                style={styles.detailCheckIcon}
+              />
+              <Text
+                style={[styles.detailFeatureText, { color: theme.colors.text }]}
+              >
+                {feature}
+              </Text>
+              {isExclusive ? (
+                <View
+                  style={[
+                    styles.exclusivePill,
+                    { backgroundColor: theme.colors.primarySurface, borderColor: theme.colors.primary },
+                  ]}
+                >
+                  <Text
+                    style={[styles.exclusivePillText, { color: theme.colors.primary }]}
+                  >
+                    Solo en Anual
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          )
+        })}
+      </View>
+
+      {/* Savings callout (solo plan anual) */}
+      {isAnnual && selectedPlan.savingsUsd > 0 ? (
+        <View
+          style={[
+            styles.savingsCallout,
+            {
+              backgroundColor: theme.colors.primarySurface,
+              borderColor: theme.colors.primary,
+            },
+          ]}
+        >
           <MaterialIcons
-            name={line.icon}
+            name="savings"
             size={14}
             color={theme.colors.primary}
           />
-          <Text style={[styles.featureLineText, { color: theme.colors.text }]}>
-            {line.text}
+          <Text
+            style={[styles.savingsCalloutText, { color: theme.colors.text }]}
+          >
+            {'Ahorrás USD '}
+            {selectedPlan.savingsUsd.toFixed(2)}
+            {' al año'}
+            {selectedPlan.effectiveCopy
+              ? ` · ${selectedPlan.effectiveCopy.toLowerCase()}`
+              : ''}
           </Text>
         </View>
-      ))}
+      ) : null}
     </View>
   )
 }
@@ -930,25 +993,84 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 
-  // Features strip
-  featuresStrip: {
+  // Plan detail section
+  detailWrap: {
     borderRadius: radii.lg,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 10,
   },
-  featureLine: {
+  detailHeader: {
+    gap: 2,
+  },
+  detailName: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  detailTagline: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+  },
+  detailDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 2,
+  },
+  detailEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    marginBottom: 2,
+  },
+  detailList: {
+    gap: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailCheckIcon: {
+    flexShrink: 0,
+    marginTop: 0,
+  },
+  detailFeatureText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    letterSpacing: -0.05,
+  },
+  exclusivePill: {
+    flexShrink: 0,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  exclusivePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  savingsCallout: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minHeight: 20,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 2,
   },
-  featureLineText: {
+  savingsCalloutText: {
     flex: 1,
     fontSize: 12,
-    lineHeight: 16,
     fontWeight: '600',
+    lineHeight: 16,
     letterSpacing: -0.05,
   },
 
