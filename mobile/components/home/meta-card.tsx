@@ -145,7 +145,13 @@ function MetaCardImpl({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            // Dark mode: align with the ACTIVIDAD empty-state surface
+            // (surfaceMuted) so the populated meta card matches its
+            // empty sibling and the rest of Home. Light mode keeps
+            // creamCard. The accent border stays for emphasis.
+            backgroundColor: theme.isDark
+              ? theme.colors.surfaceMuted
+              : theme.colors.creamCard,
             borderColor: accentBorder,
           },
         ]}
