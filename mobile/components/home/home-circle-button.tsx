@@ -35,6 +35,14 @@ export function HomeCircleButton({
   style,
 }: HomeCircleButtonProps) {
   const { theme } = useAppTheme()
+  // Dark mode: match the Home cards' muted surface (surfaceMuted)
+  // instead of the brighter creamCard, so the header buttons sit in
+  // the same calm green family on the near-black canvas. Light mode
+  // keeps creamCard. The badge "cut-out" border tracks the same value
+  // so the badge keeps reading as punched out of the button.
+  const buttonSurface = theme.isDark
+    ? theme.colors.surfaceMuted
+    : theme.colors.creamCard
   // V1 accent-700 — burgundy/burnt-coral (h=16 l=33%). Reads as deep
   // warm rather than fire-red. Cream text on top hits 6.07:1 AA in
   // both modes — light number, not dark, no warning vibe.
@@ -53,7 +61,7 @@ export function HomeCircleButton({
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: buttonSurface,
           opacity: pressed ? 0.9 : 1,
         },
         style,
@@ -66,7 +74,7 @@ export function HomeCircleButton({
             styles.countBadge,
             {
               backgroundColor: dotColor,
-              borderColor: theme.colors.creamCard,
+              borderColor: buttonSurface,
             },
           ]}
         >
@@ -78,7 +86,7 @@ export function HomeCircleButton({
             styles.dotBadge,
             {
               backgroundColor: dotColor,
-              borderColor: theme.colors.creamCard,
+              borderColor: buttonSurface,
             },
           ]}
         />
