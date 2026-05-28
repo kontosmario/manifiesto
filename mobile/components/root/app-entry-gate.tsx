@@ -6,6 +6,7 @@ import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
+import { usePinLockCheck } from '@/features/auth/use-pin-lock-check'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { useMigrateToursToBackend } from '@/features/tours/use-migrate-tours-to-backend'
@@ -31,6 +32,9 @@ export function AppEntryGate() {
   // user has no session, we usually already know whether biometrics
   // are set up.
   const biometric = useColdStartBiometricCheck(userId ?? null)
+  // PIN-lock probe — same role as the biometric probe, for users who
+  // set a PIN instead of (or in addition to) biometrics.
+  const pin = usePinLockCheck(userId ?? null)
   // App-lock gate: even when the session is valid we require a
   // biometric re-confirmation on every cold start (banking-app
   // pattern). `useAppLockState` starts at `false` after the JS
@@ -80,6 +84,10 @@ export function AppEntryGate() {
     // to home with `biometric.shouldUseBiometric === false` (the
     // stale initial value), skipping the lock gate entirely.
     (biometric.status === 'loading' && !isAppUnlocked) ||
+    // Same wait for the PIN probe: its result feeds the lock decision,
+    // so a premature redirect to home (with isSet stale-false) would
+    // skip the lock for one tick.
+    (pin.status === 'loading' && !isAppUnlocked) ||
     // Wait for the biometric-setup flag whenever it can change the
     // routing decision: we have a userId AND onboarding isn't yet
     // marked complete. Otherwise the read is irrelevant and we skip
@@ -122,19 +130,15 @@ export function AppEntryGate() {
     return <Redirect href="/(auth)/welcome" />
   }
 
-  // App-lock gate: session is valid, but we still require a per-
-  // launch biometric re-confirmation (banking pattern). Send the
-  // user to the login screen with `lock=1` so it runs in unlock
-  // mode (Face ID only, no Supabase refresh — the session is
-  // already valid). On success the lock screen sets isUnlocked and
-  // navigates back through here.
-  //
-  // Skip the lock when biometric isn't set up (e.g. new user just
-  // signed up on this device): there's nothing to authenticate
-  // against. The first successful manual login on this install
-  // arms biometrics for subsequent launches.
-  if (biometric.shouldUseBiometric && !isAppUnlocked) {
-    return <Redirect href="/(auth)/login?autoBiometric=1&lock=1" />
+  // App-lock gate: a valid session still needs a per-launch unlock when
+  // EITHER biometrics or a PIN is set up. Biometrics take precedence on
+  // the lock screen (Face ID auto-fires, with a "Usar PIN" fallback);
+  // when only a PIN is set, go straight to the dedicated PIN screen.
+  if ((biometric.shouldUseBiometric || pin.isSet) && !isAppUnlocked) {
+    if (biometric.shouldUseBiometric) {
+      return <Redirect href="/(auth)/login?autoBiometric=1&lock=1" />
+    }
+    return <Redirect href="/(auth)/pin-unlock" />
   }
 
   // First-login onboarding wizard — has to be checked BEFORE the
