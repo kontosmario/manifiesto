@@ -221,6 +221,14 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="pin-setup"
+          options={{
+            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+            gestureEnabled: true,
+            fullScreenGestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="add-expense"
           options={{
             presentation: Platform.OS === 'ios' ? 'modal' : 'card',
