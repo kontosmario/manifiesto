@@ -24,6 +24,10 @@ export default function AuthLayout() {
         // desaparezca.
         contentStyle: { backgroundColor: theme.colors.canvas },
       }}
-    />
+    >
+      {/* Lock screen — swipe-to-dismiss disabled so the user can't
+          escape the PIN gate by swiping back. */}
+      <Stack.Screen name="pin-unlock" options={{ gestureEnabled: false }} />
+    </Stack>
   )
 }
