@@ -9,7 +9,11 @@ import {
 import type { ViewStyle } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { motionDurations, motionEasings } from '@/lib/motion'
+import { motionEasings } from '@/lib/motion'
+
+// Calmer than the standard 320ms content-entrance: a softer half-ish
+// second fade for the once-per-tab first load. Tuned by feel.
+const TAB_ENTRANCE_DURATION_MS = 420
 
 interface TabScreenEntranceMotion {
   /** Reanimated worklet style → opacity only (no transform). */
@@ -60,7 +64,11 @@ export function useTabScreenEntrance(enabled: boolean): TabScreenEntranceMotion 
     if (isFocused && !hasEnteredRef.current) {
       hasEnteredRef.current = true
       opacity.value = withTiming(1, {
-        duration: motionDurations.deliberate,
+        // First-load fade is a once-per-tab moment, so it can run a
+        // touch longer than the standard 320ms for a calmer, softer
+        // feel without reading as slow. Subsequent switches stay
+        // instant (already at 1).
+        duration: TAB_ENTRANCE_DURATION_MS,
         easing: motionEasings.standard,
       })
     }
