@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -11,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
+import { AuroraBloom } from '@/components/ui/aurora-bloom'
+import { DrawRing } from '@/components/ui/draw-ring'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import type { AchievementViewItem, AchievementTier } from '@/features/achievements/use-achievements'
@@ -52,23 +53,21 @@ export function AchievementUnlockModal({
   // phase across slow devices.
   const t = useSharedValue(0)
   const iconScale = useSharedValue(0.85)
-  // Halo progress: 0 → 1. Drives both scale (0.6→1.5) and opacity (0.5→0)
-  // via interpolation so only transform+opacity are on the GPU path.
-  const halo = useSharedValue(0)
 
   useEffect(() => {
     if (!item) return
     void triggerHaptic('success')
-    // Sequence: scrim+card enter, icon spring pop + halo radiate.
+    // Sequence: scrim+card enter, then the icon spring-pops in. The
+    // tier ring draws itself around the bubble (DrawRing) and the
+    // AuroraBloom breathes behind — both self-driven on their own
+    // mounts, so this effect only owns the card entrance + icon pop.
     if (reduced) {
       t.value = 1
       iconScale.value = 1
-      // halo stays at 0 (invisible) under reduced motion
       return
     }
     t.value = 0
     iconScale.value = 0.85
-    halo.value = 0
     t.value = withTiming(1, {
       duration: 380,
       easing: Easing.bezier(0.16, 1, 0.30, 1),
@@ -77,15 +76,7 @@ export function AchievementUnlockModal({
     // that should feel "alive"). celebrate token: mass 0.8, damping 14,
     // stiffness 260 — gives a snappy but slightly overshooting pop.
     iconScale.value = withDelay(120, withSpring(1, motionSprings.celebrate))
-    // Radial glow halo — single-shot ease-out pulse over 520ms.
-    halo.value = withDelay(
-      120,
-      withTiming(1, {
-        duration: 520,
-        easing: Easing.bezier(0.16, 1, 0.30, 1),
-      }),
-    )
-  }, [item, reduced, t, iconScale, halo])
+  }, [item, reduced, t, iconScale])
 
   // Auto-dismiss timer (4 seconds). User can also tap to dismiss
   // earlier. Cleared on unmount + on item change.
@@ -105,11 +96,6 @@ export function AchievementUnlockModal({
   }))
   const iconAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: iconScale.value }],
-  }))
-
-  const haloAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(halo.value, [0, 1], [0.5, 0]),
-    transform: [{ scale: interpolate(halo.value, [0, 1], [0.6, 1.5]) }],
   }))
 
   if (!item) return null
@@ -144,23 +130,23 @@ export function AchievementUnlockModal({
         </Text>
 
         <View style={styles.iconWrap}>
-          {/* Radial glow halo — scales out while fading, single-shot. */}
-          <Animated.View
-            style={[
-              styles.iconHalo,
-              { backgroundColor: tier.ring },
-              haloAnimatedStyle,
-            ]}
-          />
-          <View
-            style={[
-              styles.iconRing,
-              {
-                backgroundColor: tier.ring,
-                shadowColor: tier.to,
-              },
-            ]}
-          />
+          {/* Aurora bloom — soft, breathing radial glow in the tier
+              tone behind the icon. Supersedes the old single-shot halo
+              pulse with a perpetual, low-amplitude breath. */}
+          <AuroraBloom color={tier.ring} size={200} intensity={0.55} />
+          {/* Tier ring that DRAWS itself as the celebration lands —
+              full circle, starting just after the card enters.
+              Absolutely centered so it wraps the bubble without
+              displacing it in the layout flow. */}
+          <View style={styles.iconRing} pointerEvents="none">
+            <DrawRing
+              size={120}
+              strokeWidth={4}
+              color={tier.to}
+              progress={1}
+              delay={120}
+            />
+          </View>
           <Animated.View style={[styles.iconBubble, iconAnimatedStyle]}>
             <Text style={styles.iconGlyph}>{item.icon}</Text>
           </Animated.View>
@@ -240,16 +226,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 120,
     height: 120,
-    borderRadius: 60,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
-  },
-  iconHalo: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconBubble: {
     width: 96,

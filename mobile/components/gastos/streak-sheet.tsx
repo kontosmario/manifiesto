@@ -25,6 +25,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AnimatedFlame } from '@/components/gastos/animated-flame'
+import { AuroraBloom } from '@/components/ui/aurora-bloom'
+import { DrawRing } from '@/components/ui/draw-ring'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import {
@@ -469,14 +471,39 @@ function SheetHero({
   tone: StatusTone
 }) {
   const { theme } = useAppTheme()
+  const isBroken = derived.status === 'broken'
+  // Level dial: the ring draws to the fraction of progress into the
+  // current level. Broken shows an empty grey dial (no celebration).
+  const ringProgress = isBroken ? 0 : Math.min(Math.max(derived.progressPct, 0), 1)
   return (
     <RiseView>
       <View style={styles.heroRow}>
         <View style={{ flex: 1 }}>
           <View style={styles.heroNumberRow}>
-            <AnimatedFlame status={derived.status} size={40} />
+            {/* Focal: flame centered inside a self-drawing level dial,
+                with a soft breathing aurora behind. The aurora is
+                hidden for a broken streak (nothing to celebrate). */}
+            <View style={styles.flameDial}>
+              {!isBroken ? (
+                <AuroraBloom
+                  color={tone.fg}
+                  size={84}
+                  intensity={0.32}
+                />
+              ) : null}
+              <View style={styles.flameDialRing} pointerEvents="none">
+                <DrawRing
+                  size={64}
+                  strokeWidth={3.5}
+                  color={tone.fg}
+                  progress={ringProgress}
+                  trackColor={`${tone.fg}22`}
+                />
+              </View>
+              <AnimatedFlame status={derived.status} size={40} />
+            </View>
             <Text style={[styles.heroDays, { color: tone.fg }]}>
-              {derived.status === 'broken' ? '0' : data.currentStreak}
+              {isBroken ? '0' : data.currentStreak}
             </Text>
             <Text style={[styles.heroDaysLabel, { color: tone.soft }]}>días</Text>
           </View>
@@ -560,20 +587,9 @@ function ShieldChip({ tokens, tone }: { tokens: number; tone: StatusTone }) {
 }
 
 function LevelProgress({ derived, tone }: { derived: StreakDerived; tone: StatusTone }) {
-  const { theme } = useAppTheme()
-  const progress = useSharedValue(0)
-  useEffect(() => {
-    // @motion-allow: 900ms one-shot level-progress fill; deliberately faster than pulse (1200) to feel responsive after sheet open
-    progress.value = withTiming(Math.min(Math.max(derived.progressPct, 0), 1), {
-      duration: 900,
-      easing: motionEasings.decelerate,
-    })
-  }, [derived.progressPct, progress])
-  // scaleX on a full-width fill avoids JS-thread width interpolation.
-  const fillStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: progress.value }],
-  }))
-
+  // The linear progress bar has been removed: the level dial (DrawRing
+  // around the flame in SheetHero) now carries the visual progress
+  // signal. We keep only the textual detail copy so the numbers stay.
   return (
     <RiseView delay={80} style={{ marginTop: 14 }}>
       <View style={styles.progressHead}>
@@ -581,20 +597,6 @@ function LevelProgress({ derived, tone }: { derived: StreakDerived; tone: Status
         <Text style={[styles.progressLabel, { color: tone.fg }]}>
           {derived.daysIntoLevel} / {derived.levelTotalDays} días → {derived.nextLevelLabel}
         </Text>
-      </View>
-      <View
-        style={[
-          styles.progressTrack,
-          {
-            backgroundColor: theme.isDark
-              ? 'rgba(255,255,255,0.08)'
-              : 'rgba(15,42,30,0.08)',
-          },
-        ]}
-      >
-        <Animated.View
-          style={[styles.progressFill, { backgroundColor: tone.fg }, fillStyle]}
-        />
       </View>
       {derived.daysToNextLevel > 0 ? (
         <Text style={[styles.progressSub, { color: tone.soft }]}>
@@ -903,6 +905,22 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
+  // Focal dial wrapping the flame: sized to the aurora's footprint so
+  // the breath has room; the flame + ring center within.
+  flameDial: {
+    width: 84,
+    height: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -8,
+  },
+  flameDialRing: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroDays: {
     fontSize: 44,
     fontWeight: '800',
@@ -926,17 +944,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   progressLabel: { fontSize: 11, fontWeight: '600' },
-  progressTrack: {
-    height: 7,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    width: '100%',
-    borderRadius: 999,
-    transformOrigin: 'left' as const,
-  },
   progressSub: { fontSize: 11, marginTop: 5 },
   shieldChip: {
     flexDirection: 'row',
