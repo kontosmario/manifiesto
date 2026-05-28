@@ -92,6 +92,11 @@ export function Screen({
   const bottomPadding = baseBottomPadding + numpadOffset
   const { contentAnimatedStyle, headerAnimatedStyle } = useScreenEntrance({
     reducedMotion: isReducedMotionEnabled,
+    // Tab screens are pre-mounted + detached; this mount-only rise would
+    // fire on their first native attach and jump the content up from
+    // translateY 18. They use `useTabFocusFade` for arrival motion, so
+    // skip the generic screen entrance here.
+    skip: isTabScreen,
   })
   // Directional reveal on tab switches: opacity floor → 1 + a small
   // translateX shift in the direction of the tab order so the user

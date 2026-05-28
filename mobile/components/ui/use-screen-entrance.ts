@@ -12,6 +12,16 @@ import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
 
 interface UseScreenEntranceOptions {
   reducedMotion: boolean
+  /**
+   * Skip the entrance entirely (render settled, no rise). Used for tab
+   * screens: they're pre-mounted + detached, so this mount-only rise
+   * fires on the FIRST native attach (first visit) and moves the
+   * already-laid-out content from translateY 18 up to 0 — the
+   * "first-load content jump" the user sees. Tabs get their arrival
+   * motion from `useTabFocusFade` (a directional translateX reveal)
+   * instead, so stacking this rise on top is both redundant and janky.
+   */
+  skip?: boolean
 }
 
 // Plays the header + content rise animation ONCE when the Screen first
@@ -25,14 +35,17 @@ interface UseScreenEntranceOptions {
 // the same staggered "header rises first, then content" choreography
 // using shared values + worklet-based styles. The timing/spring values
 // come from `motion/tokens` so the rest of the app stays in lockstep.
-export function useScreenEntrance({ reducedMotion }: UseScreenEntranceOptions) {
-  const headerOpacity = useSharedValue(reducedMotion ? 1 : 0)
-  const headerTranslateY = useSharedValue(reducedMotion ? 0 : 10)
-  const contentOpacity = useSharedValue(reducedMotion ? 1 : 0)
-  const contentTranslateY = useSharedValue(reducedMotion ? 0 : 18)
+export function useScreenEntrance({ reducedMotion, skip = false }: UseScreenEntranceOptions) {
+  // `settled`: start (and stay) at the final state — no rise. Covers
+  // reduced-motion AND tab screens (see `skip` doc above).
+  const settled = reducedMotion || skip
+  const headerOpacity = useSharedValue(settled ? 1 : 0)
+  const headerTranslateY = useSharedValue(settled ? 0 : 10)
+  const contentOpacity = useSharedValue(settled ? 1 : 0)
+  const contentTranslateY = useSharedValue(settled ? 0 : 18)
 
   useEffect(() => {
-    if (reducedMotion) {
+    if (settled) {
       headerOpacity.value = 1
       headerTranslateY.value = 0
       contentOpacity.value = 1
