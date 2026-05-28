@@ -116,6 +116,18 @@ function BiometricSetupBody({
     }
   }, [advanceToOnboarding, isWorking])
 
+  const handleUsePin = useCallback(async () => {
+    if (isWorking) return
+    setWorking(true)
+    try {
+      void triggerHaptic('selection')
+      await markBiometricSetupShown(userId)
+      router.replace('/(app)/pin-setup?next=onboarding')
+    } finally {
+      setWorking(false)
+    }
+  }, [isWorking, userId, router])
+
   // While biometric state is loading, render an empty themed canvas
   // (no spinner — the read is fast and a spinner here would flash).
   const isLoading = biometric === null
@@ -174,7 +186,7 @@ function BiometricSetupBody({
             <Pressable
               accessibilityRole="button"
               hitSlop={DEFAULT_HIT_SLOP}
-              onPress={isAvailable ? handleActivate : handleSkip}
+              onPress={isAvailable ? handleActivate : handleUsePin}
               disabled={isWorking}
               style={({ pressed }) => [
                 styles.primaryButton,
@@ -186,9 +198,28 @@ function BiometricSetupBody({
               ]}
             >
               <Text style={[styles.primaryLabel, { color: authTokens.surfaceCream }]}>
-                {copy.primaryLabel}
+                {isAvailable ? copy.primaryLabel : 'Crear un PIN'}
               </Text>
             </Pressable>
+
+            {isAvailable && (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={DEFAULT_HIT_SLOP}
+                onPress={handleUsePin}
+                disabled={isWorking}
+                style={({ pressed }) => [
+                  styles.ghostButton,
+                  {
+                    opacity: isWorking ? 0.5 : pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.ghostLabel, { color: theme.colors.textMuted }]}>
+                  Usar un PIN
+                </Text>
+              </Pressable>
+            )}
 
             {copy.secondaryLabel && (
               <Pressable
@@ -205,6 +236,25 @@ function BiometricSetupBody({
               >
                 <Text style={[styles.ghostLabel, { color: theme.colors.textMuted }]}>
                   {copy.secondaryLabel}
+                </Text>
+              </Pressable>
+            )}
+
+            {!isAvailable && (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={DEFAULT_HIT_SLOP}
+                onPress={handleSkip}
+                disabled={isWorking}
+                style={({ pressed }) => [
+                  styles.ghostButton,
+                  {
+                    opacity: isWorking ? 0.5 : pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.ghostLabel, { color: theme.colors.textMuted }]}>
+                  Ahora no
                 </Text>
               </Pressable>
             )}
