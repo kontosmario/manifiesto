@@ -238,8 +238,8 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
               styles.dot,
               item.earned
                 ? {
-                    backgroundColor: tierTone(item.tier).fg,
-                    borderColor: tierTone(item.tier).fg,
+                    backgroundColor: tierTone(item.tier, theme.isDark).fg,
+                    borderColor: tierTone(item.tier, theme.isDark).fg,
                   }
                 : {
                     backgroundColor: 'transparent',
@@ -410,7 +410,7 @@ function AchievementCard({ item }: AchievementCardProps) {
   // animatedStyle onto the Pressable wrapper.
   const press = usePressScale({ pressedScale: 0.97 })
 
-  const tone = tierTone(item.tier)
+  const tone = tierTone(item.tier, theme.isDark)
   const earned = item.earned
   // Sheen sweep only for earned gold/legendary — premium tiers deserve
   // a special entrance. A translucent highlight band slides across once
@@ -575,31 +575,39 @@ function AchievementCard({ item }: AchievementCardProps) {
 // Tier color tones — single source of truth
 // ─────────────────────────────────────────────────────────────────
 
-function tierTone(tier: AchievementTier) {
+// `fg` drives the tier badge text + the progress dots. In DARK mode it
+// MUST be the luminous tier shade — the old dark endpoints (legendary
+// #1F590D, gold #9E7C12, silver #5C6376) sank into the dark surfaceMuted
+// card and the badges/dots were lost. Following color-palette ("use the
+// brighter shade on dark"), dark uses the same luminous tones as the
+// unlock modal (TIER_RING_DARK) so logros reads as one family. The
+// bg/border are translucent tints that layer fine over either surface;
+// dark drops their alpha a touch since they sit on a darker card.
+function tierTone(tier: AchievementTier, isDark: boolean) {
   switch (tier) {
     case 'bronze':
       return {
-        bg: 'rgba(242, 181, 138, 0.22)',
-        fg: '#B84014',
-        border: 'rgba(242, 181, 138, 0.55)',
+        bg: isDark ? 'rgba(240,180,134,0.16)' : 'rgba(242, 181, 138, 0.22)',
+        fg: isDark ? '#F0B486' : '#B84014',
+        border: isDark ? 'rgba(240,180,134,0.45)' : 'rgba(242, 181, 138, 0.55)',
       }
     case 'silver':
       return {
-        bg: 'rgba(170, 178, 196, 0.22)',
-        fg: '#5C6376',
-        border: 'rgba(170, 178, 196, 0.55)',
+        bg: isDark ? 'rgba(203,210,222,0.16)' : 'rgba(170, 178, 196, 0.22)',
+        fg: isDark ? '#CBD2DE' : '#5C6376',
+        border: isDark ? 'rgba(203,210,222,0.45)' : 'rgba(170, 178, 196, 0.55)',
       }
     case 'gold':
       return {
-        bg: 'rgba(244, 210, 107, 0.26)',
-        fg: '#9E7C12',
-        border: 'rgba(244, 210, 107, 0.55)',
+        bg: isDark ? 'rgba(242,209,115,0.18)' : 'rgba(244, 210, 107, 0.26)',
+        fg: isDark ? '#F2D173' : '#9E7C12',
+        border: isDark ? 'rgba(242,209,115,0.48)' : 'rgba(244, 210, 107, 0.55)',
       }
     case 'legendary':
       return {
-        bg: 'rgba(166, 239, 143, 0.26)',
-        fg: '#1F590D',
-        border: 'rgba(166, 239, 143, 0.65)',
+        bg: isDark ? 'rgba(166,239,143,0.18)' : 'rgba(166, 239, 143, 0.26)',
+        fg: isDark ? '#B6F0A0' : '#1F590D',
+        border: isDark ? 'rgba(166,239,143,0.50)' : 'rgba(166, 239, 143, 0.65)',
       }
   }
 }
