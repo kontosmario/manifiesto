@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import {
@@ -9,8 +10,9 @@ import {
   type Expense,
   type UpdateExpenseInput,
 } from '@/features/expenses/expense-repository'
-import { invalidateFamilyBudgetData } from '@/features/family/family-query-invalidation'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
+import { toast } from '@/lib/toast-bus'
 
 export type {
   CreateExpenseInput,
@@ -74,10 +76,46 @@ export function useRecentExpenses(familyId?: string, limit = 3) {
   })
 }
 
+// ── Helpers para optimistic updates ──────────────────────────────────
+
+interface ExpenseListSnapshot {
+  list: Expense[] | undefined
+  recent6: Expense[] | undefined
+  recent3: Expense[] | undefined
+}
+
+function snapshotExpenseLists(
+  qc: ReturnType<typeof useQueryClient>,
+  familyId: string,
+): ExpenseListSnapshot {
+  return {
+    list: qc.getQueryData<Expense[]>(expenseQueryKeys.list(familyId, undefined)),
+    recent6: qc.getQueryData<Expense[]>(expenseQueryKeys.recent(familyId, 6)),
+    recent3: qc.getQueryData<Expense[]>(expenseQueryKeys.recent(familyId, 3)),
+  }
+}
+
+function restoreExpenseLists(
+  qc: ReturnType<typeof useQueryClient>,
+  familyId: string,
+  snap: ExpenseListSnapshot,
+): void {
+  qc.setQueryData(expenseQueryKeys.list(familyId, undefined), snap.list)
+  qc.setQueryData(expenseQueryKeys.recent(familyId, 6), snap.recent6)
+  qc.setQueryData(expenseQueryKeys.recent(familyId, 3), snap.recent3)
+}
+
+function makeTentativeId(): string {
+  return `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export function useCreateExpense(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
+  const ref = useRef<{
+    mutate: (input: CreateExpenseInput) => void
+  } | null>(null)
 
-  return useMutation({
+  const result = useMutation<void, Error, CreateExpenseInput, { previous: ExpenseListSnapshot } | undefined>({
     mutationFn: async ({
       categoryId,
       commitmentId,
@@ -85,7 +123,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       description,
       notes,
       price,
-    }: CreateExpenseInput) => {
+    }) => {
       if (!familyId || !userId) {
         throw new Error('No hay sesión o familia activa para crear gastos.')
       }
@@ -98,12 +136,54 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         price,
       })
     },
-    onSuccess: async (_data, variables) => {
-      await invalidateFamilyBudgetData(queryClient, familyId, {
-        includeFixedExpenses: true,
-        includeNotifications: true,
+    onMutate: async (input) => {
+      if (!familyId || !userId) return undefined
+      await queryClient.cancelQueries({
+        queryKey: expenseQueryKeys.family(familyId),
       })
+      const previous = snapshotExpenseLists(queryClient, familyId)
 
+      // Construimos un Expense optimista. `creator_display_name` queda
+      // vacío — el ActivityRowV2 de Home resuelve el nombre por
+      // `created_by` contra family_members, no por este campo, así que
+      // no se ve raro. Al settle, el refetch trae el row real.
+      const optimistic: Expense = {
+        id: makeTentativeId(),
+        family_id: familyId,
+        category_id: input.categoryId,
+        commitment_id: input.commitmentId ?? null,
+        description: input.description,
+        notes: input.notes ?? null,
+        price: input.price,
+        created_by: userId,
+        creator_display_name: '',
+        created_at: input.createdAt ?? new Date().toISOString(),
+      }
+
+      const prepend = (arr: Expense[] | undefined) =>
+        arr ? [optimistic, ...arr] : [optimistic]
+
+      queryClient.setQueryData<Expense[] | undefined>(
+        expenseQueryKeys.list(familyId, undefined),
+        prepend,
+      )
+      // El recent feed pre-filtra commitment_id, no insertamos un fijo
+      // auto-pagado ahí (mantiene la coherencia con el pre-filter del
+      // home_snapshot seed).
+      if (!optimistic.commitment_id) {
+        queryClient.setQueryData<Expense[] | undefined>(
+          expenseQueryKeys.recent(familyId, 6),
+          prepend,
+        )
+        queryClient.setQueryData<Expense[] | undefined>(
+          expenseQueryKeys.recent(familyId, 3),
+          prepend,
+        )
+      }
+
+      return { previous }
+    },
+    onSuccess: (_data, variables) => {
       if (familyId) {
         const pushBody = `${variables.description.trim()} · $${variables.price}`
         void sendFamilyPush({
@@ -115,45 +195,122 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         }).catch(() => {})
       }
     },
+    onError: (_err, input, ctx) => {
+      if (familyId && ctx?.previous) {
+        restoreExpenseLists(queryClient, familyId, ctx.previous)
+      }
+      toast.error('No se pudo guardar el gasto.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(input),
+      })
+    },
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['expenses'],
+      })
+    },
   })
+
+  // Capture mutate so the retry toast action keeps a stable handle.
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
 }
 
-export function useUpdateExpense(familyId?: string) {
+export function useUpdateExpense(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
+  const ref = useRef<{
+    mutate: (input: UpdateExpenseInput) => void
+  } | null>(null)
 
-  return useMutation({
-    mutationFn: async ({ expenseId, description, notes, price }: UpdateExpenseInput) => {
+  const result = useMutation<void, Error, UpdateExpenseInput, { previous: ExpenseListSnapshot } | undefined>({
+    mutationFn: async ({ expenseId, description, notes, price }) => {
       if (!familyId) {
         throw new Error('No hay familia activa para editar gastos.')
       }
       await updateExpense(familyId, { description, notes, expenseId, price })
     },
-    onSuccess: async () => {
-      await invalidateFamilyBudgetData(queryClient, familyId, {
-        includeFixedExpenses: true,
+    onMutate: async ({ expenseId, description, notes, price }) => {
+      if (!familyId) return undefined
+      await queryClient.cancelQueries({
+        queryKey: expenseQueryKeys.family(familyId),
+      })
+      const previous = snapshotExpenseLists(queryClient, familyId)
+
+      const patch = (arr: Expense[] | undefined) =>
+        arr?.map((e) =>
+          e.id === expenseId
+            ? {
+                ...e,
+                description,
+                notes: notes ?? null,
+                price,
+              }
+            : e,
+        )
+
+      queryClient.setQueryData<Expense[] | undefined>(
+        expenseQueryKeys.list(familyId, undefined),
+        patch,
+      )
+      queryClient.setQueryData<Expense[] | undefined>(
+        expenseQueryKeys.recent(familyId, 6),
+        patch,
+      )
+      queryClient.setQueryData<Expense[] | undefined>(
+        expenseQueryKeys.recent(familyId, 3),
+        patch,
+      )
+
+      return { previous }
+    },
+    onError: (_err, input, ctx) => {
+      if (familyId && ctx?.previous) {
+        restoreExpenseLists(queryClient, familyId, ctx.previous)
+      }
+      toast.error('No se pudo actualizar el gasto.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(input),
+      })
+    },
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['expenses'],
       })
     },
   })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
 }
 
-export function useDeleteExpense(familyId?: string) {
+export function useDeleteExpense(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
+  const ref = useRef<{ mutate: (input: string) => void } | null>(null)
 
-  return useMutation({
-    mutationFn: async (expenseId: string) => {
+  const result = useMutation<
+    void,
+    Error,
+    string,
+    { snapshots: ReadonlyArray<readonly [readonly unknown[], unknown]> } | undefined
+  >({
+    mutationFn: async (expenseId) => {
       if (!familyId) {
         throw new Error('No hay familia activa para borrar gastos.')
       }
       await deleteExpense(familyId, expenseId)
     },
-    // Optimistic update: drop the row from the local caches before the
-    // network round-trip so the swipe-to-delete feels instant. We
-    // snapshot the prior state in `onMutate` and restore it `onError`,
-    // and only do a surgical (not budget-wide) invalidation on settle —
-    // the dependent totals/aggregates are derived client-side from the
-    // expense list, so no extra fetch is needed.
-    onMutate: async (expenseId: string) => {
-      if (!familyId) return { snapshots: [] as Array<readonly [unknown, unknown]> }
+    onMutate: async (expenseId) => {
+      if (!familyId) return undefined
       const exactKeys: ReadonlyArray<readonly unknown[]> = [
         expenseQueryKeys.family(familyId),
         expenseQueryKeys.recent(familyId, 6),
@@ -161,32 +318,42 @@ export function useDeleteExpense(familyId?: string) {
         expenseQueryKeys.recentFamily(familyId),
       ]
       await Promise.all(
-        exactKeys.map((k) => queryClient.cancelQueries({ queryKey: k as readonly unknown[] })),
+        exactKeys.map((k) =>
+          queryClient.cancelQueries({ queryKey: k }),
+        ),
       )
       const snapshots = exactKeys.map(
-        (k) => [k, queryClient.getQueryData(k as readonly unknown[])] as const,
+        (k) => [k, queryClient.getQueryData(k)] as const,
       )
       for (const k of exactKeys) {
-        queryClient.setQueryData<Expense[] | undefined>(
-          k as readonly unknown[],
-          (old) => (old ? old.filter((e) => e.id !== expenseId) : old),
+        queryClient.setQueryData<Expense[] | undefined>(k, (old) =>
+          old ? old.filter((e) => e.id !== expenseId) : old,
         )
       }
       return { snapshots }
     },
-    onError: (_err, _expenseId, ctx) => {
+    onError: (_err, expenseId, ctx) => {
       const snapshots = ctx?.snapshots ?? []
       for (const [k, data] of snapshots) {
-        queryClient.setQueryData(k as readonly unknown[], data)
+        queryClient.setQueryData(k, data)
       }
+      toast.error('No se pudo borrar el gasto.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(expenseId),
+      })
     },
     onSettled: () => {
-      if (!familyId) return
-      // Surgical invalidation: only the rows that actually changed.
-      // Totals/aggregates derive from the expense list and recompute
-      // automatically from the updated cache.
-      queryClient.invalidateQueries({ queryKey: expenseQueryKeys.family(familyId) })
-      queryClient.invalidateQueries({ queryKey: expenseQueryKeys.recentFamily(familyId) })
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['expenses'],
+      })
     },
   })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
 }
