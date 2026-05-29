@@ -1,6 +1,7 @@
 # Dominio Home · Control · Gastos Fijos
 
-> Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/
+> Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/  
+> Actualizado parcialmente 2026-05-29 (rama feat/monthly-rollup): card "CÓMO VAS ESTE MES", datos de rollup en adapter, acceso al Wrapped desde Control.
 
 ---
 
@@ -117,12 +118,12 @@ FamilyStrip.onPaydayPress → HomeDashboard.handleChipConfirmTracked
 
 | Componente | Sección anchor | Qué muestra |
 |---|---|---|
-| `ControlV2Header` | — | Score pill (0-100) + scoreLabel + entry a `DailyGoalSheet` cuando `goalEditable` |
+| `ControlV2Header` | — | Score pill (0-100) + scoreLabel + entry a `DailyGoalSheet` cuando `goalEditable`. Nuevo: botón circular `WrappedButton` (ícono `slideshow`) a la izquierda del pill, aparece solo cuando hay un cierre no visto (`wrappedUnseen`); halo "sonar" que pulsa con `WrappedPulse`. Props nuevas: `onPressWrapped`, `wrappedUnseen`. |
 | `ControlV2Hero` (**nuevo**) | `hoy` | "TL;DR del día": headline state-aware + cupo diario + gasto hoy + libre hoy + BreatheDot + ShineOverlay + CardParticles. Wrappea `ControlHeroTitular` (variante A). |
 | `ControlV2AlcanzaCard` | `alcanza` | Proyección: "¿llegás al mes?" + día de agotamiento proyectado + ritmo vs cupo |
 | `ControlV2AlcanciaCard` | `alcancia` | Ahorro real acumulado (`vault`), racha bajo cupo, días ganadores, no-spend count |
 | `ControlV2SemanaCard` | `semana` | Últimos 7 días vs 7 previos, momentum, avg7 |
-| `ControlV2VsMesCard` | `vsmes` | Comparación vs. ciclo cerrado anterior: delta %, proyectado vs real, top categoría, savingsDelta |
+| `ControlV2VsMesCard` | `vsmes` | "CÓMO VAS ESTE MES" — comparación minimal contra el ciclo cerrado. Tres estados (sin gastos / primeros días / ciclo confiable). Dos barras animadas, mini-recap, CTA "Ver el cierre de {mes}" que lanza el Wrapped. Siempre datos reales (sin modo demo). |
 | `ControlV2PatronCard` | `patron` | Patrón por día de semana (dow), peor/mejor día, avg global |
 | `ControlV2CoberturaCard` | `cobertura` | Distribución fijos/ahorro/libre sobre ingreso total, ratio %, cupo diario |
 
@@ -138,11 +139,71 @@ La variable clave del adaptador (`control-v2-mock.ts`) es `diasConGasto`: días 
 | `ControlV2SemanaCard` | CÓMO VA · ÚLTIMOS 7 DÍAS | `diaActual >= 7` y `diasConGasto >= 7` | "Registra gastos en al menos 7 días distintos para ver tu ritmo de la semana y compararlo con la anterior." + "Gasto en N de 7 días." |
 | `ControlV2PatronCard` | TU PATRÓN SEMANAL | `diaActual >= 14` y `diasConGasto >= 14` | "Registra gastos en al menos 14 días distintos para detectar en qué día de la semana gastas más." + "Gasto en N de 14 días." |
 | `ControlV2AlcanciaCard` | TU ALCANCÍA · ESTE CICLO | `diaActual >= 3` y `diasConGasto >= 3` | "Registra gastos en al menos 3 días distintos para sugerirte cuánto mover a tu meta según tu ritmo." + "Gasto en N de 3 días." |
-| `ControlV2VsMesCard` | VS MES PASADO | `hasPreviousMonth = true` (al menos un ciclo cerrado con gasto real) | "Aún no hay un mes para comparar. Cuando confirmes tu próximo cobro, vamos a cerrar el ciclo actual automáticamente..." |
+| `ControlV2VsMesCard` | CÓMO VAS ESTE MES | `hasPreviousMonth = true` (al menos un ciclo cerrado con gasto real) | "Todavía no cerraste un mes. Cuando confirmes tu próximo cobro, vamos a cerrar el mes y vas a ver acá cómo vas gastando comparado con el mes anterior." Pill: "Sin cierre todavía". |
 
 `ControlV2VsMesCard` no usa `diasConGasto` sino `data.hasPreviousMonth` del adaptador (`true` solo cuando existe al menos un `monthly_summaries` previo con gasto real). El `noConfig` branch de `ControlV2Screen` (sin `monthly_income`) no muestra las cards: renderiza `ControlV2EmptyState` + header con score "Pronto" sin pasar por los empty-states por card.
 
 **Nota**: `ControlV2AsesorCard` fue eliminada del layout. Los signals del Asesor se acceden desde el ícono de acceso rápido en Home (botón Asistente). Ver REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md.
+
+### Card "CÓMO VAS ESTE MES" (ControlV2VsMesCard) — detalle
+
+La card fue reescrita completamente (antes: "VS MES PASADO"). Es minimal, comparación-first, y **siempre usa datos reales** — se eliminó el modo demo/ejemplo. Eyebrow fijo: `CÓMO VAS ESTE MES`.
+
+**Tres estados según el ciclo actual** (cuando `hasPreviousMonth = true`):
+
+| Estado | Condición | Pill | Headline |
+|---|---|---|---|
+| Sin gastos aún | `proyectadoMes == 0` | "Recién arranca" (neutro, ícono `schedule`) | "Todavía no registraste gastos este mes." |
+| Primeros días | `proyectadoMes > 0` y `diaActual < 4` | "Primeros días" (neutro) | "Llevás $X gastado. En unos días te comparo con {mes}." |
+| Ciclo confiable | `diaActual >= 4 && proyectadoMes > 0` | "Vas bien" (verde) o "Ojo este mes" (ámbar) | "Vas gastando $X, $Y menos/más que en {mes}." |
+
+La variable `reliable = diaActual >= 4 && proyectadoMes > 0` controla cuándo se afirma la comparación. El tono del acento (verde/ámbar) sigue `vsMesMejor`.
+
+**Estructura de la card** (top → bottom):
+1. **Header**: eyebrow `CÓMO VAS ESTE MES` + `BreatheDot` coloreado según acento + pill de estado.
+2. **Headline adaptativo**: una frase en lenguaje llano según el estado (ver tabla arriba).
+3. **Dos barras de comparación** (`CompareBar`): mes pasado (real) vs. este mes (real/proyectado). Animadas con `GrowReveal` (`scaleX` desde la izquierda, usando `motionDurations.slow` + `motionEasings.enterSmooth`).
+4. **Mini-recap del mes pasado**: "En {mes} gastaste $X y ahorraste $Y" (`event-available` icon) + "Donde más gastaste: {categoría}" (`local-mall` icon), separado por borde superior tenue.
+5. **CTA "Ver el cierre de {mes}"** (ícono `slideshow`, fondo `primary`): aparece solo cuando `onVerCierre` está definido (i.e. hay un `wrappedPayload`). Lanza el Manifiesto Wrapped con `triggerHaptic('selection')`.
+
+**Empty state** (`hasPreviousMonth = false`): card misma chrome con pill "Sin cierre todavía" y texto explicativo sobre qué pasa cuando se confirma el próximo cobro. No muestra barras.
+
+**Datos disponibles pero no pintados hoy**: el adaptador expone en `mesPasado` los campos `categoryBreakdown`, `byMember` y `dailyTotals` (ver sección 3 de datos del rollup), pero la card actual no los renderiza — quedaron disponibles para variantes futuras más ricas (sparkline de ritmo diario, módulo "quién gastó").
+
+### Acceso al "Manifiesto Wrapped" desde Control
+
+El Wrapped del ciclo recién cerrado (la animación de cierre `CycleWrappedModal`) es accesible desde dos puntos de la pantalla Control:
+
+**1. Header (`ControlV2Header`)** — `WrappedButton`:
+- Botón circular (`WrappedButton`) a la izquierda del score pill, misma chrome que los botones circulares del resto del header (`circleButtonSurface`). Ícono `slideshow` con color `primary`.
+- Aparece **solo** cuando `onPressWrapped` está definido, lo que el screen controla con `wrappedPayload && !wrappedSeen ? launchWrapped : undefined`. Al verlo (marcar seen) desaparece automáticamente.
+- `WrappedPulse`: halo "sonar" que expande y desvanece en loop (`withRepeat` / ~1.8s por ciclo, `Easing.out(Easing.ease)`). Bajo `reduceMotion`: anillo estático a opacidad 0.4. Desaparece cuando `wrappedSeen`.
+- Props nuevas en `ControlV2HeaderProps`: `onPressWrapped?: () => void` y `wrappedUnseen?: boolean`.
+
+**2. Card "CÓMO VAS ESTE MES"** — prop `onVerCierre`:
+- CTA primario al fondo de la card. Solo se renderiza cuando `onVerCierre` está definido.
+- Texto: "Ver el cierre de {mesPasadoNombre}" (ícono `slideshow` + `chevron-right`).
+
+**Flujo al lanzar** (`ControlV2Screen.launchWrapped`):
+```
+launchWrapped()
+  → triggerCycleWrapped(wrappedPayload)   // emitter global → CycleWrappedModal
+  → if (wrappedSummaryId && !wrappedSeen)
+      markWrappedSeen.mutate(wrappedSummaryId)  // useMarkCycleWrappedSeen
+```
+
+**`useMarkCycleWrappedSeen`** (`mobile/features/wrapped/use-mark-cycle-wrapped-seen.ts`):
+- `useMutation` que llama a la RPC `mark_cycle_wrapped_seen(p_summary_id)`.
+- Update optimista: setea `wrapped_seen_at = now()` en la summary cacheada bajo `controlIntelligenceQueryKey` para apagar el pulse del header al instante.
+- `onError`: rollback de la cache optimista.
+- `onSettled`: `invalidateQueries` del mismo key para revalidar desde el server.
+
+**Estado seen/no-seen**: vive en `monthly_summaries.wrapped_seen_at` (columna por familia). El campo es seleccionado por `fetchSummaries` (`use-control-v2-data.ts`) en el `select` de la query. `wrappedSeen = Boolean(summaries[0]?.wrapped_seen_at)`.
+
+El hook `useControlV2Data` expone tres campos relacionados en `ControlV2ViewModel`:
+- `wrappedPayload: CycleWrappedPayload | null` — payload listo para disparar el Wrapped.
+- `wrappedSummaryId: string | null` — id del `monthly_summaries` a marcar visto.
+- `wrappedSeen: boolean` — si el Wrapped más reciente ya fue visto (apaga el pulse).
 
 ### Scroll anchoring y deep links
 
@@ -335,14 +396,14 @@ Formulario modal con:
 | ~~`control-v2-asesor-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — removida del layout y del código |
 | `control-v2-cobertura-card.tsx` | Card de cobertura: distribución fijos/ahorro/libre |
 | `control-v2-empty-state.tsx` | Empty state cuando falta ingreso o gastos |
-| `control-v2-header.tsx` | Header con score pill + entry a DailyGoalSheet |
+| `control-v2-header.tsx` | Header con score pill + entry a `DailyGoalSheet`. Nuevo: `WrappedButton` circular (ícono `slideshow`) con `WrappedPulse` sonar; props `onPressWrapped` y `wrappedUnseen`. |
 | `control-v2-hero.tsx` | Production wrapper: adapta data+view → ControlHeroState → renderiza `ControlHeroTitular` |
 | ~~`control-v2-hoy-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — rollback-kept; owner confirmó descarte |
 | `control-v2-patron-card.tsx` | Card de patrón por día de semana |
 | ~~`control-v2-placeholder.tsx`~~ | 🗑️ **Eliminado feat/settings-dark-mode** — reemplazado por empty-states per-card en cada componente |
 | `control-v2-semana-card.tsx` | Card de la semana (últimos 7 días) |
 | `control-v2-tokens.ts` | Design tokens del control |
-| `control-v2-vsmes-card.tsx` | Card de comparación vs mes anterior |
+| `control-v2-vsmes-card.tsx` | Card "CÓMO VAS ESTE MES" — reescrita. Minimal, comparación-first, datos reales. Tres estados (sin gastos / primeros días / ciclo confiable), dos barras `GrowReveal`, mini-recap, CTA Wrapped. Sin modo demo. |
 | `daily-goal-sheet.tsx` | Sheet de "mi meta diaria" (buffer mode) |
 | `fixed-expense-quick-edit-sheet.tsx` | Sheet de edición rápida de fijo |
 | ~~`forecast-sparkline.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — 0 imports |
@@ -473,6 +534,14 @@ Subcategorías de archivos en `fijos-hero-preview/`:
 - `last_salary_confirmed_at`: timestamp del último cobro confirmado.
 - Fórmula canónica del cupo: `libre = income − fijos − ahorro; cupoDiario = libre / cycleDays`.
 
+### 6.5 features/wrapped/ (hook nuevo — 2026-05-29)
+
+| Archivo | Propósito |
+|---|---|
+| `use-mark-cycle-wrapped-seen.ts` | `useMarkCycleWrappedSeen(familyId)` — `useMutation` que llama a la RPC `mark_cycle_wrapped_seen(p_summary_id)`. Update optimista sobre `controlIntelligenceQueryKey` (setea `wrapped_seen_at` en la summary cacheada) + rollback en error + `invalidateQueries` al settle. Apaga el pulse de discoverability del header de forma instantánea. |
+
+El estado seen/no-seen persiste en `monthly_summaries.wrapped_seen_at` (ver doc 07 para el esquema de DB). El hook es el único punto de escritura de este campo desde el cliente.
+
 ---
 
 ## 7. Datos y snapshot
@@ -506,6 +575,13 @@ El patrón Snapshot RPC colapsa N round-trips en 1. La función `fetchHomeSnapsh
 **Bug histórico resuelto**: Las `expenseQueryKeys.recent` pre-filtran `commitment_id` dentro del `seedCaches` (no en el consumidor) para garantizar 6 gastos manuales reales en el primer paint del feed de actividad.
 
 **Backward compatibility**: Los slices del Control layer (`monthly_summaries_history`, `category_limits`, `velocity_today`) son opcionales (`?`) en el payload type — si el RPC en un env viejo no los devuelve, el seed los skipea y los hooks consumidores hacen su fetch directo.
+
+**Datos de rollup expuestos (2026-05-29)**: `fetchSummaries` en `use-control-v2-data.ts` selecciona ahora los campos `by_member` y `wrapped_seen_at` de `monthly_summaries`. El adapter `buildControlDataFromSnapshot` normaliza y expone en `mesPasado`:
+- `categoryBreakdown: MonthlyCategoryBreakdownEntry[]` — desglose de categorías del cierre, vía `normaliseCategoryBreakdown`.
+- `byMember: MonthlyByMemberEntry[]` — gasto por miembro al cierre, vía `normaliseByMember` (nuevo helper).
+- `dailyTotals: number[]` — totales diarios del ciclo cerrado, vía `dailyTotalsToList`.
+
+Estos campos están disponibles en la data del adaptador aunque la card minimal actual no los renderiza (solo pinta barras + mini-recap + CTA).
 
 ### 7.2 Prefetch y warm tabs
 
@@ -543,7 +619,7 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **MetaCard / MetaEmptyCard** | ✅ LIVE | MetaCard con QuickAddSavings. MetaEmptyCard ("Crea tu primera meta"): dark mode usa `surfaceMuted` + `border` (rgba blanco) a 1px, alineado con ACTIVIDAD y MonthSummaryCard. |
 | **HomeActivitySection** | ✅ LIVE | ActivityRowV2 con swipe-delete. |
 | **SalaryConfirmationSheet / OnboardingAvailableSheet** | ✅ LIVE | Lazy-mounted. Dispara Wrapped post-save. |
-| **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. Empty-states per-card activos (feat/settings-dark-mode). |
+| **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. Empty-states per-card activos (feat/settings-dark-mode). Botón Wrapped en header + CTA en VsMesCard (2026-05-29). |
 | **ControlV2Hero (variante A)** | ✅ LIVE | `ControlHeroTitular` en producción via `ControlV2Hero` adapter. |
 | ~~**ControlV2HoyCard**~~ | 🗑️ Eliminado 2026-05-22 | En código para rollback rápido → owner descartó. |
 | ~~**ControlV2AsesorCard**~~ | 🗑️ Eliminado 2026-05-22 | Removida del layout; señales viven en Home→Asistente. |
@@ -559,6 +635,9 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **AddFijoV2Screen** | ✅ LIVE | Create + edit. Prefill desde Asistente. |
 | ~~**fijos-hero-preview/ (41 archivos)**~~ | 🗑️ Eliminado 2026-05-22 | Cluster completo eliminado (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
 | ~~**control-hero-preview/ variantes B-G**~~ | 🗑️ Eliminado 2026-05-22 | Solo quedan A + helpers (LIVE). |
+| **ControlV2VsMesCard** (redesign 2026-05-29) | ✅ LIVE | "CÓMO VAS ESTE MES" — minimal, comparación-first, siempre data real. 3 estados + barras GrowReveal + mini-recap + CTA Wrapped. |
+| **ControlV2Header WrappedButton** (2026-05-29) | ✅ LIVE | Botón circular con halo sonar `WrappedPulse`; aparece/desaparece según `wrappedSeen`. |
+| **useMarkCycleWrappedSeen** (2026-05-29) | ✅ LIVE | Hook en `features/wrapped/`; update optimista + RPC `mark_cycle_wrapped_seen`. |
 | **home_snapshot RPC** | ✅ LIVE | 1 round-trip. Seedea ~14 caches. Control layer incluido (migración 20260514010000). |
 | **useWarmTabsSnapshots** | ✅ LIVE | Prefetch de Gastos + Control post-Home-first-paint. |
 | **lazy: false + animation: none** | ✅ LIVE | Pre-mount + switch instantáneo de tabs (replicando NativeTabs feel). |
