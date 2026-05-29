@@ -288,6 +288,10 @@ export interface ControlView {
    *  mid-cycle — many elapsed days, zero spend — shows a "sin gastos
    *  todavía" placeholder instead of $0 averages. */
   hasSpendData: boolean
+  /** Días distintos con gasto (cerrados + hoy). Las tarjetas de
+   *  ritmo/patrón piden un mínimo de estos para activarse (1 gasto no
+   *  es un patrón ni un promedio). */
+  diasConGasto: number
   gastoProyectadoMes: number
   sobrantePresupuestadoMes: number
   diasRestantes: number
@@ -337,6 +341,13 @@ export function computeControlView(d: ControlMockData): ControlView {
   }))
   const vault = detalleDias.reduce((s, x) => s + Math.max(0, x.delta), 0)
   const diasGanadores = detalleDias.filter((x) => x.gasto <= d.cupoDiario).length
+  // Distinct days WITH spend (closed days that registered a gasto, plus
+  // today if it has one). Drives the data-sufficiency gate of the cards
+  // que muestran promedios/patrones: con 1 solo gasto no hay "ritmo
+  // semanal" ni "patrón" real, así que esas tarjetas piden gasto en
+  // varios días distintos antes de activarse.
+  const diasConGasto =
+    detalleDias.filter((x) => x.gasto > 0).length + (d.gastoHoy > 0 ? 1 : 0)
   const diasPerdedores = detalleDias.length - diasGanadores
   const gastoTotalMes = detalleDias.reduce((s, x) => s + x.gasto, 0)
   const promedioDiario =
@@ -540,6 +551,7 @@ export function computeControlView(d: ControlMockData): ControlView {
     closedDays,
     hasReliableProjection,
     hasSpendData: !noDiscretionarySpendYet,
+    diasConGasto,
     gastoProyectadoMes,
     sobrantePresupuestadoMes,
     diasRestantes,

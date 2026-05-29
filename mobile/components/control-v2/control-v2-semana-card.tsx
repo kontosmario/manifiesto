@@ -10,6 +10,9 @@ import { formatMoneyShort } from '@/utils/money'
 import type { DayDetail } from '@/features/insights/control-v2-mock'
 
 const MIN_DIAS = 7
+// Un "ritmo de la semana" con 1 solo gasto no es un promedio: pedimos
+// gasto en al menos 3 días distintos antes de activar la tarjeta.
+const MIN_SPEND_DAYS = 3
 
 interface ControlV2SemanaCardProps {
   last7: DayDetail[]
@@ -22,10 +25,10 @@ interface ControlV2SemanaCardProps {
    *  through to the next salary. */
   diasRestantes: number
   diaActual?: number
-  /** True when there's real discretionary spend to analyze. A new
-   *  account mid-cycle (días transcurridos, gasto 0) gets the "sin
-   *  gastos todavía" placeholder instead of $0 averages. */
-  hasSpendData?: boolean
+  /** Días distintos con gasto en el ciclo. La tarjeta se activa con
+   *  ≥ MIN_SPEND_DAYS para que el promedio/comparación sea real (1 gasto
+   *  no alcanza). */
+  diasConGasto?: number
 }
 
 const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
@@ -61,7 +64,7 @@ function ControlV2SemanaCardImpl({
   momentum,
   diasRestantes,
   diaActual = 999,
-  hasSpendData = true,
+  diasConGasto = 999,
 }: ControlV2SemanaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -77,17 +80,17 @@ function ControlV2SemanaCardImpl({
     )
   }
 
-  // Ya pasaron suficientes días del ciclo pero no hay gasto real para
-  // promediar (ej. cuenta nueva que entró a mitad de ciclo): sin esto
-  // mostraría "promedio $0/día" como dato.
-  if (!hasSpendData) {
+  // Ya pasaron los días del ciclo pero todavía no hay gasto en suficientes
+  // días distintos para un promedio real (1-2 gastos no son un "ritmo").
+  if (diasConGasto < MIN_SPEND_DAYS) {
     return (
       <ControlV2Placeholder
         title="Cómo va esta semana"
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Verás tu ritmo de la semana y cómo va frente a la anterior."
+        headline="Necesitamos gastos en más días"
+        message={`Registra gastos en al menos ${MIN_SPEND_DAYS} días distintos para ver tu ritmo de la semana y compararlo con la anterior.`}
       />
     )
   }

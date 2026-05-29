@@ -10,6 +10,10 @@ import { formatMoneyShort } from '@/utils/money'
 import type { DowBucket } from '@/features/insights/control-v2-mock'
 
 const MIN_DIAS = 14
+// Un "patrón" de qué día se gasta más necesita varios puntos: pedimos
+// gasto en al menos 4 días distintos antes de activar la tarjeta (con
+// 1-2 gastos no hay patrón que detectar).
+const MIN_SPEND_DAYS = 4
 
 interface ControlV2PatronCardProps {
   dows: DowBucket[]
@@ -17,8 +21,10 @@ interface ControlV2PatronCardProps {
   mejorDow: DowBucket
   globalAvg: number
   diaActual?: number
-  /** True when there's real discretionary spend to analyze. */
-  hasSpendData?: boolean
+  /** Días distintos con gasto en el ciclo. La tarjeta se activa con
+   *  ≥ MIN_SPEND_DAYS para que el patrón sea real (1-2 gastos no son un
+   *  patrón). */
+  diasConGasto?: number
 }
 
 /**
@@ -52,7 +58,7 @@ function ControlV2PatronCardImpl({
   mejorDow,
   globalAvg,
   diaActual = 999,
-  hasSpendData = true,
+  diasConGasto = 999,
 }: ControlV2PatronCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -76,15 +82,17 @@ function ControlV2PatronCardImpl({
     )
   }
 
-  // Días suficientes pero sin gasto real para detectar un patrón.
-  if (!hasSpendData) {
+  // Días suficientes del ciclo pero el gasto está en muy pocos días
+  // distintos para detectar un patrón real (1-2 gastos no son patrón).
+  if (diasConGasto < MIN_SPEND_DAYS) {
     return (
       <ControlV2Placeholder
         title="Tu patrón semanal"
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Detectaremos en qué día de la semana gastas más."
+        headline="Necesitamos gastos en más días"
+        message={`Registra gastos en al menos ${MIN_SPEND_DAYS} días distintos para detectar en qué día de la semana gastas más.`}
       />
     )
   }
