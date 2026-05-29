@@ -519,6 +519,13 @@ Importa `@/lib/runtime` (side-effect: `enableFreeze()`, URL polyfill, LogBox fil
 
 **Freshness**: invalidaciones post-mutation dirigidas + Supabase Realtime (no auditado en detalle en este snapshot).
 
+**Coherencia cross-screen tras mutaciones (2026-05-29)** — toda mutación core de la app hace dos cosas para que el cambio se vea instantáneo en TODAS las superficies relacionadas sin reloads:
+
+1. **Optimistic en `onMutate`**: snapshot del cache previo + `setQueryData` con el cambio anticipado en las queries afectadas. Rollback en `onError` + `toast.error('No se pudo guardar', { actionLabel: 'Reintentar' })` (toast bus en `mobile/lib/toast-bus.ts` + `<ToastHost />` montado en `app-stack-shell`).
+2. **Invalidación centralizada en `onSettled`**: helper `syncAllAfterMutation(qc, { familyId, userId, scopes })` en `mobile/lib/sync-after-mutation.ts`. Scopes: `'expenses' | 'fixed' | 'fixedPayment' | 'income' | 'savings' | 'notifications' | 'wrapped'`. Cada scope expande a un set de keys que incluye los snapshot roots (`homeSnapshotQueryKey`, `gastos-snapshot` prefix) — esto resuelve el clobbering estructural donde el re-seed del snapshot pisaba el optimistic con data vieja.
+
+Mutaciones que aplican el patrón: `useCreate/Update/DeleteExpense`, los 5 hooks de `use-fixed-expenses` (create/update/updateStatus/recordPayment/delete), `useUpsertSavingsGoal`, `useCreateIncomeEvent`, `useDeleteNotification`, `useDeleteAllNotifications`, `useMarkCycleWrappedSeen`. El helper legacy `invalidateFamilyBudgetData` quedó como wrapper de compat que llama al nuevo helper. Spec: [docs/superpowers/specs/2026-05-29-state-sync-design.md](../../superpowers/specs/2026-05-29-state-sync-design.md).
+
 ### Estado UI
 
 | Mecanismo | Cuándo se usa |

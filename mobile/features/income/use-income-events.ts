@@ -5,9 +5,11 @@
  * cycle's "disponible" amount via `useHomeMetrics`.
  */
 
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { invalidateFamilyBudgetData } from '@/features/family/family-query-invalidation'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { toast } from '@/lib/toast-bus'
 
 export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other'
 
@@ -83,14 +85,23 @@ export function useCycleIncomeEventsTotal(
   })
 }
 
-export function useCreateIncomeEvent() {
+export function useCreateIncomeEvent(userId?: string) {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (input: CreateIncomeEventInput): Promise<IncomeEvent> => {
+  const ref = useRef<{ mutate: (input: CreateIncomeEventInput) => void } | null>(
+    null,
+  )
+
+  const result = useMutation<
+    IncomeEvent,
+    Error,
+    CreateIncomeEventInput,
+    { previous: IncomeEvent[] | undefined; optimisticId: string } | undefined
+  >({
+    mutationFn: async (input): Promise<IncomeEvent> => {
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
-      const userId = userData.user?.id
-      if (!userId) throw new Error('No hay sesión activa.')
+      const uid = userData.user?.id
+      if (!uid) throw new Error('No hay sesión activa.')
 
       const safeAmount = Math.abs(Number(input.amount))
       if (!Number.isFinite(safeAmount) || safeAmount <= 0) {
@@ -99,7 +110,7 @@ export function useCreateIncomeEvent() {
 
       const payload: Record<string, unknown> = {
         family_id: input.familyId,
-        created_by: userId,
+        created_by: uid,
         amount: safeAmount,
         kind: input.kind,
         description: input.description?.trim() || null,
@@ -116,17 +127,57 @@ export function useCreateIncomeEvent() {
       if (error) throw error
       return normalizeRow(data as Record<string, unknown>)
     },
-    onSuccess: (created) => {
-      // Invalidate income lists + cycle sum so home metrics refresh.
-      void queryClient.invalidateQueries({
-        queryKey: incomeEventQueryKeys.list(created.family_id),
+    onMutate: async (input) => {
+      const safeAmount = Math.abs(Number(input.amount))
+      if (!Number.isFinite(safeAmount) || safeAmount <= 0) return undefined
+      await queryClient.cancelQueries({
+        queryKey: incomeEventQueryKeys.list(input.familyId),
       })
-      void queryClient.invalidateQueries({
-        queryKey: ['income-events-cycle-sum', created.family_id],
+      const previous = queryClient.getQueryData<IncomeEvent[]>(
+        incomeEventQueryKeys.list(input.familyId),
+      )
+      const optimisticId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const optimistic: IncomeEvent = {
+        id: optimisticId,
+        family_id: input.familyId,
+        created_by: userId ?? '',
+        amount: safeAmount,
+        kind: input.kind,
+        description: input.description?.trim() || null,
+        event_date: input.eventDate ?? new Date().toISOString().slice(0, 10),
+        created_at: new Date().toISOString(),
+      }
+      queryClient.setQueryData<IncomeEvent[] | undefined>(
+        incomeEventQueryKeys.list(input.familyId),
+        (old) => (old ? [optimistic, ...old] : [optimistic]),
+      )
+      return { previous, optimisticId }
+    },
+    onError: (_err, input, ctx) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(
+          incomeEventQueryKeys.list(input.familyId),
+          ctx.previous,
+        )
+      }
+      toast.error('No se pudo guardar el ingreso.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(input),
       })
-      // Family budget data depends on the cycle sum — refresh metrics.
-      void invalidateFamilyBudgetData(queryClient, created.family_id)
+    },
+    onSettled: (_data, _err, input) => {
+      void syncAllAfterMutation(queryClient, {
+        familyId: input?.familyId,
+        userId,
+        scopes: ['income'],
+      })
     },
   })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
 }
 
