@@ -7,32 +7,52 @@ import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface GastoRowProps {
-  title: string
-  categoryName: string
-  categoryColor: string
-  whoName: string
-  whoColor: string
-  amount: number // always negative here (expense)
+  title?: string
+  categoryName?: string
+  categoryColor?: string
+  whoName?: string
+  whoColor?: string
+  amount?: number // always negative here (expense)
   time?: string // HH:MM
   /** Optional free-form note attached to the expense. Rendered as a
    *  third line below the category chip, truncated to a single line
    *  with an italic muted style so it reads as "context" without
    *  competing with the title. `null` / undefined / "" → not rendered. */
   notes?: string | null
+  /**
+   * Placeholder / preview mode (first-run onboarding). Renders the SAME
+   * row layout — icon tile, title line, category-chip sub-line, amount
+   * slot — but with neutral muted dashes instead of any title, category,
+   * author or amount. NO fabricated data. The data props become optional
+   * and are never read in this mode. Backwards-compatible default
+   * `false`. */
+  placeholder?: boolean
 }
 
 /**
  * Movement row — shown inside day groups on Gastos. Same structure as
  * the Home ActivityRowV2 but with a colored category chip on the
  * subtitle line and the category color tinted into the icon tile.
+ *
+ * `placeholder` renders an empty preview twin (see GastoRowPlaceholder).
  */
-function GastoRowImpl({
-  title,
-  categoryName,
-  categoryColor,
-  whoName,
-  whoColor,
-  amount,
+function GastoRowImpl(props: GastoRowProps) {
+  // Placeholder / preview mode — render the empty row and bail before
+  // any data hook runs. Kept as a separate component so the hook order
+  // in the real row is never affected by this branch.
+  if (props.placeholder) {
+    return <GastoRowPlaceholder />
+  }
+  return <GastoRowReal {...props} />
+}
+
+function GastoRowReal({
+  title = '',
+  categoryName = '',
+  categoryColor = '#888888',
+  whoName = '',
+  whoColor = '#888888',
+  amount = 0,
   time,
   notes,
 }: GastoRowProps) {
@@ -131,6 +151,45 @@ function GastoRowImpl({
   )
 }
 
+/**
+ * Empty-state twin of GastoRow. Same layout — icon tile, title line,
+ * category-chip sub-line, right-aligned amount slot — but every value
+ * is a neutral muted dash. No fabricated category / author / amount.
+ */
+function GastoRowPlaceholder() {
+  const { theme } = useAppTheme()
+  const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
+  return (
+    <View
+      style={[
+        styles.row,
+        styles.placeholderRow,
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+        },
+      ]}
+    >
+      <View style={styles.iconWrap}>
+        <View
+          style={[styles.iconTile, { backgroundColor: ph, borderColor: ph }]}
+        />
+      </View>
+      <View style={styles.body}>
+        <View style={[styles.phBar, { width: '64%', height: 11, backgroundColor: ph }]} />
+        <View style={styles.subRow}>
+          <View style={[styles.phChip, { backgroundColor: ph }]} />
+          <View style={[styles.phBar, { width: 52, height: 8, backgroundColor: ph }]} />
+        </View>
+      </View>
+      <View style={styles.amountBlock}>
+        <View style={[styles.phBar, { width: 44, height: 11, backgroundColor: ph }]} />
+      </View>
+    </View>
+  )
+}
+
 function hexAlpha(hex: string, alpha: number): string {
   const normalized = hex.replace('#', '')
   if (normalized.length !== 6 && normalized.length !== 3) return hex
@@ -177,6 +236,14 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   amountBlock: { alignItems: 'flex-end' },
+  // ── Placeholder / preview ────────────────────────────────────────
+  placeholderRow: { opacity: 0.86 },
+  phBar: { borderRadius: 5 },
+  phChip: {
+    width: 56,
+    height: 16,
+    borderRadius: 999,
+  },
   // Tabular nums para que la columna right-aligned de montos alinee
   // verticalmente entre rows sin wobble por anchos de glifo
   // proporcionales (1 vs 8 ocupan distintos pixels en defaults).

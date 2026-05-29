@@ -2,20 +2,23 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
+import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
+import { GastoRow } from '@/components/gastos/gasto-row'
 import { useAppTheme } from '@/theme/theme-provider'
 
-/** Which preview ghost a render wrapper applies to. Lets the screen map
- *  each ghost to the matching guided-tour step (hero / calendar / list)
+/** Which preview block a render wrapper applies to. Lets the screen map
+ *  each preview to the matching guided-tour step (hero / calendar / list)
  *  without this component importing tour internals. */
 type GhostSlot = 'hero' | 'calendar' | 'list'
 
 interface GastosEmptyStateProps {
   onAddFirst: () => void
   /**
-   * Optional wrapper for each ghost preview block. The screen uses this
-   * to wrap the ghosts in the GASTOS tour's hero/calendar/list targets so
-   * the auto-starting tour still has something to highlight on an empty
-   * account. When omitted, the ghosts render unwrapped.
+   * Optional wrapper for each preview block. The screen uses this to
+   * wrap the previews in the GASTOS tour's hero/calendar/list targets
+   * so the auto-starting tour still has something to highlight on an
+   * empty account. When omitted, the previews render unwrapped.
    */
   renderSection?: (slot: GhostSlot, children: React.ReactNode) => React.ReactNode
 }
@@ -23,28 +26,37 @@ interface GastosEmptyStateProps {
 /**
  * Gastos empty / first-run onboarding state.
  *
- * Shown when the account has zero expenses. Instead of rendering the
- * real data cards with zeros (which reads as broken), it:
+ * Shown when the account has zero expenses. It:
  *   1. Leads with an intro card explaining what "Gastos" are + a clear
  *      primary CTA to add the first one.
- *   2. Shows three GHOST previews of the sections that will exist once
- *      the user has data (cycle summary / month map / movements list).
+ *   2. Shows previews of the three real sections that will exist once
+ *      the user has data — but rendered as the REAL components in their
+ *      EMPTY mode (cycle summary hero / month calendar / movement rows),
+ *      so the previews share the exact silhouette, chrome and labels of
+ *      the live cards.
  *
- * Critical constraint: the ghosts MUST NOT show fake data. No $0, no
- * fake percentages, no fake dates. Each ghost is an inert structural
- * preview — an icon + mini-title + one-line description + a couple of
- * faint placeholder bars / dots (rounded muted Views) that suggest
- * "content goes here". They are intentionally lower-opacity /
- * soft-bordered so they read as previews, NOT as loading skeletons
- * (no shimmer).
+ * Critical constraint: the previews MUST NOT show fake data. No $0, no
+ * fake percentages, no fake categories/dates. Each real component is
+ * rendered in its `empty` / `placeholder` mode, which keeps the frame +
+ * labels but swaps every value for a neutral "—" / muted dash. The
+ * month calendar is the one exception that's legitimately empty without
+ * fabricating anything: a real current-cycle grid with no spend marks.
+ * All previews are slightly recessed (opacity) and inert so they read
+ * as samples, not interactive cards or loading skeletons.
  */
 export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyStateProps) {
   const { theme } = useAppTheme()
 
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
-  // Faint neutral for the inert placeholder bars — low-opacity so the
-  // ghost cards never read like real content or a loading shimmer.
-  const ghostBar = theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
+
+  // Honest current-month calendar window for the preview: cycle starts
+  // on the 1st of the current month and spans its real day count. This
+  // is a genuine calendar (today is genuinely today) with zero spend
+  // marks — empty, not fabricated.
+  const today = new Date()
+  const cycleStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const cycleDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const firstWeekdayOffset = (cycleStart.getDay() + 6) % 7
 
   // Identity wrapper when the screen doesn't supply a tour wrapper.
   const wrap = (slot: GhostSlot, children: React.ReactNode) =>
@@ -98,96 +110,59 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         </Text>
       </RiseView>
 
-      {/* Ghost 1 · Resumen del ciclo (ghost of the hero). Wider, with a
-          short bar pair on the left and a small block on the right to
-          echo the hero's "gastado / cupo diario" layout. */}
+      {/* Preview 1 · Resumen del ciclo → real hero in empty mode. */}
       <RiseView delay={180}>
         {wrap(
           'hero',
-          <GhostCard
-            bg={cardBg}
-            borderColor={theme.colors.line}
+          <PreviewBlock
             description="Cuánto llevás gastado y tu cupo diario disponible."
             icon="donut-large"
-            iconColor={theme.colors.textMuted}
             title="Resumen del ciclo"
           >
-            <View style={styles.ghostHeroRow}>
-              <View style={styles.ghostHeroCol}>
-                <View style={[styles.bar, styles.barShort, { backgroundColor: ghostBar }]} />
-                <View style={[styles.bar, styles.barWide, { backgroundColor: ghostBar }]} />
-              </View>
-              <View style={[styles.ghostHeroBlock, { backgroundColor: ghostBar }]} />
-            </View>
-          </GhostCard>,
+            <GastosHeroCard empty />
+          </PreviewBlock>,
         )}
       </RiseView>
 
-      {/* Ghost 2 · Mapa del mes (ghost of the calendar). A small grid of
-          inert muted day-dots — NO numbers, just dots, so it reads as a
-          calendar preview without faking activity. */}
+      {/* Preview 2 · Mapa del mes → real calendar, honestly empty. */}
       <RiseView delay={240}>
         {wrap(
           'calendar',
-          <GhostCard
-            bg={cardBg}
-            borderColor={theme.colors.line}
+          <PreviewBlock
             description="Un calendario con tus días de gasto del ciclo."
             icon="calendar-month"
-            iconColor={theme.colors.textMuted}
             title="Mapa del mes"
           >
-            <View style={styles.ghostGrid}>
-              {Array.from({ length: 21 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.ghostGridDot, { backgroundColor: ghostBar }]}
-                />
-              ))}
-            </View>
-          </GhostCard>,
+            <GastosMonthCalendar
+              empty
+              dayMoods={{}}
+              todayDay={today.getDate()}
+              cycleStart={cycleStart}
+              cycleDays={cycleDays}
+              firstWeekdayOffset={firstWeekdayOffset}
+              selectedDay={null}
+              onSelectDay={() => {}}
+              onClearDay={() => {}}
+            />
+          </PreviewBlock>,
         )}
       </RiseView>
 
-      {/* Ghost 3 · Tus movimientos (ghost of the list). A few muted list
-          rows suggesting a date-grouped detail. */}
+      {/* Preview 3 · Tus movimientos → real rows in placeholder mode. */}
       <RiseView delay={300}>
         {wrap(
           'list',
-          <GhostCard
-            bg={cardBg}
-            borderColor={theme.colors.line}
+          <PreviewBlock
             description="El detalle por día, con categoría y autor."
             icon="receipt-long"
-            iconColor={theme.colors.textMuted}
             title="Tus movimientos"
           >
-            <View style={styles.ghostRows}>
+            <View style={styles.rowsStack}>
               {[0, 1, 2].map((i) => (
-                <View key={i} style={styles.ghostRow}>
-                  <View style={[styles.ghostDot, { backgroundColor: ghostBar }]} />
-                  <View style={styles.ghostRowText}>
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.ghostRowBar,
-                        // Slightly varied widths so it reads as a list, not a grid.
-                        { backgroundColor: ghostBar, width: i === 1 ? '55%' : '72%' },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.ghostRowSubBar,
-                        { backgroundColor: ghostBar },
-                      ]}
-                    />
-                  </View>
-                  <View style={[styles.ghostRowAmount, { backgroundColor: ghostBar }]} />
-                </View>
+                <GastoRow key={i} placeholder />
               ))}
             </View>
-          </GhostCard>,
+          </PreviewBlock>,
         )}
       </RiseView>
     </View>
@@ -195,46 +170,36 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
 }
 
 /**
- * Inert ghost preview card. Renders an icon + bold mini-title + one-line
- * muted description, then whatever placeholder geometry the caller
- * passes as `children`. Soft border + lower opacity so it reads as a
- * preview, not a real card and not a loading skeleton.
+ * Lightweight labeled wrapper for a preview block — an icon + bold
+ * mini-title + one-line muted description, then the real component (in
+ * its empty mode) below. Keeps the onboarding copy that explains what
+ * each section is, without re-drawing any card chrome (the real
+ * component owns that now).
  */
-function GhostCard({
-  bg,
-  borderColor,
+function PreviewBlock({
   icon,
-  iconColor,
   title,
   description,
   children,
 }: {
-  bg: string
-  borderColor: string
   icon: keyof typeof MaterialIcons.glyphMap
-  iconColor: string
   title: string
   description: string
   children: React.ReactNode
 }) {
   const { theme } = useAppTheme()
   return (
-    <View
-      style={[
-        styles.ghostCard,
-        { backgroundColor: bg, borderColor },
-      ]}
-    >
-      <View style={styles.ghostHeader}>
-        <MaterialIcons color={iconColor} name={icon} size={18} />
-        <Text style={[styles.ghostTitle, { color: theme.colors.text }]}>
+    <View style={styles.previewBlock}>
+      <View style={styles.previewHeader}>
+        <MaterialIcons color={theme.colors.textMuted} name={icon} size={16} />
+        <Text style={[styles.previewTitle, { color: theme.colors.text }]}>
           {title}
         </Text>
       </View>
-      <Text style={[styles.ghostDescription, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.previewDescription, { color: theme.colors.textMuted }]}>
         {description}
       </Text>
-      <View style={styles.ghostBody}>{children}</View>
+      {children}
     </View>
   )
 }
@@ -283,93 +248,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     marginLeft: 4,
   },
-
-  // The ghost cards are intentionally a touch transparent so they sit
-  // back from the vibrant intro card.
-  ghostCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    gap: 8,
-    opacity: 0.86,
-  },
-  ghostHeader: {
+  previewBlock: { gap: 8 },
+  previewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: 2,
   },
-  ghostTitle: {
+  previewTitle: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  ghostDescription: {
+  previewDescription: {
     fontSize: 12.5,
     lineHeight: 18,
+    marginLeft: 2,
+    marginBottom: 2,
   },
-  ghostBody: {
-    marginTop: 6,
-  },
-
-  // ── Placeholder bars (inert, no data) ────────────────────────────
-  bar: {
-    height: 8,
-    borderRadius: 4,
-  },
-  barShort: { width: 56 },
-  barWide: { width: 96, marginTop: 6, height: 12 },
-
-  // Ghost 1 — hero echo
-  ghostHeroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  ghostHeroCol: {},
-  ghostHeroBlock: {
-    width: 64,
-    height: 26,
-    borderRadius: 8,
-  },
-
-  // Ghost 2 — calendar echo (grid of inert day dots, no numbers)
-  ghostGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  ghostGridDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 6,
-  },
-
-  // Ghost 3 — movements list echo
-  ghostRows: { gap: 12 },
-  ghostRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  ghostDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-  },
-  ghostRowText: {
-    flex: 1,
-    gap: 6,
-  },
-  ghostRowBar: {
-    height: 10,
-  },
-  ghostRowSubBar: {
-    height: 7,
-    width: '38%',
-  },
-  ghostRowAmount: {
-    width: 44,
-    height: 12,
-    borderRadius: 6,
-  },
+  rowsStack: { gap: 8 },
 })

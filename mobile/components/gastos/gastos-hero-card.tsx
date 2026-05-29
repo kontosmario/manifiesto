@@ -13,11 +13,11 @@ import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosHeroCardProps {
-  totalVisible: number
-  summaryChip: string // e.g. "47 mov · abril · Todas"
-  topCategories: CategoryWeight[] // top 3
-  averageDaily: number
-  averageDailyBars: number[]
+  totalVisible?: number
+  summaryChip?: string // e.g. "47 mov · abril · Todas"
+  topCategories?: CategoryWeight[] // top 3
+  averageDaily?: number
+  averageDailyBars?: number[]
   averageWindowDays?: number
   /**
    * When `true`, the hero is showing data for a single day (the user
@@ -27,6 +27,16 @@ interface GastosHeroCardProps {
    * so the user reads the value as "what you spent on this day".
    */
   daySelected?: boolean
+  /**
+   * Empty / preview mode (first-run onboarding). Renders the SAME card
+   * shell — gradient, top label, the PROMEDIO DÍA / MÁS PESO labels —
+   * but with neutral "—" / muted dash placeholders instead of any
+   * numbers, bars or categories. NO fabricated data. The data props
+   * become optional and are never read in this mode (we early-return
+   * before touching them). Backwards-compatible: default `false` keeps
+   * the original behavior untouched.
+   */
+  empty?: boolean
 }
 
 /**
@@ -35,15 +45,28 @@ interface GastosHeroCardProps {
  * top 3 categories ranked by spend with animated progress bars.
  */
 function GastosHeroCardImpl({
-  totalVisible,
-  summaryChip,
-  topCategories,
-  averageDaily,
-  averageDailyBars,
+  totalVisible = 0,
+  summaryChip = '',
+  topCategories = [],
+  averageDaily = 0,
+  averageDailyBars = [],
   averageWindowDays = 22,
   daySelected = false,
+  empty = false,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
+
+  // ── Empty / preview mode ─────────────────────────────────────────
+  // Same gradient shell + section labels as the real hero, but every
+  // value slot is a neutral muted dash ("—" / placeholder bar). We
+  // early-return before touching any data prop so an empty account
+  // never fabricates a total, an average or a category. The shine /
+  // particles are dropped here so it reads as an inert preview, not a
+  // live card.
+  if (empty) {
+    return <GastosHeroCardEmpty />
+  }
+
   // Pass through whatever the controller computed — including all
   // zeros — so the bars truthfully reflect "no spend in window".
   // Earlier this used a hardcoded fake-data fallback that misled
@@ -148,6 +171,72 @@ function GastosHeroCardImpl({
   )
 }
 
+/**
+ * Empty-state twin of the real hero. Identical gradient shell, radii,
+ * paddings and section labels (TOTAL VISIBLE · PROMEDIO DÍA · MÁS PESO
+ * POR CATEGORÍA) — but every value is a neutral muted dash. No
+ * fabricated numbers, no bars, no categories. Shine + particles are
+ * intentionally omitted so it reads as a still preview.
+ */
+function GastosHeroCardEmpty() {
+  const { theme } = useAppTheme()
+  // Neutral placeholder over the dark gradient — a faint cream wash, so
+  // it reads as "value goes here", never as a real bar or shimmer.
+  const ph = 'rgba(242,234,211,0.14)'
+  return (
+    <LinearGradient
+      colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={[styles.card, styles.emptyCard]}
+    >
+      <View style={styles.topRow}>
+        <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>
+          TOTAL VISIBLE
+        </Text>
+        <View
+          style={[
+            styles.chip,
+            { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.12)' },
+          ]}
+        >
+          <View style={[styles.emptyBar, { width: 64, height: 8, backgroundColor: ph }]} />
+        </View>
+      </View>
+
+      <Text style={[styles.amount, { color: theme.colors.heroText }]}>—</Text>
+
+      <View style={styles.avgRow}>
+        <View style={styles.avgText}>
+          <Text style={[styles.avgLabel, { color: theme.colors.heroMuted }]}>
+            PROMEDIO DÍA
+          </Text>
+          <View style={styles.avgValueRow}>
+            <Text style={[styles.avgValue, { color: theme.colors.heroText }]}>—</Text>
+          </View>
+        </View>
+        <View style={styles.avgBars}>
+          <View style={[styles.emptyBar, { width: 90, height: 2, backgroundColor: ph }]} />
+        </View>
+      </View>
+
+      <View style={styles.weightsBlock}>
+        <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted }]}>
+          MÁS PESO POR CATEGORÍA
+        </Text>
+        <View style={{ marginTop: 10, gap: 10 }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.emptyWeightRow}>
+              <View style={[styles.emptyBar, { width: i === 1 ? '46%' : '62%', height: 8, backgroundColor: ph }]} />
+              <View style={[styles.emptyBar, { width: 28, height: 8, backgroundColor: ph }]} />
+            </View>
+          ))}
+        </View>
+      </View>
+    </LinearGradient>
+  )
+}
+
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
@@ -156,6 +245,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(166,239,143,0.12)',
+  },
+  // Empty preview: real heroGradient shell but slightly recessed so it
+  // reads as a sample, not a live card. No animated shine/particles.
+  emptyCard: {
+    opacity: 0.86,
+  },
+  emptyBar: { borderRadius: 4 },
+  emptyWeightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   topRow: {
     flexDirection: 'row',
