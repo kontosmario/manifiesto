@@ -193,6 +193,8 @@ Catálogo v1: 14 achievements (11 originales + 3 milestone de meta: `goal_25`, `
 
 **Nota (2026-05-28):** la migración `20260528120000_repair_achievements_catalog_rls_seed.sql` recreo la policy `catalog_select_authenticated` que faltaba en la base remota (RLS estaba habilitado pero sin policy de SELECT, por lo que el cliente autenticado recibía 0 filas del catálogo aunque existieran). La migración ademas re-sembró los 14 achievements de forma idempotente (`on conflict do update`). Aplicada a prod.
 
+**Nota (2026-05-29):** la migración `20260529120000_fix_try_close_previous_cycle_month_step.sql` corrige `try_close_previous_cycle`. El cálculo del inicio del ciclo anterior usaba `v_current_start - interval '1 day'` para elegir el mes; con `salary_payment_day != 1` eso cae el día previo al cobro pero dentro del MISMO mes, así que `pay_date_for` devolvía la misma fecha → `period_start == period_end` → `close_monthly_cycle` sumaba una ventana vacía → `monthly_summaries` con `total_variable_spent = 0`. Efecto: la card Control "VS MES PASADO" (guard `total_variable_spent > 0`) nunca se activaba para ningún cobro distinto del día 1. El fix deriva `v_prev_start` del mes anterior a `v_current_start` (primer día de ese mes menos un día), correcto para cualquier día de cobro. Aplicada a prod + backfill puntual de las 7 familias afectadas (re-cierre con la función corregida; los rollups degenerados `period_start = period_end` se borraron primero).
+
 ### 2.14 Eliminación de Cuentas / Rate Limits
 
 | Tabla | Propósito |
