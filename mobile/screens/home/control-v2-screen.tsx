@@ -416,7 +416,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   rachaBajoCupo={view.racha}
                   noSpendCount={view.noSpendCount}
                   diaActual={data.diaActual}
-                  hasSpendData={view.hasSpendData}
+                  diasConGasto={view.diasConGasto}
                 />
               </ControlV2Anchor>
             </TourTarget>

@@ -16,6 +16,9 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 
 const MIN_DIAS = 3
+// La sugerencia de ahorro necesita gasto en varios días para no contar
+// como "ahorro" los días sin registrar. Se activa con 3 días con gasto.
+const MIN_SPEND_DAYS = 3
 
 interface ControlV2AlcanciaCardProps {
   familyId: string
@@ -38,11 +41,11 @@ interface ControlV2AlcanciaCardProps {
   noSpendCount: number
   /** Posición 1-based dentro del ciclo. */
   diaActual?: number
-  /** True when there's real discretionary spend to analyze. Sin gasto
-   *  real el "vault" (sugerencia de ahorro por sub-gasto) sería falso
-   *  (todos los días contarían como "bajo cupo"), así que mostramos el
-   *  placeholder "sin gastos todavía". */
-  hasSpendData?: boolean
+  /** Días distintos con gasto en el ciclo. Sin gasto en varios días el
+   *  "vault" (sugerencia de ahorro por sub-gasto) sería falso (todos los
+   *  días contarían como "bajo cupo"), así que se activa con
+   *  ≥ MIN_SPEND_DAYS. */
+  diasConGasto?: number
 }
 
 /**
@@ -78,7 +81,7 @@ function ControlV2AlcanciaCardImpl({
   rachaBajoCupo,
   noSpendCount,
   diaActual = 999,
-  hasSpendData = true,
+  diasConGasto = 999,
 }: ControlV2AlcanciaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -104,16 +107,18 @@ function ControlV2AlcanciaCardImpl({
     )
   }
 
-  // Días suficientes pero sin gasto real: el vault (sub-gasto) sería
-  // falso, así que no sugerimos un monto hasta que haya gastos.
-  if (!hasSpendData) {
+  // El vault (sugerencia por sub-gasto) sería falso si hay pocos días con
+  // gasto (todos los demás contarían como "ahorro"). Pedimos gasto en
+  // varios días distintos.
+  if (diasConGasto < MIN_SPEND_DAYS) {
     return (
       <ControlV2Placeholder
         title="Tu alcancía"
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Te sugeriremos cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
+        headline="Necesitamos gastos en más días"
+        message={`Registra gastos en al menos ${MIN_SPEND_DAYS} días distintos para sugerirte cuánto mover a tu meta según tu ritmo.`}
       />
     )
   }

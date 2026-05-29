@@ -10,10 +10,10 @@ import { formatMoneyShort } from '@/utils/money'
 import type { DowBucket } from '@/features/insights/control-v2-mock'
 
 const MIN_DIAS = 14
-// Un "patrón" de qué día se gasta más necesita varios puntos: pedimos
-// gasto en al menos 4 días distintos antes de activar la tarjeta (con
-// 1-2 gastos no hay patrón que detectar).
-const MIN_SPEND_DAYS = 4
+// Patrón sincero por día de la semana: necesita ~dos semanas de registro
+// real, así que se activa con gasto en 14 días distintos (cada día de la
+// semana visto ~2 veces). Con menos no hay patrón estadístico.
+const MIN_SPEND_DAYS = 14
 
 interface ControlV2PatronCardProps {
   dows: DowBucket[]

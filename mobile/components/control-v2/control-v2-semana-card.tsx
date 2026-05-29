@@ -10,9 +10,9 @@ import { formatMoneyShort } from '@/utils/money'
 import type { DayDetail } from '@/features/insights/control-v2-mock'
 
 const MIN_DIAS = 7
-// Un "ritmo de la semana" con 1 solo gasto no es un promedio: pedimos
-// gasto en al menos 3 días distintos antes de activar la tarjeta.
-const MIN_SPEND_DAYS = 3
+// "Últimos 7 días" sincero: la ventana se activa recién con gasto en 7
+// días distintos (una semana real de registro), no con uno suelto.
+const MIN_SPEND_DAYS = 7
 
 interface ControlV2SemanaCardProps {
   last7: DayDetail[]

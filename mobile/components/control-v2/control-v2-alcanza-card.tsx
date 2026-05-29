@@ -97,8 +97,8 @@ function ControlV2AlcanzaCardImpl({
         diaActual={Math.min(closedDays + 1, MIN_CLOSED_DAYS_FLOOR)}
         minDias={MIN_CLOSED_DAYS_FLOOR}
         noData
-        headline="Necesitamos una semana de gastos"
-        message="Cuando registres gastos durante cerca de una semana, vamos a proyectar hasta qué día del ciclo te alcanza el dinero libre, sin contar los fijos."
+        headline="Necesitamos gastos en más días"
+        message="Registra gastos en al menos 7 días distintos para proyectar hasta qué día del ciclo te alcanza el dinero libre, sin contar los fijos."
       />
     )
   }

@@ -287,10 +287,9 @@ export interface ControlView {
    *  patrón / alcancía) gate on this so a new account that joined
    *  mid-cycle — many elapsed days, zero spend — shows a "sin gastos
    *  todavía" placeholder instead of $0 averages. */
-  hasSpendData: boolean
   /** Días distintos con gasto (cerrados + hoy). Las tarjetas de
-   *  ritmo/patrón piden un mínimo de estos para activarse (1 gasto no
-   *  es un patrón ni un promedio). */
+   *  ritmo/patrón/alcancía/alcanza piden un mínimo de estos para
+   *  activarse (1 gasto no es un patrón ni un promedio). */
   diasConGasto: number
   gastoProyectadoMes: number
   sobrantePresupuestadoMes: number
@@ -395,7 +394,11 @@ export function computeControlView(d: ControlMockData): ControlView {
   // Exigiendo `promedioDiario > 0`, la AlcanzaCard cae a su placeholder
   // ("necesitamos una semana de gastos") hasta que haya datos reales.
   const noDiscretionarySpendYet = promedioDiario <= 0 && d.gastoHoy <= 0
-  const hasReliableProjection = closedDays >= 7 && promedioDiario > 0
+  // Proyección confiable: una semana de días cerrados Y gasto real en al
+  // menos 7 días distintos (no alcanza con 1 día con gasto promediado
+  // sobre la semana). diasConGasto>=7 con closedDays>=7 garantiza
+  // promedioDiario>0.
+  const hasReliableProjection = closedDays >= 7 && diasConGasto >= 7
   const alreadyExhausted =
     hasReliableProjection &&
     gastadoHastaHoy > libreMesTotal &&
@@ -550,7 +553,6 @@ export function computeControlView(d: ControlMockData): ControlView {
     alreadyExhausted,
     closedDays,
     hasReliableProjection,
-    hasSpendData: !noDiscretionarySpendYet,
     diasConGasto,
     gastoProyectadoMes,
     sobrantePresupuestadoMes,
