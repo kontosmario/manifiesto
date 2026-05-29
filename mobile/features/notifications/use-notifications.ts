@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
 import { supabase } from '@/lib/supabase'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { toast } from '@/lib/toast-bus'
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'alert'
 
@@ -204,10 +206,11 @@ export function useUnreadNotificationsCount(familyId?: string, userId?: string) 
  * todas las listas cacheadas en `onMutate` para que la salida se sienta
  * instantánea, con rollback en `onError`.
  */
-export function useDeleteNotification(familyId?: string) {
+export function useDeleteNotification(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
+  const ref = useRef<{ mutate: (input: { id: string }) => void } | null>(null)
 
-  return useMutation({
+  const result = useMutation({
     mutationFn: async (input: { id: string }) => {
       const { error } = await supabase
         .from('notifications')
@@ -240,18 +243,29 @@ export function useDeleteNotification(familyId?: string) {
 
       return { snapshots }
     },
-    onError: (_error, _input, context) => {
+    onError: (_error, input, context) => {
       for (const snapshot of context?.snapshots ?? []) {
         queryClient.setQueryData(snapshot.key, snapshot.data)
       }
+      toast.error('No se pudo eliminar la notificación.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(input),
+      })
     },
     onSettled: () => {
-      if (!familyId) return
-      void queryClient.invalidateQueries({
-        queryKey: notificationQueryKeys.family(familyId),
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['notifications'],
       })
     },
   })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
 }
 
 export function useDeleteAllNotifications(familyId?: string, userId?: string) {
@@ -300,11 +314,13 @@ export function useDeleteAllNotifications(familyId?: string, userId?: string) {
       for (const snapshot of context?.snapshots ?? []) {
         queryClient.setQueryData(snapshot.key, snapshot.data)
       }
+      toast.error('No se pudieron borrar las notificaciones.')
     },
     onSettled: () => {
-      if (!familyId) return
-      void queryClient.invalidateQueries({
-        queryKey: notificationQueryKeys.family(familyId),
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['notifications'],
       })
     },
   })
