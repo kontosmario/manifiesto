@@ -86,17 +86,19 @@ function ControlV2AlcanzaCardImpl({
   const isDark = theme.isDark
 
   if (!hasReliableProjection) {
-    // Dos motivos para no proyectar: faltan días cerrados (countdown) o
-    // ya hay días pero todavía sin gastos para promediar (noData). Si ya
-    // se llegó al piso de días, es lo segundo.
-    const awaitingFirstSpend = closedDays >= MIN_CLOSED_DAYS_FLOOR
+    // A diferencia de las otras tarjetas, "alcanza" NO se activa con un
+    // solo gasto: proyecta a partir del PROMEDIO de días cerrados con
+    // gasto (excluye hoy). Necesita ~una semana de días registrando para
+    // tener un ritmo confiable. Por eso el copy no promete "registra un
+    // gasto y se activa" (sería falso): comunica la condición real.
     return (
       <ControlV2Placeholder
         title="Hasta cuándo te alcanza"
         diaActual={Math.min(closedDays + 1, MIN_CLOSED_DAYS_FLOOR)}
         minDias={MIN_CLOSED_DAYS_FLOOR}
-        noData={awaitingFirstSpend}
-        hint="Sabrás hasta qué día del ciclo te alcanza el dinero libre, sin contar los fijos."
+        noData
+        headline="Necesitamos una semana de gastos"
+        message="Cuando registres gastos durante cerca de una semana, vamos a proyectar hasta qué día del ciclo te alcanza el dinero libre, sin contar los fijos."
       />
     )
   }

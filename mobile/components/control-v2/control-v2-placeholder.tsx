@@ -19,6 +19,15 @@ interface ControlV2PlaceholderProps {
    * what's missing; real spend is).
    */
   noData?: boolean
+  /**
+   * Override the auto headline. Use when a card's activation condition
+   * doesn't fit either the day-countdown or the "log one expense"
+   * framing (e.g. "alcanza" needs a WEEK of closed days WITH spending,
+   * so a single expense never activates it).
+   */
+  headline?: string
+  /** Override the auto subtitle (pairs with `headline`). */
+  message?: string
 }
 
 /**
@@ -29,6 +38,8 @@ interface ControlV2PlaceholderProps {
  *     "Día X de N" countdown.
  *   · `noData=true`: enough days passed but no real spend to analyze —
  *     show a "log your first expense" framing instead of a countdown.
+ * `headline`/`message` override the auto copy for cards whose real
+ * condition is neither (e.g. "alcanza").
  */
 export function ControlV2Placeholder({
   title,
@@ -36,6 +47,8 @@ export function ControlV2Placeholder({
   minDias,
   hint,
   noData = false,
+  headline,
+  message,
 }: ControlV2PlaceholderProps) {
   const { theme } = useAppTheme()
   const diasRestantes = Math.max(0, minDias - diaActual)
@@ -74,14 +87,15 @@ export function ControlV2Placeholder({
       </View>
 
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        {noData ? 'Todavía no hay gastos' : 'Pronto disponible'}
+        {headline ?? (noData ? 'Todavía no hay gastos' : 'Pronto disponible')}
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        {noData
-          ? 'Registra un gasto y esta tarjeta se activa.'
-          : diasRestantes === 0
-            ? 'Ya casi: registra un gasto para activarla.'
-            : `Se activa a partir del día ${minDias} del ciclo con al menos un gasto registrado. ${diasRestantes === 1 ? 'Falta' : 'Faltan'} ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`}
+        {message ??
+          (noData
+            ? 'Registra un gasto y esta tarjeta se activa.'
+            : diasRestantes === 0
+              ? 'Ya casi: registra un gasto para activarla.'
+              : `Se activa el día ${minDias} del ciclo, con gastos registrados. ${diasRestantes === 1 ? 'Falta' : 'Faltan'} ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`)}
       </Text>
       {hint ? (
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>{hint}</Text>
