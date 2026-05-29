@@ -22,6 +22,7 @@ import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
+import { GastosEmptyState } from '@/components/gastos/gastos-empty-state'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
@@ -737,6 +738,68 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           onAction={() => {
             void controller.refetchAll()
           }}
+        />
+      </Screen>
+    )
+  }
+
+  // ── Empty account (first-run onboarding) ─────────────────────────
+  // The content only mounts after the snapshot resolved (the outer
+  // `GastosV2Screen` returns null until `snapshot.data`), so an empty
+  // `expenses` array reliably means "brand-new account", not a loading
+  // flash. Render the onboarding empty state (intro card + ghost
+  // previews + CTA) instead of the data cards with zeros. The other two
+  // empty variants (`filtered` / `cycle`) stay inside the SectionList.
+  const isEmptyAccount = !controller.error && controller.expenses.length === 0
+  if (isEmptyAccount) {
+    return (
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        scrollable
+        contentContainerStyle={styles.screenContent}
+      >
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
+        {/* Keep the streak flame + its tour target so the streak tour
+            step and the flame keep working on the empty screen. */}
+        <GastosHeader
+          subtitle={`Ciclo ${controller.cycleLabel}`}
+          rightSlot={
+            <TourTarget
+              tour={GASTOS_TOUR}
+              order={GASTOS_TOUR_STEPS.streak.order}
+              text={GASTOS_TOUR_STEPS.streak.text}
+              highlight={{ borderRadius: 20, padding: 6, pulse: true }}
+            >
+              <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
+            </TourTarget>
+          }
+        />
+        {/* Maps the hero/calendar/list ghost previews onto the matching
+            GASTOS tour steps. The `filters` step (order 3) has no target
+            on the empty screen — the tour engine builds its step list
+            from REGISTERED targets only (tour-provider `stepsRef`), so a
+            never-registered step is simply omitted from the walk; no
+            stall. Same approach Fijos uses for its empty state. */}
+        <GastosEmptyState
+          onAddFirst={handlePressAdd}
+          renderSection={(slot, children) => (
+            <TourTarget
+              tour={GASTOS_TOUR}
+              order={GASTOS_TOUR_STEPS[slot].order}
+              text={GASTOS_TOUR_STEPS[slot].text}
+              highlight={{ borderRadius: 22, padding: 6 }}
+            >
+              {children}
+            </TourTarget>
+          )}
+        />
+        <StreakSheet
+          familyId={familyId}
+          userId={userId}
+          visible={streakSheetVisible}
+          data={streakData}
+          onClose={() => setStreakSheetVisible(false)}
+          onPressAddExpense={handlePressAdd}
         />
       </Screen>
     )
