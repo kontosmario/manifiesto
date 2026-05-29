@@ -46,6 +46,8 @@ import {
   useScreenTour,
 } from '@/features/tours'
 import { triggerHaptic } from '@/lib/haptics'
+import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
+import { useMarkCycleWrappedSeen } from '@/features/wrapped/use-mark-cycle-wrapped-seen'
 
 interface ControlV2ScreenProps {
   familyId: string
@@ -76,7 +78,16 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
-  const { data, view, signals, noConfig } = useControlV2Data(familyId)
+  const { data, view, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
+    useControlV2Data(familyId)
+  const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
+  const launchWrapped = useCallback(() => {
+    if (!wrappedPayload) return
+    triggerCycleWrapped(wrappedPayload)
+    if (wrappedSummaryId && !wrappedSeen) {
+      markWrappedSeen.mutate(wrappedSummaryId)
+    }
+  }, [wrappedPayload, wrappedSummaryId, wrappedSeen, markWrappedSeen])
   const financeQuery = useFamilyFinance(familyId)
   const expensesQuery = useExpenses(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
@@ -349,6 +360,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               dailyGoalAmount={dailyGoalAmount}
               goalEditable={goalEditable}
               onPressGoal={() => setGoalSheetVisible(true)}
+              onPressWrapped={
+                wrappedPayload && !wrappedSeen ? launchWrapped : undefined
+              }
+              wrappedUnseen={Boolean(wrappedPayload && !wrappedSeen)}
             />
 
             <TourTarget
@@ -459,12 +474,16 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   mesPasadoTopExpense={data.mesPasado.topExpense}
                   currentTopCatSpent={data.mesPasado.currentTopCatSpent}
                   mesPasadoCycleRangeLabel={data.mesPasado.cycleRangeLabel}
+                  mesPasadoCategorias={data.mesPasado.categoryBreakdown}
+                  mesPasadoPorMiembro={data.mesPasado.byMember}
+                  mesPasadoDailyTotals={data.mesPasado.dailyTotals}
                   proyectadoMes={view.proyectadoMes}
                   vsMesAhorro={view.vsMesAhorro}
                   vsMesDeltaPct={view.vsMesDeltaPct}
                   vsMesMejor={view.vsMesMejor}
                   diasGanadores={view.diasGanadores}
                   diaActual={data.diaActual}
+                  onVerCierre={wrappedPayload ? launchWrapped : undefined}
                 />
               </ControlV2Anchor>
             </TourTarget>

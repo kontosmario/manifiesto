@@ -14,6 +14,11 @@
 // If you find yourself reading the values below in a UI test for a
 // brand-new user, that is a regression — file a bug.
 
+import type {
+  MonthlyByMemberEntry,
+  MonthlyCategoryBreakdownEntry,
+} from '@/features/insights/control-v2-adapter'
+
 export interface ControlMockData {
   /** Monthly take-home income (ARS). */
   ingresoMes: number
@@ -81,6 +86,17 @@ export interface ControlMockData {
      *  `salary_payment_day != 1` see exactly which window the
      *  comparison covers. `null` when calendar-aligned. */
     cycleRangeLabel: string | null
+    /** Full category breakdown of the closed cycle (color + pct),
+     *  spend-desc. Powers the "en qué se fue" stacked bar. */
+    categoryBreakdown: MonthlyCategoryBreakdownEntry[]
+    /** Per-member spend at close, spend-desc, only members that spent.
+     *  The card shows the "quién gastó" module only when this has 2+
+     *  entries (solo accounts / single-spender families collapse to
+     *  <2 and the module hides). */
+    byMember: MonthlyByMemberEntry[]
+    /** Daily spend totals of the closed cycle, in day order. Powers the
+     *  rhythm sparkline. */
+    dailyTotals: number[]
   }
   /** True only when there's at least one fully-closed previous cycle
    *  with real discretionary spend — the "Vs mes pasado" card stays
@@ -182,6 +198,23 @@ export const CONTROL_MOCK: ControlMockData = {
     currentTopCatSpent: 92_400,
     trend: [1_540_000, 1_687_000, 1_240_000],
     cycleRangeLabel: null,
+    categoryBreakdown: [
+      { category_id: null, name: 'Mercado', color: '#2E7D5B', total: 540_000, count: 28, pct: 32 },
+      { category_id: null, name: 'Restaurantes', color: '#A04040', total: 405_000, count: 11, pct: 24 },
+      { category_id: null, name: 'Ocio', color: '#6B3A4F', total: 270_000, count: 6, pct: 16 },
+      { category_id: null, name: 'Transporte', color: '#C9A23A', total: 202_000, count: 9, pct: 12 },
+      { category_id: null, name: 'Otros', color: '#8A8A8A', total: 270_000, count: 8, pct: 16 },
+    ],
+    byMember: [
+      { user_id: null, display_name: 'Vos', total: 1_120_000, count: 40 },
+      { user_id: null, display_name: 'Compa', total: 567_000, count: 22 },
+    ],
+    dailyTotals: [
+      42_000, 18_000, 55_000, 12_000, 0, 38_000, 61_000,
+      24_000, 33_000, 0, 47_000, 29_000, 71_000, 15_000,
+      52_000, 19_000, 0, 44_000, 38_000, 26_000, 58_000,
+      31_000, 22_000, 49_000, 0, 17_000, 63_000, 35_000,
+    ],
   },
   hasPreviousMonth: true,
   tareas: [

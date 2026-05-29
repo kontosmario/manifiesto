@@ -146,7 +146,7 @@ Los streaks son una **tabla real** (no derivada), avanzada mediante la función 
 
 | Tabla | Columnas clave |
 |-------|----------------|
-| `monthly_summaries` | `id uuid PK`, `family_id`, `period_start/end/label`, `total_variable/fixed/spent`, `monthly_income`, `savings_delta`, `category_breakdown jsonb`, `daily_totals jsonb`, `mood`, `delta_vs_previous_percent` |
+| `monthly_summaries` | `id uuid PK`, `family_id`, `period_start/end/label`, `total_variable/fixed/spent`, `monthly_income`, `savings_delta`, `category_breakdown jsonb`, `daily_totals jsonb`, `mood`, `delta_vs_previous_percent`, `top_expense jsonb`, `wrapped_seen_at timestamptz NULL` (null = no visto; idempotente — solo escribe la primera vez) |
 | `velocity_snapshots` | `id uuid PK`, `family_id`, `snapshot_date date`, `avg_daily_last_7/30`, `momentum numeric`, `forecast_close_amount`, `stress_level text`, `created_at` |
 | `control_snapshots` | `family_id PK`, `forecast_close_amount`, `forecast_overshoot_pct`, `over_budget_categories jsonb`, `zombie_candidates jsonb`, `member_pressure jsonb`, `recommended_actions jsonb`, `computed_at` |
 
@@ -192,6 +192,12 @@ Retención: `monthly_summaries` top-12 por familia; `velocity_snapshots` 6 meses
 Catálogo v1: 14 achievements (11 originales + 3 milestone de meta: `goal_25`, `goal_50`, `goal_75`).
 
 **Nota (2026-05-28):** la migración `20260528120000_repair_achievements_catalog_rls_seed.sql` recreo la policy `catalog_select_authenticated` que faltaba en la base remota (RLS estaba habilitado pero sin policy de SELECT, por lo que el cliente autenticado recibía 0 filas del catálogo aunque existieran). La migración ademas re-sembró los 14 achievements de forma idempotente (`on conflict do update`). Aplicada a prod.
+
+**Nota (2026-05-29):** la migración `20260529120000_fix_try_close_previous_cycle_month_step.sql` corrige `try_close_previous_cycle`. El cálculo del inicio del ciclo anterior usaba `v_current_start - interval '1 day'` para elegir el mes; con `salary_payment_day != 1` eso cae el día previo al cobro pero dentro del MISMO mes, así que `pay_date_for` devolvía la misma fecha → `period_start == period_end` → `close_monthly_cycle` sumaba una ventana vacía → `monthly_summaries` con `total_variable_spent = 0`. Efecto: la card Control "VS MES PASADO" (guard `total_variable_spent > 0`) nunca se activaba para ningún cobro distinto del día 1. El fix deriva `v_prev_start` del mes anterior a `v_current_start` (primer día de ese mes menos un día), correcto para cualquier día de cobro. Aplicada a prod + backfill puntual de las 7 familias afectadas (re-cierre con la función corregida; los rollups degenerados `period_start = period_end` se borraron primero).
+
+La migración `20260529130000_cycle_wrapped_seen.sql` agrega la columna `monthly_summaries.wrapped_seen_at timestamptz` (flag por-cierre de "Wrapped visto") y la RPC `mark_cycle_wrapped_seen(p_summary_id uuid)` (SECURITY DEFINER, idempotente, valida membership, grant a `authenticated`). El flag es compartido por la familia: en cuanto un miembro marca el cierre como visto, el botón del header de Control y el CTA de la card "CÓMO VAS ESTE MES" se apagan para toda la familia.
+
+La migración `20260529140000_home_snapshot_wrapped_seen.sql` regenera `home_snapshot()` para incluir `top_expense` y `wrapped_seen_at` en cada objeto de `monthly_summaries_history`. Sin estos campos el `seedCaches` de control-intelligence no sembraba el flag de visto en el cache React Query, por lo que el botón del header reaparecía tras cada refetch aunque el cierre ya hubiera sido marcado. Ambas migraciones aplicadas a prod.
 
 ### 2.14 Eliminación de Cuentas / Rate Limits
 
@@ -274,14 +280,14 @@ Las pantallas Home y Gastos usan el patrón **"snapshot bundle"**: una sola llam
                                                    → count notifications unread
                                                    → ...15+ queries internas
                                                    ← JSONB con ~15 claves
-[Mobile]  seedea React Query caches por clave
+[Mobile]  seedea React Query caches por clave (incluyendo seedCaches de control-intelligence)
 ```
 
 ### 4.2 RPCs Principales
 
 | RPC | Firma | Propósito | Rol |
 |-----|-------|-----------|-----|
-| `home_snapshot()` | `() → jsonb` | Bundle completo para Home: profile, family, finance, expenses (120), fixed_expenses (100), categories, notifications (80), savings_goal, fixed_expense_payments, monthly_summaries (6), category_limits, velocity_today, advisor_signal_dismissals, has_push_subscription | `authenticated` |
+| `home_snapshot()` | `() → jsonb` | Bundle completo para Home: profile, family, finance, expenses (120), fixed_expenses (100), categories, notifications (80), savings_goal, fixed_expense_payments, monthly_summaries (6 — cada summary incluye `top_expense` y `wrapped_seen_at`), category_limits, velocity_today, advisor_signal_dismissals, has_push_subscription | `authenticated` |
 | `gastos_snapshot(family_id, cycle_start, cycle_end, today?, cupo_diario?, days_per_page?, timezone?)` | `(uuid, timestamptz, timestamptz, ...) → jsonb` | Bundle Gastos: hero, calendar, categories, primera_page de gastos paginados, streak_row, streak_marked_days (14 días) | `authenticated` |
 | `log_home_events_bulk(p_events jsonb)` | `(jsonb) → integer` | Inserta batch de hasta 50 eventos de telemetría en una sola llamada. Rate-limit: 60/min/user. Valida membership y caps por campo. | `authenticated` |
 | `award_achievement(code, user_id, family_id?, context?)` | `(text, uuid, uuid, jsonb) → boolean` | Idempotente (ON CONFLICT DO NOTHING). Solo invocable por service_role o triggers. | `service_role` |
@@ -309,6 +315,7 @@ Las pantallas Home y Gastos usan el patrón **"snapshot bundle"**: una sola llam
 | `audit_subscription(fixed_expense_id, level)` | `(uuid, text) → fixed_expense_usage_audit` | Responde encuesta de uso de suscripción. | `authenticated` |
 | `declare_subscription_intent(fixed_expense_id, intent, notes?)` | `(uuid, text, text) → ...` | Declara intención de cancel/pause/downgrade. | `authenticated` |
 | `resolve_subscription_intent(intent_id, resolution, new_amount?)` | `(uuid, text, numeric) → ...` | Resuelve la intención: ejecuta el cambio en fixed_expense si completed. | `authenticated` |
+| `mark_cycle_wrapped_seen(p_summary_id)` | `(uuid) → void` | Marca un cierre de ciclo como visto en el Wrapped. Idempotente: `wrapped_seen_at = coalesce(wrapped_seen_at, now())` — solo escribe la primera vez. Valida que el caller sea miembro activo de la familia dueña del summary. Apaga el botón del header de Control y el CTA de la card "VS MES" una vez visto. | `authenticated` |
 
 ---
 
@@ -620,7 +627,8 @@ Toda la app funciona como si todos los usuarios fueran "pro" sin restricciones d
 | Postgres schema (107 migraciones) | ✅ LIVE | Sincronizado con prod |
 | RLS multi-tenant por household | ✅ LIVE | Post-hardening 2026-05-10 |
 | Vulnerabilidad update/delete cross-member en `expenses` | 🔴 ABIERTA | Ninguna migración la cerró; la política sigue siendo a nivel familia |
-| RPC `home_snapshot` | ✅ LIVE | Bundle completo con 15+ subkeys |
+| RPC `home_snapshot` | ✅ LIVE | Bundle completo con 15+ subkeys; `monthly_summaries_history` incluye `top_expense` + `wrapped_seen_at` (mig. 20260529140000) |
+| RPC `mark_cycle_wrapped_seen` | ✅ LIVE | Flag de Wrapped visto por cierre (mig. 20260529130000) |
 | RPC `gastos_snapshot` | ✅ LIVE | Bundle 6 queries → 1 round-trip |
 | RPC `log_home_events_bulk` | ✅ LIVE | Telemetría en batch |
 | Edge Function `control-advisor` (Claude Sonnet 4-6) | ✅ LIVE (desplegada) | Rate-limited 5/hora/user · **no invocada desde el cliente** (asistente heurístico) |
