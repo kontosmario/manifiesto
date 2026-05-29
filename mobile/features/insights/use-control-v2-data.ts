@@ -348,9 +348,9 @@ export function useControlV2Data(
   // Gate the dev fixture on `noConfig` (income missing) instead of the
   // broader `usingMock`. Once the user finishes onboarding (income
   // configured), the adapter computes a real `data` shape from the
-  // empty/sparse expense set — `cupoDiario` is meaningful, and the
-  // per-card `<ControlV2Placeholder>` handles the cards that still
-  // need historical data.
+  // empty/sparse expense set — `cupoDiario` is meaningful, and each
+  // card renders its own inert empty-state variant (real silhouette,
+  // no fake data) until it has enough historical data.
   const data = useMemo<ControlMockData>(() => {
     if (noConfig || !finance) return CONTROL_MOCK
     return memoizedBuildData({

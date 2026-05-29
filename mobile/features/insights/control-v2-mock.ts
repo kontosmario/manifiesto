@@ -282,6 +282,15 @@ export interface ControlView {
    *  projection. Below that, the card should show a placeholder even
    *  if `diaActual` clears an older lower floor. */
   hasReliableProjection: boolean
+  /** True when there is at least some real discretionary spend in the
+   *  cycle (closed days OR today). Cards that analyze spending (semana /
+   *  patrón / alcancía) gate on this so a new account that joined
+   *  mid-cycle — many elapsed days, zero spend — shows a "sin gastos
+   *  todavía" placeholder instead of $0 averages. */
+  /** Días distintos con gasto (cerrados + hoy). Las tarjetas de
+   *  ritmo/patrón/alcancía/alcanza piden un mínimo de estos para
+   *  activarse (1 gasto no es un patrón ni un promedio). */
+  diasConGasto: number
   gastoProyectadoMes: number
   sobrantePresupuestadoMes: number
   diasRestantes: number
@@ -331,6 +340,13 @@ export function computeControlView(d: ControlMockData): ControlView {
   }))
   const vault = detalleDias.reduce((s, x) => s + Math.max(0, x.delta), 0)
   const diasGanadores = detalleDias.filter((x) => x.gasto <= d.cupoDiario).length
+  // Distinct days WITH spend (closed days that registered a gasto, plus
+  // today if it has one). Drives the data-sufficiency gate of the cards
+  // que muestran promedios/patrones: con 1 solo gasto no hay "ritmo
+  // semanal" ni "patrón" real, así que esas tarjetas piden gasto en
+  // varios días distintos antes de activarse.
+  const diasConGasto =
+    detalleDias.filter((x) => x.gasto > 0).length + (d.gastoHoy > 0 ? 1 : 0)
   const diasPerdedores = detalleDias.length - diasGanadores
   const gastoTotalMes = detalleDias.reduce((s, x) => s + x.gasto, 0)
   const promedioDiario =
@@ -369,9 +385,20 @@ export function computeControlView(d: ControlMockData): ControlView {
   const restanteMes = libreMesTotal - gastadoHastaHoy
   const diasRestantes = d.diasMes - d.diaActual + 1
   const closedDays = detalleDias.length
-  const hasReliableProjection = closedDays >= 7
-  const noDiscretionarySpendYet =
-    hasReliableProjection && promedioDiario <= 0 && d.gastoHoy <= 0
+  // Una proyección confiable necesita DOS cosas: una semana de días
+  // cerrados Y gasto discrecional real para promediar. `closedDays`
+  // cuenta días-calendario del ciclo transcurridos (detalleDias mapea
+  // d.dias), así que una cuenta nueva que entra a mitad/fin de ciclo
+  // tendría closedDays>=7 con `promedioDiario=0` → antes mostraba
+  // "alcanza con margen de sobra" proyectando desde $0/día (engañoso).
+  // Exigiendo `promedioDiario > 0`, la AlcanzaCard cae a su placeholder
+  // ("necesitamos una semana de gastos") hasta que haya datos reales.
+  const noDiscretionarySpendYet = promedioDiario <= 0 && d.gastoHoy <= 0
+  // Proyección confiable: una semana de días cerrados Y gasto real en al
+  // menos 7 días distintos (no alcanza con 1 día con gasto promediado
+  // sobre la semana). diasConGasto>=7 con closedDays>=7 garantiza
+  // promedioDiario>0.
+  const hasReliableProjection = closedDays >= 7 && diasConGasto >= 7
   const alreadyExhausted =
     hasReliableProjection &&
     gastadoHastaHoy > libreMesTotal &&
@@ -526,6 +553,7 @@ export function computeControlView(d: ControlMockData): ControlView {
     alreadyExhausted,
     closedDays,
     hasReliableProjection,
+    diasConGasto,
     gastoProyectadoMes,
     sobrantePresupuestadoMes,
     diasRestantes,

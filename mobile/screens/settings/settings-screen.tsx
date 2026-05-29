@@ -10,6 +10,7 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   SettingsGroup,
@@ -753,6 +754,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack
       contentContainerStyle={styles.screenContent}
       subtitle={
@@ -772,7 +774,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       <RiseViewGate skip={!isNavSettled}>
       <View style={styles.sectionStack}>
         {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-        <AmbientBlobs />
+        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
         {shouldShowErrorState ? (
           <ErrorState
@@ -799,7 +801,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 style={[
                   styles.heroCard,
                   {
-                    backgroundColor: theme.colors.creamCard,
+                    backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
                     borderColor: theme.colors.line,
                   },
                 ]}

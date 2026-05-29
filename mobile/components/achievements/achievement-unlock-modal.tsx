@@ -5,12 +5,15 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
+import { AuroraBloom } from '@/components/ui/aurora-bloom'
+import { DrawRing } from '@/components/ui/draw-ring'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { motionSprings } from '@/lib/motion'
 import type { AchievementViewItem, AchievementTier } from '@/features/achievements/use-achievements'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -20,11 +23,34 @@ interface AchievementUnlockModalProps {
   onDismiss: () => void
 }
 
-const TIER_RING: Record<AchievementTier, { from: string; to: string; ring: string }> = {
-  bronze: { from: '#F2B58A', to: '#E07A3F', ring: 'rgba(242,181,138,0.40)' },
-  silver: { from: '#D8DCE6', to: '#A0A8B8', ring: 'rgba(216,220,230,0.45)' },
-  gold: { from: '#F4D26B', to: '#C29D2A', ring: 'rgba(244,210,107,0.45)' },
-  legendary: { from: '#A6EF8F', to: '#329315', ring: 'rgba(166,239,143,0.55)' },
+// Per-tier celebration tones. `to` drives the drawn ring stroke + the
+// tier pill text; `ring` drives the aurora bloom + pill background.
+//
+// Theme-aware on purpose: in light mode the metallic endpoints read on
+// the cream card. In DARK the celebration card is the forest creamCard
+// (#305A47), where the light dark-endpoints muddy out — legendary's
+// #329315 nearly vanished into the card. Following the color-palette
+// rule "use the brighter shade in dark", dark uses the LUMINOUS end of
+// each tier so the ring + pill pop as distinct, premium metallics
+// against the near-black/forest celebration surface.
+type TierTone = { to: string; ring: string }
+
+const TIER_RING_LIGHT: Record<AchievementTier, TierTone> = {
+  bronze: { to: '#E07A3F', ring: 'rgba(242,181,138,0.40)' },
+  silver: { to: '#A0A8B8', ring: 'rgba(216,220,230,0.45)' },
+  gold: { to: '#C29D2A', ring: 'rgba(244,210,107,0.45)' },
+  legendary: { to: '#329315', ring: 'rgba(166,239,143,0.55)' },
+}
+
+const TIER_RING_DARK: Record<AchievementTier, TierTone> = {
+  bronze: { to: '#F0B486', ring: 'rgba(240,180,134,0.32)' },
+  silver: { to: '#CBD2DE', ring: 'rgba(203,210,222,0.32)' },
+  gold: { to: '#F2D173', ring: 'rgba(242,209,115,0.34)' },
+  legendary: { to: '#B6F0A0', ring: 'rgba(166,239,143,0.42)' },
+}
+
+function resolveTierTone(tier: AchievementTier, isDark: boolean): TierTone {
+  return (isDark ? TIER_RING_DARK : TIER_RING_LIGHT)[tier]
 }
 
 /**
@@ -54,7 +80,10 @@ export function AchievementUnlockModal({
   useEffect(() => {
     if (!item) return
     void triggerHaptic('success')
-    // Sequence: scrim+card enter, icon bounce, then auto-dismiss timer.
+    // Sequence: scrim+card enter, then the icon spring-pops in. The
+    // tier ring draws itself around the bubble (DrawRing) and the
+    // AuroraBloom breathes behind — both self-driven on their own
+    // mounts, so this effect only owns the card entrance + icon pop.
     if (reduced) {
       t.value = 1
       iconScale.value = 1
@@ -66,13 +95,10 @@ export function AchievementUnlockModal({
       duration: 380,
       easing: Easing.bezier(0.16, 1, 0.30, 1),
     })
-    iconScale.value = withDelay(
-      120,
-      withSequence(
-        withTiming(1.12, { duration: 280, easing: Easing.bezier(0.34, 1.56, 0.64, 1) }),
-        withTiming(1, { duration: 200, easing: Easing.bezier(0.45, 0, 0.55, 1) }),
-      ),
-    )
+    // Spring pop — feels alive, interruptible (Emil: springs for elements
+    // that should feel "alive"). celebrate token: mass 0.8, damping 14,
+    // stiffness 260 — gives a snappy but slightly overshooting pop.
+    iconScale.value = withDelay(120, withSpring(1, motionSprings.celebrate))
   }, [item, reduced, t, iconScale])
 
   // Auto-dismiss timer (4 seconds). User can also tap to dismiss
@@ -97,7 +123,7 @@ export function AchievementUnlockModal({
 
   if (!item) return null
 
-  const tier = TIER_RING[item.tier]
+  const tier = resolveTierTone(item.tier, theme.isDark)
 
   return (
     <Animated.View
@@ -127,15 +153,23 @@ export function AchievementUnlockModal({
         </Text>
 
         <View style={styles.iconWrap}>
-          <View
-            style={[
-              styles.iconRing,
-              {
-                backgroundColor: tier.ring,
-                shadowColor: tier.to,
-              },
-            ]}
-          />
+          {/* Aurora bloom — soft, breathing radial glow in the tier
+              tone behind the icon. Supersedes the old single-shot halo
+              pulse with a perpetual, low-amplitude breath. */}
+          <AuroraBloom color={tier.ring} size={200} intensity={0.55} />
+          {/* Tier ring that DRAWS itself as the celebration lands —
+              full circle, starting just after the card enters.
+              Absolutely centered so it wraps the bubble without
+              displacing it in the layout flow. */}
+          <View style={styles.iconRing} pointerEvents="none">
+            <DrawRing
+              size={120}
+              strokeWidth={4}
+              color={tier.to}
+              progress={1}
+              delay={120}
+            />
+          </View>
           <Animated.View style={[styles.iconBubble, iconAnimatedStyle]}>
             <Text style={styles.iconGlyph}>{item.icon}</Text>
           </Animated.View>
@@ -215,10 +249,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 120,
     height: 120,
-    borderRadius: 60,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconBubble: {
     width: 96,

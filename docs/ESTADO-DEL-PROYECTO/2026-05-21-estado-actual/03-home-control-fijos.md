@@ -126,6 +126,22 @@ FamilyStrip.onPaydayPress → HomeDashboard.handleChipConfirmTracked
 | `ControlV2PatronCard` | `patron` | Patrón por día de semana (dow), peor/mejor día, avg global |
 | `ControlV2CoberturaCard` | `cobertura` | Distribución fijos/ahorro/libre sobre ingreso total, ratio %, cupo diario |
 
+### Empty-state por card (variant per-card — feat/settings-dark-mode)
+
+El componente genérico `control-v2-placeholder.tsx` fue eliminado. Cada card renderiza su propio empty-state: una silueta inerte de la misma chrome (surface, border `line`, eyebrow + BreatheDot + título UPPERCASE) con valores en "—" y un callout que indica cuándo se activa. Opacity 0.86, pill "Pronto" en textMuted, progreso real hacia el umbral ("Gasto en N de M días").
+
+La variable clave del adaptador (`control-v2-mock.ts`) es `diasConGasto`: días distintos del ciclo con gasto discrecional (días cerrados con gasto > 0, más hoy si `gastoHoy > 0`). `closedDays` cuenta días calendario cerrados del ciclo (longitud de `d.dias`). `hasReliableProjection = closedDays >= 7 && diasConGasto >= 7`.
+
+| Card | Eyebrow | Umbral de activación | Copy del callout empty |
+|---|---|---|---|
+| `ControlV2AlcanzaCard` | HASTA CUÁNDO TE ALCANZA | `hasReliableProjection` (closedDays ≥ 7 **y** diasConGasto ≥ 7) | "Registra gastos en al menos 7 días distintos para proyectar hasta qué día del ciclo te alcanza el dinero libre." + "Gasto en N de 7 días." |
+| `ControlV2SemanaCard` | CÓMO VA · ÚLTIMOS 7 DÍAS | `diaActual >= 7` y `diasConGasto >= 7` | "Registra gastos en al menos 7 días distintos para ver tu ritmo de la semana y compararlo con la anterior." + "Gasto en N de 7 días." |
+| `ControlV2PatronCard` | TU PATRÓN SEMANAL | `diaActual >= 14` y `diasConGasto >= 14` | "Registra gastos en al menos 14 días distintos para detectar en qué día de la semana gastas más." + "Gasto en N de 14 días." |
+| `ControlV2AlcanciaCard` | TU ALCANCÍA · ESTE CICLO | `diaActual >= 3` y `diasConGasto >= 3` | "Registra gastos en al menos 3 días distintos para sugerirte cuánto mover a tu meta según tu ritmo." + "Gasto en N de 3 días." |
+| `ControlV2VsMesCard` | VS MES PASADO | `hasPreviousMonth = true` (al menos un ciclo cerrado con gasto real) | "Aún no hay un mes para comparar. Cuando confirmes tu próximo cobro, vamos a cerrar el ciclo actual automáticamente..." |
+
+`ControlV2VsMesCard` no usa `diasConGasto` sino `data.hasPreviousMonth` del adaptador (`true` solo cuando existe al menos un `monthly_summaries` previo con gasto real). El `noConfig` branch de `ControlV2Screen` (sin `monthly_income`) no muestra las cards: renderiza `ControlV2EmptyState` + header con score "Pronto" sin pasar por los empty-states por card.
+
 **Nota**: `ControlV2AsesorCard` fue eliminada del layout. Los signals del Asesor se acceden desde el ícono de acceso rápido en Home (botón Asistente). Ver REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md.
 
 ### Scroll anchoring y deep links
@@ -165,6 +181,20 @@ Sheet modal (no inline) para configurar "mi meta diaria" = buffer de gasto. Lee 
 | Próximos | `FijosProximosCard` | Fusión de SmartAlerts + UpcomingStrip: top 3 próximos a vencer + sub-section "AVISOS" (hikes + signals del advisor) |
 | Tabs | `FijosTabs` | Filtros: Todos / Pendientes / Pagados / Zombis. Usa `GastosFilterPill` internamente (unifica lenguaje visual con Gastos) |
 | Lista | `FijoCategoryGroups` | Lista de `FijoRow` agrupados por categoría |
+
+### FijosEmptyState (feat/settings-dark-mode)
+
+Cuando `controller.allItems.length === 0` (cuenta sin fijos), `FijosV2Screen` renderiza `FijosEmptyState` en lugar de las cards de datos. El componente (`components/fijos/fijos-empty-state.tsx`) no usa datos falsos: muestra los componentes reales en su modo vacío/placeholder.
+
+Estructura del empty state:
+
+1. **Intro card**: card con icono `event-repeat`, título "Todavía no tienes gastos fijos", texto explicativo sobre qué son los fijos, y CTA primario `AppButton` "Agregar mi primer fijo".
+2. **Eyebrow "ASÍ SE VA A VER"** + tres preview blocks, cada uno con un `PreviewBlock` (icono + título + descripción en textMuted) y debajo el componente real en modo empty:
+   - "Resumen del ciclo" → `<FijosHeroCard empty />` (prop `empty`)
+   - "Próximos a pagar" → `<FijosProximosCard empty />` (prop `empty`)
+   - "Por categoría" → tres `<FijoRow placeholder />` (prop `placeholder`)
+
+Los preview blocks son inerts (opacity recesada, sin interacción). El screen envuelve cada bloque en un `TourTarget` del tour de Fijos para que el tour guiado funcione incluso en cuentas vacías. El botón de alta en `FijosHeader` conserva su ref-based tour target independiente.
 
 ### FijosHeroCard — detalles clave
 
@@ -309,7 +339,7 @@ Formulario modal con:
 | `control-v2-hero.tsx` | Production wrapper: adapta data+view → ControlHeroState → renderiza `ControlHeroTitular` |
 | ~~`control-v2-hoy-card.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — rollback-kept; owner confirmó descarte |
 | `control-v2-patron-card.tsx` | Card de patrón por día de semana |
-| `control-v2-placeholder.tsx` | Placeholder para secciones sin datos suficientes |
+| ~~`control-v2-placeholder.tsx`~~ | 🗑️ **Eliminado feat/settings-dark-mode** — reemplazado por empty-states per-card en cada componente |
 | `control-v2-semana-card.tsx` | Card de la semana (últimos 7 días) |
 | `control-v2-tokens.ts` | Design tokens del control |
 | `control-v2-vsmes-card.tsx` | Card de comparación vs mes anterior |
@@ -346,11 +376,12 @@ Formulario modal con:
 | Archivo | Estado | Propósito |
 |---|---|---|
 | `fijo-category-groups.tsx` | ✅ LIVE | Agrupa `FijoRow` por categoría. Tab-aware (filtra según `FijosTab`). |
-| `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + SwipeableRow. |
+| `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + SwipeableRow. Soporta prop `placeholder` para el empty state. |
 | `fijo-trend-spark.tsx` | ✅ LIVE | Sparkline de tendencia de precio (usado dentro de `FijoRow`). |
+| `fijos-empty-state.tsx` | ✅ LIVE (feat/settings-dark-mode) | Empty/onboarding state para cuenta sin fijos: intro card + previews de los 3 componentes reales en modo vacío. |
 | `fijos-header.tsx` | ✅ LIVE | Header de la pantalla con botón de alta. |
-| `fijos-hero-card.tsx` | ✅ LIVE | Hero tipo boarding pass. |
-| `fijos-proximos-card.tsx` | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (creado en Etapa 11). |
+| `fijos-hero-card.tsx` | ✅ LIVE | Hero tipo boarding pass. Soporta prop `empty` para el empty state. |
+| `fijos-proximos-card.tsx` | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (creado en Etapa 11). Soporta prop `empty` para el empty state. |
 | `fijos-tabs.tsx` | ✅ LIVE | Tabs de filtro (Todos/Pendientes/Pagados/Zombis). |
 
 ### ~~5.5 components/fijos-hero-preview/ (41 archivos)~~ — 🗑️ ELIMINADO 2026-05-22
@@ -509,14 +540,15 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **HomeDashboard** | ✅ LIVE | Todas las secciones activas. `ControlV2AsesorCard` removida de Home (vive en Asistente). |
 | **HomeHeroCard** | ✅ LIVE | Redesigned. ShineOverlay + aurora + particles + CountUpText + savingsChip + trend. |
 | **MonthSummaryCard** | ✅ LIVE | Top categoría chip + próximo fijo chip + fallbacks. |
-| **MetaCard / MetaEmptyCard** | ✅ LIVE | MetaCard con QuickAddSavings. |
+| **MetaCard / MetaEmptyCard** | ✅ LIVE | MetaCard con QuickAddSavings. MetaEmptyCard ("Crea tu primera meta"): dark mode usa `surfaceMuted` + `border` (rgba blanco) a 1px, alineado con ACTIVIDAD y MonthSummaryCard. |
 | **HomeActivitySection** | ✅ LIVE | ActivityRowV2 con swipe-delete. |
 | **SalaryConfirmationSheet / OnboardingAvailableSheet** | ✅ LIVE | Lazy-mounted. Dispara Wrapped post-save. |
-| **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. |
+| **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. Empty-states per-card activos (feat/settings-dark-mode). |
 | **ControlV2Hero (variante A)** | ✅ LIVE | `ControlHeroTitular` en producción via `ControlV2Hero` adapter. |
 | ~~**ControlV2HoyCard**~~ | 🗑️ Eliminado 2026-05-22 | En código para rollback rápido → owner descartó. |
 | ~~**ControlV2AsesorCard**~~ | 🗑️ Eliminado 2026-05-22 | Removida del layout; señales viven en Home→Asistente. |
-| **FijosV2Screen** | ✅ LIVE | La screen ruteada en producción. |
+| **FijosV2Screen** | ✅ LIVE | La screen ruteada en producción. Incluye `FijosEmptyState` cuando no hay fijos (feat/settings-dark-mode). |
+| **FijosEmptyState** | ✅ LIVE (feat/settings-dark-mode) | Intro card + previews de `FijosHeroCard`, `FijosProximosCard` y `FijoRow` en modo empty. Sin datos falsos. |
 | ~~**FijosV3Screen**~~ | 🗑️ Eliminado 2026-05-22 | Revertida. Cluster completo eliminado (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
 | **FijosHeroCard** | ✅ LIVE | Boarding pass + urgency ring + PaymentSegments + CycleRouteLine. |
 | **FijosProximosCard** | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (Etapa 11). |
@@ -539,5 +571,6 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | ~~Dead code de `FijosV3Screen` + `adaptControllerToHeroState`~~ | ✅ RESUELTO | 🗑️ Eliminados 2026-05-22. |
 | ~~`fixed-expense-form.tsx` en `components/fixed-expenses/`~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22 (Bucket 2 de [09](09-candidatos-a-eliminar.md)). |
 | ~~`FijosSmartAlerts` y `FijosUpcomingStrip`~~ | ✅ RESUELTO | 🗑️ Eliminados 2026-05-22. |
+| ~~`control-v2-placeholder.tsx`~~ | ✅ RESUELTO | 🗑️ Eliminado en feat/settings-dark-mode — reemplazado por empty-states per-card en cada componente de Control. |
 | Muchos archivos en `components/home/` sin verificar uso live | 🟡 BAJA | ~20 archivos con nombre de "control-*" que pueden ser de iteraciones previas del Control card in-Home. Pendiente de verificar. |
 | ~~`control-v2-asesor-card.tsx` en el código pero removida del layout~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22. |

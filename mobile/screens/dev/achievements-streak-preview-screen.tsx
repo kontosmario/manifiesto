@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
-import { ErrorState } from '@/components/ui/error-state'
 import { StreakFlameIcon } from '@/components/gastos/streak-flame-icon'
 import { triggerAchievementPreview } from '@/lib/achievement-preview-emitter'
 import { triggerHaptic } from '@/lib/haptics'
@@ -52,16 +51,16 @@ export function AchievementsStreakPreviewScreen() {
     [],
   )
 
-  if (error && !data) {
-    return (
-      <Screen title="Preview · Logros" canGoBack>
-        <ErrorState
-          title="No pudimos cargar el catálogo"
-          description="Probá de nuevo en un momento."
-        />
-      </Screen>
-    )
-  }
+  // A dev preview tool must not depend on the DB catalog. If
+  // `achievements_catalog` is empty in the connected base (e.g. the
+  // achievements migration isn't applied there) or the read errored,
+  // fall back to a built-in sample — one per tier — so the unlock modal
+  // (and its dark/light tones) can always be previewed in every tier.
+  const realItems = data?.items ?? []
+  const usingFallbackAchievements = realItems.length === 0
+  const achievementPreviews = usingFallbackAchievements
+    ? FALLBACK_ACHIEVEMENT_PREVIEWS
+    : realItems
 
   return (
     <Screen
@@ -79,9 +78,17 @@ export function AchievementsStreakPreviewScreen() {
             Tocá cualquier logro para previsualizar el modal de celebración. No
             toca la base de datos — usa el emitter local que el Bridge subscribe.
           </Text>
-          {isLoading || !data ? null : (
+          {isLoading ? null : (
             <View style={styles.previewGrid}>
-              {data.items.map((item) => (
+              {usingFallbackAchievements ? (
+                <Text style={[styles.fallbackNote, { color: theme.colors.warning }]}>
+                  {error
+                    ? 'No se pudo leer el catálogo en esta base. '
+                    : 'El catálogo de logros está vacío en esta base. '}
+                  Mostrando muestras por tier para previsualizar el modal y sus tonos.
+                </Text>
+              ) : null}
+              {achievementPreviews.map((item) => (
                 <PreviewAchievementRow key={item.code} item={item} />
               ))}
             </View>
@@ -203,6 +210,58 @@ function PreviewAchievementRow({ item }: { item: AchievementViewItem }) {
     </Pressable>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Fallback samples — one per tier, used when the DB catalog is empty
+// so the dev tool can always preview the unlock modal in every tier.
+// ─────────────────────────────────────────────────────────────────
+
+const FALLBACK_ACHIEVEMENT_PREVIEWS: AchievementViewItem[] = [
+  {
+    code: 'sample_bronze',
+    title: 'Primer paso',
+    body: 'Registraste tu primer gasto del hogar.',
+    icon: '🌱',
+    tier: 'bronze',
+    sort_order: 1,
+    earned: false,
+    earned_at: null,
+    context: null,
+  },
+  {
+    code: 'sample_silver',
+    title: 'Constancia',
+    body: 'Una semana entera sin dejar de registrar.',
+    icon: '⭐',
+    tier: 'silver',
+    sort_order: 2,
+    earned: false,
+    earned_at: null,
+    context: null,
+  },
+  {
+    code: 'sample_gold',
+    title: 'Disciplina',
+    body: 'Un mes completo de racha activa.',
+    icon: '🏆',
+    tier: 'gold',
+    sort_order: 3,
+    earned: false,
+    earned_at: null,
+    context: null,
+  },
+  {
+    code: 'sample_legendary',
+    title: 'Leyenda',
+    body: 'Cien días imparable. Sos parte del manifiesto.',
+    icon: '👑',
+    tier: 'legendary',
+    sort_order: 4,
+    earned: false,
+    earned_at: null,
+    context: null,
+  },
+]
 
 // ─────────────────────────────────────────────────────────────────
 // Streak preview matrix
@@ -341,6 +400,12 @@ const styles = StyleSheet.create({
 
   // Achievement preview rows
   previewGrid: { gap: 8 },
+  fallbackNote: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -14,6 +14,15 @@ interface GastosMonthCalendarProps {
   cycleStart: Date
   /** Total number of days in the cycle window. */
   cycleDays: number
+  /**
+   * Empty / preview mode (first-run onboarding). The calendar is
+   * legitimately empty here — a real cycle grid with zero spend marks
+   * is honest, not fabricated. This flag just makes the grid inert
+   * (no tap-to-filter) so it reads as a still preview, and is rendered
+   * at reduced opacity by the caller. Backwards-compatible default
+   * `false`.
+   */
+  empty?: boolean
   firstWeekdayOffset?: number // 0 = Monday first column
   selectedDay: number | null
   selectedDayTotal?: number
@@ -86,12 +95,29 @@ export function GastosMonthCalendar({
   canGoPrev = true,
   canGoNext = true,
   onRegisterForgottenExpense,
+  empty = false,
 }: GastosMonthCalendarProps) {
   // Crossfade between grid and focus via Reanimated layout animations
   // (FadeIn on mount, FadeOut on unmount). Keyed by mode so switching
   // between them triggers both a fade-out of the old view AND a
   // fade-in of the new one — the transition reads as a single soft
   // dissolve instead of a hard swap.
+  // Empty preview always renders the grid (never focus mode) and is
+  // inert — no tap-to-filter. The grid itself is honestly empty (no
+  // spend marks), so nothing is fabricated.
+  if (empty) {
+    return (
+      <GridMode
+        dayMoods={{}}
+        cycleStart={cycleStart}
+        cycleDays={cycleDays}
+        firstWeekdayOffset={firstWeekdayOffset}
+        onSelectDay={onSelectDay}
+        inert
+      />
+    )
+  }
+
   return (
     <View>
       {selectedDay != null ? (
@@ -147,12 +173,15 @@ function GridMode({
   cycleDays,
   firstWeekdayOffset,
   onSelectDay,
+  inert = false,
 }: {
   dayMoods: Record<number, GastosDayMood>
   cycleStart: Date
   cycleDays: number
   firstWeekdayOffset: number
   onSelectDay: (day: number) => void
+  /** Preview mode — cells render but aren't tappable. */
+  inert?: boolean
 }) {
   const { theme } = useAppTheme()
   // Build the week rows: lead with `firstWeekdayOffset` blanks, then the
@@ -208,7 +237,9 @@ function GridMode({
           </View>
         </View>
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>
-          Toca un día para filtrar sus gastos
+          {inert
+            ? 'Cada día se va a colorear según tu gasto'
+            : 'Toca un día para filtrar sus gastos'}
         </Text>
         <View style={styles.weekdaysRow}>
           {WEEKDAYS.map((d, i) => (
@@ -238,6 +269,7 @@ function GridMode({
                     mood={dayMoods[dayNum] ?? (isPast ? 'empty' : undefined)}
                     isToday={isToday}
                     isPast={isPast}
+                    inert={inert}
                     onPress={() => onSelectDay(dayNum)}
                   />
                 )
@@ -272,15 +304,20 @@ function DayCell({
   isToday,
   isPast,
   onPress,
+  inert = false,
 }: {
   day: number
   mood: GastosDayMood | undefined
   isToday: boolean
   isPast: boolean
   onPress: () => void
+  /** Preview mode — render the cell chrome but disable interaction. */
+  inert?: boolean
 }) {
   const { theme } = useAppTheme()
   const moodStyle = getMoodStyle(mood, theme.isDark)
+  // In preview mode past cells are not tappable.
+  const tappable = isPast && !inert
   const hasMoodFill = !!mood && mood !== 'empty'
   // Press scale Emil-grade. Solo aplica a cells past (isPast). Cells
   // future están disabled — el hook se setea igual pero el handler
@@ -323,10 +360,10 @@ function DayCell({
 
   return (
     <Pressable
-      onPress={isPast ? onPress : undefined}
-      onPressIn={isPast ? press.onPressIn : undefined}
-      onPressOut={isPast ? press.onPressOut : undefined}
-      disabled={!isPast}
+      onPress={tappable ? onPress : undefined}
+      onPressIn={tappable ? press.onPressIn : undefined}
+      onPressOut={tappable ? press.onPressOut : undefined}
+      disabled={!tappable}
       accessibilityRole="button"
       accessibilityLabel={`Filtrar día ${day}`}
       // Layout-affecting styles van EN el Pressable porque es el child

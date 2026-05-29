@@ -1,24 +1,21 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { NotificationFeedList } from '@/components/home/notification-feed-list'
-import { NotificationsFilterPills, type NotificationFilter } from '@/components/home/notifications-filter-pills'
-import { NotificationsHero } from '@/components/home/notifications-hero'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import {
+  useDeleteAllNotifications,
+  useDeleteNotification,
   useFamilyNotifications,
   useFamilyNotificationsRealtime,
-  useMarkAllNotificationsRead,
-  useMarkNotificationRead,
   type FamilyNotification,
 } from '@/features/notifications/use-notifications'
-import { groupForKind, type NotificationGroup } from '@/utils/notifications'
 import { triggerHaptic } from '@/lib/haptics'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -34,50 +31,26 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
   const notificationsQuery = useFamilyNotifications(familyId, userId, 80)
   const notificationsData = notificationsQuery.data
   const notifications = useMemo(() => notificationsData ?? [], [notificationsData])
-  const markOne = useMarkNotificationRead(familyId)
-  const markAll = useMarkAllNotificationsRead(familyId, userId)
+  const deleteOne = useDeleteNotification(familyId)
+  const deleteAll = useDeleteAllNotifications(familyId, userId)
 
-  const [filter, setFilter] = useState<NotificationFilter>('all')
   useFamilyNotificationsRealtime(familyId)
 
-  const counts = useMemo<Partial<Record<NotificationFilter, number>>>(() => {
-    const acc: Partial<Record<NotificationFilter, number>> = { all: notifications.length }
-    const byGroup: Record<NotificationGroup, number> = {
-      gastos: 0,
-      fijos: 0,
-      racha: 0,
-      meta: 0,
-      otros: 0,
-    }
-    for (const n of notifications) {
-      const g = groupForKind(n.kind)
-      if (g && g in byGroup) byGroup[g] += 1
-    }
-    acc.gastos = byGroup.gastos
-    acc.fijos = byGroup.fijos
-    acc.racha = byGroup.racha
-    acc.meta = byGroup.meta
-    return acc
-  }, [notifications])
-
-  const unreadCount = useMemo(
-    () => notifications.reduce((acc, n) => (n.read_at ? acc : acc + 1), 0),
-    [notifications],
-  )
-  const latestAt = notifications[0]?.created_at ?? null
+  const count = notifications.length
 
   const handleMarkRead = useCallback(
     (notification: FamilyNotification) => {
-      markOne.mutate({ id: notification.id, read: !notification.read_at })
+      void triggerHaptic('selection')
+      deleteOne.mutate({ id: notification.id })
     },
-    [markOne],
+    [deleteOne],
   )
 
   const handleMarkAll = useCallback(() => {
-    if (unreadCount === 0) return
+    if (count === 0) return
     void triggerHaptic('success')
-    markAll.mutate()
-  }, [markAll, unreadCount])
+    deleteAll.mutate()
+  }, [deleteAll, count])
 
   const handleBack = () => {
     void triggerHaptic('selection')
@@ -85,88 +58,86 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
     else router.replace('/(app)/(tabs)/home')
   }
 
-  const sectionLayout = LinearTransition.duration(260)
-
-  const listHeader = (
-    <View style={styles.headerBlock}>
-      <Animated.View layout={sectionLayout}>
-        <NotificationsHero
-          unreadCount={unreadCount}
-          totalCount={notifications.length}
-          latestAt={latestAt}
-          onMarkAllRead={unreadCount > 0 ? handleMarkAll : undefined}
-        />
-      </Animated.View>
-
-      <Animated.View layout={sectionLayout}>
-        <RiseView delay={140}>
-          <NotificationsFilterPills
-            filter={filter}
-            counts={counts}
-            onChange={setFilter}
-          />
-        </RiseView>
-      </Animated.View>
-    </View>
-  )
+  const backPillBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
-    <Screen contentContainerStyle={styles.screenContent} scrollable={false}>
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      contentContainerStyle={styles.screenContent}
+      scrollable={false}
+    >
       <RiseViewGate skip={!isNavSettled}>
-      <View style={styles.stack}>
-        <AmbientBlobs />
+        <View style={styles.stack}>
+          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
-        <Animated.View layout={sectionLayout}>
           <RiseView>
-            <View style={styles.topRow}>
-              <Pressable
-                onPress={handleBack}
-                accessibilityRole="button"
-                accessibilityLabel="Volver"
-                hitSlop={10}
-                style={[
-                  styles.backPill,
-                  { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-                ]}
-              >
-                <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
-              </Pressable>
-              <Text style={[styles.topTitle, { color: theme.colors.text }]}>
-                Notificaciones
-              </Text>
+            <View style={styles.header}>
+              <View style={styles.topRow}>
+                <Pressable
+                  onPress={handleBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="Volver"
+                  hitSlop={10}
+                  style={[
+                    styles.backPill,
+                    { backgroundColor: backPillBg, borderColor: theme.colors.line },
+                  ]}
+                >
+                  <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
+                </Pressable>
+                <Text style={[styles.topTitle, { color: theme.colors.text }]}>
+                  Notificaciones
+                </Text>
+              </View>
+
+              {/* Sub-línea solo cuando HAY pendientes. Con la lista vacía
+                  el EmptyState ("Todo al día") es el único dueño del
+                  mensaje — antes se duplicaba acá y en el empty state. */}
+              {count > 0 ? (
+                <View style={styles.subRow}>
+                  <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>
+                    {`${count} sin leer`}
+                  </Text>
+                  <Pressable
+                    onPress={handleMarkAll}
+                    accessibilityRole="button"
+                    accessibilityLabel="Marcar todas como leídas"
+                    hitSlop={8}
+                    style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <Text style={[styles.markAll, { color: theme.colors.primary }]}>
+                      Marcar todas
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           </RiseView>
-        </Animated.View>
 
-        <View style={styles.listWrap}>
-          <NotificationFeedList
-            familyId={familyId}
-            filter={filter}
-            errorMessage={
-              notificationsQuery.isError
-                ? getErrorMessage(
-                    notificationsQuery.error,
-                    'No pudimos cargar la actividad reciente del hogar.',
-                  )
-                : undefined
-            }
-            isLoading={notificationsQuery.isLoading}
-            notifications={notifications}
-            onRefresh={() => {
-              void notificationsQuery.refetch()
-            }}
-            onRetry={() => {
-              void notificationsQuery.refetch()
-            }}
-            refreshing={notificationsQuery.isRefetching}
-            onMarkRead={handleMarkRead}
-            pendingNotificationId={
-              markOne.isPending ? (markOne.variables?.id ?? null) : null
-            }
-            ListHeaderComponent={listHeader}
-          />
+          <View style={styles.listWrap}>
+            <NotificationFeedList
+              familyId={familyId}
+              errorMessage={
+                notificationsQuery.isError
+                  ? getErrorMessage(
+                      notificationsQuery.error,
+                      'No pudimos cargar las notificaciones.',
+                    )
+                  : undefined
+              }
+              isLoading={notificationsQuery.isLoading}
+              notifications={notifications}
+              onRefresh={() => {
+                void notificationsQuery.refetch()
+              }}
+              onRetry={() => {
+                void notificationsQuery.refetch()
+              }}
+              refreshing={notificationsQuery.isRefetching}
+              onMarkRead={handleMarkRead}
+            />
+          </View>
         </View>
-      </View>
       </RiseViewGate>
     </Screen>
   )
@@ -181,17 +152,34 @@ const styles = StyleSheet.create({
     gap: 12,
     position: 'relative',
   },
+  header: {
+    gap: 8,
+  },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginTop: 4,
-    marginBottom: 4,
   },
   topTitle: {
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.6,
+  },
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 52,
+    gap: 12,
+  },
+  subLine: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  markAll: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   backPill: {
     width: 40,
@@ -204,9 +192,5 @@ const styles = StyleSheet.create({
   listWrap: {
     flex: 1,
     minHeight: 0,
-  },
-  headerBlock: {
-    gap: 14,
-    paddingBottom: 4,
   },
 })

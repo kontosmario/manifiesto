@@ -7,12 +7,13 @@ import {
   StyleSheet,
   Text,
   View,
+  type ScrollView,
   type SectionListData,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -22,6 +23,7 @@ import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
+import { GastosEmptyState } from '@/components/gastos/gastos-empty-state'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
@@ -294,8 +296,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
 
   const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
-    trackTap('add_expense_cta', 'movements_empty', '/(app)/(tabs)/add')
-    router.push('/(app)/(tabs)/add')
+    // Abre el form de gasto como modal/sheet, igual que el botón '+' del
+    // tab bar (AddExpenseTabButton también hace push a /(app)/add-expense).
+    // Antes navegaba al tab '/(app)/(tabs)/add', que no corresponde.
+    trackTap('add_expense_cta', 'movements_empty', '/(app)/add-expense')
+    router.push('/(app)/add-expense')
   }, [router, trackTap])
   const handlePressStreak = useCallback(() => {
     void triggerHaptic('selection')
@@ -742,6 +747,90 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     )
   }
 
+  // ── Empty account (first-run onboarding) ─────────────────────────
+  // The content only mounts after the snapshot resolved (the outer
+  // `GastosV2Screen` returns null until `snapshot.data`), so an empty
+  // `expenses` array reliably means "brand-new account", not a loading
+  // flash. Render the onboarding empty state (intro card + ghost
+  // previews + CTA) instead of the data cards with zeros. The other two
+  // empty variants (`filtered` / `cycle`) stay inside the SectionList.
+  const isEmptyAccount = !controller.error && controller.expenses.length === 0
+  if (isEmptyAccount) {
+    return (
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        // Default scrollable Screen (mismo patrón que Fijos). NO usar
+        // `styles.screenContent` acá — ese estilo es del SectionList y
+        // fuerza `paddingBottom: 0`, que dejaba el empty state sin poder
+        // scrollearse hasta el final. Este usa el bottom-padding default
+        // del Screen (clearance del tab bar).
+        contentContainerStyle={styles.emptyStateContent}
+        // Blobs detrás del scroll (no como hijo en flujo) para que cubran
+        // el viewport y no metan un gap fantasma arriba del header.
+        backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
+        // ── Tour: registrar el ScrollView de ESTE Screen como la
+        // superficie de scroll del tour. En el branch empty el SectionList
+        // (la superficie registrada por defecto vía `tourScrollRef`/
+        // `tourMeasureRef`) NO se monta, así que `measureSv` daba null y el
+        // tour-host abortaba (cutout sin posicionar = "el tour no anda").
+        // Apuntando `tourScrollRef` al ScrollView del empty: `measureSv`
+        // mide el viewport (resolveMeasureNode cae al scrollRef porque
+        // `tourMeasureRef` queda sin attach acá) y el auto-scroll funciona
+        // para los pasos de abajo (calendar/list) cuando el contenido
+        // supera el viewport. Mismo enfoque que Fijos.
+        scrollRef={tourScrollRef as unknown as RefObject<ScrollView | null>}
+        onScroll={onTourScroll}
+        onContentSizeChange={onTourContentSizeChange}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.emptyStateStack}>
+          {/* Keep the streak flame + its tour target so the streak tour
+              step and the flame keep working on the empty screen. */}
+          <GastosHeader
+            subtitle={`Ciclo ${controller.cycleLabel}`}
+            rightSlot={
+              <TourTarget
+                tour={GASTOS_TOUR}
+                order={GASTOS_TOUR_STEPS.streak.order}
+                text={GASTOS_TOUR_STEPS.streak.text}
+                highlight={{ borderRadius: 20, padding: 6, pulse: true }}
+              >
+                <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
+              </TourTarget>
+            }
+          />
+          {/* Maps the hero/calendar/list ghost previews onto the matching
+              GASTOS tour steps. The `filters` step (order 3) has no target
+              on the empty screen — the tour engine builds its step list
+              from REGISTERED targets only (tour-provider `stepsRef`), so a
+              never-registered step is simply omitted from the walk; no
+              stall. Same approach Fijos uses for its empty state. */}
+          <GastosEmptyState
+            onAddFirst={handlePressAdd}
+            renderSection={(slot, children) => (
+              <TourTarget
+                tour={GASTOS_TOUR}
+                order={GASTOS_TOUR_STEPS[slot].order}
+                text={GASTOS_TOUR_STEPS[slot].text}
+                highlight={{ borderRadius: 22, padding: 6 }}
+              >
+                {children}
+              </TourTarget>
+            )}
+          />
+        </View>
+        <StreakSheet
+          familyId={familyId}
+          userId={userId}
+          visible={streakSheetVisible}
+          data={streakData}
+          onClose={() => setStreakSheetVisible(false)}
+          onPressAddExpense={handlePressAdd}
+        />
+      </Screen>
+    )
+  }
+
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -920,6 +1009,11 @@ const styles = StyleSheet.create({
   // SectionList. Lo movemos al `contentContainerStyle` del list así el
   // usuario puede scrollear hasta el borde del tab bar.
   screenContent: { paddingTop: 14, paddingBottom: 0 },
+  // Empty-state branch: scrollable Screen con bottom-padding default (no
+  // el override paddingBottom:0 del SectionList), + gap entre el header
+  // y el contenido del empty state para que no queden pegados.
+  emptyStateContent: { paddingTop: 14 },
+  emptyStateStack: { gap: 12 },
   activityListWrap: {
     // Holds the SectionList for the guided-tour highlight target.
     // flex:1 keeps the list filling the rest of the screen; without

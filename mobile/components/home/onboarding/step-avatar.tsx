@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import {
   AVATAR_LABELS,
@@ -15,26 +14,8 @@ interface StepAvatarProps {
   onSelect: (slug: AvatarSlug) => void
 }
 
-const GRID_SIZE = 8
-
-function pickGrid(selected: AvatarSlug, seed: number): AvatarSlug[] {
-  // Deterministic shuffle seeded on `seed` so tapping "Ver más" cycles.
-  const pool = AVATAR_SLUGS.filter((s) => s !== selected)
-  const result: AvatarSlug[] = []
-  let cursor = seed
-  for (let i = 0; i < Math.min(GRID_SIZE - 1, pool.length); i += 1) {
-    cursor = (cursor * 1103515245 + 12345) & 0x7fffffff
-    const idx = cursor % pool.length
-    result.push(pool[idx]!)
-    pool.splice(idx, 1)
-  }
-  return [selected, ...result]
-}
-
 export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
   const { theme } = useAppTheme()
-  const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 1_000_000))
-  const grid = useMemo(() => pickGrid(selected, seed), [selected, seed])
 
   return (
     <View style={styles.stack}>
@@ -69,23 +50,23 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
 
       <RiseView delay={140}>
         <View style={styles.gridHeader}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>OTRAS OPCIONES</Text>
-          <Pressable
-            onPress={() => setSeed((s) => s + 1)}
-            accessibilityRole="button"
-            accessibilityLabel="Ver más avatares"
-            hitSlop={8}
-            style={[
-              styles.seeMoreChip,
-              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            ]}
-          >
-            <Text style={[styles.seeMoreText, { color: theme.colors.text }]}>Ver más</Text>
-          </Pressable>
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+            TODOS LOS AVATARES
+          </Text>
+          <Text style={[styles.gridCount, { color: theme.colors.textMuted }]}>
+            {AVATAR_SLUGS.length} opciones
+          </Text>
         </View>
 
-        <View style={styles.grid}>
-          {grid.map((slug) => {
+        {/* Grid horizontal: 3 filas fijas que se desplazan a lo ancho.
+            Mantiene el alto del sheet acotado (el footer "Guardar" queda
+            siempre visible) y permite recorrer los 42 sin scroll vertical. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.gridContent}
+        >
+          {AVATAR_SLUGS.map((slug) => {
             const on = slug === selected
             return (
               <Pressable
@@ -104,14 +85,14 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
               >
                 <AvatarAnimal
                   slug={slug}
-                  size={52}
+                  size={44}
                   tint={on ? theme.colors.creamCard : theme.colors.text}
                   backgroundTint="transparent"
                 />
               </Pressable>
             )
           })}
-        </View>
+        </ScrollView>
       </RiseView>
     </View>
   )
@@ -138,22 +119,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  seeMoreChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  seeMoreText: { fontSize: 12, fontWeight: '700' },
-  grid: {
-    flexDirection: 'row',
+  gridCount: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  // Column-wrap inside a horizontal ScrollView: items flow top→bottom
+  // filling 3 rows, then wrap into the next column → content grows
+  // horizontally and the ScrollView pans across it. Height = 3 cells +
+  // 2 gaps so exactly 3 rows fit.
+  gridContent: {
+    flexDirection: 'column',
     flexWrap: 'wrap',
-    gap: 8,
+    alignContent: 'flex-start',
+    height: 64 * 3 + 10 * 2,
+    gap: 10,
+    paddingRight: 4,
   },
   gridCell: {
-    width: '22.5%',
-    aspectRatio: 1,
-    borderRadius: 14,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

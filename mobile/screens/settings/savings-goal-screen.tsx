@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { MetaCard } from '@/components/home/meta-card'
 import { SavingsAdvisorStrip } from '@/components/settings/savings-advisor-strip'
 import {
@@ -36,20 +37,31 @@ interface SavingsGoalScreenProps {
 
 export function SavingsGoalScreen({ familyId }: SavingsGoalScreenProps) {
   const router = useRouter()
+  const { theme } = useAppTheme()
   const goalQuery = useSavingsGoal(familyId)
   const existing = goalQuery.data ?? null
   const isLoading = goalQuery.isLoading
 
   if (isLoading) {
     return (
-      <Screen contentContainerStyle={styles.screenContent} title="Meta de ahorro" canGoBack>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        contentContainerStyle={styles.screenContent}
+        title="Meta de ahorro"
+        canGoBack
+      >
         <LoadingBlock label="Cargando meta..." />
       </Screen>
     )
   }
 
   return (
-    <Screen contentContainerStyle={styles.screenContent} title="Meta de ahorro" canGoBack>
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      contentContainerStyle={styles.screenContent}
+      title="Meta de ahorro"
+      canGoBack
+    >
       <SavingsGoalEditor
         familyId={familyId}
         existing={existing}
@@ -107,6 +119,15 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
   const goalNumber = Number(goalAmount)
   const currentNumber = Number(currentAmount)
   const monthsNumber = targetMonths.trim() === '' ? null : Number(targetMonths)
+
+  // Derived insight — plain JS, never in a worklet
+  const goalDefined = Number.isFinite(goalNumber) && goalNumber > 0
+  const remaining = goalDefined ? Math.max(0, goalNumber - currentNumber) : 0
+  const pct = goalDefined ? Math.min(100, Math.round((currentNumber / goalNumber) * 100)) : 0
+  const monthly =
+    goalDefined && monthsNumber != null && monthsNumber > 0 && remaining > 0
+      ? Math.ceil(remaining / monthsNumber)
+      : null
 
   const canSubmit = useMemo(
     () =>
@@ -170,11 +191,80 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
 
   return (
     <View style={styles.stack}>
-      <AmbientBlobs />
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
       {/* HERO — live preview */}
       <RiseView>
         <MetaCard goal={previewGoal} />
+      </RiseView>
+
+      {/* INSIGHT — derived plan de ahorro */}
+      <RiseView delay={40}>
+        <View
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+              borderColor: theme.colors.line,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          {!goalDefined ? (
+            <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+              Ingresá tu objetivo para ver tu plan de ahorro.
+            </Text>
+          ) : currentNumber >= goalNumber ? (
+            <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
+              🎉 ¡Ya alcanzaste tu meta!
+            </Text>
+          ) : (
+            <>
+              {/* Progress bar */}
+              <View style={styles.progressRow}>
+                <View
+                  style={[
+                    styles.progressTrack,
+                    { backgroundColor: theme.colors.primarySurface },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${pct}%` as `${number}%`,
+                        backgroundColor: theme.colors.primary,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressPct, { color: theme.colors.textMuted }]}>
+                  {pct}%
+                </Text>
+              </View>
+
+              {/* Falta */}
+              <Text style={[styles.insightLine, { color: theme.colors.text }]}>
+                Te falta{' '}
+                <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
+                  {currencyFormatter.format(remaining)}
+                </Text>
+              </Text>
+
+              {/* Por mes */}
+              {monthly != null ? (
+                <Text style={[styles.insightLine, { color: theme.colors.textMuted }]}>
+                  Ahorrando {currencyFormatter.format(monthly)} por mes, llegás en{' '}
+                  {monthsNumber} {monthsNumber === 1 ? 'mes' : 'meses'}.
+                </Text>
+              ) : (
+                <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+                  Definí un plazo para ver cuánto ahorrar por mes.
+                </Text>
+              )}
+            </>
+          )}
+        </View>
       </RiseView>
 
       {/* DETALLE */}
@@ -200,7 +290,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
           />
           <SettingsRow
             icon="savings"
-            label="Ahorrado hoy"
+            label="Ya ahorrado"
             onPress={() => setCurrentOpen(true)}
             value={formattedCurrent}
           />
@@ -293,7 +383,7 @@ function SavingsGoalEditor({ familyId, existing, onSaved }: SavingsGoalEditorPro
       />
       <NumericEditSheet
         visible={currentOpen}
-        title="Ahorrado hoy"
+        title="Ya ahorrado"
         subtitle="Cuánto de esta meta ya tienes ahorrado."
         rawValue={currentAmount}
         onChangeRawValue={setCurrentAmount}
@@ -346,5 +436,46 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: 8,
+  },
+  insightCard: {
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    minWidth: 4,
+  },
+  progressPct: {
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    minWidth: 32,
+    textAlign: 'right',
+  },
+  insightLine: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  insightMuted: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  insightCelebrate: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
   },
 })

@@ -39,6 +39,15 @@ interface FijosHeroCardProps {
   cycleDayIndex?: number
   /** Total de días del ciclo. Default 30. */
   cycleDays?: number
+  /**
+   * Modo empty / preview (onboarding first-run). Renderea el MISMO shell
+   * — gradient, eyebrow, route line, segments, perforation, labels
+   * "Ya pagaste / Te falta pagar / DINERO LIBRE" — pero con "—" / dashes
+   * neutros en vez de números, montos o segmentos coloreados. NO inventa
+   * datos. Backwards-compatible: default `false` deja el comportamiento
+   * original intacto.
+   */
+  empty?: boolean
 }
 
 /**
@@ -65,6 +74,7 @@ function FijosHeroCardImpl({
   porcentajeSueldo = 0,
   cycleDayIndex = 1,
   cycleDays = 30,
+  empty = false,
 }: FijosHeroCardProps) {
   const { theme } = useAppTheme()
   const porcentaje = totalFijos > 0 ? Math.round((montoPagado / totalFijos) * 100) : 0
@@ -122,6 +132,15 @@ function FijosHeroCardImpl({
   // Expand cycle label corto ("20 abr → 20 may") a versión legible para
   // el eyebrow ("20 ABRIL → 20 MAYO"). Mantiene el "→" como conector.
   const cycleEyebrow = expandCycleLabel(mes)
+
+  // ── Empty / preview mode ─────────────────────────────────────────
+  // Mismo shell de gradient con los labels reales, pero sin números ni
+  // segmentos coloreados — solo placeholders neutros. Se renderea
+  // después de los hooks (la urgency pulse ya se auto-cancela cuando no
+  // hay vencidos) para no romper el orden de hooks.
+  if (empty) {
+    return <FijosHeroCardEmpty />
+  }
 
   return (
     <RiseView delay={40}>
@@ -527,6 +546,108 @@ function PaymentSegments({
   )
 }
 
+/**
+ * Empty-state twin del hero de Fijos. Mismo shell (gradient, radii,
+ * padding), mismo eyebrow + labels "Ya pagaste / Te falta pagar /
+ * DINERO LIBRE / de tu sueldo" + perforation boarding-pass, pero todos
+ * los valores son dashes neutros y los segments/route-line son tracks
+ * muted sin colorear. Cero datos fabricados. Sin shine ni particles ni
+ * urgency pulse — preview inerte.
+ */
+function FijosHeroCardEmpty() {
+  const { theme } = useAppTheme()
+  const muted = 'rgba(242,234,211,0.22)'
+  const ph = 'rgba(242,234,211,0.14)'
+  return (
+    <LinearGradient
+      colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={[styles.card, styles.emptyCard, { borderColor: 'rgba(166,239,143,0.12)' }]}
+    >
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <BreatheDot size={8} color={theme.colors.heroMuted} glow={theme.colors.heroMuted} />
+          <Text style={[styles.titulo, { color: theme.colors.heroMuted }]}>
+            TU CICLO DE FIJOS
+          </Text>
+        </View>
+      </View>
+
+      {/* Route line — track muted neutro, sin today marker ni labels. */}
+      <View style={[styles.routeLine, { marginTop: 14 }]}>
+        <View style={styles.station}>
+          <View style={[styles.emptyBar, { width: 26, height: 12, backgroundColor: ph }]} />
+        </View>
+        <View style={styles.routeTrack}>
+          <View style={styles.routeDashes}>
+            {Array.from({ length: 24 }).map((_, i) => (
+              <View key={i} style={[styles.routeDash, { backgroundColor: muted }]} />
+            ))}
+          </View>
+        </View>
+        <View style={styles.station}>
+          <View style={[styles.emptyBar, { width: 26, height: 12, backgroundColor: ph }]} />
+        </View>
+      </View>
+
+      <View style={styles.montosRow}>
+        <View>
+          <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
+            Ya pagaste
+          </Text>
+          <Text style={[styles.montoPagado, { color: theme.colors.heroText }]}>—</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
+            Te falta pagar
+          </Text>
+          <Text style={[styles.montoPendiente, { color: theme.colors.heroMuted }]}>—</Text>
+        </View>
+      </View>
+
+      {/* Segments placeholder — un track muted continuo, sin pintar. */}
+      <View style={[styles.segmentsRow, { backgroundColor: muted, borderRadius: 3 }]} />
+      <View style={styles.progressFooter}>
+        <View style={[styles.emptyBar, { width: 70, height: 9, backgroundColor: ph }]} />
+        <View style={[styles.emptyBar, { width: 80, height: 9, backgroundColor: ph }]} />
+      </View>
+
+      <View style={styles.perforation}>
+        <View
+          style={[styles.perfNotchLeft, { backgroundColor: theme.colors.heroGradient[0] }]}
+        />
+        <View style={styles.perfDashes}>
+          {Array.from({ length: 22 }).map((_, i) => (
+            <View key={i} style={[styles.perfDash, { backgroundColor: 'rgba(242,234,211,0.30)' }]} />
+          ))}
+        </View>
+        <View
+          style={[styles.perfNotchRight, { backgroundColor: theme.colors.heroGradient[0] }]}
+        />
+      </View>
+
+      <View style={styles.bottomRow}>
+        <View>
+          <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
+            DINERO LIBRE
+          </Text>
+          <Text style={[styles.bottomMonto, { color: theme.colors.heroText }]}>—</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
+            de tu sueldo
+          </Text>
+          <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>—</Text>
+          <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
+            va a fijos
+          </Text>
+        </View>
+      </View>
+    </LinearGradient>
+  )
+}
+
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
@@ -534,6 +655,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
+  emptyCard: { opacity: 0.86 },
+  emptyBar: { borderRadius: 4 },
   // Urgency ring — overlay absolute con border peach que pulsa cuando
   // hay vencidos. Detrás del contenido, pointerEvents=none.
   urgencyRing: {

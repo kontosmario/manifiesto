@@ -3,13 +3,16 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ControlV2Placeholder } from '@/components/control-v2/control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
 import type { DowBucket } from '@/features/insights/control-v2-mock'
 
 const MIN_DIAS = 14
+// Patrón sincero por día de la semana: necesita ~dos semanas de registro
+// real, así que se activa con gasto en 14 días distintos (cada día de la
+// semana visto ~2 veces). Con menos no hay patrón estadístico.
+const MIN_SPEND_DAYS = 14
 
 interface ControlV2PatronCardProps {
   dows: DowBucket[]
@@ -17,6 +20,10 @@ interface ControlV2PatronCardProps {
   mejorDow: DowBucket
   globalAvg: number
   diaActual?: number
+  /** Días distintos con gasto en el ciclo. La tarjeta se activa con
+   *  ≥ MIN_SPEND_DAYS para que el patrón sea real (1-2 gastos no son un
+   *  patrón). */
+  diasConGasto?: number
 }
 
 /**
@@ -50,6 +57,7 @@ function ControlV2PatronCardImpl({
   mejorDow,
   globalAvg,
   diaActual = 999,
+  diasConGasto = 999,
 }: ControlV2PatronCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -62,15 +70,12 @@ function ControlV2PatronCardImpl({
     return (jsDow + 6) % 7
   }, [])
 
-  if (diaActual < MIN_DIAS) {
-    return (
-      <ControlV2Placeholder
-        title="Tu patrón semanal"
-        diaActual={diaActual}
-        minDias={MIN_DIAS}
-        hint="Con 14 días podemos detectar qué día de la semana se gasta más."
-      />
-    )
+  // Hasta tener gasto en suficientes días distintos no hay un patrón
+  // estadístico real (1-2 gastos no son patrón). Mostramos la silueta
+  // real — eyebrow + 3 stats + chart de 7 columnas con línea de
+  // promedio — pero inerte, sin números, con el progreso a la activación.
+  if (diaActual < MIN_DIAS || diasConGasto < MIN_SPEND_DAYS) {
+    return <ControlV2PatronCardEmpty diasConGasto={diasConGasto} />
   }
 
   // ── Severity tri-state ──────────────────────────────────────
@@ -427,6 +432,139 @@ function ControlV2PatronCardImpl({
   )
 }
 
+// Etiquetas de día y alturas fijas para las columnas inertes del estado
+// empty. Pura geometría — no representan ningún gasto real, solo dan la
+// silueta del chart por día de la semana.
+const EMPTY_DOW_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const
+const EMPTY_DOW_HEIGHTS = [48, 36, 60, 44, 72, 54, 40] as const
+
+/**
+ * Empty-state twin de "Tu patrón semanal". Misma chrome (surface, border
+ * `line`, eyebrow + BreatheDot + título UPPERCASE) y la misma silueta —
+ * 3 stats + chart de 7 columnas por día con línea de promedio — pero
+ * inerte: columnas neutras de alturas variadas, línea de promedio
+ * neutra sin tag con monto, sin valores. El pill dice "Pronto" en
+ * textMuted; el callout comunica la activación + el progreso. Recesado
+ * (opacity 0.86), sin shimmer.
+ */
+function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+  const { theme } = useAppTheme()
+  const isDark = theme.isDark
+  const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
+  const avgLineColor = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,42,30,0.16)'
+  const progreso = Math.max(0, Math.min(diasConGasto, MIN_SPEND_DAYS))
+  const cardBg = isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+
+  return (
+    <RiseView delay={300}>
+      <View
+        accessibilityRole="text"
+        accessibilityLabel="Tu patrón semanal: esperando más días con gasto"
+        style={[
+          styles.card,
+          styles.emptyCard,
+          { backgroundColor: cardBg, borderColor: theme.colors.line },
+        ]}
+      >
+        <View style={styles.eyebrowRow}>
+          <BreatheDot size={7} color={theme.colors.textMuted} glow={theme.colors.textMuted} />
+          <Text
+            style={[styles.eyebrow, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            TU PATRÓN SEMANAL
+          </Text>
+          <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
+            <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
+              Pronto
+            </Text>
+          </View>
+        </View>
+
+        {/* Headline silhouette. */}
+        <View style={[styles.emptyBar, { width: '88%', height: 14, backgroundColor: ph }]} />
+
+        <View style={styles.statsRow}>
+          {(['Peor día', 'Mejor día', 'Promedio'] as const).map((label) => (
+            <View key={label} style={styles.stat}>
+              <View style={styles.statHead}>
+                <View style={[styles.dot, { backgroundColor: ph }]} />
+                <Text
+                  style={[styles.statLabel, { color: theme.colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+              </View>
+              <Text style={[styles.statValue, { color: theme.colors.textMuted }]}>
+                —
+              </Text>
+              <View
+                style={[styles.emptyBar, { width: 44, height: 8, backgroundColor: ph, marginTop: 4 }]}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* Chart inerte — 7 columnas + línea de promedio neutra. */}
+        <View
+          style={[
+            styles.chartFrame,
+            {
+              backgroundColor: isDark ? DARK_TAB_CANVAS : theme.colors.surfaceMuted,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.barsRow}>
+            <View
+              pointerEvents="none"
+              style={[styles.avgLine, { bottom: '52%', borderTopColor: avgLineColor }]}
+            />
+            {EMPTY_DOW_HEIGHTS.map((h, i) => (
+              <View key={i} style={styles.barCol}>
+                <View style={[styles.bar, { height: `${h}%`, backgroundColor: ph }]} />
+              </View>
+            ))}
+          </View>
+          <View style={styles.labelsRow}>
+            {EMPTY_DOW_LABELS.map((d) => (
+              <Text
+                key={d}
+                style={[styles.dayLabel, { color: theme.colors.textMuted, fontWeight: '600' }]}
+                numberOfLines={1}
+              >
+                {d}
+              </Text>
+            ))}
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.callout,
+            {
+              backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)',
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
+          <View style={styles.calloutBody}>
+            <Text style={[styles.calloutText, { color: theme.colors.text }]}>
+              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para
+              detectar en qué día de la semana gastas más.
+            </Text>
+            <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
+              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RiseView>
+  )
+}
+
 interface SegmentStatProps {
   dotColor: string
   label: string
@@ -688,6 +826,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 14,
   },
+  // ── Empty-state silhouette ──────────────────────────────────
+  emptyCard: { opacity: 0.86 },
+  emptyBar: { borderRadius: 4 },
+  emptyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  calloutBody: { flex: 1, gap: 4 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 })
 
 // Memo: Patron evalúa día predominante de gastos + insights. Sin

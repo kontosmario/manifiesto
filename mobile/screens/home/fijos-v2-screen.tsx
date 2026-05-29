@@ -6,6 +6,7 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { FijosHeader } from '@/components/fijos/fijos-header'
+import { FijosEmptyState } from '@/components/fijos/fijos-empty-state'
 import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
 import { FijosProximosCard } from '@/components/fijos/fijos-proximos-card'
 import { FijosTabs } from '@/components/fijos/fijos-tabs'
@@ -152,6 +153,12 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   const sectionLayout = LinearTransition.duration(260)
 
+  // Brand-new account: data loaded fine but there are zero fijos.
+  // Render the onboarding empty state instead of the data cards (which
+  // would otherwise show zeros and read as broken).
+  const isEmpty =
+    !controller.isLoading && !controller.error && controller.allItems.length === 0
+
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -178,6 +185,35 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             addButtonRef={addButtonTourRef}
           />
         </Animated.View>
+        {isEmpty ? (
+          // Empty-state onboarding. We still wrap the three ghost
+          // preview blocks in the SAME tour targets (hero/calendar/list)
+          // so the auto-starting FIJOS tour highlights the ghost areas
+          // and its copy still makes sense on a fresh account. The add
+          // button keeps its own ref-based target inside FijosHeader.
+          <FijosEmptyState
+            onAddFirst={handlePressAdd}
+            renderSection={(slot, children) => {
+              const step =
+                slot === 'hero'
+                  ? FIJOS_TOUR_STEPS.hero
+                  : slot === 'calendar'
+                    ? FIJOS_TOUR_STEPS.calendar
+                    : FIJOS_TOUR_STEPS.list
+              return (
+                <TourTarget
+                  highlight={{ borderRadius: 22, padding: 6 }}
+                  order={step.order}
+                  text={step.text}
+                  tour={FIJOS_TOUR}
+                >
+                  {children}
+                </TourTarget>
+              )
+            }}
+          />
+        ) : (
+          <>
         <TourTarget
           tour={FIJOS_TOUR}
           order={FIJOS_TOUR_STEPS.hero.order}
@@ -275,6 +311,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             />
           </Animated.View>
         </TourTarget>
+          </>
+        )}
         <View style={styles.bottomSpacer} />
       </View>
     </Screen>

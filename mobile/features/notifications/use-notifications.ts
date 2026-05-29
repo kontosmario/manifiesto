@@ -46,6 +46,11 @@ export interface FamilyNotification {
   metadata: NotificationMetadata
 }
 
+interface PreviousListSnapshot {
+  key: readonly unknown[]
+  data: FamilyNotification[]
+}
+
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 
 function isMissingNotificationsTableError(error: PostgrestError): boolean {
@@ -192,20 +197,55 @@ export function useUnreadNotificationsCount(familyId?: string, userId?: string) 
   })
 }
 
-export function useMarkNotificationRead(familyId?: string) {
+/**
+ * Notificaciones V2: marcar una notificación como leída = HARD DELETE
+ * de la fila. No se conservan una vez leídas, así que el feed solo
+ * muestra pendientes. La eliminación es optimista: sacamos la fila de
+ * todas las listas cacheadas en `onMutate` para que la salida se sienta
+ * instantánea, con rollback en `onError`.
+ */
+export function useDeleteNotification(familyId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: { id: string; read: boolean }) => {
-      const nextValue = input.read ? new Date().toISOString() : null
+    mutationFn: async (input: { id: string }) => {
       const { error } = await supabase
         .from('notifications')
-        .update({ read_at: nextValue })
+        .delete()
         .eq('id', input.id)
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onMutate: async (input) => {
+      if (!familyId) return { snapshots: [] as PreviousListSnapshot[] }
+
+      const familyKey = notificationQueryKeys.family(familyId)
+      await queryClient.cancelQueries({ queryKey: familyKey })
+
+      // Removemos el id de toda lista cacheada bajo la familia (cualquier
+      // userId/limit). El badge de unread cuenta server-side; no lo
+      // tocamos acá, pero la invalidación en onSettled lo refresca.
+      const snapshots: PreviousListSnapshot[] = []
+      const queries = queryClient.getQueriesData<FamilyNotification[]>({
+        queryKey: familyKey,
+      })
+      for (const [key, data] of queries) {
+        if (!Array.isArray(data)) continue
+        snapshots.push({ key, data })
+        queryClient.setQueryData<FamilyNotification[]>(
+          key,
+          data.filter((n) => n.id !== input.id),
+        )
+      }
+
+      return { snapshots }
+    },
+    onError: (_error, _input, context) => {
+      for (const snapshot of context?.snapshots ?? []) {
+        queryClient.setQueryData(snapshot.key, snapshot.data)
+      }
+    },
+    onSettled: () => {
       if (!familyId) return
       void queryClient.invalidateQueries({
         queryKey: notificationQueryKeys.family(familyId),
@@ -214,21 +254,19 @@ export function useMarkNotificationRead(familyId?: string) {
   })
 }
 
-export function useMarkAllNotificationsRead(familyId?: string, userId?: string) {
+export function useDeleteAllNotifications(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async () => {
       if (!familyId) return
 
-      const nowIso = new Date().toISOString()
       let query = supabase
         .from('notifications')
-        .update({ read_at: nowIso })
+        .delete()
         .eq('family_id', familyId)
-        .is('read_at', null)
-        // Don't sweep advisor signals — they're not shown here, and
-        // marking them read would silently affect a different surface.
+        // No barremos señales del asistente — no se muestran acá y
+        // borrarlas afectaría silenciosamente otra superficie.
         .not('kind', 'like', 'advisor_%')
 
       if (userId) {
@@ -240,7 +278,30 @@ export function useMarkAllNotificationsRead(familyId?: string, userId?: string) 
       const { error } = await query
       if (error) throw error
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!familyId) return { snapshots: [] as PreviousListSnapshot[] }
+
+      const familyKey = notificationQueryKeys.family(familyId)
+      await queryClient.cancelQueries({ queryKey: familyKey })
+
+      const snapshots: PreviousListSnapshot[] = []
+      const queries = queryClient.getQueriesData<FamilyNotification[]>({
+        queryKey: familyKey,
+      })
+      for (const [key, data] of queries) {
+        if (!Array.isArray(data)) continue
+        snapshots.push({ key, data })
+        queryClient.setQueryData<FamilyNotification[]>(key, [])
+      }
+
+      return { snapshots }
+    },
+    onError: (_error, _input, context) => {
+      for (const snapshot of context?.snapshots ?? []) {
+        queryClient.setQueryData(snapshot.key, snapshot.data)
+      }
+    },
+    onSettled: () => {
       if (!familyId) return
       void queryClient.invalidateQueries({
         queryKey: notificationQueryKeys.family(familyId),

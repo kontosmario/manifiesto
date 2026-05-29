@@ -31,12 +31,19 @@ import { useAppTheme } from '@/theme/theme-provider'
 const ENTER = motionEasings.enterSmooth
 
 interface FijosProximosCardProps {
-  upcoming: FijoItem[]
-  hikes: FijoHikeAlert[]
+  upcoming?: FijoItem[]
+  hikes?: FijoHikeAlert[]
   advisorSignals?: ControlAdvisorTask[]
-  todayDay: number
-  categoriesById: Map<string, { id: string; name: string; color: string }>
+  todayDay?: number
+  categoriesById?: Map<string, { id: string; name: string; color: string }>
   onOpenHike?: (fixedExpenseId: string) => void
+  /**
+   * Modo empty / preview (onboarding). Renderea el MISMO card frame —
+   * header "PRÓXIMOS A PAGAR" + RuleScale + filas con su layout (label
+   * de día · dot de categoría · nombre · monto) — pero con dashes
+   * neutros, sin ítems fabricados. Backwards-compatible default `false`.
+   */
+  empty?: boolean
 }
 
 /**
@@ -59,11 +66,12 @@ interface FijosProximosCardProps {
  * para la entrada del card desde el screen.
  */
 export function FijosProximosCard({
-  upcoming,
-  hikes,
+  upcoming = [],
+  hikes = [],
   advisorSignals = [],
   categoriesById,
   onOpenHike,
+  empty = false,
 }: FijosProximosCardProps) {
   const { theme } = useAppTheme()
   const router = useRouter()
@@ -92,6 +100,15 @@ export function FijosProximosCard({
 
   const hasAlerts = visibleHikes.length > 0 || relevantSignals.length > 0
   const hasUpcoming = upcoming.length > 0
+
+  // ── Empty / preview mode ─────────────────────────────────────────
+  // Mismo card frame (header PRÓXIMOS A PAGAR + RuleScale) con filas
+  // placeholder: cada fila conserva el layout real (label de día · dot
+  // de categoría · nombre · monto) pero con dashes neutros. Sin ítems
+  // inventados. Renderea después de los hooks.
+  if (empty) {
+    return <FijosProximosCardEmpty />
+  }
 
   if (!hasUpcoming && !hasAlerts) return null
 
@@ -129,7 +146,7 @@ export function FijosProximosCard({
                 <UpcomingRow
                   item={item}
                   category={
-                    item.category_id ? categoriesById.get(item.category_id) : undefined
+                    item.category_id ? categoriesById?.get(item.category_id) : undefined
                   }
                   delay={120 + idx * 60}
                 />
@@ -204,6 +221,61 @@ export function FijosProximosCard({
         ) : null}
       </View>
     </RiseView>
+  )
+}
+
+/**
+ * Empty-state twin del card "Próximos a pagar". Mismo frame + header +
+ * rule, y tres filas que conservan el layout de UpcomingRow (label de
+ * día arriba · dot de categoría + nombre · monto a la derecha) pero con
+ * dashes neutros. Sin ítems fabricados, sin animación (preview inerte).
+ */
+function FijosProximosCardEmpty() {
+  const { theme } = useAppTheme()
+  const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
+  return (
+    <View
+      style={[
+        styles.card,
+        styles.emptyCard,
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
+      ]}
+    >
+      <View style={styles.headerRow}>
+        <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+          PRÓXIMOS A PAGAR
+        </Text>
+      </View>
+      {/* Rule estático (sin scaleX animation) — preview inerte. */}
+      <View style={[styles.rule, { backgroundColor: theme.colors.text }]} />
+
+      <View style={styles.upcomingList}>
+        {[0, 1, 2].map((i) => (
+          <View key={i}>
+            <View style={styles.upcomingRow}>
+              <View style={styles.upcomingLeft}>
+                <View style={[styles.phBar, { width: 40, height: 8, backgroundColor: ph }]} />
+                <View style={styles.upcomingNameRow}>
+                  <View style={[styles.categoryDot, { backgroundColor: ph }]} />
+                  <View
+                    style={[styles.phBar, { width: i === 1 ? '52%' : '70%', height: 11, backgroundColor: ph }]}
+                  />
+                </View>
+              </View>
+              <View style={[styles.phBar, { width: 52, height: 11, marginLeft: 12, backgroundColor: ph }]} />
+            </View>
+            {i < 2 ? (
+              <View style={[styles.rowDivider, { backgroundColor: theme.colors.line }]} />
+            ) : null}
+          </View>
+        ))}
+      </View>
+    </View>
   )
 }
 
@@ -507,6 +579,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     opacity: 0.55,
   },
+  emptyCard: { opacity: 0.86 },
+  phBar: { borderRadius: 5 },
   upcomingList: { gap: 0 },
   upcomingRow: {
     flexDirection: 'row',

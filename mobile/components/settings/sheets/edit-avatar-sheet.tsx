@@ -48,9 +48,7 @@ export function EditAvatarSheet({
       subtitle="Elige el animal que te represente en la familia."
       title="Avatar"
       visible={visible}
-    >
-      <View style={styles.stack}>
-        <StepAvatar selected={draft} onSelect={setDraft} />
+      footer={
         <AppButton
           disabled={!hasChanged}
           label="Guardar avatar"
@@ -60,6 +58,10 @@ export function EditAvatarSheet({
             onSave(draft)
           }}
         />
+      }
+    >
+      <View style={styles.stack}>
+        <StepAvatar selected={draft} onSelect={setDraft} />
       </View>
     </ModalCard>
   )

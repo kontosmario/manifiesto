@@ -5,6 +5,8 @@ import Animated from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -41,6 +43,7 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  *   - Touch-target ≥56pt vertical, gap ≥8 entre rows (UX critical).
  */
 export function EditionsScreen() {
+  const { theme } = useAppTheme()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
   const { data: family } = useFamily(userId)
@@ -90,7 +93,11 @@ export function EditionsScreen() {
 
   if (error && editions.length === 0) {
     return (
-      <Screen title="Ediciones" canGoBack>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        title="Ediciones"
+        canGoBack
+      >
         <ErrorState
           title="No pudimos cargar tus ediciones"
           description="Probá de nuevo en un momento."
@@ -101,10 +108,12 @@ export function EditionsScreen() {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Ediciones"
       subtitle="Cada ciclo cerrado es una edición de Manifiesto. Tocá una para revivirla."
       canGoBack
     >
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       {isLoading ? null : editions.length === 0 ? (
         <RiseView>
           <EmptyState
@@ -149,7 +158,7 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
       style={[
         styles.masthead,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
@@ -215,7 +224,7 @@ function EditionRow({ edition, onPress }: EditionRowProps) {
         style={({ pressed }) => [
           styles.row,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: theme.colors.line,
             opacity: pressed ? 0.92 : 1,
           },

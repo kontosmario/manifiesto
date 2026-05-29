@@ -6,11 +6,15 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { ErrorState } from '@/components/ui/error-state'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
@@ -45,6 +49,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  *     am I" without a numerical bar — pattern over progress.
  */
 export function AchievementsGalleryScreen() {
+  const { theme } = useAppTheme()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
   const { data, isLoading, error } = useAchievements(userId)
@@ -68,7 +73,11 @@ export function AchievementsGalleryScreen() {
 
   if (error && !data) {
     return (
-      <Screen title="Logros" canGoBack>
+      <Screen
+        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        title="Logros"
+        canGoBack
+      >
         <ErrorState
           title="No pudimos cargar tus logros"
           description="Probá de nuevo en un momento."
@@ -79,12 +88,14 @@ export function AchievementsGalleryScreen() {
 
   return (
     <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Logros"
       subtitle="Hitos que vas desbloqueando a medida que usás Manifiesto."
       canGoBack
     >
       {isLoading || !data ? null : (
         <View style={styles.stack}>
+          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
           <RiseView>
             <ProgressHero
               earnedCount={data.earnedCount}
@@ -173,7 +184,7 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
   return (
     <LinearGradient
       colors={[
-        theme.colors.creamCard,
+        theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
         theme.colors.pageBg,
       ]}
       start={{ x: 0, y: 0 }}
@@ -227,8 +238,8 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
               styles.dot,
               item.earned
                 ? {
-                    backgroundColor: tierTone(item.tier).fg,
-                    borderColor: tierTone(item.tier).fg,
+                    backgroundColor: tierTone(item.tier, theme.isDark).fg,
+                    borderColor: tierTone(item.tier, theme.isDark).fg,
                   }
                 : {
                     backgroundColor: 'transparent',
@@ -263,7 +274,7 @@ function StarterNudge({ nextItem }: StarterNudgeProps) {
       style={[
         starterStyles.card,
         {
-          backgroundColor: theme.colors.creamCard,
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
           borderColor: theme.colors.line,
         },
       ]}
@@ -393,13 +404,50 @@ interface AchievementCardProps {
 
 function AchievementCard({ item }: AchievementCardProps) {
   const { theme } = useAppTheme()
+  const reduced = useReducedMotion()
   // Press feedback per Emil: scale to 0.97 with fast ease-out.
   // usePressScale already encapsulates the spring; we just spread its
   // animatedStyle onto the Pressable wrapper.
   const press = usePressScale({ pressedScale: 0.97 })
 
-  const tone = tierTone(item.tier)
+  const tone = tierTone(item.tier, theme.isDark)
   const earned = item.earned
+  // Sheen sweep only for earned gold/legendary — premium tiers deserve
+  // a special entrance. A translucent highlight band slides across once
+  // on mount (transform+opacity only, GPU-safe). Under reduced motion
+  // the sheen stays invisible (opacity 0, no motion).
+  const isPremium = earned && (item.tier === 'gold' || item.tier === 'legendary')
+  const sheenX = useSharedValue(-120)
+  const sheenOpacity = useSharedValue(0)
+
+  useEffect(() => {
+    if (!isPremium || reduced) return
+    sheenX.value = -120
+    sheenOpacity.value = 0
+    // Delay slightly so the RiseView stagger entrance lands first.
+    sheenOpacity.value = withDelay(
+      180,
+      withTiming(1, { duration: 60, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
+    )
+    sheenX.value = withDelay(
+      180,
+      withTiming(340, {
+        duration: 520,
+        easing: Easing.bezier(0.16, 1, 0.30, 1),
+      }),
+    )
+    // Fade the sheen out near the end so it doesn't linger.
+    sheenOpacity.value = withDelay(
+      500,
+      withTiming(0, { duration: 160, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPremium, reduced])
+
+  const sheenStyle = useAnimatedStyle(() => ({
+    opacity: sheenOpacity.value,
+    transform: [{ translateX: sheenX.value }],
+  }))
 
   return (
     <Animated.View style={press.animatedStyle}>
@@ -426,7 +474,7 @@ function AchievementCard({ item }: AchievementCardProps) {
         style={({ pressed }) => [
           styles.card,
           {
-            backgroundColor: theme.colors.creamCard,
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
             borderColor: earned ? tone.border : theme.colors.line,
             opacity: earned ? 1 : 0.62,
           },
@@ -508,6 +556,16 @@ function AchievementCard({ item }: AchievementCardProps) {
             </Text>
           ) : null}
         </View>
+
+        {/* Sheen sweep — gold/legendary only, single-shot on entrance.
+            Positioned absolutely so it overlays the full card without
+            affecting layout. ClipRect comes from card's overflow:hidden. */}
+        {isPremium ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.sheenBand, sheenStyle]}
+          />
+        ) : null}
       </Pressable>
     </Animated.View>
   )
@@ -517,31 +575,39 @@ function AchievementCard({ item }: AchievementCardProps) {
 // Tier color tones — single source of truth
 // ─────────────────────────────────────────────────────────────────
 
-function tierTone(tier: AchievementTier) {
+// `fg` drives the tier badge text + the progress dots. In DARK mode it
+// MUST be the luminous tier shade — the old dark endpoints (legendary
+// #1F590D, gold #9E7C12, silver #5C6376) sank into the dark surfaceMuted
+// card and the badges/dots were lost. Following color-palette ("use the
+// brighter shade on dark"), dark uses the same luminous tones as the
+// unlock modal (TIER_RING_DARK) so logros reads as one family. The
+// bg/border are translucent tints that layer fine over either surface;
+// dark drops their alpha a touch since they sit on a darker card.
+function tierTone(tier: AchievementTier, isDark: boolean) {
   switch (tier) {
     case 'bronze':
       return {
-        bg: 'rgba(242, 181, 138, 0.22)',
-        fg: '#B84014',
-        border: 'rgba(242, 181, 138, 0.55)',
+        bg: isDark ? 'rgba(240,180,134,0.16)' : 'rgba(242, 181, 138, 0.22)',
+        fg: isDark ? '#F0B486' : '#B84014',
+        border: isDark ? 'rgba(240,180,134,0.45)' : 'rgba(242, 181, 138, 0.55)',
       }
     case 'silver':
       return {
-        bg: 'rgba(170, 178, 196, 0.22)',
-        fg: '#5C6376',
-        border: 'rgba(170, 178, 196, 0.55)',
+        bg: isDark ? 'rgba(203,210,222,0.16)' : 'rgba(170, 178, 196, 0.22)',
+        fg: isDark ? '#CBD2DE' : '#5C6376',
+        border: isDark ? 'rgba(203,210,222,0.45)' : 'rgba(170, 178, 196, 0.55)',
       }
     case 'gold':
       return {
-        bg: 'rgba(244, 210, 107, 0.26)',
-        fg: '#9E7C12',
-        border: 'rgba(244, 210, 107, 0.55)',
+        bg: isDark ? 'rgba(242,209,115,0.18)' : 'rgba(244, 210, 107, 0.26)',
+        fg: isDark ? '#F2D173' : '#9E7C12',
+        border: isDark ? 'rgba(242,209,115,0.48)' : 'rgba(244, 210, 107, 0.55)',
       }
     case 'legendary':
       return {
-        bg: 'rgba(166, 239, 143, 0.26)',
-        fg: '#1F590D',
-        border: 'rgba(166, 239, 143, 0.65)',
+        bg: isDark ? 'rgba(166,239,143,0.18)' : 'rgba(166, 239, 143, 0.26)',
+        fg: isDark ? '#B6F0A0' : '#1F590D',
+        border: isDark ? 'rgba(166,239,143,0.50)' : 'rgba(166, 239, 143, 0.65)',
       }
   }
 }
@@ -685,6 +751,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     minHeight: 84, // ≥44pt + body, comfortable touch target
+    overflow: 'hidden', // clips the sheen sweep to the card boundary
   },
   cardIconWrap: {
     position: 'relative',
@@ -761,5 +828,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  // Sheen sweep — gold/legendary earned cards only, clipped by card overflow:hidden.
+  // A diagonal-ish translucent band that slides left→right once on entrance.
+  sheenBand: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 60,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    // Skew gives a diagonal slash rather than a square beam.
+    transform: [{ skewX: '-20deg' }],
   },
 })

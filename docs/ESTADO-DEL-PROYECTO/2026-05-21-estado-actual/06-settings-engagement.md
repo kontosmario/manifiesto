@@ -1,6 +1,7 @@
 # 06 · Settings y Sistemas de Engagement
 
-> Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual
+> Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual  
+> Actualizado en rama `feat/settings-dark-mode` · 2026-05-29
 
 ---
 
@@ -49,9 +50,13 @@ app/(app)/savings-goal.tsx          → SavingsGoalScreen (desde "Meta activa" r
 
 La pantalla usa `Screen` + scroll nativo. `RiseViewGate` suprime las 19 animaciones de entrada durante el push del navigation stack (~340ms) para evitar sobrecarga.
 
+**Modo oscuro:** cuando `theme.isDark === true`, el `Screen` usa `backgroundColor = DARK_TAB_CANVAS` (`#0A0F0C`), el canvas near-black que unifica el cluster Ajustes con el resto de las tabs. `AmbientBackdrop` solo se monta en light (en dark se omite). Los blobs usan tone `'calm'` en dark y `'aurora'` en light.
+
 ### Hero card
 
-Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / plural), pill "Sos el dueño" (si `role === 'owner'`), o aviso de miembro con hint de permisos.
+Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / plural), pill "Sos el dueño" (si `role === 'owner'` y `!isSolo`), o aviso de miembro con hint de permisos. En modo solo la eyebrow dice "TU CUENTA" y el sub dice "Tu cuenta personal".
+
+`backgroundColor` del hero card: `surfaceMuted` en dark, `creamCard` en light.
 
 ### Secciones (en orden de renderizado)
 
@@ -60,13 +65,15 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 1 | **Perfil** | Nombre visible, Avatar, Email (read-only) | Sheets inline: `EditDisplayNameSheet`, `EditAvatarSheet` |
 | 2 | **Hogar** | Mi aporte mensual, Día de cobro, Cotización USD, Meta de ahorro %, Buffer diario | Sheets: `EditMyContributionSheet`, `EditPaydaySheet`, `EditUsdRateSheet`, `EditSavingsPercentSheet`, `EditBufferSheet`. Rows deshabilitados para `role !== 'owner'` con hint "Solo el dueño puede editar" |
 | 3 | **Metas de ahorro** | Meta activa (subtitle con emoji + progreso) | Navega a `/savings-goal`; disabled para miembro |
-| 4 | **Familia** | Invitar a alguien, Gestionar miembros (solo owner), Salir / Eliminar hogar | "Invitar" genera código efímero vía `ShareInviteSheet`. "Gestionar" navega a `/settings/family-admin`. La fila destructiva adapta label y helper según `isOwnerDestroyFlow` |
-| 4b | **Asistente** | Preferencias del asistente, Reactivar visitas guiadas | "Reactivar" llama `useResetTourSeen().resetAll()` (RPC backend) + `resetAllTours()` (toggle local) + `Alert` confirmación |
+| 4 | **Familia** | Invitar a alguien, Gestionar miembros (solo owner), Salir / Eliminar hogar | Solo visible cuando `!isSolo`. "Invitar" genera código efímero vía `ShareInviteSheet`. "Gestionar" navega a `/settings/family-admin`. La fila destructiva adapta label y helper según `isOwnerDestroyFlow` |
+| 4b | **Tipo de cuenta** (familiar) | "Pasar a cuenta individual" | Solo visible en modo familiar. Owner-only: destructivo. Alert confirma antes de llamar `useConvertToSolo`. Quita a demás miembros; datos quedan con el owner |
+| 4c | **Tipo de cuenta** (solo) | "Compartir con mi familia o pareja" | Solo visible en modo `isSolo`. Llama `useConvertToFamily` via Alert de confirmación. Activa modo familiar e invita |
+| 4d | **Asistente** | Preferencias del asistente, Reactivar visitas guiadas | "Reactivar" llama `useResetTourSeen().resetAll()` (RPC backend) + `resetAllTours()` (toggle local) + `Alert` confirmación |
 | 5 | **Notificaciones** | Gestionar notificaciones, Habilitar push | Push muestra "Dev build" si `!supportsRemotePushNotifications` (Expo Go SDK 53+). Valor: "Activo" / "Activar" |
-| 5b | **Ayuda · Tutoriales** | "Ver tutorial de Inicio/Gastos/Fijos/Control" (x4) + "Volver a ver todos" | Ver detalle abajo |
+| 5b | **Ayuda** | "Ver tutorial de Inicio/Gastos/Fijos/Control" (x4) + "Volver a ver todos los tutoriales" | Footer "Volvé a ver cualquier tutorial cuando quieras." Ver detalle abajo |
 | 6 | **Apariencia** | `SegmentedControl` Sistema / Claro / Oscuro | Persiste en `ThemeProvider` |
 | 6b | **Animaciones** | `SegmentedControl` Reducir / Auto / Todas | `MotionPreference`: `always` / `auto` / `never` |
-| 6c | **Acceso rápido** | Toggle biometría (Face ID / Fingerprint) | Lee/escribe refresh token en SecureStore via `biometric-auth.ts`. Disabled si el dispositivo no tiene biometría enrollada |
+| 6c | **Acceso rápido** | "Entrar con {biometricLabel}", PIN de acceso | Biometría: lee/escribe refresh token en SecureStore via `biometric-auth.ts`. Disabled si el dispositivo no tiene biometría enrollada. PIN: navega a `/(app)/pin-setup`; si ya tiene PIN ofrece Alert (Cambiar / Quitar / Cancelar) |
 | 7 | **Desarrollo** (__DEV__) | 8 rows de dev tools | Ver sección 10 |
 | 7b | **Filtro demo** (__DEV__ + assistantDemoMode) | `SegmentedControl` Todas / Read-only / Routing / Acción | Solo visible cuando el modo demo está encendido |
 | 8a | **Tu progreso** | Logros ("Ver galería"), Ediciones ("Ver archivo") | Navega a `/settings/achievements` y `/settings/editions` |
@@ -74,10 +81,10 @@ Muestra: nombre visible del usuario, conteo de miembros del hogar (singular / pl
 | 9 | **Ayuda y legal** | Contactar soporte (mailto), Política de privacidad, Términos de uso | `buildSupportMailto` incluye version + build + userId en el subject |
 | 10 | **Cuenta** | Cerrar sesión, Eliminar cuenta | "Eliminar cuenta" → `DeleteAccountConfirmSheet` → RPC marca cuenta para borrar en 30 días → logout automático |
 
-**Ayuda · Tutoriales** — nuevo grupo en Settings (entre Notificaciones y Apariencia) con 5 rows:
-- "Ver tutorial de Inicio/Gastos/Fijos/Control" — cada uno llama `useResetTourSeen().resetOne(key)` (RPC `reset_tour_seen` + optimistic update del profile cache) y navega al tab correspondiente. El auto-fire del hook re-dispara el tour. **Cross-device:** el reset persiste en backend, así que también re-dispara en otros devices del mismo user.
-- "Volver a ver todos los tutoriales" — llama `useResetTourSeen().resetAll()` (RPC `reset_all_tours_seen`) + `resetAllTours()` (limpia `tours-disabled` device-local). No navega (silent reset; el próximo focus a cada screen dispara).
-No requiere migración ni cambio de schema. Convive con la entry "Reactivar visitas guiadas" del grupo Asistente (UX distinta: esa muestra `Alert.alert` de confirmación, la nueva es silent).
+**Ayuda** — grupo con footer "Volvé a ver cualquier tutorial cuando quieras." (entre Notificaciones y Apariencia) con 5 rows:
+- "Ver tutorial de Inicio/Gastos/Fijos/Control" — cada uno llama `useResetTourSeen().resetOne(key)` (RPC `reset_tour_seen` + optimistic update del profile cache) y navega al tab correspondiente (`handleRewatchTour`). El auto-fire del hook re-dispara el tour. **Cross-device:** el reset persiste en backend, así que también re-dispara en otros devices del mismo user.
+- "Volver a ver todos los tutoriales" — helper "Resetea los 4 tutoriales — el próximo ingreso a cada pantalla los vuelve a mostrar." Llama `handleResetAllTours` → `useResetTourSeen().resetAll()` (RPC `reset_all_tours_seen`) + `resetAllTours()`. No navega (silent reset; el próximo focus a cada screen dispara). No muestra Alert.
+Convive con la entry "Reactivar visitas guiadas" del grupo Asistente (UX distinta: esa muestra `Alert.alert` de confirmación, la nueva es silent).
 
 **Footer:** `Manifiesto X.Y.Z (build N)` — versión real via `expo-constants` + `expo-application`.
 
@@ -87,7 +94,7 @@ No requiere migración ni cambio de schema. Convive con la entry "Reactivar visi
 |---|---|---|
 | `ShareInviteSheet` | "Invitar a alguien" | Genera código efímero de 8 chars vía server, 10/min rate limit, 7 días validez |
 | `EditDisplayNameSheet` | Row "Nombre visible" | Input libre, 1 campo, mutar `profiles.display_name` |
-| `EditAvatarSheet` | Row "Avatar" | Grid de avatares-animal, mutar `profiles.avatar_animal` |
+| `EditAvatarSheet` | Row "Avatar" | Grid horizontal de 3 filas con todos los avatares navegables (via `StepAvatar`), hero-preview del seleccionado, botón "Guardar avatar" pinned en el footer del `ModalCard`. Mutar `profiles.avatar_animal`. |
 | `EditMyContributionSheet` | Row "Mi aporte mensual" | Input numérico, mutar `family_members.monthly_income_contribution` |
 | `EditPaydaySheet` | Row "Día de cobro" | Picker 1-31, mutar `family_finance.salary_payment_day` |
 | `EditUsdRateSheet` | Row "Cotización USD" | Input numérico, mutar `family_finance.usd_exchange_rate` |
@@ -95,6 +102,14 @@ No requiere migración ni cambio de schema. Convive con la entry "Reactivar visi
 | `EditBufferSheet` | Row "Buffer diario" | Selector modo (none/fixed/percent) + valor numérico |
 | `DestroyFamilyConfirmSheet` | "Eliminar el hogar" (owner con miembros) | Requiere frase de confirmación escrita; RPC `leave_family` |
 | `DeleteAccountConfirmSheet` | "Eliminar cuenta" | Confirma borrado en 30 días; advierte si hay miembros |
+
+### Theming oscuro (settings-grouped-list)
+
+**Archivo:** [`mobile/components/settings/settings-grouped-list.tsx`](../../../mobile/components/settings/settings-grouped-list.tsx)
+
+`SettingsGroup` (`groupCard`): dark usa `surfaceMuted` (`#0F2E1F`) en lugar de `creamCard` — el muted-green de cards de actividad/home, que encaja con el canvas near-black `DARK_TAB_CANVAS`.
+
+`SettingsRow` / `SettingsSwitchRow` (icon tile `iconWrap`): dark usa `creamCard` (`#305A47`) como fondo del cuadrado de ícono, en lugar de `creamSoft`. Motivo: sobre `surfaceMuted` (`#0F2E1F`), el tile `creamSoft` (`#0E1A15`) es indistinguible; `creamCard` (`#305A47`) provee el contraste necesario. Light mantiene `creamSoft`.
 
 ---
 
@@ -122,7 +137,7 @@ Mutations via RPCs: `family_transfer_ownership`, `family_block_member`, `family_
 **Ruta:** `app/(app)/settings/plan.tsx`  
 **Estado:** ⏸️ EN PAUSA — **100% MOCK**
 
-Ver sección 9 para detalle completo.
+Ver sección 9 para detalle completo. La pantalla fue rediseñada significativamente — ver sección 9 actualizada.
 
 ### 3.3 Notifications Preferences
 
@@ -157,9 +172,21 @@ Tres secciones:
 **Ruta:** `app/(app)/savings-goal.tsx`  
 **Estado:** ✅ LIVE
 
-Editor de la meta activa de ahorro familiar. Campos: título (max 40 chars), emoji (default 🎯), monto objetivo, monto actual, meses objetivo (opcional), activa/inactiva toggle.
+Editor de la meta activa de ahorro familiar. Campos: título, emoji (default 🎯), monto objetivo, ya ahorrado, meses objetivo (opcional), activa/inactiva toggle. Estructura de la pantalla:
 
-Valida con `validateSavingsGoalInput` antes de mutar. Muestra `SavingsAdvisorStrip` contextual usando señales del Asistente (desde `useControlV2Data`). Al guardar llama `useUpsertSavingsGoal` y hace `router.back()`.
+1. **Hero** — `MetaCard` live preview que refleja el formulario en tiempo real.
+2. **Bloque de plan de ahorro** (nuevo) — tarjeta derivada que muestra:
+   - Barra de progreso (`pct%`) + "Te falta {remaining}".
+   - Si `targetMonths` está definido: "Ahorrando {monthly} por mes, llegás en {N} meses."
+   - Si sin plazo: "Definí un plazo para ver cuánto ahorrar por mes."
+   - Si `currentAmount >= goalAmount`: "🎉 ¡Ya alcanzaste tu meta!"
+   - Si `goalAmount` sin definir: "Ingresá tu objetivo para ver tu plan de ahorro."
+3. **Grupo Detalle** — rows: Título, Emoji, Objetivo, Ya ahorrado, Meses objetivo.
+4. **Grupo Estado** — toggle "Meta activa" con footer "Las metas inactivas se guardan pero no aparecen en Home."
+5. **SavingsAdvisorStrip** contextual (señales del Asistente).
+6. **CTA** inline: "Guardar cambios" / "Crear meta".
+
+Valida con `validateSavingsGoalInput` antes de mutar. Al guardar llama `useUpsertSavingsGoal` y hace `router.back()`.
 
 La pantalla solo es accesible al **owner** (disabled en settings-screen para miembros). Integración con achievements: goal_25 / goal_50 / goal_75 / goal_completed se disparan server-side via trigger al actualizar `savings_goals`.
 
@@ -254,7 +281,27 @@ Si un unlock llega mientras otro modal está en pantalla, el más reciente gana 
 
 **Archivo:** [`mobile/components/achievements/achievement-unlock-modal.tsx`](../../../mobile/components/achievements/achievement-unlock-modal.tsx)
 
-Modal full-screen con: `ConfettiBurst` (solo en earned), icono del logro, tier badge con colores, título, body, fecha de unlock. Tap fuera o botón X → dismiss → `setActive(null)`.
+Modal full-screen (scrim oscuro semiopaco `rgba(8,34,26,0.55)`) que combina:
+
+- **Scrim + card**: fade-in + rise (+16px) + scale (0.94→1.0) en 380ms (`Easing.bezier(0.16,1,0.30,1)`).
+- **AuroraBloom** (`mobile/components/ui/aurora-bloom.tsx`): bloom radial de capas concéntricas translúcidas (3 layers: 1.0×, 0.66×, 0.38× del diámetro 200px) que respira en loop 3500ms via `useLoopAnimation`. Color = `tier.ring` (dark-aware). Sin SVG, sin sombras; solo `opacity + transform` en GPU path. Estático en web y bajo reduced motion.
+- **DrawRing** (`mobile/components/ui/draw-ring.tsx`): anillo SVG (`AnimatedCircle` via `createAnimatedComponent`) que se dibuja solo via `strokeDashoffset` animado 0→target en 900ms con delay de 120ms (expo-out `Easing.bezier(0.16,1,0.3,1)`). Parte de las 12h y barre en sentido horario. Color = `tier.to` (dark-aware). Sin animación bajo reduced motion (render final inmediato).
+- **Icon bubble**: spring pop desde 0.85 a 1.0 con delay 120ms (`motionSprings.celebrate`: mass 0.8, damping 14, stiffness 260). Fondo crema `#FFFBF2`.
+- **ConfettiBurst** centrado en el icono (`originY=110`).
+- **Tier pill** con `tier.ring` de fondo y `tier.to` de texto.
+- Hint "tocá para cerrar" en `textSoft`.
+- Auto-dismiss 4s. Tap en scrim → dismiss.
+
+Tones dark-aware (`TIER_RING_LIGHT` / `TIER_RING_DARK`):
+
+| Tier | to (light) | to (dark) | ring (light) | ring (dark) |
+|---|---|---|---|---|
+| bronze | `#E07A3F` | `#F0B486` | `rgba(242,181,138,0.40)` | `rgba(240,180,134,0.32)` |
+| silver | `#A0A8B8` | `#CBD2DE` | `rgba(216,220,230,0.45)` | `rgba(203,210,222,0.32)` |
+| gold | `#C29D2A` | `#F2D173` | `rgba(244,210,107,0.45)` | `rgba(242,209,115,0.34)` |
+| legendary | `#329315` | `#B6F0A0` | `rgba(166,239,143,0.55)` | `rgba(166,239,143,0.42)` |
+
+Tap fuera o esperar 4s → dismiss → `setActive(null)`.
 
 ### AchievementsGalleryScreen (Settings → Tu progreso → Logros)
 
@@ -264,21 +311,30 @@ Usa `useAchievements(userId)` que mergea dos queries:
 - `achievements_catalog` (staleTime 10min) — catálogo completo
 - `achievements_earned` (staleTime 1min + realtime invalidation)
 
-Layout:
-- **Hero card**: gradient LinearGradient, `CountUpText` animado "X / Y logros", dots strip (un punto por code: relleno = earned con color de tier, vacío con `borderStyle: 'dashed'`), porcentaje en pill
-- **Sección "Desbloqueados"**: cards con `usePressScale(0.97)`, tier ring de color (bronze/silver/gold/legendary), icon, title, body, `earned_at` formateado
-- **Sección "Por desbloquear"**: mismas cards con `opacity: 0.62`, icon en `opacity: 0.4`, lock badge en bottom-right, `borderStyle: 'dashed'`
-- **StarterNudge**: cuando `earnedCount === 0`, muestra el primer item del catálogo (por `sort_order`) como onboarding
+La pantalla usa `Screen` con `backgroundColor = DARK_TAB_CANVAS` en dark, blobs tone `'calm'` en dark / `'aurora'` en light.
 
-Tier colors:
-- bronze: `#B84014` (fg), `rgba(242,181,138,0.22)` (bg)
-- silver: `#5C6376` (fg), `rgba(170,178,196,0.22)` (bg)
-- gold: `#9E7C12` (fg), `rgba(244,210,107,0.26)` (bg)
-- legendary: `#1F590D` (fg), `rgba(166,239,143,0.26)` (bg)
+Layout:
+- **Hero card**: gradient LinearGradient (`surfaceMuted` → `pageBg` en dark; `creamCard` → `pageBg` en light), `CountUpText` animado "X / Y logros", dots strip (un punto por code: relleno = earned con color de tier dark-aware, vacío transparente con borde `line`), porcentaje en pill. Footnote explicativa al pie.
+- **Sección "Desbloqueados"**: cards con `usePressScale(0.97)`, `opacity: 1`, tier ring de color (bronze/silver/gold/legendary) dark-aware, icon 52x52, title, body, `earned_at` formateado. Cards gold y legendary tienen un sheen sweep diagonal (translúcido blanco) que desliza de izquierda a derecha una sola vez al montar (180ms delay, 520ms travel; respeta `useReducedMotion`).
+- **Sección "Por desbloquear"**: mismas cards con `opacity: 0.62`, icon 52x52 gris dashed ring con lock badge en bottom-right.
+- **StarterNudge**: cuando `earnedCount === 0`, muestra el primer item del catálogo (por `sort_order`) como onboarding. Fondo `surfaceMuted` en dark, `creamCard` en light.
+
+Tier tones dark-aware (función `tierTone(tier, isDark)`):
+
+| Tier | fg (light) | fg (dark) | bg (light) | bg (dark) |
+|---|---|---|---|---|
+| bronze | `#B84014` | `#F0B486` | `rgba(242,181,138,0.22)` | `rgba(240,180,134,0.16)` |
+| silver | `#5C6376` | `#CBD2DE` | `rgba(170,178,196,0.22)` | `rgba(203,210,222,0.16)` |
+| gold | `#9E7C12` | `#F2D173` | `rgba(244,210,107,0.26)` | `rgba(242,209,115,0.18)` |
+| legendary | `#1F590D` | `#B6F0A0` | `rgba(166,239,143,0.26)` | `rgba(166,239,143,0.18)` |
+
+Los dots del hero y el texto de los tier badges usan el `fg` dark-aware (en la versión anterior solo había tones para light, que se hundían en el card `surfaceMuted`).
 
 ### Dev preview path
 
 `Settings (dev) → Preview · Logros & Racha` → `app/(app)/settings/dev/preview.tsx` → `AchievementsStreakPreviewScreen`. Usa `achievement-preview-emitter.ts` (singleton Set de listeners). `triggerAchievementPreview(item)` dispara el mismo `AchievementUnlockModal` sin INSERT en DB.
+
+**Fallback catalog**: si `achievements_catalog` está vacío (base de staging sin la migración aplicada, o error de fetch), la pantalla muestra `FALLBACK_ACHIEVEMENT_PREVIEWS` — una muestra hardcodeada con un item por tier (bronze/silver/gold/legendary). Esto permite previsualizar el modal con todos los tones sin depender de la DB.
 
 ---
 
@@ -328,6 +384,39 @@ Montado en `AppStackShell`, fuera del Stack. Escucha `useCycleWrappedListener` (
 **Archivo:** [`mobile/features/wrapped/build-wrapped-payload.ts`](../../../mobile/features/wrapped/build-wrapped-payload.ts)
 
 Convierte un `MonthlySummaryHistory` (shape de `monthly_summaries`) al `CycleWrappedPayload`. Maneja los dos formatos de `category_breakdown` (array nuevo vs record legacy). `achievementsEarnedAt` hoy se pasa como `[]` — el conteo por rango está pendiente de conectar con `achievements_earned`.
+
+---
+
+## 5b. Racha (Streak) — StreakSheet
+
+**Archivo:** [`mobile/components/gastos/streak-sheet.tsx`](../../../mobile/components/gastos/streak-sheet.tsx)  
+**Estado:** ✅ LIVE
+
+Bottom sheet invocado desde el ícono de llama en el header de Gastos. Swipe-to-dismiss via `GestureDetector` + springs (`motionSprings.sheet` / `motionSprings.sheetDismiss`). Canvas: `theme.colors.canvas`, wash de color en el top mediante `LinearGradient` que funde el tinte de estado en el canvas.
+
+### Flame dial (hero rediseñado)
+
+El hero muestra en fila (`heroNumberRow`, `alignItems: 'center'`):
+1. **flameDial** (84×84 px): contenedor centrado con `AuroraBloom` de fondo (color = `tone.fg`, size 84, intensity 0.32; oculto en `broken`), `DrawRing` (64×64, strokeWidth 3.5, `trackColor` = `${tone.fg}22`) que barre hasta `progressPct` del nivel actual, y `AnimatedFlame` (size 40) centrado dentro.
+2. **Número de días** (fontSize 44, fontWeight 800) en color `tone.fg`.
+3. **Label "días"** (fontSize 15) en color `tone.soft`.
+
+Todos los elementos de la fila comparten el mismo eje vertical (centrado), de modo que la llama y el dial se alinean ópticamente con el número. El `DrawRing` muestra `progress=0` y sin bloom en status `broken`.
+
+### Paleta de estado dark-aware (`getStatusTone`)
+
+| Status | Intensidad | fg (dark) | heroWash (dark) |
+|---|---|---|---|
+| active | — | `#A6EF8F` | `rgba(73,214,31,0.22)` |
+| at_risk | calm | `#A6EF8F` | `rgba(73,214,31,0.22)` |
+| at_risk | gentle | `#F3BA57` | `rgba(243,186,87,0.22)` |
+| at_risk | urgent | `#F8D1C3` | `rgba(242,167,140,0.28)` |
+| at_risk | critical | `#E88A70` | `rgba(224,85,85,0.34)` |
+| broken | — | `#D4E8DF` | `rgba(138,138,138,0.18)` |
+
+### Demás secciones
+
+`ShieldChip` (inventario de tokens, siempre visible), `LevelProgress` (label textual del progreso al siguiente nivel, sin barra lineal — reemplazada por el dial), `WeekActivity` (grid 7 días), cards contextuales según status (`ShieldNotice`, `ConsequenceCard`, `RecoveryCard`, `MotivationalCard`), `PersonalStats` (récord personal, total registrado), `FreezeInfo` (pie de texto).
 
 ---
 
@@ -413,6 +502,49 @@ El toggle global `tours-disabled` (sin UI todavía) sigue device-local en Secure
 ### Reactivar desde Settings
 
 "Reactivar visitas guiadas" → `handleResetTours()` → `resetAllTours()` → Alert "La próxima vez que abras Inicio, Gastos, Fijos y Control...".
+
+---
+
+## 7b. Notificaciones V2 — feed de la app
+
+**Archivos:**
+- [`mobile/screens/home/notifications-screen.tsx`](../../../mobile/screens/home/notifications-screen.tsx)
+- [`mobile/components/home/notification-feed-list.tsx`](../../../mobile/components/home/notification-feed-list.tsx)
+- [`mobile/features/notifications/use-notifications.ts`](../../../mobile/features/notifications/use-notifications.ts)
+
+**Ruta:** `app/(app)/notifications.tsx` (accedida desde home, no desde Settings)  
+**Estado:** ✅ LIVE (rediseño V2)
+
+> Nota: los componentes `notifications-filter-pills.tsx` y `notifications-hero.tsx` **fueron eliminados** en este rediseño. Ver doc 03-home-control-fijos.md para el inventario de componentes home.
+
+### Concepto V2
+
+La pantalla es ahora minificada y sin fricción: solo muestra notificaciones pendientes (todo lo que está en la tabla = sin leer) y permite marcarlas como leídas. **Marcar leída = hard delete** de la fila en DB. No hay filtros, no hay secciones de "leídas", no hay hero card duplicando el estado.
+
+### NotificationsScreen layout
+
+`Screen` con `scrollable={false}` y `backgroundColor = DARK_TAB_CANVAS` en dark. Canvas de ancho completo, `AmbientBlobs` (tone `'calm'` en dark).
+
+Header (custom, no usa título de `Screen`):
+- Fila superior: pill-button con `arrow-back-ios-new` (fondo `surfaceMuted` en dark / `creamCard` en light) + texto "Notificaciones" 22pt bold.
+- Sub-línea (solo cuando `count > 0`): "{N} sin leer" a la izquierda, "Marcar todas" a la derecha. Tap en "Marcar todas" → `deleteAll.mutate()` (hard delete de todas las notificaciones del usuario). Sin sub-línea cuando la lista está vacía (el EmptyState es el dueño único del mensaje "Todo al día").
+
+### NotificationFeedList
+
+`FlatList` plana sin secciones. Cada row usa `SwipeableRow` con acción derecha "Listo" (tone `'neutral'`, ícono `done`) → `onMarkRead` → `deleteOne.mutate`.
+
+Animaciones de cada row:
+- **Entrada**: `FadeIn` con stagger 40ms por fila, tope en index 8 (= 320ms máx). Respeta `ReduceMotion.System`.
+- **Salida**: `FadeOutRight` en 220ms (la fila se desliza a la derecha mientras desaparece — "la despachaste"). Respeta `ReduceMotion.System`.
+- **Reflow**: `LinearTransition.springify()` con damping 22, stiffness 190, mass 0.6 — el hueco se cierra suave (spring), no con colapso lineal mecánico.
+
+Cada `NotificationRow` muestra: avatar/ícono del autor (con fallback a glyph del kind), título (2 líneas), body (3 líneas, opcional), timestamp relativo, pill de severidad (opcional), botón circular de check para marcar leída.
+
+Empty state: `EmptyState` con ícono `notifications-none`, título "Todo al día", subtítulo "No tienes notificaciones pendientes."
+
+### Carga de datos
+
+`useFamilyNotifications(familyId, userId, 80)` — fetch de hasta 80 notificaciones. `useFamilyNotificationsRealtime(familyId)` — subscripción realtime que invalida el query al recibir INSERT/DELETE.
 
 ---
 
@@ -541,7 +673,26 @@ Estado default: `{ activePlanId: null, expiresAt: null, isInTrial: false, autoRe
 
 ### BillingScreen
 
-Pantalla con dark forest gradient (`#0F2D06 → #297811`), toggle entre planes mensual/anual, highlights de features, botón "Empezar prueba gratis" / "Contratar" / "Plan actual" (según estado). Animations: `FadeIn/FadeOut` en plan selection. Usa `useReducedMotion`.
+Rediseñada con `DARK_TAB_CANVAS` en dark. Secciones en orden:
+
+1. **CompactHero** — LinearGradient `#0F2D06 → #1F590D → #297811`, pill "PLAN DEL HOGAR" sobre fondo `#A6EF8F`, `FernLogo` iconMode 36px, copy adaptativo según `activePlanId`.
+2. **PlanGrid** — 2 tiles side-by-side: `PlanTile` con scale + shadow animados al seleccionar. El tile seleccionado usa `creamCard` con borde `primary`; el otro usa `surfaceMuted` en dark / `creamSoft` en light. Cada tile muestra: eyebrow MENSUAL/ANUAL, precio "USD X.XX", suffix "/año" o "/mes", fila "Como USD 3.33/mes" (solo anual), divisor, cap de personas ("Hasta N personas", hint familiar), `SelectIndicator` + "Tu plan" si es el activo. Badge "−33%" sobre el tile anual (plan recomendado).
+3. **PlanDetail** — tarjeta con nombre + tagline del plan seleccionado, eyebrow "QUÉ INCLUYE", checklist de `highlights` con ícono `check-circle`. Items exclusivos del anual (no en mensual) llevan pill "Solo en Anual". Para plan anual: callout "Ahorrás USD 19.89 al año · te sale como usd 3.33 al mes" con ícono `savings`.
+4. **PrimaryCTA** — si `isCurrentPlan`: banner "Ya tienes el {name}". Si no: botón "Empezar por USD X.XX/año" + link "O prueba 14 días gratis, sin tarjeta".
+5. **TrustPills** — 3 pills: "Pago seguro", "Sin permanencia", "Tus datos protegidos".
+6. **CompactFaq** — accordion: 3 preguntas primarias visibles, "Ver más preguntas" despliega 2 adicionales. `FadeIn/FadeOut` en respuesta.
+7. **FooterMicro** — "Ya compré antes" + "Ver mi suscripción" (si hay plan activo) + legal.
+
+Usa `useReducedMotion` en el FernLogo.
+
+**Planes actualizados:**
+
+| Plan | ID | Cycle | USD | ARS | Member cap | savingsUsd | Recomendado |
+|---|---|---|---|---|---|---|---|
+| Hogar Mensual | `hogar-mensual` | monthly | $4.99 | $5,490 | 2 | 0 | No |
+| Hogar Anual | `hogar-anual` | yearly | $39.99 | $43,990 | 4 | $19.89 | Sí |
+
+`effectiveCopy` del anual: `'Te sale como USD 3.33 al mes'`. `tagline` mensual: `'Para empezar sin compromisos.'` / anual: `'El plan más elegido por las familias.'`
 
 ---
 
@@ -571,7 +722,7 @@ Visible solo cuando `__DEV__ === true`. 8 rows:
 
 Gate: `if (!__DEV__) return <Redirect href="/(app)/settings" />`
 
-Lista todos los logros del catálogo. Tap en cada uno → `triggerAchievementPreview(item)` → dispara `AchievementUnlockModal` real (mismo path visual que producción, sin INSERT en DB). También permite previsualizar racha en cada estado (activa, en riesgo, rota).
+Lista todos los logros del catálogo (o el fallback de 4 muestras por tier si el catálogo está vacío). Tap en cada uno → `triggerAchievementPreview(item)` → dispara `AchievementUnlockModal` real (mismo path visual que producción, sin INSERT en DB). También muestra la llama en cada status (activa / en riesgo x4 intensidades / rota) en una grid para verificación visual de animaciones y tones.
 
 ### Dev Preview — Cierre de ciclo
 
@@ -650,6 +801,19 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | [`mobile/components/settings/sheets/edit-usd-rate-sheet.tsx`](../../../mobile/components/settings/sheets/edit-usd-rate-sheet.tsx) | Sheet editar cotización USD |
 | [`mobile/components/settings/sheets/share-invite-sheet.tsx`](../../../mobile/components/settings/sheets/share-invite-sheet.tsx) | Sheet invitar miembro (código efímero) |
 
+### Components / UI — ModalCard (actualizado)
+
+**Archivo:** [`mobile/components/ui/modal-card.tsx`](../../../mobile/components/ui/modal-card.tsx)
+
+`ModalCard` ahora acepta prop `footer?: ReactNode` — renderizado fuera del `ScrollView`, pinned al fondo de la sheet (por encima del safe-area). Permite que el CTA primario quede siempre visible independientemente del contenido scrollable. Backward compatible: si `footer` se omite, la sheet es body-only. Usado por `EditAvatarSheet` ("Guardar avatar") y `SavingsGoalEditor` ("Guardar cambios" / "Crear meta").
+
+### Components / UI — nuevos en feat/settings-dark-mode
+
+| Archivo | Función |
+|---|---|
+| [`mobile/components/ui/aurora-bloom.tsx`](../../../mobile/components/ui/aurora-bloom.tsx) | Bloom radial respirante: 3 capas translúcidas concéntricas, loop 3500ms, `useLoopAnimation`, dark-aware |
+| [`mobile/components/ui/draw-ring.tsx`](../../../mobile/components/ui/draw-ring.tsx) | Anillo SVG auto-dibujado via `strokeDashoffset` animado, 900ms expo-out, parte 12h, respeta reduced motion |
+
 ### Components / bridges + achievements + wrapped + subscriptions-zombie
 
 | Archivo | Función |
@@ -657,7 +821,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | [`mobile/components/bridges/achievement-unlock-bridge.tsx`](../../../mobile/components/bridges/achievement-unlock-bridge.tsx) | Bridge realtime → AchievementUnlockModal |
 | [`mobile/components/bridges/cycle-wrapped-bridge.tsx`](../../../mobile/components/bridges/cycle-wrapped-bridge.tsx) | Bridge emitter → CycleWrappedModal |
 | [`mobile/components/bridges/daily-budget-nudge-bridge.tsx`](../../../mobile/components/bridges/daily-budget-nudge-bridge.tsx) | Bridge nudge de presupuesto diario |
-| [`mobile/components/achievements/achievement-unlock-modal.tsx`](../../../mobile/components/achievements/achievement-unlock-modal.tsx) | Modal full-screen de unlock con confetti |
+| [`mobile/components/achievements/achievement-unlock-modal.tsx`](../../../mobile/components/achievements/achievement-unlock-modal.tsx) | Modal full-screen de unlock: AuroraBloom + DrawRing + spring pop + ConfettiBurst, dark-aware |
 | [`mobile/components/wrapped/cycle-wrapped-modal.tsx`](../../../mobile/components/wrapped/cycle-wrapped-modal.tsx) | Modal 5-escenas del Wrapped |
 | [`mobile/components/subscriptions-zombie/audit-prompt-card.tsx`](../../../mobile/components/subscriptions-zombie/audit-prompt-card.tsx) | Prompt de auditoría de uso |
 | [`mobile/components/subscriptions-zombie/classification-card.tsx`](../../../mobile/components/subscriptions-zombie/classification-card.tsx) | Resultado de clasificación |
@@ -692,7 +856,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | [`mobile/features/preferences/motion-preference-provider.tsx`](../../../mobile/features/preferences/motion-preference-provider.tsx) | `MotionPreferenceProvider`, `useMotionPreferenceControls` (auto/always/never) |
 | [`mobile/features/notifications/use-notification-preferences.ts`](../../../mobile/features/notifications/use-notification-preferences.ts) | `useNotificationPreferences`, `useUpdateNotificationPreferences` |
 | [`mobile/features/notifications/notification-query-keys.ts`](../../../mobile/features/notifications/notification-query-keys.ts) | Query keys de notificaciones |
-| [`mobile/features/notifications/use-notifications.ts`](../../../mobile/features/notifications/use-notifications.ts) | Hook base de notificaciones |
+| [`mobile/features/notifications/use-notifications.ts`](../../../mobile/features/notifications/use-notifications.ts) | Hook base: `useFamilyNotifications`, `useDeleteNotification`, `useDeleteAllNotifications`, `useFamilyNotificationsRealtime` |
 | [`mobile/features/wrapped/build-wrapped-payload.ts`](../../../mobile/features/wrapped/build-wrapped-payload.ts) | `buildWrappedPayloadFromSummary` |
 | [`mobile/features/wrapped/use-monthly-editions.ts`](../../../mobile/features/wrapped/use-monthly-editions.ts) | `useMonthlyEditions` |
 | [`mobile/features/subscriptions-zombie/subscription-audit-engine.ts`](../../../mobile/features/subscriptions-zombie/subscription-audit-engine.ts) | `buildFeed`, `classifyAudit`, `isAuditCandidate`, `isInCooldown` |
@@ -736,15 +900,18 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 
 ### ✅ Funcional y completo
 
-- Settings raíz con 10+ grupos de configuración, 10 sheets inline, biometría, motion preference
-- Achievements end-to-end: 14 codes, triggers server-side, realtime channel, galería con hero + dots strip + tier rings, unlock modal con confetti, dev preview
+- Settings raíz con 10+ grupos de configuración, 10 sheets inline, biometría, motion preference, PIN de acceso, Tipo de cuenta (convertir solo/familiar)
+- Settings dark mode: canvas `DARK_TAB_CANVAS` (#0A0F0C), cluster cards `surfaceMuted`, icon tiles `creamCard` en dark
+- Achievements end-to-end: 14 codes, triggers server-side, realtime channel, galería con hero + dots strip + tier rings dark-aware, unlock modal con AuroraBloom + DrawRing + spring pop + confetti, dev preview con fallback catalog
 - Manifiesto Wrapped: trigger automático post-cobro, 5 escenas editoriales, motion compliant, dev preview con payloads sintéticos
 - Ediciones: archivo de Wrappeds, masthead YTD, rows con tier dots, tap-to-replay
-- Tours custom (sin react-native-copilot): 4 tours, SecureStore persistence, overlay cutout, reset desde Settings
+- Tours custom (sin react-native-copilot): 4 tours, SecureStore persistence, overlay cutout, reset desde Settings (silent) y desde Asistente (con Alert)
 - Subscriptions-zombie: motor de clasificación client-side, 5 clasificaciones, cooldowns, 5 queries paralelas, intención + follow-up, sync push
 - Family admin: gestionar miembros, transferir ownership, bloquear/desbloquear/eliminar via RPCs
-- Savings goals: CRUD completo, validación, milestones achievements, SavingsAdvisorStrip contextual
+- Savings goals: CRUD completo, validación, milestones achievements, SavingsAdvisorStrip contextual, bloque de plan de ahorro derivado (progreso + falta + $/mes)
 - Notifications preferences: canales, grupos, horarios check-in, optimistic update
+- Notificaciones V2: feed minificado, hard-delete al marcar leída, animación FadeOutRight + spring reflow, sin filtros ni hero duplicado
+- Streak StreakSheet: flame dial centrado (AuroraBloom + DrawRing + AnimatedFlame), paleta dark-aware progresiva por intensidad
 - Telemetría de pantallas: opened/closed/dwell/left_without_tap/reopened
 
 ### 🟡 Parcial / pendiente

@@ -13,17 +13,25 @@ import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijoRowProps {
-  item: FijoItem
-  categoryColor: string
-  categoryName: string
+  item?: FijoItem
+  categoryColor?: string
+  categoryName?: string
   /** Current UTC day-of-month, passed from the parent so every row shares
    *  the same value and we don't create a Date per row per render. */
-  todayDay: number
+  todayDay?: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
   /** Toggle true while a delete/edit mutation is in flight for this item. */
   isPending?: boolean
+  /**
+   * Placeholder / preview mode (onboarding first-run). Renders a
+   * faithful empty version of the row card chrome — icon tile + status
+   * overlay slot, title line, category-chip sub-line, amount slot — with
+   * neutral muted dashes. No SwipeableRow / confetti / press handlers,
+   * no fabricated data. The data props become optional and are never
+   * read here. Backwards-compatible default `false`. */
+  placeholder?: boolean
 }
 
 /**
@@ -31,11 +39,21 @@ interface FijoRowProps {
  * with frequency + method + category + primary actions (mark paid,
  * edit, pause). Swipe → Editar/Eliminar matching the activity row.
  */
-function FijoRowImpl({
+function FijoRowImpl(props: FijoRowProps) {
+  // Placeholder / preview mode — render the faithful empty row and bail
+  // before any data hook touches `item`. Kept as a separate component so
+  // the hook order in the real row is never affected by this branch.
+  if (props.placeholder) {
+    return <FijoRowPlaceholder />
+  }
+  return <FijoRowReal {...props} />
+}
+
+function FijoRowReal({
   item,
-  categoryColor,
-  categoryName,
-  todayDay,
+  categoryColor = '#888888',
+  categoryName = '',
+  todayDay = 1,
   onMarkPaid,
   onEdit,
   onDelete,
@@ -44,7 +62,12 @@ function FijoRowImpl({
   const { theme } = useAppTheme()
   const [open, setOpen] = useState(false)
   const emoji = pickIconForFixedExpenseCategory(categoryName)
-  const status = item.computedStatus
+  // FijoRowReal is only rendered for non-placeholder rows, where `item`
+  // is always supplied by the parent. The non-null assertion keeps the
+  // downstream code unchanged while letting the prop be optional for the
+  // placeholder path.
+  const fijo = item as FijoItem
+  const status = fijo.computedStatus
   // 3 press scales — card (tap-to-expand, subtle 0.98), action primary
   // (CTA verde 0.96), action secondary (Editar 0.96). Antes no había
   // ningún feedback de press en el card ni en los action buttons.
@@ -95,14 +118,14 @@ function FijoRowImpl({
     }
   })()
 
-  const diffDays = item.dayOfMonth - todayDay
+  const diffDays = fijo.dayOfMonth - todayDay
   // Unified register · adjective + "·" + detail para paid/overdue,
   // verbo "Vence + detail" para hoy/futuro. Antes "Pagó día 5" rompía
   // el patrón en tercera persona — ahora "Pagado · día 5" se lee como
   // los otros estados.
   const dueLabel =
     status === 'paid'
-      ? `Pagado · día ${item.dayOfMonth}`
+      ? `Pagado · día ${fijo.dayOfMonth}`
       : diffDays < 0
         ? `Vencido hace ${Math.abs(diffDays)}d`
         : diffDays === 0
@@ -127,7 +150,7 @@ function FijoRowImpl({
       label: 'Eliminar',
       tone: 'danger',
       icon: 'delete',
-      onPress: () => onDelete(item.id),
+      onPress: () => onDelete(fijo.id),
     })
   }
 
@@ -213,10 +236,10 @@ function FijoRowImpl({
             <View style={styles.body}>
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
-                  {item.name}
+                  {fijo.name}
                 </Text>
-                {item.trendDeltaPct != null && Math.abs(item.trendDeltaPct) >= 1 ? (
-                  <TrendBadge deltaPct={item.trendDeltaPct} />
+                {fijo.trendDeltaPct != null && Math.abs(fijo.trendDeltaPct) >= 1 ? (
+                  <TrendBadge deltaPct={fijo.trendDeltaPct} />
                 ) : null}
               </View>
               {/* Sub-line GastoRow-like: catChip + dueLabel separados por
@@ -250,10 +273,10 @@ function FijoRowImpl({
 
             <View style={styles.amountBlock}>
               <Text style={[styles.amount, { color: theme.colors.text }]}>
-                {formatMoney(item.amount)}
+                {formatMoney(fijo.amount)}
               </Text>
-              {item.priceHistory.length >= 2 ? (
-                <FijoTrendSpark points={item.priceHistory} />
+              {fijo.priceHistory.length >= 2 ? (
+                <FijoTrendSpark points={fijo.priceHistory} />
               ) : null}
             </View>
           </View>
@@ -267,13 +290,13 @@ function FijoRowImpl({
               <View style={styles.detailGrid}>
                 <DetailTile
                   label="FRECUENCIA"
-                  value={frequencyLabel(item.frequency)}
+                  value={frequencyLabel(fijo.frequency)}
                   theme={theme}
                 />
-                <DetailTile label="KIND" value={kindLabel(item.kind)} theme={theme} />
+                <DetailTile label="KIND" value={kindLabel(fijo.kind)} theme={theme} />
                 <DetailTile
                   label="PRÓX. VENCIMIENTO"
-                  value={`día ${item.dayOfMonth}`}
+                  value={`día ${fijo.dayOfMonth}`}
                   theme={theme}
                 />
                 <DetailTile label="CATEGORÍA" value={categoryName} theme={theme} />
@@ -281,7 +304,7 @@ function FijoRowImpl({
               <View style={styles.actionsRow}>
                 {status !== 'paid' && onMarkPaid ? (
                   <Pressable
-                    onPress={() => onMarkPaid(item.id)}
+                    onPress={() => onMarkPaid(fijo.id)}
                     onPressIn={actionPrimaryPress.onPressIn}
                     onPressOut={actionPrimaryPress.onPressOut}
                     style={styles.actionPrimaryWrap}
@@ -303,7 +326,7 @@ function FijoRowImpl({
                 ) : null}
                 {onEdit ? (
                   <Pressable
-                    onPress={() => onEdit(item.id)}
+                    onPress={() => onEdit(fijo.id)}
                     onPressIn={actionSecondaryPress.onPressIn}
                     onPressOut={actionSecondaryPress.onPressOut}
                     style={styles.actionSecondaryWrap}
@@ -330,6 +353,56 @@ function FijoRowImpl({
         </Pressable>
       </Animated.View>
     </SwipeableRow>
+  )
+}
+
+/**
+ * Empty-state twin de FijoRow. Replica fiel del chrome del card —
+ * mismo radius, padding, icon tile (con su slot de status overlay),
+ * title line, sub-line con catChip, y amount slot a la derecha — pero
+ * con dashes neutros. Sin SwipeableRow / confetti / press / datos
+ * fabricados (preview inerte). Replica en vez de prop-en-el-real porque
+ * el row real está fuertemente acoplado a SwipeableRow + ConfettiBurst
+ * + 3 press hooks + tap-to-expand state, todo innecesario para un
+ * placeholder estático.
+ */
+function FijoRowPlaceholder() {
+  const { theme } = useAppTheme()
+  const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
+  return (
+    <View
+      style={[
+        styles.card,
+        styles.placeholderCard,
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+        },
+      ]}
+    >
+      <View style={styles.row}>
+        <View style={styles.iconWrap}>
+          <View style={[styles.iconTile, { backgroundColor: ph, borderColor: ph }]} />
+          <View
+            style={[
+              styles.statusOverlay,
+              { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
+            ]}
+          />
+        </View>
+        <View style={styles.body}>
+          <View style={[styles.phBar, { width: '58%', height: 11, backgroundColor: ph }]} />
+          <View style={styles.subRow}>
+            <View style={[styles.phChip, { backgroundColor: ph }]} />
+            <View style={[styles.phBar, { width: 56, height: 8, backgroundColor: ph }]} />
+          </View>
+        </View>
+        <View style={styles.amountBlock}>
+          <View style={[styles.phBar, { width: 50, height: 13, backgroundColor: ph }]} />
+        </View>
+      </View>
+    </View>
   )
 }
 
@@ -479,6 +552,14 @@ const styles = StyleSheet.create({
   catChipText: { fontSize: 10, fontWeight: '700' },
   metaText: { fontSize: 11, flexShrink: 1 },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
+  // ── Placeholder / preview ────────────────────────────────────────
+  placeholderCard: { opacity: 0.86 },
+  phBar: { borderRadius: 5 },
+  phChip: {
+    width: 56,
+    height: 16,
+    borderRadius: 999,
+  },
   // Tabular nums para columna right-aligned de montos entre rows
   // (mismo razonamiento que Gastos.GastoRow.amount).
   amount: { fontSize: 16, fontWeight: '800', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },

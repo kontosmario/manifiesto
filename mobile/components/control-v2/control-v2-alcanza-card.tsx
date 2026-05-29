@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ControlV2Placeholder } from './control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
@@ -28,6 +27,10 @@ interface ControlV2AlcanzaCardProps {
   restanteMes: number
   /** Days remaining in the cycle including today (≥1). */
   diasRestantes: number
+  /** Días distintos con gasto en el ciclo. Solo se usa para el hint de
+   *  progreso del estado empty ("Gasto en N de 7 días"); el gate de
+   *  activación sigue siendo `hasReliableProjection`. */
+  diasConGasto?: number
   /** When the user has confirmed a starting balance for this cycle
    *  (mid-month corrections), surface it as context — the projection
    *  is still based on the average pace, but the user knows the math
@@ -80,20 +83,20 @@ function ControlV2AlcanzaCardImpl({
   pacePromedio,
   restanteMes,
   diasRestantes,
+  diasConGasto = 0,
   cycleStartingBalanceOverride,
 }: ControlV2AlcanzaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
 
   if (!hasReliableProjection) {
-    return (
-      <ControlV2Placeholder
-        title="Hasta cuándo te alcanza"
-        diaActual={Math.min(closedDays + 1, MIN_CLOSED_DAYS_FLOOR)}
-        minDias={MIN_CLOSED_DAYS_FLOOR}
-        hint="Necesitamos una semana de gastos para proyectar con confianza cuánto te alcanza tu presupuesto libre (sin fijos)."
-      />
-    )
+    // A diferencia de las otras tarjetas, "alcanza" NO se activa con un
+    // solo gasto: proyecta a partir del PROMEDIO de días cerrados con
+    // gasto (excluye hoy). Necesita ~una semana de días registrando para
+    // tener un ritmo confiable. Por eso el empty muestra la silueta real
+    // de la tarjeta (eyebrow + 3 stats + timeline + callout) pero inerte,
+    // sin números, con el progreso real hacia la activación.
+    return <ControlV2AlcanzaCardEmpty diasConGasto={diasConGasto} />
   }
 
   // ── Tri-state semantics ──────────────────────────────────────
@@ -450,6 +453,126 @@ function ControlV2AlcanzaCardImpl({
   )
 }
 
+/**
+ * Empty-state twin de "Hasta cuándo te alcanza". Misma chrome (surface,
+ * border `line`, eyebrow + BreatheDot + título UPPERCASE) y la misma
+ * silueta interna — 3 stats (Ritmo / Cupo / Sobrante), timeline
+ * INICIO/HOY/PRÓX. SUELDO, callout — pero TODO inerte: barras y dashes
+ * neutros, sin números, sin colores de estado. El pill dice "Pronto" en
+ * textMuted (no es un estado), y el callout comunica la activación real
+ * + el progreso hacia ella. Recesado (opacity 0.86), sin shimmer.
+ */
+function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+  const { theme } = useAppTheme()
+  const isDark = theme.isDark
+  const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
+  // Clamp del progreso mostrado: nunca por encima del umbral aunque el
+  // ciclo tenga más días con gasto que el piso (el gate real no se cumplió).
+  const progreso = Math.max(0, Math.min(diasConGasto, MIN_CLOSED_DAYS_FLOOR))
+  const cardBg = isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+
+  return (
+    <RiseView delay={140}>
+      <View
+        accessibilityRole="text"
+        accessibilityLabel="Hasta cuándo te alcanza: esperando más días con gasto"
+        style={[
+          styles.card,
+          styles.emptyCard,
+          { backgroundColor: cardBg, borderColor: theme.colors.line },
+        ]}
+      >
+        <View style={styles.eyebrowRow}>
+          <BreatheDot size={7} color={theme.colors.textMuted} glow={theme.colors.textMuted} />
+          <Text
+            style={[styles.eyebrow, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            HASTA CUÁNDO TE ALCANZA
+          </Text>
+          <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
+            <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
+              Pronto
+            </Text>
+          </View>
+        </View>
+
+        {/* Headline silhouette — una barra neutra ancha en lugar del
+            titular state-aware. */}
+        <View style={[styles.emptyBar, { width: '82%', height: 18, backgroundColor: ph }]} />
+
+        {/* 3 stats inertes — labels reales, valores como dashes/barras. */}
+        <View style={styles.statsRow}>
+          {(['Ritmo', 'Cupo', 'Sobrante'] as const).map((label) => (
+            <View key={label} style={styles.stat}>
+              <Text
+                style={[styles.statLabel, { color: theme.colors.textMuted }]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+              <Text style={[styles.statValue, { color: theme.colors.textMuted }]}>
+                —
+              </Text>
+              <View
+                style={[styles.emptyBar, { width: 44, height: 8, backgroundColor: ph, marginTop: 4 }]}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* Timeline inerte — labels reales, track neutro sin marcadores. */}
+        <View
+          style={[
+            styles.timelineFrame,
+            {
+              backgroundColor: isDark ? DARK_TAB_CANVAS : theme.colors.surfaceMuted,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.timelineLabels}>
+            <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
+              INICIO
+            </Text>
+            <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
+              HOY
+            </Text>
+            <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
+              PRÓX. SUELDO
+            </Text>
+          </View>
+          <View style={styles.timelineTrack}>
+            <View style={[styles.timelineBase, { backgroundColor: ph }]} />
+          </View>
+        </View>
+
+        {/* Callout — activación real + progreso hacia ella. */}
+        <View
+          style={[
+            styles.callout,
+            {
+              backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)',
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
+          <View style={styles.calloutBody}>
+            <Text style={[styles.calloutText, { color: theme.colors.text }]}>
+              Registra gastos en al menos {MIN_CLOSED_DAYS_FLOOR} días distintos para
+              proyectar hasta qué día del ciclo te alcanza el dinero libre.
+            </Text>
+            <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
+              Gasto en {progreso} de {MIN_CLOSED_DAYS_FLOOR} días.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RiseView>
+  )
+}
+
 interface StatProps {
   label: string
   value: string
@@ -634,6 +757,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 16,
   },
+  // ── Empty-state silhouette ──────────────────────────────────
+  emptyCard: { opacity: 0.86 },
+  emptyBar: { borderRadius: 4 },
+  emptyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  calloutBody: { flex: 1, gap: 4 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 })
 
 // Memo: Alcanza proyecta hasta cuándo llega la plata. Card de
