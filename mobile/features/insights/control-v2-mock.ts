@@ -369,9 +369,16 @@ export function computeControlView(d: ControlMockData): ControlView {
   const restanteMes = libreMesTotal - gastadoHastaHoy
   const diasRestantes = d.diasMes - d.diaActual + 1
   const closedDays = detalleDias.length
-  const hasReliableProjection = closedDays >= 7
-  const noDiscretionarySpendYet =
-    hasReliableProjection && promedioDiario <= 0 && d.gastoHoy <= 0
+  // Una proyección confiable necesita DOS cosas: una semana de días
+  // cerrados Y gasto discrecional real para promediar. `closedDays`
+  // cuenta días-calendario del ciclo transcurridos (detalleDias mapea
+  // d.dias), así que una cuenta nueva que entra a mitad/fin de ciclo
+  // tendría closedDays>=7 con `promedioDiario=0` → antes mostraba
+  // "alcanza con margen de sobra" proyectando desde $0/día (engañoso).
+  // Exigiendo `promedioDiario > 0`, la AlcanzaCard cae a su placeholder
+  // ("necesitamos una semana de gastos") hasta que haya datos reales.
+  const noDiscretionarySpendYet = promedioDiario <= 0 && d.gastoHoy <= 0
+  const hasReliableProjection = closedDays >= 7 && promedioDiario > 0
   const alreadyExhausted =
     hasReliableProjection &&
     gastadoHastaHoy > libreMesTotal &&
