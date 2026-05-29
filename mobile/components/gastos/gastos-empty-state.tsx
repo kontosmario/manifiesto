@@ -81,7 +81,7 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
             <MaterialIcons
               color={theme.colors.primary}
               name="receipt-long"
-              size={26}
+              size={22}
             />
           </View>
           <Text style={[styles.introTitle, { color: theme.colors.text }]}>
@@ -209,29 +209,28 @@ const styles = StyleSheet.create({
 
   // ── Intro card ───────────────────────────────────────────────────
   introCard: {
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 22,
+    padding: 16,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   introIconTile: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
   introTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
     textAlign: 'center',
   },
   introBody: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
   },
   introCta: {

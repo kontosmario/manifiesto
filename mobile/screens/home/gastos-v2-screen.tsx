@@ -295,8 +295,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
 
   const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
-    trackTap('add_expense_cta', 'movements_empty', '/(app)/(tabs)/add')
-    router.push('/(app)/(tabs)/add')
+    // Abre el form de gasto como modal/sheet, igual que el botón '+' del
+    // tab bar (AddExpenseTabButton también hace push a /(app)/add-expense).
+    // Antes navegaba al tab '/(app)/(tabs)/add', que no corresponde.
+    trackTap('add_expense_cta', 'movements_empty', '/(app)/add-expense')
+    router.push('/(app)/add-expense')
   }, [router, trackTap])
   const handlePressStreak = useCallback(() => {
     void triggerHaptic('selection')
@@ -755,44 +758,52 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-        scrollable
-        contentContainerStyle={styles.screenContent}
+        // Default scrollable Screen (mismo patrón que Fijos). NO usar
+        // `styles.screenContent` acá — ese estilo es del SectionList y
+        // fuerza `paddingBottom: 0`, que dejaba el empty state sin poder
+        // scrollearse hasta el final. Este usa el bottom-padding default
+        // del Screen (clearance del tab bar).
+        contentContainerStyle={styles.emptyStateContent}
+        // Blobs detrás del scroll (no como hijo en flujo) para que cubran
+        // el viewport y no metan un gap fantasma arriba del header.
+        backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       >
-        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-        {/* Keep the streak flame + its tour target so the streak tour
-            step and the flame keep working on the empty screen. */}
-        <GastosHeader
-          subtitle={`Ciclo ${controller.cycleLabel}`}
-          rightSlot={
-            <TourTarget
-              tour={GASTOS_TOUR}
-              order={GASTOS_TOUR_STEPS.streak.order}
-              text={GASTOS_TOUR_STEPS.streak.text}
-              highlight={{ borderRadius: 20, padding: 6, pulse: true }}
-            >
-              <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
-            </TourTarget>
-          }
-        />
-        {/* Maps the hero/calendar/list ghost previews onto the matching
-            GASTOS tour steps. The `filters` step (order 3) has no target
-            on the empty screen — the tour engine builds its step list
-            from REGISTERED targets only (tour-provider `stepsRef`), so a
-            never-registered step is simply omitted from the walk; no
-            stall. Same approach Fijos uses for its empty state. */}
-        <GastosEmptyState
-          onAddFirst={handlePressAdd}
-          renderSection={(slot, children) => (
-            <TourTarget
-              tour={GASTOS_TOUR}
-              order={GASTOS_TOUR_STEPS[slot].order}
-              text={GASTOS_TOUR_STEPS[slot].text}
-              highlight={{ borderRadius: 22, padding: 6 }}
-            >
-              {children}
-            </TourTarget>
-          )}
-        />
+        <View style={styles.emptyStateStack}>
+          {/* Keep the streak flame + its tour target so the streak tour
+              step and the flame keep working on the empty screen. */}
+          <GastosHeader
+            subtitle={`Ciclo ${controller.cycleLabel}`}
+            rightSlot={
+              <TourTarget
+                tour={GASTOS_TOUR}
+                order={GASTOS_TOUR_STEPS.streak.order}
+                text={GASTOS_TOUR_STEPS.streak.text}
+                highlight={{ borderRadius: 20, padding: 6, pulse: true }}
+              >
+                <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
+              </TourTarget>
+            }
+          />
+          {/* Maps the hero/calendar/list ghost previews onto the matching
+              GASTOS tour steps. The `filters` step (order 3) has no target
+              on the empty screen — the tour engine builds its step list
+              from REGISTERED targets only (tour-provider `stepsRef`), so a
+              never-registered step is simply omitted from the walk; no
+              stall. Same approach Fijos uses for its empty state. */}
+          <GastosEmptyState
+            onAddFirst={handlePressAdd}
+            renderSection={(slot, children) => (
+              <TourTarget
+                tour={GASTOS_TOUR}
+                order={GASTOS_TOUR_STEPS[slot].order}
+                text={GASTOS_TOUR_STEPS[slot].text}
+                highlight={{ borderRadius: 22, padding: 6 }}
+              >
+                {children}
+              </TourTarget>
+            )}
+          />
+        </View>
         <StreakSheet
           familyId={familyId}
           userId={userId}
@@ -983,6 +994,11 @@ const styles = StyleSheet.create({
   // SectionList. Lo movemos al `contentContainerStyle` del list así el
   // usuario puede scrollear hasta el borde del tab bar.
   screenContent: { paddingTop: 14, paddingBottom: 0 },
+  // Empty-state branch: scrollable Screen con bottom-padding default (no
+  // el override paddingBottom:0 del SectionList), + gap entre el header
+  // y el contenido del empty state para que no queden pegados.
+  emptyStateContent: { paddingTop: 14 },
+  emptyStateStack: { gap: 12 },
   activityListWrap: {
     // Holds the SectionList for the guided-tour highlight target.
     // flex:1 keeps the list filling the rest of the screen; without
