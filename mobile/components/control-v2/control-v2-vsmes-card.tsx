@@ -1,377 +1,205 @@
-import { memo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { memo, useEffect } from 'react'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { motionDurations, motionEasings } from '@/lib/motion'
+import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
+import type {
+  MonthlyByMemberEntry,
+  MonthlyCategoryBreakdownEntry,
+} from '@/features/insights/control-v2-adapter'
 
 type Mood = 'green' | 'yellow' | 'red' | null
 
 interface ControlV2VsMesCardProps {
   hasPreviousMonth: boolean
-  /** Display name of the closed cycle, e.g. "Marzo 2026". */
+  /** Display name of the closed cycle, e.g. "Abril". */
   mesPasadoNombre: string
   /** total_variable_spent at close. */
   mesPasadoTotal: number
-  /** Days where the daily total stayed at/under the cupo. */
   mesPasadoDiasBajoCupo: number
   mesPasadoTopCatLabel: string
   mesPasadoTopCatAmount: number
-  /** mood from `monthly_summaries.mood` — drives the chrome. */
+  /** mood from `monthly_summaries.mood`. */
   mesPasadoMood: Mood
   /** savings_delta del cierre — lo que NO se gastó. */
   mesPasadoSavingsDelta: number
-  /** Most expensive single transaction last cycle. */
   mesPasadoTopExpense: { description: string; price: number } | null
-  /** How much the user has already spent THIS cycle on the same
-   *  category that was the top last cycle. */
   currentTopCatSpent: number
-  /** Inclusive day range for the cycle ("15 mar – 14 abr"). Only
-   *  rendered when the cycle is NOT calendar-aligned, so users with
-   *  `salary_payment_day != 1` know exactly the comparison window.
-   *  `null` for users on day-1 cobro (calendar matches cycle). */
+  /** Inclusive day range for the cycle ("15 mar – 14 abr"). `null` when
+   *  calendar-aligned. */
   mesPasadoCycleRangeLabel: string | null
+  /** Full category breakdown — kept available for richer variants. */
+  mesPasadoCategorias: MonthlyCategoryBreakdownEntry[]
+  /** Per-member spend — kept available for richer variants. */
+  mesPasadoPorMiembro: MonthlyByMemberEntry[]
+  /** Daily totals — kept available for richer variants. */
+  mesPasadoDailyTotals: number[]
   /** Linear projection of variable spend at month-end. */
   proyectadoMes: number
   vsMesAhorro: number
   vsMesDeltaPct: number
   vsMesMejor: boolean
   diasGanadores: number
-  /** Current day of the active cycle (1-indexed). Used to hide or
-   *  de-emphasize the projection when there isn't enough data yet —
-   *  with <4 closed days a single outlier swings the linear project
-   *  by hundreds of percent. */
+  /** Current day of the active cycle (1-indexed). */
   diaActual: number
+  /** Launches the cinematic "Manifiesto Wrapped" recap of the closed
+   *  cycle (the same animation that plays after confirming salary).
+   *  Undefined when there's no closed cycle with spend to replay. */
+  onVerCierre?: () => void
 }
 
 /**
- * "Vs mes pasado" — auditada y conectada al rollup real.
+ * "Cómo vas este mes" — minimal, comparison-first review wired to the
+ * real `monthly_summaries` rollup.
  *
- * Backend pipeline:
- *   1. `close_monthly_cycle` rolls up each cycle into `monthly_summaries`
- *      (totals, breakdown, top expense, mood, daily curve, savings_delta).
- *   2. `try_close_previous_cycle` is invoked from two places:
- *        a) trigger on `family_finance.last_salary_confirmed_at` →
- *           the moment the user confirms the new salary, the prior
- *           cycle gets compacted.
- *        b) `cron_close_previous_cycles` (daily 03:00 UTC sweeper)
- *           covers users that don't open the app right after payday.
- *   3. `useControlV2Data` reads `monthly_summaries` (last 6) into
- *      `summaries[]`, the adapter exposes the freshest one as
- *      `data.mesPasado` with mood / savings / top-expense / current-
- *      top-cat-spend already crossed against this cycle's expenses.
+ * The card leads with the single most useful idea in plain language: how
+ * this cycle is tracking against the closed one. Two bars and a one-line
+ * recap support it. No charts to read, no jargon (no %, "proyección",
+ * "delta", "cupo").
  *
- * The card consumes that ready-made comparison and renders four
- * smart layers:
- *   · Mood chrome — border tinted by the rollup's `mood` field
- *     (green/yellow/red) so the silhouette already tells you how
- *     the closed cycle went.
- *   · Two-bar comparison — closed total vs projected total, each
- *     row carrying its own actionable sub (días bajo cupo, ahorro,
- *     proyección de delta).
- *   · Top-category cross-cycle alert — the single category that
- *     hurt most last cycle, and how this cycle is tracking
- *     against it. Three tiers (mejor / atento / urgente) drive
- *     copy + tone.
- *   · Smart actionable hint — surfaces savings won, top expense
- *     of last cycle, or the category to watch this cycle.
- *
- * Empty state explains the close lifecycle so first-cycle users
- * know exactly what unlocks the comparison.
+ * The forward comparison needs current-cycle data. When the cycle is
+ * still empty (e.g. right after a close), the card shows the SAME layout
+ * filled with clearly-labelled example numbers ("Ejemplo") so the user
+ * sees how it will look — never touching their data — and it swaps to
+ * their real numbers the moment they start spending.
  */
 function ControlV2VsMesCardImpl({
   hasPreviousMonth,
   mesPasadoNombre,
   mesPasadoTotal,
-  mesPasadoDiasBajoCupo,
   mesPasadoTopCatLabel,
   mesPasadoTopCatAmount,
-  mesPasadoMood,
   mesPasadoSavingsDelta,
-  mesPasadoTopExpense,
-  currentTopCatSpent,
-  mesPasadoCycleRangeLabel,
   proyectadoMes,
   vsMesAhorro,
-  vsMesDeltaPct,
   vsMesMejor,
-  diasGanadores,
   diaActual,
+  onVerCierre,
 }: ControlV2VsMesCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
-  // Linear projection volatility: with <4 elapsed days, a single
-  // high-spend outlier blows the projected month-end into wild
-  // territory. Below that threshold we soften the comparison copy
-  // so the user understands the number is provisional.
-  const projectionReliable = diaActual >= 4
+  const reduceMotion = useReducedMotion() ?? false
 
-  // Mood-driven palette — this card is the only place in Control v2
-  // where the rollup's `mood` becomes a first-class visual signal.
-  const moodPalette = (() => {
-    switch (mesPasadoMood) {
-      case 'green':
-        return {
-          fg: theme.colors.success,
-          border: isDark
-            ? 'rgba(122,216,163,0.36)'
-            : 'rgba(28,126,58,0.28)',
-          chipBg: isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)',
-          chipBorder: isDark
-            ? 'rgba(122,216,163,0.34)'
-            : 'rgba(28,126,58,0.26)',
-          calloutBg: isDark
-            ? 'rgba(122,216,163,0.10)'
-            : 'rgba(28,126,58,0.06)',
-          calloutBorder: isDark
-            ? 'rgba(122,216,163,0.26)'
-            : 'rgba(28,126,58,0.18)',
-          icon: 'check-circle' as const,
-          canonical: 'Saludable',
-          label: 'Cierre dentro del plan',
-        }
-      case 'yellow':
-        return {
-          fg: theme.colors.warning,
-          border: isDark
-            ? 'rgba(243,186,87,0.36)'
-            : 'rgba(194,122,10,0.28)',
-          chipBg: isDark ? 'rgba(243,186,87,0.16)' : 'rgba(194,122,10,0.10)',
-          chipBorder: isDark
-            ? 'rgba(243,186,87,0.34)'
-            : 'rgba(194,122,10,0.26)',
-          calloutBg: isDark
-            ? 'rgba(243,186,87,0.10)'
-            : 'rgba(194,122,10,0.06)',
-          calloutBorder: isDark
-            ? 'rgba(243,186,87,0.26)'
-            : 'rgba(194,122,10,0.18)',
-          icon: 'error-outline' as const,
-          canonical: 'Atención',
-          label: 'Cierre ajustado',
-        }
-      case 'red':
-        return {
-          fg: theme.colors.danger,
-          border: isDark
-            ? 'rgba(232,138,112,0.42)'
-            : 'rgba(192,58,42,0.32)',
-          chipBg: isDark ? 'rgba(232,138,112,0.18)' : 'rgba(192,58,42,0.12)',
-          chipBorder: isDark
-            ? 'rgba(232,138,112,0.42)'
-            : 'rgba(192,58,42,0.30)',
-          calloutBg: isDark
-            ? 'rgba(232,138,112,0.12)'
-            : 'rgba(192,58,42,0.08)',
-          calloutBorder: isDark
-            ? 'rgba(232,138,112,0.30)'
-            : 'rgba(192,58,42,0.22)',
-          icon: 'priority-high' as const,
-          canonical: 'Crítico',
-          label: 'Cierre por encima del plan',
-        }
-      default:
-        return {
-          fg: theme.colors.textMuted,
-          border: theme.colors.line,
-          chipBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.05)',
-          chipBorder: isDark
-            ? 'rgba(255,255,255,0.14)'
-            : 'rgba(15,42,30,0.12)',
-          calloutBg: isDark
-            ? 'rgba(255,255,255,0.04)'
-            : 'rgba(15,42,30,0.04)',
-          calloutBorder: isDark
-            ? 'rgba(255,255,255,0.10)'
-            : 'rgba(15,42,30,0.10)',
-          icon: 'history' as const,
-          canonical: 'Sin datos', // @copy-allow — internal label, not rendered
-          label: 'Sin clasificar',
-        }
-    }
-  })()
-
-  // ── Empty state ─────────────────────────────────────────────
+  // ── Empty state: no closed cycle yet ────────────────────────
   if (!hasPreviousMonth) {
+    const neutralFg = theme.colors.textMuted
     return (
       <RiseView delay={260}>
         <View
           style={[
             styles.card,
             {
-              backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+              backgroundColor: isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
               borderColor: theme.colors.line,
             },
           ]}
         >
           <View style={styles.eyebrowRow}>
-            <BreatheDot
-              size={7}
-              color={theme.colors.textMuted}
-              glow={theme.colors.textMuted}
-            />
-            <Text
-              style={[styles.eyebrow, { color: theme.colors.textMuted }]}
-              numberOfLines={1}
-            >
-              VS MES PASADO
+            <BreatheDot size={7} color={neutralFg} glow={neutralFg} />
+            <Text style={[styles.eyebrow, { color: neutralFg }]} numberOfLines={1}>
+              CÓMO VAS ESTE MES
             </Text>
             <View
               style={[
                 styles.statePill,
                 {
-                  backgroundColor: moodPalette.chipBg,
-                  borderColor: moodPalette.chipBorder,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.05)',
+                  borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,42,30,0.12)',
                 },
               ]}
             >
-              <MaterialIcons name="schedule" size={11} color={moodPalette.fg} />
-              <Text
-                style={[styles.statePillText, { color: moodPalette.fg }]}
-                numberOfLines={1}
-              >
+              <MaterialIcons name="schedule" size={11} color={neutralFg} />
+              <Text style={[styles.statePillText, { color: neutralFg }]} numberOfLines={1}>
                 Sin cierre todavía
               </Text>
             </View>
           </View>
 
           <Text style={[styles.headline, { color: theme.colors.text }]}>
-            Aún no hay un mes para comparar.
+            Todavía no cerraste un mes.
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-            Cuando confirmes tu próximo cobro, vamos a cerrar el ciclo
-            actual automáticamente y vas a ver aquí cómo te fue contra
-            el siguiente.
+            Cuando confirmes tu próximo cobro, vamos a cerrar el mes y vas a ver
+            acá cómo vas gastando comparado con el mes anterior.
           </Text>
-
-          <View
-            style={[
-              styles.callout,
-              {
-                backgroundColor: moodPalette.calloutBg,
-                borderColor: moodPalette.calloutBorder,
-              },
-            ]}
-            accessibilityLabel="Tip para activar la comparación"
-          >
-            <MaterialIcons
-              name="auto-awesome"
-              size={16}
-              color={moodPalette.fg}
-            />
-            <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-              Sigue registrando tus gastos: una vez cerrado el ciclo,
-              esta card se activa sola con totales, mood y la categoría
-              que más pesó.
-            </Text>
-          </View>
         </View>
       </RiseView>
     )
   }
 
-  const diffAbs = Math.abs(vsMesAhorro)
-  const pctAbs = Math.abs(vsMesDeltaPct)
-  const maxVal = Math.max(proyectadoMes, mesPasadoTotal, 1)
-  const pctThis = (proyectadoMes / maxVal) * 100
-  const pctLast = (mesPasadoTotal / maxVal) * 100
+  // ── Comparison: siempre data real del ciclo actual ──
+  const esteMes = proyectadoMes
+  const hasSpend = proyectadoMes > 0
+  // Con <4 días de ciclo la proyección lineal es volátil (un solo día
+  // outlier la dispara), así que recién ahí afirmamos la comparación.
+  // Antes mostramos el avance real, sin prometer un cierre.
+  const reliable = diaActual >= 4 && hasSpend
+  const diff = Math.abs(vsMesAhorro)
+  const positive = vsMesMejor
 
-  // Tones for the comparison bars — match the headline mood so the
-  // story is consistent: success bar when projected < closed, warn
-  // when over.
-  const closedBarColor = isDark
-    ? 'rgba(255,255,255,0.20)'
-    : 'rgba(15,42,30,0.20)'
-  const projBarColor = vsMesMejor ? theme.colors.success : theme.colors.warning
+  // Tono: verde si vas por debajo del mes pasado, ámbar si por encima,
+  // neutro mientras el ciclo recién arranca (sin datos suficientes).
+  const accentFg = !reliable
+    ? theme.colors.textMuted
+    : positive
+      ? theme.colors.success
+      : theme.colors.warning
+  // Relleno de la barra "Este mes": visible pero neutro cuando aún no es
+  // confiable, para no insinuar un resultado.
+  const barFg = !reliable
+    ? isDark ? 'rgba(255,255,255,0.45)' : 'rgba(15,42,30,0.45)'
+    : positive
+      ? theme.colors.success
+      : theme.colors.warning
+  const cardBorder = !reliable
+    ? theme.colors.line
+    : positive
+      ? isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)'
+      : isDark ? 'rgba(243,186,87,0.34)' : 'rgba(194,122,10,0.26)'
 
-  // ── Top-category cross-cycle tier ───────────────────────────
-  // We compare currentTopCatSpent vs the prev cycle's top-cat
-  // amount. Three tiers, each with its own copy and color so the
-  // user sees instantly whether the same drain is repeating.
-  const topCatRatio =
-    mesPasadoTopCatAmount > 0
-      ? currentTopCatSpent / mesPasadoTopCatAmount
-      : 0
-  const topCatTier: 'good' | 'watch' | 'urgent' =
-    topCatRatio >= 1
-      ? 'urgent'
-      : topCatRatio >= 0.7
-        ? 'watch'
-        : 'good'
-  const topCatTone = (() => {
-    switch (topCatTier) {
-      case 'good':
-        return {
+  // CTA fill = brand primary (mint on dark / forest on light); text is the
+  // opposite end so it stays AA either way.
+  const ctaFg = isDark ? '#0B1F12' : '#FFFBF2'
+
+  // Status pill: verdict real cuando hay datos confiables; neutro mientras
+  // el ciclo arranca.
+  const pill = !reliable
+    ? {
+        text: hasSpend ? 'Primeros días' : 'Recién arranca',
+        fg: theme.colors.textMuted,
+        bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.05)',
+        border: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,42,30,0.12)',
+        icon: 'schedule' as const,
+      }
+    : positive
+      ? {
+          text: 'Vas bien',
           fg: theme.colors.success,
-          bg: isDark ? 'rgba(122,216,163,0.10)' : 'rgba(28,126,58,0.05)',
-          border: isDark
-            ? 'rgba(122,216,163,0.22)'
-            : 'rgba(28,126,58,0.16)',
+          bg: isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)',
+          border: isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)',
           icon: 'trending-down' as const,
         }
-      case 'watch':
-        return {
+      : {
+          text: 'Ojo este mes',
           fg: theme.colors.warning,
-          bg: isDark ? 'rgba(243,186,87,0.10)' : 'rgba(194,122,10,0.05)',
-          border: isDark
-            ? 'rgba(243,186,87,0.24)'
-            : 'rgba(194,122,10,0.18)',
+          bg: isDark ? 'rgba(243,186,87,0.16)' : 'rgba(194,122,10,0.10)',
+          border: isDark ? 'rgba(243,186,87,0.34)' : 'rgba(194,122,10,0.26)',
           icon: 'trending-up' as const,
         }
-      case 'urgent':
-        return {
-          fg: theme.colors.danger,
-          bg: isDark ? 'rgba(232,138,112,0.12)' : 'rgba(192,58,42,0.08)',
-          border: isDark
-            ? 'rgba(232,138,112,0.30)'
-            : 'rgba(192,58,42,0.22)',
-          icon: 'priority-high' as const,
-        }
-    }
-  })()
 
-  // ── Smart hint cascade ──────────────────────────────────────
-  // Pick the most useful insight given the current state. Order
-  // matters: urgent top-cat alert wins over generic savings copy.
-  const hint = (() => {
-    if (mesPasadoTopCatAmount > 0 && topCatTier === 'urgent') {
-      return {
-        icon: 'priority-high' as const,
-        text: `${mesPasadoTopCatLabel} ya superó lo gastado en ${mesPasadoNombre} ($${formatMoneyShort(mesPasadoTopCatAmount)}). Cuida esa categoría.`,
-      }
-    }
-    if (mesPasadoTopCatAmount > 0 && topCatTier === 'watch') {
-      return {
-        icon: 'trending-up' as const,
-        text: `Vas el ${Math.round(topCatRatio * 100)}% de tu ${mesPasadoTopCatLabel} de ${mesPasadoNombre}. Está cerca del límite.`,
-      }
-    }
-    if (vsMesMejor && mesPasadoSavingsDelta > 0) {
-      const projectedThisSavings = Math.max(0, mesPasadoSavingsDelta + vsMesAhorro)
-      return {
-        icon: 'savings' as const,
-        text: `En ${mesPasadoNombre} ahorraste ${formatMoneyShort(mesPasadoSavingsDelta)}. Si mantienes el ritmo, este mes cierras cerca de ${formatMoneyShort(projectedThisSavings)}.`,
-      }
-    }
-    if (vsMesMejor) {
-      return {
-        icon: 'trending-down' as const,
-        text: `Vas a cerrar ${formatMoneyShort(diffAbs)} (~${pctAbs.toFixed(0)}%) abajo del mes pasado. Buen pulso.`,
-      }
-    }
-    if (mesPasadoTopExpense != null) {
-      return {
-        icon: 'receipt-long' as const,
-        text: `En ${mesPasadoNombre} tu gasto más caro fue "${mesPasadoTopExpense.description}" (${formatMoneyShort(mesPasadoTopExpense.price)}). Repetirlo te empuja arriba del cupo.`,
-      }
-    }
-    return {
-      icon: 'trending-up' as const,
-      text: `Vas a gastar ${formatMoneyShort(diffAbs)} (~${pctAbs.toFixed(0)}%) más que en ${mesPasadoNombre}. Ajusta el ritmo si quieres cerrar más holgado.`,
-    }
-  })()
+  const maxVal = Math.max(esteMes, mesPasadoTotal, 1)
+  const showTopCat = mesPasadoTopCatAmount > 0 && Boolean(mesPasadoTopCatLabel)
 
   return (
     <RiseView delay={260}>
@@ -379,365 +207,218 @@ function ControlV2VsMesCardImpl({
         style={[
           styles.card,
           {
-            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-            borderColor: moodPalette.border,
+            backgroundColor: isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+            borderColor: cardBorder,
           },
         ]}
       >
+        {/* ── Header ── */}
         <View style={styles.eyebrowRow}>
-          <BreatheDot size={7} color={moodPalette.fg} glow={moodPalette.fg} />
-          <Text
-            style={[styles.eyebrow, { color: moodPalette.fg }]}
-            numberOfLines={1}
-          >
-            VS {mesPasadoNombre.toUpperCase()}
+          <BreatheDot size={7} color={accentFg} glow={accentFg} />
+          <Text style={[styles.eyebrow, { color: accentFg }]} numberOfLines={1}>
+            CÓMO VAS ESTE MES
           </Text>
-          <View
-            style={[
-              styles.statePill,
-              {
-                backgroundColor: moodPalette.chipBg,
-                borderColor: moodPalette.chipBorder,
-              },
-            ]}
-          >
-            <MaterialIcons name={moodPalette.icon} size={11} color={moodPalette.fg} />
-            <Text
-              style={[styles.statePillText, { color: moodPalette.fg }]}
-              numberOfLines={1}
-            >
-              {moodPalette.label}
+          <View style={[styles.statePill, { backgroundColor: pill.bg, borderColor: pill.border }]}>
+            <MaterialIcons name={pill.icon} size={11} color={pill.fg} />
+            <Text style={[styles.statePillText, { color: pill.fg }]} numberOfLines={1}>
+              {pill.text}
             </Text>
           </View>
         </View>
 
-        {mesPasadoCycleRangeLabel ? (
-          <View style={styles.cycleRangeRow}>
-            <MaterialIcons
-              name="date-range"
-              size={11}
-              color={theme.colors.textMuted}
-            />
-            <Text
-              style={[styles.cycleRangeText, { color: theme.colors.textMuted }]}
-              numberOfLines={1}
-            >
-              Ciclo {mesPasadoCycleRangeLabel}
-            </Text>
-          </View>
-        ) : null}
-
+        {/* ── Headline: estado real del ciclo, en una frase ── */}
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          {vsMesMejor ? (
+          {!hasSpend ? (
+            <>Todavía no registraste gastos este mes.</>
+          ) : !reliable ? (
             <>
-              Vas a{' '}
-              <Text
-                style={[
-                  styles.headlineStrong,
-                  { color: theme.colors.success },
-                ]}
-              >
-                ahorrar {formatMoneyShort(diffAbs)}
-              </Text>{' '}
-              comparado con {mesPasadoNombre}.
+              Llevás{' '}
+              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>{' '}
+              gastado. En unos días te comparo con {mesPasadoNombre}.
             </>
           ) : (
             <>
-              Vas a{' '}
-              <Text
-                style={[
-                  styles.headlineStrong,
-                  { color: theme.colors.warning },
-                ]}
-              >
-                gastar {formatMoneyShort(diffAbs)} más
+              Vas gastando{' '}
+              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>,{' '}
+              <Text style={[styles.headlineStrong, { color: accentFg }]}>
+                {formatMoneyShort(diff)} {positive ? 'menos' : 'más'}
               </Text>{' '}
               que en {mesPasadoNombre}.
             </>
           )}
         </Text>
 
-        <View style={styles.statsRow}>
-          <SegmentStat
-            dotColor={closedBarColor}
-            label={mesPasadoNombre.toUpperCase()}
+        {/* ── Las dos barras ── */}
+        <View style={styles.bars}>
+          <CompareBar
+            label={mesPasadoNombre}
             value={formatMoneyShort(mesPasadoTotal)}
-            sub={`${mesPasadoDiasBajoCupo} días bajo cupo`}
+            pct={(mesPasadoTotal / maxVal) * 100}
+            fillColor={isDark ? 'rgba(255,255,255,0.22)' : 'rgba(15,42,30,0.22)'}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
+            reduceMotion={reduceMotion}
+            delay={140}
           />
-          <SegmentStat
-            dotColor={projBarColor}
-            label="ESTE MES"
-            value={
-              projectionReliable
-                ? formatMoneyShort(proyectadoMes)
-                : `~${formatMoneyShort(proyectadoMes)}`
-            }
-            sub={
-              projectionReliable
-                ? `${diasGanadores} días bajo cupo`
-                : `proyección a día ${diaActual}`
-            }
+          <CompareBar
+            label="Este mes"
+            value={formatMoneyShort(esteMes)}
+            pct={(esteMes / maxVal) * 100}
+            fillColor={barFg}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
-          />
-          <SegmentStat
-            dotColor={vsMesMejor ? theme.colors.success : theme.colors.warning}
-            label="DELTA"
-            value={
-              projectionReliable
-                ? `${vsMesMejor ? '↓' : '↑'} ${formatMoneyShort(diffAbs)}`
-                : '—'
-            }
-            sub={
-              !projectionReliable
-                ? 'esperando datos'
-                : vsMesMejor
-                  ? `${pctAbs.toFixed(0)}% menos`
-                  : `${pctAbs.toFixed(0)}% más`
-            }
-            text={
-              projectionReliable
-                ? vsMesMejor
-                  ? theme.colors.success
-                  : theme.colors.warning
-                : theme.colors.textMuted
-            }
-            muted={theme.colors.textMuted}
+            reduceMotion={reduceMotion}
+            delay={220}
+            highlight
           />
         </View>
 
+        {/* ── Mini recap del mes pasado ── */}
         <View
           style={[
-            styles.barsFrame,
-            {
-              // Dark: recede to the near-black canvas (inset well below
-              // the surfaceMuted card).
-              backgroundColor: theme.isDark
-                ? DARK_TAB_CANVAS
-                : theme.colors.surfaceMuted,
-              borderColor: theme.colors.border,
-            },
+            styles.recap,
+            { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,42,30,0.08)' },
           ]}
         >
-          <ProportionBar
-            label={`${mesPasadoNombre}`}
-            sublabel="cerrado"
-            pct={pctLast}
-            fillColor={closedBarColor}
-            text={theme.colors.text}
-            muted={theme.colors.textMuted}
-          />
-          <ProportionBar
-            label="Este mes"
-            sublabel="proyección"
-            pct={pctThis}
-            fillColor={projBarColor}
-            text={theme.colors.text}
-            muted={theme.colors.textMuted}
-            highlight
-          />
-          {mesPasadoSavingsDelta > 0 ? (
-            <View style={styles.barsFooter}>
-              <MaterialIcons
-                name="savings"
-                size={12}
-                color={theme.colors.textMuted}
-              />
-              <Text
-                style={[styles.barsFooterText, { color: theme.colors.textMuted }]}
-                numberOfLines={1}
-              >
-                En {mesPasadoNombre} ahorraste{' '}
+          <View style={styles.recapRow}>
+            <MaterialIcons name="event-available" size={13} color={theme.colors.textMuted} />
+            <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
+              En {mesPasadoNombre} gastaste{' '}
+              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                {formatMoneyShort(mesPasadoTotal)}
+              </Text>
+              {mesPasadoSavingsDelta > 0 ? (
+                <>
+                  {' '}y ahorraste{' '}
+                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>
+                    {formatMoneyShort(mesPasadoSavingsDelta)}
+                  </Text>
+                </>
+              ) : null}
+            </Text>
+          </View>
+          {showTopCat ? (
+            <View style={styles.recapRow}>
+              <MaterialIcons name="local-mall" size={13} color={theme.colors.textMuted} />
+              <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
+                Donde más gastaste:{' '}
                 <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-                  {formatMoneyShort(mesPasadoSavingsDelta)}
+                  {mesPasadoTopCatLabel}
                 </Text>
               </Text>
             </View>
           ) : null}
         </View>
 
-        {mesPasadoTopCatAmount > 0 ? (
-          <View
-            style={[
-              styles.topCatBlock,
+        {/* ── Ver el cierre del mes (Manifiesto Wrapped) ── */}
+        {onVerCierre ? (
+          <Pressable
+            onPress={() => {
+              void triggerHaptic('selection')
+              onVerCierre()
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver el cierre de ${mesPasadoNombre} con animación`}
+            style={({ pressed }) => [
+              styles.cta,
               {
-                backgroundColor: topCatTone.bg,
-                borderColor: topCatTone.border,
+                backgroundColor: theme.colors.primary,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
               },
             ]}
-            accessibilityLabel={`Top categoría de ${mesPasadoNombre}: ${mesPasadoTopCatLabel}`}
           >
-            <View style={styles.topCatHead}>
-              <MaterialIcons
-                name={topCatTone.icon}
-                size={14}
-                color={topCatTone.fg}
-              />
-              <Text
-                style={[styles.topCatTitle, { color: topCatTone.fg }]}
-                numberOfLines={1}
-              >
-                {mesPasadoTopCatLabel} · top de {mesPasadoNombre}
-              </Text>
-            </View>
-            <View style={styles.topCatBars}>
-              <View
-                style={[
-                  styles.topCatBarTrack,
-                  {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.10)'
-                      : 'rgba(15,42,30,0.10)',
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.topCatBarFill,
-                    {
-                      width: `${Math.min(100, topCatRatio * 100)}%`,
-                      backgroundColor: topCatTone.fg,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-            <View style={styles.topCatMeta}>
-              <Text
-                style={[styles.topCatMetaText, { color: theme.colors.textMuted }]}
-                numberOfLines={1}
-              >
-                {mesPasadoNombre}:{' '}
-                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-                  {formatMoneyShort(mesPasadoTopCatAmount)}
-                </Text>
-              </Text>
-              <Text
-                style={[styles.topCatMetaText, { color: theme.colors.textMuted }]}
-                numberOfLines={1}
-              >
-                Hoy:{' '}
-                <Text style={{ color: topCatTone.fg, fontWeight: '700' }}>
-                  {formatMoneyShort(currentTopCatSpent)} ·{' '}
-                  {Math.round(topCatRatio * 100)}%
-                </Text>
-              </Text>
-            </View>
-          </View>
+            <MaterialIcons name="slideshow" size={16} color={ctaFg} />
+            <Text style={[styles.ctaText, { color: ctaFg }]} numberOfLines={1}>
+              Ver el cierre de {mesPasadoNombre}
+            </Text>
+            <MaterialIcons name="chevron-right" size={18} color={ctaFg} />
+          </Pressable>
         ) : null}
-
-        <View
-          style={[
-            styles.callout,
-            {
-              backgroundColor: moodPalette.calloutBg,
-              borderColor: moodPalette.calloutBorder,
-            },
-          ]}
-          accessibilityLabel={hint.text}
-        >
-          <MaterialIcons name={hint.icon} size={16} color={moodPalette.fg} />
-          <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-            {hint.text}
-          </Text>
-        </View>
       </View>
     </RiseView>
   )
 }
 
-interface ProportionBarProps {
+// ── Grow reveal — scales a bar in from its left edge on mount ────────
+interface GrowRevealProps {
+  reduceMotion: boolean
+  delay?: number
+  style?: ViewStyle | ViewStyle[]
+  children?: React.ReactNode
+}
+
+function GrowReveal({ reduceMotion, delay = 0, style, children }: GrowRevealProps) {
+  const scaleX = useSharedValue(reduceMotion ? 1 : 0)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      scaleX.value = 1
+      return
+    }
+    scaleX.value = withDelay(
+      delay,
+      withTiming(1, { duration: motionDurations.slow, easing: motionEasings.enterSmooth }),
+    )
+  }, [reduceMotion, delay, scaleX])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: scaleX.value }],
+  }))
+
+  return (
+    <Animated.View style={[{ transformOrigin: 'left' } as ViewStyle, style, animatedStyle]}>
+      {children}
+    </Animated.View>
+  )
+}
+
+// ── Comparison bar ──────────────────────────────────────────────────
+interface CompareBarProps {
   label: string
-  sublabel: string
+  value: string
   pct: number
   fillColor: string
   text: string
   muted: string
+  reduceMotion: boolean
+  delay?: number
   highlight?: boolean
 }
 
-function ProportionBar({
+function CompareBar({
   label,
-  sublabel,
+  value,
   pct,
   fillColor,
   text,
   muted,
+  reduceMotion,
+  delay,
   highlight,
-}: ProportionBarProps) {
+}: CompareBarProps) {
   const { theme } = useAppTheme()
   return (
     <View style={styles.barRow}>
-      <View style={styles.barLabels}>
-        <Text
-          style={[
-            styles.barLabelMain,
-            { color: text, fontWeight: highlight ? '800' : '700' },
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-        <Text
-          style={[styles.barLabelSub, { color: muted }]}
-          numberOfLines={1}
-        >
-          {sublabel}
-        </Text>
-      </View>
+      <Text
+        style={[styles.barLabel, { color: highlight ? text : muted, fontWeight: highlight ? '800' : '700' }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
       <View
         style={[
           styles.barTrack,
-          {
-            backgroundColor: theme.isDark
-              ? 'rgba(255,255,255,0.08)'
-              : 'rgba(15,42,30,0.08)',
-          },
+          { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,42,30,0.08)' },
         ]}
       >
-        <View
-          style={[
-            styles.barFill,
-            { width: `${Math.max(2, pct)}%`, backgroundColor: fillColor },
-          ]}
+        <GrowReveal
+          reduceMotion={reduceMotion}
+          delay={delay}
+          style={[styles.barFill, { width: `${Math.max(3, pct)}%`, backgroundColor: fillColor }]}
         />
       </View>
-    </View>
-  )
-}
-
-interface SegmentStatProps {
-  dotColor: string
-  label: string
-  value: string
-  sub: string
-  text: string
-  muted: string
-}
-
-function SegmentStat({
-  dotColor,
-  label,
-  value,
-  sub,
-  text,
-  muted,
-}: SegmentStatProps) {
-  return (
-    <View style={styles.stat}>
-      <View style={styles.statHead}>
-        <View style={[styles.dot, { backgroundColor: dotColor }]} />
-        <Text style={[styles.statLabel, { color: muted }]} numberOfLines={1}>
-          {label}
-        </Text>
-      </View>
-      <Text style={[styles.statValue, { color: text }]} numberOfLines={1}>
+      <Text style={[styles.barValue, { color: text }]} numberOfLines={1}>
         {value}
-      </Text>
-      <Text style={[styles.statSub, { color: muted }]} numberOfLines={1}>
-        {sub}
       </Text>
     </View>
   )
@@ -777,160 +458,85 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  cycleRangeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: -4,
-  },
-  cycleRangeText: {
-    fontSize: 11,
-    fontWeight: '500',
-    flex: 1,
-  },
   headline: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
-    lineHeight: 20,
-    letterSpacing: -0.2,
+    lineHeight: 23,
+    letterSpacing: -0.3,
   },
   headlineStrong: {
     fontWeight: '800',
   },
-  body: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  statsRow: {
-    flexDirection: 'row',
+  // Bars
+  bars: {
     gap: 8,
-  },
-  stat: { flex: 1 },
-  statHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  statSub: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-  barsFrame: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    gap: 10,
   },
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  barLabels: {
-    width: 80,
-  },
-  barLabelMain: {
+  barLabel: {
+    width: 64,
     fontSize: 12,
-  },
-  barLabelSub: {
-    fontSize: 10,
-    marginTop: 1,
   },
   barTrack: {
     flex: 1,
-    height: 12,
-    borderRadius: 6,
+    height: 14,
+    borderRadius: 7,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 7,
   },
-  barsFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  barsFooterText: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  topCatBlock: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  topCatHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  topCatTitle: {
-    fontSize: 11,
+  barValue: {
+    width: 56,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.2,
-    flex: 1,
+    letterSpacing: -0.3,
+    textAlign: 'right',
   },
-  topCatBars: {
-    gap: 4,
+  // Recap
+  recap: {
+    gap: 6,
+    paddingTop: 10,
+    borderTopWidth: 1,
   },
-  topCatBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  topCatBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  topCatMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  topCatMetaText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  callout: {
+  recapRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+    gap: 6,
   },
-  calloutText: {
+  recapText: {
     flex: 1,
     fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
+    fontWeight: '500',
+  },
+  // Launch CTA
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    marginTop: 2,
+  },
+  ctaText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+  // Empty state
+  body: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 })
 
-// Memo: VsMes renderea comparativa mes pasado vs actual con varios
-// sub-tiles y format calls. Sin memo, cada render del parent
-// reevaluaba todo el árbol incluso si los datos no cambiaron.
+// Memo: barras animadas + frases; sin memo el parent reevaluaba el árbol
+// completo aunque la data del cierre no cambiara.
 export const ControlV2VsMesCard = memo(ControlV2VsMesCardImpl)

@@ -34,6 +34,16 @@ export interface MonthlyDailyTotalEntry {
   total: number
 }
 
+/** One entry of the `by_member` jsonb column — per-member spend at
+ *  close. Written by `close_monthly_cycle`. Only meaningful for shared
+ *  families; solo accounts collapse to a single entry. */
+export interface MonthlyByMemberEntry {
+  user_id: string | null
+  display_name: string | null
+  total: number
+  count: number
+}
+
 /** `top_expense` column shape — null when the cycle had no
  *  variable spending at all. */
 export interface MonthlyTopExpense {
@@ -62,9 +72,13 @@ export interface MonthlySummaryHistory {
     | MonthlyDailyTotalEntry[]
     | Record<string, number>
     | null
+  by_member: MonthlyByMemberEntry[] | null
   top_expense: MonthlyTopExpense | null
   delta_vs_previous_percent: number | null
   mood: string | null
+  /** When set, the "Manifiesto Wrapped" of this cycle was already viewed
+   *  (drives the header discoverability pulse). Null = not seen yet. */
+  wrapped_seen_at: string | null
 }
 
 interface BuildControlDataArgs {
@@ -308,6 +322,9 @@ export function buildControlDataFromSnapshot(
         currentTopCatSpent,
         trend,
         cycleRangeLabel: buildCycleRangeLabel(last.period_start, last.period_end),
+        categoryBreakdown: normaliseCategoryBreakdown(last.category_breakdown),
+        byMember: normaliseByMember(last.by_member),
+        dailyTotals: dailyTotalsToList(last.daily_totals),
       }
     : {
         nombre: prevMonthName,
@@ -321,6 +338,9 @@ export function buildControlDataFromSnapshot(
         currentTopCatSpent: 0,
         trend: [] as number[],
         cycleRangeLabel: null,
+        categoryBreakdown: [] as MonthlyCategoryBreakdownEntry[],
+        byMember: [] as MonthlyByMemberEntry[],
+        dailyTotals: [] as number[],
       }
 
   // A previous cycle is worth comparing against only when it both
@@ -423,6 +443,26 @@ export function normaliseCategoryBreakdown(
   })
   return entries
     .map((e) => ({ ...e, pct: total > 0 ? +((e.total / total) * 100).toFixed(1) : 0 }))
+    .sort((a, b) => b.total - a.total)
+}
+
+/** Normalise `by_member` into a clean, spend-desc-sorted array, keeping
+ *  only members that actually spent. The card uses the length of this
+ *  list to decide whether the "quién gastó" module is meaningful (a
+ *  solo account or a shared family where only one person spent collapses
+ *  to <2 entries, so the module hides). */
+export function normaliseByMember(
+  raw: MonthlySummaryHistory['by_member'],
+): MonthlyByMemberEntry[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((m) => ({
+      user_id: m.user_id ?? null,
+      display_name: m.display_name ?? null,
+      total: Number(m.total ?? 0),
+      count: Number(m.count ?? 0),
+    }))
+    .filter((m) => m.total > 0)
     .sort((a, b) => b.total - a.total)
 }
 

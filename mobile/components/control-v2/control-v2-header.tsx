@@ -37,6 +37,11 @@ interface ControlV2HeaderProps {
   goalEditable?: boolean
   /** Handler invoked when the user taps the pill or the goal chip. */
   onPressGoal?: () => void
+  /** Launches the cycle-close "Manifiesto Wrapped". When provided, a
+   *  circular button appears left of the score pill. */
+  onPressWrapped?: () => void
+  /** Pulses the wrapped button to signal an unseen cycle close. */
+  wrappedUnseen?: boolean
 }
 
 /**
@@ -55,6 +60,8 @@ export function ControlV2Header({
   dailyGoalAmount = null,
   goalEditable = true,
   onPressGoal,
+  onPressWrapped,
+  wrappedUnseen = false,
 }: ControlV2HeaderProps) {
   const { theme } = useAppTheme()
   const goalActive = dailyGoalAmount != null && dailyGoalAmount > 0
@@ -75,8 +82,17 @@ export function ControlV2Header({
       subtitleNumberOfLines={1}
       rightClearance={8}
       right={
-        <Pressable
-          onPress={handlePress}
+        <View style={styles.rightRow}>
+          {onPressWrapped ? (
+            <WrappedButton
+              unseen={wrappedUnseen}
+              onPress={onPressWrapped}
+              surface={circleButtonSurface(theme.isDark, theme.colors)}
+              accent={theme.colors.primary}
+            />
+          ) : null}
+          <Pressable
+            onPress={handlePress}
           onPressIn={goalEditable && onPressGoal ? scorePillPress.onPressIn : undefined}
           onPressOut={goalEditable && onPressGoal ? scorePillPress.onPressOut : undefined}
           disabled={!goalEditable || !onPressGoal}
@@ -112,7 +128,8 @@ export function ControlV2Header({
               surface={circleButtonSurface(theme.isDark, theme.colors)}
             />
           </Animated.View>
-        </Pressable>
+          </Pressable>
+        </View>
       }
     >
       {goalActive ? (
@@ -158,6 +175,98 @@ export function ControlV2Header({
         </Pressable>
       ) : null}
     </TabSectionHeader>
+  )
+}
+
+/**
+ * Circular header button that launches the cycle-close "Manifiesto
+ * Wrapped". A sonar halo pulses behind it while the latest close hasn't
+ * been seen, then goes quiet once viewed. Shares the neutral circle
+ * chrome with the score pill so both read as one button family.
+ */
+function WrappedButton({
+  unseen,
+  onPress,
+  surface,
+  accent,
+}: {
+  unseen: boolean
+  onPress: () => void
+  surface: string
+  accent: string
+}) {
+  const press = usePressScale({ pressedScale: 0.94 })
+  const handle = () => {
+    void triggerHaptic('selection')
+    onPress()
+  }
+  return (
+    <Pressable
+      onPress={handle}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel="Ver el resumen del cierre de mes"
+      accessibilityHint="Abre la animación del cierre del ciclo anterior"
+      style={styles.wrappedPressable}
+    >
+      <Animated.View style={press.animatedStyle}>
+        <WrappedPulse visible={unseen} tone={accent} />
+        <View style={[styles.scoreCircle, { backgroundColor: surface }]}>
+          <MaterialIcons name="slideshow" size={18} color={accent} />
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/**
+ * Sonar pulse — a ring that expands and fades out from the wrapped
+ * button to signal "there's a new close to watch". Loops while
+ * `visible`; under reduced-motion it holds a static soft ring instead of
+ * animating. Unmounts entirely once seen.
+ */
+function WrappedPulse({ visible, tone }: { visible: boolean; tone: string }) {
+  const reducedMotion = useReducedMotion()
+  const wave = useSharedValue(0)
+
+  useEffect(() => {
+    if (!visible || reducedMotion) {
+      wave.value = 0
+      return
+    }
+    wave.value = withRepeat(
+      // @motion-allow: sonar de discoverability, ~1.8s por ciclo
+      withTiming(1, { duration: 1800, easing: Easing.out(Easing.ease) }),
+      -1,
+      false,
+    )
+    return () => cancelAnimation(wave)
+  }, [visible, reducedMotion, wave])
+
+  const ring = useAnimatedStyle(() => ({
+    opacity: interpolate(wave.value, [0, 0.7, 1], [0.5, 0.14, 0]),
+    transform: [{ scale: interpolate(wave.value, [0, 1], [1, 1.65]) }],
+  }))
+
+  if (!visible) return null
+
+  // Reduced motion: a static soft ring so the cue survives without movement.
+  if (reducedMotion) {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.wrappedPulseRing, { borderColor: tone, opacity: 0.4 }]}
+      />
+    )
+  }
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.wrappedPulseRing, { borderColor: tone }, ring]}
+    />
   )
 }
 
@@ -385,6 +494,27 @@ const styles = StyleSheet.create({
   // context. `position: relative` is the default flexbox in RN, but
   // the rings need to be absolutely positioned around the pill
   // bounds, so we make the wrapping element explicit.
+  // Right slot holds the wrapped button + score pill side by side.
+  rightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wrappedPressable: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Sonar ring — fills the 38×38 circle bounds and scales/fades out.
+  wrappedPulseRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 999,
+    borderWidth: 1.5,
+  },
   pillPressable: {
     position: 'relative',
     alignItems: 'center',

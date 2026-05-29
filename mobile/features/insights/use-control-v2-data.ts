@@ -26,6 +26,8 @@ import {
   buildControlDataFromSnapshot,
   type MonthlySummaryHistory,
 } from '@/features/insights/control-v2-adapter'
+import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
+import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import {
   CONTROL_MOCK,
   computeControlView,
@@ -130,6 +132,18 @@ export interface ControlV2ViewModel {
    * not yet applied).
    */
   controlSnapshot: ControlSnapshot | null
+  /**
+   * Payload listo para disparar el "Manifiesto Wrapped" del ciclo recién
+   * cerrado desde la card "VS mes". `null` cuando no hay un cierre con
+   * gastos para reproducir.
+   */
+  wrappedPayload: CycleWrappedPayload | null
+  /** Id del `monthly_summaries` del cierre a reproducir (para marcarlo
+   *  visto). `null` cuando no hay cierre reproducible. */
+  wrappedSummaryId: string | null
+  /** True cuando el Wrapped del cierre más reciente ya fue visto — apaga
+   *  el pulse de discoverability del header. */
+  wrappedSeen: boolean
   /**
    * Server-computed forecast close amount + overshoot pct, surfaced
    * verbatim from `control_snapshot.forecast_close_amount` /
@@ -472,6 +486,29 @@ export function useControlV2Data(
 
   const controlSnapshot = snapshotData
 
+  // Payload del "Manifiesto Wrapped" del ciclo recién cerrado, listo para
+  // disparar el CycleWrappedModal desde la card "VS mes". Reusa el mismo
+  // builder que el auto-trigger post-cobro y la pantalla de Ediciones, así
+  // la animación es idéntica venga de donde venga. `null` cuando no hay un
+  // cierre con gastos para contar.
+  const wrappedPayload = useMemo<CycleWrappedPayload | null>(() => {
+    const latest = summaries[0]
+    if (!latest || (latest.expenses_count ?? 0) === 0) return null
+    const categoryNameById = new Map(
+      categoriesExpense.map((c) => [c.id, c.name] as const),
+    )
+    return buildWrappedPayloadFromSummary({
+      summary: latest,
+      categoryNameById,
+      achievementsEarnedAt: [],
+    })
+  }, [summaries, categoriesExpense])
+
+  // Seen-state of the freshest closed cycle's Wrapped — drives the header
+  // discoverability pulse. `wrappedSummaryId` is the row to mark seen.
+  const wrappedSummaryId = wrappedPayload ? (summaries[0]?.id ?? null) : null
+  const wrappedSeen = Boolean(summaries[0]?.wrapped_seen_at)
+
   return {
     data,
     view,
@@ -481,6 +518,9 @@ export function useControlV2Data(
     usingMock,
     noConfig,
     controlSnapshot,
+    wrappedPayload,
+    wrappedSummaryId,
+    wrappedSeen,
     forecastFromServer,
     overBudgetFromServer,
     zombiesFromServer,
@@ -490,7 +530,7 @@ export function useControlV2Data(
 
 // ─── Intelligence slice (summaries + limits + velocity) ─────────────
 
-interface ControlIntelligencePayload {
+export interface ControlIntelligencePayload {
   summaries: MonthlySummaryHistory[]
   limits: CategoryLimit[]
   velocity: VelocitySnapshot | null
@@ -544,7 +584,7 @@ async function fetchSummaries(
   const { data, error } = await supabase
     .from('monthly_summaries')
     .select(
-      'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, category_breakdown, daily_totals, top_expense, delta_vs_previous_percent, mood',
+      'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at',
     )
     .eq('family_id', familyId)
     .order('period_start', { ascending: false })
