@@ -99,7 +99,7 @@ function ControlV2AlcanciaCardImpl({
         title="Tu alcancía"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Te vamos a sugerir cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
+        hint="Te sugeriremos cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
       />
     )
   }
@@ -113,7 +113,7 @@ function ControlV2AlcanciaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Te vamos a sugerir cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
+        hint="Te sugeriremos cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
       />
     )
   }

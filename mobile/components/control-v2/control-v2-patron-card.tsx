@@ -71,7 +71,7 @@ function ControlV2PatronCardImpl({
         title="Tu patrón semanal"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Vamos a detectar en qué día de la semana se te va más plata."
+        hint="Detectaremos en qué día de la semana gastas más."
       />
     )
   }
@@ -84,7 +84,7 @@ function ControlV2PatronCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Vamos a detectar en qué día de la semana se te va más plata."
+        hint="Detectaremos en qué día de la semana gastas más."
       />
     )
   }

@@ -72,7 +72,7 @@ function ControlV2SemanaCardImpl({
         title="Cómo va esta semana"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Vas a ver tu ritmo de la semana y cómo viene comparado con la anterior."
+        hint="Verás tu ritmo de la semana y cómo va frente a la anterior."
       />
     )
   }
@@ -87,7 +87,7 @@ function ControlV2SemanaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Vas a ver tu ritmo de la semana y cómo viene comparado con la anterior."
+        hint="Verás tu ritmo de la semana y cómo va frente a la anterior."
       />
     )
   }

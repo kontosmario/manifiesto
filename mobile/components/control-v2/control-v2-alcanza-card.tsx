@@ -96,7 +96,7 @@ function ControlV2AlcanzaCardImpl({
         diaActual={Math.min(closedDays + 1, MIN_CLOSED_DAYS_FLOOR)}
         minDias={MIN_CLOSED_DAYS_FLOOR}
         noData={awaitingFirstSpend}
-        hint="Vas a saber hasta qué día del ciclo te alcanza la plata libre, sin contar los fijos."
+        hint="Sabrás hasta qué día del ciclo te alcanza el dinero libre, sin contar los fijos."
       />
     )
   }
