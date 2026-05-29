@@ -1,15 +1,20 @@
 import { useMemo } from 'react'
 import {
+  FlatList,
   Pressable,
   RefreshControl,
-  SectionList,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
-import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated'
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  ReduceMotion,
+} from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import { motionDurations, motionStagger } from '@/lib/motion'
-import { useRouter } from 'expo-router'
 import type { AvatarSlug } from '@/assets/avatars'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
@@ -19,23 +24,12 @@ import { LoadingBlock } from '@/components/ui/loading-block'
 import { SwipeableRow } from '@/components/ui/swipeable-row'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import type { FamilyNotification } from '@/features/notifications/use-notifications'
-import type { NotificationFilter } from '@/components/home/notifications-filter-pills'
 import { useAppTheme } from '@/theme/theme-provider'
 import {
   formatRelativeNotificationTime,
-  groupForKind,
   iconForKind,
-  notificationSectionTitles,
   pillForSeverity,
-  timeSectionForDate,
-  type NotificationSectionKey,
 } from '@/utils/notifications'
-
-interface NotificationFeedSection {
-  key: NotificationSectionKey
-  title: string
-  data: FamilyNotification[]
-}
 
 interface NotificationFeedListProps {
   errorMessage?: string
@@ -45,19 +39,17 @@ interface NotificationFeedListProps {
   onRetry?: () => void
   refreshing: boolean
   familyId: string
-  filter: NotificationFilter
+  /** Marca la notificación como leída → HARD DELETE de la fila. */
   onMarkRead: (notification: FamilyNotification) => void
-  /** Notification id currently being marked read/unread (mutation in flight). */
-  pendingNotificationId?: string | null
   ListHeaderComponent?: React.ReactElement | null
 }
 
 /**
- * Scrollable notification timeline aligned with the Home/Gastos/Fijos
- * design language: bordered creamCard rows, eyebrow-style section
- * headers with an underline, LinearTransition on row updates so
- * mark-as-read animates instead of snapping. Filter pills + hero live
- * outside this component and are wired via `ListHeaderComponent`.
+ * Notificaciones V2: lista plana y minificada. Solo muestra pendientes
+ * (todo lo que está en la tabla está sin leer), sin secciones ni
+ * filtros. Marcar leída = borrar la fila, vía botón de check o swipe.
+ * El tap en el cuerpo no hace nada destructivo (el borrado es
+ * permanente; las únicas affordances son el check y el swipe).
  */
 export function NotificationFeedList({
   errorMessage,
@@ -67,13 +59,10 @@ export function NotificationFeedList({
   onRetry,
   refreshing,
   familyId,
-  filter,
   onMarkRead,
-  pendingNotificationId,
   ListHeaderComponent,
 }: NotificationFeedListProps) {
   const { theme } = useAppTheme()
-  const router = useRouter()
   const membersQuery = useFamilyMembers(familyId)
 
   const memberById = useMemo(() => {
@@ -86,11 +75,6 @@ export function NotificationFeedList({
     }
     return map
   }, [membersQuery.data])
-
-  const sections = useMemo<NotificationFeedSection[]>(
-    () => buildSections(notifications, filter),
-    [notifications, filter],
-  )
 
   if (isLoading && notifications.length === 0) {
     return (
@@ -107,26 +91,20 @@ export function NotificationFeedList({
         {ListHeaderComponent}
         <ErrorState
           description={errorMessage}
-          title="No pudimos cargar la timeline"
+          title="No pudimos cargar las notificaciones"
           onAction={onRetry}
         />
       </View>
     )
   }
 
-  const handleRowPress = (item: FamilyNotification) => {
-    if (!item.read_at) {
-      onMarkRead(item)
-    }
-    const route = item.metadata?.route
-    if (typeof route === 'string' && route.length > 0) {
-      router.push(route as never)
-    }
-  }
+  const cardBg = theme.isDark
+    ? (theme.colors.surfaceMuted ?? theme.colors.creamCard)
+    : theme.colors.creamCard
 
   return (
-    <SectionList
-      sections={sections}
+    <FlatList
+      data={notifications}
       keyExtractor={(item) => item.id}
       refreshControl={
         <RefreshControl
@@ -136,40 +114,33 @@ export function NotificationFeedList({
         />
       }
       ListHeaderComponent={ListHeaderComponent ?? null}
-      renderSectionHeader={({ section }) => (
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-            {section.title}
-          </Text>
-          <View style={[styles.sectionUnderline, { backgroundColor: theme.colors.line }]} />
-        </View>
-      )}
       renderItem={({ item, index }) => {
-        const author = item.created_by ? memberById.get(item.created_by) ?? null : null
-        const isUnread = !item.read_at
-        const readActionLabel = isUnread ? 'Leído' : 'No leído'
-        const readActionIcon = isUnread ? 'visibility' : 'visibility-off'
-        // Stagger entry by 40ms per row, capped at index 8 → 320ms
-        // total. Long lists (50+) finish quickly without dragging the
-        // first paint.
+        const author = item.created_by
+          ? memberById.get(item.created_by) ?? null
+          : null
+        // Entrada escalonada de 40ms por fila, tope en index 8 → 320ms.
         const staggerDelay = Math.min(index, 8) * motionStagger.listItem
         return (
           <Animated.View
             entering={FadeIn.delay(staggerDelay)
               .duration(motionDurations.enterTab)
               .reduceMotion(ReduceMotion.System)}
-            layout={LinearTransition.duration(240)}
+            exiting={FadeOut.duration(motionDurations.quick).reduceMotion(
+              ReduceMotion.System,
+            )}
+            layout={LinearTransition.duration(240).reduceMotion(
+              ReduceMotion.System,
+            )}
           >
             <SwipeableRow
-              accessibilityHint={`Desliza para marcar como ${readActionLabel.toLowerCase()}`}
+              accessibilityHint="Desliza para marcar como leída"
               borderRadius={16}
               borderColor={theme.colors.line}
-              isProcessing={pendingNotificationId === item.id}
               rightActions={[
                 {
-                  label: readActionLabel,
+                  label: 'Listo',
                   tone: 'neutral',
-                  icon: readActionIcon,
+                  icon: 'done',
                   onPress: () => onMarkRead(item),
                 },
               ]}
@@ -177,7 +148,8 @@ export function NotificationFeedList({
               <NotificationRow
                 notification={item}
                 author={author}
-                onPress={() => handleRowPress(item)}
+                cardBg={cardBg}
+                onMarkRead={() => onMarkRead(item)}
               />
             </SwipeableRow>
           </Animated.View>
@@ -187,18 +159,16 @@ export function NotificationFeedList({
         <View style={styles.emptyWrapper}>
           <EmptyState
             icon="notifications-none"
-            title="Sin novedades por ahora"
-            subtitle="Aquí vas a ver los movimientos del hogar, tu racha y tus metas."
+            title="Todo al día"
+            subtitle="No tenés notificaciones pendientes."
           />
         </View>
       }
       contentContainerStyle={
-        sections.length === 0 ? styles.emptyContent : styles.content
+        notifications.length === 0 ? styles.emptyContent : styles.content
       }
-      stickySectionHeadersEnabled={false}
       showsVerticalScrollIndicator={false}
       ItemSeparatorComponent={() => <View style={styles.rowSpacer} />}
-      SectionSeparatorComponent={() => <View style={styles.sectionSpacer} />}
     />
   )
 }
@@ -206,27 +176,27 @@ export function NotificationFeedList({
 interface NotificationRowProps {
   notification: FamilyNotification
   author: { name: string; color: string; avatarSlug: AvatarSlug | null } | null
-  onPress: () => void
+  cardBg: string
+  onMarkRead: () => void
 }
 
-function NotificationRow({ notification, author, onPress }: NotificationRowProps) {
+function NotificationRow({
+  notification,
+  author,
+  cardBg,
+  onMarkRead,
+}: NotificationRowProps) {
   const { theme } = useAppTheme()
-  const isUnread = !notification.read_at
   const pill = pillForSeverity(notification.severity, theme.isDark)
   const relativeTime = formatRelativeNotificationTime(notification.created_at)
-  const accent = pill?.ink ?? theme.colors.primary
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.row,
         {
-          backgroundColor: theme.colors.creamCard,
-          borderColor: isUnread ? accent : theme.colors.line,
-          borderLeftWidth: isUnread ? 3 : 1,
-          opacity: pressed ? 0.94 : 1,
+          backgroundColor: cardBg,
+          borderColor: theme.colors.line,
         },
       ]}
     >
@@ -258,17 +228,13 @@ function NotificationRow({ notification, author, onPress }: NotificationRowProps
         <View style={styles.titleRow}>
           <Text
             numberOfLines={2}
-            style={[
-              styles.title,
-              {
-                color: theme.colors.text,
-                fontWeight: isUnread ? '800' : '700',
-              },
-            ]}
+            style={[styles.title, { color: theme.colors.text }]}
           >
             {notification.title}
           </Text>
-          <Text style={[styles.time, { color: theme.colors.textMuted }]}>{relativeTime}</Text>
+          <Text style={[styles.time, { color: theme.colors.textMuted }]}>
+            {relativeTime}
+          </Text>
         </View>
         {notification.body ? (
           <Text
@@ -281,52 +247,33 @@ function NotificationRow({ notification, author, onPress }: NotificationRowProps
         {pill ? (
           <View style={styles.pillRow}>
             <View style={[styles.pill, { backgroundColor: pill.surface }]}>
-              <Text style={[styles.pillLabel, { color: pill.ink }]}>{pill.label}</Text>
+              <Text style={[styles.pillLabel, { color: pill.ink }]}>
+                {pill.label}
+              </Text>
             </View>
           </View>
         ) : null}
       </View>
-    </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Marcar leída"
+        hitSlop={8}
+        onPress={onMarkRead}
+        style={({ pressed }) => [
+          styles.checkButton,
+          {
+            backgroundColor: theme.colors.creamSoft,
+            borderColor: theme.colors.line,
+            transform: [{ scale: pressed ? 0.9 : 1 }],
+            opacity: pressed ? 0.85 : 1,
+          },
+        ]}
+      >
+        <MaterialIcons name="check" size={18} color={theme.colors.primary} />
+      </Pressable>
+    </View>
   )
-}
-
-function buildSections(
-  notifications: FamilyNotification[],
-  filter: NotificationFilter,
-): NotificationFeedSection[] {
-  const filtered =
-    filter === 'all'
-      ? notifications
-      : notifications.filter((n) => groupForKind(n.kind) === filter)
-
-  if (filtered.length === 0) return []
-
-  const now = new Date()
-  const unread: FamilyNotification[] = []
-  const today: FamilyNotification[] = []
-  const yesterday: FamilyNotification[] = []
-  const thisWeek: FamilyNotification[] = []
-  const older: FamilyNotification[] = []
-
-  for (const n of filtered) {
-    if (!n.read_at) {
-      unread.push(n)
-      continue
-    }
-    const key = timeSectionForDate(n.created_at, now)
-    if (key === 'today') today.push(n)
-    else if (key === 'yesterday') yesterday.push(n)
-    else if (key === 'thisWeek') thisWeek.push(n)
-    else older.push(n)
-  }
-
-  const sections: NotificationFeedSection[] = []
-  if (unread.length) sections.push({ key: 'unread', title: notificationSectionTitles.unread, data: unread })
-  if (today.length) sections.push({ key: 'today', title: notificationSectionTitles.today, data: today })
-  if (yesterday.length) sections.push({ key: 'yesterday', title: notificationSectionTitles.yesterday, data: yesterday })
-  if (thisWeek.length) sections.push({ key: 'thisWeek', title: notificationSectionTitles.thisWeek, data: thisWeek })
-  if (older.length) sections.push({ key: 'older', title: notificationSectionTitles.older, data: older })
-  return sections
 }
 
 const styles = StyleSheet.create({
@@ -339,10 +286,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   emptyContent: {
-    // flexGrow fills the screen without centering children, so the
-    // list header stays pinned at the top. The EmptyState itself
-    // (inside emptyWrapper) stretches via flex:1 to fill whatever is
-    // left and centers its own content.
     flexGrow: 1,
     paddingBottom: 24,
   },
@@ -352,25 +295,10 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     minHeight: 240,
   },
-  sectionHeader: {
-    paddingTop: 18,
-    paddingBottom: 8,
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-  },
-  sectionUnderline: {
-    height: 1,
-    opacity: 0.6,
-  },
   rowSpacer: { height: 8 },
-  sectionSpacer: { height: 0 },
   row: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -406,6 +334,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 14,
+    fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 19,
   },
@@ -433,5 +362,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
+  },
+  checkButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
 })
