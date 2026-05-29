@@ -92,6 +92,8 @@ Método de bloqueo **independiente** de la biometría. El usuario puede tener bi
 - **Cold-start probe** ([use-pin-lock-check.ts](../../../mobile/features/auth/use-pin-lock-check.ts)): espejo de `useColdStartBiometricCheck`, keyed por session user; reporta `loading` durante el re-sondeo para que el gate no rutee con un `isSet` stale.
 - **Gate** ([app-entry-gate.tsx](../../../mobile/components/root/app-entry-gate.tsx)): `(biometric.shouldUseBiometric || pin.isSet) && !isAppUnlocked` → biometría tiene precedencia (ruta al login lock, con botón "Usar PIN"); solo-PIN ruta a `/(auth)/pin-unlock`. El PIN solo desbloquea una sesión ya válida, nunca la restaura.
 - **UI:** `PinPad` (4 dots + keypad circular, shake en error — [pin-pad.tsx](../../../mobile/components/auth/pin-pad.tsx), lógica pura testeada en [pin-pad-model.ts](../../../mobile/components/auth/pin-pad-model.ts)); `pin-setup` (enter + confirm); `pin-unlock` (lock screen, escape "Olvidé mi PIN · usar contraseña" → logout, sin límite de intentos).
+  - **Copy `pin-setup`:** fase `enter` → título "Crea tu PIN", subtítulo "Elige un PIN de 4 dígitos para entrar a la app."; fase `confirm` → título "Confirma tu PIN", subtítulo "Ingrésalo de nuevo para confirmar.". Botón secundario "Cancelar".
+  - **Copy `pin-unlock`:** título "Ingresa tu PIN" (con FernLogo 64px como header). Escape "Olvidé mi PIN · usar contraseña" → `logoutSession` → `/(auth)/welcome`.
 - **Alta:** biometric-setup ofrece "Usar un PIN" (modo A) / "Crear un PIN" (modo B) → `pin-setup?next=onboarding`.
 - **Settings:** fila "PIN de acceso" en el grupo "Acceso rápido" (set / cambiar / quitar vía Alert).
 - **Recovery:** logout limpia el PIN ([logout.ts](../../../mobile/features/auth/logout.ts) → `clearPin()`), porque es device-local. "Olvidé mi PIN" → logout → re-login con contraseña → setear uno nuevo.
@@ -335,7 +337,10 @@ Adicionalmente, `getBiometricLoginState` consulta una flag persistente en AsyncS
 - Al avanzar: `updateDisplayName.mutate(trimmedName)` en background (fire-and-forget).
 
 #### Paso 2 — Avatar (`StepAvatar`)
-- Selector de animal avatar (grid). `canContinue = true` siempre.
+- Título "Elige tu avatar", subtítulo "Lo vas a ver en tu perfil y en la actividad de la familia.".
+- **Hero card:** muestra el avatar seleccionado en tamaño 120px con su nombre (`AVATAR_LABELS[selected]`). Cambia con animación `FadeIn` (220ms, `key` por slug) cada vez que se elige uno nuevo.
+- **Grid:** `ScrollView` horizontal con `flexWrap: 'wrap'` en columnas — 3 filas fijas de celdas 64x64px, el contenido crece en horizontal y el usuario desliza para recorrer los 42 avatares. Header "TODOS LOS AVATARES · N opciones". Celda seleccionada invierte colores (fondo `theme.colors.text`, icono `theme.colors.creamCard`).
+- `canContinue = true` siempre.
 - Al avanzar: `updateAvatar.mutate(state.avatarSlug)` en background.
 
 #### Paso 3 — Familia (`StepFamily`)

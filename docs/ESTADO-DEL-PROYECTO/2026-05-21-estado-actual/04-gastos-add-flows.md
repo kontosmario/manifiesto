@@ -86,13 +86,57 @@ El controller expone `fetchNextPage()`, `hasNextPage`, `isFetchingNextPage`. La 
 
 ### Estados vacíos
 
-Tres variantes según contexto:
+Cuatro variantes según contexto:
 
-| Caso | Mensaje |
-|---|---|
-| `expenses.length === 0` | "Carga tu primer gasto" / "Empieza el ciclo registrando uno" |
-| `filteredExpenses.length === 0 && hasAnyFilter` | "No hay movimientos para este filtro" + botón "Limpiar filtros" |
-| Sin filtro pero ciclo sin gastos | "Aún sin gastos en este ciclo" |
+| Caso | Variante | Componente / Copy |
+|---|---|---|
+| `expenses.length === 0` (primera vez) | **onboarding** — ver §2a | `<GastosEmptyState>` con CTA "Cargar mi primer gasto" |
+| `filteredExpenses.length === 0 && hasAnyFilter` | **filtered** | "No hay movimientos para este filtro" + botón "Limpiar filtros" |
+| Sin filtro pero ciclo sin gastos (hay expenses históricas, ciclo actual en cero) | **cycle** | "Aún sin gastos en este ciclo" |
+| Error de red + 0 gastos | **error** | `<ErrorState>` con botón "Reintentar" |
+
+Las variantes **filtered** y **cycle** se renderizan como `ListEmptyComponent` del `SectionList`. La variante **onboarding** reemplaza completamente la rama del SectionList (ver §2a). La variante **error** también reemplaza la rama completa.
+
+---
+
+## 2a. Empty state de primera vez (onboarding)
+
+### Cuándo se activa
+
+`GastosV2ScreenContent` evalúa `isEmptyAccount = !controller.error && controller.expenses.length === 0` **después** de que el snapshot resolvió (el gate de `GastosV2Screen` retorna `null` hasta que `snapshot.data` existe). Esto garantiza que `expenses.length === 0` significa "cuenta nueva", no un flash de carga.
+
+### Componente: `GastosEmptyState`
+
+[`gastos-empty-state.tsx`](../../../mobile/components/gastos/gastos-empty-state.tsx)
+
+Estructura:
+
+1. **Intro card** — ícono `receipt-long`, título "Todavía no registras gastos", cuerpo explicativo ("Aquí ves cada movimiento del hogar: cuánto llevas gastado en el ciclo, tu cupo diario y el detalle por día. Agrega el primero para empezar."), y el CTA primario `<AppButton label="Cargar mi primer gasto" variant="primary" />`.
+2. **Eyebrow "ASÍ SE VA A VER"** — etiqueta muted (11pt, 800 weight, 1.4 letter-spacing) que introduce la sección de previews.
+3. **Tres bloques `<PreviewBlock>`** — cada uno con ícono + mini-título + descripción de una línea, seguido del componente real en modo vacío:
+   - **Resumen del ciclo** → `<GastosHeroCard empty />` (ícono `donut-large`)
+   - **Mapa del mes** → `<GastosMonthCalendar empty ... />` con `dayMoods={}` y el mes real del calendario (no inventado — ciclo que arranca el 1ro del mes actual, duración real)
+   - **Tus movimientos** → tres `<GastoRow placeholder />` apilados (ícono `receipt-long`)
+
+**Principio de diseño:** ningún preview muestra datos inventados. `GastosHeroCard empty` sustituye todos los valores por "—". `GastosMonthCalendar empty` es un calendario genuino (mes real, hoy real) sin marcas de gasto. `GastoRow placeholder` muestra el layout con dashes mudos.
+
+### Modos vacíos de los componentes internos
+
+| Componente | Prop | Efecto |
+|---|---|---|
+| `GastosHeroCard` | `empty?: boolean` | Early-return a `<GastosHeroCardEmpty>`: misma shell de gradiente + etiquetas ("PROMEDIO DÍA", "MÁS PESO"), pero todos los valores y barras reemplazados por "—". Sin shine ni particles (se lee como preview inerte, no como card live). |
+| `GastosMonthCalendar` | `empty?: boolean` | Grilla inerte (sin tap-to-filter). El flag indica al caller que la renderice con opacidad reducida; el componente en sí no tiene estilo propio de opacidad. |
+| `GastoRow` | `placeholder?: boolean` | Early-return a `<GastoRowPlaceholder>`: mismo layout (icon tile + body + amount), muted dashes sin título, categoría, autor ni monto. |
+
+### CTA y navegación
+
+El botón "Cargar mi primer gasto" llama `onAddFirst` → en el screen, `handlePressAdd` → `router.push('/(app)/add-expense')`, idéntico al botón `+` del tab bar.
+
+### Integración con el guided tour
+
+El screen registra el `ScrollView` del `<Screen>` scrollable (vía `scrollRef={tourScrollRef}`, `onScroll={onTourScroll}`, `onContentSizeChange={onTourContentSizeChange}`) como superficie de scroll del tour `GASTOS_TOUR`. Como el `SectionList` no se monta en este branch, sin este wiring el tour-host no puede medir el viewport y aborta el posicionado del cutout.
+
+`GastosEmptyState` recibe `renderSection?: (slot: GhostSlot, children) => ReactNode`. El screen pasa un wrapper que envuelve cada preview (`'hero'`, `'calendar'`, `'list'`) en `<TourTarget>` con el step correspondiente de `GASTOS_TOUR_STEPS`. El step `filters` (order 3) no tiene target en el empty screen y el tour-engine lo omite silenciosamente (solo camina targets registrados). El `GastosHeader` con `StreakFlameIcon` y su `TourTarget` (`streak` step) se conserva encima del `<GastosEmptyState>`.
 
 ---
 
@@ -375,19 +419,20 @@ Tercer línea en el row: `"{trimmedNotes}"` en italic, `fontSize: 11`, `color: t
 
 ## 8. Inventario de componentes y features
 
-### components/gastos/ (12 archivos)
+### components/gastos/ (13 archivos)
 
 | Archivo | Descripción |
 |---|---|
 | [`animated-flame.tsx`](../../../mobile/components/gastos/animated-flame.tsx) | Llama animada del streak con Reanimated (no verificado detalle) |
 | [`category-weights-list.tsx`](../../../mobile/components/gastos/category-weights-list.tsx) | Lista de categorías con barras de peso (top categories del hero) |
-| [`gasto-row.tsx`](../../../mobile/components/gastos/gasto-row.tsx) | Row de movimiento en SectionList — ver §2 |
+| [`gasto-row.tsx`](../../../mobile/components/gastos/gasto-row.tsx) | Row de movimiento en SectionList — ver §2; soporta prop `placeholder` para preview vacío |
 | [`gastos-advisor-chip.tsx`](../../../mobile/components/gastos/gastos-advisor-chip.tsx) | Chip contextual del asistente financiero (bajo el fold) |
 | [`gastos-average-bars.tsx`](../../../mobile/components/gastos/gastos-average-bars.tsx) | Barras de promedio diario de los últimos 7 días |
+| [`gastos-empty-state.tsx`](../../../mobile/components/gastos/gastos-empty-state.tsx) | Onboarding de primera vez: intro card + 3 previews con componentes reales en modo vacío — ver §2a |
 | [`gastos-filter-pill.tsx`](../../../mobile/components/gastos/gastos-filter-pill.tsx) | Pill individual de filtro por categoría |
 | [`gastos-header.tsx`](../../../mobile/components/gastos/gastos-header.tsx) | Header del tab con "Ciclo {label}" + slot derecho |
-| [`gastos-hero-card.tsx`](../../../mobile/components/gastos/gastos-hero-card.tsx) | Card principal: total, top categorías, promedio diario, barras recientes |
-| [`gastos-month-calendar.tsx`](../../../mobile/components/gastos/gastos-month-calendar.tsx) | Grilla mensual con moods por día, selector de día, nav prev/next |
+| [`gastos-hero-card.tsx`](../../../mobile/components/gastos/gastos-hero-card.tsx) | Card principal: total, top categorías, promedio diario, barras recientes; soporta prop `empty` para preview vacío |
+| [`gastos-month-calendar.tsx`](../../../mobile/components/gastos/gastos-month-calendar.tsx) | Grilla mensual con moods por día, selector de día, nav prev/next; soporta prop `empty` para preview vacío |
 | [`gastos-smart-filter.tsx`](../../../mobile/components/gastos/gastos-smart-filter.tsx) | Carrusel horizontal de pills de categoría con counts |
 | [`streak-flame-icon.tsx`](../../../mobile/components/gastos/streak-flame-icon.tsx) | Ícono 44×44 con badge de racha actual |
 | [`streak-sheet.tsx`](../../../mobile/components/gastos/streak-sheet.tsx) | Bottom sheet de detalle de racha |
@@ -522,6 +567,7 @@ Internamente llama 4 RPCs hijas + 2 selects directos:
 ### ✅ LIVE y funcionando
 
 - Tab Gastos con `GastosV2Screen` y `gastos_snapshot` RPC
+- Empty state de primera vez (`GastosEmptyState`): intro card + previews reales en modo vacío + CTA "Cargar mi primer gasto" + integración con guided tour vía `renderSection` — ver §2a
 - Alta de gasto con numpad, categorías rankeadas, sugerencias de descripción, notas opcionales, back-date desde calendario
 - Alta de ingreso con kind picker y back-date por chips
 - Swipe-to-delete con optimistic update

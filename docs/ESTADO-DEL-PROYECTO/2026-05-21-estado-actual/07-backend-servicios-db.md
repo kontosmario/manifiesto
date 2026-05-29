@@ -191,6 +191,8 @@ Retención: `monthly_summaries` top-12 por familia; `velocity_snapshots` 6 meses
 
 Catálogo v1: 14 achievements (11 originales + 3 milestone de meta: `goal_25`, `goal_50`, `goal_75`).
 
+**Nota (2026-05-28):** la migración `20260528120000_repair_achievements_catalog_rls_seed.sql` recreo la policy `catalog_select_authenticated` que faltaba en la base remota (RLS estaba habilitado pero sin policy de SELECT, por lo que el cliente autenticado recibía 0 filas del catálogo aunque existieran). La migración ademas re-sembró los 14 achievements de forma idempotente (`on conflict do update`). Aplicada a prod.
+
 ### 2.14 Eliminación de Cuentas / Rate Limits
 
 | Tabla | Propósito |
@@ -230,7 +232,7 @@ El modelo de acceso se basa en la **family_id** como único tenant. Cada tabla t
 | `savings_goals` | miembro | miembro | **owner-only** | owner-only |
 | `notifications` | propio + broadcast | **DENEGADO** (solo via RPC) | propio + broadcast | miembro |
 | `push_subscriptions` | **propio** (solo mi token) | propio + miembro | propio + miembro | propio + miembro |
-| `achievements_catalog` | cualquier autenticado | — | — | — |
+| `achievements_catalog` | cualquier autenticado (policy `catalog_select_authenticated`, recreada en mig. 20260528) | — | — | — |
 | `achievements_earned` | **propio** | — (solo via service_role) | — | — |
 | `home_telemetry` | **propio** | — (via RPC) | — | — |
 | `advisor_interactions` | propio | — (via RPC) | — | — |
@@ -615,7 +617,7 @@ Toda la app funciona como si todos los usuarios fueran "pro" sin restricciones d
 
 | Componente | Estado | Nota |
 |------------|--------|------|
-| Postgres schema (101 migraciones) | ✅ LIVE | Sincronizado con prod |
+| Postgres schema (107 migraciones) | ✅ LIVE | Sincronizado con prod |
 | RLS multi-tenant por household | ✅ LIVE | Post-hardening 2026-05-10 |
 | Vulnerabilidad update/delete cross-member en `expenses` | 🔴 ABIERTA | Ninguna migración la cerró; la política sigue siendo a nivel familia |
 | RPC `home_snapshot` | ✅ LIVE | Bundle completo con 15+ subkeys |
