@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import Animated, {
   FadeIn,
-  FadeOut,
+  FadeOutRight,
   LinearTransition,
   ReduceMotion,
 } from 'react-native-reanimated'
@@ -125,12 +125,19 @@ export function NotificationFeedList({
             entering={FadeIn.delay(staggerDelay)
               .duration(motionDurations.enterTab)
               .reduceMotion(ReduceMotion.System)}
-            exiting={FadeOut.duration(motionDurations.quick).reduceMotion(
+            // Salida intuitiva: la fila se desliza a la derecha mientras
+            // se desvanece (lee como "la despachaste / listo"), más corta
+            // que la entrada (exit-faster-than-enter). El reflow de las
+            // filas restantes usa un spring para que el hueco se cierre
+            // suave y natural en vez de un colapso lineal mecánico.
+            exiting={FadeOutRight.duration(220).reduceMotion(
               ReduceMotion.System,
             )}
-            layout={LinearTransition.duration(240).reduceMotion(
-              ReduceMotion.System,
-            )}
+            layout={LinearTransition.springify()
+              .damping(22)
+              .stiffness(190)
+              .mass(0.6)
+              .reduceMotion(ReduceMotion.System)}
           >
             <SwipeableRow
               accessibilityHint="Desliza para marcar como leída"

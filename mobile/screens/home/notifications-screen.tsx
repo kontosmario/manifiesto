@@ -90,11 +90,14 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
                 </Text>
               </View>
 
-              <View style={styles.subRow}>
-                <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>
-                  {count > 0 ? `${count} sin leer` : 'Todo al día'}
-                </Text>
-                {count > 0 ? (
+              {/* Sub-línea solo cuando HAY pendientes. Con la lista vacía
+                  el EmptyState ("Todo al día") es el único dueño del
+                  mensaje — antes se duplicaba acá y en el empty state. */}
+              {count > 0 ? (
+                <View style={styles.subRow}>
+                  <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>
+                    {`${count} sin leer`}
+                  </Text>
                   <Pressable
                     onPress={handleMarkAll}
                     accessibilityRole="button"
@@ -106,8 +109,8 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
                       Marcar todas
                     </Text>
                   </Pressable>
-                ) : null}
-              </View>
+                </View>
+              ) : null}
             </View>
           </RiseView>
 
