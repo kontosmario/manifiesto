@@ -394,6 +394,9 @@ function SummaryPanel({
             ? theme.colors.surfaceMuted
             : theme.colors.creamCard,
           borderColor: tone.border,
+          // Match ACTIVIDAD's 1px edge at night; the hairline read as
+          // edgeless on the dark canvas. Light keeps the hairline.
+          borderWidth: theme.isDark ? 1 : StyleSheet.hairlineWidth,
         },
       ]}
     >
