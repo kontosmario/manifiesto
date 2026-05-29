@@ -38,6 +38,8 @@ import {
   useScreenTour,
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
+import { useIncomeEvents, type IncomeEvent } from '@/features/income/use-income-events'
+import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
@@ -72,11 +74,41 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
   streakBrokenAt: null,
 })
 
+type MovementItem =
+  | { kind: 'expense'; iso: string; expense: Expense }
+  | { kind: 'income'; iso: string; income: IncomeEvent }
+
 interface MovimientosSection {
   title: string
   day: number
   total: number
-  data: Expense[]
+  data: MovementItem[]
+}
+
+const INCOME_KIND_LABEL_G: Record<IncomeEvent['kind'], string> = {
+  transfer: 'Transferencia',
+  bonus: 'Bono',
+  gift: 'Regalo',
+  other: 'Ingreso',
+}
+
+const INCOME_KIND_ICON_G: Record<IncomeEvent['kind'], string> = {
+  transfer: '💸',
+  bonus: '⭐',
+  gift: '🎁',
+  other: '💵',
+}
+
+const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+const MONTHS_ES = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+]
+
+/** Etiqueta para una sección que existe solo por un income-event (sin
+ *  expenses ese día). Coincide con el formato de `groupGastosByDay`. */
+function formatStandaloneIncomeDay(d: Date): string {
+  return `${WEEKDAYS_ES[d.getDay()]} ${d.getDate()} ${MONTHS_ES[d.getMonth()]}`
 }
 
 /**
@@ -142,7 +174,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // hook resolves the underlying ScrollView via `getScrollResponder()`
   // — SectionList doesn't expose `scrollTo`/`measureInWindow` on its
   // own instance.
-  const tourScrollRef = useRef<SectionList<Expense, MovimientosSection> | null>(null)
+  const tourScrollRef = useRef<SectionList<MovementItem, MovimientosSection> | null>(null)
   // Outer `<View collapsable={false}>` wrapping the SectionList. Used
   // as the registry's `measureRef`: SectionList instances don't expose
   // `measureInWindow` reliably across RN versions, so we measure this
@@ -176,6 +208,22 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const controller = useGastosController(familyId, {
     initialCategoryId,
   })
+
+  // Income events del cycle visible — se intercalan con los gastos en
+  // las day-groups, con un row variante (verde, ícono distinto).
+  // useIncomeEvents trae los últimos 100 de la familia; filtramos al
+  // cycle aquí mismo.
+  const incomeEventsQuery = useIncomeEvents(familyId)
+  const cycleIncomeEvents = useMemo<IncomeEvent[]>(() => {
+    const all = incomeEventsQuery.data ?? []
+    if (all.length === 0) return []
+    const startMs = controller.cycleStart.getTime()
+    const endMs = controller.cycleEnd.getTime()
+    return all.filter((i) => {
+      const t = Date.parse(i.created_at)
+      return Number.isFinite(t) && t >= startMs && t < endMs
+    })
+  }, [incomeEventsQuery.data, controller.cycleStart, controller.cycleEnd])
 
   useGastosRealtime(familyId)
   const telemetry = useGastosTelemetry(familyId)
@@ -365,20 +413,116 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
 
   // Map controller groups → SectionList sections (audit §2.3 — list
   // virtualizada). Each day = one section, sin movimientos = empty
-  // section that won't render rows.
-  const sections = useMemo<MovimientosSection[]>(
-    () =>
-      controller.groups.map((g) => ({
+  // section that won't render rows. Acá mezclamos income events del
+  // cycle dentro del mismo bucket por día (sorted por created_at desc).
+  // Si un día tiene SOLO income (sin expenses), creamos una sección
+  // nueva. El income NO afecta `total` (que es total de gastos).
+  const sections = useMemo<MovimientosSection[]>(() => {
+    if (controller.selectedDay != null) {
+      // Modo "día tappeado": el controller ya filtró a un solo día.
+      // Mezclamos income solo de ese día, sin generar otras secciones.
+      const base = controller.groups.map<MovimientosSection>((g) => ({
         title: g.label,
         day: g.day,
         total: g.total,
-        data: g.items,
-      })),
-    [controller.groups],
-  )
+        data: g.items.map<MovementItem>((e) => ({
+          kind: 'expense',
+          iso: e.created_at,
+          expense: e,
+        })),
+      }))
+      const dayIncomes = cycleIncomeEvents.filter((i) => {
+        const d = new Date(i.created_at)
+        return d.getDate() === controller.selectedDay
+      })
+      if (base.length > 0 && dayIncomes.length > 0) {
+        base[0]!.data = [
+          ...base[0]!.data,
+          ...dayIncomes.map<MovementItem>((i) => ({
+            kind: 'income',
+            iso: i.created_at,
+            income: i,
+          })),
+        ].sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
+      }
+      return base
+    }
+
+    // Vista normal del cycle: mergeamos income en los buckets de día.
+    const byDay = new Map<number, MovimientosSection>()
+    for (const g of controller.groups) {
+      byDay.set(g.day, {
+        title: g.label,
+        day: g.day,
+        total: g.total,
+        data: g.items.map<MovementItem>((e) => ({
+          kind: 'expense',
+          iso: e.created_at,
+          expense: e,
+        })),
+      })
+    }
+    for (const income of cycleIncomeEvents) {
+      const d = new Date(income.created_at)
+      const day = d.getDate()
+      const existing = byDay.get(day)
+      const item: MovementItem = {
+        kind: 'income',
+        iso: income.created_at,
+        income,
+      }
+      if (existing) {
+        existing.data.push(item)
+      } else {
+        // Día sin gastos pero con ingreso → sección nueva. Total = 0
+        // (no afecta el agregado de gastos). El header sigue mostrando
+        // la fecha; el row income explica la fila.
+        byDay.set(day, {
+          title: formatStandaloneIncomeDay(d),
+          day,
+          total: 0,
+          data: [item],
+        })
+      }
+    }
+    // Sort within day desc + sort sections by day desc.
+    const merged = Array.from(byDay.values())
+    for (const s of merged) {
+      s.data.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
+    }
+    merged.sort((a, b) => b.day - a.day)
+    return merged
+  }, [controller.groups, controller.selectedDay, cycleIncomeEvents])
 
   const renderItem = useCallback(
-    ({ item }: { item: Expense }) => {
+    ({ item: mv }: { item: MovementItem }) => {
+      // Income row — usamos ActivityRowV2 (amount positivo en verde +
+      // ícono por kind). No tiene swipe-to-delete (los ingresos no se
+      // borran desde acá; el flujo está en el form de Ingresos).
+      if (mv.kind === 'income') {
+        const income = mv.income
+        const kindLabel = INCOME_KIND_LABEL_G[income.kind]
+        const title = income.description?.trim() || kindLabel
+        const who = familyMembers.find((m) => m.id === income.created_by)
+        return (
+          <Animated.View
+            style={styles.rowWrap}
+            entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
+            exiting={FadeOut.duration(140)}
+            layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
+          >
+            <ActivityRowV2
+              icon={INCOME_KIND_ICON_G[income.kind]}
+              title={title}
+              category={`Ingreso · ${kindLabel}`}
+              whoName={who?.name ?? 'Alguien'}
+              whoColor={who?.color ?? '#329315'}
+              amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
+            />
+          </Animated.View>
+        )
+      }
+      const item = mv.expense
       const cat = controller.categoriesById.get(item.category_id)
       const who = familyMembers.find((m) => m.id === item.created_by)
       const actions: SwipeAction[] = [
@@ -451,7 +595,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   )
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: SectionListData<Expense, MovimientosSection> }) => (
+    ({ section }: { section: SectionListData<MovementItem, MovimientosSection> }) => (
       // Section headers also fade in / reflow when filtering changes
       // which day groups exist. Same gating logic as rows: cold mount
       // → no entering animation; user toggles a filter → 500ms window
@@ -489,7 +633,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     [theme.isDark, theme.colors.background, theme.colors.text, theme.colors.textSoft, rowAnimationEnabled],
   )
 
-  const keyExtractor = useCallback((item: Expense) => item.id, [])
+  const keyExtractor = useCallback(
+    (item: MovementItem) =>
+      item.kind === 'expense' ? `e-${item.expense.id}` : `i-${item.income.id}`,
+    [],
+  )
 
   // Empty state — three variants. Rendered as ListEmptyComponent of
   // the SectionList when `sections` is empty (no day groups passed).
@@ -754,7 +902,13 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // flash. Render the onboarding empty state (intro card + ghost
   // previews + CTA) instead of the data cards with zeros. The other two
   // empty variants (`filtered` / `cycle`) stay inside the SectionList.
-  const isEmptyAccount = !controller.error && controller.expenses.length === 0
+  // Empty account: ahora chequea movimientos totales (gastos + ingresos).
+  // Si solo hay ingresos sin gastos, NO es empty — hay actividad real
+  // que mostrar.
+  const isEmptyAccount =
+    !controller.error &&
+    controller.expenses.length === 0 &&
+    cycleIncomeEvents.length === 0
   if (isEmptyAccount) {
     return (
       <Screen
@@ -853,7 +1007,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         collapsable={false}
         style={styles.activityListWrap}
       >
-      <SectionList<Expense, MovimientosSection>
+      <SectionList<MovementItem, MovimientosSection>
         ref={tourScrollRef}
         sections={sections}
         keyExtractor={keyExtractor}

@@ -30,6 +30,7 @@ import {
   useTourTargetRef,
 } from '@/features/tours'
 import type { Expense } from '@/features/expenses/use-expenses'
+import type { IncomeEvent } from '@/features/income/use-income-events'
 import {
   classifyDashboardError,
   daysUntilPayday,
@@ -58,6 +59,9 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface HomeDashboardProps {
   dashboard: FamilyDashboard
   recentExpenses: Expense[]
+  /** Income events de la familia — el activity feed los intercala con
+   *  los gastos por timestamp desc. */
+  recentIncome?: IncomeEvent[]
   categoryNameById: Map<string, string>
   familyId: string
   /** Modo solo: el usuario es una familia invisible de 1 (kind='solo').
@@ -96,6 +100,7 @@ interface HomeDashboardProps {
 export function HomeDashboard({
   dashboard,
   recentExpenses,
+  recentIncome = [],
   categoryNameById,
   familyId,
   isSolo,
@@ -664,7 +669,7 @@ export function HomeDashboard({
 
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
-        {recentExpenses.length > 0 ? (
+        {recentExpenses.length > 0 || recentIncome.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver todo el historial"
@@ -688,6 +693,7 @@ export function HomeDashboard({
       >
         <HomeActivitySection
           expenses={recentExpenses}
+          incomeEvents={recentIncome}
           categoryNameById={categoryNameById}
           familyMembers={familyMembers}
           isLoading={isLoadingActivity}

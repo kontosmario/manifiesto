@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
@@ -9,9 +9,13 @@ import { errorMessages } from '@/lib/copy/states'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
+import type { IncomeEvent, IncomeEventKind } from '@/features/income/use-income-events'
 
 interface HomeActivitySectionProps {
   expenses: Expense[]
+  /** Income events de la familia (top N). Se intercalan con expenses por
+   *  timestamp desc; positivos en verde con ícono distinto. */
+  incomeEvents?: IncomeEvent[]
   categoryNameById: Map<string, string>
   familyMembers?: Array<{ id: string; name: string; color: string }>
   isLoading: boolean
@@ -20,6 +24,26 @@ interface HomeActivitySectionProps {
   onRetry: () => void
   /** Expense id currently being deleted (mutation in flight). */
   pendingExpenseId?: string | null
+  /** Cap del feed (default 6). */
+  limit?: number
+}
+
+type MovementItem =
+  | { kind: 'expense'; iso: string; expense: Expense }
+  | { kind: 'income'; iso: string; income: IncomeEvent }
+
+const INCOME_KIND_LABEL: Record<IncomeEventKind, string> = {
+  transfer: 'Transferencia',
+  bonus: 'Bono',
+  gift: 'Regalo',
+  other: 'Ingreso',
+}
+
+const INCOME_KIND_ICON: Record<IncomeEventKind, string> = {
+  transfer: '💸',
+  bonus: '⭐',
+  gift: '🎁',
+  other: '💵',
 }
 
 /**
@@ -27,9 +51,16 @@ interface HomeActivitySectionProps {
  * cards, or the empty / error / loading state. The section header
  * ("ACTIVIDAD" + "Ver todos") is owned by HomeDashboard so the layout
  * stays consistent with the V1 Cuaderno mock.
+ *
+ * El feed es mixto: gastos (rojos, signo −) intercalados con ingresos
+ * (verdes, signo +). El ActivityRowV2 ya es amount-sign aware, así que
+ * la diferenciación visual sale sola del color del monto + un ícono
+ * distinto por kind de ingreso. Ordenado por created_at desc, slice al
+ * `limit` (default 6).
  */
 function HomeActivitySectionImpl({
   expenses,
+  incomeEvents = [],
   categoryNameById,
   familyMembers = [],
   isLoading,
@@ -37,7 +68,25 @@ function HomeActivitySectionImpl({
   onDelete,
   onRetry,
   pendingExpenseId,
+  limit = 6,
 }: HomeActivitySectionProps) {
+  const movements = useMemo<MovementItem[]>(() => {
+    const merged: MovementItem[] = [
+      ...expenses.map<MovementItem>((e) => ({
+        kind: 'expense',
+        iso: e.created_at,
+        expense: e,
+      })),
+      ...incomeEvents.map<MovementItem>((i) => ({
+        kind: 'income',
+        iso: i.created_at,
+        income: i,
+      })),
+    ]
+    merged.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
+    return merged.slice(0, limit)
+  }, [expenses, incomeEvents, limit])
+
   if (isLoading) {
     return (
       <View style={styles.skeleton}>
@@ -53,7 +102,7 @@ function HomeActivitySectionImpl({
       />
     )
   }
-  if (expenses.length === 0) {
+  if (movements.length === 0) {
     return (
       <EmptyState
         icon="receipt-long"
@@ -64,7 +113,26 @@ function HomeActivitySectionImpl({
 
   return (
     <View style={styles.list}>
-      {expenses.map((expense, index) => {
+      {movements.map((m, index) => {
+        const delay = Math.min(180 + index * 40, 360)
+        if (m.kind === 'income') {
+          const income = m.income
+          const kindLabel = INCOME_KIND_LABEL[income.kind]
+          const title = income.description?.trim() || kindLabel
+          return (
+            <ActivityRowV2
+              key={`income-${income.id}`}
+              icon={INCOME_KIND_ICON[income.kind]}
+              title={title}
+              category={`Ingreso · ${kindLabel}`}
+              whoName={findName(familyMembers, income.created_by) ?? 'Alguien'}
+              whoColor={findColor(familyMembers, income.created_by) ?? '#329315'}
+              amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
+              delay={delay}
+            />
+          )
+        }
+        const expense = m.expense
         const categoryName = categoryNameById.get(expense.category_id) ?? 'Sin categoría'
         const dangerAction: SwipeAction = {
           label: 'Eliminar',
@@ -74,7 +142,7 @@ function HomeActivitySectionImpl({
         }
         return (
           <SwipeableRow
-            key={expense.id}
+            key={`expense-${expense.id}`}
             accessibilityHint="Desliza hacia la izquierda para eliminar"
             rightActions={[dangerAction]}
             isProcessing={pendingExpenseId === expense.id}
@@ -86,11 +154,7 @@ function HomeActivitySectionImpl({
               whoName={findName(familyMembers, expense.created_by) ?? 'Alguien'}
               whoColor={findColor(familyMembers, expense.created_by) ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
-              // Stagger faster: arranca a 180ms (entra "con" el hero, no
-              // después) y stagger 40ms entre filas. Cap a 360ms para
-              // que ni con 10 rows la cascada se sienta lenta. Antes:
-              // `400 + index * 60` (último row caía a 700ms).
-              delay={Math.min(180 + index * 40, 360)}
+              delay={delay}
             />
           </SwipeableRow>
         )
