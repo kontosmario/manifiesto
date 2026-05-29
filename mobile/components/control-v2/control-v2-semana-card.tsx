@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ControlV2Placeholder } from '@/components/control-v2/control-v2-placeholder'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
@@ -69,30 +68,12 @@ function ControlV2SemanaCardImpl({
   const { theme } = useAppTheme()
   const isDark = theme.isDark
 
-  if (diaActual < MIN_DIAS) {
-    return (
-      <ControlV2Placeholder
-        title="Cómo va esta semana"
-        diaActual={diaActual}
-        minDias={MIN_DIAS}
-        hint="Verás tu ritmo de la semana y cómo va frente a la anterior."
-      />
-    )
-  }
-
-  // Ya pasaron los días del ciclo pero todavía no hay gasto en suficientes
-  // días distintos para un promedio real (1-2 gastos no son un "ritmo").
-  if (diasConGasto < MIN_SPEND_DAYS) {
-    return (
-      <ControlV2Placeholder
-        title="Cómo va esta semana"
-        diaActual={diaActual}
-        minDias={MIN_DIAS}
-        noData
-        headline="Necesitamos gastos en más días"
-        message={`Registra gastos en al menos ${MIN_SPEND_DAYS} días distintos para ver tu ritmo de la semana y compararlo con la anterior.`}
-      />
-    )
+  // Hasta tener gasto en suficientes días distintos no hay un "ritmo"
+  // real para comparar (1-2 gastos no alcanzan). Mostramos la silueta
+  // real de la tarjeta — eyebrow + 3 stats + chart de 7 barras — pero
+  // inerte, sin números, con el progreso hacia la activación.
+  if (diaActual < MIN_DIAS || diasConGasto < MIN_SPEND_DAYS) {
+    return <ControlV2SemanaCardEmpty diasConGasto={diasConGasto} />
   }
 
   // Mood derivation. Tri-state instead of binary so the visual + copy
@@ -447,6 +428,119 @@ function ControlV2SemanaCardImpl({
   )
 }
 
+// Alturas fijas y variadas para las barras inertes del estado empty.
+// Pura geometría — no representan ningún gasto real, solo dan la
+// silueta del chart semanal. Suman a una forma orgánica, no plana.
+const EMPTY_BAR_HEIGHTS = [42, 64, 30, 78, 50, 36, 58] as const
+
+/**
+ * Empty-state twin de "Cómo va esta semana". Misma chrome (surface,
+ * border `line`, eyebrow + BreatheDot + título UPPERCASE) y la misma
+ * silueta — 3 stats + chart de 7 barras — pero inerte: barras neutras
+ * de alturas variadas, sin línea de cupo con monto, sin valores. El
+ * pill dice "Pronto" en textMuted; el callout comunica la activación
+ * + el progreso. Recesado (opacity 0.86), sin shimmer.
+ */
+function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+  const { theme } = useAppTheme()
+  const isDark = theme.isDark
+  const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
+  const progreso = Math.max(0, Math.min(diasConGasto, MIN_SPEND_DAYS))
+  const cardBg = isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+
+  return (
+    <RiseView delay={220}>
+      <View
+        accessibilityRole="text"
+        accessibilityLabel="Cómo va esta semana: esperando más días con gasto"
+        style={[
+          styles.card,
+          styles.emptyCard,
+          { backgroundColor: cardBg, borderColor: theme.colors.line },
+        ]}
+      >
+        <View style={styles.eyebrowRow}>
+          <BreatheDot size={7} color={theme.colors.textMuted} glow={theme.colors.textMuted} />
+          <Text
+            style={[styles.eyebrow, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            CÓMO VA · ÚLTIMOS 7 DÍAS
+          </Text>
+          <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
+            <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
+              Pronto
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          {(['Promedio', 'vs Semana', 'Bajo cupo'] as const).map((label) => (
+            <View key={label} style={styles.stat}>
+              <Text
+                style={[styles.statLabel, { color: theme.colors.textMuted }]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+              <Text
+                style={[styles.statValue, { color: theme.colors.textMuted, fontWeight: '800' }]}
+              >
+                —
+              </Text>
+              <View
+                style={[styles.emptyBar, { width: 44, height: 8, backgroundColor: ph, marginTop: 4 }]}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* Chart inerte — 7 barras neutras de alturas variadas. */}
+        <View
+          style={[
+            styles.chartFrame,
+            {
+              backgroundColor: isDark ? DARK_TAB_CANVAS : theme.colors.surfaceMuted,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.emptyBarsRow}>
+            {EMPTY_BAR_HEIGHTS.map((h, i) => (
+              <View key={i} style={styles.barCol}>
+                <View
+                  style={[styles.bar, { height: `${h}%`, backgroundColor: ph }]}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.callout,
+            {
+              backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)',
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
+          <View style={styles.calloutBody}>
+            <Text style={[styles.calloutText, { color: theme.colors.text }]}>
+              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para ver
+              tu ritmo de la semana y compararlo con la anterior.
+            </Text>
+            <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
+              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RiseView>
+  )
+}
+
 function DashedLine({ color }: { color: string }) {
   return (
     <View style={styles.dashedLine}>
@@ -674,6 +768,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 16,
   },
+  // ── Empty-state silhouette ──────────────────────────────────
+  emptyCard: { opacity: 0.86 },
+  emptyBar: { borderRadius: 4 },
+  emptyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyBarsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 96,
+    gap: 8,
+  },
+  calloutBody: { flex: 1, gap: 4 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 })
 
 // Memo: Semana muestra gastado vs presupuesto semanal con barras

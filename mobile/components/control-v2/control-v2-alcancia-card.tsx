@@ -5,7 +5,6 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ControlV2Placeholder } from '@/components/control-v2/control-v2-placeholder'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
@@ -96,31 +95,12 @@ function ControlV2AlcanciaCardImpl({
   // muerto). Spring scale + Animated.View es Emil-grade y tactile.
   const ctaPress = usePressScale({ pressedScale: 0.97 })
 
-  if (diaActual < MIN_DIAS) {
-    return (
-      <ControlV2Placeholder
-        title="Tu alcancía"
-        diaActual={diaActual}
-        minDias={MIN_DIAS}
-        hint="Te sugeriremos cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
-      />
-    )
-  }
-
-  // El vault (sugerencia por sub-gasto) sería falso si hay pocos días con
-  // gasto (todos los demás contarían como "ahorro"). Pedimos gasto en
-  // varios días distintos.
-  if (diasConGasto < MIN_SPEND_DAYS) {
-    return (
-      <ControlV2Placeholder
-        title="Tu alcancía"
-        diaActual={diaActual}
-        minDias={MIN_DIAS}
-        noData
-        headline="Necesitamos gastos en más días"
-        message={`Registra gastos en al menos ${MIN_SPEND_DAYS} días distintos para sugerirte cuánto mover a tu meta según tu ritmo.`}
-      />
-    )
+  // El vault (sugerencia por sub-gasto) sería falso con pocos días de
+  // gasto (los días sin registrar contarían como "ahorro"). Mostramos la
+  // silueta real — eyebrow + número grande + 3 mini-tiles + CTA — pero
+  // inerte, sin números, con el progreso hacia la activación.
+  if (diaActual < MIN_DIAS || diasConGasto < MIN_SPEND_DAYS) {
+    return <ControlV2AlcanciaCardEmpty diasConGasto={diasConGasto} />
   }
 
   // Tone tokens — alineados con la MetaCard así "alcancía" y "meta"
@@ -354,6 +334,117 @@ function ControlV2AlcanciaCardImpl({
   )
 }
 
+/**
+ * Empty-state twin de "Tu alcancía". Misma chrome (surface, border
+ * `line`, eyebrow + BreatheDot + título UPPERCASE) y la misma silueta —
+ * número grande + 3 mini-tiles + CTA — pero inerte: el número como dash
+ * muted, tiles con valores en dash, CTA con look deshabilitado (no
+ * presionable). El pill dice "Pronto" en textMuted; el callout comunica
+ * la activación + el progreso. Recesado (opacity 0.86), sin shimmer.
+ */
+function ControlV2AlcanciaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+  const { theme } = useAppTheme()
+  const isDark = theme.isDark
+  const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
+  const tileBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)'
+  const tileBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,42,30,0.08)'
+  const muted = theme.colors.textMuted
+  const text = theme.colors.text
+  const cardBg = isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+  const progreso = Math.max(0, Math.min(diasConGasto, MIN_SPEND_DAYS))
+
+  return (
+    <RiseView delay={180}>
+      <View
+        accessibilityRole="text"
+        accessibilityLabel="Tu alcancía: esperando más días con gasto"
+        style={[
+          styles.card,
+          styles.emptyCard,
+          { backgroundColor: cardBg, borderColor: theme.colors.line },
+        ]}
+      >
+        <View style={styles.eyebrowRow}>
+          <BreatheDot size={7} color={muted} glow={muted} />
+          <Text style={[styles.eyebrow, { color: muted }]} numberOfLines={1}>
+            TU ALCANCÍA · ESTE CICLO
+          </Text>
+          <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
+            <Text style={[styles.emptyPillText, { color: muted }]}>Pronto</Text>
+          </View>
+        </View>
+
+        {/* Número grande inerte como dash muted + glyph recesado. */}
+        <View style={styles.heroRow}>
+          <View style={styles.heroFlex}>
+            <View style={styles.amountRow}>
+              <Text style={[styles.amount, { color: muted }]}>—</Text>
+            </View>
+            <View
+              style={[styles.emptyBar, { width: '70%', height: 10, backgroundColor: ph, marginTop: 8 }]}
+            />
+          </View>
+          <View style={[styles.glyph, { backgroundColor: ph }]}>
+            <MaterialIcons name="savings" size={28} color={muted} />
+          </View>
+        </View>
+
+        {/* CTA con look deshabilitado — no presionable. */}
+        <View
+          style={[styles.cta, { backgroundColor: tileBg, borderColor: tileBorder }]}
+        >
+          <MaterialIcons name="lock-outline" size={16} color={muted} />
+          <Text style={[styles.ctaText, { color: muted }]} numberOfLines={1}>
+            Disponible pronto
+          </Text>
+        </View>
+
+        {/* 3 mini-tiles inertes — labels reales, valores en dash. */}
+        <View style={styles.tilesRow}>
+          {(['Sin gastos', 'Bajo cupo', 'Racha'] as const).map((label) => (
+            <View
+              key={label}
+              style={[styles.tile, { backgroundColor: tileBg, borderColor: tileBorder }]}
+            >
+              <View style={styles.tileHead}>
+                <View style={[styles.emptyDot, { backgroundColor: ph }]} />
+                <Text style={[styles.tileLabel, { color: muted }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+              <Text style={[styles.tileValue, { color: muted }]}>—</Text>
+              <View
+                style={[styles.emptyBar, { width: 40, height: 7, backgroundColor: ph, marginTop: 5 }]}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View
+          style={[
+            styles.emptyCallout,
+            {
+              backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)',
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <MaterialIcons name="schedule" size={16} color={muted} />
+          <View style={styles.calloutBody}>
+            <Text style={[styles.emptyCalloutText, { color: text }]}>
+              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para
+              sugerirte cuánto mover a tu meta según tu ritmo.
+            </Text>
+            <Text style={[styles.emptyProgress, { color: muted }]}>
+              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RiseView>
+  )
+}
+
 interface StatTileProps {
   iconName: keyof typeof MaterialIcons.glyphMap
   iconColor: string
@@ -517,6 +608,35 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  // ── Empty-state silhouette ──────────────────────────────────
+  emptyCard: { opacity: 0.86 },
+  emptyBar: { borderRadius: 4 },
+  emptyDot: { width: 8, height: 8, borderRadius: 4 },
+  emptyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginLeft: 'auto',
+  },
+  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyCallout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  calloutBody: { flex: 1, gap: 4 },
+  emptyCalloutText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
 })
 
 // Memo: Alcancia tiene Pressables + Alert handler. Sin memo cada

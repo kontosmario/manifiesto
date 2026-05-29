@@ -395,6 +395,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   pacePromedio={view.promedioDiario}
                   restanteMes={view.restanteMes}
                   diasRestantes={view.diasRestantes}
+                  diasConGasto={view.diasConGasto}
                   cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
                 />
               </ControlV2Anchor>
