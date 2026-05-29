@@ -91,10 +91,16 @@ export async function syncAllAfterMutation(
     keys.push(notificationQueryKeys.family(familyId))
   }
 
-  // ── Income
-  if (familyId && has('income')) {
+  // ── Income — incluido también por scope 'expenses' porque ahora el
+  // activity feed (Home + Gastos) muestra ingresos intercalados con
+  // gastos. Al crear/editar/borrar un gasto no movés un ingreso, pero
+  // mantener ambos sincronizados evita inconsistencias si la lista se
+  // refetcha por staleness y la otra no.
+  if (familyId && (has('income') || has('expenses') || has('fixedPayment'))) {
     keys.push(incomeEventQueryKeys.list(familyId))
     keys.push(['income-events-cycle-sum', familyId]) // prefix por familia
+  }
+  if (familyId && has('income')) {
     keys.push(familyFinanceQueryKey(familyId))
   }
 

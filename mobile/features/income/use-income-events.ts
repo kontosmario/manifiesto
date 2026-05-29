@@ -57,6 +57,37 @@ function normalizeRow(row: Record<string, unknown>): IncomeEvent {
 }
 
 /**
+ * Lista de income events de la familia (cap 100, orden created_at desc).
+ * Surface compartida por Home actividad y Gastos: el activity feed mezcla
+ * estos rows con expenses por timestamp; `useCreateIncomeEvent` hace
+ * optimistic prepend sobre la misma key para feedback instantáneo.
+ *
+ * 100 es un cap holgado — para una familia normal son ~5-15 ingresos por
+ * ciclo. Filtrar por cycle window se hace client-side en los consumers
+ * (los hooks lo necesitan distinto: Home muestra todo el feed reciente,
+ * Gastos solo los del cycle visible).
+ */
+export function useIncomeEvents(familyId: string | undefined, limit = 100) {
+  return useQuery<IncomeEvent[]>({
+    queryKey: incomeEventQueryKeys.list(familyId),
+    enabled: Boolean(familyId),
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      if (!familyId) return []
+      const { data, error } = await supabase
+        .from('income_events')
+        .select(ROW_COLUMNS)
+        .eq('family_id', familyId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      const rows = (data as Record<string, unknown>[] | null) ?? []
+      return rows.map(normalizeRow)
+    },
+  })
+}
+
+/**
  * Sum of income events whose `event_date` falls within the current
  * pay cycle. Powers the "extra income" line in `useHomeMetrics`.
  */

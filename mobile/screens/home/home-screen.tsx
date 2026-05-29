@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
+import { useIncomeEvents } from '@/features/income/use-income-events'
 import { useIsSolo } from '@/features/family/use-is-solo'
 import {
   buildCycleStartingBalanceInput,
@@ -121,6 +122,14 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
   const recentExpensesQuery = useRecentExpenses(familyId, 6)
+  // Activity feed mezcla expenses + income; el slice final lo hace la
+  // section (sorted by created_at desc). Capamos a 100 income events
+  // por familia — más que suficiente para varios ciclos.
+  const incomeEventsQuery = useIncomeEvents(familyId)
+  const recentIncome = useMemo(
+    () => incomeEventsQuery.data ?? [],
+    [incomeEventsQuery.data],
+  )
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
   const deleteExpenseMutation = useDeleteExpense(familyId)
   // Numeric count drives the bell's count badge in the header. Re-renders
@@ -328,6 +337,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         <HomeDashboard
           dashboard={dashboard}
           recentExpenses={recentExpenses}
+          recentIncome={recentIncome}
           categoryNameById={categoryNameById}
           familyId={familyId}
           isSolo={isSolo}
