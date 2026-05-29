@@ -167,7 +167,7 @@ export function NotificationFeedList({
           <EmptyState
             icon="notifications-none"
             title="Todo al día"
-            subtitle="No tenés notificaciones pendientes."
+            subtitle="No tienes notificaciones pendientes."
           />
         </View>
       }

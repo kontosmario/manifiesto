@@ -76,7 +76,7 @@ export function PinUnlockScreen() {
       <View style={styles.header}>
         <FernLogo size={64} />
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          Ingresá tu PIN
+          Ingresa tu PIN
         </Text>
       </View>
 

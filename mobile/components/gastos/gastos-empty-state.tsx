@@ -85,11 +85,11 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
             />
           </View>
           <Text style={[styles.introTitle, { color: theme.colors.text }]}>
-            Todavía no cargaste gastos
+            Todavía no registras gastos
           </Text>
           <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
-            Acá vas a ver cada movimiento del hogar: cuánto llevás gastado en el
-            ciclo, tu cupo diario y el detalle por día. Cargá el primero para
+            Aquí ves cada movimiento del hogar: cuánto llevas gastado en el
+            ciclo, tu cupo diario y el detalle por día. Agrega el primero para
             empezar.
           </Text>
           <View style={styles.introCta}>
@@ -115,7 +115,7 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         {wrap(
           'hero',
           <PreviewBlock
-            description="Cuánto llevás gastado y tu cupo diario disponible."
+            description="Cuánto llevas gastado y tu cupo diario disponible."
             icon="donut-large"
             title="Resumen del ciclo"
           >

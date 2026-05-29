@@ -71,12 +71,12 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        {phase === 'enter' ? 'Creá tu PIN' : 'Confirmá tu PIN'}
+        {phase === 'enter' ? 'Crea tu PIN' : 'Confirma tu PIN'}
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {phase === 'enter'
-          ? 'Elegí un PIN de 4 dígitos para entrar a la app.'
-          : 'Ingresalo de nuevo para confirmar.'}
+          ? 'Elige un PIN de 4 dígitos para entrar a la app.'
+          : 'Ingrésalo de nuevo para confirmar.'}
       </Text>
 
       <View style={styles.padWrap}>

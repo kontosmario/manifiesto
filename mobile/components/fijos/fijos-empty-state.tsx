@@ -74,11 +74,11 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
             />
           </View>
           <Text style={[styles.introTitle, { color: theme.colors.text }]}>
-            Todavía no tenés gastos fijos
+            Todavía no tienes gastos fijos
           </Text>
           <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
-            Acá vas a llevar lo que se paga sí o sí cada mes: alquiler,
-            servicios, cuotas y suscripciones. Cargá el primero y te armamos el
+            Aquí registras lo que se paga sí o sí cada mes: alquiler,
+            servicios, cuotas y suscripciones. Agrega el primero y armamos el
             resumen del ciclo.
           </Text>
           <View style={styles.introCta}>
@@ -104,7 +104,7 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
         {wrap(
           'hero',
           <PreviewBlock
-            description="Cuánto llevás pagado y cuánto te queda libre este mes."
+            description="Cuánto llevas pagado y cuánto te queda libre este mes."
             icon="donut-large"
             title="Resumen del ciclo"
           >
