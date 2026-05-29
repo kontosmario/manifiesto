@@ -7,12 +7,13 @@ import {
   StyleSheet,
   Text,
   View,
+  type ScrollView,
   type SectionListData,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -767,6 +768,20 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         // Blobs detrás del scroll (no como hijo en flujo) para que cubran
         // el viewport y no metan un gap fantasma arriba del header.
         backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
+        // ── Tour: registrar el ScrollView de ESTE Screen como la
+        // superficie de scroll del tour. En el branch empty el SectionList
+        // (la superficie registrada por defecto vía `tourScrollRef`/
+        // `tourMeasureRef`) NO se monta, así que `measureSv` daba null y el
+        // tour-host abortaba (cutout sin posicionar = "el tour no anda").
+        // Apuntando `tourScrollRef` al ScrollView del empty: `measureSv`
+        // mide el viewport (resolveMeasureNode cae al scrollRef porque
+        // `tourMeasureRef` queda sin attach acá) y el auto-scroll funciona
+        // para los pasos de abajo (calendar/list) cuando el contenido
+        // supera el viewport. Mismo enfoque que Fijos.
+        scrollRef={tourScrollRef as unknown as RefObject<ScrollView | null>}
+        onScroll={onTourScroll}
+        onContentSizeChange={onTourContentSizeChange}
+        scrollEventThrottle={16}
       >
         <View style={styles.emptyStateStack}>
           {/* Keep the streak flame + its tour target so the streak tour
