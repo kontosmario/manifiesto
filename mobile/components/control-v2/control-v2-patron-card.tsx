@@ -17,6 +17,8 @@ interface ControlV2PatronCardProps {
   mejorDow: DowBucket
   globalAvg: number
   diaActual?: number
+  /** True when there's real discretionary spend to analyze. */
+  hasSpendData?: boolean
 }
 
 /**
@@ -50,6 +52,7 @@ function ControlV2PatronCardImpl({
   mejorDow,
   globalAvg,
   diaActual = 999,
+  hasSpendData = true,
 }: ControlV2PatronCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -69,6 +72,19 @@ function ControlV2PatronCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         hint="Con 14 días podemos detectar qué día de la semana se gasta más."
+      />
+    )
+  }
+
+  // Días suficientes pero sin gasto real para detectar un patrón.
+  if (!hasSpendData) {
+    return (
+      <ControlV2Placeholder
+        title="Tu patrón semanal"
+        diaActual={diaActual}
+        minDias={MIN_DIAS}
+        noData
+        hint="Cuando registres gastos vamos a detectar qué día de la semana se gasta más."
       />
     )
   }

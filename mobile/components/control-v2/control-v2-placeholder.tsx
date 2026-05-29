@@ -10,19 +10,32 @@ interface ControlV2PlaceholderProps {
   minDias: number
   /** Optional one-line description of what the card will show later. */
   hint?: string
+  /**
+   * Enough cycle days have passed but there's no actual spending data
+   * yet (e.g. a new account that joined mid-cycle). Switches from the
+   * "faltan N días" countdown — which would be misleading, since the
+   * days already elapsed — to a "cargá tu primer gasto" framing, and
+   * drops the day-progress pill + bar (a count of elapsed days isn't
+   * what's missing; real spend is).
+   */
+  noData?: boolean
 }
 
 /**
  * Uniform placeholder rendered in place of Control cards that can't
- * produce meaningful insights yet. Fires when `diaActual < minDias`:
- * trend/projection cards need several closed days of spend data to
- * avoid noise, so we hold them back until the floor is reached.
+ * produce meaningful insights yet. Two cases:
+ *   · `noData=false` (default): fewer than `minDias` cycle days have
+ *     closed — hold the card back until the floor is reached, showing a
+ *     "Día X de N" countdown.
+ *   · `noData=true`: enough days passed but no real spend to analyze —
+ *     show a "log your first expense" framing instead of a countdown.
  */
 export function ControlV2Placeholder({
   title,
   diaActual,
   minDias,
   hint,
+  noData = false,
 }: ControlV2PlaceholderProps) {
   const { theme } = useAppTheme()
   const diasRestantes = Math.max(0, minDias - diaActual)
@@ -34,7 +47,11 @@ export function ControlV2Placeholder({
   return (
     <View
       accessibilityRole="text"
-      accessibilityLabel={`${title}: esperando más datos del ciclo`}
+      accessibilityLabel={
+        noData
+          ? `${title}: sin gastos todavía`
+          : `${title}: esperando más datos del ciclo`
+      }
       style={[
         styles.card,
         {
@@ -47,36 +64,42 @@ export function ControlV2Placeholder({
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
           {title.toUpperCase()}
         </Text>
-        <View style={[styles.pill, { borderColor: theme.colors.line }]}>
-          <Text style={[styles.pillText, { color: theme.colors.textMuted }]}>
-            Día {diaActual} de {minDias}
-          </Text>
-        </View>
+        {noData ? null : (
+          <View style={[styles.pill, { borderColor: theme.colors.line }]}>
+            <Text style={[styles.pillText, { color: theme.colors.textMuted }]}>
+              Día {diaActual} de {minDias}
+            </Text>
+          </View>
+        )}
       </View>
 
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        Esperando más datos
+        {noData ? 'Sin gastos todavía' : 'Esperando más datos'}
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        {diasRestantes === 0
-          ? 'Calculando con los días registrados…'
-          : `Faltan ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} para tener suficiente historial.`}
+        {noData
+          ? 'Cargá tu primer gasto y empezamos a analizar tu ritmo.'
+          : diasRestantes === 0
+            ? 'Calculando con los días registrados…'
+            : `Faltan ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} para tener suficiente historial.`}
       </Text>
       {hint ? (
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>{hint}</Text>
       ) : null}
 
-      <View style={[styles.track, { backgroundColor: theme.colors.line }]}>
-        <View
-          style={[
-            styles.fill,
-            {
-              width: `${progressPct}%`,
-              backgroundColor: theme.colors.text,
-            },
-          ]}
-        />
-      </View>
+      {noData ? null : (
+        <View style={[styles.track, { backgroundColor: theme.colors.line }]}>
+          <View
+            style={[
+              styles.fill,
+              {
+                width: `${progressPct}%`,
+                backgroundColor: theme.colors.text,
+              },
+            ]}
+          />
+        </View>
+      )}
     </View>
   )
 }

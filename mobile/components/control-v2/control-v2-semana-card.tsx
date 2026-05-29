@@ -22,6 +22,10 @@ interface ControlV2SemanaCardProps {
    *  through to the next salary. */
   diasRestantes: number
   diaActual?: number
+  /** True when there's real discretionary spend to analyze. A new
+   *  account mid-cycle (días transcurridos, gasto 0) gets the "sin
+   *  gastos todavía" placeholder instead of $0 averages. */
+  hasSpendData?: boolean
 }
 
 const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
@@ -57,6 +61,7 @@ function ControlV2SemanaCardImpl({
   momentum,
   diasRestantes,
   diaActual = 999,
+  hasSpendData = true,
 }: ControlV2SemanaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -68,6 +73,21 @@ function ControlV2SemanaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         hint="Necesitamos 7 días del ciclo para comparar tu ritmo."
+      />
+    )
+  }
+
+  // Ya pasaron suficientes días del ciclo pero no hay gasto real para
+  // promediar (ej. cuenta nueva que entró a mitad de ciclo): sin esto
+  // mostraría "promedio $0/día" como dato.
+  if (!hasSpendData) {
+    return (
+      <ControlV2Placeholder
+        title="Cómo va esta semana"
+        diaActual={diaActual}
+        minDias={MIN_DIAS}
+        noData
+        hint="Cuando registres gastos vas a ver tu ritmo y la comparación con la semana anterior."
       />
     )
   }

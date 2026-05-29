@@ -38,6 +38,11 @@ interface ControlV2AlcanciaCardProps {
   noSpendCount: number
   /** Posición 1-based dentro del ciclo. */
   diaActual?: number
+  /** True when there's real discretionary spend to analyze. Sin gasto
+   *  real el "vault" (sugerencia de ahorro por sub-gasto) sería falso
+   *  (todos los días contarían como "bajo cupo"), así que mostramos el
+   *  placeholder "sin gastos todavía". */
+  hasSpendData?: boolean
 }
 
 /**
@@ -73,6 +78,7 @@ function ControlV2AlcanciaCardImpl({
   rachaBajoCupo,
   noSpendCount,
   diaActual = 999,
+  hasSpendData = true,
 }: ControlV2AlcanciaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -94,6 +100,20 @@ function ControlV2AlcanciaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         hint="Necesitamos al menos 3 días cerrados del ciclo para sugerirte cuánto mover a tu meta."
+      />
+    )
+  }
+
+  // Días suficientes pero sin gasto real: el vault (sub-gasto) sería
+  // falso, así que no sugerimos un monto hasta que haya gastos.
+  if (!hasSpendData) {
+    return (
+      <ControlV2Placeholder
+        title="Tu alcancía"
+        diaActual={diaActual}
+        minDias={MIN_DIAS}
+        noData
+        hint="Cuando registres gastos vamos a sugerirte cuánto mover a tu meta según tu ritmo."
       />
     )
   }

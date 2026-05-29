@@ -416,6 +416,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   rachaBajoCupo={view.racha}
                   noSpendCount={view.noSpendCount}
                   diaActual={data.diaActual}
+                  hasSpendData={view.hasSpendData}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -434,6 +435,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   momentum={view.momentum}
                   diasRestantes={view.diasRestantes}
                   diaActual={data.diaActual}
+                  hasSpendData={view.hasSpendData}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -478,6 +480,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   mejorDow={view.mejorDow}
                   globalAvg={view.globalAvg}
                   diaActual={data.diaActual}
+                  hasSpendData={view.hasSpendData}
                 />
               </ControlV2Anchor>
             </TourTarget>

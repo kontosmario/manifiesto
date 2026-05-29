@@ -282,6 +282,12 @@ export interface ControlView {
    *  projection. Below that, the card should show a placeholder even
    *  if `diaActual` clears an older lower floor. */
   hasReliableProjection: boolean
+  /** True when there is at least some real discretionary spend in the
+   *  cycle (closed days OR today). Cards that analyze spending (semana /
+   *  patrón / alcancía) gate on this so a new account that joined
+   *  mid-cycle — many elapsed days, zero spend — shows a "sin gastos
+   *  todavía" placeholder instead of $0 averages. */
+  hasSpendData: boolean
   gastoProyectadoMes: number
   sobrantePresupuestadoMes: number
   diasRestantes: number
@@ -533,6 +539,7 @@ export function computeControlView(d: ControlMockData): ControlView {
     alreadyExhausted,
     closedDays,
     hasReliableProjection,
+    hasSpendData: !noDiscretionarySpendYet,
     gastoProyectadoMes,
     sobrantePresupuestadoMes,
     diasRestantes,
