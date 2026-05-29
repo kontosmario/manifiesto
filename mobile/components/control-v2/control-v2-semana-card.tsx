@@ -72,7 +72,7 @@ function ControlV2SemanaCardImpl({
         title="Cómo va esta semana"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Necesitamos 7 días del ciclo para comparar tu ritmo."
+        hint="Vas a ver tu ritmo de la semana y cómo viene comparado con la anterior."
       />
     )
   }
@@ -87,7 +87,7 @@ function ControlV2SemanaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Cuando registres gastos vas a ver tu ritmo y la comparación con la semana anterior."
+        hint="Vas a ver tu ritmo de la semana y cómo viene comparado con la anterior."
       />
     )
   }

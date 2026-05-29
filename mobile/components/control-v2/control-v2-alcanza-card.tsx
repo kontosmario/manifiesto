@@ -86,12 +86,17 @@ function ControlV2AlcanzaCardImpl({
   const isDark = theme.isDark
 
   if (!hasReliableProjection) {
+    // Dos motivos para no proyectar: faltan días cerrados (countdown) o
+    // ya hay días pero todavía sin gastos para promediar (noData). Si ya
+    // se llegó al piso de días, es lo segundo.
+    const awaitingFirstSpend = closedDays >= MIN_CLOSED_DAYS_FLOOR
     return (
       <ControlV2Placeholder
         title="Hasta cuándo te alcanza"
         diaActual={Math.min(closedDays + 1, MIN_CLOSED_DAYS_FLOOR)}
         minDias={MIN_CLOSED_DAYS_FLOOR}
-        hint="Necesitamos una semana de gastos para proyectar con confianza cuánto te alcanza tu presupuesto libre (sin fijos)."
+        noData={awaitingFirstSpend}
+        hint="Vas a saber hasta qué día del ciclo te alcanza la plata libre, sin contar los fijos."
       />
     )
   }

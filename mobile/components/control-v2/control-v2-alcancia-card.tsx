@@ -99,7 +99,7 @@ function ControlV2AlcanciaCardImpl({
         title="Tu alcancía"
         diaActual={diaActual}
         minDias={MIN_DIAS}
-        hint="Necesitamos al menos 3 días cerrados del ciclo para sugerirte cuánto mover a tu meta."
+        hint="Te vamos a sugerir cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
       />
     )
   }
@@ -113,7 +113,7 @@ function ControlV2AlcanciaCardImpl({
         diaActual={diaActual}
         minDias={MIN_DIAS}
         noData
-        hint="Cuando registres gastos vamos a sugerirte cuánto mover a tu meta según tu ritmo."
+        hint="Te vamos a sugerir cuánto mover a tu meta, según lo que ahorres por debajo de tu cupo."
       />
     )
   }

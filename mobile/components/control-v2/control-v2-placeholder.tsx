@@ -74,14 +74,14 @@ export function ControlV2Placeholder({
       </View>
 
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        {noData ? 'Sin gastos todavía' : 'Esperando más datos'}
+        {noData ? 'Todavía no hay gastos' : 'Pronto vas a ver esto'}
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {noData
-          ? 'Cargá tu primer gasto y empezamos a analizar tu ritmo.'
+          ? 'Registrá tu primer gasto y esta tarjeta se activa al toque.'
           : diasRestantes === 0
-            ? 'Calculando con los días registrados…'
-            : `Faltan ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} para tener suficiente historial.`}
+            ? 'Ya casi: estamos calculando con lo que registraste.'
+            : `Se activa cuando el ciclo cumpla ${minDias} días de registro. Te ${diasRestantes === 1 ? 'falta' : 'faltan'} ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`}
       </Text>
       {hint ? (
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>{hint}</Text>
