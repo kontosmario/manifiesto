@@ -68,12 +68,14 @@ function FijoRowReal({
   // placeholder path.
   const fijo = item as FijoItem
   const status = fijo.computedStatus
-  // 3 press scales — card (tap-to-expand, subtle 0.98), action primary
-  // (CTA verde 0.96), action secondary (Editar 0.96). Antes no había
-  // ningún feedback de press en el card ni en los action buttons.
+  // Press scales — card (tap-to-expand, subtle 0.98), Editar (0.96)
+  // dentro del panel, y `inlinePayPress` (0.92, más pronunciado) para
+  // el botón inline visible al lado del monto. Más feedback porque es
+  // un icon-only button (44pt hit area, 36pt visual) y necesita
+  // confirmar el tap sin lugar a duda.
   const cardPress = usePressScale({ pressedScale: 0.98 })
-  const actionPrimaryPress = usePressScale({ pressedScale: 0.96 })
   const actionSecondaryPress = usePressScale({ pressedScale: 0.96 })
+  const inlinePayPress = usePressScale({ pressedScale: 0.92 })
 
   // ── Local celebration on status flip → 'paid' ──────────────────
   // Capture the row's initial status on mount via a ref. The pulse
@@ -334,6 +336,68 @@ function FijoRowReal({
                 <FijoTrendSpark points={fijo.priceHistory} />
               ) : null}
             </View>
+
+            {/*
+              Botón inline "Registrar pago" — visible siempre cuando el
+              fijo está pending u overdue, SIN necesidad de tap-to-expand.
+              UX rationale (ui-ux-pro-max): la acción más frecuente del
+              row tiene que estar a 1 tap, no 2. Antes vivía solo dentro
+              del expand panel ("Tap card → expand → tap Registrar pago"),
+              fricción innecesaria para la tarea de fondo de la pantalla.
+
+              Affordance: círculo de 36pt visual (check icon) con hitSlop
+              8px → 52pt efectivo (HIG/MD: 44pt mínimo). Bg sólido
+              text-fg para read primary; press feedback `scale(0.92)`
+              (más pronunciado que la card 0.98 para reafirmar el tap).
+              Solo render para `pending`/`overdue`; para `paid`/`future`
+              no aparece (no hay acción primaria que hacer ahí).
+
+              `stopPropagation` no es nativo en RN — el wrap Pressable
+              recibe el tap primero por overlay; usar onPress directo +
+              hitSlop independiente del Pressable del card. El RN event
+              system no propaga taps a Pressables padre por defecto
+              cuando el hijo intercepta.
+            */}
+            {(status === 'pending' || status === 'overdue') && onMarkPaid ? (
+              <Pressable
+                onPress={() => onMarkPaid(fijo.id)}
+                onPressIn={inlinePayPress.onPressIn}
+                onPressOut={inlinePayPress.onPressOut}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  status === 'overdue'
+                    ? 'Registrar pago — fijo en mora'
+                    : 'Registrar pago'
+                }
+                accessibilityHint="Abre el sheet para confirmar el monto pagado"
+              >
+                <Animated.View
+                  style={[
+                    styles.inlinePayBtn,
+                    {
+                      backgroundColor:
+                        status === 'overdue'
+                          ? theme.isDark
+                            ? '#A8211B'
+                            : '#A8211B'
+                          : theme.colors.text,
+                      borderColor:
+                        status === 'overdue'
+                          ? '#A8211B'
+                          : theme.colors.text,
+                    },
+                    inlinePayPress.animatedStyle,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="check"
+                    size={18}
+                    color={theme.colors.creamCard}
+                  />
+                </Animated.View>
+              </Pressable>
+            ) : null}
           </View>
 
           {open ? (
@@ -356,35 +420,20 @@ function FijoRowReal({
                 />
                 <DetailTile label="CATEGORÍA" value={categoryName} theme={theme} />
               </View>
-              <View style={styles.actionsRow}>
-                {status !== 'paid' && onMarkPaid ? (
-                  <Pressable
-                    onPress={() => onMarkPaid(fijo.id)}
-                    onPressIn={actionPrimaryPress.onPressIn}
-                    onPressOut={actionPrimaryPress.onPressOut}
-                    style={styles.actionPrimaryWrap}
-                    accessibilityRole="button"
-                    accessibilityLabel="Registrar pago"
-                  >
-                    <Animated.View
-                      style={[
-                        styles.actionPrimary,
-                        { backgroundColor: theme.colors.text },
-                        actionPrimaryPress.animatedStyle,
-                      ]}
-                    >
-                      <Text style={[styles.actionPrimaryText, { color: theme.colors.creamCard }]}>
-                        ✓ Registrar pago
-                      </Text>
-                    </Animated.View>
-                  </Pressable>
-                ) : null}
-                {onEdit ? (
+              {/*
+                Expand panel actions: solo "Editar" ahora. El primario
+                "Registrar pago" se movió al row collapsed (botón inline
+                a la derecha del monto) para que la acción más frecuente
+                esté a 1 tap, no 2 (ui-ux-pro-max: primary action
+                visible siempre, no escondida tras tap-to-expand).
+              */}
+              {onEdit ? (
+                <View style={styles.actionsRow}>
                   <Pressable
                     onPress={() => onEdit(fijo.id)}
                     onPressIn={actionSecondaryPress.onPressIn}
                     onPressOut={actionSecondaryPress.onPressOut}
-                    style={styles.actionSecondaryWrap}
+                    style={styles.actionFullWidthWrap}
                     accessibilityRole="button"
                     accessibilityLabel="Editar fijo"
                   >
@@ -400,8 +449,8 @@ function FijoRowReal({
                       </Text>
                     </Animated.View>
                   </Pressable>
-                ) : null}
-              </View>
+                </View>
+              ) : null}
             </Animated.View>
           ) : null}
           </Animated.View>
@@ -672,19 +721,10 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
   detailValue: { fontSize: 13, fontWeight: '700', marginTop: 2 },
   actionsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  // Wrap Pressable lleva el layout (flex), Animated.View interno lleva
-  // visual chrome + press scale. Mismo split que aprendimos del DayCell
-  // hotfix — sin esto la flex ratio se rompe cuando el Animated.View
-  // toma el flex.
-  actionPrimaryWrap: { flex: 2 },
-  actionPrimary: {
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionPrimaryText: { fontSize: 13, fontWeight: '700' },
-  actionSecondaryWrap: { flex: 1 },
+  // Después de mover "Registrar pago" al row collapsed, en el panel
+  // solo queda "Editar" — ocupa el ancho completo (vs el split flex:2
+  // / flex:1 anterior).
+  actionFullWidthWrap: { flex: 1 },
   actionSecondary: {
     paddingVertical: 10,
     borderRadius: 12,
@@ -693,6 +733,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionSecondaryText: { fontSize: 13, fontWeight: '700' },
+  // Botón inline visible al lado del monto (status pending/overdue).
+  // 36pt visual + hitSlop 8px = ~52pt efectivo (HIG ≥44pt).
+  // Bg sólido text-fg (light) / rojo-deep cuando es overdue para que
+  // se lea como "atención esto vence o está vencido + acción urgente".
+  // Borde mismo color (no 1px line muted) — el botón es prominent.
+  inlinePayBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginLeft: 2,
+  },
 })
 
 /**

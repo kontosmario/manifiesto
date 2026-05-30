@@ -361,11 +361,12 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             counts={{
               pendientes:
                 controller.summary.pendingItems.length + controller.summary.overdueItems.length,
-              // "Pagados / Próximos" agrupa paid (cerrado del ciclo) +
-              // future (fijos al día con próximo en un ciclo futuro,
-              // típicamente trimestrales/anuales recién pagados).
-              pagados:
-                controller.summary.paidItems.length + controller.summary.futureItems.length,
+              pagados: controller.summary.paidItems.length,
+              // Próximos: fijos al día con próximo vencimiento en un
+              // ciclo posterior — típicamente trimestrales / semestrales
+              // / anuales recién pagados. Visibles aparte para no
+              // mezclar el calendario lejano con lo cerrado este mes.
+              proximos: controller.summary.futureItems.length,
             }}
           />
         </Animated.View>
