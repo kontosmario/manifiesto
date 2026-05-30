@@ -219,6 +219,12 @@ function ItemSlot({
       }}
       rightActions={swipeActions}
       isProcessing={isPending}
+      // Matchea exactamente el chrome del FijoRow (`styles.card`:
+      // borderRadius 16, sin borderWidth visible) para que el panel
+      // rojo del swipe llene hasta el borde del card sin doble chrome
+      // — misma sensación que el row de Gastos · Movimientos.
+      borderRadius={16}
+      borderColor="transparent"
     >
       {row}
     </SwipeableRow>
