@@ -43,6 +43,19 @@ export interface FijoItem extends FixedExpense {
    *  pago normal). False cuando no hay historial o el último pago fue
    *  al día. */
   arrearsOnLastPayment: boolean
+  /** Si `computedStatus === 'paid'`, el id del payment record que lo
+   *  marca como pagado en este ciclo (lo usa el botón "Revertir
+   *  pago" para invocar la RPC `revert_fixed_expense_payment`). Null
+   *  en cualquier otro status (pending / overdue / future). */
+  paidPaymentId: string | null
+  /** Mes (date YYYY-MM-DD, día 1) que identifica la cuota relevante
+   *  para este row:
+   *    - paid       → period_month del payment de este ciclo (qué cuota cubre).
+   *    - pending    → mes de `next_due_on` (la cuota que toca pagar).
+   *    - overdue    → mes de `next_due_on` (la cuota que NO se pagó).
+   *    - future     → mes de `next_due_on` (la próxima cuota que viene).
+   *  Null si no se puede derivar (sin next_due_on y sin payment). */
+  cuotaMonth: string | null
 }
 
 export interface FijoHikeAlert {
@@ -176,6 +189,17 @@ export function summarizeFijos(input: {
     cycleDays,
   } = input
   const paidIds = new Set(paymentsThisCycle.map((p) => p.fixedExpenseId))
+  // Index payment-by-fixedExpenseId para resolver paidPaymentId y
+  // cuotaMonth en O(1). Si hay múltiples payments en el ciclo para el
+  // mismo fijo (no debería pasar por el UNIQUE constraint, pero
+  // defense in depth), tomamos el más reciente por paidAt.
+  const paymentByFixedExpense = new Map<string, FixedExpensePayment>()
+  for (const p of paymentsThisCycle) {
+    const existing = paymentByFixedExpense.get(p.fixedExpenseId)
+    if (!existing || new Date(p.paidAt).getTime() > new Date(existing.paidAt).getTime()) {
+      paymentByFixedExpense.set(p.fixedExpenseId, p)
+    }
+  }
   const todayDay = today.getDate()
   const msPerDay = 86_400_000
   const todayStartOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -207,21 +231,33 @@ export function summarizeFijos(input: {
         prev != null && prev > 0 && currentAmount > 0
           ? Math.round(((currentAmount - prev) / prev) * 100)
           : null
+      const status = computeItemStatus({
+        item: i,
+        paidThisPeriod,
+        cycleStart,
+        cycleEnd,
+      })
+      const payment = paymentByFixedExpense.get(i.id) ?? null
+      // cuotaMonth: para paid, el period_month del payment; para los
+      // otros estados, el mes del next_due_on (la cuota que toca o tocó).
+      const cuotaMonth =
+        status === 'paid' && payment
+          ? payment.periodMonth.slice(0, 7) + '-01'
+          : i.next_due_on
+            ? i.next_due_on.slice(0, 7) + '-01'
+            : null
       return {
         ...i,
         dayOfMonth,
         daysUntilDue: daysUntilDue(dayOfMonth, todayDay, cycleDays),
-        computedStatus: computeItemStatus({
-          item: i,
-          paidThisPeriod,
-          cycleStart,
-          cycleEnd,
-        }),
+        computedStatus: status,
         isZombie: false,
         daysSinceLastPaid,
         priceHistory,
         trendDeltaPct,
         arrearsOnLastPayment: arrearsByCommitment.get(i.id) === true,
+        paidPaymentId: status === 'paid' && payment ? payment.id : null,
+        cuotaMonth,
       }
     })
 

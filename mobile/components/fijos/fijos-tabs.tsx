@@ -8,7 +8,12 @@ import type { FijosTab } from '@/features/fijos/use-fijos-controller'
 interface FijosTabsProps {
   tab: FijosTab
   setTab: (tab: FijosTab) => void
-  counts: { pendientes: number; pagados: number; proximos: number }
+  counts: {
+    vencidos: number
+    pendientes: number
+    pagados: number
+    proximos: number
+  }
 }
 
 // Color semántico por bucket — alimenta el `color` prop de
@@ -16,18 +21,18 @@ interface FijosTabsProps {
 // tono del estado. El darkenForLightBg / lightenForDarkBg del pill se
 // ocupa de mantener AA en cada modo.
 //
-// 3 buckets (2026-05-30 refinado):
-//   - Pendientes → peach (urgente, por pagar)
-//   - Pagados    → lime  (cerrado, éxito)
-//   - Próximos   → sky muted (info, calendario lejano — distinto de
-//                  los otros dos para que el ojo lo separe de un vistazo)
+// 4 buckets (2026-05-30 v3): separamos "Vencidos" de "Pendientes"
+// para hacer la mora más prominente. Color rojo brand-deep para que
+// salte primero en el ojo.
 const TAB_COLORS: Record<FijosTab, string | undefined> = {
-  pendientes: '#F2A78C',
-  pagados: '#A6EF8F',
-  proximos: '#9DC4DE', // sky muted: distinguible sin compitir con peach/lime
+  vencidos: '#A8211B', // rojo brand-deep: urgencia máxima
+  pendientes: '#F2A78C', // peach: por pagar este ciclo
+  pagados: '#A6EF8F', // lime: cerrado
+  proximos: '#9DC4DE', // sky muted: calendario lejano
 }
 
 const TAB_LABELS: Record<FijosTab, string> = {
+  vencidos: 'Vencidos',
   pendientes: 'Pendientes',
   pagados: 'Pagados',
   proximos: 'Próximos',
@@ -38,16 +43,18 @@ const TAB_LABELS: Record<FijosTab, string> = {
  * lenguaje de filtros con Gastos: misma morph active/inactive, mismo
  * spring de transición, mismo press feedback.
  *
- * Buckets (3 tabs):
- *  - Pendientes → pending + overdue (lo accionable este ciclo)
+ * Buckets (4 tabs):
+ *  - Vencidos   → overdue (mora arrastrada). El más urgente.
+ *  - Pendientes → pending (cuotas del ciclo activo aún sin vencer)
  *  - Pagados    → paid del ciclo (lo cerrado este mes)
- *  - Próximos   → future (fijos al día con próximo vencimiento en un
- *                 ciclo posterior, ej trimestral pagado en abril cuando
- *                 estás en mayo)
+ *  - Próximos   → future (fijos al día con próximo en un ciclo
+ *                  posterior, ej trimestral pagado en abril cuando
+ *                  estás en mayo)
  *
  * Cada bucket inactivo muestra su count en color semántico del estado;
  * el bucket activo cambia a la pill text-fg + creamCard-bg que ya
- * conocés de Gastos.
+ * conocés de Gastos. Si un bucket tiene count=0 NO lo escondemos —
+ * el user puede querer navegar entre vacíos para entender el sistema.
  */
 export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
   const handleSelect = useCallback(
@@ -59,7 +66,10 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
     [setTab],
   )
 
-  const TABS: FijosTab[] = ['pendientes', 'pagados', 'proximos']
+  // Orden: vencidos primero (más urgente) → pendientes → pagados →
+  // próximos (más lejano). Refleja la jerarquía de "qué tengo que
+  // mirar primero".
+  const TABS: FijosTab[] = ['vencidos', 'pendientes', 'pagados', 'proximos']
 
   return (
     <RiseView delay={120}>

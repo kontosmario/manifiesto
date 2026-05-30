@@ -2,6 +2,7 @@ import { Alert, StyleSheet, View, type ScrollView } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
@@ -26,9 +27,11 @@ import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
   useDeleteFixedExpense,
   useRecordFixedExpensePayment,
+  useRevertFixedExpensePayment,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
+import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
@@ -76,9 +79,96 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   }, [categoriesQuery.data])
 
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
+  const revertPaymentMutation = useRevertFixedExpensePayment(familyId)
   const deleteMutation = useDeleteFixedExpense(familyId)
+  const queryClient = useQueryClient()
   // React Query cached — same source feeding the Control screen.
   const { signals: advisorSignals } = useControlV2Data(familyId)
+
+  /**
+   * Revierte un pago confirmado. Llamado desde el botón "Revertir pago"
+   * del expand panel (cuando status='paid') Y desde el snackbar de
+   * "Deshacer" que aparece tras un pago exitoso. La RPC borra el
+   * expense generado, borra el payment row, retrocede next_due_on y
+   * restaura last_paid_at — todo en una sola transacción server-side.
+   */
+  const handleRevertPaid = useCallback(
+    (paymentId: string) => {
+      void triggerHaptic('warning')
+      revertPaymentMutation.mutate(paymentId, {
+        onError: (error: unknown) => {
+          void triggerHaptic('error')
+          Alert.alert(
+            'No pudimos revertir el pago',
+            getErrorMessage(error, errorMessages.server),
+          )
+        },
+        onSuccess: () => {
+          void triggerHaptic('success')
+          toast.info('Pago revertido.')
+        },
+      })
+    },
+    [revertPaymentMutation],
+  )
+
+  /**
+   * Helper: encuentra el payment record más reciente NO-optimista para
+   * un fixedExpenseId en cualquier cache `['fixed-expense-payments', …]`.
+   * Lo usa el snackbar de "Deshacer" para resolver el id real (el
+   * optimistic-... id no funciona con la RPC server-side).
+   *
+   * Si solo hay optimistic rows (el refetch no terminó), retorna null.
+   * El caller debería mostrar un error o ignorar.
+   */
+  const findLatestRealPaymentId = useCallback(
+    (fixedExpenseId: string): string | null => {
+      const caches = queryClient.getQueriesData<Array<{
+        id: string
+        fixedExpenseId: string
+        paidAt: string
+      }>>({ queryKey: ['fixed-expense-payments'] })
+      let latest: { id: string; paidAt: string } | null = null
+      for (const [, list] of caches) {
+        if (!Array.isArray(list)) continue
+        for (const p of list) {
+          if (p.fixedExpenseId !== fixedExpenseId) continue
+          // Skip optimistic rows — solo ids reales sirven para la RPC.
+          if (p.id.startsWith('optimistic-')) continue
+          if (!latest || new Date(p.paidAt).getTime() > new Date(latest.paidAt).getTime()) {
+            latest = { id: p.id, paidAt: p.paidAt }
+          }
+        }
+      }
+      return latest?.id ?? null
+    },
+    [queryClient],
+  )
+
+  /**
+   * Wrapper post-success: muestra el snackbar "Pago registrado · Deshacer"
+   * con duración 5s. Si el user toca Deshacer, resuelve el payment id
+   * real desde el cache (saltando el optimistic) y dispara revert. Si
+   * el refetch aún no completó cuando tocan, mostramos un mini error
+   * sugiriendo reintentar.
+   */
+  const showPaySuccessToast = useCallback(
+    (fixedExpenseId: string, fijoName: string) => {
+      toast.success(`Pago de ${fijoName} registrado`, {
+        actionLabel: 'Deshacer',
+        durationMs: 5000,
+        onAction: () => {
+          const paymentId = findLatestRealPaymentId(fixedExpenseId)
+          if (!paymentId) {
+            toast.error('No pudimos deshacer todavía — probá de nuevo en 1s.')
+            return
+          }
+          handleRevertPaid(paymentId)
+        },
+      })
+    },
+    [findLatestRealPaymentId, handleRevertPaid],
+  )
 
   // Sheet de confirmación de precio (2do+ pago). Vivo en estado local
   // del screen — solo conoce qué fijo está abriendo + close. La
@@ -126,6 +216,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       if (isFirstPayment(fixedExpenseId)) {
         // 1er pago: registro directo. El amount del commitment fue
         // capturado al crear el fijo, asumimos que es correcto.
+        const fijoName =
+          controller.allItems.find((i) => i.id === fixedExpenseId)?.name ?? 'fijo'
         recordPaymentMutation.mutate(
           { fixedExpenseId },
           {
@@ -136,7 +228,10 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
                 getErrorMessage(error, errorMessages.server),
               )
             },
-            onSuccess: () => void triggerHaptic('success'),
+            onSuccess: () => {
+              void triggerHaptic('success')
+              showPaySuccessToast(fixedExpenseId, fijoName)
+            },
           },
         )
         return
@@ -144,7 +239,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       // 2do+ pago: abrir sheet de confirmación de precio.
       setPaymentSheet({ visible: true, fixedExpenseId })
     },
-    [isFirstPayment, recordPaymentMutation],
+    [isFirstPayment, recordPaymentMutation, controller.allItems, showPaySuccessToast],
   )
 
   // Cerrar el sheet sin disparar mutation.
@@ -160,6 +255,8 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       const id = paymentSheet.fixedExpenseId
       if (!id) return
       void triggerHaptic('success')
+      const fijoName =
+        controller.allItems.find((i) => i.id === id)?.name ?? 'fijo'
       recordPaymentMutation.mutate(
         { fixedExpenseId: id, amountOverride: newAmount },
         {
@@ -170,13 +267,21 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               getErrorMessage(error, errorMessages.server),
             )
           },
+          onSuccess: () => {
+            showPaySuccessToast(id, fijoName)
+          },
           onSettled: () => {
             setPaymentSheet({ visible: false, fixedExpenseId: null })
           },
         },
       )
     },
-    [paymentSheet.fixedExpenseId, recordPaymentMutation],
+    [
+      paymentSheet.fixedExpenseId,
+      recordPaymentMutation,
+      controller.allItems,
+      showPaySuccessToast,
+    ],
   )
 
   // Snapshot del fijo que está abriendo el sheet — pasamos su amount y
@@ -363,13 +468,16 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             tab={controller.tab}
             setTab={controller.setTab}
             counts={{
-              pendientes:
-                controller.summary.pendingItems.length + controller.summary.overdueItems.length,
+              // Vencidos (mora arrastrada): tab separado para que la
+              // urgencia salte primero.
+              vencidos: controller.summary.overdueItems.length,
+              // Pendientes (cuotas del ciclo activo que aún no vencieron).
+              pendientes: controller.summary.pendingItems.length,
+              // Pagados (lo cerrado del ciclo activo).
               pagados: controller.summary.paidItems.length,
-              // Próximos: fijos al día con próximo vencimiento en un
-              // ciclo posterior — típicamente trimestrales / semestrales
-              // / anuales recién pagados. Visibles aparte para no
-              // mezclar el calendario lejano con lo cerrado este mes.
+              // Próximos (fijos al día con próximo en un ciclo posterior
+              // — típicamente trimestrales / semestrales / anuales
+              // recién pagados).
               proximos: controller.summary.futureItems.length,
             }}
           />
@@ -397,6 +505,7 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
               onMarkPaid={handleMarkPaid}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onRevertPaid={handleRevertPaid}
               pendingFixedExpenseId={
                 deleteMutation.isPending ? (deleteMutation.variables ?? null) : null
               }
