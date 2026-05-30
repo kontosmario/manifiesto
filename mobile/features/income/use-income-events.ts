@@ -11,6 +11,9 @@ import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
+import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
+
+export { incomeEventQueryKeys }
 
 export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other'
 
@@ -35,14 +38,6 @@ export interface CreateIncomeEventInput {
 
 const ROW_COLUMNS =
   'id, family_id, created_by, amount, kind, description, event_date, created_at'
-
-export const incomeEventQueryKeys = {
-  all: ['income-events'] as const,
-  list: (familyId: string | undefined) =>
-    ['income-events', familyId ?? 'unknown'] as const,
-  cycleSum: (familyId: string | undefined, startIso: string | undefined, endIso: string | undefined) =>
-    ['income-events-cycle-sum', familyId ?? 'unknown', startIso ?? 'na', endIso ?? 'na'] as const,
-}
 
 function normalizeRow(row: Record<string, unknown>): IncomeEvent {
   return {

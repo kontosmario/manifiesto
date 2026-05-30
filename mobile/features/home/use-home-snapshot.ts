@@ -186,8 +186,8 @@ function resolveMyRole(
   return mine?.role ?? null
 }
 
-export const homeSnapshotQueryKey = (userId?: string) =>
-  ['home-snapshot', userId ?? null] as const
+export { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
+import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 
 /**
  * Bare fetcher — calls the RPC and returns the raw payload without
