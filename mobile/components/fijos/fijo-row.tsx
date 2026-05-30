@@ -22,6 +22,12 @@ interface FijoRowProps {
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  /**
+   * Revertir un pago confirmado: solo aplica cuando status === 'paid'
+   * y el `paidPaymentId` está disponible. La pantalla huésped
+   * (FijosV2Screen) maneja la mutation; el row solo dispara la acción.
+   */
+  onRevertPaid?: (paymentId: string) => void
   /** Toggle true while a delete/edit mutation is in flight for this item. */
   isPending?: boolean
   /**
@@ -57,6 +63,7 @@ function FijoRowReal({
   onMarkPaid,
   onEdit,
   onDelete,
+  onRevertPaid,
   isPending = false,
 }: FijoRowProps) {
   const { theme } = useAppTheme()
@@ -141,22 +148,40 @@ function FijoRowReal({
   // Para overdue: `cycleDays - daysUntilDue` → días desde que venció.
   const overdueDays = Math.max(1, Math.abs(diffDays))
 
-  // Unified register · adjective + "·" + detail para paid/overdue/future,
-  // verbo "Vence + detail" para hoy/pending. Antes "Pagó día 5" rompía
-  // el patrón en tercera persona — ahora "Pagado · día 5" se lee como
-  // los otros estados.
+  // Label de mes: a qué cuota corresponde este row. Lo ponemos en la
+  // sub-line para que el usuario sepa EXACTAMENTE de qué mes está
+  // hablando (ej: "Pagado · cuota de junio" en vez de solo "Pagado").
+  // Antes "Pagado · día 5" era ambiguo cuando había pagos de meses
+  // sucesivos visibles.
+  const cuotaLabel = fijo.cuotaMonth ? monthOfLabel(fijo.cuotaMonth) : null
+
+  // Label de mes + estado. El mes responde "qué cuota" y el estado/
+  // detalle "qué pasa con ella". Fallback al día cuando no hay
+  // cuotaMonth (raro, sin next_due_on ni payment record).
   const dueLabel =
     status === 'paid'
-      ? `Pagado · día ${fijo.dayOfMonth}`
+      ? cuotaLabel
+        ? `Cuota de ${cuotaLabel} · pagada`
+        : `Pagado · día ${fijo.dayOfMonth}`
       : status === 'overdue'
-        ? `En mora · ${overdueDays}d`
+        ? cuotaLabel
+          ? `Cuota de ${cuotaLabel} · en mora ${overdueDays}d`
+          : `En mora · ${overdueDays}d`
         : status === 'future'
-          ? `Próximo · día ${fijo.dayOfMonth}`
-          : diffDays === 0
-            ? 'Vence hoy'
-            : diffDays > 0
-              ? `Vence en ${diffDays}d`
-              : `Vencido hace ${Math.abs(diffDays)}d`
+          ? cuotaLabel
+            ? `Próxima · cuota de ${cuotaLabel}`
+            : `Próximo · día ${fijo.dayOfMonth}`
+          : cuotaLabel
+            ? diffDays === 0
+              ? `Cuota de ${cuotaLabel} · vence hoy`
+              : diffDays > 0
+                ? `Cuota de ${cuotaLabel} · en ${diffDays}d`
+                : `Cuota de ${cuotaLabel} · vencida ${Math.abs(diffDays)}d`
+            : diffDays === 0
+              ? 'Vence hoy'
+              : diffDays > 0
+                ? `Vence en ${diffDays}d`
+                : `Vencido hace ${Math.abs(diffDays)}d`
 
   // catChipText hue-preserved (mismo helper que GastoRow). Antes el
   // pastel original sobre tinted bg light fallaba contraste 1.6:1.
@@ -421,14 +446,54 @@ function FijoRowReal({
                 <DetailTile label="CATEGORÍA" value={categoryName} theme={theme} />
               </View>
               {/*
-                Expand panel actions: solo "Editar" ahora. El primario
-                "Registrar pago" se movió al row collapsed (botón inline
-                a la derecha del monto) para que la acción más frecuente
-                esté a 1 tap, no 2 (ui-ux-pro-max: primary action
-                visible siempre, no escondida tras tap-to-expand).
+                Expand panel actions. Para paid rows: "Revertir pago"
+                (secondary, peach-tinted como undo action) + Editar.
+                Para otros estados: solo "Editar".
+                El primario "Registrar pago" vive inline en el row
+                collapsed (ui-ux-pro-max: primary action no escondida).
               */}
-              {onEdit ? (
-                <View style={styles.actionsRow}>
+              <View style={styles.actionsRow}>
+                {status === 'paid' && onRevertPaid && fijo.paidPaymentId ? (
+                  <Pressable
+                    onPress={() => onRevertPaid(fijo.paidPaymentId!)}
+                    onPressIn={actionSecondaryPress.onPressIn}
+                    onPressOut={actionSecondaryPress.onPressOut}
+                    style={styles.actionFullWidthWrap}
+                    accessibilityRole="button"
+                    accessibilityLabel="Revertir pago"
+                    accessibilityHint="Deshace el pago: borra el movimiento y vuelve el fijo a pendiente."
+                  >
+                    <Animated.View
+                      style={[
+                        styles.actionSecondary,
+                        {
+                          backgroundColor: theme.isDark
+                            ? 'rgba(242,167,140,0.10)'
+                            : 'rgba(242,167,140,0.18)',
+                          borderColor: theme.isDark ? '#F2A78C' : '#B84014',
+                        },
+                        actionSecondaryPress.animatedStyle,
+                      ]}
+                    >
+                      <View style={styles.actionRevertContent}>
+                        <MaterialIcons
+                          name="undo"
+                          size={14}
+                          color={theme.isDark ? '#F2A78C' : '#B84014'}
+                        />
+                        <Text
+                          style={[
+                            styles.actionSecondaryText,
+                            { color: theme.isDark ? '#F2A78C' : '#B84014' },
+                          ]}
+                        >
+                          Revertir pago
+                        </Text>
+                      </View>
+                    </Animated.View>
+                  </Pressable>
+                ) : null}
+                {onEdit ? (
                   <Pressable
                     onPress={() => onEdit(fijo.id)}
                     onPressIn={actionSecondaryPress.onPressIn}
@@ -449,8 +514,8 @@ function FijoRowReal({
                       </Text>
                     </Animated.View>
                   </Pressable>
-                </View>
-              ) : null}
+                ) : null}
+              </View>
             </Animated.View>
           ) : null}
           </Animated.View>
@@ -508,6 +573,33 @@ function FijoRowPlaceholder() {
       </View>
     </View>
   )
+}
+
+/**
+ * Convierte `YYYY-MM-01` (cuotaMonth de FijoItem) a un label
+ * humano en español: "junio", "julio", etc. Si el year es distinto
+ * al actual, agrega el year para evitar ambigüedad: "junio 2027".
+ *
+ * Sin Intl en el bundle por compat con Reanimated worklets (memory:
+ * `feedback_reanimated_worklet_globals`). Solo se llama en el render
+ * thread (JS thread), así que técnicamente Intl funcionaría — pero
+ * mantener consistencia y velocidad usando un mini array.
+ */
+function monthOfLabel(yyyyMm01: string): string {
+  const MONTH_NAMES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ]
+  const parts = yyyyMm01.split('-')
+  if (parts.length < 2) return yyyyMm01
+  const year = parseInt(parts[0]!, 10)
+  const monthIdx = parseInt(parts[1]!, 10) - 1
+  if (Number.isNaN(year) || Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) {
+    return yyyyMm01
+  }
+  const currentYear = new Date().getFullYear()
+  const name = MONTH_NAMES[monthIdx]!
+  return year === currentYear ? name : `${name} ${year}`
 }
 
 /**
@@ -733,6 +825,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionSecondaryText: { fontSize: 13, fontWeight: '700' },
+  // Contenedor inline para "Revertir pago" — ícono undo + label.
+  actionRevertContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   // Botón inline visible al lado del monto (status pending/overdue).
   // 36pt visual + hitSlop 8px = ~52pt efectivo (HIG ≥44pt).
   // Bg sólido text-fg (light) / rojo-deep cuando es overdue para que

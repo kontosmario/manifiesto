@@ -6,6 +6,7 @@ import {
   deleteFixedExpense,
   fetchFixedExpenses,
   recordFixedExpensePayment,
+  revertFixedExpensePayment,
   updateFixedExpense,
   updateFixedExpenseStatus,
   type UpdateFixedExpenseInput,
@@ -434,6 +435,9 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
           paidAt: nowIso,
           paidBy: userId,
           createdAt: nowIso,
+          // Optimistic row sin expense_id real — el refetch reconcilia
+          // con el id verdadero del expense generado por la RPC.
+          expenseId: null,
         }
         queryClient.setQueriesData<FixedExpensePayment[] | undefined>(
           // Prefix-only match: cualquier cache que arranque con este
@@ -479,6 +483,83 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
       // también el cluster de expenses para que Home/Gastos refresquen.
       // El refetch reconcilia el row optimista con el real del server
       // (queryFn devuelve el shape completo desde DB).
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['fixedPayment'],
+      })
+    },
+  })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
+}
+
+/**
+ * Revierte un pago confirmado. Toma el `paymentId` del row de
+ * `fixed_expense_payments` (no el id del fijo). La RPC borra el
+ * expense generado, borra el payment row, retrocede next_due_on y
+ * restaura last_paid_at.
+ *
+ * Optimistic update: removemos el payment del cache para que el row
+ * vuelva a aparecer como pending inmediatamente (en vez de paid). El
+ * refetch reconcilia next_due_on / last_paid_at / installments_paid
+ * con los valores reales post-rollback.
+ */
+export function useRevertFixedExpensePayment(familyId?: string, userId?: string) {
+  const queryClient = useQueryClient()
+  const ref = useRef<{ mutate: (paymentId: string) => void } | null>(null)
+
+  const result = useMutation<
+    void,
+    Error,
+    string,
+    { previousPayments: Map<string, FixedExpensePayment[]> } | undefined
+  >({
+    mutationFn: async (paymentId) => {
+      if (!familyId) {
+        throw new Error('No hay familia activa para revertir el pago.')
+      }
+      await revertFixedExpensePayment(paymentId)
+    },
+    onMutate: async (paymentId) => {
+      if (!familyId) return undefined
+      await queryClient.cancelQueries({
+        queryKey: ['fixed-expense-payments'],
+      })
+      // Snapshot de todos los caches que matchean el prefijo, para poder
+      // rollback en onError.
+      const snapshots = queryClient.getQueriesData<FixedExpensePayment[]>({
+        queryKey: ['fixed-expense-payments'],
+      })
+      const previousPayments = new Map<string, FixedExpensePayment[]>()
+      for (const [key, value] of snapshots) {
+        if (Array.isArray(value)) previousPayments.set(JSON.stringify(key), value)
+      }
+      // Remove el payment de todos los caches optimisticamente.
+      queryClient.setQueriesData<FixedExpensePayment[] | undefined>(
+        { queryKey: ['fixed-expense-payments'] },
+        (old) => (old ? old.filter((p) => p.id !== paymentId) : old),
+      )
+      return { previousPayments }
+    },
+    onError: (_err, paymentId, ctx) => {
+      if (ctx?.previousPayments) {
+        for (const [serializedKey, value] of ctx.previousPayments) {
+          queryClient.setQueryData(JSON.parse(serializedKey), value)
+        }
+      }
+      toast.error('No se pudo revertir el pago.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(paymentId),
+      })
+    },
+    onSettled: () => {
+      // Mismo scope que el pay: la reversión también afecta expenses,
+      // fixed_expenses (next_due_on / last_paid_at), achievements, etc.
       void syncAllAfterMutation(queryClient, {
         familyId,
         userId,

@@ -150,6 +150,33 @@ export async function recordFixedExpensePayment(
   }
 }
 
+/**
+ * Revierte un pago confirmado: borra el expense generado, borra el
+ * payment row, retrocede `next_due_on` al período del payment, restaura
+ * `last_paid_at` al penúltimo pago. Migración 20260530180000.
+ *
+ * Caller pasa el `paymentId` (uuid del row de fixed_expense_payments).
+ * El cliente lo obtiene del summary del controller (cada FijoItem
+ * paid tiene un payment record con id resoluble).
+ */
+export async function revertFixedExpensePayment(paymentId: string) {
+  const sessionResponse = await supabase.auth.getSession()
+  if (sessionResponse.error) {
+    throw sessionResponse.error
+  }
+  if (!sessionResponse.data.session?.user?.id) {
+    throw new Error(
+      'Tu sesion vencio. Volve a iniciar sesion antes de revertir un pago.',
+    )
+  }
+  const { error } = await supabase.rpc('revert_fixed_expense_payment', {
+    p_payment_id: paymentId,
+  })
+  if (error) {
+    throwMigrationError(error)
+  }
+}
+
 export async function deleteFixedExpense(familyId: string, fixedExpenseId: string) {
   const { error } = await supabase
     .from('fixed_expenses')

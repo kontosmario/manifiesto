@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
@@ -14,22 +14,25 @@ import {
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 
 /**
- * Tabs del listado (2026-05-30, refinado a 3 buckets):
- *  - 'pendientes' → pending + overdue/mora (lo accionable de este ciclo).
- *  - 'pagados'    → paid del ciclo activo (lo cerrado este mes).
- *  - 'proximos'   → future (fijos al día con próximo vencimiento en un
- *                   ciclo posterior, típicamente trimestrales /
+ * Tabs del listado (2026-05-30, refinado a 4 buckets):
+ *  - 'vencidos'   → overdue (mora arrastrada de ciclos previos sin pagar).
+ *                   Lo MÁS urgente. Color rojo para que salte primero.
+ *  - 'pendientes' → pending (cuotas del ciclo activo que aún no vencieron).
+ *  - 'pagados'    → paid del ciclo activo.
+ *  - 'proximos'   → future (fijos al día con próximo vencimiento en
+ *                   un ciclo posterior, típicamente trimestrales /
  *                   semestrales / anuales recién pagados).
  *
- * Antes (2026-05-30 inicial) eran 2 tabs (paid + future fundidos en
- * "Pagados / Próximos"); los users querían ver los futuros aparte para
- * tener visibilidad del calendario lejano sin que se mezcle con lo del
- * ciclo cerrado. El default sigue siendo `'pendientes'` para que el
- * primer paint muestre lo útil del ciclo activo.
+ * Antes (2026-05-30 v2) eran 3 buckets con pendientes+overdue fundidos;
+ * separar los vencidos los hace más prominentes (mora = atención
+ * inmediata, no se mezcla con lo que aún no venció). El default
+ * arranca en `'vencidos'` SI hay vencidos, sino `'pendientes'` — así
+ * el primer paint siempre muestra lo más urgente que el usuario tiene
+ * que actuar.
  *
  * Removido: 'todos' (poco scannable) y 'zombis' (deprecada).
  */
-export type FijosTab = 'pendientes' | 'pagados' | 'proximos'
+export type FijosTab = 'vencidos' | 'pendientes' | 'pagados' | 'proximos'
 
 export interface UseFijosControllerResult {
   isLoading: boolean
@@ -78,7 +81,18 @@ const MONTH_SHORT = [
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
+  // El default se inicializa a 'pendientes' pero el effect abajo lo
+  // promueve a 'vencidos' si hay vencidos al cargar — para que el
+  // primer paint muestre lo más urgente (mora arrastrada).
   const [tab, setTab] = useState<FijosTab>('pendientes')
+  const userInteractedWithTabsRef = useRef(false)
+  const setTabUserDriven = useMemo(
+    () => (next: FijosTab) => {
+      userInteractedWithTabsRef.current = true
+      setTab(next)
+    },
+    [],
+  )
 
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const fixedExpensesQuery = useFixedExpenses(familyId)
@@ -145,14 +159,33 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   )
 
   const filteredItems = useMemo(() => {
-    // 3 buckets bien separados:
-    //   pendientes → pending + overdue (lo accionable)
+    // 4 buckets bien separados (2026-05-30 v3):
+    //   vencidos   → overdue (mora arrastrada)
+    //   pendientes → pending (cuotas del ciclo activo aún sin vencer)
     //   pagados    → paid (lo cerrado del ciclo)
     //   proximos   → future (no toca este ciclo)
+    if (tab === 'vencidos') return summary.overdueItems
     if (tab === 'pagados') return summary.paidItems
     if (tab === 'proximos') return summary.futureItems
-    return [...summary.pendingItems, ...summary.overdueItems]
+    return summary.pendingItems
   }, [tab, summary])
+
+  // Auto-promote a 'vencidos' SOLO la primera vez que el data está
+  // cargado y hay vencidos. Si el user ya tocó alguna tab, respetamos
+  // su selección. Esto evita "secuestro" del tab cuando el user fue a
+  // 'pagados' y luego un refetch trae un nuevo vencido.
+  useEffect(() => {
+    if (userInteractedWithTabsRef.current) return
+    if (fixedExpensesQuery.isLoading) return
+    if (summary.overdueItems.length > 0 && tab !== 'vencidos') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- promote initial tab once data loads
+      setTab('vencidos')
+    }
+  }, [
+    fixedExpensesQuery.isLoading,
+    summary.overdueItems.length,
+    tab,
+  ])
 
   const categories = useMemo(
     () =>
@@ -203,7 +236,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     filteredItems,
     groups,
     tab,
-    setTab,
+    setTab: setTabUserDriven,
     monthlyIncome,
     freeAfterFijos,
     pctOfIncome,

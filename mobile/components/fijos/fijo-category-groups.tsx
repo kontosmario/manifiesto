@@ -27,6 +27,10 @@ interface FijoCategoryGroupsProps {
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  /** Revierte un pago confirmado (status='paid'). El row solo dispara
+   *  la acción con el `paidPaymentId`; la pantalla huésped maneja la
+   *  mutation. */
+  onRevertPaid?: (paymentId: string) => void
   /** Fixed expense id whose delete/edit mutation is in flight. */
   pendingFixedExpenseId?: string | null
 }
@@ -37,6 +41,7 @@ export function FijoCategoryGroups({
   onMarkPaid,
   onEdit,
   onDelete,
+  onRevertPaid,
   pendingFixedExpenseId,
 }: FijoCategoryGroupsProps) {
   const { theme } = useAppTheme()
@@ -65,6 +70,7 @@ export function FijoCategoryGroups({
             onMarkPaid={onMarkPaid}
             onEdit={onEdit}
             onDelete={onDelete}
+            onRevertPaid={onRevertPaid}
             pendingFixedExpenseId={pendingFixedExpenseId ?? null}
           />
         </RiseView>
@@ -79,6 +85,7 @@ function CategoryGroup({
   onMarkPaid,
   onEdit,
   onDelete,
+  onRevertPaid,
   pendingFixedExpenseId,
 }: {
   group: FijoCategoryGroup
@@ -86,6 +93,7 @@ function CategoryGroup({
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  onRevertPaid?: (paymentId: string) => void
   pendingFixedExpenseId?: string | null
 }) {
   const { theme } = useAppTheme()
@@ -148,6 +156,7 @@ function CategoryGroup({
               onMarkPaid={onMarkPaid}
               onEdit={onEdit}
               onDelete={onDelete}
+              onRevertPaid={onRevertPaid}
               isPending={pendingFixedExpenseId === item.id}
             />
           ))}
@@ -165,6 +174,7 @@ function ItemSlot({
   onMarkPaid,
   onEdit,
   onDelete,
+  onRevertPaid,
   isPending,
 }: {
   item: FijoItem
@@ -174,6 +184,7 @@ function ItemSlot({
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  onRevertPaid?: (paymentId: string) => void
   isPending?: boolean
 }) {
   // FijoRow ya wrappea el card en SwipeRow internamente (con la acción
@@ -188,6 +199,7 @@ function ItemSlot({
       onMarkPaid={onMarkPaid}
       onEdit={onEdit}
       onDelete={onDelete}
+      onRevertPaid={onRevertPaid}
       isPending={isPending}
     />
   )
