@@ -80,6 +80,17 @@ export function SwipeableRow({
   const resolvedBorderColor = borderColor ?? theme.colors.line
   const swipeRef = useRef<SwipeableMethods>(null)
 
+  // Pintamos un bg del color de la acción dominante DETRÁS de todo el
+  // contenido. En idle el row tapa todo y no se ve; al swipear, el
+  // espacio que el row va dejando muestra este bg en lugar del canvas
+  // del fondo de la pantalla. Así los cuartos de círculo de las
+  // esquinas (clipped por el borderRadius del outer) quedan continuos
+  // con el color de la acción y NO se ven huecos negros.
+  const dominantTone = rightActions[0]?.tone ?? leftActions[0]?.tone ?? 'neutral'
+  const dominantActionBg =
+    dominantTone === 'danger' ? theme.colors.danger : theme.colors.primary
+  const hasAnyAction = rightActions.length > 0 || leftActions.length > 0
+
   const handleSwipeOpen = useCallback(() => {
     void triggerHaptic(onSwipeOpenHaptic)
   }, [onSwipeOpenHaptic])
@@ -120,6 +131,24 @@ export function SwipeableRow({
         borderColor: resolvedBorderColor,
       }}
     >
+      {hasAnyAction ? (
+        // Bg del color de la acción dominante, absolutamente posicionado
+        // detrás del row. Idle: invisible (el row lo tapa). Swiped: lo
+        // que el row deja libre se ve continuo hasta los bordes
+        // redondeados del outer container. Se acabaron los huecos
+        // negros en las esquinas curvas.
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: dominantActionBg,
+          }}
+        />
+      ) : null}
       <Swipeable
         ref={swipeRef}
         friction={1.8}
