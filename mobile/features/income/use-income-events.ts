@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
 
 export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other'
@@ -184,6 +185,27 @@ export function useCreateIncomeEvent(userId?: string) {
       )
       return { previous, optimisticId }
     },
+    onSuccess: (created, input) => {
+      // Push a la familia. El trigger DB trg_income_notification ya
+      // emite la notif al feed; este push es la entrega al device.
+      const kindLabel =
+        input.kind === 'transfer'
+          ? 'Transferencia'
+          : input.kind === 'bonus'
+            ? 'Bono'
+            : input.kind === 'gift'
+              ? 'Regalo'
+              : 'Ingreso'
+      const desc = input.description?.trim() || kindLabel
+      const pushBody = `${desc} · +$${created.amount}`
+      void sendFamilyPush({
+        familyId: input.familyId,
+        title: 'Nuevo ingreso registrado',
+        body: pushBody,
+        kind: 'income_logged',
+        url: '/home',
+      }).catch(() => {})
+    },
     onError: (_err, input, ctx) => {
       if (ctx?.previous !== undefined) {
         queryClient.setQueryData(
@@ -192,6 +214,73 @@ export function useCreateIncomeEvent(userId?: string) {
         )
       }
       toast.error('No se pudo guardar el ingreso.', {
+        actionLabel: 'Reintentar',
+        onAction: () => ref.current?.mutate(input),
+      })
+    },
+    onSettled: (_data, _err, input) => {
+      void syncAllAfterMutation(queryClient, {
+        familyId: input?.familyId,
+        userId,
+        scopes: ['income'],
+      })
+    },
+  })
+
+  useEffect(() => {
+    ref.current = { mutate: result.mutate }
+  }, [result.mutate])
+
+  return result
+}
+
+export interface DeleteIncomeEventInput {
+  id: string
+  familyId: string
+}
+
+/**
+ * Borra un income event. Optimistic remove de la lista cacheada + syncAll
+ * (scope 'income') + retry toast en caso de error. Espejo del patrón de
+ * `useDeleteExpense` para que los ingresos se sientan igual de fluidos.
+ */
+export function useDeleteIncomeEvent(userId?: string) {
+  const queryClient = useQueryClient()
+  const ref = useRef<{ mutate: (input: DeleteIncomeEventInput) => void } | null>(
+    null,
+  )
+
+  const result = useMutation<
+    void,
+    Error,
+    DeleteIncomeEventInput,
+    { previous: IncomeEvent[] | undefined } | undefined
+  >({
+    mutationFn: async ({ id }) => {
+      const { error } = await supabase.from('income_events').delete().eq('id', id)
+      if (error) throw error
+    },
+    onMutate: async ({ id, familyId }) => {
+      await queryClient.cancelQueries({
+        queryKey: incomeEventQueryKeys.list(familyId),
+      })
+      const previous = queryClient.getQueryData<IncomeEvent[]>(
+        incomeEventQueryKeys.list(familyId),
+      )
+      queryClient.setQueryData<IncomeEvent[] | undefined>(
+        incomeEventQueryKeys.list(familyId),
+        (old) => old?.filter((i) => i.id !== id),
+      )
+      return { previous }
+    },
+    onError: (_err, input, ctx) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(
+          incomeEventQueryKeys.list(input.familyId),
+          ctx.previous,
+        )
+      }
+      toast.error('No se pudo borrar el ingreso.', {
         actionLabel: 'Reintentar',
         onAction: () => ref.current?.mutate(input),
       })

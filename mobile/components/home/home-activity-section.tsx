@@ -21,9 +21,14 @@ interface HomeActivitySectionProps {
   isLoading: boolean
   errorKind?: DashboardErrorKind
   onDelete: (expenseId: string) => void
+  /** Borra un income event (id). Si no se pasa, el row income no es
+   *  swipeable (compat). Recomendado pasarlo. */
+  onDeleteIncome?: (incomeId: string) => void
   onRetry: () => void
   /** Expense id currently being deleted (mutation in flight). */
   pendingExpenseId?: string | null
+  /** Income id currently being deleted. */
+  pendingIncomeId?: string | null
   /** Cap del feed (default 6). */
   limit?: number
 }
@@ -66,8 +71,10 @@ function HomeActivitySectionImpl({
   isLoading,
   errorKind,
   onDelete,
+  onDeleteIncome,
   onRetry,
   pendingExpenseId,
+  pendingIncomeId,
   limit = 6,
 }: HomeActivitySectionProps) {
   const movements = useMemo<MovementItem[]>(() => {
@@ -119,9 +126,8 @@ function HomeActivitySectionImpl({
           const income = m.income
           const kindLabel = INCOME_KIND_LABEL[income.kind]
           const title = income.description?.trim() || kindLabel
-          return (
+          const row = (
             <ActivityRowV2
-              key={`income-${income.id}`}
               icon={INCOME_KIND_ICON[income.kind]}
               title={title}
               category={`Ingreso · ${kindLabel}`}
@@ -130,6 +136,25 @@ function HomeActivitySectionImpl({
               amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
               delay={delay}
             />
+          )
+          if (!onDeleteIncome) {
+            return <View key={`income-${income.id}`}>{row}</View>
+          }
+          const dangerAction: SwipeAction = {
+            label: 'Eliminar',
+            tone: 'danger',
+            icon: 'delete',
+            onPress: () => onDeleteIncome(income.id),
+          }
+          return (
+            <SwipeableRow
+              key={`income-${income.id}`}
+              accessibilityHint="Desliza hacia la izquierda para eliminar"
+              rightActions={[dangerAction]}
+              isProcessing={pendingIncomeId === income.id}
+            >
+              {row}
+            </SwipeableRow>
           )
         }
         const expense = m.expense

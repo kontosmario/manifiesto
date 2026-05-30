@@ -10,7 +10,13 @@ const notificationTimeFormatter = new Intl.DateTimeFormat('es-AR', {
   minute: '2-digit',
 })
 
-export type NotificationGroup = 'gastos' | 'fijos' | 'racha' | 'meta' | 'otros'
+export type NotificationGroup =
+  | 'gastos'
+  | 'ingresos'
+  | 'fijos'
+  | 'racha'
+  | 'meta'
+  | 'otros'
 
 /**
  * Canonical mapping from `NotificationGroup` → kinds that belong to it.
@@ -19,6 +25,7 @@ export type NotificationGroup = 'gastos' | 'fijos' | 'racha' | 'meta' | 'otros'
  */
 export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
   gastos: ['expense', 'expense_logged'],
+  ingresos: ['income_logged'],
   fijos: [
     'fixed_expense',
     'fixed_created',
@@ -44,6 +51,7 @@ export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
 
 export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
   gastos: 'Gastos',
+  ingresos: 'Ingresos',
   fijos: 'Fijos',
   racha: 'Racha y check-ins',
   meta: 'Metas',
@@ -55,6 +63,8 @@ export function groupForKind(kind: string): NotificationGroup {
     case 'expense':
     case 'expense_logged':
       return 'gastos'
+    case 'income_logged':
+      return 'ingresos'
     case 'fixed_expense':
     case 'fixed_created':
     case 'fixed_edited':
@@ -87,6 +97,8 @@ export function iconForKind(kind: string): string {
   switch (groupForKind(kind)) {
     case 'gastos':
       return '🛒'
+    case 'ingresos':
+      return '💵'
     case 'fijos':
       return '💳'
     case 'racha':

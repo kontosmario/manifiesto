@@ -16,7 +16,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
-import { useIncomeEvents } from '@/features/income/use-income-events'
+import { useDeleteIncomeEvent, useIncomeEvents } from '@/features/income/use-income-events'
 import { useIsSolo } from '@/features/family/use-is-solo'
 import {
   buildCycleStartingBalanceInput,
@@ -131,7 +131,8 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     [incomeEventsQuery.data],
   )
   const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
-  const deleteExpenseMutation = useDeleteExpense(familyId)
+  const deleteExpenseMutation = useDeleteExpense(familyId, userId)
+  const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   // Numeric count drives the bell's count badge in the header. Re-renders
   // on every count delta — acceptable since the badge text is the count.
   const unreadNotificationsCountQuery = useUnreadNotificationsCount(familyId, userId)
@@ -263,6 +264,29 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     })
   }, [deleteExpenseMutation])
 
+  const handleDeleteIncome = useCallback(
+    (incomeId: string) => {
+      if (!familyId) return
+      void triggerHaptic('warning')
+      deleteIncomeMutation.mutate(
+        { id: incomeId, familyId },
+        {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No pudimos eliminar',
+              getErrorMessage(error, errorMessages.server),
+            )
+          },
+          onSuccess: () => {
+            void triggerHaptic('success')
+          },
+        },
+      )
+    },
+    [deleteIncomeMutation, familyId],
+  )
+
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -358,11 +382,17 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           activityError={activityError}
           onConfirmCycleStartingBalance={confirmCycleStartingBalance}
           onDeleteExpense={handleDeleteExpense}
+          onDeleteIncome={handleDeleteIncome}
           telemetrySessionId={telemetry.sessionId}
           onMarkTapped={telemetry.markTapped}
           pendingDeleteExpenseId={
             deleteExpenseMutation.isPending
               ? (deleteExpenseMutation.variables ?? null)
+              : null
+          }
+          pendingDeleteIncomeId={
+            deleteIncomeMutation.isPending
+              ? (deleteIncomeMutation.variables?.id ?? null)
               : null
           }
           isSavingSalary={upsertFamilyFinanceMutation.isPending}

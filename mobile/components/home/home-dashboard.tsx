@@ -85,7 +85,10 @@ interface HomeDashboardProps {
    */
   onConfirmCycleStartingBalance: (startingBalance: number | null) => void
   onDeleteExpense: (expenseId: string) => void
+  /** Borra un income event desde el swipe del row en actividad. */
+  onDeleteIncome?: (incomeId: string) => void
   pendingDeleteExpenseId?: string | null
+  pendingDeleteIncomeId?: string | null
   isSavingSalary: boolean
   salaryErrorMessage: string | null
   /** Telemetry session id from `useHomeTelemetry`. Optional so the
@@ -115,7 +118,9 @@ export function HomeDashboard({
   activityError,
   onConfirmCycleStartingBalance,
   onDeleteExpense,
+  onDeleteIncome,
   pendingDeleteExpenseId,
+  pendingDeleteIncomeId,
   isSavingSalary,
   salaryErrorMessage,
   telemetrySessionId,
@@ -699,7 +704,9 @@ export function HomeDashboard({
           isLoading={isLoadingActivity}
           errorKind={activityErrorKind}
           onDelete={handleDeleteExpenseTracked}
+          onDeleteIncome={onDeleteIncome}
           pendingExpenseId={pendingDeleteExpenseId ?? null}
+          pendingIncomeId={pendingDeleteIncomeId ?? null}
           onRetry={handleActivityRetry}
         />
       </TourTarget>
