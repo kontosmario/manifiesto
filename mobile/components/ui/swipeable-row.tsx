@@ -110,7 +110,13 @@ export function SwipeableRow({
       style={{
         borderRadius,
         overflow: 'hidden',
-        borderWidth: 1,
+        // Cuando el caller pide explícitamente `borderColor: 'transparent'`
+        // (porque el row hijo ya trae su propio chrome — ej. FijoRow con
+        // su `styles.card`), salteamos también el borderWidth para no
+        // dejar un inset de 1px que desalinea el hijo. Default de toda
+        // la vida: 1px del color de línea del tema (cubre los rows sin
+        // chrome propio, como GastoRow).
+        borderWidth: borderColor === 'transparent' ? 0 : 1,
         borderColor: resolvedBorderColor,
       }}
     >
