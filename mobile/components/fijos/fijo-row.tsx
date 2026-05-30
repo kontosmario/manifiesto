@@ -1,6 +1,18 @@
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  ReduceMotion,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
@@ -363,65 +375,34 @@ function FijoRowReal({
             </View>
 
             {/*
-              Botón inline "Registrar pago" — visible siempre cuando el
-              fijo está pending u overdue, SIN necesidad de tap-to-expand.
-              UX rationale (ui-ux-pro-max): la acción más frecuente del
-              row tiene que estar a 1 tap, no 2. Antes vivía solo dentro
-              del expand panel ("Tap card → expand → tap Registrar pago"),
-              fricción innecesaria para la tarea de fondo de la pantalla.
+              Botón inline "Pagar" — visible siempre cuando el fijo está
+              pending u overdue, SIN necesidad de tap-to-expand. La
+              acción más frecuente del row tiene que estar a 1 tap
+              (ui-ux-pro-max: primary action no escondida).
 
-              Affordance: círculo de 36pt visual (check icon) con hitSlop
-              8px → 52pt efectivo (HIG/MD: 44pt mínimo). Bg sólido
-              text-fg para read primary; press feedback `scale(0.92)`
-              (más pronunciado que la card 0.98 para reafirmar el tap).
-              Solo render para `pending`/`overdue`; para `paid`/`future`
-              no aparece (no hay acción primaria que hacer ahí).
+              Diseño distintivo (2026-05-30 v2 — emil + gpt-taste):
+                · Brand-colored: forest deep (pending) / red brand
+                  (overdue). Coded visualmente como "money / urgencia".
+                · Ícono `attach-money` (símbolo $) — universalmente
+                  reconocible como pago, no como "confirmar / done".
+                · Inner highlight 1pt blanco-alpha en el top → ilusión
+                  de profundidad sin glass-AI-slop.
+                · Borde 1.5pt en tono más oscuro del bg → finishing
+                  curado, no flat-render.
+                · Press scale 0.88 (pronunciado para icon-only).
+                · Para overdue: pulse halo continuo (1.5s ease-in-out,
+                  scale 1→1.45, opacity 0.45→0) — "respira" pidiendo
+                  atención. Skip si reduceMotion.
 
-              `stopPropagation` no es nativo en RN — el wrap Pressable
-              recibe el tap primero por overlay; usar onPress directo +
-              hitSlop independiente del Pressable del card. El RN event
-              system no propaga taps a Pressables padre por defecto
-              cuando el hijo intercepta.
+              Solo render para `pending`/`overdue`; `paid`/`future` no
+              muestran nada acá.
             */}
             {(status === 'pending' || status === 'overdue') && onMarkPaid ? (
-              <Pressable
+              <InlinePayButton
+                status={status}
+                pressScale={inlinePayPress}
                 onPress={() => onMarkPaid(fijo.id)}
-                onPressIn={inlinePayPress.onPressIn}
-                onPressOut={inlinePayPress.onPressOut}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  status === 'overdue'
-                    ? 'Registrar pago — fijo en mora'
-                    : 'Registrar pago'
-                }
-                accessibilityHint="Abre el sheet para confirmar el monto pagado"
-              >
-                <Animated.View
-                  style={[
-                    styles.inlinePayBtn,
-                    {
-                      backgroundColor:
-                        status === 'overdue'
-                          ? theme.isDark
-                            ? '#A8211B'
-                            : '#A8211B'
-                          : theme.colors.text,
-                      borderColor:
-                        status === 'overdue'
-                          ? '#A8211B'
-                          : theme.colors.text,
-                    },
-                    inlinePayPress.animatedStyle,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="check"
-                    size={18}
-                    color={theme.colors.creamCard}
-                  />
-                </Animated.View>
-              </Pressable>
+              />
             ) : null}
           </View>
 
@@ -783,6 +764,122 @@ function TrendBadge({
 }
 
 /**
+ * Botón inline "Pagar" — visualmente único y referenciado al pago.
+ *
+ * Diseño:
+ *   · Círculo 40pt + hitSlop 8 = ~56pt efectivo (HIG/MD ≥44pt).
+ *   · Brand color por status: forest-deep (pending, "go") /
+ *     red-brand (overdue, "urgente"). El bg sólido + icono blanco
+ *     dan el mejor contraste y reads como botón "PRIMARIO" (no
+ *     genérico negro).
+ *   · Ícono `attach-money` — símbolo $ universalmente asociado a
+ *     pago. Mejor que `check` (que es post-confirmación / done) y
+ *     mejor que `paid` (mismo problema).
+ *   · Inner highlight: línea horizontal blanca-alpha en el top del
+ *     círculo → "lift" sutil. Sin entrar en glass-look (emil:
+ *     "Liquid Glass without purpose is slop").
+ *   · Borde 1.5pt en tono más profundo del bg para acentuar el
+ *     finish (no flat-render).
+ *   · Press scale 0.88 (más pronunciado que el card 0.98).
+ *   · Pulse halo continuo PARA OVERDUE: círculo BG-only que crece
+ *     y se desvanece en loop (1.5s ease-in-out, scale 1→1.45,
+ *     opacity 0.45→0). Lee como "respira pidiendo atención" sin
+ *     ser invasivo. Skip si reduceMotion activo.
+ *
+ * Performance: el pulse vive en su propio Animated.View y usa
+ * useSharedValue + withRepeat — corre en UI thread, no impacta el
+ * scroll de la lista. Cleanup en useEffect cuando el componente
+ * desmonta (cancelAnimation) para evitar fugas.
+ */
+function InlinePayButton({
+  status,
+  pressScale,
+  onPress,
+}: {
+  status: 'pending' | 'overdue'
+  pressScale: ReturnType<typeof usePressScale>
+  onPress: () => void
+}) {
+  const reduceMotion = useReducedMotion()
+  const pulse = useSharedValue(0)
+
+  // Pulse loop SOLO en overdue. Pulse value oscila 0 → 1 en cada
+  // ciclo; el animatedStyle interpola a scale + opacity.
+  useEffect(() => {
+    if (status === 'overdue' && !reduceMotion) {
+      pulse.value = 0
+      pulse.value = withRepeat(
+        withTiming(1, {
+          duration: 1500,
+          easing: Easing.bezier(0.4, 0, 0.6, 1),
+          reduceMotion: ReduceMotion.System,
+        }),
+        -1, // infinite
+        false, // no reverse — el reset a 0 da el efecto "respiración"
+      )
+    } else {
+      pulse.value = 0
+    }
+    return () => {
+      cancelAnimation(pulse)
+    }
+  }, [status, reduceMotion, pulse])
+
+  const haloStyle = useAnimatedStyle(() => ({
+    // Scale 1 → 1.45 (halo crece desde el botón).
+    // Opacity 0.45 → 0 (se desvanece como pulse).
+    transform: [{ scale: 1 + pulse.value * 0.45 }],
+    opacity: 0.45 * (1 - pulse.value),
+  }))
+
+  const isOverdue = status === 'overdue'
+  // Paleta brand-aware. Light: deep-forest verde / deep-red rojo.
+  // Dark: variantes brand-bright para contraste con surfaceMuted.
+  const bg = isOverdue ? '#A8211B' : '#297811' // forest deep / red brand
+  const borderColor = isOverdue ? '#7A1810' : '#1F5A0D' // 1 stop darker
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={pressScale.onPressIn}
+      onPressOut={pressScale.onPressOut}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={
+        isOverdue ? 'Pagar — fijo en mora' : 'Pagar'
+      }
+      accessibilityHint="Abre el sheet para confirmar el monto pagado"
+      style={styles.inlinePayWrap}
+    >
+      {/* Halo pulse (solo overdue, layered atrás del botón) */}
+      {isOverdue ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.inlinePayHalo,
+            { backgroundColor: bg },
+            haloStyle,
+          ]}
+        />
+      ) : null}
+
+      <Animated.View
+        style={[
+          styles.inlinePayBtn,
+          { backgroundColor: bg, borderColor },
+          pressScale.animatedStyle,
+        ]}
+      >
+        {/* Inner highlight: línea horizontal blanca-alpha en el top —
+            lift visual sin entrar en territorio glass. */}
+        <View pointerEvents="none" style={styles.inlinePayHighlight} />
+        <MaterialIcons name="attach-money" size={22} color="#FFFFFF" />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/**
  * Línea info del expand panel — icon + label en una fila. Mirror del
  * patrón "list item with leading icon" típico de iOS settings, simple
  * y consistente. Icon size 14 para no competir con el texto. Color del
@@ -1105,19 +1202,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  // Botón inline visible al lado del monto (status pending/overdue).
-  // 36pt visual + hitSlop 8px = ~52pt efectivo (HIG ≥44pt).
-  // Bg sólido text-fg (light) / rojo-deep cuando es overdue para que
-  // se lea como "atención esto vence o está vencido + acción urgente".
-  // Borde mismo color (no 1px line muted) — el botón es prominent.
+  // Botón inline "Pagar" — visualmente único + referenciado al pago
+  // (gpt-taste + ui-ux-pro-max + emil). 40pt visual + hitSlop 8px =
+  // ~56pt efectivo (HIG ≥44pt). Brand-colored según status — no
+  // genérico negro. Ícono `attach-money` (símbolo $) en blanco.
+  // El wrap maneja layout + alineación del halo pulse (overdue);
+  // el btn lleva el visual chrome.
+  inlinePayWrap: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
   inlinePayBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    marginLeft: 2,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  // Halo pulse continuo para overdue — se renderiza absoluto detrás
+  // del botón, escalando y desvaneciéndose en loop. Color = mismo bg
+  // del botón pero alpha-modulado vía el animatedStyle (NO bg-alpha
+  // hardcodeado para que el dark mode también funcione).
+  inlinePayHalo: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+  },
+  // Inner highlight — finísima línea horizontal en el top del botón,
+  // alpha blanco. Lift visual sutil sin glass-look.
+  inlinePayHighlight: {
+    position: 'absolute',
+    top: 1,
+    left: 6,
+    right: 6,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
 })
 
