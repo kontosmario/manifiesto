@@ -333,29 +333,35 @@ function FijoRowReal({
                   />
                 ) : null}
               </View>
-              {/* Sub-line GastoRow-like: catChip + dueLabel separados por
-                  middle dot. Misma jerarquía que el row de gastos —
-                  unifica el lenguaje visual entre las dos pantallas. */}
-              <View style={styles.subRow}>
-                <View
-                  style={[
-                    styles.catChip,
-                    {
-                      backgroundColor: hexAlpha(categoryColor, 0.14),
-                      borderColor: hexAlpha(categoryColor, 0.22),
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.catChipText, { color: catChipTextColor }]}
-                    numberOfLines={1}
-                  >
-                    {categoryName}
-                  </Text>
-                </View>
+              {/*
+                Sub-line: categoría + dueLabel en UN solo Text node con
+                runs coloreados (no chip pill). Decisión de poda (gpt-taste
+                + impeccable): el chip era duplicación visual — el icon
+                tile a la izquierda ya tinta con categoryColor + muestra
+                el emoji, así que la pill bordeada agregaba chrome sin
+                info nueva. Sacarla libera ~14pt horizontales para que
+                el dueLabel ("Septiembre · vencida 12d") entre completo
+                sin truncarse en pantallas chicas.
+
+                Misma jerarquía visual con menos ruido: catName en color
+                de categoría (hue-preserved) + middle dot + dueLabel en
+                color de estado (muted normal / rojo overdue). El usuario
+                sigue viendo "qué categoría" a la izquierda del texto, y
+                "qué pasa" a la derecha. Una sola línea de 13sp.
+              */}
+              <Text
+                style={[styles.metaLine]}
+                numberOfLines={1}
+              >
+                <Text style={[styles.metaCat, { color: catChipTextColor }]}>
+                  {categoryName}
+                </Text>
+                <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
+                  {'  ·  '}
+                </Text>
                 <Text
                   style={[
-                    styles.metaText,
+                    styles.metaDue,
                     {
                       color:
                         status === 'overdue'
@@ -363,14 +369,13 @@ function FijoRowReal({
                             ? '#F18C8C'
                             : '#A8211B'
                           : theme.colors.textMuted,
-                      fontWeight: status === 'overdue' ? '700' : '400',
+                      fontWeight: status === 'overdue' ? '700' : '500',
                     },
                   ]}
-                  numberOfLines={1}
                 >
-                  · {dueLabel}
+                  {dueLabel}
                 </Text>
-              </View>
+              </Text>
             </View>
 
             <View style={styles.amountBlock}>
@@ -673,9 +678,9 @@ function FijoRowPlaceholder() {
         </View>
         <View style={styles.body}>
           <View style={[styles.phBar, { width: '58%', height: 11, backgroundColor: ph }]} />
-          <View style={styles.subRow}>
-            <View style={[styles.phChip, { backgroundColor: ph }]} />
-            <View style={[styles.phBar, { width: 56, height: 8, backgroundColor: ph }]} />
+          <View style={styles.phSubRow}>
+            <View style={[styles.phBar, { width: 64, height: 8, backgroundColor: ph }]} />
+            <View style={[styles.phBar, { width: 90, height: 8, backgroundColor: ph }]} />
           </View>
         </View>
         <View style={styles.amountBlock}>
@@ -1068,19 +1073,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
-  // Sub-line GastoRow-like: catChip + meta dot + dueLabel. Misma altura
-  // y spacing que en gasto-row para que las dos pantallas se sientan
-  // un solo idioma.
-  subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  catChip: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexShrink: 0,
+  // Sub-line: UN solo Text con 3 runs coloreados (categoría · separador
+  // · dueLabel). Antes era catChip pill + metaText separados → chrome
+  // duplicado (icon tile ya tinta con categoryColor) + el metaText
+  // truncaba en pantallas chicas. Ahora todo en línea sin chrome extra.
+  metaLine: {
+    fontSize: 11.5,
+    marginTop: 3,
+    letterSpacing: -0.1,
   },
-  catChipText: { fontSize: 10, fontWeight: '700' },
-  metaText: { fontSize: 11, flexShrink: 1 },
+  metaCat: { fontWeight: '700' },
+  metaSep: { fontWeight: '400' },
+  metaDue: { fontWeight: '500' },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
   // ── Placeholder / preview ────────────────────────────────────────
   placeholderCard: {
@@ -1091,10 +1095,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 16,
   },
   phBar: { borderRadius: 5 },
-  phChip: {
-    width: 56,
-    height: 16,
-    borderRadius: 999,
+  // Sub-row del placeholder: dos barras mock simulando "categoría · meta"
+  // de la sub-line real (que ya no usa chip pill — ver `metaLine`).
+  phSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 5,
   },
   // Tabular nums para columna right-aligned de montos entre rows
   // (mismo razonamiento que Gastos.GastoRow.amount).
