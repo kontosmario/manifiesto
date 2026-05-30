@@ -113,8 +113,11 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{ mutate: (input: UpsertFixedExpenseInput) => void } | null>(null)
 
+  // Devolvemos `{ id }` para que el form de "Crear fijo" pueda
+  // encadenar `recordFixedExpensePayment` cuando el user marca "Ya
+  // pagué la cuota más reciente" en el wizard de creación.
   const result = useMutation<
-    void,
+    { id: string } | null,
     Error,
     UpsertFixedExpenseInput,
     { previous: FixedExpense[] | undefined } | undefined
@@ -123,7 +126,7 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
       if (!familyId) {
         throw new Error('No hay familia activa para crear un gasto fijo.')
       }
-      await createFixedExpense(familyId, input)
+      return await createFixedExpense(familyId, input)
     },
     onMutate: async (input) => {
       if (!familyId) return undefined
