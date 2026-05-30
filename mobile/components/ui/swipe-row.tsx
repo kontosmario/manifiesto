@@ -12,6 +12,7 @@ import {
   RectButton,
 } from 'react-native-gesture-handler'
 import Animated, {
+  cancelAnimation,
   FadeIn,
   FadeOut,
   runOnJS,
@@ -66,9 +67,8 @@ interface SwipeRowProps {
 // (cierra "resuelto", no rebota); mass moderada da peso natural;
 // stiffness 200 es buttery (ni snap-y ni laggy).
 const SPRING_SETTLE = { damping: 22, stiffness: 200, mass: 0.85 } as const
-// Threshold de apertura: 40% del ancho de acciones.
-const OPEN_THRESHOLD_RATIO = 0.4
-// Velocidad de flick que dispara open aunque no llegues al threshold.
+// Velocidad de flick que dispara open/close aunque no llegues al
+// threshold de posición.
 const FLICK_VELOCITY_PX_S = 600
 
 /**
@@ -109,6 +109,19 @@ export function SwipeRow({
 }: SwipeRowProps) {
   const { theme } = useAppTheme()
   const translateX = useSharedValue(0)
+  // Posición de translateX cuando arranca el gesto. Sin esto, un segundo
+  // pan desde el row ya abierto saltaba a translateX = event.translationX
+  // (que arranca en 0), provocando un jump visual de -96 a -5.
+  const startX = useSharedValue(0)
+  // Offset del finger al ACTIVARSE el gesto. event.translationX se mide
+  // desde que el finger toca la pantalla, no desde la activación (que
+  // pasa el threshold de 10px). Restando este offset evitamos el jump
+  // de 10px al cruzar el threshold de activación.
+  const startTranslation = useSharedValue(0)
+  // Tracking del estado para haptic inteligente: solo dispara cuando
+  // realmente abrimos (transición cerrado → abierto), no cada vez que
+  // termina un gesto sobre un row ya abierto.
+  const wasOpen = useSharedValue(false)
 
   const rightWidth = rightActions.length * actionWidth
   const leftWidth = leftActions.length * actionWidth
@@ -118,6 +131,7 @@ export function SwipeRow({
   }, [onSwipeOpenHaptic])
 
   const closeRow = useCallback(() => {
+    cancelAnimation(translateX)
     translateX.value = withSpring(0, SPRING_SETTLE)
   }, [translateX])
 
@@ -133,37 +147,61 @@ export function SwipeRow({
     .enabled(!isProcessing)
     .activeOffsetX([-10, 10])
     .failOffsetY([-15, 15])
+    .onBegin(() => {
+      'worklet'
+      // Interrumpimos cualquier spring en flight para que el gesto sea
+      // interrumpible (emil: "animations must be interruptible; user
+      // tap/gesture cancels in-progress animation immediately").
+      cancelAnimation(translateX)
+    })
+    .onStart((event) => {
+      'worklet'
+      // Capturamos posición actual + offset del finger AL ACTIVARSE el
+      // gesto, así el row continúa desde donde estaba sin saltos.
+      startX.value = translateX.value
+      startTranslation.value = event.translationX
+      wasOpen.value = Math.abs(translateX.value) > 1
+    })
     .onUpdate((event) => {
       'worklet'
-      const dx = event.translationX
-      if (dx < 0 && rightActions.length > 0) {
-        translateX.value = Math.max(dx, -rightWidth)
-      } else if (dx > 0 && leftActions.length > 0) {
-        translateX.value = Math.min(dx, leftWidth)
-      } else {
-        translateX.value = 0
-      }
+      // Delta desde la activación, no desde el touch.
+      const delta = event.translationX - startTranslation.value
+      const next = startX.value + delta
+      // Clamp al rango disponible según las acciones definidas.
+      const minX = rightActions.length > 0 ? -rightWidth : 0
+      const maxX = leftActions.length > 0 ? leftWidth : 0
+      translateX.value = Math.max(minX, Math.min(maxX, next))
     })
     .onEnd((event) => {
       'worklet'
       const dx = translateX.value
       const vx = event.velocityX
-      const rightOpen = rightActions.length > 0 && (dx < -rightWidth * OPEN_THRESHOLD_RATIO || vx < -FLICK_VELOCITY_PX_S)
-      const leftOpen = leftActions.length > 0 && (dx > leftWidth * OPEN_THRESHOLD_RATIO || vx > FLICK_VELOCITY_PX_S)
+
+      // Decisión del target en dos pasadas:
+      // 1) Flick fuerte → respeta la intención de la dirección del finger
+      //    (cerrá aunque estés más del 50% abierto si flickás cerrando).
+      // 2) Sin flick → snap-to-nearest extremo (intuitivo, Apple-style).
+      let target = 0
+      if (Math.abs(vx) > FLICK_VELOCITY_PX_S) {
+        if (vx < 0 && rightActions.length > 0) target = -rightWidth
+        else if (vx > 0 && leftActions.length > 0) target = leftWidth
+        // else: cerrá (target = 0)
+      } else {
+        if (rightActions.length > 0 && dx < -rightWidth / 2) target = -rightWidth
+        else if (leftActions.length > 0 && dx > leftWidth / 2) target = leftWidth
+      }
+
       // Preservamos la velocidad del finger al soltar (Apple-style):
       // el spring continúa la velocidad del gesto en vez de arrancar
       // desde 0, así el snap se siente como una sola línea fluida y
       // no como dos animaciones desconectadas (drag + spring).
-      if (rightOpen) {
-        translateX.value = withSpring(-rightWidth, { ...SPRING_SETTLE, velocity: vx })
+      translateX.value = withSpring(target, { ...SPRING_SETTLE, velocity: vx })
+
+      // Haptic SOLO en transición cerrado → abierto, no cuando un row
+      // abierto sigue abierto.
+      const willBeOpen = target !== 0
+      if (willBeOpen && !wasOpen.value) {
         runOnJS(fireOpenHaptic)()
-      } else if (leftOpen) {
-        translateX.value = withSpring(leftWidth, { ...SPRING_SETTLE, velocity: vx })
-        runOnJS(fireOpenHaptic)()
-      } else {
-        // Close (snap-back desde swipe parcial): mismo spring + velocidad
-        // preservada. El close se siente igual de buttery que el open.
-        translateX.value = withSpring(0, { ...SPRING_SETTLE, velocity: vx })
       }
     })
 
