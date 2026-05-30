@@ -8,7 +8,7 @@ import type { FijosTab } from '@/features/fijos/use-fijos-controller'
 interface FijosTabsProps {
   tab: FijosTab
   setTab: (tab: FijosTab) => void
-  counts: { pendientes: number; pagados: number }
+  counts: { pendientes: number; pagados: number; proximos: number }
 }
 
 // Color semántico por bucket — alimenta el `color` prop de
@@ -16,31 +16,34 @@ interface FijosTabsProps {
 // tono del estado. El darkenForLightBg / lightenForDarkBg del pill se
 // ocupa de mantener AA en cada modo.
 //
-// Simplificado 2026-05-30: 2 tabs (eliminamos "Todos" y "Zombis").
-// "Pendientes" agrupa pending + overdue/mora; "Pagados" agrupa paid +
-// future (fijos al día cuyo próximo vencimiento cae fuera del ciclo).
+// 3 buckets (2026-05-30 refinado):
+//   - Pendientes → peach (urgente, por pagar)
+//   - Pagados    → lime  (cerrado, éxito)
+//   - Próximos   → sky muted (info, calendario lejano — distinto de
+//                  los otros dos para que el ojo lo separe de un vistazo)
 const TAB_COLORS: Record<FijosTab, string | undefined> = {
-  pendientes: '#F2A78C', // peach (urgent / por pagar)
-  pagados: '#A6EF8F', // lime (success / al día)
+  pendientes: '#F2A78C',
+  pagados: '#A6EF8F',
+  proximos: '#9DC4DE', // sky muted: distinguible sin compitir con peach/lime
 }
 
 const TAB_LABELS: Record<FijosTab, string> = {
   pendientes: 'Pendientes',
-  pagados: 'Pagados / Próximos',
+  pagados: 'Pagados',
+  proximos: 'Próximos',
 }
 
 /**
- * Filtro de status de fijos. Reusa `GastosFilterPill` (mismo componente
- * que el filtro por categoría de Gastos) — esto unifica el lenguaje
- * de filtros entre las dos pantallas: misma morph de active/inactive,
- * misma transición spring, mismo press feedback, misma jerarquía visual.
+ * Filtro de status de fijos. Reusa `GastosFilterPill` — unifica el
+ * lenguaje de filtros con Gastos: misma morph active/inactive, mismo
+ * spring de transición, mismo press feedback.
  *
- * Buckets (2 tabs):
- *  - Pendientes      → pending + overdue (lo accionable este ciclo)
- *  - Pagados / Próximos → paid + future (lo cerrado del ciclo + lo que
- *                          no toca, ej: trimestrales recientemente
- *                          pagados con `next_due_on` en el ciclo
- *                          siguiente).
+ * Buckets (3 tabs):
+ *  - Pendientes → pending + overdue (lo accionable este ciclo)
+ *  - Pagados    → paid del ciclo (lo cerrado este mes)
+ *  - Próximos   → future (fijos al día con próximo vencimiento en un
+ *                 ciclo posterior, ej trimestral pagado en abril cuando
+ *                 estás en mayo)
  *
  * Cada bucket inactivo muestra su count en color semántico del estado;
  * el bucket activo cambia a la pill text-fg + creamCard-bg que ya
@@ -56,7 +59,7 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
     [setTab],
   )
 
-  const TABS: FijosTab[] = ['pendientes', 'pagados']
+  const TABS: FijosTab[] = ['pendientes', 'pagados', 'proximos']
 
   return (
     <RiseView delay={120}>

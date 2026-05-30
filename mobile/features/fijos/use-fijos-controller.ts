@@ -14,15 +14,22 @@ import {
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 
 /**
- * Tabs simplificadas (2026-05-30): el listado divide los fijos en lo
- * accionable este ciclo ("Pendientes" = `pending + overdue/mora`) y
- * los del ciclo cerrado/futuro ("Pagados / Próximos" = `paid +
- * future`). Eliminamos "Todos" (poco scannable) y "Zombi" (deprecada,
- * ya no se computa). Migration nota: el setTab default arranca en
- * `'pendientes'` para que el primer paint sea siempre el listado
- * útil del ciclo activo.
+ * Tabs del listado (2026-05-30, refinado a 3 buckets):
+ *  - 'pendientes' → pending + overdue/mora (lo accionable de este ciclo).
+ *  - 'pagados'    → paid del ciclo activo (lo cerrado este mes).
+ *  - 'proximos'   → future (fijos al día con próximo vencimiento en un
+ *                   ciclo posterior, típicamente trimestrales /
+ *                   semestrales / anuales recién pagados).
+ *
+ * Antes (2026-05-30 inicial) eran 2 tabs (paid + future fundidos en
+ * "Pagados / Próximos"); los users querían ver los futuros aparte para
+ * tener visibilidad del calendario lejano sin que se mezcle con lo del
+ * ciclo cerrado. El default sigue siendo `'pendientes'` para que el
+ * primer paint muestre lo útil del ciclo activo.
+ *
+ * Removido: 'todos' (poco scannable) y 'zombis' (deprecada).
  */
-export type FijosTab = 'pendientes' | 'pagados'
+export type FijosTab = 'pendientes' | 'pagados' | 'proximos'
 
 export interface UseFijosControllerResult {
   isLoading: boolean
@@ -138,14 +145,12 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   )
 
   const filteredItems = useMemo(() => {
-    // "Pendientes" = lo accionable este ciclo (pending del ciclo + mora
-    // arrastrada de ciclos previos). "Pagados / Próximos" = lo cerrado
-    // del ciclo + los que no tocan (típicamente trimestrales/anuales
-    // recientemente pagados). Antes había "Todos" y "Zombis";
-    // eliminados (2026-05-30).
-    if (tab === 'pagados') {
-      return [...summary.paidItems, ...summary.futureItems]
-    }
+    // 3 buckets bien separados:
+    //   pendientes → pending + overdue (lo accionable)
+    //   pagados    → paid (lo cerrado del ciclo)
+    //   proximos   → future (no toca este ciclo)
+    if (tab === 'pagados') return summary.paidItems
+    if (tab === 'proximos') return summary.futureItems
     return [...summary.pendingItems, ...summary.overdueItems]
   }, [tab, summary])
 
