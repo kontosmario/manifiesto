@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ComponentProps, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   StyleSheet,
@@ -80,16 +80,17 @@ export function SwipeableRow({
   const resolvedBorderColor = borderColor ?? theme.colors.line
   const swipeRef = useRef<SwipeableMethods>(null)
 
-  // Pintamos un bg del color de la acción dominante DETRÁS de todo el
-  // contenido. En idle el row tapa todo y no se ve; al swipear, el
-  // espacio que el row va dejando muestra este bg en lugar del canvas
-  // del fondo de la pantalla. Así los cuartos de círculo de las
-  // esquinas (clipped por el borderRadius del outer) quedan continuos
-  // con el color de la acción y NO se ven huecos negros.
+  // Bg del color de la acción dominante, posicionado DETRÁS del row.
+  // Solo se monta cuando el usuario está activamente swipeando (drag
+  // start → close), nunca en idle — sino el press-scale del card
+  // hijo (ej. FijoRow) lo dejaría asomar como halo rojo alrededor.
+  // Cuando es visible, llena los cuartos de círculo del borderRadius
+  // del outer, así no hay huecos del canvas en las esquinas.
   const dominantTone = rightActions[0]?.tone ?? leftActions[0]?.tone ?? 'neutral'
   const dominantActionBg =
     dominantTone === 'danger' ? theme.colors.danger : theme.colors.primary
   const hasAnyAction = rightActions.length > 0 || leftActions.length > 0
+  const [isSwiping, setIsSwiping] = useState(false)
 
   const handleSwipeOpen = useCallback(() => {
     void triggerHaptic(onSwipeOpenHaptic)
@@ -131,12 +132,12 @@ export function SwipeableRow({
         borderColor: resolvedBorderColor,
       }}
     >
-      {hasAnyAction ? (
-        // Bg del color de la acción dominante, absolutamente posicionado
-        // detrás del row. Idle: invisible (el row lo tapa). Swiped: lo
-        // que el row deja libre se ve continuo hasta los bordes
-        // redondeados del outer container. Se acabaron los huecos
-        // negros en las esquinas curvas.
+      {hasAnyAction && isSwiping ? (
+        // Bg activo solo durante el gesto de swipe — desde el primer
+        // drag hasta que la card vuelve cerrada. Llena el outer
+        // container y deja los cuartos de círculo del borderRadius
+        // continuos con el color de la acción (sin canvas asomando).
+        // No se monta en idle ni durante el press-scale del card hijo.
         <View
           pointerEvents="none"
           style={{
@@ -156,6 +157,13 @@ export function SwipeableRow({
         overshootRight={false}
         enabled={!isProcessing}
         onSwipeableOpen={handleSwipeOpen}
+        // Encendemos el bg apenas el user empieza a arrastrar, y lo
+        // apagamos cuando la card vuelve a cerrarse (`onSwipeableClose`
+        // dispara al final del close-animation). Así el bg está activo
+        // durante TODO el gesto y nunca queda asomando en idle/press.
+        onSwipeableOpenStartDrag={() => setIsSwiping(true)}
+        onSwipeableCloseStartDrag={() => setIsSwiping(true)}
+        onSwipeableClose={() => setIsSwiping(false)}
         renderRightActions={rightActions.length ? renderActions(rightActions, 'right') : undefined}
         renderLeftActions={leftActions.length ? renderActions(leftActions, 'left') : undefined}
       >
