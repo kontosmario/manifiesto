@@ -536,8 +536,8 @@ export interface ControlIntelligencePayload {
   velocity: VelocitySnapshot | null
 }
 
-export const controlIntelligenceQueryKey = (familyId?: string) =>
-  ['control-intelligence', familyId ?? null] as const
+export { controlIntelligenceQueryKey } from '@/features/insights/control-v2-query-keys'
+import { controlIntelligenceQueryKey } from '@/features/insights/control-v2-query-keys'
 
 async function fetchControlIntelligencePayload(
   familyId: string,

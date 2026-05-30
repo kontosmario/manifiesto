@@ -23,8 +23,8 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  * gate del trigger automático post-cobro.
  */
 
-export const monthlyEditionsQueryKey = (familyId: string | undefined) =>
-  ['monthly-editions', familyId ?? null] as const
+export { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
+import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
 
 const EDITIONS_PAGE_SIZE = 12
 

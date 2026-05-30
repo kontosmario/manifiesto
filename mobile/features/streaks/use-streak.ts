@@ -92,11 +92,14 @@ interface UserStreakRow {
   streak_broken_at: string | null
 }
 
-export const streakQueryKey = (familyId?: string, userId?: string) =>
-  ['user-streak', familyId ?? null, userId ?? null] as const
-
-export const markedDaysQueryKey = (familyId?: string, userId?: string) =>
-  ['streak-marked-days', familyId ?? null, userId ?? null] as const
+export {
+  streakQueryKey,
+  markedDaysQueryKey,
+} from '@/features/streaks/streak-query-keys'
+import {
+  streakQueryKey,
+  markedDaysQueryKey,
+} from '@/features/streaks/streak-query-keys'
 
 interface MarkedDayRow {
   marked_date: string

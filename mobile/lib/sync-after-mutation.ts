@@ -2,16 +2,19 @@ import type { QueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
-import { incomeEventQueryKeys } from '@/features/income/use-income-events'
+import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
 import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
-import { homeSnapshotQueryKey } from '@/features/home/use-home-snapshot'
-import { controlIntelligenceQueryKey } from '@/features/insights/use-control-v2-data'
+import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
+import { controlIntelligenceQueryKey } from '@/features/insights/control-v2-query-keys'
 import { controlSnapshotKey } from '@/features/insights/use-control-snapshot'
 import { gastosEndpointKeys } from '@/features/gastos/use-gastos-endpoints'
-import { streakQueryKey, markedDaysQueryKey } from '@/features/streaks/use-streak'
+import {
+  streakQueryKey,
+  markedDaysQueryKey,
+} from '@/features/streaks/streak-query-keys'
 import { achievementsEarnedQueryKey } from '@/features/achievements/use-achievements'
-import { monthlyEditionsQueryKey } from '@/features/wrapped/use-monthly-editions'
+import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
 
 export type SyncScope =
   | 'expenses'
