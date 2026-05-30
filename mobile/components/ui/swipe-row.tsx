@@ -59,12 +59,13 @@ interface SwipeRowProps {
   actionWidth?: number
 }
 
-// Spring "abrir" — snappy pero con un toquecito de masa para no sentirse
-// elástico (emil: spring physics, no bouncy default).
-const SPRING_OPEN = { damping: 22, stiffness: 220, mass: 0.8 } as const
-// Spring "cerrar" — más rígido para que el snap-back se sienta resuelto
-// (asymmetric enter/exit: exit más rápido que enter).
-const SPRING_CLOSE = { damping: 26, stiffness: 280, mass: 0.7 } as const
+// Spring único para abrir y cerrar — symmetric en gestos interactivos
+// hace que el back-and-forth se sienta como UN solo gesto fluido (vs.
+// asymmetric, que es para mount/unmount donde queremos exit-faster-than
+// -enter). Tuning emil-style: damping alto evita bounce en el landing
+// (cierra "resuelto", no rebota); mass moderada da peso natural;
+// stiffness 200 es buttery (ni snap-y ni laggy).
+const SPRING_SETTLE = { damping: 22, stiffness: 200, mass: 0.85 } as const
 // Threshold de apertura: 40% del ancho de acciones.
 const OPEN_THRESHOLD_RATIO = 0.4
 // Velocidad de flick que dispara open aunque no llegues al threshold.
@@ -117,7 +118,7 @@ export function SwipeRow({
   }, [onSwipeOpenHaptic])
 
   const closeRow = useCallback(() => {
-    translateX.value = withSpring(0, SPRING_CLOSE)
+    translateX.value = withSpring(0, SPRING_SETTLE)
   }, [translateX])
 
   const handleActionPress = useCallback(
@@ -149,14 +150,20 @@ export function SwipeRow({
       const vx = event.velocityX
       const rightOpen = rightActions.length > 0 && (dx < -rightWidth * OPEN_THRESHOLD_RATIO || vx < -FLICK_VELOCITY_PX_S)
       const leftOpen = leftActions.length > 0 && (dx > leftWidth * OPEN_THRESHOLD_RATIO || vx > FLICK_VELOCITY_PX_S)
+      // Preservamos la velocidad del finger al soltar (Apple-style):
+      // el spring continúa la velocidad del gesto en vez de arrancar
+      // desde 0, así el snap se siente como una sola línea fluida y
+      // no como dos animaciones desconectadas (drag + spring).
       if (rightOpen) {
-        translateX.value = withSpring(-rightWidth, SPRING_OPEN)
+        translateX.value = withSpring(-rightWidth, { ...SPRING_SETTLE, velocity: vx })
         runOnJS(fireOpenHaptic)()
       } else if (leftOpen) {
-        translateX.value = withSpring(leftWidth, SPRING_OPEN)
+        translateX.value = withSpring(leftWidth, { ...SPRING_SETTLE, velocity: vx })
         runOnJS(fireOpenHaptic)()
       } else {
-        translateX.value = withSpring(0, SPRING_CLOSE)
+        // Close (snap-back desde swipe parcial): mismo spring + velocidad
+        // preservada. El close se siente igual de buttery que el open.
+        translateX.value = withSpring(0, { ...SPRING_SETTLE, velocity: vx })
       }
     })
 
