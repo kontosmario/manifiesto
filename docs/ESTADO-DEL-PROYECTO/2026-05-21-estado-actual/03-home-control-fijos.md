@@ -1,7 +1,8 @@
 # Dominio Home · Control · Gastos Fijos
 
 > Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/  
-> Actualizado parcialmente 2026-05-29 (rama feat/monthly-rollup): card "CÓMO VAS ESTE MES", datos de rollup en adapter, acceso al Wrapped desde Control.
+> Actualizado parcialmente 2026-05-29 (rama feat/monthly-rollup): card "CÓMO VAS ESTE MES", datos de rollup en adapter, acceso al Wrapped desde Control.  
+> Actualizado 2026-05-29 (parte 7 — polish cross-surface): rebuild SwipeRow, chrome unificado ActivityRowV2/GastoRow/FijoRow/NotificationRow, bg theme-aware en ActivityRowV2.
 
 ---
 
@@ -73,7 +74,7 @@ home_snapshot RPC (1 round-trip)
 | S3 | Hero | `HomeHeroCard` | Monto disponible hoy, cupo diario, proyección al cierre, chip de ahorro (si configurado), trend vs. ciclo anterior |
 | S5 | MonthSummary | `MonthSummaryCard` | Dos paneles side-by-side: Variables (total + top categoría chip) y Fijos (total + próximo fijo chip) |
 | S6 | Meta | `MetaCard` / `MetaEmptyCard` | Progreso de la meta de ahorro + "Agregar ahorro" inline (`QuickAddSavingsSheet`). Si no hay meta: card vacía con CTA |
-| S7 | Actividad | `HomeActivitySection` | Últimos 6 gastos manuales (filter `commitment_id == null`), cada uno en `ActivityRowV2`, swipe para eliminar |
+| S7 | Actividad | `HomeActivitySection` | Últimos 6 gastos manuales (filter `commitment_id == null`), cada uno en `ActivityRowV2` dentro de `SwipeRow`, swipe para eliminar |
 | — | Sheets | `HomeDashboardSheets` | `OnboardingAvailableSheet` (primer ciclo) o `SalaryConfirmationSheet` (ciclos recurrentes). Lazy-mounted. |
 
 ### Detalles del Hero (S3)
@@ -268,7 +269,7 @@ Los preview blocks son inerts (opacity recesada, sin interacción). El screen en
 ### FijoRow — detalles clave
 
 - Tap → expand panel de detalles (frecuencia, kind, próx. vencimiento, categoría) + acciones ("✓ Registrar pago" + "Editar").
-- Swipe left → "Eliminar" (solo eliminar; editar vive en el expand panel).
+- Swipe left → "Eliminar" (solo eliminar; editar vive en el expand panel). El swipe es provisto por `SwipeRow` (wrapeado internamente en `FijoRowReal`, `borderRadius 16`).
 - `ConfettiBurst`: renderizado por row. Se dispara en el flip de status `pending/overdue → paid` durante la vida del componente (no en cold open). Ref `initialStatusRef` previene confetti en rows ya pagadas al montar.
 - `TrendBadge`: visible cuando `|trendDeltaPct| >= 1`. Colores theme-aware.
 - `statusOverlay`: mini-badge en la esquina del iconTile (check/warning/schedule), reemplazó el chip pastel de antes.
@@ -299,7 +300,7 @@ Formulario modal con:
 
 | Archivo | Propósito | Usado por |
 |---|---|---|
-| `activity-row-v2.tsx` | Fila de gasto en el feed de actividad. SwipeableRow + expand. | `HomeActivitySection` |
+| `activity-row-v2.tsx` | Fila de gasto en el feed de actividad. Wrapeada en `SwipeRow` (externamente, en `home-activity-section.tsx`). Solo esquinas izquierdas redondeadas (`borderRadius 14`); el contorno completo lo provee el SwipeRow exterior. `backgroundColor` theme-aware: `surfaceMuted` en dark, `creamCard` en light — igual que `GastoRow`. | `HomeActivitySection` |
 | `add-expense-advisor-banner.tsx` | Banner del asesor para sugerir cargar un gasto | (no verificado) |
 | `add-expense-dashboard.tsx` | Dashboard de carga de gastos | (no verificado) |
 | `ambient-blobs.tsx` | 3 blobs de color que flotan como fondo. `position: absolute`. | `HomeScreen`, `FijosV2Screen`, `ControlV2Screen` |
@@ -437,7 +438,7 @@ Formulario modal con:
 | Archivo | Estado | Propósito |
 |---|---|---|
 | `fijo-category-groups.tsx` | ✅ LIVE | Agrupa `FijoRow` por categoría. Tab-aware (filtra según `FijosTab`). |
-| `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + SwipeableRow. Soporta prop `placeholder` para el empty state. |
+| `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + `SwipeRow` (wrapeado internamente, `borderRadius 16`). `styles.card` solo esquinas izquierdas (`borderTopLeftRadius/borderBottomLeftRadius: 16`); `FijoRowPlaceholder` restaura las derechas vía `styles.placeholderCard` para uso standalone. Soporta prop `placeholder` para el empty state. |
 | `fijo-trend-spark.tsx` | ✅ LIVE | Sparkline de tendencia de precio (usado dentro de `FijoRow`). |
 | `fijos-empty-state.tsx` | ✅ LIVE (feat/settings-dark-mode) | Empty/onboarding state para cuenta sin fijos: intro card + previews de los 3 componentes reales en modo vacío. |
 | `fijos-header.tsx` | ✅ LIVE | Header de la pantalla con botón de alta. |
@@ -466,6 +467,15 @@ Subcategorías de archivos en `fijos-hero-preview/`:
 ### ~~5.6 components/fixed-expenses/~~ — 🗑️ ELIMINADO 2026-05-22
 
 `fixed-expense-form.tsx` (único archivo, 0 imports) fue eliminado (Bucket 2 de [09](09-candidatos-a-eliminar.md)). Formulario legacy anterior a `AddFijoV2Screen`.
+
+### 5.7 components/ui/ — SwipeRow (nuevo 2026-05-29)
+
+El archivo relevante a este dominio en `components/ui/`:
+
+| Archivo | Estado | Propósito |
+|---|---|---|
+| ~~`swipeable-row.tsx`~~ | 🗑️ **Eliminado 2026-05-29** | Wrapper viejo sobre `ReanimatedSwipeable` de gesture-handler. Tenía bugs visuales (corner gaps, halos en press, doble-wrap en Fijos). |
+| `swipe-row.tsx` | ✅ LIVE | Reemplazo completo. Custom `Gesture.Pan` v2 + Reanimated v3 worklets en UI thread. Action panels posicionados absolutos en los bordes del outer container; en idle quedan TRASLADADOS off-screen vía `transform: translateX` (no detrás del row). Se trasladan en sync con el row — sin bg-behind, sin halos en press, sin huecos en esquinas. Gesture continuation correcta: `startX` + `startTranslation` capturados en `onStart`; `cancelAnimation` en `onBegin` (interrumpible). Spring único `SPRING_SETTLE = {damping:22, stiffness:200, mass:0.85}` simétrico abrir/cerrar. Velocidad del finger preservada en `withSpring(..., { velocity: vx })` (Apple-style). Decisión del target: si `|vx| > 600px/s` (flick) respeta dirección del finger; si no → snap-to-nearest 50%. Haptic solo en transición cerrado→abierto (`wasOpen` shared value). `activeOffsetX([-10, 10])` + `failOffsetY([-15, 15])`. API: `rightActions`, `leftActions`, `accessibilityLabel/Hint/Actions`, `onAccessibilityAction`, `borderRadius` (default 14), `isProcessing`, `processingLabel`, `actionWidth` (default 96), `onSwipeOpenHaptic`. **Sin `borderColor`**. `SwipeAction`: `{ label, tone: 'neutral'|'danger', icon, onPress }`. Aplicado en: Home actividad (`borderRadius 14`), Gastos · Movimientos (`borderRadius 14`), Fijos (`borderRadius 16`, interno en `FijoRowReal`), Notificaciones (`borderRadius 16`). |
 
 ---
 
@@ -617,7 +627,7 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **HomeHeroCard** | ✅ LIVE | Redesigned. ShineOverlay + aurora + particles + CountUpText + savingsChip + trend. |
 | **MonthSummaryCard** | ✅ LIVE | Top categoría chip + próximo fijo chip + fallbacks. |
 | **MetaCard / MetaEmptyCard** | ✅ LIVE | MetaCard con QuickAddSavings. MetaEmptyCard ("Crea tu primera meta"): dark mode usa `surfaceMuted` + `border` (rgba blanco) a 1px, alineado con ACTIVIDAD y MonthSummaryCard. |
-| **HomeActivitySection** | ✅ LIVE | ActivityRowV2 con swipe-delete. |
+| **HomeActivitySection** | ✅ LIVE | `ActivityRowV2` con swipe-delete vía `SwipeRow`. Bg theme-aware (`surfaceMuted`/`creamCard`). Chrome unificado con Gastos. |
 | **SalaryConfirmationSheet / OnboardingAvailableSheet** | ✅ LIVE | Lazy-mounted. Dispara Wrapped post-save. |
 | **ControlV2Screen** | ✅ LIVE | 8 cards + hero + DailyGoalSheet. Empty-states per-card activos (feat/settings-dark-mode). Botón Wrapped en header + CTA en VsMesCard (2026-05-29). |
 | **ControlV2Hero (variante A)** | ✅ LIVE | `ControlHeroTitular` en producción via `ControlV2Hero` adapter. |
@@ -629,7 +639,7 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **FijosHeroCard** | ✅ LIVE | Boarding pass + urgency ring + PaymentSegments + CycleRouteLine. |
 | **FijosProximosCard** | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (Etapa 11). |
 | **FijosTabs** | ✅ LIVE | Reutiliza GastosFilterPill. |
-| **FijoRow** | ✅ LIVE | Expand panel + ConfettiBurst + statusOverlay + catChip + TrendBadge. |
+| **FijoRow** | ✅ LIVE | Expand panel + ConfettiBurst + statusOverlay + catChip + TrendBadge. Wrappea `SwipeRow` internamente (`borderRadius 16`). Chrome unificado: solo esquinas izquierdas redondeadas. |
 | ~~**FijosSmartAlerts**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
 | ~~**FijosUpcomingStrip**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
 | **AddFijoV2Screen** | ✅ LIVE | Create + edit. Prefill desde Asistente. |
@@ -638,6 +648,8 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | **ControlV2VsMesCard** (redesign 2026-05-29) | ✅ LIVE | "CÓMO VAS ESTE MES" — minimal, comparación-first, siempre data real. 3 estados + barras GrowReveal + mini-recap + CTA Wrapped. |
 | **ControlV2Header WrappedButton** (2026-05-29) | ✅ LIVE | Botón circular con halo sonar `WrappedPulse`; aparece/desaparece según `wrappedSeen`. |
 | **useMarkCycleWrappedSeen** (2026-05-29) | ✅ LIVE | Hook en `features/wrapped/`; update optimista + RPC `mark_cycle_wrapped_seen`. |
+| **SwipeRow** (rebuild 2026-05-29) | ✅ LIVE | `components/ui/swipe-row.tsx`. Custom Gesture.Pan v2 + Reanimated v3. Reemplaza `SwipeableRow` viejo (eliminado). Aplicado en Home actividad, Gastos, Fijos, Notificaciones. |
+| **Chrome unificado cross-surface** (2026-05-29) | ✅ LIVE | `ActivityRowV2`, `GastoRow`, `FijoRow.card`, `NotificationRow.row`: solo esquinas izquierdas redondeadas. El `SwipeRow` exterior provee el contorno completo. `ActivityRowV2` bg theme-aware (`surfaceMuted` dark / `creamCard` light). |
 | **home_snapshot RPC** | ✅ LIVE | 1 round-trip. Seedea ~14 caches. Control layer incluido (migración 20260514010000). |
 | **useWarmTabsSnapshots** | ✅ LIVE | Prefetch de Gastos + Control post-Home-first-paint. |
 | **lazy: false + animation: none** | ✅ LIVE | Pre-mount + switch instantáneo de tabs (replicando NativeTabs feel). |
@@ -653,3 +665,4 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | ~~`control-v2-placeholder.tsx`~~ | ✅ RESUELTO | 🗑️ Eliminado en feat/settings-dark-mode — reemplazado por empty-states per-card en cada componente de Control. |
 | Muchos archivos en `components/home/` sin verificar uso live | 🟡 BAJA | ~20 archivos con nombre de "control-*" que pueden ser de iteraciones previas del Control card in-Home. Pendiente de verificar. |
 | ~~`control-v2-asesor-card.tsx` en el código pero removida del layout~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-22. |
+| ~~`swipeable-row.tsx` en `components/ui/` (viejo wrapper sobre ReanimatedSwipeable)~~ | ✅ RESUELTO | 🗑️ Eliminado 2026-05-29 — reemplazado por `swipe-row.tsx` (rebuild completo). |

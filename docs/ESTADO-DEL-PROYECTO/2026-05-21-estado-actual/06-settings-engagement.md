@@ -147,7 +147,7 @@ Ver sección 9 para detalle completo. La pantalla fue rediseñada significativam
 
 Controles:
 - **Canales**: push on/off, in-app on/off
-- **Grupos de notificación**: switches por grupo (gastos, fijos, racha, meta, otros) via `kinds_muted[]`
+- **Grupos de notificación**: switches por grupo (gastos, ingresos, fijos, racha, meta, otros) via `kinds_muted[]`. Grupo `ingresos`: "Ingresos extra (transferencias, bonos, regalos) registrados en la cuenta.", default false (habilitado). Incorporado junto con el sistema de notificaciones de income (triggers DB + push).
 - **Check-in horario**: 3 slots (Mañana / Mediodía / Noche), cada uno con hora configurable via picker inline. Defaults: 9, 14, 20.
 - **Nudges habilitados**: toggle general
 
@@ -531,7 +531,7 @@ Header (custom, no usa título de `Screen`):
 
 ### NotificationFeedList
 
-`FlatList` plana sin secciones. Cada row usa `SwipeableRow` con acción derecha "Listo" (tone `'neutral'`, ícono `done`) → `onMarkRead` → `deleteOne.mutate`.
+`FlatList` plana sin secciones. Cada row usa `SwipeRow` (`mobile/components/ui/swipe-row.tsx`) con acción derecha "Listo" (tone `'neutral'`, ícono `done`) → `onMarkRead` → `deleteOne.mutate`. El viejo `SwipeableRow` fue eliminado. El chrome de `NotificationRow` usa `borderTopLeftRadius: 16 + borderBottomLeftRadius: 16` (solo esquinas izquierdas, sin `borderWidth`) — mismo patrón que GastoRow/ActivityRowV2, para que el row + panel "Listo" se lean como una sola card.
 
 Animaciones de cada row:
 - **Entrada**: `FadeIn` con stagger 40ms por fila, tope en index 8 (= 320ms máx). Respeta `ReduceMotion.System`.
