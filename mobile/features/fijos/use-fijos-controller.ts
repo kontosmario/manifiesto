@@ -117,6 +117,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     return m
   }, [categoriesQuery.data])
 
+  const monthlyIncomeForSummary = financeQuery.data?.monthly_income ?? 0
   const summary = useMemo(() => {
     if (items.length === 0) return DEFAULT_SUMMARY
     return summarizeFijos({
@@ -128,6 +129,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
       cycleStart: cycle.start,
       cycleEnd: cycle.end,
       cycleDays: cycle.days,
+      monthlyIncome: monthlyIncomeForSummary,
     })
   }, [
     items,
@@ -138,6 +140,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     cycle.start,
     cycle.end,
     cycle.days,
+    monthlyIncomeForSummary,
   ])
 
   // `allItems` ahora incluye los `future` para que pantallas que listan
