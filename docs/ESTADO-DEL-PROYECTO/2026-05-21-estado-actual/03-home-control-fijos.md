@@ -2,7 +2,8 @@
 
 > Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/  
 > Actualizado parcialmente 2026-05-29 (rama feat/monthly-rollup): card "CÓMO VAS ESTE MES", datos de rollup en adapter, acceso al Wrapped desde Control.  
-> Actualizado 2026-05-29 (parte 7 — polish cross-surface): rebuild SwipeRow, chrome unificado ActivityRowV2/GastoRow/FijoRow/NotificationRow, bg theme-aware en ActivityRowV2.
+> Actualizado 2026-05-29 (parte 7 — polish cross-surface): rebuild SwipeRow, chrome unificado ActivityRowV2/GastoRow/FijoRow/NotificationRow, bg theme-aware en ActivityRowV2.  
+> Actualizado 2026-05-30 (parte 8 — recurrencia respetada + sheet de confirmación de precio): `computeItemStatus` con 4 estados (paid/pending/overdue/future) cycle-aware; tabs simplificadas a 2 (Pendientes / Pagados+Próximos); badge "En mora" rojo en overdue; nuevo `ConfirmFixedPaymentSheet` para confirmar precio al 2do+ pago; chip diferenciado "Aumento de precio" vs "Incremento con intereses · int." según `paid_in_arrears`. Backend: `record_fixed_expense_payment(uuid, numeric?)` con override + columna `expenses.paid_in_arrears`. Migración `20260530120000`.
 
 ---
 
@@ -241,7 +242,7 @@ Sheet modal (no inline) para configurar "mi meta diaria" = buffer de gasto. Lee 
 | Header | `FijosHeader` | Título + botón circular de alta (ref expuesto al tour) |
 | Hero | `FijosHeroCard` | Boarding pass: cycle route line, montos pagados/pendientes, PaymentSegments (1:1 fijo/segmento), dinero libre, % del sueldo |
 | Próximos | `FijosProximosCard` | Fusión de SmartAlerts + UpcomingStrip: top 3 próximos a vencer + sub-section "AVISOS" (hikes + signals del advisor) |
-| Tabs | `FijosTabs` | Filtros: Todos / Pendientes / Pagados / Zombis. Usa `GastosFilterPill` internamente (unifica lenguaje visual con Gastos) |
+| Tabs | `FijosTabs` | Filtros simplificados a 2 buckets (2026-05-30): **Pendientes** (pending del ciclo + overdue/mora) y **Pagados / Próximos** (paid del ciclo + future = fijos al día con próximo en un ciclo futuro, ej trimestral pagado). Eliminamos "Todos" y "Zombis". Usa `GastosFilterPill` internamente (unifica lenguaje visual con Gastos) |
 | Lista | `FijoCategoryGroups` | Lista de `FijoRow` agrupados por categoría |
 
 ### FijosEmptyState (feat/settings-dark-mode)
@@ -440,6 +441,7 @@ Formulario modal con:
 | `fijo-category-groups.tsx` | ✅ LIVE | Agrupa `FijoRow` por categoría. Tab-aware (filtra según `FijosTab`). |
 | `fijo-row.tsx` | ✅ LIVE | Row individual de fijo: expand panel + ConfettiBurst + `SwipeRow` (wrapeado internamente, `borderRadius 16`). `styles.card` solo esquinas izquierdas (`borderTopLeftRadius/borderBottomLeftRadius: 16`); `FijoRowPlaceholder` restaura las derechas vía `styles.placeholderCard` para uso standalone. Soporta prop `placeholder` para el empty state. |
 | `fijo-trend-spark.tsx` | ✅ LIVE | Sparkline de tendencia de precio (usado dentro de `FijoRow`). |
+| `confirm-fixed-payment-sheet.tsx` | ✅ LIVE (2026-05-30) | Sheet de confirmación de precio al "✓ Registrar pago" del 2do+ pago. Header con nombre del fijo + último monto pagado + chip "Cobrado con mora" cuando `wasOverdue`. Dos modos: **"Mismo · $X"** (primary, default) y **"Cambió"** (revela TextField con monto precargado). Preview inline del delta ("+$1.500 · +12%") cuando edita y difiere. CTA "Confirmar pago" → `recordPaymentMutation.mutate({ id, amountOverride? })`. El 1er pago de un commitment NO abre el sheet (path directo). Detección "1er pago" via `useExpenses` cache (no hay row con `commitment_id === id`). |
 | `fijos-empty-state.tsx` | ✅ LIVE (feat/settings-dark-mode) | Empty/onboarding state para cuenta sin fijos: intro card + previews de los 3 componentes reales en modo vacío. |
 | `fijos-header.tsx` | ✅ LIVE | Header de la pantalla con botón de alta. |
 | `fijos-hero-card.tsx` | ✅ LIVE | Hero tipo boarding pass. Soporta prop `empty` para el empty state. |
@@ -638,8 +640,10 @@ Si el user toca el tab antes de que resuelvan, React Query dedupea la promise pe
 | ~~**FijosV3Screen**~~ | 🗑️ Eliminado 2026-05-22 | Revertida. Cluster completo eliminado (Bucket 1 de [09](09-candidatos-a-eliminar.md)). |
 | **FijosHeroCard** | ✅ LIVE | Boarding pass + urgency ring + PaymentSegments + CycleRouteLine. |
 | **FijosProximosCard** | ✅ LIVE | Fusión SmartAlerts + UpcomingStrip (Etapa 11). |
-| **FijosTabs** | ✅ LIVE | Reutiliza GastosFilterPill. |
-| **FijoRow** | ✅ LIVE | Expand panel + ConfettiBurst + statusOverlay + catChip + TrendBadge. Wrappea `SwipeRow` internamente (`borderRadius 16`). Chrome unificado: solo esquinas izquierdas redondeadas. |
+| **FijosTabs** | ✅ LIVE | Reutiliza GastosFilterPill. **2026-05-30**: 2 buckets (Pendientes / Pagados+Próximos). |
+| **FijoRow** | ✅ LIVE | Expand panel + ConfettiBurst + statusOverlay + catChip + TrendBadge. Wrappea `SwipeRow` internamente (`borderRadius 16`). Chrome unificado: solo esquinas izquierdas redondeadas. **2026-05-30**: 4 estados visuales — paid (lime), pending (schedule muted), overdue (warning rojo + texto "En mora · Nd" en rojo), future (check muted + texto "Próximo · día N"). TrendBadge con prop `variant: 'price' \| 'arrears'` — arrears agrega sufijo "int." y usa tono rojo más fuerte. |
+| **ConfirmFixedPaymentSheet** | ✅ LIVE (2026-05-30) | Sheet de confirmación de precio al 2do+ pago. Trigger: `handleMarkPaid` en FijosV2Screen detecta si es 1er pago (no hay expense con commitment_id) → directo; si es 2do+ → abre sheet. Modos: mismo monto / cambió + delta inline. Confirma vía mutation con `amountOverride`. |
+| **`computeItemStatus` cycle-aware** | ✅ LIVE (2026-05-30) | Refactor de `fijos-aggregates.model.ts`. Antes: solo comparaba `next_due_on < today`. Ahora: cuatro estados según relación con `[cycleStart, cycleEnd)`. Trimestral pagado en abril (`next_due_on = julio`) ya NO aparece como pendiente en mayo/junio (queda en `future` → tab "Pagados / Próximos"). `total` del summary excluye `future` (no sobreestima el costo del ciclo). |
 | ~~**FijosSmartAlerts**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
 | ~~**FijosUpcomingStrip**~~ | 🗑️ Eliminado 2026-05-22 | Reemplazado por FijosProximosCard. |
 | **AddFijoV2Screen** | ✅ LIVE | Create + edit. Prefill desde Asistente. |

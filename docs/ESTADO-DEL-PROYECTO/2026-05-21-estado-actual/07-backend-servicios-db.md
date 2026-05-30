@@ -63,6 +63,7 @@ Manifiesto usa **Supabase** como backend completo. No hay servidor custom ni cap
 | `price` | `numeric(12,2)` | >= 0 |
 | `created_by` | `uuid` | → `auth.users` (inmutable tras insert) |
 | `archived_at` | `timestamptz NULL` | soft-delete por cierre de ciclo |
+| `paid_in_arrears` | `boolean NOT NULL DEFAULT false` | true cuando el expense fue creado al registrar pago sobre un fijo VENCIDO (`next_due_on < current_date` al momento del pago). Setea el RPC `record_fixed_expense_payment`. Consume la UI para distinguir el chip "Aumento de precio" (false) vs "Incremento con intereses" (true). Agregado 2026-05-30. |
 
 **Triggers activos sobre `expenses`:**
 - `trg_expense_category_family` (BEFORE INSERT/UPDATE): valida que `category_id` pertenezca a la misma familia.
@@ -300,7 +301,7 @@ Las pantallas Home y Gastos usan el patrón **"snapshot bundle"**: una sola llam
 | `create_family_invite()` | `() → text` | Genera invite de un solo uso con TTL 7 días. | `authenticated` |
 | `consume_family_invite(code, contribution?)` | `(text, numeric?) → table(...)` | Valida, inserta membership, marca invite como consumido. | `authenticated` |
 | `peek_family_by_invite(code)` | `(text) → jsonb` | Preview de familia sin unirse (para step de confirmación). | `authenticated` |
-| `record_fixed_expense_payment(fixed_expense_id)` | `(uuid) → uuid` | Registra pago: insert expense + insert payment + avanza next_due_on + actualiza status. Devuelve expense_id. | `authenticated` |
+| `record_fixed_expense_payment(fixed_expense_id, amount_override?)` | `(uuid, numeric?) → uuid` | Registra pago: insert expense + insert payment + avanza next_due_on + actualiza status. Devuelve expense_id. **2026-05-30**: nuevo param opcional `p_amount_override` — cuando vino del sheet `ConfirmFixedPaymentSheet` con monto editado, ese valor se usa como `price` del expense Y se persiste como nuevo `amount` base del commitment. Además captura `paid_in_arrears = (next_due_on < current_date)` snapshot ANTES de avanzar `next_due_on` y lo guarda en el expense para que la UI distinga chip "Aumento de precio" (false) vs "Incremento con intereses" (true). Default null → comportamiento idéntico al pre-2026-05-30. | `authenticated` |
 | `add_savings_contribution(goal_id, amount)` | `(uuid, numeric) → savings_goals` | Incrementa current_amount. Requiere owner. | `authenticated` |
 | `advance_streak(family_id, user_id, date)` | `(uuid, uuid, date) → void` | Máquina de estado de streaks. Idempotente si ya registró ese día. Invocada por trigger. | `authenticated` |
 | `leave_current_family()` | `() → void` | El miembro sale. Si owner y único, borra la familia. Si owner con otros, requiere transferencia previa. | `authenticated` |

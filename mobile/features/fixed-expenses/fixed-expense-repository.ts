@@ -94,7 +94,25 @@ export async function updateFixedExpenseStatus(
   }
 }
 
-export async function recordFixedExpensePayment(fixedExpenseId: string) {
+export interface RecordFixedExpensePaymentInput {
+  fixedExpenseId: string
+  /**
+   * Monto realmente pagado. Cuando se omite (sheet cerrado o 1er pago
+   * directo), la RPC usa el `amount` actual del commitment. Cuando se
+   * pasa, la RPC:
+   *   1) usa este valor como `price` del expense generado,
+   *   2) si difiere del `amount` actual, lo persiste como nuevo amount
+   *      base del commitment (los próximos pagos arrancan desde aquí),
+   *   3) genera el chip "Aumento de precio" / "Incremento con intereses"
+   *      en función del flag `paid_in_arrears` que setea el RPC.
+   * Migración: 20260530120000_record_fixed_payment_amount_override.sql.
+   */
+  amountOverride?: number
+}
+
+export async function recordFixedExpensePayment(
+  input: RecordFixedExpensePaymentInput,
+) {
   const sessionResponse = await supabase.auth.getSession()
   if (sessionResponse.error) {
     throw sessionResponse.error
@@ -106,9 +124,26 @@ export async function recordFixedExpensePayment(fixedExpenseId: string) {
     )
   }
 
-  const { error } = await supabase.rpc('record_fixed_expense_payment', {
-    p_fixed_expense_id: fixedExpenseId,
-  })
+  // Cliente valida antes del round-trip — la RPC también valida (defense
+  // in depth) pero queremos error sincrónico para que la sheet
+  // mantenga foco/UX limpio sin un round-trip wasted.
+  if (typeof input.amountOverride === 'number') {
+    if (
+      !Number.isFinite(input.amountOverride) ||
+      input.amountOverride <= 0
+    ) {
+      throw new Error('El monto del pago debe ser mayor a 0.')
+    }
+  }
+
+  const params: Record<string, unknown> = {
+    p_fixed_expense_id: input.fixedExpenseId,
+  }
+  if (typeof input.amountOverride === 'number') {
+    params.p_amount_override = input.amountOverride
+  }
+
+  const { error } = await supabase.rpc('record_fixed_expense_payment', params)
 
   if (error) {
     throwMigrationError(error)

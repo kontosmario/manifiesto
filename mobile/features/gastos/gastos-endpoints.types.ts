@@ -77,6 +77,10 @@ export interface GastosExpenseRow {
   /** Local-day key the expense belongs to. Computed server-side using
    *  the timezone passed to the RPC. */
   iso_date: string
+  /** True cuando el expense fue creado al registrar pago sobre un fijo
+   *  VENCIDO. Proyectado desde `expenses.paid_in_arrears` (migración
+   *  20260530120000). Optional para tolerar payloads pre-migración. */
+  paid_in_arrears?: boolean | null
 }
 
 export interface GastosExpensesPage {

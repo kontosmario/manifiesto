@@ -326,23 +326,37 @@ export function useUpdateFixedExpenseStatus(familyId?: string, userId?: string) 
   return result
 }
 
+export interface RecordFixedExpensePaymentVars {
+  fixedExpenseId: string
+  /** Monto realmente pagado, capturado por el sheet de confirmación
+   *  (`ConfirmFixedPaymentSheet`). Cuando es `undefined`, el RPC usa
+   *  el `amount` base del commitment. Cuando difiere de ese amount,
+   *  el RPC lo persiste como nuevo amount base. */
+  amountOverride?: number
+}
+
 export function useRecordFixedExpensePayment(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
-  const ref = useRef<{ mutate: (input: string) => void } | null>(null)
+  const ref = useRef<{
+    mutate: (input: RecordFixedExpensePaymentVars) => void
+  } | null>(null)
 
   const result = useMutation<
     void,
     Error,
-    string,
+    RecordFixedExpensePaymentVars,
     { previous: FixedExpense[] | undefined } | undefined
   >({
-    mutationFn: async (fixedExpenseId) => {
+    mutationFn: async (vars) => {
       if (!familyId) {
         throw new Error('No hay familia activa para registrar el pago.')
       }
-      await recordFixedExpensePayment(fixedExpenseId)
+      await recordFixedExpensePayment({
+        fixedExpenseId: vars.fixedExpenseId,
+        amountOverride: vars.amountOverride,
+      })
     },
-    onMutate: async (fixedExpenseId) => {
+    onMutate: async ({ fixedExpenseId, amountOverride }) => {
       if (!familyId) return undefined
       await queryClient.cancelQueries({
         queryKey: fixedExpenseQueryKeys.family(familyId),
@@ -359,6 +373,14 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
               ? {
                   ...f,
                   last_paid_at: nowIso,
+                  // Si el sheet confirmó un override, reflejamos el
+                  // nuevo amount localmente para que la card y el chip
+                  // de tendencia muestren el valor correcto antes del
+                  // refetch (el RPC también lo persiste DB-side).
+                  amount:
+                    typeof amountOverride === 'number'
+                      ? amountOverride
+                      : f.amount,
                   // Para installments: optimistamente incrementamos el
                   // contador; el syncAll refetch corrige si difiere.
                   installments_paid:
@@ -371,7 +393,7 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
       )
       return { previous }
     },
-    onError: (_err, fixedExpenseId, ctx) => {
+    onError: (_err, vars, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
@@ -380,7 +402,7 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
       }
       toast.error('No se pudo registrar el pago.', {
         actionLabel: 'Reintentar',
-        onAction: () => ref.current?.mutate(fixedExpenseId),
+        onAction: () => ref.current?.mutate(vars),
       })
     },
     onSettled: () => {

@@ -59,6 +59,11 @@ export function enrichExpensesFromEmbed(rows: EmbedRow[]): Expense[] {
     family_id: row.family_id,
     id: row.id,
     price: Number(row.price),
+    // Payloads pre-migración (snapshots viejos, mocks de tests, mutations
+    // optimistas que aún no setean el flag) llegan sin el campo —
+    // normalizamos a `false` que es el default DB. La UI nunca branchea
+    // sobre `null` para este flag.
+    paid_in_arrears: row.paid_in_arrears === true,
   }))
 }
 
@@ -99,5 +104,6 @@ export async function enrichExpenses(rows: RawExpense[]): Promise<Expense[]> {
     notes: typeof row.notes === 'string' ? row.notes : null,
     creator_display_name: displayNames.get(row.created_by) ?? 'Sin nombre',
     price: Number(row.price),
+    paid_in_arrears: row.paid_in_arrears === true,
   }))
 }

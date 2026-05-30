@@ -165,6 +165,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       categoriesById,
       today,
       cycleStart: dashboard.payCycle.start,
+      cycleEnd: dashboard.payCycle.end,
       cycleDays: dashboard.payCycle.days,
     })
   }, [
@@ -174,6 +175,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     categoriesById,
     today,
     dashboard.payCycle.start,
+    dashboard.payCycle.end,
     dashboard.payCycle.days,
   ])
 
