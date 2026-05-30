@@ -503,7 +503,15 @@ function hexAlpha(hex: string, alpha: number): string {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    // Solo redondeamos las esquinas izquierdas. El SwipeRow exterior
+    // (borderRadius 16 + overflow hidden) provee el contorno
+    // redondeado de las 4 esquinas; el lado derecho del card queda
+    // recto para meeting flush con el panel 'Eliminar' sin gap visible.
+    // Mismo patrón que GastoRow / ActivityRowV2 en Gastos · Movimientos.
+    // El placeholder (uso standalone, fuera de SwipeRow) restaura las
+    // 4 esquinas vía `styles.placeholderCard`.
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -556,7 +564,13 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 11, flexShrink: 1 },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
   // ── Placeholder / preview ────────────────────────────────────────
-  placeholderCard: { opacity: 0.86 },
+  placeholderCard: {
+    opacity: 0.86,
+    // Standalone (sin SwipeRow alrededor): restauramos las esquinas
+    // derechas para que el placeholder se lea como card completa.
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
   phBar: { borderRadius: 5 },
   phChip: {
     width: 56,

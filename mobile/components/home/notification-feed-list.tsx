@@ -308,8 +308,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
+    // Solo redondeamos las esquinas izquierdas. El SwipeRow exterior
+    // (borderRadius 16 + overflow hidden) provee el contorno
+    // redondeado completo; el lado derecho del row queda recto para
+    // meeting flush con el panel "Listo" sin gap visible. Mismo patrón
+    // que GastoRow / ActivityRowV2 en Gastos · Movimientos (sin border,
+    // solo bg + rounded del SwipeRow).
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   avatarColumn: {
     width: 40,
