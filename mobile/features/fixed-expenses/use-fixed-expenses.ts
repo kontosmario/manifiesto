@@ -15,6 +15,7 @@ import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
 import { captureHikeReduction } from '@/features/insights/fixed-expense-value-capture'
+import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
 import {
   type FixedExpense,
   type FixedExpenseStatus,
@@ -345,7 +346,11 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
     void,
     Error,
     RecordFixedExpensePaymentVars,
-    { previous: FixedExpense[] | undefined } | undefined
+    | {
+        previous: FixedExpense[] | undefined
+        optimisticPaymentId: string | null
+      }
+    | undefined
   >({
     mutationFn: async (vars) => {
       if (!familyId) {
@@ -391,13 +396,77 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
               : f,
           ),
       )
-      return { previous }
+
+      // ── Optimistic insert en TODOS los caches de fixed_expense_payments.
+      //
+      // CRÍTICO (fix 2026-05-30): sin esto, había un bug donde después
+      // de pagar un fijo monthly el row aparecía en la tab "Próximos"
+      // en vez de "Pagados". Mecanismo:
+      //   1. RPC avanza `fixed_expenses.next_due_on` al mes siguiente
+      //      (afuera del ciclo actual).
+      //   2. RPC inserta `fixed_expense_payments` row con paid_at = now().
+      //   3. Client recibe la nueva `next_due_on` casi inmediato (el
+      //      cache de fixed_expenses se invalida y refetcha).
+      //   4. PERO el cache de fixed_expense_payments puede tardar más
+      //      en refrescar (cycle-scoped key, seed del home_snapshot
+      //      puede landear en un cache key con ISO ligeramente distinto
+      //      al que lee el consumer por drift de TZ).
+      //   5. Durante el gap, `paidThisPeriod = false` (sin payment row)
+      //      Y `next_due_on >= cycleEnd` (advancido) → status = 'future'.
+      //   6. UI: fijo aparece en "Próximos" en vez de "Pagados".
+      //
+      // Fix: insertar optimísticamente un payment row en TODOS los
+      // caches que matcheen el prefijo `['fixed-expense-payments', ...]`.
+      // setQueriesData con un filtro de queryKey hace match por prefijo
+      // (sin `exact: true`) → cubre todas las variantes de cycle window
+      // que estén vivas. Como `paidThisPeriod` gana sobre cualquier
+      // otro check, el row salta a "Pagados" inmediatamente y se queda
+      // ahí cuando el refetch reconcilia con el row real del server.
+      //
+      // En `onError` removemos este row optimista por id.
+      const optimisticPaymentId = `optimistic-${nowIso}-${fixedExpenseId}`
+      if (userId) {
+        const periodMonth = nowIso.slice(0, 7) + '-01' // YYYY-MM-01
+        const optimisticRow: FixedExpensePayment = {
+          id: optimisticPaymentId,
+          fixedExpenseId,
+          periodMonth,
+          paidAt: nowIso,
+          paidBy: userId,
+          createdAt: nowIso,
+        }
+        queryClient.setQueriesData<FixedExpensePayment[] | undefined>(
+          // Prefix-only match: cualquier cache que arranque con este
+          // tuple, sin importar el cycle window que lleve adelante.
+          { queryKey: ['fixed-expense-payments'] },
+          (old) => {
+            if (!old) return old
+            // Dedup defensivo: si por alguna razón ya existe un row
+            // para este fixed_expense_id (ej: race condition con un
+            // realtime que llegó primero), no duplicamos.
+            if (old.some((p) => p.fixedExpenseId === fixedExpenseId)) {
+              return old
+            }
+            return [...old, optimisticRow]
+          },
+        )
+      }
+
+      return { previous, optimisticPaymentId: userId ? optimisticPaymentId : null }
     },
     onError: (_err, vars, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
           ctx.previous,
+        )
+      }
+      // Rollback del row optimista de payments si lo habíamos insertado.
+      if (ctx?.optimisticPaymentId) {
+        const optimisticId = ctx.optimisticPaymentId
+        queryClient.setQueriesData<FixedExpensePayment[] | undefined>(
+          { queryKey: ['fixed-expense-payments'] },
+          (old) => (old ? old.filter((p) => p.id !== optimisticId) : old),
         )
       }
       toast.error('No se pudo registrar el pago.', {
@@ -408,6 +477,8 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
     onSettled: () => {
       // fixedPayment dispara un expense vía trigger DB → invalidamos
       // también el cluster de expenses para que Home/Gastos refresquen.
+      // El refetch reconcilia el row optimista con el real del server
+      // (queryFn devuelve el shape completo desde DB).
       void syncAllAfterMutation(queryClient, {
         familyId,
         userId,

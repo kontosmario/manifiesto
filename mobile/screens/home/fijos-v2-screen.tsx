@@ -20,7 +20,6 @@ import {
   useScreenTour,
   useTourTargetRef,
 } from '@/features/tours'
-import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
@@ -78,11 +77,6 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
   const deleteMutation = useDeleteFixedExpense(familyId)
-  // Expenses ya están en cache (mismo source que el aggregator de
-  // FijoRow trend). Usamos esto para detectar si el commitment ya
-  // tiene historial → decide si el sheet de confirmación de precio
-  // se muestra o se hace pago directo (1er pago).
-  const expensesQuery = useExpenses(familyId)
   // React Query cached — same source feeding the Control screen.
   const { signals: advisorSignals } = useControlV2Data(familyId)
 
@@ -100,20 +94,30 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   }, [router])
 
   /**
-   * `isFirstPayment`: el fijo no tiene NI UN expense en la cache con
-   * `commitment_id` apuntando a él. Conservador — si hay un expense
-   * (incluso optimistic), tratamos como 2do pago. Una falsa negativa
-   * (i.e., fue 1er pago pero ya había un mock expense) solo significa
-   * "abrir sheet innecesariamente" — el user puede confirmar "Mismo
-   * monto" en 1 tap. Una falsa positiva (no abrir cuando debía) sería
-   * peor.
+   * `isFirstPayment`: usa `last_paid_at` del fijo como source of truth.
+   * Si nunca se pagó, last_paid_at es null → 1er pago → omite sheet.
+   *
+   * Antes (bug 2026-05-30): la heurística miraba `useExpenses` cache
+   * buscando un expense con `commitment_id === fixedExpenseId`. Era
+   * estructuralmente frágil — los expenses se archivan al cerrar ciclo
+   * (archived_at) y el snapshot filtra esos. Resultado: fijos
+   * MENSUALES pagados en ciclos previos quedaban marcados como "1er
+   * pago" todos los meses, y el sheet de confirmación nunca aparecía.
+   *
+   * `last_paid_at` viene del fijo mismo, no de expenses ni payments —
+   * el RPC siempre lo actualiza y nunca se borra por cierre de ciclo.
+   * Es la señal correcta de "ya hubo al menos un pago".
    */
   const isFirstPayment = useCallback(
     (fixedExpenseId: string) => {
-      const expenses = expensesQuery.data ?? []
-      return !expenses.some((e) => e.commitment_id === fixedExpenseId)
+      const fixed = controller.allItems.find((i) => i.id === fixedExpenseId)
+      // Si por alguna razón no encontramos el fijo (race), abrimos el
+      // sheet conservadoramente — false positive (sheet innecesario)
+      // es 1 tap; false negative (saltarse el sheet) pierde data.
+      if (!fixed) return false
+      return fixed.last_paid_at == null
     },
-    [expensesQuery.data],
+    [controller.allItems],
   )
 
   const handleMarkPaid = useCallback(
