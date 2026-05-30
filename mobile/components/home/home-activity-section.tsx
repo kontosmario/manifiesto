@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
-import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
+import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { errorMessages } from '@/lib/copy/states'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
@@ -147,14 +147,14 @@ function HomeActivitySectionImpl({
             onPress: () => onDeleteIncome(income.id),
           }
           return (
-            <SwipeableRow
+            <SwipeRow
               key={`income-${income.id}`}
               accessibilityHint="Desliza hacia la izquierda para eliminar"
               rightActions={[dangerAction]}
               isProcessing={pendingIncomeId === income.id}
             >
               {row}
-            </SwipeableRow>
+            </SwipeRow>
           )
         }
         const expense = m.expense
@@ -166,7 +166,7 @@ function HomeActivitySectionImpl({
           onPress: () => onDelete(expense.id),
         }
         return (
-          <SwipeableRow
+          <SwipeRow
             key={`expense-${expense.id}`}
             accessibilityHint="Desliza hacia la izquierda para eliminar"
             rightActions={[dangerAction]}
@@ -181,7 +181,7 @@ function HomeActivitySectionImpl({
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
               delay={delay}
             />
-          </SwipeableRow>
+          </SwipeRow>
         )
       })}
     </View>

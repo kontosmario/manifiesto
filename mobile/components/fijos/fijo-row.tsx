@@ -2,7 +2,7 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
+import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
@@ -155,10 +155,13 @@ function FijoRowReal({
   }
 
   return (
-    <SwipeableRow
-      accessibilityHint="Desliza para editar o eliminar"
+    <SwipeRow
+      accessibilityHint="Desliza para eliminar"
       rightActions={actions}
       isProcessing={isPending}
+      // Matchea el borderRadius del card interno para que el clip y los
+      // bordes redondeados del panel de acción terminen en la misma curva.
+      borderRadius={16}
     >
       <Animated.View layout={LinearTransition.duration(240)}>
         <Pressable
@@ -352,7 +355,7 @@ function FijoRowReal({
           </Animated.View>
         </Pressable>
       </Animated.View>
-    </SwipeableRow>
+    </SwipeRow>
   )
 }
 
