@@ -20,7 +20,20 @@ function ActivityRowV2Impl({ icon, title, category, whoName, whoColor, amount, d
   const amountColor = amount < 0 ? theme.colors.text : theme.colors.success
   return (
     <SlideInView delay={delay}>
-      <View style={[styles.row, { backgroundColor: theme.colors.creamCard }]}>
+      <View
+        style={[
+          styles.row,
+          {
+            // Theme-aware para matchear GastoRow en Gastos · Movimientos:
+            // dark → surfaceMuted (verde near-black), light → creamCard.
+            // Antes era creamCard fijo, que en dark se leía mucho más
+            // claro que el row de gastos.
+            backgroundColor: theme.isDark
+              ? theme.colors.surfaceMuted
+              : theme.colors.creamCard,
+          },
+        ]}
+      >
         <View style={styles.iconWrap}>
           <View style={[styles.iconTile, { backgroundColor: theme.colors.peachBand }]}>
             <Text style={styles.iconText}>{icon}</Text>
