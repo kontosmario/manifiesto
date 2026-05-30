@@ -55,10 +55,18 @@ const CHECKIN_SLOTS: Array<{
   },
 ]
 
-const GROUP_ORDER: NotificationGroup[] = ['gastos', 'fijos', 'racha', 'meta', 'otros']
+const GROUP_ORDER: NotificationGroup[] = [
+  'gastos',
+  'ingresos',
+  'fijos',
+  'racha',
+  'meta',
+  'otros',
+]
 
 const GROUP_DESCRIPTIONS: Record<NotificationGroup, string> = {
   gastos: 'Gastos cargados por ti o tu familia.',
+  ingresos: 'Ingresos extra (transferencias, bonos, regalos) registrados en la cuenta.',
   fijos: 'Compromisos que vencen o se actualizan.',
   racha: 'Check-ins diarios, rachas y escudos.',
   meta: 'Hitos y aportes a tu meta.',
@@ -96,6 +104,7 @@ export function NotificationsPreferencesScreen() {
   const groupMuteStates = useMemo(() => {
     const map: Record<NotificationGroup, boolean> = {
       gastos: false,
+      ingresos: false,
       fijos: false,
       racha: false,
       meta: false,

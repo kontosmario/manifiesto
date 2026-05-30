@@ -38,7 +38,11 @@ import {
   useScreenTour,
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
-import { useIncomeEvents, type IncomeEvent } from '@/features/income/use-income-events'
+import {
+  useDeleteIncomeEvent,
+  useIncomeEvents,
+  type IncomeEvent,
+} from '@/features/income/use-income-events'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -247,7 +251,8 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const membersQuery = useFamilyMembers(familyId)
   const familyMembersData = membersQuery.data
   const familyMembers = useMemo(() => familyMembersData ?? [], [familyMembersData])
-  const deleteExpenseMutation = useDeleteExpense(familyId)
+  const deleteExpenseMutation = useDeleteExpense(familyId, userId)
+  const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data ?? STREAK_DEFAULTS
   const [streakSheetVisible, setStreakSheetVisible] = useState(false)
@@ -291,6 +296,28 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       })
     },
     [deleteExpenseMutation, trackTap],
+  )
+
+  const handleDeleteIncome = useCallback(
+    (incomeId: string) => {
+      if (!familyId) return
+      void triggerHaptic('warning')
+      trackTap('income_row_delete', 'list')
+      deleteIncomeMutation.mutate(
+        { id: incomeId, familyId },
+        {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No pudimos eliminar',
+              getErrorMessage(error, errorMessages.server),
+            )
+          },
+          onSuccess: () => void triggerHaptic('success'),
+        },
+      )
+    },
+    [deleteIncomeMutation, familyId, trackTap],
   )
 
   const expenseCountByCategoryId = useMemo(() => {
@@ -497,13 +524,24 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const renderItem = useCallback(
     ({ item: mv }: { item: MovementItem }) => {
       // Income row — usamos ActivityRowV2 (amount positivo en verde +
-      // ícono por kind). No tiene swipe-to-delete (los ingresos no se
-      // borran desde acá; el flujo está en el form de Ingresos).
+      // ícono por kind) wrapped en SwipeableRow para borrar igual que
+      // los gastos.
       if (mv.kind === 'income') {
         const income = mv.income
         const kindLabel = INCOME_KIND_LABEL_G[income.kind]
         const title = income.description?.trim() || kindLabel
         const who = familyMembers.find((m) => m.id === income.created_by)
+        const isIncomePending =
+          deleteIncomeMutation.isPending &&
+          deleteIncomeMutation.variables?.id === income.id
+        const incomeActions: SwipeAction[] = [
+          {
+            label: 'Eliminar',
+            tone: 'danger',
+            icon: 'delete',
+            onPress: () => handleDeleteIncome(income.id),
+          },
+        ]
         return (
           <Animated.View
             style={styles.rowWrap}
@@ -511,14 +549,27 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             exiting={FadeOut.duration(140)}
             layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
           >
-            <ActivityRowV2
-              icon={INCOME_KIND_ICON_G[income.kind]}
-              title={title}
-              category={`Ingreso · ${kindLabel}`}
-              whoName={who?.name ?? 'Alguien'}
-              whoColor={who?.color ?? '#329315'}
-              amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
-            />
+            <SwipeableRow
+              accessibilityLabel={`${title}, ingreso, ${kindLabel}`}
+              accessibilityHint="Desliza a la izquierda para eliminar"
+              accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+              onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'delete') {
+                  handleDeleteIncome(income.id)
+                }
+              }}
+              rightActions={incomeActions}
+              isProcessing={isIncomePending}
+            >
+              <ActivityRowV2
+                icon={INCOME_KIND_ICON_G[income.kind]}
+                title={title}
+                category={`Ingreso · ${kindLabel}`}
+                whoName={who?.name ?? 'Alguien'}
+                whoColor={who?.color ?? '#329315'}
+                amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
+              />
+            </SwipeableRow>
           </Animated.View>
         )
       }
@@ -588,7 +639,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       controller.categoriesById,
       familyMembers,
       handleDelete,
+      handleDeleteIncome,
       deleteExpenseMutation,
+      deleteIncomeMutation,
       theme.colors.textMuted,
       rowAnimationEnabled,
     ],
