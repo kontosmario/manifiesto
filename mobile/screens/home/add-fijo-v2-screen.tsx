@@ -40,6 +40,7 @@ import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import {
   useCreateFixedExpense,
   useFixedExpenses,
+  useRecordFixedExpensePayment,
   useUpdateFixedExpense,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
@@ -121,7 +122,13 @@ export function AddFijoV2Screen({
   )
   const createMutation = useCreateFixedExpense(familyId)
   const updateMutation = useUpdateFixedExpense(familyId)
-  const pending = isEditing ? updateMutation.isPending : createMutation.isPending
+  // Para el toggle "Ya pagué la cuota más reciente" en el wizard de
+  // creación: encadenamos `recordFixedExpensePayment` al toggle activo
+  // (RPC inserta el payment row + avanza next_due_on al mes siguiente).
+  const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
+  const pending =
+    (isEditing ? updateMutation.isPending : createMutation.isPending) ||
+    recordPaymentMutation.isPending
 
   // When creating (no fixedExpenseId), seed from the Asistente's
   // "undetected-sub" prefill so the user lands on a half-filled form.
@@ -142,6 +149,15 @@ export function AddFijoV2Screen({
   // card pulses until a day is selected and the step-2 CTA is gated.
   const [day, setDay] = useState<number | null>(null)
   const [notify, setNotify] = useState(true)
+  // Toggle "Ya pagué la cuota más reciente" (solo en creación). Antes
+  // el form siempre dejaba `next_due_on` en la próxima ocurrencia
+  // futura del `day` y el user tocaba "Registrar pago" enseguida para
+  // marcar el fijo como ya pagado, lo cual avanzaba `next_due_on` UN
+  // MES MÁS (skipeando la cuota en curso). Ahora: al crear, el form
+  // siempre apunta a la cuota más cercana (mes actual) y el toggle
+  // decide si la marcamos como ya pagada (chain a recordFixedExpensePayment)
+  // o no (queda pending/overdue según el día).
+  const [alreadyPaidCurrentCuota, setAlreadyPaidCurrentCuota] = useState(false)
   const [isNumpadVisible, setIsNumpadVisible] = useState(false)
   const [isNameFocused, setIsNameFocused] = useState(false)
   const [hydratedFromFijoId, setHydratedFromFijoId] = useState<string | null>(null)
@@ -246,7 +262,31 @@ export function AddFijoV2Screen({
       if (isEditing && fixedExpenseId) {
         await updateMutation.mutateAsync({ ...basePayload, fixedExpenseId })
       } else {
-        await createMutation.mutateAsync(basePayload)
+        const created = await createMutation.mutateAsync(basePayload)
+        // Toggle "Ya pagué la cuota más reciente" activo + creación
+        // exitosa → encadenar el RPC de payment para registrar la
+        // cuota recién marcada (avanza next_due_on al mes siguiente
+        // y deja el row de payment con period_month = mes actual).
+        // No installment porque ahí el flujo es distinto (la primera
+        // cuota se contabiliza con el contador `installments_paid`).
+        if (alreadyPaidCurrentCuota && created?.id && !isInstallment) {
+          try {
+            await recordPaymentMutation.mutateAsync({
+              fixedExpenseId: created.id,
+            })
+          } catch (paymentError) {
+            // Mismo error UX: notificamos pero no abortamos — el fijo
+            // ya se creó y el user puede registrar el pago manualmente
+            // desde el listado.
+            void triggerHaptic('error')
+            Alert.alert(
+              'Fijo creado, pero no pudimos marcarlo como pagado',
+              `${getErrorMessage(paymentError, errorMessages.server)}\n\nPodés tocar "Registrar pago" desde el listado.`,
+            )
+            handleClose()
+            return
+          }
+        }
       }
       handleClose()
     } catch (error) {
@@ -609,6 +649,94 @@ export function AddFijoV2Screen({
                 </View>
               </Pressable>
             </RiseView>
+
+            {/*
+              Toggle "Ya pagué la cuota más reciente" — solo en CREACIÓN
+              (no edición) y para fijos NO-installment (los installments
+              tienen otro flujo: la primera cuota se contabiliza con el
+              contador `installments_paid`).
+
+              Default OFF: el comportamiento "natural" es que estoy
+              dando de alta un fijo pendiente. ON cuando el user lo
+              prende explícitamente. Activarlo encadena el RPC de
+              payment tras el create, que:
+                · inserta payment row con period_month = mes actual,
+                · avanza next_due_on al mes siguiente,
+                · setea last_paid_at = now().
+
+              Sin este toggle (estado pre-2026-05-30), creator que
+              quería marcar "ya pagué" tocaba "Registrar pago" desde
+              el listado — pero como el form arrancaba el next_due_on
+              en el mes siguiente, ese pago avanzaba a +2 meses
+              (skipeando la cuota en curso). Bug confirmado en prod
+              con kontosmario@gmail.com (11 fijos afectados).
+            */}
+            {!isEditing && !isInstallment ? (
+              <RiseView delay={280}>
+                <Pressable
+                  onPress={() => setAlreadyPaidCurrentCuota((v) => !v)}
+                  style={[
+                    styles.reminderCard,
+                    {
+                      backgroundColor: alreadyPaidCurrentCuota
+                        ? theme.isDark
+                          ? 'rgba(166,239,143,0.18)'
+                          : '#EAFBE4'
+                        : theme.colors.creamCard,
+                      borderColor: alreadyPaidCurrentCuota
+                        ? theme.isDark
+                          ? 'rgba(166,239,143,0.5)'
+                          : '#49D61F'
+                        : theme.colors.line,
+                    },
+                  ]}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: alreadyPaidCurrentCuota }}
+                  accessibilityLabel="Ya pagué la cuota más reciente"
+                  accessibilityHint="Activá si ya pagaste la cuota del mes en curso. El fijo arranca con el pago registrado y la próxima cuota apuntando al mes siguiente."
+                >
+                  <View style={styles.reminderLeft}>
+                    <Text allowFontScaling={false} style={styles.reminderEmoji}>
+                      {alreadyPaidCurrentCuota ? '✅' : '⏳'}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+                        ESTADO ACTUAL
+                      </Text>
+                      <Text style={[styles.reminderText, { color: theme.colors.text }]}>
+                        {alreadyPaidCurrentCuota
+                          ? 'Ya pagué la cuota más reciente'
+                          : 'Aún no pagué la cuota actual'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.reminderToggle,
+                      {
+                        backgroundColor: alreadyPaidCurrentCuota
+                          ? theme.isDark
+                            ? '#A6EF8F'
+                            : '#297811'
+                          : theme.colors.line,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.reminderToggleKnob,
+                        {
+                          backgroundColor: theme.colors.creamCard,
+                          transform: [
+                            { translateX: alreadyPaidCurrentCuota ? 18 : 2 },
+                          ],
+                        },
+                      ]}
+                    />
+                  </View>
+                </Pressable>
+              </RiseView>
+            ) : null}
 
           </Animated.View>
         )}
@@ -1035,17 +1163,37 @@ function ImpactBar({ beforePct, afterPct }: { beforePct: number; afterPct: numbe
   )
 }
 
+/**
+ * Cómputa el `next_due_on` inicial para un fijo recién creado.
+ *
+ * Antes (2026-05-30): siempre devolvía "próximo `day` futuro", lo cual
+ * combinado con que el usuario tocara "Registrar pago" enseguida para
+ * marcarlo como "ya pagué", causaba que `next_due_on` saltara DOS
+ * meses adelante (form puso mayo, RPC avanzó a junio) — la cuota del
+ * mes en curso quedaba "skipeada", invisible para el ciclo.
+ *
+ * Ahora: SIEMPRE devuelve la ocurrencia de ESTE mes (clampada a la
+ * cantidad de días reales del mes — ej: day=31 en febrero → 28/29).
+ * El form pasa esta fecha al INSERT. Si el toggle "Ya pagué la cuota
+ * más reciente" está activo, el caller dispara después
+ * `recordFixedExpensePayment` que avanza correctamente al mes siguiente
+ * y crea el payment row para esta cuota. Si está inactivo, el fijo
+ * queda con `next_due_on = este mes` → status `pending` (todavía no
+ * venció) u `overdue` (ya venció y no se pagó) según el día.
+ *
+ * Esto elimina el "salto de mes" estructuralmente: el form siempre
+ * apunta a la cuota más cercana (la del mes actual), y el "Registrar
+ * pago" la mueve al siguiente — coincidiendo con la intención del user.
+ */
 function buildNextDueOn(day: number): string {
   const today = new Date()
   const year = today.getUTCFullYear()
   const month = today.getUTCMonth()
-  // Try this month first; if `day` has already passed, roll to next month.
-  const thisMonthDue = new Date(Date.UTC(year, month, day))
-  if (thisMonthDue.getTime() < today.getTime() - 86_400_000) {
-    const nextMonthDue = new Date(Date.UTC(year, month + 1, day))
-    return nextMonthDue.toISOString().slice(0, 10)
-  }
-  return thisMonthDue.toISOString().slice(0, 10)
+  // Clamp al último día válido del mes (ej: feb no tiene 31).
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  const safeDay = Math.min(day, daysInMonth)
+  const due = new Date(Date.UTC(year, month, safeDay))
+  return due.toISOString().slice(0, 10)
 }
 
 interface NameInputProps {

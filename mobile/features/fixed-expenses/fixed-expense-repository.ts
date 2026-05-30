@@ -45,17 +45,28 @@ export async function fetchFixedExpenses(familyId: string) {
   return ((response.data as FixedExpense[] | null) ?? []).map(asFixedExpense)
 }
 
-export async function createFixedExpense(familyId: string, input: UpsertFixedExpenseInput) {
+export async function createFixedExpense(
+  familyId: string,
+  input: UpsertFixedExpenseInput,
+): Promise<{ id: string } | null> {
   const payload = buildFixedExpensePayload(input)
 
-  const { error } = await supabase.from('fixed_expenses').insert({
-    family_id: familyId,
-    ...payload,
-  })
+  const { data, error } = await supabase
+    .from('fixed_expenses')
+    .insert({
+      family_id: familyId,
+      ...payload,
+    })
+    .select('id')
+    .single()
 
   if (error) {
     throwMigrationError(error)
   }
+  // `select().single()` devuelve {id} cuando hubo insert exitoso. La
+  // form de "Crear + marcar como ya pagado" usa este id para encadenar
+  // `recordFixedExpensePayment` sin un round-trip extra de query.
+  return (data ?? null) as { id: string } | null
 }
 
 export async function updateFixedExpense(
