@@ -160,35 +160,43 @@ function FijoRowReal({
   // Para overdue: `cycleDays - daysUntilDue` → días desde que venció.
   const overdueDays = Math.max(1, Math.abs(diffDays))
 
-  // Label de mes: a qué cuota corresponde este row. Lo ponemos en la
-  // sub-line para que el usuario sepa EXACTAMENTE de qué mes está
-  // hablando (ej: "Pagado · cuota de junio" en vez de solo "Pagado").
-  // Antes "Pagado · día 5" era ambiguo cuando había pagos de meses
-  // sucesivos visibles.
-  const cuotaLabel = fijo.cuotaMonth ? monthOfLabel(fijo.cuotaMonth) : null
+  // Label de mes capitalizado: "junio" → "Junio". Lead con el mes
+  // para que sea lo primero que el ojo enganche.
+  const cuotaShort = fijo.cuotaMonth ? capitalize(monthOfLabel(fijo.cuotaMonth)) : null
 
-  // Label de mes + estado. El mes responde "qué cuota" y el estado/
-  // detalle "qué pasa con ella". Fallback al día cuando no hay
-  // cuotaMonth (raro, sin next_due_on ni payment record).
+  // Sub-line concisa: lead con el mes (lo más identificativo) +
+  // detalle del estado. Sin prefijo "Cuota de" — implícito por
+  // estar viendo un row de fijo. Mantiene el mes visible incluso
+  // en pantallas chicas donde antes "Cuota de septiembre · vencida
+  // 12d" quedaba truncado.
+  //
+  // Ejemplos:
+  //   paid     → "Junio · pagada"
+  //   overdue  → "Mayo · vencida 12d"
+  //   future   → "Próxima: julio"
+  //   pending  → "Junio · en 5d" / "Junio · vence hoy"
+  //
+  // Fallback al día cuando no hay cuotaMonth (raro, sin next_due_on
+  // ni payment record).
   const dueLabel =
     status === 'paid'
-      ? cuotaLabel
-        ? `Cuota de ${cuotaLabel} · pagada`
+      ? cuotaShort
+        ? `${cuotaShort} · pagada`
         : `Pagado · día ${fijo.dayOfMonth}`
       : status === 'overdue'
-        ? cuotaLabel
-          ? `Cuota de ${cuotaLabel} · en mora ${overdueDays}d`
-          : `En mora · ${overdueDays}d`
+        ? cuotaShort
+          ? `${cuotaShort} · vencida ${overdueDays}d`
+          : `Vencida ${overdueDays}d`
         : status === 'future'
-          ? cuotaLabel
-            ? `Próxima · cuota de ${cuotaLabel}`
+          ? cuotaShort
+            ? `Próxima: ${cuotaShort.toLowerCase()}`
             : `Próximo · día ${fijo.dayOfMonth}`
-          : cuotaLabel
+          : cuotaShort
             ? diffDays === 0
-              ? `Cuota de ${cuotaLabel} · vence hoy`
+              ? `${cuotaShort} · vence hoy`
               : diffDays > 0
-                ? `Cuota de ${cuotaLabel} · en ${diffDays}d`
-                : `Cuota de ${cuotaLabel} · vencida ${Math.abs(diffDays)}d`
+                ? `${cuotaShort} · en ${diffDays}d`
+                : `${cuotaShort} · vencida ${Math.abs(diffDays)}d`
             : diffDays === 0
               ? 'Vence hoy'
               : diffDays > 0
@@ -688,6 +696,11 @@ function FijoRowPlaceholder() {
  * thread (JS thread), así que técnicamente Intl funcionaría — pero
  * mantener consistencia y velocidad usando un mini array.
  */
+function capitalize(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 function monthOfLabel(yyyyMm01: string): string {
   const MONTH_NAMES = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -769,27 +782,24 @@ function TrendBadge({
  * Diseño:
  *   · Círculo 40pt + hitSlop 8 = ~56pt efectivo (HIG/MD ≥44pt).
  *   · Brand color por status: forest-deep (pending, "go") /
- *     red-brand (overdue, "urgente"). El bg sólido + icono blanco
- *     dan el mejor contraste y reads como botón "PRIMARIO" (no
- *     genérico negro).
+ *     red-brand (overdue, "urgente"). Bg sólido + icono blanco
+ *     reads como primario, no genérico negro.
  *   · Ícono `attach-money` — símbolo $ universalmente asociado a
  *     pago. Mejor que `check` (que es post-confirmación / done) y
  *     mejor que `paid` (mismo problema).
- *   · Inner highlight: línea horizontal blanca-alpha en el top del
- *     círculo → "lift" sutil. Sin entrar en glass-look (emil:
- *     "Liquid Glass without purpose is slop").
- *   · Borde 1.5pt en tono más profundo del bg para acentuar el
- *     finish (no flat-render).
- *   · Press scale 0.88 (más pronunciado que el card 0.98).
+ *   · Borde 1.5pt en tono más profundo del bg → finish curado.
+ *   · Press scale 0.88 (pronunciado para icon-only).
  *   · Pulse halo continuo PARA OVERDUE: círculo BG-only que crece
  *     y se desvanece en loop (1.5s ease-in-out, scale 1→1.45,
- *     opacity 0.45→0). Lee como "respira pidiendo atención" sin
- *     ser invasivo. Skip si reduceMotion activo.
+ *     opacity 0.45→0). Skip si reduceMotion activo.
  *
- * Performance: el pulse vive en su propio Animated.View y usa
- * useSharedValue + withRepeat — corre en UI thread, no impacta el
- * scroll de la lista. Cleanup en useEffect cuando el componente
- * desmonta (cancelAnimation) para evitar fugas.
+ * Decisiones de poda visual (gpt-taste + impeccable):
+ *   · NO inner highlight (línea blanca alpha top): probada como
+ *     "lift" sutil, en práctica se leía como una línea sobre el
+ *     símbolo $ — ruido visual. Removida.
+ *
+ * Performance: pulse en UI thread vía Reanimated; cleanup
+ * cancelAnimation en unmount.
  */
 function InlinePayButton({
   status,
@@ -870,9 +880,6 @@ function InlinePayButton({
           pressScale.animatedStyle,
         ]}
       >
-        {/* Inner highlight: línea horizontal blanca-alpha en el top —
-            lift visual sin entrar en territorio glass. */}
-        <View pointerEvents="none" style={styles.inlinePayHighlight} />
         <MaterialIcons name="attach-money" size={22} color="#FFFFFF" />
       </Animated.View>
     </Pressable>
@@ -1233,17 +1240,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 999,
-  },
-  // Inner highlight — finísima línea horizontal en el top del botón,
-  // alpha blanco. Lift visual sutil sin glass-look.
-  inlinePayHighlight: {
-    position: 'absolute',
-    top: 1,
-    left: 6,
-    right: 6,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: 'rgba(255,255,255,0.35)',
   },
 })
 
