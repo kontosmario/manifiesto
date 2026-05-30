@@ -423,6 +423,7 @@ function rowToExpense(row: GastosExpenseRow): Expense {
     created_at: row.created_at,
     created_by: row.created_by,
     creator_display_name: row.creator_display_name ?? 'Sin nombre',
+    paid_in_arrears: row.paid_in_arrears === true,
   }
 }
 

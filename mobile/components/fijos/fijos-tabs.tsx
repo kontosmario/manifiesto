@@ -8,26 +8,25 @@ import type { FijosTab } from '@/features/fijos/use-fijos-controller'
 interface FijosTabsProps {
   tab: FijosTab
   setTab: (tab: FijosTab) => void
-  counts: { todos: number; pendientes: number; pagados: number; zombis: number }
+  counts: { pendientes: number; pagados: number }
 }
 
 // Color semántico por bucket — alimenta el `color` prop de
 // GastosFilterPill para que el count chip inactivo se pinte con el
 // tono del estado. El darkenForLightBg / lightenForDarkBg del pill se
-// ocupa de mantener AA en cada modo. `null` (Todos) cae al fallback
-// neutral del componente.
+// ocupa de mantener AA en cada modo.
+//
+// Simplificado 2026-05-30: 2 tabs (eliminamos "Todos" y "Zombis").
+// "Pendientes" agrupa pending + overdue/mora; "Pagados" agrupa paid +
+// future (fijos al día cuyo próximo vencimiento cae fuera del ciclo).
 const TAB_COLORS: Record<FijosTab, string | undefined> = {
-  todos: undefined,
   pendientes: '#F2A78C', // peach (urgent / por pagar)
-  pagados: '#A6EF8F', // lime (success)
-  zombis: '#C9A6E0', // plum (distinct, intentional)
+  pagados: '#A6EF8F', // lime (success / al día)
 }
 
 const TAB_LABELS: Record<FijosTab, string> = {
-  todos: 'Todos',
   pendientes: 'Pendientes',
-  pagados: 'Pagados',
-  zombis: 'Zombi',
+  pagados: 'Pagados / Próximos',
 }
 
 /**
@@ -36,7 +35,13 @@ const TAB_LABELS: Record<FijosTab, string> = {
  * de filtros entre las dos pantallas: misma morph de active/inactive,
  * misma transición spring, mismo press feedback, misma jerarquía visual.
  *
- * Buckets: todos · pendientes · pagados · zombi.
+ * Buckets (2 tabs):
+ *  - Pendientes      → pending + overdue (lo accionable este ciclo)
+ *  - Pagados / Próximos → paid + future (lo cerrado del ciclo + lo que
+ *                          no toca, ej: trimestrales recientemente
+ *                          pagados con `next_due_on` en el ciclo
+ *                          siguiente).
+ *
  * Cada bucket inactivo muestra su count en color semántico del estado;
  * el bucket activo cambia a la pill text-fg + creamCard-bg que ya
  * conocés de Gastos.
@@ -51,7 +56,7 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
     [setTab],
   )
 
-  const TABS: FijosTab[] = ['todos', 'pendientes', 'pagados', 'zombis']
+  const TABS: FijosTab[] = ['pendientes', 'pagados']
 
   return (
     <RiseView delay={120}>

@@ -1,10 +1,11 @@
 import { Alert, StyleSheet, View, type ScrollView } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
 import { FijosHeader } from '@/components/fijos/fijos-header'
 import { FijosEmptyState } from '@/components/fijos/fijos-empty-state'
 import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
@@ -19,6 +20,7 @@ import {
   useScreenTour,
   useTourTargetRef,
 } from '@/features/tours'
+import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
@@ -76,31 +78,114 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
 
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
   const deleteMutation = useDeleteFixedExpense(familyId)
+  // Expenses ya están en cache (mismo source que el aggregator de
+  // FijoRow trend). Usamos esto para detectar si el commitment ya
+  // tiene historial → decide si el sheet de confirmación de precio
+  // se muestra o se hace pago directo (1er pago).
+  const expensesQuery = useExpenses(familyId)
   // React Query cached — same source feeding the Control screen.
   const { signals: advisorSignals } = useControlV2Data(familyId)
+
+  // Sheet de confirmación de precio (2do+ pago). Vivo en estado local
+  // del screen — solo conoce qué fijo está abriendo + close. La
+  // mutation se dispara desde sus callbacks `onConfirm*`.
+  const [paymentSheet, setPaymentSheet] = useState<{
+    visible: boolean
+    fixedExpenseId: string | null
+  }>({ visible: false, fixedExpenseId: null })
 
   const handlePressAdd = useCallback(() => {
     void triggerHaptic('light')
     router.push('/(app)/add-fixed-expense')
   }, [router])
 
+  /**
+   * `isFirstPayment`: el fijo no tiene NI UN expense en la cache con
+   * `commitment_id` apuntando a él. Conservador — si hay un expense
+   * (incluso optimistic), tratamos como 2do pago. Una falsa negativa
+   * (i.e., fue 1er pago pero ya había un mock expense) solo significa
+   * "abrir sheet innecesariamente" — el user puede confirmar "Mismo
+   * monto" en 1 tap. Una falsa positiva (no abrir cuando debía) sería
+   * peor.
+   */
+  const isFirstPayment = useCallback(
+    (fixedExpenseId: string) => {
+      const expenses = expensesQuery.data ?? []
+      return !expenses.some((e) => e.commitment_id === fixedExpenseId)
+    },
+    [expensesQuery.data],
+  )
+
   const handleMarkPaid = useCallback(
     (fixedExpenseId: string) => {
-      void triggerHaptic('success')
-      recordPaymentMutation.mutate(fixedExpenseId, {
-        // No onSuccess celebration here — each FijoRow watches its
-        // own `computedStatus` and fires a local ConfettiBurst when
-        // it flips to 'paid'. That way the burst is always anchored
-        // to the row that just got marked, regardless of scroll
-        // position or how many fijos are on screen.
-        onError: (error: unknown) => {
-          void triggerHaptic('error')
-          Alert.alert('No pudimos registrar el pago', getErrorMessage(error, errorMessages.server))
-        },
-      })
+      void triggerHaptic('light')
+      if (isFirstPayment(fixedExpenseId)) {
+        // 1er pago: registro directo. El amount del commitment fue
+        // capturado al crear el fijo, asumimos que es correcto.
+        recordPaymentMutation.mutate(
+          { fixedExpenseId },
+          {
+            onError: (error: unknown) => {
+              void triggerHaptic('error')
+              Alert.alert(
+                'No pudimos registrar el pago',
+                getErrorMessage(error, errorMessages.server),
+              )
+            },
+            onSuccess: () => void triggerHaptic('success'),
+          },
+        )
+        return
+      }
+      // 2do+ pago: abrir sheet de confirmación de precio.
+      setPaymentSheet({ visible: true, fixedExpenseId })
     },
-    [recordPaymentMutation],
+    [isFirstPayment, recordPaymentMutation],
   )
+
+  // Cerrar el sheet sin disparar mutation.
+  const closePaymentSheet = useCallback(() => {
+    setPaymentSheet({ visible: false, fixedExpenseId: null })
+  }, [])
+
+  // Disparar la mutation desde el sheet. `same` no manda override (RPC
+  // usa amount actual); `changed` manda override + persiste como nuevo
+  // amount base. Cierra el sheet on-success o on-error (con toast).
+  const handleSheetConfirm = useCallback(
+    (newAmount: number | undefined) => {
+      const id = paymentSheet.fixedExpenseId
+      if (!id) return
+      void triggerHaptic('success')
+      recordPaymentMutation.mutate(
+        { fixedExpenseId: id, amountOverride: newAmount },
+        {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No pudimos registrar el pago',
+              getErrorMessage(error, errorMessages.server),
+            )
+          },
+          onSettled: () => {
+            setPaymentSheet({ visible: false, fixedExpenseId: null })
+          },
+        },
+      )
+    },
+    [paymentSheet.fixedExpenseId, recordPaymentMutation],
+  )
+
+  // Snapshot del fijo que está abriendo el sheet — pasamos su amount y
+  // su status overdue al componente. Si por alguna razón el id no se
+  // encuentra (race con delete, etc.), el sheet se queda inerte hasta
+  // que cierre.
+  const activeFixed = useMemo(() => {
+    if (!paymentSheet.fixedExpenseId) return null
+    return (
+      controller.allItems.find((i) => i.id === paymentSheet.fixedExpenseId) ??
+      null
+    )
+  }, [paymentSheet.fixedExpenseId, controller.allItems])
 
   const handleEdit = useCallback(
     (fixedExpenseId: string) => {
@@ -274,11 +359,13 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
             tab={controller.tab}
             setTab={controller.setTab}
             counts={{
-              todos: controller.allItems.length,
               pendientes:
                 controller.summary.pendingItems.length + controller.summary.overdueItems.length,
-              pagados: controller.summary.paidItems.length,
-              zombis: controller.summary.zombies.length,
+              // "Pagados / Próximos" agrupa paid (cerrado del ciclo) +
+              // future (fijos al día con próximo en un ciclo futuro,
+              // típicamente trimestrales/anuales recién pagados).
+              pagados:
+                controller.summary.paidItems.length + controller.summary.futureItems.length,
             }}
           />
         </Animated.View>
@@ -315,6 +402,23 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
         )}
         <View style={styles.bottomSpacer} />
       </View>
+      {/* Sheet de confirmación de precio. Vive a nivel screen porque
+          es 1 instancia para toda la pantalla — los rows solo
+          disparan `handleMarkPaid` (que decide si abre el sheet o
+          hace pago directo). Pasamos snapshot del fijo activo al
+          momento de abrir; si el fijo se elimina mientras el sheet
+          está abierto, `activeFixed === null` deja el sheet inerte
+          hasta que el user lo cierre. */}
+      <ConfirmFixedPaymentSheet
+        visible={paymentSheet.visible && activeFixed != null}
+        fixedExpenseName={activeFixed?.name ?? ''}
+        previousAmount={activeFixed?.amount ?? 0}
+        wasOverdue={activeFixed?.computedStatus === 'overdue'}
+        isProcessing={recordPaymentMutation.isPending}
+        onClose={closePaymentSheet}
+        onConfirmSame={() => handleSheetConfirm(undefined)}
+        onConfirmChanged={(amount) => handleSheetConfirm(amount)}
+      />
     </Screen>
   )
 }

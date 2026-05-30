@@ -13,6 +13,14 @@ export interface RawExpense {
   family_id: string
   id: string
   price: number | string
+  /** True cuando este expense fue creado al registrar un pago sobre un
+   *  fijo VENCIDO (next_due_on < current_date al momento del pago).
+   *  Surfaced from `expenses.paid_in_arrears` (migración
+   *  20260530120000). La UI usa este flag para distinguir el chip
+   *  "Incremento con intereses" del de "Aumento de precio" cuando el
+   *  trend delta es positivo. Optional + default false en raw para
+   *  tolerar payloads pre-migración del snapshot (DB default es false). */
+  paid_in_arrears?: boolean | null
 }
 
 export interface ProfileRow {
@@ -53,6 +61,10 @@ export interface Expense {
   family_id: string
   id: string
   price: number
+  /** True cuando este expense fue creado al registrar un pago sobre un
+   *  fijo VENCIDO. Default false (mayoría de expenses no son de fijos
+   *  vencidos). Ver `RawExpense.paid_in_arrears` para detalles. */
+  paid_in_arrears: boolean
 }
 
 export interface FamilyMonthlySpent {

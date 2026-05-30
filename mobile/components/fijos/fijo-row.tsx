@@ -91,7 +91,8 @@ function FijoRowReal({
   // en la sub-line + libera espacio para que el catChip respire como
   // en Gastos. Theme-aware overlay:
   //   paid     → check verde sobre lime tile
-  //   overdue  → warning peach
+  //   overdue  → warning rojo (mora, más fuerte que peach)
+  //   future   → check muted gris (cerrado, no requiere acción)
   //   pending  → schedule muted (sutil, no compite)
   const statusOverlay = (() => {
     if (status === 'paid') {
@@ -103,11 +104,24 @@ function FijoRowReal({
       }
     }
     if (status === 'overdue') {
+      // Mora — más urgente que el peach genérico de antes. Borde sólido
+      // rojo brand-deep en light, brand-bright en dark, mismo iconito
+      // warning para mantener la asociación visual con "atención".
       return {
         icon: 'warning' as const,
-        bg: theme.isDark ? '#4A2418' : '#F8D1C3',
-        fg: theme.isDark ? '#F2A78C' : '#973511',
-        border: theme.isDark ? '#F2A78C' : '#973511',
+        bg: theme.isDark ? '#4A1B1B' : '#F8C8C8',
+        fg: theme.isDark ? '#F18C8C' : '#A8211B',
+        border: theme.isDark ? '#F18C8C' : '#A8211B',
+      }
+    }
+    if (status === 'future') {
+      // Al día con próximo en un ciclo futuro. Mismo lenguaje que paid
+      // pero muted para no compitir con la lista de pendientes.
+      return {
+        icon: 'check' as const,
+        bg: theme.colors.pageBg,
+        fg: theme.colors.textMuted,
+        border: theme.colors.line,
       }
     }
     return {
@@ -119,18 +133,28 @@ function FijoRowReal({
   })()
 
   const diffDays = fijo.dayOfMonth - todayDay
-  // Unified register · adjective + "·" + detail para paid/overdue,
-  // verbo "Vence + detail" para hoy/futuro. Antes "Pagó día 5" rompía
+  // Days-since-due — solo significativo en 'overdue' (mora arrastrada).
+  // Usa `daysUntilDue` (que el aggregates wrap-around al próximo ciclo)
+  // para inferir cuántos días pasaron del vencimiento real.
+  // Para overdue: `cycleDays - daysUntilDue` → días desde que venció.
+  const overdueDays = Math.max(1, Math.abs(diffDays))
+
+  // Unified register · adjective + "·" + detail para paid/overdue/future,
+  // verbo "Vence + detail" para hoy/pending. Antes "Pagó día 5" rompía
   // el patrón en tercera persona — ahora "Pagado · día 5" se lee como
   // los otros estados.
   const dueLabel =
     status === 'paid'
       ? `Pagado · día ${fijo.dayOfMonth}`
-      : diffDays < 0
-        ? `Vencido hace ${Math.abs(diffDays)}d`
-        : diffDays === 0
-          ? 'Vence hoy'
-          : `Vence en ${diffDays}d`
+      : status === 'overdue'
+        ? `En mora · ${overdueDays}d`
+        : status === 'future'
+          ? `Próximo · día ${fijo.dayOfMonth}`
+          : diffDays === 0
+            ? 'Vence hoy'
+            : diffDays > 0
+              ? `Vence en ${diffDays}d`
+              : `Vencido hace ${Math.abs(diffDays)}d`
 
   // catChipText hue-preserved (mismo helper que GastoRow). Antes el
   // pastel original sobre tinted bg light fallaba contraste 1.6:1.
@@ -225,7 +249,13 @@ function FijoRowReal({
                 ]}
                 accessibilityRole="text"
                 accessibilityLabel={`Estado: ${
-                  status === 'paid' ? 'pagado' : status === 'overdue' ? 'vencido' : 'pendiente'
+                  status === 'paid'
+                    ? 'pagado'
+                    : status === 'overdue'
+                      ? 'en mora'
+                      : status === 'future'
+                        ? 'al día, próximo pago futuro'
+                        : 'pendiente'
                 }`}
               >
                 <MaterialIcons
@@ -242,7 +272,18 @@ function FijoRowReal({
                   {fijo.name}
                 </Text>
                 {fijo.trendDeltaPct != null && Math.abs(fijo.trendDeltaPct) >= 1 ? (
-                  <TrendBadge deltaPct={fijo.trendDeltaPct} />
+                  <TrendBadge
+                    deltaPct={fijo.trendDeltaPct}
+                    // Si el último pago se cobró con mora Y el delta es
+                    // positivo, leemos como "incremento con intereses"
+                    // (el aumento puede explicarse por punitorios del
+                    // servicio). Si bajó, no hay diferencia semántica.
+                    variant={
+                      fijo.arrearsOnLastPayment && fijo.trendDeltaPct > 0
+                        ? 'arrears'
+                        : 'price'
+                    }
+                  />
                 ) : null}
               </View>
               {/* Sub-line GastoRow-like: catChip + dueLabel separados por
@@ -266,7 +307,18 @@ function FijoRowReal({
                   </Text>
                 </View>
                 <Text
-                  style={[styles.metaText, { color: theme.colors.textMuted }]}
+                  style={[
+                    styles.metaText,
+                    {
+                      color:
+                        status === 'overdue'
+                          ? theme.isDark
+                            ? '#F18C8C'
+                            : '#A8211B'
+                          : theme.colors.textMuted,
+                      fontWeight: status === 'overdue' ? '700' : '400',
+                    },
+                  ]}
                   numberOfLines={1}
                 >
                   · {dueLabel}
@@ -409,31 +461,60 @@ function FijoRowPlaceholder() {
   )
 }
 
-function TrendBadge({ deltaPct }: { deltaPct: number }) {
+/**
+ * Badge de variación de precio. Dos variantes:
+ *   - 'price'    → "+12%" en tono peach (default — aumento normal del
+ *                   servicio entre pagos).
+ *   - 'arrears'  → "+12% int." en tono rojo más fuerte cuando el último
+ *                   pago se cobró con mora. Hace explícito que la suba
+ *                   incluye intereses, no aumento real del servicio.
+ * Para deltas negativos no hay distinción (no hay "bajó por mora").
+ */
+function TrendBadge({
+  deltaPct,
+  variant = 'price',
+}: {
+  deltaPct: number
+  variant?: 'price' | 'arrears'
+}) {
   const { theme } = useAppTheme()
   const up = deltaPct > 0
-  // Theme-aware: en light mantenemos tonos sólidos (peach + forest). En
-  // dark cambiamos a variantes brand-bright que contrastan con el card
-  // forest. Bg sigue alpha-based en ambos modos (works en cualquier
-  // canvas porque la categoría se ve a través).
-  const bg = up ? 'rgba(242,167,140,0.18)' : 'rgba(166,239,143,0.16)'
-  const fg = up
+  const isArrears = up && variant === 'arrears'
+  // Bg alpha-based para que funcione sobre cualquier canvas (card en
+  // dark, cream en light, tinted en hover).
+  //   price up    → peach soft
+  //   arrears up  → rojo soft (más urgente que peach)
+  //   down        → lime soft (mismo en ambas variantes)
+  const bg = !up
+    ? 'rgba(166,239,143,0.16)'
+    : isArrears
+      ? 'rgba(231,76,60,0.18)'
+      : 'rgba(242,167,140,0.18)'
+  const fg = !up
     ? theme.isDark
-      ? '#F2A78C'  // brand peach light (better contrast on dark card)
-      : '#B84014'  // brand peach deep
-    : theme.isDark
-      ? '#A6EF8F'  // brand lime
-      : '#297811'  // brand forest deep
+      ? '#A6EF8F'
+      : '#297811'
+    : isArrears
+      ? theme.isDark
+        ? '#F18C8C'
+        : '#A8211B'
+      : theme.isDark
+        ? '#F2A78C'
+        : '#B84014'
+  // "int." suffix cuando es arrears para que el chip se lea como
+  // "incremento con intereses" sin alargar mucho la pill.
+  const label = `${up ? '+' : ''}${deltaPct}%${isArrears ? ' int.' : ''}`
   return (
     <View
       style={[styles.trendBadge, { backgroundColor: bg }]}
       accessibilityRole="text"
-      accessibilityLabel={`Tendencia ${up ? 'subió' : 'bajó'} ${Math.abs(deltaPct)} por ciento`}
+      accessibilityLabel={
+        isArrears
+          ? `Incremento con intereses ${deltaPct} por ciento respecto al último pago`
+          : `Tendencia ${up ? 'subió' : 'bajó'} ${Math.abs(deltaPct)} por ciento`
+      }
     >
-      <Text style={[styles.trendBadgeText, { color: fg }]}>
-        {up ? '+' : ''}
-        {deltaPct}%
-      </Text>
+      <Text style={[styles.trendBadgeText, { color: fg }]}>{label}</Text>
     </View>
   )
 }

@@ -158,6 +158,9 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         created_by: userId,
         creator_display_name: '',
         created_at: input.createdAt ?? new Date().toISOString(),
+        // Optimistic local-insert nunca es de un fijo vencido cobrado
+        // con mora; el flag se setea en el RPC del payment. False.
+        paid_in_arrears: false,
       }
 
       const prepend = (arr: Expense[] | undefined) =>

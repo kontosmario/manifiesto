@@ -2,7 +2,21 @@ import type { Expense } from '@/features/expenses/expense-repository.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
 
-export type FijoItemStatus = 'paid' | 'pending' | 'overdue'
+/**
+ * Estado de un fijo en el ciclo de pago activo:
+ *   paid     → existe payment record para `fixedExpenseId` dentro del
+ *              ciclo actual (mes calendario actual a nivel DB).
+ *   pending  → `next_due_on` cae dentro de `[cycleStart, cycleEnd)`
+ *              y no fue pagado todavía → toca pagar ESTE ciclo.
+ *   overdue  → `next_due_on < cycleStart` (sin pago) → vencimiento de
+ *              uno o más ciclos previos que arrastra como MORA y sigue
+ *              visible en el listado principal hasta que se pague.
+ *   future   → `next_due_on >= cycleEnd` (sin pago) → NO toca este
+ *              ciclo (ej: trimestral pagado en abril, próx. julio).
+ *              Vive en el tab "Pagados / Próximos", se oculta del
+ *              tab "Pendientes".
+ */
+export type FijoItemStatus = 'paid' | 'pending' | 'overdue' | 'future'
 
 export interface FijoItem extends FixedExpense {
   /** Day of the month (1..31) the item is due this cycle. */
@@ -22,6 +36,13 @@ export interface FijoItem extends FixedExpense {
   priceHistory: number[]
   /** % change between the previous payment and current amount. Null when no history. */
   trendDeltaPct: number | null
+  /** True cuando el último pago registrado para este commitment se hizo
+   *  sobre un fijo VENCIDO (flag `expenses.paid_in_arrears = true`).
+   *  Usado por la UI para distinguir el chip "Incremento con intereses"
+   *  (subió y fue cobrado con mora) vs "Aumento de precio" (subió en
+   *  pago normal). False cuando no hay historial o el último pago fue
+   *  al día. */
+  arrearsOnLastPayment: boolean
 }
 
 export interface FijoHikeAlert {
@@ -44,6 +65,11 @@ export interface FijosCycleSummary {
   paidItems: FijoItem[]
   pendingItems: FijoItem[]
   overdueItems: FijoItem[]
+  /** Fijos al día con próximo vencimiento en un ciclo futuro (no tocan
+   *  este ciclo). Surge cuando el `next_due_on` cae fuera del ciclo
+   *  actual — típicamente trimestral/semestral/anual ya pagado. Vive
+   *  en el tab "Pagados / Próximos" junto con `paidItems`. */
+  futureItems: FijoItem[]
   upcoming: FijoItem[] // next 3 unpaid, ordered by days-until-due (cycle-aware)
   zombies: FijoItem[]
   hikes: FijoHikeAlert[]
@@ -63,23 +89,47 @@ const HIKE_MIN_DELTA_PCT = 5
 // all UI surfaces migrate.
 
 /**
- * Translates next_due_on + last_paid_at + today into a fresh status:
- *   paid     → there's a payment record for the current period
- *   overdue  → next_due_on is before today and no payment yet
- *   pending  → otherwise
+ * Translates next_due_on + payment record + ciclo activo into a status:
+ *   paid     → payment record para este ciclo
+ *   pending  → next_due_on ∈ [cycleStart, cycleEnd), sin pago
+ *   overdue  → next_due_on < cycleStart, sin pago → mora arrastrada
+ *   future   → next_due_on >= cycleEnd, sin pago → no toca este ciclo
+ *
+ * Antes (pre-2026-05-30) la función comparaba contra `today` directo,
+ * por lo que un trimestral pagado en abril seguía mostrándose como
+ * pendiente en mayo y junio aunque `next_due_on = julio`. Con el
+ * gating contra `cycleEnd`, "future" queda explícito y la UI lo
+ * relega al tab "Pagados / Próximos".
  */
 function computeItemStatus(input: {
   item: FixedExpense
   paidThisPeriod: boolean
-  today: Date
+  cycleStart: Date
+  cycleEnd: Date
 }): FijoItemStatus {
-  const { item, paidThisPeriod, today } = input
+  const { item, paidThisPeriod, cycleStart, cycleEnd } = input
   if (paidThisPeriod) return 'paid'
   if (!item.next_due_on) return 'pending'
+  // Comparamos en UTC midnight para evitar drift por zona horaria local
+  // (el `next_due_on` viene como 'YYYY-MM-DD' del DB, sin TZ).
   const due = new Date(item.next_due_on)
-  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
-  const dueUtc = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate())
-  if (dueUtc < todayUtc) return 'overdue'
+  const dueUtc = Date.UTC(
+    due.getUTCFullYear(),
+    due.getUTCMonth(),
+    due.getUTCDate(),
+  )
+  const startUtc = Date.UTC(
+    cycleStart.getUTCFullYear(),
+    cycleStart.getUTCMonth(),
+    cycleStart.getUTCDate(),
+  )
+  const endUtc = Date.UTC(
+    cycleEnd.getUTCFullYear(),
+    cycleEnd.getUTCMonth(),
+    cycleEnd.getUTCDate(),
+  )
+  if (dueUtc < startUtc) return 'overdue'
+  if (dueUtc >= endUtc) return 'future'
   return 'pending'
 }
 
@@ -107,6 +157,12 @@ export function summarizeFijos(input: {
   categoriesById?: Map<string, { id: string; name: string; color: string }>
   today: Date
   cycleStart: Date
+  /** End of the current pay cycle (exclusive). Required: necesario para
+   *  gating "no toca este ciclo" vs "vence en este ciclo". Antes
+   *  inferiamos esto sumando `cycleDays` a `cycleStart`; ahora lo
+   *  recibimos explícito desde `usePayCycle` para evitar discrepancias
+   *  de TZ entre el cómputo del controller y el de aggregates. */
+  cycleEnd: Date
   cycleDays: number
 }): FijosCycleSummary {
   const {
@@ -116,6 +172,7 @@ export function summarizeFijos(input: {
     categoriesById,
     today,
     cycleStart,
+    cycleEnd,
     cycleDays,
   } = input
   const paidIds = new Set(paymentsThisCycle.map((p) => p.fixedExpenseId))
@@ -131,6 +188,7 @@ export function summarizeFijos(input: {
   )
 
   const historyByCommitment = buildPriceHistoryMap(commitmentExpenses)
+  const arrearsByCommitment = buildArrearsOnLastPaymentMap(commitmentExpenses)
 
   const enriched: FijoItem[] = items
     .filter((i) => i.status === 'active' || i.status === 'paused')
@@ -153,27 +211,39 @@ export function summarizeFijos(input: {
         ...i,
         dayOfMonth,
         daysUntilDue: daysUntilDue(dayOfMonth, todayDay, cycleDays),
-        computedStatus: computeItemStatus({ item: i, paidThisPeriod, today }),
+        computedStatus: computeItemStatus({
+          item: i,
+          paidThisPeriod,
+          cycleStart,
+          cycleEnd,
+        }),
         isZombie: false,
         daysSinceLastPaid,
         priceHistory,
         trendDeltaPct,
+        arrearsOnLastPayment: arrearsByCommitment.get(i.id) === true,
       }
     })
 
-  const total = enriched.reduce((s, i) => s + Number(i.amount ?? 0), 0)
+  // `total` ahora excluye los `future` — el ring del hero y la "% del
+  // sueldo" deben reflejar solo el costo del ciclo activo (pagado +
+  // pendiente + mora arrastrada). Antes incluía todos los activos —
+  // sobrestimaba en familias con muchos trimestrales/anuales.
+  const cycleActive = enriched.filter((i) => i.computedStatus !== 'future')
+  const total = cycleActive.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const paidItems = enriched.filter((i) => i.computedStatus === 'paid')
   const pendingItems = enriched.filter((i) => i.computedStatus === 'pending')
   const overdueItems = enriched.filter((i) => i.computedStatus === 'overdue')
+  const futureItems = enriched.filter((i) => i.computedStatus === 'future')
   const paidAmount = paidItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const pendingAmount = pendingItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const overdueAmount = overdueItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const paidPct = total > 0 ? Math.round((paidAmount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.round((pendingAmount / total) * 100) : 0
   const overduePct = total > 0 ? Math.round((overdueAmount / total) * 100) : 0
-  // Upcoming: next 3 unpaid items in the cycle window (includes pending
-  // + overdue). Ordered by days-until-due, wrapping into next month so
-  // anchors before today surface as "EN Xd" rather than disappearing.
+  // Upcoming: next 3 unpaid items que tocan este ciclo. Ordenado por
+  // days-until-due, wrap-around para que anchors antes-de-hoy surjan
+  // como "EN Xd". Excluimos `future` (no aplica al ciclo).
   const upcoming = [...pendingItems, ...overdueItems]
     .slice()
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
@@ -194,6 +264,7 @@ export function summarizeFijos(input: {
     paidItems,
     pendingItems,
     overdueItems,
+    futureItems,
     upcoming,
     zombies,
     hikes,
@@ -230,6 +301,32 @@ function detectHikes(input: {
   }
   alerts.sort((a, b) => b.deltaPct - a.deltaPct)
   return alerts.slice(0, 3)
+}
+
+/**
+ * Para cada commitment, devuelve true si el último expense registrado
+ * (más reciente por created_at) trae `paid_in_arrears = true`. La UI
+ * lo usa para mostrar el chip "Incremento con intereses" cuando ese
+ * pago también disparó un trend delta positivo. Indexa por
+ * `commitment_id`; ausencia = no hay historial = false implícito.
+ */
+function buildArrearsOnLastPaymentMap(
+  expenses: Expense[],
+): Map<string, boolean> {
+  const latest = new Map<string, Expense>()
+  for (const e of expenses) {
+    if (!e.commitment_id) continue
+    const prev = latest.get(e.commitment_id)
+    if (
+      prev == null ||
+      new Date(e.created_at).getTime() > new Date(prev.created_at).getTime()
+    ) {
+      latest.set(e.commitment_id, e)
+    }
+  }
+  const result = new Map<string, boolean>()
+  for (const [id, e] of latest) result.set(id, e.paid_in_arrears === true)
+  return result
 }
 
 /**

@@ -13,7 +13,16 @@ import {
 } from '@/features/fijos/fijos-aggregates.model'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 
-export type FijosTab = 'todos' | 'pendientes' | 'pagados' | 'zombis'
+/**
+ * Tabs simplificadas (2026-05-30): el listado divide los fijos en lo
+ * accionable este ciclo ("Pendientes" = `pending + overdue/mora`) y
+ * los del ciclo cerrado/futuro ("Pagados / Próximos" = `paid +
+ * future`). Eliminamos "Todos" (poco scannable) y "Zombi" (deprecada,
+ * ya no se computa). Migration nota: el setTab default arranca en
+ * `'pendientes'` para que el primer paint sea siempre el listado
+ * útil del ciclo activo.
+ */
+export type FijosTab = 'pendientes' | 'pagados'
 
 export interface UseFijosControllerResult {
   isLoading: boolean
@@ -45,6 +54,7 @@ const DEFAULT_SUMMARY: FijosCycleSummary = {
   paidItems: [],
   pendingItems: [],
   overdueItems: [],
+  futureItems: [],
   upcoming: [],
   zombies: [],
   hikes: [],
@@ -61,7 +71,7 @@ const MONTH_SHORT = [
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
-  const [tab, setTab] = useState<FijosTab>('todos')
+  const [tab, setTab] = useState<FijosTab>('pendientes')
 
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const fixedExpensesQuery = useFixedExpenses(familyId)
@@ -95,6 +105,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
       categoriesById,
       today,
       cycleStart: cycle.start,
+      cycleEnd: cycle.end,
       cycleDays: cycle.days,
     })
   }, [
@@ -104,20 +115,39 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     categoriesById,
     today,
     cycle.start,
+    cycle.end,
     cycle.days,
   ])
 
+  // `allItems` ahora incluye los `future` para que pantallas que listan
+  // el catálogo completo (ej: AsesorFijos) sigan viéndolos. El filtrado
+  // por tab los redirige al tab "Pagados / Próximos".
   const allItems = useMemo(
-    () => [...summary.paidItems, ...summary.pendingItems, ...summary.overdueItems],
-    [summary.paidItems, summary.pendingItems, summary.overdueItems],
+    () => [
+      ...summary.paidItems,
+      ...summary.pendingItems,
+      ...summary.overdueItems,
+      ...summary.futureItems,
+    ],
+    [
+      summary.paidItems,
+      summary.pendingItems,
+      summary.overdueItems,
+      summary.futureItems,
+    ],
   )
 
   const filteredItems = useMemo(() => {
-    if (tab === 'pendientes') return [...summary.pendingItems, ...summary.overdueItems]
-    if (tab === 'pagados') return summary.paidItems
-    if (tab === 'zombis') return summary.zombies
-    return allItems
-  }, [tab, summary, allItems])
+    // "Pendientes" = lo accionable este ciclo (pending del ciclo + mora
+    // arrastrada de ciclos previos). "Pagados / Próximos" = lo cerrado
+    // del ciclo + los que no tocan (típicamente trimestrales/anuales
+    // recientemente pagados). Antes había "Todos" y "Zombis";
+    // eliminados (2026-05-30).
+    if (tab === 'pagados') {
+      return [...summary.paidItems, ...summary.futureItems]
+    }
+    return [...summary.pendingItems, ...summary.overdueItems]
+  }, [tab, summary])
 
   const categories = useMemo(
     () =>
