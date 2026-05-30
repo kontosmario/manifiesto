@@ -3,7 +3,7 @@
 > Verificado contra commit `7962ea2` · 2026-05-21 · parte del snapshot docs/ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/  
 > Actualizado parcialmente 2026-05-29 (rama feat/monthly-rollup): card "CÓMO VAS ESTE MES", datos de rollup en adapter, acceso al Wrapped desde Control.  
 > Actualizado 2026-05-29 (parte 7 — polish cross-surface): rebuild SwipeRow, chrome unificado ActivityRowV2/GastoRow/FijoRow/NotificationRow, bg theme-aware en ActivityRowV2.  
-> Actualizado 2026-05-30 (parte 8 — recurrencia respetada + sheet de confirmación de precio): `computeItemStatus` con 4 estados (paid/pending/overdue/future) cycle-aware; tabs simplificadas a 2 (Pendientes / Pagados+Próximos); badge "En mora" rojo en overdue; nuevo `ConfirmFixedPaymentSheet` para confirmar precio al 2do+ pago; chip diferenciado "Aumento de precio" vs "Incremento con intereses · int." según `paid_in_arrears`. Backend: `record_fixed_expense_payment(uuid, numeric?)` con override + columna `expenses.paid_in_arrears`. Migración `20260530120000`.
+> Actualizado 2026-05-30 (parte 8 — recurrencia respetada + sheet de confirmación de precio): `computeItemStatus` con 4 estados (paid/pending/overdue/future) cycle-aware; tabs simplificadas a 2 (Pendientes / Pagados+Próximos); badge "En mora" rojo en overdue; nuevo `ConfirmFixedPaymentSheet` para confirmar precio al 2do+ pago; chip diferenciado "Aumento de precio" vs "Incremento con intereses · int." según `paid_in_arrears`. Backend: `record_fixed_expense_payment(uuid, numeric?)` con override + columna `expenses.paid_in_arrears`. Migración `20260530120000` **aplicada a prod 2026-05-30** (junto con backfill de 4 migraciones atrasadas: `20260529120000` `..130000` `..140000` `..150000`, que ya estaban en git pero faltaba el push remoto).
 
 ---
 
