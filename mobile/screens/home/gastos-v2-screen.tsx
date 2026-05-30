@@ -20,7 +20,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
-import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
+import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
 import { GastosEmptyState } from '@/components/gastos/gastos-empty-state'
@@ -524,7 +524,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const renderItem = useCallback(
     ({ item: mv }: { item: MovementItem }) => {
       // Income row — usamos ActivityRowV2 (amount positivo en verde +
-      // ícono por kind) wrapped en SwipeableRow para borrar igual que
+      // ícono por kind) wrapped en SwipeRow para borrar igual que
       // los gastos.
       if (mv.kind === 'income') {
         const income = mv.income
@@ -549,7 +549,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             exiting={FadeOut.duration(140)}
             layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
           >
-            <SwipeableRow
+            <SwipeRow
               accessibilityLabel={`${title}, ingreso, ${kindLabel}`}
               accessibilityHint="Desliza a la izquierda para eliminar"
               accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
@@ -569,7 +569,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
                 whoColor={who?.color ?? '#329315'}
                 amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
               />
-            </SwipeableRow>
+            </SwipeRow>
           </Animated.View>
         )
       }
@@ -609,7 +609,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           exiting={FadeOut.duration(140)}
           layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
         >
-          <SwipeableRow
+          <SwipeRow
             accessibilityLabel={a11yLabel}
             accessibilityHint="Desliza a la izquierda para eliminar"
             accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
@@ -631,7 +631,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               time={formatTime(item.created_at)}
               notes={item.notes}
             />
-          </SwipeableRow>
+          </SwipeRow>
         </Animated.View>
       )
     },

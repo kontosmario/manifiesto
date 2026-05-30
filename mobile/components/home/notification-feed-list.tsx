@@ -21,7 +21,7 @@ import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { LoadingBlock } from '@/components/ui/loading-block'
-import { SwipeableRow } from '@/components/ui/swipeable-row'
+import { SwipeRow } from '@/components/ui/swipe-row'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import type { FamilyNotification } from '@/features/notifications/use-notifications'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -139,10 +139,9 @@ export function NotificationFeedList({
               .mass(0.6)
               .reduceMotion(ReduceMotion.System)}
           >
-            <SwipeableRow
+            <SwipeRow
               accessibilityHint="Desliza para marcar como leída"
               borderRadius={16}
-              borderColor={theme.colors.line}
               rightActions={[
                 {
                   label: 'Listo',
@@ -158,7 +157,7 @@ export function NotificationFeedList({
                 cardBg={cardBg}
                 onMarkRead={() => onMarkRead(item)}
               />
-            </SwipeableRow>
+            </SwipeRow>
           </Animated.View>
         )
       }}
