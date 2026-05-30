@@ -124,47 +124,76 @@ const HIKE_MIN_DELTA_PCT = 5
 // all UI surfaces migrate.
 
 /**
- * Translates next_due_on + payment record + ciclo activo into a status:
- *   paid     → payment record para este ciclo
- *   pending  → next_due_on ∈ [cycleStart, cycleEnd), sin pago
- *   overdue  → next_due_on < cycleStart, sin pago → mora arrastrada
+ * Translates next_due_on + payment record + today + ciclo activo into a status:
+ *   paid     → payment record para este ciclo (gana sobre todo lo demás)
+ *   overdue  → next_due_on < HOY, sin pago → ya venció y no se pagó
+ *              (cubre mora arrastrada de ciclos previos Y cuotas del
+ *              ciclo activo cuyo día ya pasó).
  *   future   → next_due_on >= cycleEnd, sin pago → no toca este ciclo
+ *              (típicamente trimestral / semestral / anual recién pagado).
+ *   pending  → otherwise: next_due_on cae entre HOY y cycleEnd → la
+ *              cuota de este ciclo todavía no venció.
  *
- * Antes (pre-2026-05-30) la función comparaba contra `today` directo,
- * por lo que un trimestral pagado en abril seguía mostrándose como
- * pendiente en mayo y junio aunque `next_due_on = julio`. Con el
- * gating contra `cycleEnd`, "future" queda explícito y la UI lo
- * relega al tab "Pagados / Próximos".
+ * Historia del cambio:
+ *
+ *   v1 (pre-2026-05-30): comparaba `next_due_on < today` para
+ *   overdue. Tenía bug de recurrencia: un trimestral pagado en abril
+ *   con next_due_on=julio aparecía como pendiente en mayo y junio
+ *   aunque no tocaba.
+ *
+ *   v2 (2026-05-30 inicial): cambió a comparar contra `cycleStart`
+ *   para overdue y `cycleEnd` para future. Resolvió el bug de
+ *   recurrencia pero introdujo otro: un fijo con next_due_on=día 22
+ *   y today=día 30 (mismo mes / mismo ciclo) ya venció en la vida
+ *   real, pero como `next_due_on >= cycleStart`, quedaba como
+ *   `pending` cuando debería ser `overdue` (mostrar en tab vencidos).
+ *
+ *   v3 (HOY): combina ambos:
+ *     - paid: payment en cycle (igual que v2).
+ *     - overdue: `next_due_on < today` (igual que v1) — cubre
+ *       MORA arrastrada Y cuotas del ciclo activo ya vencidas.
+ *     - future: `next_due_on >= cycleEnd` (igual que v2) — gating
+ *       de recurrencia (no se mezcla con pending del ciclo).
+ *     - pending: el resto (today <= next_due_on < cycleEnd).
+ *
+ *   El `cycleStart` ya no se necesita en este check.
  */
 function computeItemStatus(input: {
   item: FixedExpense
   paidThisPeriod: boolean
-  cycleStart: Date
+  today: Date
   cycleEnd: Date
 }): FijoItemStatus {
-  const { item, paidThisPeriod, cycleStart, cycleEnd } = input
+  const { item, paidThisPeriod, today, cycleEnd } = input
   if (paidThisPeriod) return 'paid'
   if (!item.next_due_on) return 'pending'
-  // Comparamos en UTC midnight para evitar drift por zona horaria local
-  // (el `next_due_on` viene como 'YYYY-MM-DD' del DB, sin TZ).
+  // Comparamos en UTC midnight — el `next_due_on` viene como
+  // 'YYYY-MM-DD' del DB sin TZ; `today` se normaliza a midnight local
+  // pero usamos getUTC* para comparar como fechas calendario puras.
   const due = new Date(item.next_due_on)
   const dueUtc = Date.UTC(
     due.getUTCFullYear(),
     due.getUTCMonth(),
     due.getUTCDate(),
   )
-  const startUtc = Date.UTC(
-    cycleStart.getUTCFullYear(),
-    cycleStart.getUTCMonth(),
-    cycleStart.getUTCDate(),
+  const todayUtc = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
   )
   const endUtc = Date.UTC(
     cycleEnd.getUTCFullYear(),
     cycleEnd.getUTCMonth(),
     cycleEnd.getUTCDate(),
   )
-  if (dueUtc < startUtc) return 'overdue'
+  // 1) Ya pasó la fecha de vencimiento y no se pagó → overdue.
+  //    Cubre mora arrastrada (next_due_on en ciclos previos) y
+  //    cuotas del ciclo actual cuyo día ya pasó.
+  if (dueUtc < todayUtc) return 'overdue'
+  // 2) Vencimiento cae en un ciclo posterior → future (no toca).
   if (dueUtc >= endUtc) return 'future'
+  // 3) Vencimiento entre HOY y cycleEnd → pending (toca este ciclo,
+  //    todavía no venció).
   return 'pending'
 }
 
@@ -262,7 +291,7 @@ export function summarizeFijos(input: {
       const status = computeItemStatus({
         item: i,
         paidThisPeriod,
-        cycleStart,
+        today,
         cycleEnd,
       })
       const payment = paymentByFixedExpense.get(i.id) ?? null
