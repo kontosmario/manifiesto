@@ -56,6 +56,28 @@ export interface FijoItem extends FixedExpense {
    *    - future     → mes de `next_due_on` (la próxima cuota que viene).
    *  Null si no se puede derivar (sin next_due_on y sin payment). */
   cuotaMonth: string | null
+  /** Costo anualizado del fijo. Recurring: amount × frequency multiplier
+   *  (52 weekly · 26 biweekly · 12 monthly · 4 quarterly · 2 semiannual
+   *  · 1 annual). Installment: amount × installments_total (costo
+   *  total de la deuda, no anual). Debt: remaining_balance (lo que
+   *  todavía falta). 0 si no se puede derivar (frequency null, etc).
+   *  Lo usa el expand panel para el "se lleva al año" — gancho
+   *  educativo principal del row expandido. */
+  annualCost: number
+  /** % del sueldo familiar mensual que este fijo representa
+   *  (proporcionalmente por mes — para installments / recurring
+   *  no-monthly, normalizamos a equivalente mensual). Null cuando
+   *  `monthlyIncome <= 0` (no hay sueldo configurado). */
+  pctOfIncome: number | null
+  /** Cantidad de pagos LIFETIME registrados para este commitment
+   *  (basado en expenses con commitment_id en la cache del snapshot
+   *  — cap implícito por el LIMIT 120 del home_snapshot). Para
+   *  installment usamos `installments_paid` que es más confiable. */
+  paymentsLifetime: number
+  /** Suma de prices LIFETIME pagados para este commitment. Mismo
+   *  cap que paymentsLifetime. Lo usa el expand panel para mostrar
+   *  "ya pagaste $X en total" — pone la suscripción en contexto. */
+  totalPaidLifetime: number
 }
 
 export interface FijoHikeAlert {
@@ -177,6 +199,9 @@ export function summarizeFijos(input: {
    *  de TZ entre el cómputo del controller y el de aggregates. */
   cycleEnd: Date
   cycleDays: number
+  /** Sueldo mensual familiar — usado para calcular `pctOfIncome` por
+   *  fijo. Opcional: si no se pasa (o es 0), pctOfIncome queda null. */
+  monthlyIncome?: number
 }): FijosCycleSummary {
   const {
     items,
@@ -187,6 +212,7 @@ export function summarizeFijos(input: {
     cycleStart,
     cycleEnd,
     cycleDays,
+    monthlyIncome = 0,
   } = input
   const paidIds = new Set(paymentsThisCycle.map((p) => p.fixedExpenseId))
   // Index payment-by-fixedExpenseId para resolver paidPaymentId y
@@ -213,6 +239,8 @@ export function summarizeFijos(input: {
 
   const historyByCommitment = buildPriceHistoryMap(commitmentExpenses)
   const arrearsByCommitment = buildArrearsOnLastPaymentMap(commitmentExpenses)
+  // Aggregates lifetime (cap implícito por LIMIT 120 del home_snapshot).
+  const lifetimeByCommitment = buildLifetimePaymentsMap(commitmentExpenses)
 
   const enriched: FijoItem[] = items
     .filter((i) => i.status === 'active' || i.status === 'paused')
@@ -246,6 +274,26 @@ export function summarizeFijos(input: {
           : i.next_due_on
             ? i.next_due_on.slice(0, 7) + '-01'
             : null
+      const annualCost = computeAnnualCost(i)
+      // Para pctOfIncome normalizamos el costo a "equivalente mensual"
+      // y lo dividimos por monthlyIncome. Lo más comparable entre fijos
+      // de distinta frecuencia (un semestral de $60.000 representa
+      // ~$10.000/mes, no $60.000/mes).
+      const monthlyEquivalent =
+        i.kind === 'installment' || i.kind === 'debt'
+          ? Number(i.amount ?? 0) // cuotas mensuales asumidas (frequency='monthly' por design)
+          : annualCost / 12
+      const pctOfIncome =
+        monthlyIncome > 0 && monthlyEquivalent > 0
+          ? Math.round((monthlyEquivalent / monthlyIncome) * 100)
+          : null
+      const lifetime = lifetimeByCommitment.get(i.id) ?? { count: 0, total: 0 }
+      // Para installment, `installments_paid` es la fuente más confiable
+      // del payment count (no depende del cap del snapshot).
+      const paymentsLifetime =
+        i.kind === 'installment'
+          ? Math.max(lifetime.count, i.installments_paid ?? 0)
+          : lifetime.count
       return {
         ...i,
         dayOfMonth,
@@ -258,6 +306,10 @@ export function summarizeFijos(input: {
         arrearsOnLastPayment: arrearsByCommitment.get(i.id) === true,
         paidPaymentId: status === 'paid' && payment ? payment.id : null,
         cuotaMonth,
+        annualCost,
+        pctOfIncome,
+        paymentsLifetime,
+        totalPaidLifetime: lifetime.total,
       }
     })
 
@@ -337,6 +389,59 @@ function detectHikes(input: {
   }
   alerts.sort((a, b) => b.deltaPct - a.deltaPct)
   return alerts.slice(0, 3)
+}
+
+/**
+ * Costo anualizado de un fijo, derivado de su `amount` × multiplier
+ * según `frequency`. Para installment: costo total de la deuda
+ * (amount × installments_total). Para debt: remaining_balance.
+ * 0 cuando no se puede derivar (frequency null, amount 0, etc).
+ */
+function computeAnnualCost(item: FixedExpense): number {
+  const amount = Number(item.amount ?? 0)
+  if (amount <= 0) return 0
+  if (item.kind === 'installment') {
+    const total = Number(item.installments_total ?? 0)
+    return total > 0 ? amount * total : 0
+  }
+  if (item.kind === 'debt') {
+    return Number(item.remaining_balance ?? 0)
+  }
+  // Recurring / periodic — multiplier por frequency.
+  switch (item.frequency) {
+    case 'weekly': return amount * 52
+    case 'biweekly': return amount * 26
+    case 'monthly': return amount * 12
+    case 'quarterly': return amount * 4
+    case 'semiannual': return amount * 2
+    case 'annual': return amount
+    default: return amount * 12 // fallback a monthly
+  }
+}
+
+/**
+ * Lifetime payment aggregates por commitment, derivados de TODOS los
+ * expenses con `commitment_id` en cache (no solo los últimos 5 que
+ * `buildPriceHistoryMap` retiene). Cap implícito por el LIMIT 120 del
+ * home_snapshot. Para usuarios con > 120 expenses + fijos viejos, los
+ * counts/totals son un floor — la UI deja claro que es "historial
+ * reciente", no "histórico total absoluto".
+ */
+function buildLifetimePaymentsMap(
+  expenses: Expense[],
+): Map<string, { count: number; total: number }> {
+  const result = new Map<string, { count: number; total: number }>()
+  for (const e of expenses) {
+    if (!e.commitment_id) continue
+    const price = Number(e.price ?? 0)
+    if (!Number.isFinite(price) || price <= 0) continue
+    const prev = result.get(e.commitment_id) ?? { count: 0, total: 0 }
+    result.set(e.commitment_id, {
+      count: prev.count + 1,
+      total: prev.total + price,
+    })
+  }
+  return result
 }
 
 /**

@@ -431,20 +431,142 @@ function FijoRowReal({
               exiting={FadeOut.duration(140)}
               style={[styles.detailBlock, { borderTopColor: theme.colors.line }]}
             >
-              <View style={styles.detailGrid}>
-                <DetailTile
-                  label="FRECUENCIA"
-                  value={frequencyLabel(fijo.frequency)}
-                  theme={theme}
-                />
-                <DetailTile label="KIND" value={kindLabel(fijo.kind)} theme={theme} />
-                <DetailTile
-                  label="PRÓX. VENCIMIENTO"
-                  value={`día ${fijo.dayOfMonth}`}
-                  theme={theme}
-                />
-                <DetailTile label="CATEGORÍA" value={categoryName} theme={theme} />
+              {/*
+                Stats hero. Para recurring/periodic: "SE LLEVA AL AÑO".
+                Para installment: "TOTAL DE LA DEUDA". Para debt: "DEUDA
+                RESTANTE". Cifra grande para anclar el ojo + sublabel
+                con % del sueldo (cuando hay sueldo configurado).
+                Educational hook principal del expand: pone el costo del
+                fijo en perspectiva anual / total — la mayoría de los
+                users no ve el costo anualizado al mirar la cuota
+                mensual, así que esto es el dato más impactante.
+              */}
+              <View
+                style={[
+                  styles.statsHero,
+                  {
+                    backgroundColor: theme.isDark
+                      ? 'rgba(255,255,255,0.04)'
+                      : 'rgba(15,42,30,0.05)',
+                  },
+                ]}
+              >
+                <Text style={[styles.statsEyebrow, { color: theme.colors.textMuted }]}>
+                  {fijo.kind === 'installment'
+                    ? 'TOTAL DE LA DEUDA'
+                    : fijo.kind === 'debt'
+                      ? 'DEUDA RESTANTE'
+                      : 'SE LLEVA AL AÑO'}
+                </Text>
+                <Text style={[styles.statsValue, { color: theme.colors.text }]}>
+                  {formatMoney(fijo.annualCost)}
+                </Text>
+                {fijo.pctOfIncome != null && fijo.pctOfIncome > 0 ? (
+                  <View style={styles.statsPctRow}>
+                    <MaterialIcons
+                      name="account-balance-wallet"
+                      size={11}
+                      color={theme.colors.textMuted}
+                    />
+                    <Text style={[styles.statsPctText, { color: theme.colors.textMuted }]}>
+                      {fijo.pctOfIncome}% de tu sueldo mensual
+                    </Text>
+                  </View>
+                ) : null}
               </View>
+
+              {/*
+                Tendencia. Solo cuando hay >= 2 puntos de historia. El
+                sparkline ya existe en el row collapsed (chiquito al lado
+                del monto); acá lo mostramos más grande y con etiqueta
+                humanizada del trend ("Subió 12% desde el último pago"
+                en peach / "Bajó 5%" en lime / "Mantiene el precio" muted).
+                Este bloque cumple el "alerta a aumentos" — el usuario
+                ve de un vistazo si el servicio subió y cuánto.
+              */}
+              {fijo.priceHistory.length >= 2 && fijo.trendDeltaPct != null ? (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+                    TENDENCIA
+                  </Text>
+                  <View style={styles.trendRow}>
+                    <View style={styles.trendSparkSlot}>
+                      <FijoTrendSpark points={fijo.priceHistory} />
+                    </View>
+                    <View style={styles.trendCopySlot}>
+                      <Text
+                        style={[
+                          styles.trendCopyMain,
+                          {
+                            color: trendCopyColor(fijo.trendDeltaPct, theme.isDark),
+                          },
+                        ]}
+                      >
+                        {trendCopyLabel(fijo.trendDeltaPct)}
+                      </Text>
+                      <Text
+                        style={[styles.trendCopySub, { color: theme.colors.textMuted }]}
+                      >
+                        {trendCopySubLabel(fijo.priceHistory)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {/*
+                Este pago: info concreta y accionable. Para installment
+                agregamos "Cuota X de Y" en vez de la frecuencia genérica.
+              */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+                  ESTE PAGO
+                </Text>
+                <InfoLine
+                  icon="event-repeat"
+                  label={
+                    fijo.kind === 'installment'
+                      ? `Cuota ${(fijo.installments_paid ?? 0) + 1} de ${fijo.installments_total ?? '?'}`
+                      : `${frequencyLabel(fijo.frequency)} · día ${fijo.dayOfMonth}`
+                  }
+                  theme={theme}
+                />
+                <InfoLine
+                  icon="event"
+                  label={nextDueLabel(fijo.next_due_on)}
+                  theme={theme}
+                />
+                <InfoLine
+                  icon="local-offer"
+                  label={categoryName || 'Sin categoría'}
+                  theme={theme}
+                />
+              </View>
+
+              {/*
+                Historial — solo cuando hay >= 1 pago lifetime registrado.
+                Pone la suscripción en contexto: el user que está
+                pensando en cancelar ve cuánto invirtió.
+              */}
+              {fijo.paymentsLifetime > 0 ? (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+                    HISTORIAL
+                  </Text>
+                  <InfoLine
+                    icon="receipt-long"
+                    label={`${fijo.paymentsLifetime} ${fijo.paymentsLifetime === 1 ? 'cuota registrada' : 'cuotas registradas'}`}
+                    theme={theme}
+                  />
+                  {fijo.totalPaidLifetime > 0 ? (
+                    <InfoLine
+                      icon="payments"
+                      label={`Ya pagaste ${formatMoney(fijo.totalPaidLifetime)} en total`}
+                      theme={theme}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
               {/*
                 Expand panel actions. Para paid rows: "Revertir pago"
                 (secondary, peach-tinted como undo action) + Editar.
@@ -660,23 +782,106 @@ function TrendBadge({
   )
 }
 
-function DetailTile({
+/**
+ * Línea info del expand panel — icon + label en una fila. Mirror del
+ * patrón "list item with leading icon" típico de iOS settings, simple
+ * y consistente. Icon size 14 para no competir con el texto. Color del
+ * icon es textMuted para no robar atención del label.
+ */
+function InfoLine({
+  icon,
   label,
-  value,
   theme,
 }: {
+  icon: React.ComponentProps<typeof MaterialIcons>['name']
   label: string
-  value: string
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
   return (
-    <View style={styles.detailTile}>
-      <Text style={[styles.detailLabel, { color: theme.colors.textMuted }]}>{label}</Text>
-      <Text style={[styles.detailValue, { color: theme.colors.text }]} numberOfLines={1}>
-        {value}
+    <View style={styles.infoLine}>
+      <MaterialIcons name={icon} size={14} color={theme.colors.textMuted} />
+      <Text
+        style={[styles.infoLineText, { color: theme.colors.text }]}
+        numberOfLines={2}
+      >
+        {label}
       </Text>
     </View>
   )
+}
+
+/**
+ * Copy humano para el trend chip. Convierte un delta numérico ("+12%")
+ * a una oración con verbo ("Subió 12% desde el último pago") para que
+ * sea legible por usuarios que no leen porcentajes con fluidez. Pivot
+ * a "Mantiene" para deltas chicos (< 1%) para no alarmar sobre ruido
+ * de redondeo.
+ */
+function trendCopyLabel(deltaPct: number): string {
+  if (Math.abs(deltaPct) < 1) return 'Mantiene el precio'
+  const sign = deltaPct > 0 ? 'Subió' : 'Bajó'
+  return `${sign} ${Math.abs(deltaPct)}% desde el último pago`
+}
+
+function trendCopySubLabel(history: number[]): string {
+  // Si hay 3+ puntos, mostramos contexto del rango histórico: "del último
+  // pago vs el primero registrado". Solo 2 puntos = "vs el anterior".
+  if (history.length >= 3) {
+    const oldest = history[0] ?? 0
+    const current = history[history.length - 1] ?? 0
+    if (oldest > 0 && current > 0) {
+      const totalDelta = Math.round(((current - oldest) / oldest) * 100)
+      if (Math.abs(totalDelta) >= 1) {
+        return `${totalDelta > 0 ? '+' : ''}${totalDelta}% en ${history.length} pagos`
+      }
+    }
+  }
+  return `Comparación con el pago anterior`
+}
+
+function trendCopyColor(deltaPct: number, isDark: boolean): string {
+  if (Math.abs(deltaPct) < 1) return isDark ? '#D5D5D5' : '#5A5A5A'
+  if (deltaPct > 0) return isDark ? '#F2A78C' : '#B84014'
+  return isDark ? '#A6EF8F' : '#297811'
+}
+
+/**
+ * Convierte un `next_due_on` ('YYYY-MM-DD') a texto humano:
+ *   - Mismo mes y año + futuro: "Vence el 10 de junio (en 5 días)"
+ *   - Mismo mes y año + hoy:    "Vence HOY (10 de junio)"
+ *   - Mismo mes y año + pasado: "Venció el 10 de junio (hace 5 días)"
+ *   - Año distinto: agrega año.
+ * Null/inválido devuelve "Sin fecha programada".
+ */
+function nextDueLabel(nextDueOn: string | null): string {
+  if (!nextDueOn) return 'Sin fecha programada'
+  const parts = nextDueOn.split('-')
+  if (parts.length < 3) return nextDueOn
+  const year = parseInt(parts[0]!, 10)
+  const monthIdx = parseInt(parts[1]!, 10) - 1
+  const day = parseInt(parts[2]!, 10)
+  if (Number.isNaN(year) || Number.isNaN(monthIdx) || Number.isNaN(day)) {
+    return nextDueOn
+  }
+  const MONTH_NAMES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ]
+  const monthName = MONTH_NAMES[monthIdx] ?? ''
+  const currentYear = new Date().getFullYear()
+  const yearSuffix = year === currentYear ? '' : ` de ${year}`
+  const today = new Date()
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  const dueUtc = Date.UTC(year, monthIdx, day)
+  const diffDays = Math.round((dueUtc - todayUtc) / 86_400_000)
+  if (diffDays === 0) {
+    return `Vence HOY (${day} de ${monthName}${yearSuffix})`
+  }
+  if (diffDays > 0) {
+    return `Vence el ${day} de ${monthName}${yearSuffix} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'})`
+  }
+  const absDays = Math.abs(diffDays)
+  return `Venció el ${day} de ${monthName}${yearSuffix} (hace ${absDays} ${absDays === 1 ? 'día' : 'días'})`
 }
 
 function frequencyLabel(f: string): string {
@@ -698,18 +903,6 @@ function frequencyLabel(f: string): string {
   }
 }
 
-function kindLabel(k: string): string {
-  switch (k) {
-    case 'periodic':
-      return 'Periódico'
-    case 'installment':
-      return 'Cuotas'
-    case 'debt':
-      return 'Deuda'
-    default:
-      return 'Recurrente'
-  }
-}
 
 function hexAlpha(hex: string, alpha: number): string {
   const normalized = hex.replace('#', '')
@@ -807,12 +1000,93 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderStyle: 'dashed',
+    gap: 12,
   },
-  detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  detailTile: { flexBasis: '47%', flexGrow: 1 },
-  detailLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
-  detailValue: { fontSize: 13, fontWeight: '700', marginTop: 2 },
-  actionsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  // DetailTile / detailGrid del v1 quedaron deprecated cuando el expand
+  // panel pasó a la versión rica (statsHero + section + InfoLine) en
+  // 2026-05-30. Mantengo este comment ancla por si querés grep por
+  // "detailGrid" buscando el cambio.
+  // Stats hero — bloque destacado con la cifra anual / total. Bg tinted
+  // sobre el card para diferenciar como "highlight panel". Cifra
+  // grande (24sp) + eyebrow chiquito + sublabel del % del sueldo.
+  statsHero: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  statsEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  statsValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+  },
+  statsPctRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  statsPctText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // Section: bloque temático con eyebrow + contenido. Sin bg, separados
+  // por gaps (el `gap: 12` del detailBlock cuida los breaks).
+  section: {
+    gap: 6,
+  },
+  sectionEyebrow: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    marginBottom: 2,
+  },
+  // Trend row: sparkline + copy en columnas. Sparkline a la izquierda,
+  // copy con verbo + sub a la derecha.
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  trendSparkSlot: {
+    width: 70,
+    height: 30,
+    justifyContent: 'center',
+  },
+  trendCopySlot: {
+    flex: 1,
+    gap: 2,
+  },
+  trendCopyMain: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  trendCopySub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  // InfoLine — fila simple con icon + label, usada para frecuencia /
+  // vencimiento / categoría / historial.
+  infoLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  infoLineText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  actionsRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
   // Después de mover "Registrar pago" al row collapsed, en el panel
   // solo queda "Editar" — ocupa el ancho completo (vs el split flex:2
   // / flex:1 anterior).
