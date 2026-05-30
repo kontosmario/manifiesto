@@ -12,6 +12,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
+import { SwipeableRow, type SwipeAction } from '@/components/ui/swipeable-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -176,7 +177,22 @@ function ItemSlot({
   onDelete?: (id: string) => void
   isPending?: boolean
 }) {
-  return (
+  // Swipe-to-delete espejo del patrón de gastos / income: el row
+  // queda envuelto en SwipeableRow con una única acción danger.
+  // Las acciones existentes del row (tap-expand → pagar / editar)
+  // siguen disponibles intactas; el swipe es un atajo destructivo.
+  const swipeActions: SwipeAction[] = onDelete
+    ? [
+        {
+          label: 'Eliminar',
+          tone: 'danger',
+          icon: 'delete',
+          onPress: () => onDelete(item.id),
+        },
+      ]
+    : []
+
+  const row = (
     <FijoRow
       item={item}
       categoryColor={color}
@@ -187,6 +203,25 @@ function ItemSlot({
       onDelete={onDelete}
       isPending={isPending}
     />
+  )
+
+  if (!onDelete) return row
+
+  return (
+    <SwipeableRow
+      accessibilityLabel={`Gasto fijo ${item.name}`}
+      accessibilityHint="Desliza a la izquierda para eliminar"
+      accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'delete') {
+          onDelete(item.id)
+        }
+      }}
+      rightActions={swipeActions}
+      isProcessing={isPending}
+    >
+      {row}
+    </SwipeableRow>
   )
 }
 
