@@ -15,7 +15,7 @@ vi.mock('@/features/auth/pin-enabled-flag', () => ({
   isPinEnabledFlagSet: vi.fn(async () => enabledStore.value),
 }))
 
-import { clearPin, getPinLockState, setPin, verifyPin } from '@/lib/pin-lock'
+import { clearPin, getPinLockState, setPin, verifyPinOk } from '@/lib/pin-lock'
 
 beforeEach(() => {
   secure.clear()
@@ -31,18 +31,18 @@ describe('pin-lock', () => {
 
   it('verifyPin true for the correct pin, false otherwise', async () => {
     await setPin('1234')
-    expect(await verifyPin('1234')).toBe(true)
-    expect(await verifyPin('0000')).toBe(false)
+    expect(await verifyPinOk('1234')).toBe(true)
+    expect(await verifyPinOk('0000')).toBe(false)
   })
 
   it('verifyPin false when no pin is set', async () => {
-    expect(await verifyPin('1234')).toBe(false)
+    expect(await verifyPinOk('1234')).toBe(false)
   })
 
   it('clearPin removes the pin', async () => {
     await setPin('1234')
     await clearPin()
-    expect(await verifyPin('1234')).toBe(false)
+    expect(await verifyPinOk('1234')).toBe(false)
     expect((await getPinLockState()).isSet).toBe(false)
   })
 

@@ -29,6 +29,7 @@ export function PinUnlockScreen() {
   const [value, setValue] = useState('')
   const [errorToken, setErrorToken] = useState(0)
   const [checking, setChecking] = useState(false)
+  const [lockoutMessage, setLockoutMessage] = useState<string | null>(null)
 
   const handleChange = useCallback(
     (next: string) => {
@@ -36,12 +37,18 @@ export function PinUnlockScreen() {
       setValue(next)
       if (!isPinComplete(next)) return
       setChecking(true)
-      void verifyPin(next).then((ok) => {
-        if (ok) {
+      void verifyPin(next).then((result) => {
+        if (result.ok) {
           void triggerHaptic('success')
           markAppUnlocked()
           router.replace('/')
           return
+        }
+        if (result.lockedForMs > 0) {
+          const seconds = Math.ceil(result.lockedForMs / 1000)
+          setLockoutMessage(`Bloqueado ${seconds} seg`)
+        } else {
+          setLockoutMessage(null)
         }
         setErrorToken((t) => t + 1)
         setValue('')
@@ -82,6 +89,14 @@ export function PinUnlockScreen() {
 
       <View style={styles.padWrap}>
         <PinPad value={value} onChange={handleChange} errorToken={errorToken} />
+        {lockoutMessage ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.lockoutText, { color: theme.colors.danger }]}
+          >
+            {lockoutMessage}
+          </Text>
+        ) : null}
       </View>
 
       <Pressable
@@ -110,6 +125,12 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 16, marginBottom: 8 },
   title: { fontSize: 22, fontWeight: '700' },
   padWrap: { flex: 1, justifyContent: 'center' },
+  lockoutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+  },
   forgot: { height: 44, alignItems: 'center', justifyContent: 'center' },
   forgotText: { fontSize: 14, fontWeight: '500' },
 })
