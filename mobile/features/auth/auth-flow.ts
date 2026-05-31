@@ -69,8 +69,8 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
     return { error: 'Ingresa un email válido.' }
   }
 
-  if (trimmedPassword.length < 6) {
-    return { error: 'La contraseña debe tener al menos 6 caracteres.' }
+  if (trimmedPassword.length < 8) {
+    return { error: 'La contraseña debe tener al menos 8 caracteres.' }
   }
 
   if (draft.mode === 'sign-up' && trimmedDisplayName.length < 2) {

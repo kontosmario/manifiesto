@@ -81,8 +81,8 @@ export function ResetPasswordScreen() {
 
   const handleSubmit = useCallback(async () => {
     if (!passwordValid || updatePassword.isPending) return
-    if (password.length < 6) {
-      setFormError('Mínimo 6 caracteres.')
+    if (password.length < 8) {
+      setFormError('Mínimo 8 caracteres.')
       await triggerHaptic('warning')
       return
     }
@@ -164,7 +164,7 @@ export function ResetPasswordScreen() {
   return (
     <Screen
       title="Nueva contraseña"
-      subtitle="Elegí una contraseña de al menos 6 caracteres."
+      subtitle="Elegí una contraseña de al menos 8 caracteres."
     >
       <View style={styles.stack}>
         <TextField

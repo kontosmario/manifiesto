@@ -176,8 +176,8 @@ export function SignupScreen() {
       emailRef.current?.focus?.()
       return
     }
-    if (trimmedPassword.length < 6) {
-      setErrorMessage('La contraseña debe tener al menos 6 caracteres.')
+    if (trimmedPassword.length < 8) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres.')
       await triggerHaptic('warning')
       passwordRef.current?.focus?.()
       return
@@ -305,7 +305,7 @@ export function SignupScreen() {
   // Strength meter for the password input — gives the user a quick
   // visual indicator without forcing extra steps.
   const strength =
-    password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3
+    password.length === 0 ? 0 : password.length < 8 ? 1 : password.length < 12 ? 2 : 3
   const strengthLabel = ['', 'Débil', 'Buena', 'Excelente'][strength]
   const strengthColor =
     strength === 1
