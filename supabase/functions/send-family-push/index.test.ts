@@ -9,10 +9,22 @@ Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'service-role-fake-12345')
 Deno.env.set('WEB_PUSH_VAPID_PUBLIC_KEY', '')
 Deno.env.set('WEB_PUSH_VAPID_PRIVATE_KEY', '')
 
-Deno.test('messages[] rejects no-bearer (401)', async () => {
+async function getHandler(): Promise<(r: Request) => Promise<Response>> {
   const mod = await import('./index.ts')
   const handler = (mod as unknown as { handler?: (r: Request) => Promise<Response> }).handler
-  if (typeof handler !== 'function') return
+  // Fail loudly: if a future refactor un-exports the handler, the
+  // gate becomes untestable from this file and the regression
+  // these tests were written to catch (auth-bypass on messages[])
+  // would silently re-open. Throw instead of return so the test
+  // suite fails visibly.
+  if (typeof handler !== 'function') {
+    throw new Error('handler not exported from index.ts — smoke tests cannot run')
+  }
+  return handler
+}
+
+Deno.test('messages[] rejects no-bearer (401)', async () => {
+  const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
     body: JSON.stringify({ messages: [{ to: 'ExponentPushToken[x]', title: 't', body: 'b' }] }),
@@ -21,9 +33,7 @@ Deno.test('messages[] rejects no-bearer (401)', async () => {
 })
 
 Deno.test('messages[] rejects anon bearer (401)', async () => {
-  const mod = await import('./index.ts')
-  const handler = (mod as unknown as { handler?: (r: Request) => Promise<Response> }).handler
-  if (typeof handler !== 'function') return
+  const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
     body: JSON.stringify({ messages: [{ to: 'ExponentPushToken[x]', title: 't', body: 'b' }] }),

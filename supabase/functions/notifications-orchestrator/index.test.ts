@@ -8,33 +8,31 @@
 
 import { assertEquals } from 'jsr:@std/assert@1'
 
-// Hack: we need to import the handler function under test. The file
-// calls `Deno.serve(handler)` at load, so we set env vars first and
-// import side effects. The handler is not exported; we re-implement
-// the gate signature here as a contract test — if the file changes
-// shape, this test must fail loudly.
-
 Deno.env.set('SUPABASE_URL', 'https://test.supabase.co')
 Deno.env.set('SUPABASE_ANON_KEY', 'anon-key-fake')
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'service-role-fake-12345')
 
-Deno.test('rejects POST without Authorization header (401)', async () => {
+async function getHandler(): Promise<(r: Request) => Promise<Response>> {
   const mod = await import('./index.ts')
-  const handler = (mod as unknown as { handler: (r: Request) => Promise<Response> }).handler
+  const handler = (mod as unknown as { handler?: (r: Request) => Promise<Response> }).handler
+  // Fail loudly: if a future refactor un-exports the handler, the
+  // gate becomes untestable from this file and the regression these
+  // tests were written to catch (DoS amplifier via open POST) would
+  // silently re-open. Throw instead of return so the suite fails.
   if (typeof handler !== 'function') {
-    // Handler isn't exported. Smoke-test via fetch against the
-    // running server instead. For now, just skip with a message.
-    console.warn('handler not exported; skipping')
-    return
+    throw new Error('handler not exported from index.ts — smoke tests cannot run')
   }
+  return handler
+}
+
+Deno.test('rejects POST without Authorization header (401)', async () => {
+  const handler = await getHandler()
   const res = await handler(new Request('http://localhost', { method: 'POST', body: '{}' }))
   assertEquals(res.status, 401)
 })
 
 Deno.test('rejects POST with anon-key bearer (401)', async () => {
-  const mod = await import('./index.ts')
-  const handler = (mod as unknown as { handler?: (r: Request) => Promise<Response> }).handler
-  if (typeof handler !== 'function') return
+  const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
     body: '{}',
@@ -44,9 +42,7 @@ Deno.test('rejects POST with anon-key bearer (401)', async () => {
 })
 
 Deno.test('accepts POST with service-role bearer (not 401)', async () => {
-  const mod = await import('./index.ts')
-  const handler = (mod as unknown as { handler?: (r: Request) => Promise<Response> }).handler
-  if (typeof handler !== 'function') return
+  const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
     body: '{"kind":"foo"}',
