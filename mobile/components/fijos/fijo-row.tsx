@@ -379,55 +379,54 @@ function FijoRowReal({
                 ) : null}
               </View>
               {/*
-                Sub-line: categoría (texto inline) · chip del mes (tintado
-                por status accent) · detail-label (estado/timing).
+                Sub-info STACKEADA en 2 líneas para que TODO entre sin
+                elipsis incluso en pantallas chicas / nombres largos:
 
-                El CHIP DEL MES es el ancla visual: "qué cuota es esta".
-                Pill subtle con bg + border + texto en accent.solid del
-                status. Hace que vencidos / pendientes / pagados /
-                próximos sean distinguibles a simple vista (no solo por
-                el texto del detail label sino por el color del chip).
+                  Línea 1 (identifying)   : catName · [chip del mes]
+                  Línea 2 (state/timing)  : detailLabel (full width)
 
-                Wrap controlado en cada hijo:
-                  · catName: numberOfLines=1 (no se come la sub-line si
-                    es categoría larga — el chip + detail deben seguir
-                    siendo visibles).
-                  · detailLabel: numberOfLines=2 (puede wrappear si
-                    cuota+detail son largos juntos).
+                Antes era una sola fila horizontal — con cat + chip +
+                detail + amount + pay button competían por el ancho y
+                "11d de mora" se cortaba a "11 d..". Stack vertical da
+                a cada pieza su línea propia + crece ~14pt verticales.
+
+                El CHIP DEL MES sigue siendo el ancla visual del estado
+                (tintado por accent del status — rojo overdue / peach
+                pending / lime paid / sky future). El detailLabel debajo
+                expande la info: "11d de mora" / "vence en 5d" / etc.
               */}
-              <View style={styles.metaRow}>
-                <Text
-                  style={[styles.metaCat, { color: catChipTextColor }]}
-                  numberOfLines={1}
-                >
-                  {categoryName}
-                </Text>
-                {cuotaShort ? (
-                  <>
-                    <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
-                      ·
-                    </Text>
-                    <View
-                      style={[
-                        styles.monthChip,
-                        {
-                          backgroundColor: accent.bg,
-                          borderColor: accent.border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.monthChipText, { color: accent.solid }]}
-                        numberOfLines={1}
-                      >
-                        {cuotaShort}
+              <View style={styles.metaStack}>
+                <View style={styles.metaIdRow}>
+                  <Text
+                    style={[styles.metaCat, { color: catChipTextColor }]}
+                    numberOfLines={1}
+                  >
+                    {categoryName}
+                  </Text>
+                  {cuotaShort ? (
+                    <>
+                      <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
+                        ·
                       </Text>
-                    </View>
-                  </>
-                ) : null}
-                <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
-                  ·
-                </Text>
+                      <View
+                        style={[
+                          styles.monthChip,
+                          {
+                            backgroundColor: accent.bg,
+                            borderColor: accent.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.monthChipText, { color: accent.solid }]}
+                          numberOfLines={1}
+                        >
+                          {cuotaShort}
+                        </Text>
+                      </View>
+                    </>
+                  ) : null}
+                </View>
                 <Text
                   style={[
                     styles.metaDue,
@@ -439,7 +438,6 @@ function FijoRowReal({
                             ? accent.solid
                             : theme.colors.textMuted,
                       fontWeight: status === 'overdue' ? '700' : '500',
-                      flexShrink: 1,
                     },
                   ]}
                   numberOfLines={2}
@@ -1155,15 +1153,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
-  // Sub-line del row: row flex con catName + chip del mes + detail.
-  // Antes era un solo Text node con runs coloreados — la nueva versión
-  // separa el mes en un chip pill tintado por status (gpt-taste) lo
-  // que hace que el estado se lea sin texto a través del color del chip.
-  metaRow: {
+  // Sub-info stack: 2 líneas verticales para que catName + chip + detail
+  // entren sin elipsis incluso en pantallas chicas.
+  //   Línea 1 (metaIdRow): catName · chip del mes
+  //   Línea 2 (metaDue): detail label (full width, hasta 2 líneas wrap)
+  // Card crece ~14pt verticales — preferible a truncar info que el
+  // usuario necesita ver completa.
+  metaStack: {
+    marginTop: 4,
+    gap: 3,
+  },
+  metaIdRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 4,
   },
   metaCat: {
     fontSize: 11.5,
