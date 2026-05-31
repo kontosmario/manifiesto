@@ -14,25 +14,24 @@ import {
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 
 /**
- * Tabs del listado (2026-05-30, refinado a 4 buckets):
- *  - 'vencidos'   → overdue (mora arrastrada de ciclos previos sin pagar).
+ * Tabs del listado (2026-05-31, refinado a 3 buckets):
+ *  - 'vencidos'   → overdue (cuotas ya vencidas sin pagar).
  *                   Lo MÁS urgente. Color rojo para que salte primero.
  *  - 'pendientes' → pending (cuotas del ciclo activo que aún no vencieron).
- *  - 'pagados'    → paid del ciclo activo.
- *  - 'proximos'   → future (fijos al día con próximo vencimiento en
- *                   un ciclo posterior, típicamente trimestrales /
- *                   semestrales / anuales recién pagados).
+ *  - 'pagados'    → paid (pago directo en cycle + cycle covered by
+ *                   prior payment, ej. trimestrales recién pagados).
  *
- * Antes (2026-05-30 v2) eran 3 buckets con pendientes+overdue fundidos;
- * separar los vencidos los hace más prominentes (mora = atención
- * inmediata, no se mezcla con lo que aún no venció). El default
- * arranca en `'vencidos'` SI hay vencidos, sino `'pendientes'` — así
- * el primer paint siempre muestra lo más urgente que el usuario tiene
- * que actuar.
- *
- * Removido: 'todos' (poco scannable) y 'zombis' (deprecada).
+ * Historia:
+ *   - v1: 'todos' (poco scannable) y 'zombis' (deprecated). Removidos.
+ *   - v2: 3 buckets (Pendientes+Vencidos juntos). Separamos en v3.
+ *   - v3: 4 buckets (Vencidos / Pendientes / Pagados / Próximos).
+ *   - v4 (HOY): 3 buckets. "Próximos" (future) era casi siempre vacía
+ *     post-cycle-coverage fix — la info de fijos programados sin pagar
+ *     pasa a un BANNER contextual arriba del listado en lugar de tab
+ *     dedicada. Patrón típico de apps Bills/PocketGuard. Decisión
+ *     después de comparable analysis.
  */
-export type FijosTab = 'vencidos' | 'pendientes' | 'pagados' | 'proximos'
+export type FijosTab = 'vencidos' | 'pendientes' | 'pagados'
 
 export interface UseFijosControllerResult {
   isLoading: boolean
@@ -162,14 +161,14 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   )
 
   const filteredItems = useMemo(() => {
-    // 4 buckets bien separados (2026-05-30 v3):
-    //   vencidos   → overdue (mora arrastrada)
-    //   pendientes → pending (cuotas del ciclo activo aún sin vencer)
-    //   pagados    → paid (lo cerrado del ciclo)
-    //   proximos   → future (no toca este ciclo)
+    // 3 buckets (2026-05-31 v4):
+    //   vencidos   → overdue
+    //   pendientes → pending
+    //   pagados    → paid (incluye paid-via-coverage)
+    // Future items NO van a ningún tab — se muestran en un banner
+    // contextual arriba del listado (FijosScheduledBanner).
     if (tab === 'vencidos') return summary.overdueItems
     if (tab === 'pagados') return summary.paidItems
-    if (tab === 'proximos') return summary.futureItems
     return summary.pendingItems
   }, [tab, summary])
 

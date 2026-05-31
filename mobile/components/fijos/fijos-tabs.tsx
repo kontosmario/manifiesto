@@ -12,30 +12,22 @@ interface FijosTabsProps {
     vencidos: number
     pendientes: number
     pagados: number
-    proximos: number
   }
 }
 
-// Color semántico por bucket — alimenta el `color` prop de
-// GastosFilterPill para que el count chip inactivo se pinte con el
-// tono del estado. El darkenForLightBg / lightenForDarkBg del pill se
-// ocupa de mantener AA en cada modo.
-//
-// 4 buckets (2026-05-30 v3): separamos "Vencidos" de "Pendientes"
-// para hacer la mora más prominente. Color rojo brand-deep para que
-// salte primero en el ojo.
+// Color semántico por bucket. 3 buckets (2026-05-31 v4) tras retirar
+// 'Próximos' — la info de fijos programados sin pagar pasó a un
+// banner contextual encima del listado.
 const TAB_COLORS: Record<FijosTab, string | undefined> = {
   vencidos: '#A8211B', // rojo brand-deep: urgencia máxima
   pendientes: '#F2A78C', // peach: por pagar este ciclo
   pagados: '#A6EF8F', // lime: cerrado
-  proximos: '#9DC4DE', // sky muted: calendario lejano
 }
 
 const TAB_LABELS: Record<FijosTab, string> = {
   vencidos: 'Vencidos',
   pendientes: 'Pendientes',
   pagados: 'Pagados',
-  proximos: 'Próximos',
 }
 
 /**
@@ -66,10 +58,10 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
     [setTab],
   )
 
-  // Orden: vencidos primero (más urgente) → pendientes → pagados →
-  // próximos (más lejano). Refleja la jerarquía de "qué tengo que
-  // mirar primero".
-  const TABS: FijosTab[] = ['vencidos', 'pendientes', 'pagados', 'proximos']
+  // Orden: vencidos primero (más urgente) → pendientes → pagados.
+  // Refleja la jerarquía de "qué tengo que mirar primero". Los
+  // future (programados sin pagar) viven en banner aparte.
+  const TABS: FijosTab[] = ['vencidos', 'pendientes', 'pagados']
 
   return (
     <RiseView delay={120}>
