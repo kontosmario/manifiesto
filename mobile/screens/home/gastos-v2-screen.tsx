@@ -552,7 +552,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           <Animated.View
             style={styles.rowWrap}
             entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
-            exiting={FadeOut.duration(140)}
+            exiting={rowAnimationEnabled ? FadeOut.duration(140) : undefined}
             layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
           >
             <SwipeRow
@@ -612,7 +612,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         <Animated.View
           style={styles.rowWrap}
           entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
-          exiting={FadeOut.duration(140)}
+          exiting={rowAnimationEnabled ? FadeOut.duration(140) : undefined}
           layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
         >
           <SwipeRow
