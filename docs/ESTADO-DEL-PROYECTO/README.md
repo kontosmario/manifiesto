@@ -35,6 +35,10 @@ docs/ESTADO-DEL-PROYECTO/
 
 → **[`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md)** — snapshot completo verificado contra commit `7962ea2`.
 
+## 🚀 Roadmap priorizado
+
+→ **[`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-priorizado.md)** — todos los pendientes del repo organizados por prioridad P0–P7, con effort, dependencias y sprint plan. Trigger: Apple Developer Program pago confirmado por owner (2026-05-31), que desbloquea todo el bloque iOS/store deferred desde 2026-05-11.
+
 ## 🔖 Convención de estados (heredada del audit)
 
 | Marcador | Significado |
