@@ -11,6 +11,13 @@ export default defineConfig({
       '@react-navigation/native': resolve(__dirname, 'tests/stubs/react-navigation-native.ts'),
     },
   },
+  define: {
+    // expo-modules-core / RN runtime check this global. Without it
+    // any test file that transitively imports those modules crashes
+    // with "ReferenceError: __DEV__ is not defined" before user code
+    // runs.
+    __DEV__: true,
+  },
   test: {
     environment: 'node',
     exclude: [
