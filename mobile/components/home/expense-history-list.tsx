@@ -29,27 +29,36 @@ export function ExpenseHistoryList({
       initialNumToRender={18}
       keyExtractor={(item) => item.id}
       maxToRenderPerBatch={12}
-      removeClippedSubviews={false}
+      removeClippedSubviews={true}
       renderScrollComponent={(props) => <GHScrollView {...props} />}
       style={styles.list}
       renderItem={({ item, index }) => {
-        // Stagger by 40ms per row capped at index 8 (320ms total)
-        // — keeps long lists from finishing slowly. Reduced motion
-        // skips the entrance via Reanimated's built-in fallback.
-        const staggerDelay = Math.min(index, 8) * motionStagger.listItem
+        // The stagger only applies to the first 8 rows so a long
+        // history doesn't paint slowly. Past index 8 we skip the
+        // Animated.View wrapper entirely — Reanimated still
+        // instantiates entering worklets on `undefined`, so omitting
+        // the wrapper is what actually frees the cost.
+        const ROW_STAGGER_CAP = 8
+        const staggerDelay = Math.min(index, ROW_STAGGER_CAP) * motionStagger.listItem
+        const row = (
+          <ExpenseHistoryRow
+            category={categoryById.get(item.category_id) ?? null}
+            expense={item}
+            hideCategory={Boolean(selectedCategoryId)}
+            onDelete={onDelete}
+            onEdit={onEdit}
+          />
+        )
+        if (index >= ROW_STAGGER_CAP) {
+          return row
+        }
         return (
           <Animated.View
             entering={FadeIn.delay(staggerDelay)
               .duration(motionDurations.enterTab)
               .reduceMotion(ReduceMotion.System)}
           >
-            <ExpenseHistoryRow
-              category={categoryById.get(item.category_id) ?? null}
-              expense={item}
-              hideCategory={Boolean(selectedCategoryId)}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
+            {row}
           </Animated.View>
         )
       }}
