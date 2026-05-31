@@ -2,7 +2,7 @@ import type { Expense } from '@/features/expenses/use-expenses'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
 
-const DAY_MS = 1000 * 60 * 60 * 24
+import { DAY_MS } from "@/utils/time"
 
 export type DailyBudgetBufferMode = 'none' | 'fixed' | 'percent'
 export type DailyBudgetStatus = 'positive' | 'critical' | 'exceeded'

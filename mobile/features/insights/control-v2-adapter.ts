@@ -14,6 +14,7 @@ import type { FamilyFinance } from '@/features/finance/use-family-finance'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
 import { emptyStates } from '@/lib/copy/states'
+import { DAY_MS } from '@/utils/time'
 
 /** One entry of the `category_breakdown` jsonb column.
  *  Matches the shape `close_monthly_cycle` writes (array of objects
@@ -391,7 +392,7 @@ function computeDaysUntilSalary(paymentDay: number, now: Date): number {
   // Next month's payment day.
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, paymentDay)
   const diff = nextMonth.getTime() - startOfDay(now).getTime()
-  return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)))
+  return Math.max(0, Math.round(diff / DAY_MS))
 }
 
 function computeWeeklyNoSpend(

@@ -1,4 +1,5 @@
 import type { Expense } from '@/features/expenses/use-expenses'
+import { DAY_MS } from '@/utils/time'
 import {
   deriveSavingsGoalPercent,
   resolveFlexibleTargetPercent,
@@ -183,7 +184,7 @@ export function buildFamilyDashboardSnapshot({
     : monthlyIncome
   const remainingDaysFromToday = Math.max(
     1,
-    Math.round((payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)),
+    Math.round((payCycle.end.getTime() - todayDate.getTime()) / DAY_MS),
   )
   const totalCycleDays = Math.max(payCycle.days, 1)
   // Effective cycle length the daily-budget formula divides into.
@@ -227,7 +228,7 @@ export function buildFamilyDashboardSnapshot({
   )
   const monthlyHistoryTotals = buildMonthlyHistoryTotals(monthlyHistory)
   const remainingUntilPayday = Math.round(
-    (payCycle.end.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24),
+    (payCycle.end.getTime() - todayDate.getTime()) / DAY_MS,
   )
 
   return {

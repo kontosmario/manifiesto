@@ -17,19 +17,20 @@ import {
   type UsageAuditRecord,
 } from './types'
 import { periodOf } from './period'
+import { DAY_MS } from '@/utils/time'
 
 const ALLOWED_FREQUENCIES = new Set(['weekly', 'biweekly', 'monthly'])
 
 function ageDays(createdAtIso: string, now: Date): number {
   const created = Date.parse(createdAtIso)
   if (Number.isNaN(created)) return 0
-  return Math.floor((now.getTime() - created) / (1000 * 60 * 60 * 24))
+  return Math.floor((now.getTime() - created) / DAY_MS)
 }
 
 function daysAgo(iso: string, now: Date): number {
   const t = Date.parse(iso)
   if (Number.isNaN(t)) return Infinity
-  return Math.floor((now.getTime() - t) / (1000 * 60 * 60 * 24))
+  return Math.floor((now.getTime() - t) / DAY_MS)
 }
 
 export function isAuditCandidate(fijo: FixedExpenseRow, now: Date): boolean {

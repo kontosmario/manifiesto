@@ -12,7 +12,7 @@ import type {
 } from '@/features/fixed-expenses/commitment-types'
 import type { FixedExpense } from './fixed-expense-types'
 
-const DAY_MS = 1000 * 60 * 60 * 24
+import { DAY_MS } from "@/utils/time"
 
 function isCommitmentActive(status: FixedExpense['status']) {
   return status === 'active'
