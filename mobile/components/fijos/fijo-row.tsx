@@ -160,6 +160,46 @@ function FijoRowReal({
   // Para overdue: `cycleDays - daysUntilDue` → días desde que venció.
   const overdueDays = Math.max(1, Math.abs(diffDays))
 
+  // Accent palette derivada del status — usada para tintar el expand
+  // panel (stats hero bg + accent stripe + border-top dashed). Cada
+  // estado tiene su hue dedicado, sin overlap entre los 4:
+  //   overdue → red brand (urgencia)
+  //   pending → peach (acción por venir)
+  //   paid    → lime (cerrado / positivo)
+  //   future  → sky muted (calendario lejano)
+  // Light: brand-deep saturado. Dark: brand-bright para contraste con
+  // surfaceMuted near-black. Bgs en alpha bajo (0.06-0.10) para que
+  // tinten sin compitir con el contenido.
+  const accent = useMemo(() => {
+    if (status === 'overdue') {
+      return {
+        solid: theme.isDark ? '#F18C8C' : '#A8211B',
+        bg: theme.isDark ? 'rgba(241,140,140,0.12)' : 'rgba(168,33,27,0.07)',
+        border: theme.isDark ? 'rgba(241,140,140,0.36)' : 'rgba(168,33,27,0.25)',
+      }
+    }
+    if (status === 'pending') {
+      return {
+        solid: theme.isDark ? '#F2A78C' : '#B84014',
+        bg: theme.isDark ? 'rgba(242,167,140,0.10)' : 'rgba(184,64,20,0.06)',
+        border: theme.isDark ? 'rgba(242,167,140,0.32)' : 'rgba(184,64,20,0.22)',
+      }
+    }
+    if (status === 'paid') {
+      return {
+        solid: theme.isDark ? '#A6EF8F' : '#297811',
+        bg: theme.isDark ? 'rgba(166,239,143,0.10)' : 'rgba(41,120,17,0.06)',
+        border: theme.isDark ? 'rgba(166,239,143,0.32)' : 'rgba(41,120,17,0.22)',
+      }
+    }
+    // future
+    return {
+      solid: theme.isDark ? '#9DC4DE' : '#3F7CA3',
+      bg: theme.isDark ? 'rgba(157,196,222,0.10)' : 'rgba(63,124,163,0.06)',
+      border: theme.isDark ? 'rgba(157,196,222,0.32)' : 'rgba(63,124,163,0.22)',
+    }
+  }, [status, theme.isDark])
+
   // Label de mes capitalizado: "junio" → "Junio". Lead con el mes
   // para que sea lo primero que el ojo enganche.
   const cuotaShort = fijo.cuotaMonth ? capitalize(monthOfLabel(fijo.cuotaMonth)) : null
@@ -351,7 +391,11 @@ function FijoRowReal({
               */}
               <Text
                 style={[styles.metaLine]}
-                numberOfLines={1}
+                // 2 líneas: si catName + dueLabel no entran en una sola
+                // (categorías largas + dueLabels largos), wrap a una
+                // segunda. La card crece ~16pt verticales — preferible
+                // a truncar info que el usuario necesita ver completa.
+                numberOfLines={2}
               >
                 <Text style={[styles.metaCat, { color: catChipTextColor }]}>
                   {categoryName}
@@ -423,29 +467,40 @@ function FijoRowReal({
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(140)}
-              style={[styles.detailBlock, { borderTopColor: theme.colors.line }]}
+              // borderTopColor tintado por status — el divider que separa
+              // el row collapsed del expand panel anuncia visualmente el
+              // estado del fijo apenas se abre (overdue=red, pending=peach,
+              // paid=lime, future=sky).
+              style={[styles.detailBlock, { borderTopColor: accent.border }]}
             >
               {/*
                 Stats hero. Para recurring/periodic: "SE LLEVA AL AÑO".
                 Para installment: "TOTAL DE LA DEUDA". Para debt: "DEUDA
                 RESTANTE". Cifra grande para anclar el ojo + sublabel
                 con % del sueldo (cuando hay sueldo configurado).
-                Educational hook principal del expand: pone el costo del
-                fijo en perspectiva anual / total — la mayoría de los
-                users no ve el costo anualizado al mirar la cuota
-                mensual, así que esto es el dato más impactante.
+                Educational hook principal del expand.
+
+                Tintado por status (impeccable + ui-ux-pro-max
+                "state-clarity"): bg en alpha bajo del accent, accent
+                stripe vertical 3pt en el borde izquierdo, label
+                eyebrow en el accent.solid (no muted). El ojo va
+                directo al hero y entiende el estado por el color sin
+                leer.
               */}
               <View
                 style={[
                   styles.statsHero,
-                  {
-                    backgroundColor: theme.isDark
-                      ? 'rgba(255,255,255,0.04)'
-                      : 'rgba(15,42,30,0.05)',
-                  },
+                  { backgroundColor: accent.bg },
                 ]}
               >
-                <Text style={[styles.statsEyebrow, { color: theme.colors.textMuted }]}>
+                {/* Accent stripe — barra vertical 3pt en el left edge.
+                    Hace que el statsHero "lleve" el color del status
+                    como cinta. Sin invadir el contenido. */}
+                <View
+                  pointerEvents="none"
+                  style={[styles.statsAccentStripe, { backgroundColor: accent.solid }]}
+                />
+                <Text style={[styles.statsEyebrow, { color: accent.solid }]}>
                   {fijo.kind === 'installment'
                     ? 'TOTAL DE LA DEUDA'
                     : fijo.kind === 'debt'
@@ -1117,14 +1172,24 @@ const styles = StyleSheet.create({
   // panel pasó a la versión rica (statsHero + section + InfoLine) en
   // 2026-05-30. Mantengo este comment ancla por si querés grep por
   // "detailGrid" buscando el cambio.
-  // Stats hero — bloque destacado con la cifra anual / total. Bg tinted
-  // sobre el card para diferenciar como "highlight panel". Cifra
-  // grande (24sp) + eyebrow chiquito + sublabel del % del sueldo.
+  // Stats hero — bloque destacado con la cifra anual / total. Bg
+  // tintado por status, accent stripe vertical 3pt en el left edge.
+  // Padding-left extra para dejar respirar el contenido del stripe.
+  // Cifra grande (24sp) + eyebrow en accent.solid + sublabel del %.
   statsHero: {
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingLeft: 18, // 14 + 4 para no chocar con la accent stripe
+    paddingRight: 14,
     paddingVertical: 12,
     gap: 4,
+    overflow: 'hidden', // clip la stripe a los corners redondeados
+  },
+  statsAccentStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
   },
   statsEyebrow: {
     fontSize: 10,
