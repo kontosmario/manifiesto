@@ -190,10 +190,35 @@ async function processKind(kind: Kind) {
   return { kind, processed, sent, chunks: chunks.length }
 }
 
+function extractBearerToken(authorizationHeader: string | null): string | null {
+  if (!authorizationHeader) {
+    return null
+  }
+  const normalized = authorizationHeader.trim()
+  if (normalized.toLowerCase().startsWith('bearer ')) {
+    const token = normalized.slice(7).trim()
+    return token.length > 0 ? token : null
+  }
+  return normalized.length > 0 ? normalized : null
+}
+
 async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405)
   }
+
+  // Service-role gate: this function is invoked by pg_cron (which
+  // signs with the service-role key) and should not be reachable by
+  // end users. Defense-in-depth against an authenticated user
+  // triggering a full notification fan-out (DoS/cost amplifier at
+  // scale).
+  const callerToken = extractBearerToken(
+    request.headers.get('Authorization') ?? request.headers.get('authorization'),
+  )
+  if (!callerToken || callerToken !== supabaseServiceRoleKey) {
+    return jsonResponse({ error: 'Unauthorized (service-role required).' }, 401)
+  }
+
   let payload: { kind?: unknown }
   try {
     payload = (await request.json()) as { kind?: unknown }
