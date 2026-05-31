@@ -8,9 +8,9 @@ export default function FixedExpensesRoute() {
   // snapping/animating in (the "first-load jolt").
   return (
     <RequireAuth>
-      {({ familyId }) => (
+      {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <FijosV2Screen familyId={familyId} />
+          <FijosV2Screen familyId={familyId} userId={userId} />
         </RiseViewGate>
       )}
     </RequireAuth>

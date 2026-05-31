@@ -95,11 +95,12 @@ function FijosHeroCardImpl({
       ? theme.colors.heroMuted // muted (just started)
       : theme.colors.heroAccent // lime (in-progress / paid)
 
-  // ── Unique touch · urgency border pulse ───────────────────────────
-  // Cuando hay vencidos, el accent ring del hero hace un pulse calmo
-  // pero notorio (alpha 0.12 → 0.42 → 0.12 en 2.4s warm). No es un
-  // halo aparte, es un overlay sutil que respira con urgencia. Detrás
-  // de las particles y el shine para que no compita con ellos.
+  // ── Unique touch · urgency pulse en el badge "X VENCIDOS" ─────────
+  // Antes el pulse vivía en un urgency ring que envolvía TODA la card
+  // del hero — usuario reportó que era invasivo (todo el bloque latía).
+  // Ahora el pulse se concentra SOLO en el badge "VENCIDOS" del header:
+  // bg + border opacity oscilan en 2.4s warm. El badge respira con
+  // urgencia sin que el resto del hero compita por atención.
   const reduced = useReducedMotion()
   const urgencyPulse = useSharedValue(0)
   useEffect(() => {
@@ -110,8 +111,7 @@ function FijosHeroCardImpl({
     }
     urgencyPulse.value = withRepeat(
       withSequence(
-        // @motion-allow: 2400ms calm-urgent pulse — más lento que el breathe dot
-        // para que se lea como urgencia ambient, no como flashing distractor
+        // @motion-allow: 2400ms calm-urgent pulse — lento, ambient, no flashing
         withTiming(1, { duration: 1200, easing: motionEasings.warm }),
         withTiming(0, { duration: 1200, easing: motionEasings.warm }),
       ),
@@ -120,8 +120,13 @@ function FijosHeroCardImpl({
     )
     return () => cancelAnimation(urgencyPulse)
   }, [hasOverdue, reduced, urgencyPulse])
-  const urgencyRingStyle = useAnimatedStyle(() => ({
-    opacity: 0.12 + urgencyPulse.value * 0.3,
+  // Badge pulse: bg alpha 0.18 → 0.36, border alpha 0.50 → 0.85, scale 1 → 1.04.
+  // Combinación sutil que respira sin saltar — el badge gana presencia
+  // pero no llama la atención más de lo necesario.
+  const urgencyBadgeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + urgencyPulse.value * 0.04 }],
+    backgroundColor: `rgba(240,106,106,${0.18 + urgencyPulse.value * 0.18})`,
+    borderColor: `rgba(240,106,106,${0.5 + urgencyPulse.value * 0.35})`,
   }))
 
   // Subtitle state-aware ELIMINADO en favor de la CycleRouteLine que
@@ -151,14 +156,11 @@ function FijosHeroCardImpl({
           end={{ x: 0.9, y: 1 }}
           style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
         >
-          {/* Urgency ring · pulsa peach calm cuando hay vencidos. Detrás
-              del shine y las particles. PointerEvents none. */}
-          {hasOverdue ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.urgencyRing, urgencyRingStyle]}
-            />
-          ) : null}
+          {/* Urgency ring REMOVIDO 2026-05-31 — el pulse vivía en un
+              border que envolvía toda la card del hero. Era invasivo.
+              Ahora el pulse se aplica solo al badge "VENCIDOS" del
+              header (ver `urgencyBadgeStyle` + `Animated.View` del
+              badge más abajo). */}
           <ShineOverlay
             width={430}
             height={360}
@@ -186,17 +188,18 @@ function FijosHeroCardImpl({
               </Text>
             </View>
             {hasOverdue ? (
-              <View
-                style={[
-                  styles.urgentBadge,
-                  { backgroundColor: 'rgba(240,106,106,0.18)', borderColor: 'rgba(240,106,106,0.5)' },
-                ]}
+              // Animated.View para que bg + border + scale pulsen via
+              // `urgencyBadgeStyle` (worklet en UI thread, 0 cost).
+              // ReduceMotion-aware: si el sistema lo pide, la shared
+              // value queda en 0 y los valores son estáticos.
+              <Animated.View
+                style={[styles.urgentBadge, urgencyBadgeStyle]}
                 accessibilityLabel={`${cantidadVencidos} ${cantidadVencidos === 1 ? 'vencido' : 'vencidos'}`}
               >
                 <Text style={styles.urgentBadgeText}>
                   {cantidadVencidos} {cantidadVencidos === 1 ? 'VENCIDO' : 'VENCIDOS'}
                 </Text>
-              </View>
+              </Animated.View>
             ) : null}
             {isAllPaid ? (
               <View
@@ -657,19 +660,10 @@ const styles = StyleSheet.create({
   },
   emptyCard: { opacity: 0.86 },
   emptyBar: { borderRadius: 4 },
-  // Urgency ring — overlay absolute con border peach que pulsa cuando
-  // hay vencidos. Detrás del contenido, pointerEvents=none.
-  urgencyRing: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#F2A78C',
-    zIndex: 1,
-  },
+  // Urgency ring REMOVIDO 2026-05-31 — el pulse del hero por vencidos
+  // ahora vive en el badge "X VENCIDOS" del header (ver
+  // `urgencyBadgeStyle` en el componente). El ring que envolvía toda
+  // la card era invasivo.
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
