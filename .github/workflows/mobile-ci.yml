@@ -29,3 +29,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Unit tests
+        run: npm test
+
+      - name: Guard — legacy spacing
+        run: npm run guard:legacy-spacing
+
+      - name: Guard — forbidden copy
+        run: npm run guard:forbidden-copy
+
+      - name: Guard — motion tokens
+        run: npm run guard:motion-tokens
