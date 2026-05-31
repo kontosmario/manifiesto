@@ -9,6 +9,7 @@ export default defineConfig({
       'react-native': resolve(__dirname, 'tests/stubs/react-native.ts'),
       'expo-secure-store': resolve(__dirname, 'tests/stubs/expo-secure-store.ts'),
       '@react-navigation/native': resolve(__dirname, 'tests/stubs/react-navigation-native.ts'),
+      'expo-modules-core': resolve(__dirname, 'tests/stubs/expo-modules-core.ts'),
     },
   },
   define: {
