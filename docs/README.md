@@ -45,6 +45,7 @@ Snapshots completos del proyecto verificados contra el código. Foto vigente: **
 | Doc | Estado | Cubre |
 |---|---|---|
 | [code-rules.md](arquitectura/code-rules.md) | ✅ vigente | Guía normativa de arquitectura, capas, performance y UX (CODE RULES v2) |
+| [feature-layering-ui-vs-domain.md](arquitectura/feature-layering-ui-vs-domain.md) | ✅ vigente | Convención `gastos/expenses` y `fijos/fixed-expenses` — UI español sobre dominio inglés (no son duplicados) |
 
 ### 🗓️ [`producto/`](producto/) — visión, flujos, marca
 
