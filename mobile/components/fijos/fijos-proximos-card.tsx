@@ -321,15 +321,16 @@ function UrgentHeaderDot({ color }: { color: string }) {
 }
 
 // ── Geometría del marquee ─────────────────────────────────────────
-// Constantes hardcodeadas porque el ANCHO DE LOOP debe coincidir
-// EXACTAMENTE con el ancho real del set de items para que el wrap
-// sea seamless (sin "jump" visible en el reset). Antes usaba
-// onLayout / fullWidth/2 que daba un valor mal calculado por el
-// paddingHorizontal del row, generando un brinco de ~11pt en cada
-// loop — el usuario lo percibía como "se reinicia". Ahora calc
-// explícito: items.length * (ITEM_WIDTH + ITEM_GAP).
-const TICKET_WIDTH = 220
-const TICKET_GAP = 10
+// Constantes hardcodeadas para que el ancho de loop coincida exacto
+// con el ancho real del set de items (seamless wrap, sin "jump"
+// visible en cada repetición).
+//
+// 2026-05-31: compactado a single-row layout. TICKET_WIDTH bumpeado
+// de 220 → 250 porque ahora el contenido va en UNA fila horizontal
+// (●name + amount + timing pill) y necesita más espacio horizontal,
+// pero gana ~32pt verticales al ticket mismo.
+const TICKET_WIDTH = 250
+const TICKET_GAP = 8
 
 /**
  * Marquee horizontal de upcoming. Look-and-feel iOS (Apple Wallet /
@@ -431,31 +432,29 @@ function UpcomingMarquee({
 }
 
 /**
- * MarqueeTicket — item individual del marquee, UNIFICADO (sin
- * divider interno entre blocks como tenía la versión anterior).
+ * MarqueeTicket — single-row compact layout (iOS list cell-style).
  *
- * Layout vertical compacto:
- *   ┌─────────────────────────────────────┐
- *   │ ●Cochera                  [EN 5d]   │  ← top row: name + timing pill
- *   │ $103.500                            │  ← hero amount
- *   └─────────────────────────────────────┘
+ *   ┌──────────────────────────────────────────────┐
+ *   │ ●Cochera     $103.500      [EN 5D]           │
+ *   └──────────────────────────────────────────────┘
  *
- * - **Top row**: categoryDot + nombre (flex 1, truncate) + timing pill
- *   (auto-width chip a la derecha). Una sola fila — sin separación
- *   visual rara entre "info" e "id".
- * - **Hero amount**: el monto es el dato más impactante; ocupa la
- *   parte inferior del ticket con tipografía grande tabular.
- * - **Timing pill** (chip):
- *   · Urgent (≤2d): bg + texto peach/red brand
- *   · No urgent: bg + texto neutral muted
+ * Toda la info en UNA fila horizontal:
+ *   · categoryDot (6pt) — color de categoría
+ *   · nombre (flex 1, truncate) — semibold SF-style
+ *   · amount tabular (auto-width) — bold, hero data
+ *   · timing pill (auto-width) — chip iOS con bg + hairline border
+ *     tintado por urgencia
  *
- * Sin pulse por-item (la versión anterior tenía un border pulse que
- * competía con la motion del marquee — distractor). El header dot
- * pulsando ya señala la urgencia general; los items individuales no
- * necesitan animarse más allá del movimiento horizontal.
+ * Ahorro vertical respecto al layout vertical previo: ~32pt (de
+ * ~80pt a ~48pt de altura total). El amount sigue siendo prominente
+ * por su weight 700 + tabular nums tight.
  *
- * Width: TICKET_WIDTH (220pt) fijo — uniformidad necesaria para el
- * cálculo del loop seamless.
+ * Sin pulse por-item — el header dot del card padre ya señala
+ * urgencia general; los items en movimiento horizontal no necesitan
+ * animarse más.
+ *
+ * Width: TICKET_WIDTH (250pt) — espacio para nombres largos +
+ * amount + pill sin que ninguno se corte.
  */
 function MarqueeTicket({
   item,
@@ -484,7 +483,6 @@ function MarqueeTicket({
     ? 'rgba(242,167,140,0.40)'
     : 'rgba(184,64,20,0.28)'
 
-  // Ticket bg: muy sutil. El timing pill carga el color de status.
   const ticketBg = theme.isDark
     ? 'rgba(255,255,255,0.035)'
     : 'rgba(15,42,30,0.035)'
@@ -501,41 +499,42 @@ function MarqueeTicket({
         },
       ]}
     >
-      <View style={styles.ticketTopRow}>
-        <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-        <Text
-          style={[styles.ticketName, { color: theme.colors.text }]}
-          numberOfLines={1}
-        >
-          {item.name}
-        </Text>
-        <View
-          style={[
-            styles.timingPill,
-            {
-              backgroundColor: urgent
-                ? urgentBgRgba
-                : theme.isDark
-                  ? 'rgba(255,255,255,0.06)'
-                  : 'rgba(15,42,30,0.05)',
-              borderColor: urgent ? urgentBorderRgba : theme.colors.line,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.timingPillText,
-              { color: urgent ? urgentSolid : theme.colors.textMuted },
-            ]}
-            numberOfLines={1}
-          >
-            {timingText}
-          </Text>
-        </View>
-      </View>
-      <Text style={[styles.ticketAmount, { color: theme.colors.text }]}>
+      <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
+      <Text
+        style={[styles.ticketName, { color: theme.colors.text }]}
+        numberOfLines={1}
+      >
+        {item.name}
+      </Text>
+      <Text
+        style={[styles.ticketAmount, { color: theme.colors.text }]}
+        numberOfLines={1}
+      >
         {formatMoney(item.amount)}
       </Text>
+      <View
+        style={[
+          styles.timingPill,
+          {
+            backgroundColor: urgent
+              ? urgentBgRgba
+              : theme.isDark
+                ? 'rgba(255,255,255,0.06)'
+                : 'rgba(15,42,30,0.05)',
+            borderColor: urgent ? urgentBorderRgba : theme.colors.line,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.timingPillText,
+            { color: urgent ? urgentSolid : theme.colors.textMuted },
+          ]}
+          numberOfLines={1}
+        >
+          {timingText}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -826,58 +825,49 @@ const styles = StyleSheet.create({
   // prefiere "clean cut at the boundary" (Apple Wallet, App Store
   // featured row) — overflow:hidden del container ya da el corte
   // limpio sin overlay.
-  // ── Ticket — iOS look-and-feel ──────────────────────────────────
-  // Radius 12pt (iOS card standard, continuous-curve-friendly).
-  // Border hairline (StyleSheet.hairlineWidth, ~0.33pt en iOS retina
-  // moderna) — separación elegante sin "framing" visual. Padding
-  // matchea iOS list cells.
+  // ── Ticket — single-row compact (iOS list cell-style) ──────────
+  // Toda la info en una fila: dot + name + amount + timing pill.
+  // Ahorro ~32pt verticales respecto al layout vertical previo.
+  // Hairline border + radius 12pt matchea iOS list cells / cards.
   ticket: {
-    width: 220,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  // Top row: catDot + nombre (flex 1) + timing pill (auto right).
-  ticketTopRow: {
+    width: 250,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    gap: 8,
   },
-  // SF Pro-friendly: weight 600 (semibold) matchea iOS NavigationBar
-  // titles / Settings rows. Antes era 700 (bold) que se sentía pesado.
+  // SF Pro-friendly: weight 600 (semibold) matchea iOS Settings cells.
+  // Flex 1 ocupa el ancho disponible; truncate si nombre largo.
   ticketName: {
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
-  // Timing pill — iOS notification chip / status badge feel:
-  // hairline border, padding tight (9×2), texto uppercase con tracking
-  // positivo (chip semantic). fontSize 10 con weight 700 (no 900 que
-  // se ve "screaming"). letterSpacing 0.8 evoca el look SF Compact.
+  // Amount — el dato más impactante. Tabular nums tight para densidad.
+  // No flex (auto-width); va inline con el name.
+  ticketAmount: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
+  },
+  // Timing pill — iOS chip semantic feel: hairline border, padding
+  // tight, texto uppercase con tracking positivo (SF Compact-ish).
   timingPill: {
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     flexShrink: 0,
   },
   timingPillText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    fontVariant: ['tabular-nums'],
-  },
-  // Hero amount — el dato más impactante. iOS uses SF Pro Display /
-  // Rounded para números grandes; aprovechamos system font con
-  // tabular nums + tight tracking. fontSize 17 = iOS Body Large
-  // standard, weight 700 = matches iOS Headline.
-  ticketAmount: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: 0.7,
     fontVariant: ['tabular-nums'],
   },
   upcomingList: { gap: 0 },
