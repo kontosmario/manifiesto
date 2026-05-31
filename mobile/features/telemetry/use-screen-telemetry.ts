@@ -20,7 +20,7 @@ import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import {
   isReopenInSession,
   newSessionId,
-} from '@/features/home/home-telemetry-helpers'
+} from '@/lib/telemetry-session'
 
 /** Module-level state, scoped per-screen so two simultaneously-mounted
  *  screens (rare, but possible during animated transitions) don't
