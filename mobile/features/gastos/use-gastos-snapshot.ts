@@ -251,7 +251,12 @@ export function useGastosSnapshot(args: UseGastosSnapshotArgs) {
     // re-fetchea en remount-with-stale.
     staleTime: 60_000,
     gcTime: 5 * 60_000,
-    refetchOnWindowFocus: true,
+    // On iOS foreground-resume both home_snapshot + gastos_snapshot
+    // were re-fetching back-to-back even with staleTime=60s, costing
+    // 300-600ms of blocking re-hydration. `staleTime` alone is enough:
+    // if the cache is fresh, skip; if stale, the next navigation
+    // triggers a refetch naturally.
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     queryFn: async () => {
       const payload = await fetchGastosSnapshot(args)
