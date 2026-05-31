@@ -53,14 +53,9 @@ export interface MetricDescriptor {
   wide?: boolean
 }
 
-export function formatDeltaPercent(value: number | null) {
-  if (value == null || !Number.isFinite(value)) {
-    return 'Sin base'
-  }
-
-  const rounded = Math.round(value * 100)
-  return `${rounded > 0 ? '+' : ''}${rounded}%`
-}
+// Re-export to keep existing callers happy. Definition moved to
+// mobile/utils/percent.ts to break the expenses ↔ insights cycle.
+export { formatDeltaPercent } from '@/utils/percent'
 
 export function formatRemainingDays(days: number) {
   if (days <= 0) {

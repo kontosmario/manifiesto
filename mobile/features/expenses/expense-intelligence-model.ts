@@ -2,7 +2,7 @@ import type {
   ExpenseAnalyticsSuggestion,
   ExpenseAnalyticsSummary,
 } from '@/features/expenses/expense-analytics'
-import { formatDeltaPercent } from '@/features/insights/control-model'
+import { formatDeltaPercent } from '@/utils/percent'
 import { currencyFormatter } from '@/utils/money'
 
 export interface IntelligenceMetric {
