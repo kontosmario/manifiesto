@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useEffect, useMemo } from 'react'
 import {
@@ -129,9 +128,7 @@ export function FijosProximosCard({
 
   if (!hasUpcoming && !hasAlerts) return null
 
-  // Color del card padre — necesario para las edge fade gradients del
-  // marquee (los items deben desvanecer HACIA este color, no hacia
-  // transparente generico).
+  // Color del card padre — usado solo para el bg del card mismo.
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
@@ -171,7 +168,6 @@ export function FijosProximosCard({
           <UpcomingMarquee
             items={upcoming}
             categoriesById={categoriesById}
-            cardBg={cardBg}
           />
         ) : (
           <View style={styles.calmRow}>
@@ -336,58 +332,39 @@ const TICKET_WIDTH = 220
 const TICKET_GAP = 10
 
 /**
- * Marquee horizontal premium con animación CONTINUA (no withRepeat).
+ * Marquee horizontal de upcoming. Look-and-feel iOS (Apple Wallet /
+ * App Store featured row): items en horizontal scroll que cortan
+ * limpio en el borde del card, sin overlay shadows/fades. Animación
+ * continua via useFrameCallback + modulo (no withRepeat reset).
  *
- * Antes la animación usaba `withRepeat(withTiming(-setWidth), -1, false)`
- * — al llegar a `-setWidth` saltaba a 0 instantáneamente para repetir,
- * y aunque visualmente los items duplicados deberían cubrir ese reset,
- * un bug en el cálculo del setWidth (fullWidth/2 con padding) dejaba
- * un gap de ~11pt → el ojo capturaba el "salto" como un reinicio
- * brusco cada N segundos.
+ * Antes tenía edge fade gradients (LinearGradient overlay con color
+ * del card → transparente) — en dark mode el color del card es
+ * near-black y el alpha-blending creaba una "sombra gris oscura"
+ * en los laterales que el usuario reportó como invasiva. Removidos
+ * para abrazar el patrón iOS de "clean cut at the boundary".
  *
- * Ahora la animación usa `useFrameCallback` + modulo:
- *   · Cada frame (~16ms a 60fps), un shared value `elapsed` avanza
- *     `dt * SPEED / 1000` pixeles.
- *   · `translateX = -(elapsed % setWidth)` — al pasar setWidth, wrap
- *     a 0 vía modulo. La transición es 1 frame sin discontinuidad
- *     visible (los items duplicados están exactamente alineados).
- *   · Sin withRepeat → sin reset visible. Verdaderamente continuo.
- *
- * Edge fade gradients (left + right): items se desvanecen entrando
- * y saliendo, no se cortan hard. Técnica de tickers premium (Bloomberg).
- *
- * ReduceMotion: fallback a ScrollView estático con manual scroll.
+ * ReduceMotion-aware: fallback a ScrollView manual.
+ * Performance: animación en UI thread vía useFrameCallback + worklet.
  */
 function UpcomingMarquee({
   items,
   categoriesById,
-  cardBg,
 }: {
   items: FijoItem[]
   categoriesById?: Map<string, { id: string; name: string; color: string }>
-  cardBg: string
 }) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const elapsed = useSharedValue(0)
 
-  // Ancho exacto de un loop = items + gaps entre items + 1 gap extra
-  // entre el último item del set A y el primer item del set B.
-  // Para flexbox `gap`, hay (2N-1) gaps entre 2N items duplicados.
-  // El "loop unit" para wrap seamless es N items + N gaps (cada item
-  // "lleva" su gap-derecho para componer una unidad repetible).
   const setWidth = items.length * (TICKET_WIDTH + TICKET_GAP)
-
   const SPEED_PX_PER_SEC = 35
 
-  // useFrameCallback corre cada frame en UI thread. Avanza el shared
-  // value `elapsed` por dt * speed. El modulo se aplica en el
-  // useAnimatedStyle para wrap continuo.
   const frame = useFrameCallback((info) => {
     'worklet'
     const dt = info.timeSincePreviousFrame ?? 16
     elapsed.value += (dt * SPEED_PX_PER_SEC) / 1000
-  }, false) // start inactive — el useEffect lo activa según conds
+  }, false)
 
   useEffect(() => {
     const active = !reduced && setWidth > 0 && items.length > 0
@@ -396,14 +373,11 @@ function UpcomingMarquee({
   }, [reduced, setWidth, items.length, frame, elapsed])
 
   const animStyle = useAnimatedStyle(() => {
-    // Modulo defensivo (setWidth puede ser 0 transitoriamente).
     const w = setWidth > 0 ? setWidth : 1
     return {
       transform: [{ translateX: -(elapsed.value % w) }],
     }
   })
-
-  const fadeColors = [cardBg, 'rgba(0,0,0,0)'] as const
 
   if (reduced) {
     return (
@@ -424,20 +398,6 @@ function UpcomingMarquee({
             />
           ))}
         </ScrollView>
-        <LinearGradient
-          pointerEvents="none"
-          colors={fadeColors}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.fadeLeft}
-        />
-        <LinearGradient
-          pointerEvents="none"
-          colors={fadeColors}
-          start={{ x: 1, y: 0.5 }}
-          end={{ x: 0, y: 0.5 }}
-          style={styles.fadeRight}
-        />
       </View>
     )
   }
@@ -466,20 +426,6 @@ function UpcomingMarquee({
           />
         ))}
       </Animated.View>
-      <LinearGradient
-        pointerEvents="none"
-        colors={fadeColors}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.fadeLeft}
-      />
-      <LinearGradient
-        pointerEvents="none"
-        colors={fadeColors}
-        start={{ x: 1, y: 0.5 }}
-        end={{ x: 0, y: 0.5 }}
-        style={styles.fadeRight}
-      />
     </View>
   )
 }
@@ -873,34 +819,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'stretch',
   },
-  // Edge fade gradients — 32pt de ancho a cada lado. Color sólido del
-  // card → transparente. Hacen que los items aparezcan "emergiendo"
-  // por la derecha y "desvaneciéndose" por la izquierda en vez de
-  // cortarse hard contra el border del card.
-  fadeLeft: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 32,
-    zIndex: 1,
-  },
-  fadeRight: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 0,
-    width: 32,
-    zIndex: 1,
-  },
-  // ── Ticket UNIFICADO (sin divider interno) ──────────────────────
-  // 220pt fijo (TICKET_WIDTH constante) — uniformidad necesaria para
-  // el cálculo del loop seamless del marquee. Padding compacto.
-  // Layout vertical: top row (●name + [timing pill]) + hero amount.
+  // Edge fade gradients REMOVIDAS 2026-05-31 — el overlay color del
+  // card → transparente generaba una "sombra gris oscura" en los
+  // laterales (especialmente en dark mode, donde el cardBg
+  // near-black hacía visible el alpha-blend). Look-and-feel iOS
+  // prefiere "clean cut at the boundary" (Apple Wallet, App Store
+  // featured row) — overflow:hidden del container ya da el corte
+  // limpio sin overlay.
+  // ── Ticket — iOS look-and-feel ──────────────────────────────────
+  // Radius 12pt (iOS card standard, continuous-curve-friendly).
+  // Border hairline (StyleSheet.hairlineWidth, ~0.33pt en iOS retina
+  // moderna) — separación elegante sin "framing" visual. Padding
+  // matchea iOS list cells.
   ticket: {
     width: 220,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 6,
@@ -911,31 +845,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
+  // SF Pro-friendly: weight 600 (semibold) matchea iOS NavigationBar
+  // titles / Settings rows. Antes era 700 (bold) que se sentía pesado.
   ticketName: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.2,
   },
-  // Timing pill (chip) en la esquina derecha del top row.
+  // Timing pill — iOS notification chip / status badge feel:
+  // hairline border, padding tight (9×2), texto uppercase con tracking
+  // positivo (chip semantic). fontSize 10 con weight 700 (no 900 que
+  // se ve "screaming"). letterSpacing 0.8 evoca el look SF Compact.
   timingPill: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 2,
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     flexShrink: 0,
   },
   timingPillText: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 1,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     fontVariant: ['tabular-nums'],
   },
-  // Hero amount — el dato más impactante del ticket. Tabular nums,
-  // bold, letterSpacing tight para densidad sin perder legibilidad.
+  // Hero amount — el dato más impactante. iOS uses SF Pro Display /
+  // Rounded para números grandes; aprovechamos system font con
+  // tabular nums + tight tracking. fontSize 17 = iOS Body Large
+  // standard, weight 700 = matches iOS Headline.
   ticketAmount: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
