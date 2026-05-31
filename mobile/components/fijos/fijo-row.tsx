@@ -392,100 +392,18 @@ function FijoRowReal({
                 ) : null}
               </View>
               {/*
-                Sub-info STACKEADA en 2 líneas para que TODO entre sin
-                elipsis incluso en pantallas chicas / nombres largos:
-
-                  Línea 1 (identifying)   : catName · [chip del mes]
-                  Línea 2 (state/timing)  : detailLabel (full width)
-
-                Antes era una sola fila horizontal — con cat + chip +
-                detail + amount + pay button competían por el ancho y
-                "11d de mora" se cortaba a "11 d..". Stack vertical da
-                a cada pieza su línea propia + crece ~14pt verticales.
-
-                El CHIP DEL MES sigue siendo el ancla visual del estado
-                (tintado por accent del status — rojo overdue / peach
-                pending / lime paid / sky future). El detailLabel debajo
-                expande la info: "11d de mora" / "vence en 5d" / etc.
+                Body line 2: categoría como texto inline. Antes
+                competía con chips + badge por espacio horizontal —
+                ahora los chips se moveron a su propio strip dedicado
+                debajo del top row, así que la categoría tiene la fila
+                completa sin truncation.
               */}
-              <View style={styles.metaStack}>
-                <View style={styles.metaIdRow}>
-                  <Text
-                    style={[styles.metaCat, { color: catChipTextColor }]}
-                    numberOfLines={1}
-                  >
-                    {categoryName}
-                  </Text>
-                  {cuotaShort ? (
-                    <>
-                      <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
-                        ·
-                      </Text>
-                      <View
-                        style={[
-                          styles.monthChip,
-                          {
-                            backgroundColor: accent.bg,
-                            borderColor: accent.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[styles.monthChipText, { color: accent.solid }]}
-                          numberOfLines={1}
-                        >
-                          {cuotaShort}
-                        </Text>
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-                {/*
-                  Status badge — pill bg-tinted + icon prefix + texto
-                  bold. Le da peso visual a la info del estado/timing
-                  (dato más relevante del row: "qué pasa AHORA con esta
-                  cuota"). El icon engancha el ojo antes que el texto
-                  → estado scanneable en milisegundos.
-
-                  alignSelf: 'flex-start' para que el badge hug content
-                  (no se estire al ancho del body — sería pesado visual).
-                */}
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: accent.bg,
-                      borderColor: accent.border,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name={detail.icon}
-                    size={11}
-                    color={accent.solid}
-                  />
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-                      {
-                        color: accent.solid,
-                        // Overdue: 800. Pending today: 800 (urgencia).
-                        // Resto: 700.
-                        fontWeight:
-                          status === 'overdue' || detail.label === 'Hoy' ? '800' : '700',
-                      },
-                    ]}
-                    // numberOfLines=1: garantiza que el badge nunca
-                    // wrappee. El wording fue diseñado para caber en
-                    // una línea en todos los casos; si por algún
-                    // motivo se pasara, mejor truncar que romper la
-                    // altura del row.
-                    numberOfLines={1}
-                  >
-                    {detail.label}
-                  </Text>
-                </View>
-              </View>
+              <Text
+                style={[styles.catLine, { color: catChipTextColor }]}
+                numberOfLines={1}
+              >
+                {categoryName}
+              </Text>
             </View>
 
             <View style={styles.amountBlock}>
@@ -527,6 +445,67 @@ function FijoRowReal({
                 onPress={() => onMarkPaid(fijo.id)}
               />
             ) : null}
+          </View>
+
+          {/*
+            Bottom strip — chip del mes + status badge en su PROPIA
+            fila debajo del top row. Antes vivían dentro del body
+            apretados al lado del amount + pay button; ahora tienen
+            full width disponible y se leen como "footer" del row.
+            Visual rationale (impeccable + ui-ux-pro-max):
+              · Cada chip respira: no hay competencia por espacio.
+              · El usuario lee top (qué es + cuánto + acción) y
+                después bottom (estado) — flujo de lectura natural.
+              · Card crece ~20pt verticales pero gana mucho en
+                claridad y distribución.
+          */}
+          <View style={styles.metaBottomStrip}>
+            {cuotaShort ? (
+              <View
+                style={[
+                  styles.monthChip,
+                  {
+                    backgroundColor: accent.bg,
+                    borderColor: accent.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.monthChipText, { color: accent.solid }]}
+                  numberOfLines={1}
+                >
+                  {cuotaShort}
+                </Text>
+              </View>
+            ) : null}
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: accent.bg,
+                  borderColor: accent.border,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name={detail.icon}
+                size={12}
+                color={accent.solid}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  {
+                    color: accent.solid,
+                    fontWeight:
+                      status === 'overdue' || detail.label === 'Hoy' ? '800' : '700',
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {detail.label}
+              </Text>
+            </View>
           </View>
 
           {open ? (
@@ -1194,30 +1173,27 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
-  // Sub-info stack: 2 líneas verticales para que catName + chip + detail
-  // entren sin elipsis incluso en pantallas chicas.
-  //   Línea 1 (metaIdRow): catName · chip del mes
-  //   Línea 2 (metaDue): detail label (full width, hasta 2 líneas wrap)
-  // Card crece ~14pt verticales — preferible a truncar info que el
-  // usuario necesita ver completa.
-  metaStack: {
-    marginTop: 4,
-    gap: 3,
-  },
-  metaIdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metaCat: {
-    fontSize: 11.5,
+  // Categoría como texto inline en el body (línea 2 del top row).
+  // Era un metaStack con chip + badge — ahora los chips se moveron al
+  // metaBottomStrip dedicado, así que la categoría tiene su línea
+  // sola en el body.
+  catLine: {
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: -0.1,
-    flexShrink: 0,
+    marginTop: 3,
   },
-  metaSep: {
-    fontSize: 11.5,
-    fontWeight: '400',
+  // Bottom strip de la card — fila dedicada para los chips de status
+  // (mes + badge). Vive debajo del top row, con full width del card.
+  // Sin marginLeft → arranca desde el padding izquierdo del card
+  // (no alineado con el body text, sino con el icon tile). Da
+  // continuidad visual: el bloque entero del card se lee como un
+  // "modulo" con info-arriba + status-abajo.
+  metaBottomStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
   },
   // Status badge — pill MUY compacto. El wording está diseñado para
   // caber siempre en 1 línea ("Vencida 11d", "En 5d", "Pagada",
