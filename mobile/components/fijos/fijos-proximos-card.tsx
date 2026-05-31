@@ -1,18 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type LayoutChangeEvent,
 } from 'react-native'
 import Animated, {
-  Easing,
   cancelAnimation,
   useAnimatedStyle,
+  useFrameCallback,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -325,26 +324,39 @@ function UrgentHeaderDot({ color }: { color: string }) {
   )
 }
 
+// ── Geometría del marquee ─────────────────────────────────────────
+// Constantes hardcodeadas porque el ANCHO DE LOOP debe coincidir
+// EXACTAMENTE con el ancho real del set de items para que el wrap
+// sea seamless (sin "jump" visible en el reset). Antes usaba
+// onLayout / fullWidth/2 que daba un valor mal calculado por el
+// paddingHorizontal del row, generando un brinco de ~11pt en cada
+// loop — el usuario lo percibía como "se reinicia". Ahora calc
+// explícito: items.length * (ITEM_WIDTH + ITEM_GAP).
+const TICKET_WIDTH = 220
+const TICKET_GAP = 10
+
 /**
- * Marquee horizontal "premium" de próximos a pagar.
+ * Marquee horizontal premium con animación CONTINUA (no withRepeat).
  *
- * Visual:
- *   · Items renderean DUPLICADOS dentro de un Animated.View que
- *     slidea de derecha → izquierda. Cuando el primer set sale por
- *     la izquierda, el segundo set queda exactamente en posición
- *     inicial → loop seamless sin "jump".
- *   · Edge fade gradients (left + right): items se desvanecen
- *     entrando/saliendo del card en vez de cortarse hard. Misma
- *     técnica que tickers premium tipo Bloomberg / Apple Stocks.
- *   · Speed: 35 px/seg — read-speed cómodo sin marear.
- *   · Easing: linear (ticker = velocidad constante, no orgánica).
+ * Antes la animación usaba `withRepeat(withTiming(-setWidth), -1, false)`
+ * — al llegar a `-setWidth` saltaba a 0 instantáneamente para repetir,
+ * y aunque visualmente los items duplicados deberían cubrir ese reset,
+ * un bug en el cálculo del setWidth (fullWidth/2 con padding) dejaba
+ * un gap de ~11pt → el ojo capturaba el "salto" como un reinicio
+ * brusco cada N segundos.
  *
- * Performance: animación corre en UI thread vía Reanimated v3
- * `withRepeat` — 0 impacto JS thread, scroll de la screen no se
- * afecta. ReduceMotion-aware: fallback a ScrollView manual.
+ * Ahora la animación usa `useFrameCallback` + modulo:
+ *   · Cada frame (~16ms a 60fps), un shared value `elapsed` avanza
+ *     `dt * SPEED / 1000` pixeles.
+ *   · `translateX = -(elapsed % setWidth)` — al pasar setWidth, wrap
+ *     a 0 vía modulo. La transición es 1 frame sin discontinuidad
+ *     visible (los items duplicados están exactamente alineados).
+ *   · Sin withRepeat → sin reset visible. Verdaderamente continuo.
  *
- * Diseño de Item: ver `MarqueeTicket` abajo (ticket-style con timing
- * block + info block + urgency treatment para ≤2d).
+ * Edge fade gradients (left + right): items se desvanecen entrando
+ * y saliendo, no se cortan hard. Técnica de tickers premium (Bloomberg).
+ *
+ * ReduceMotion: fallback a ScrollView estático con manual scroll.
  */
 function UpcomingMarquee({
   items,
@@ -353,43 +365,44 @@ function UpcomingMarquee({
 }: {
   items: FijoItem[]
   categoriesById?: Map<string, { id: string; name: string; color: string }>
-  /** Color de fondo del card padre — usado para las edge fade
-   *  gradients que tienen que terminar en este color para "desvanecer"
-   *  hacia el card. */
   cardBg: string
 }) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
-  const translateX = useSharedValue(0)
-  const [setWidth, setSetWidth] = useState(0)
+  const elapsed = useSharedValue(0)
 
-  const onLayoutRow = (e: LayoutChangeEvent) => {
-    const full = e.nativeEvent.layout.width
-    if (full > 0 && full / 2 !== setWidth) {
-      setSetWidth(full / 2)
-    }
-  }
+  // Ancho exacto de un loop = items + gaps entre items + 1 gap extra
+  // entre el último item del set A y el primer item del set B.
+  // Para flexbox `gap`, hay (2N-1) gaps entre 2N items duplicados.
+  // El "loop unit" para wrap seamless es N items + N gaps (cada item
+  // "lleva" su gap-derecho para componer una unidad repetible).
+  const setWidth = items.length * (TICKET_WIDTH + TICKET_GAP)
+
+  const SPEED_PX_PER_SEC = 35
+
+  // useFrameCallback corre cada frame en UI thread. Avanza el shared
+  // value `elapsed` por dt * speed. El modulo se aplica en el
+  // useAnimatedStyle para wrap continuo.
+  const frame = useFrameCallback((info) => {
+    'worklet'
+    const dt = info.timeSincePreviousFrame ?? 16
+    elapsed.value += (dt * SPEED_PX_PER_SEC) / 1000
+  }, false) // start inactive — el useEffect lo activa según conds
 
   useEffect(() => {
-    if (setWidth === 0 || reduced) return
-    const SPEED_PX_PER_SEC = 35
-    const duration = (setWidth / SPEED_PX_PER_SEC) * 1000
-    translateX.value = 0
-    translateX.value = withRepeat(
-      withTiming(-setWidth, { duration, easing: Easing.linear }),
-      -1,
-      false,
-    )
-    return () => cancelAnimation(translateX)
-  }, [setWidth, reduced, translateX])
+    const active = !reduced && setWidth > 0 && items.length > 0
+    frame.setActive(active)
+    if (!active) elapsed.value = 0
+  }, [reduced, setWidth, items.length, frame, elapsed])
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }))
+  const animStyle = useAnimatedStyle(() => {
+    // Modulo defensivo (setWidth puede ser 0 transitoriamente).
+    const w = setWidth > 0 ? setWidth : 1
+    return {
+      transform: [{ translateX: -(elapsed.value % w) }],
+    }
+  })
 
-  // Conversion del cardBg a "transparent" para las gradient stops.
-  // expo-linear-gradient acepta colors array, así que pasamos
-  // [cardBg, transparent].
   const fadeColors = [cardBg, 'rgba(0,0,0,0)'] as const
 
   if (reduced) {
@@ -411,7 +424,6 @@ function UpcomingMarquee({
             />
           ))}
         </ScrollView>
-        {/* Edge fades estáticas en modo reduced también. */}
         <LinearGradient
           pointerEvents="none"
           colors={fadeColors}
@@ -432,10 +444,7 @@ function UpcomingMarquee({
 
   return (
     <View style={styles.marqueeContainer}>
-      <Animated.View
-        style={[styles.marqueeRow, animStyle]}
-        onLayout={onLayoutRow}
-      >
+      <Animated.View style={[styles.marqueeRow, animStyle]}>
         {items.map((item) => (
           <MarqueeTicket
             key={`a-${item.id}`}
@@ -457,10 +466,6 @@ function UpcomingMarquee({
           />
         ))}
       </Animated.View>
-      {/* Edge fade gradients — los items se desvanecen entrando y
-          saliendo del card en vez de cortarse hard. Misma técnica
-          que tickers premium (Bloomberg, Apple Stocks). pointerEvents
-          none para no interceptar taps. */}
       <LinearGradient
         pointerEvents="none"
         colors={fadeColors}
@@ -480,34 +485,31 @@ function UpcomingMarquee({
 }
 
 /**
- * MarqueeTicket — item individual del marquee, premium ticket-style.
+ * MarqueeTicket — item individual del marquee, UNIFICADO (sin
+ * divider interno entre blocks como tenía la versión anterior).
  *
- * Layout horizontal:
- *   ┌────────────┬──────────────────────┐
- *   │  EN        │  ● Cochera           │
- *   │  5 días    │  $103.500            │
- *   └────────────┴──────────────────────┘
+ * Layout vertical compacto:
+ *   ┌─────────────────────────────────────┐
+ *   │ ●Cochera                  [EN 5d]   │  ← top row: name + timing pill
+ *   │ $103.500                            │  ← hero amount
+ *   └─────────────────────────────────────┘
  *
- * - Left block (timing): label "EN" (uppercase, micro) sobre número
- *   grande + unidad ("5 días" / "HOY" / "MAÑANA"). Visual anchor del
- *   ticket — el ojo capta primero "cuándo".
- * - Right block (info): catColor dot + nombre del fijo (línea 1),
- *   amount tabular (línea 2).
- * - Divider vertical sutil entre los dos blocks.
+ * - **Top row**: categoryDot + nombre (flex 1, truncate) + timing pill
+ *   (auto-width chip a la derecha). Una sola fila — sin separación
+ *   visual rara entre "info" e "id".
+ * - **Hero amount**: el monto es el dato más impactante; ocupa la
+ *   parte inferior del ticket con tipografía grande tabular.
+ * - **Timing pill** (chip):
+ *   · Urgent (≤2d): bg + texto peach/red brand
+ *   · No urgent: bg + texto neutral muted
  *
- * Urgency treatment (≤2d):
- *   · Bg tinted peach/red (alpha bajo)
- *   · Border 1pt peach/red brand-deep
- *   · Timing number en color brand-deep (no muted)
- *   · Subtle pulse en el border (2.4s warm — solo borderColor opacity)
+ * Sin pulse por-item (la versión anterior tenía un border pulse que
+ * competía con la motion del marquee — distractor). El header dot
+ * pulsando ya señala la urgencia general; los items individuales no
+ * necesitan animarse más allá del movimiento horizontal.
  *
- * No urgent (>2d):
- *   · Bg sutil (alpha 0.04)
- *   · Border 1pt line
- *   · Timing number en textMuted
- *   · Sin pulse
- *
- * Width fijo (180pt) para uniformidad de velocidad del marquee.
+ * Width: TICKET_WIDTH (220pt) fijo — uniformidad necesaria para el
+ * cálculo del loop seamless.
  */
 function MarqueeTicket({
   item,
@@ -518,131 +520,77 @@ function MarqueeTicket({
   category?: { id: string; name: string; color: string }
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
-  const reduced = useReducedMotion()
   const diffDays = Math.max(0, item.daysUntilDue)
   const urgent = diffDays <= 2
 
-  // Timing display: lead "EN" (excepto HOY/MAÑANA), número grande,
-  // unidad chica.
-  const timing = (() => {
-    if (diffDays === 0) return { lead: '', main: 'HOY', tail: '' }
-    if (diffDays === 1) return { lead: '', main: 'MAÑANA', tail: '' }
-    return { lead: 'EN', main: String(diffDays), tail: diffDays === 1 ? 'día' : 'días' }
-  })()
+  const timingText =
+    diffDays === 0
+      ? 'HOY'
+      : diffDays === 1
+        ? 'MAÑANA'
+        : `EN ${diffDays}D`
 
-  // Paleta urgente vs neutral. `urgentBorderRgba` ya no se
-  // pre-calcula afuera del worklet — el borderStyle lo computa con
-  // alpha animada según el pulse.
   const urgentSolid = theme.isDark ? '#F2A78C' : '#B84014'
   const urgentBgRgba = theme.isDark
-    ? 'rgba(242,167,140,0.10)'
-    : 'rgba(184,64,20,0.06)'
+    ? 'rgba(242,167,140,0.16)'
+    : 'rgba(184,64,20,0.10)'
+  const urgentBorderRgba = theme.isDark
+    ? 'rgba(242,167,140,0.40)'
+    : 'rgba(184,64,20,0.28)'
 
-  const bg = urgent
-    ? urgentBgRgba
-    : theme.isDark
-      ? 'rgba(255,255,255,0.035)'
-      : 'rgba(15,42,30,0.035)'
-
-  // Border pulse (solo urgent) — opacity oscila para que el ticket
-  // "respire" pidiendo atención. ReduceMotion-aware.
-  const pulse = useSharedValue(0)
-  useEffect(() => {
-    if (!urgent || reduced) {
-      cancelAnimation(pulse)
-      pulse.value = 0
-      return
-    }
-    pulse.value = withRepeat(
-      withTiming(1, { duration: 1200, easing: motionEasings.warm }),
-      -1,
-      true, // reverse = breath-like
-    )
-    return () => cancelAnimation(pulse)
-  }, [urgent, reduced, pulse])
-
-  const borderStyle = useAnimatedStyle(() => {
-    if (!urgent) {
-      return { borderColor: theme.colors.line }
-    }
-    // Border opacity oscila 0.45 → 0.85 (light) o 0.45 → 0.95 (dark)
-    const minA = 0.45
-    const maxA = theme.isDark ? 0.95 : 0.85
-    const a = minA + pulse.value * (maxA - minA)
-    return {
-      borderColor: theme.isDark
-        ? `rgba(242,167,140,${a})`
-        : `rgba(184,64,20,${a})`,
-    }
-  })
+  // Ticket bg: muy sutil. El timing pill carga el color de status.
+  const ticketBg = theme.isDark
+    ? 'rgba(255,255,255,0.035)'
+    : 'rgba(15,42,30,0.035)'
 
   const catColor = category?.color ?? theme.colors.peach
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.ticket,
-        { backgroundColor: bg },
-        borderStyle,
+        {
+          backgroundColor: ticketBg,
+          borderColor: theme.colors.line,
+        },
       ]}
     >
-      {/* Timing block (left) */}
-      <View style={styles.ticketTimingBlock}>
-        {timing.lead ? (
-          <Text
-            style={[
-              styles.ticketTimingLead,
-              { color: urgent ? urgentSolid : theme.colors.textMuted },
-            ]}
-          >
-            {timing.lead}
-          </Text>
-        ) : null}
+      <View style={styles.ticketTopRow}>
+        <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
         <Text
-          style={[
-            styles.ticketTimingMain,
-            {
-              color: urgent ? urgentSolid : theme.colors.text,
-              // HOY / MAÑANA son strings — los reducimos un poco para
-              // que no rompan el ancho.
-              fontSize: timing.lead === '' ? 16 : 24,
-            },
-          ]}
+          style={[styles.ticketName, { color: theme.colors.text }]}
           numberOfLines={1}
         >
-          {timing.main}
+          {item.name}
         </Text>
-        {timing.tail ? (
+        <View
+          style={[
+            styles.timingPill,
+            {
+              backgroundColor: urgent
+                ? urgentBgRgba
+                : theme.isDark
+                  ? 'rgba(255,255,255,0.06)'
+                  : 'rgba(15,42,30,0.05)',
+              borderColor: urgent ? urgentBorderRgba : theme.colors.line,
+            },
+          ]}
+        >
           <Text
             style={[
-              styles.ticketTimingTail,
+              styles.timingPillText,
               { color: urgent ? urgentSolid : theme.colors.textMuted },
             ]}
-          >
-            {timing.tail}
-          </Text>
-        ) : null}
-      </View>
-
-      {/* Divider vertical entre blocks */}
-      <View style={[styles.ticketDivider, { backgroundColor: theme.colors.line }]} />
-
-      {/* Info block (right) */}
-      <View style={styles.ticketInfoBlock}>
-        <View style={styles.ticketNameRow}>
-          <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-          <Text
-            style={[styles.ticketName, { color: theme.colors.text }]}
             numberOfLines={1}
           >
-            {item.name}
+            {timingText}
           </Text>
         </View>
-        <Text style={[styles.ticketAmount, { color: theme.colors.text }]}>
-          {formatMoney(item.amount)}
-        </Text>
       </View>
-    </Animated.View>
+      <Text style={[styles.ticketAmount, { color: theme.colors.text }]}>
+        {formatMoney(item.amount)}
+      </Text>
+    </View>
   )
 }
 
@@ -945,73 +893,50 @@ const styles = StyleSheet.create({
     width: 32,
     zIndex: 1,
   },
-  // ── Ticket (item del marquee) ───────────────────────────────────
-  // Layout horizontal: timing block (left) + divider + info block (right).
-  // 180pt fijo para uniformidad de velocidad del marquee.
+  // ── Ticket UNIFICADO (sin divider interno) ──────────────────────
+  // 220pt fijo (TICKET_WIDTH constante) — uniformidad necesaria para
+  // el cálculo del loop seamless del marquee. Padding compacto.
+  // Layout vertical: top row (●name + [timing pill]) + hero amount.
   ticket: {
-    width: 180,
-    flexDirection: 'row',
-    alignItems: 'stretch',
+    width: 220,
     borderRadius: 14,
     borderWidth: 1,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    gap: 12,
-  },
-  // Timing block: pequeño bloque vertical a la izquierda. "EN" (small)
-  // sobre número grande (tipo "5") sobre "días" (small). Visual anchor.
-  ticketTimingBlock: {
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    minWidth: 44,
-  },
-  ticketTimingLead: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1.4,
-    lineHeight: 11,
-  },
-  ticketTimingMain: {
-    fontWeight: '900',
-    letterSpacing: -0.8,
-    fontVariant: ['tabular-nums'],
-    // fontSize se inyecta inline según si es número grande (24) o
-    // texto corto tipo HOY/MAÑANA (16).
-    lineHeight: 26,
-  },
-  ticketTimingTail: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    lineHeight: 11,
-  },
-  // Divider vertical entre timing block e info block. 1pt theme.line.
-  ticketDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    opacity: 0.5,
-  },
-  ticketInfoBlock: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  ticketNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 6,
   },
+  // Top row: catDot + nombre (flex 1) + timing pill (auto right).
+  ticketTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   ticketName: {
-    fontSize: 12.5,
+    flex: 1,
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.2,
-    flexShrink: 1,
   },
+  // Timing pill (chip) en la esquina derecha del top row.
+  timingPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  timingPillText: {
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  // Hero amount — el dato más impactante del ticket. Tabular nums,
+  // bold, letterSpacing tight para densidad sin perder legibilidad.
   ticketAmount: {
-    fontSize: 14,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
   upcomingList: { gap: 0 },
