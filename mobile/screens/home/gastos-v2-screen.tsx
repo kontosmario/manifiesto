@@ -521,6 +521,12 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     return merged
   }, [controller.groups, controller.selectedDay, cycleIncomeEvents])
 
+  const memberById = useMemo(() => {
+    const map = new Map<string, (typeof familyMembers)[number]>()
+    for (const m of familyMembers) map.set(m.id, m)
+    return map
+  }, [familyMembers])
+
   const renderItem = useCallback(
     ({ item: mv }: { item: MovementItem }) => {
       // Income row — usamos ActivityRowV2 (amount positivo en verde +
@@ -530,7 +536,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         const income = mv.income
         const kindLabel = INCOME_KIND_LABEL_G[income.kind]
         const title = income.description?.trim() || kindLabel
-        const who = familyMembers.find((m) => m.id === income.created_by)
+        const who = memberById.get(income.created_by)
         const isIncomePending =
           deleteIncomeMutation.isPending &&
           deleteIncomeMutation.variables?.id === income.id
@@ -575,7 +581,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       }
       const item = mv.expense
       const cat = controller.categoriesById.get(item.category_id)
-      const who = familyMembers.find((m) => m.id === item.created_by)
+      const who = memberById.get(item.created_by)
       const actions: SwipeAction[] = [
         {
           label: 'Eliminar',
@@ -637,7 +643,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     },
     [
       controller.categoriesById,
-      familyMembers,
+      memberById,
       handleDelete,
       handleDeleteIncome,
       deleteExpenseMutation,
