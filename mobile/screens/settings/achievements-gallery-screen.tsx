@@ -427,10 +427,12 @@ function AchievementCard({ item }: AchievementCardProps) {
     // Delay slightly so the RiseView stagger entrance lands first.
     sheenOpacity.value = withDelay(
       180,
+      // @motion-allow: sheen fade-in tuned to 60ms — sub-micro decorative one-off, not UI feedback
       withTiming(1, { duration: 60, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
     )
     sheenX.value = withDelay(
       180,
+      // @motion-allow: sheen sweep tuned to 520ms — designer-set, between slow(480) and breath(2800)
       withTiming(340, {
         duration: 520,
         easing: Easing.bezier(0.16, 1, 0.30, 1),
@@ -439,6 +441,7 @@ function AchievementCard({ item }: AchievementCardProps) {
     // Fade the sheen out near the end so it doesn't linger.
     sheenOpacity.value = withDelay(
       500,
+      // @motion-allow: sheen fade-out tuned to 160ms — between micro(120) and quick(180)
       withTiming(0, { duration: 160, easing: Easing.bezier(0.16, 1, 0.30, 1) }),
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
