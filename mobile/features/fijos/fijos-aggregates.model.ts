@@ -126,37 +126,37 @@ const HIKE_MIN_DELTA_PCT = 5
 /**
  * Translates next_due_on + payment record + today + ciclo activo into a status:
  *   paid     → payment record para este ciclo (gana sobre todo lo demás)
- *   overdue  → next_due_on < HOY, sin pago → ya venció y no se pagó
- *              (cubre mora arrastrada de ciclos previos Y cuotas del
- *              ciclo activo cuyo día ya pasó).
- *   future   → next_due_on >= cycleEnd, sin pago → no toca este ciclo
- *              (típicamente trimestral / semestral / anual recién pagado).
- *   pending  → otherwise: next_due_on cae entre HOY y cycleEnd → la
- *              cuota de este ciclo todavía no venció.
+ *              O cycle covered by prior payment (next_due_on >= cycleEnd
+ *              AND last_paid_at != null) — caso "ya pagué este fijo,
+ *              próxima cuota cae después del ciclo".
+ *   overdue  → next_due_on < HOY, sin pago → ya venció y no se pagó.
+ *   future   → next_due_on >= cycleEnd Y last_paid_at == null →
+ *              fijo creado recién, sin pagos, próxima cuota lejana.
+ *   pending  → next_due_on cae entre HOY y cycleEnd → cuota toca, no
+ *              venció.
  *
- * Historia del cambio:
+ * Historia:
  *
- *   v1 (pre-2026-05-30): comparaba `next_due_on < today` para
- *   overdue. Tenía bug de recurrencia: un trimestral pagado en abril
- *   con next_due_on=julio aparecía como pendiente en mayo y junio
- *   aunque no tocaba.
+ *   v1 (pre-2026-05-30): solo `next_due_on < today` → overdue. Bug
+ *   de recurrencia con trimestrales.
  *
- *   v2 (2026-05-30 inicial): cambió a comparar contra `cycleStart`
- *   para overdue y `cycleEnd` para future. Resolvió el bug de
- *   recurrencia pero introdujo otro: un fijo con next_due_on=día 22
- *   y today=día 30 (mismo mes / mismo ciclo) ya venció en la vida
- *   real, pero como `next_due_on >= cycleStart`, quedaba como
- *   `pending` cuando debería ser `overdue` (mostrar en tab vencidos).
+ *   v2 (2026-05-30 inicial): `next_due_on < cycleStart` → overdue.
+ *   Resolvió recurrencia pero rompió cuotas del ciclo activo ya
+ *   vencidas (quedaban pending).
  *
- *   v3 (HOY): combina ambos:
- *     - paid: payment en cycle (igual que v2).
- *     - overdue: `next_due_on < today` (igual que v1) — cubre
- *       MORA arrastrada Y cuotas del ciclo activo ya vencidas.
- *     - future: `next_due_on >= cycleEnd` (igual que v2) — gating
- *       de recurrencia (no se mezcla con pending del ciclo).
- *     - pending: el resto (today <= next_due_on < cycleEnd).
+ *   v3 (2026-05-30 refinado): `next_due_on < today` → overdue;
+ *   `next_due_on >= cycleEnd` → future. Cubre los 2 casos pero
+ *   ignora "cycle covered by past payment": fijos pagados
+ *   anticipados con next_due_on que avanzó más allá del ciclo
+ *   (ej: Claude pagado 13 mayo, next_due_on=21 junio, cycle activo
+ *   termina 20 junio → quedaba como 'future' cuando el user lo
+ *   percibía como 'paid').
  *
- *   El `cycleStart` ya no se necesita en este check.
+ *   v4 (HOY): agrega la regla "cycle covered by prior payment". Si
+ *   next_due_on >= cycleEnd Y last_paid_at != null → 'paid' (el
+ *   ciclo está cubierto por un pago previo, no hay cuota que toque
+ *   en este ciclo). Solo cae a 'future' si NUNCA se pagó (fijo
+ *   nuevo).
  */
 function computeItemStatus(input: {
   item: FixedExpense
@@ -187,11 +187,15 @@ function computeItemStatus(input: {
     cycleEnd.getUTCDate(),
   )
   // 1) Ya pasó la fecha de vencimiento y no se pagó → overdue.
-  //    Cubre mora arrastrada (next_due_on en ciclos previos) y
-  //    cuotas del ciclo actual cuyo día ya pasó.
   if (dueUtc < todayUtc) return 'overdue'
-  // 2) Vencimiento cae en un ciclo posterior → future (no toca).
-  if (dueUtc >= endUtc) return 'future'
+  // 2) Vencimiento cae en un ciclo posterior.
+  //    Si hay last_paid_at (fijo ya pagado al menos una vez) → 'paid':
+  //    el ciclo activo está cubierto por el pago previo, la próxima
+  //    cuota cae después del ciclo. Si nunca se pagó → 'future'
+  //    (típicamente fijo recién creado con next_due_on en futuro).
+  if (dueUtc >= endUtc) {
+    return item.last_paid_at ? 'paid' : 'future'
+  }
   // 3) Vencimiento entre HOY y cycleEnd → pending (toca este ciclo,
   //    todavía no venció).
   return 'pending'
@@ -295,14 +299,27 @@ export function summarizeFijos(input: {
         cycleEnd,
       })
       const payment = paymentByFixedExpense.get(i.id) ?? null
-      // cuotaMonth: para paid, el period_month del payment; para los
-      // otros estados, el mes del next_due_on (la cuota que toca o tocó).
-      const cuotaMonth =
-        status === 'paid' && payment
-          ? payment.periodMonth.slice(0, 7) + '-01'
-          : i.next_due_on
-            ? i.next_due_on.slice(0, 7) + '-01'
-            : null
+      // cuotaMonth: qué cuota cubre/toca este row.
+      //   · paid con payment en cycle → period_month del payment
+      //     (cuota recién cubierta).
+      //   · paid via coverage (next_due_on >= cycleEnd + last_paid_at):
+      //     derivar period_month de la cuota PREVIA al next_due_on
+      //     (next_due_on - 1 frequency). Ej: Claude next_due_on=jun/21
+      //     monthly → cuota cubierta = may/21 → cuotaMonth=may.
+      //   · pending/overdue/future sin payment en cycle → mes del
+      //     next_due_on (cuota que toca o tocó).
+      const cuotaMonth = (() => {
+        if (status === 'paid' && payment) {
+          return payment.periodMonth.slice(0, 7) + '-01'
+        }
+        if (status === 'paid' && !payment) {
+          // Paid-via-coverage: la cuota cubierta es la PREVIA al
+          // next_due_on actual.
+          const prev = previousCuotaPeriodMonth(i)
+          if (prev) return prev
+        }
+        return i.next_due_on ? i.next_due_on.slice(0, 7) + '-01' : null
+      })()
       const annualCost = computeAnnualCost(i)
       // Para pctOfIncome normalizamos el costo a "equivalente mensual"
       // y lo dividimos por monthlyIncome. Lo más comparable entre fijos
@@ -418,6 +435,48 @@ function detectHikes(input: {
   }
   alerts.sort((a, b) => b.deltaPct - a.deltaPct)
   return alerts.slice(0, 3)
+}
+
+/**
+ * Para un fijo en estado "paid-via-coverage" (status='paid' sin un
+ * payment record en el cycle activo), deriva el `period_month` (YYYY-MM-01)
+ * de la cuota cubierta = `next_due_on - 1 frequency`.
+ *
+ * Ej: Claude next_due_on=2026-06-21 monthly → previa = 2026-05-21 →
+ * cuotaMonth = '2026-05-01'. El user ve "Mayo · pagada", que
+ * corresponde a la cuota real cubierta por el pago del 13 mayo.
+ *
+ * Para frequencies week-based (weekly, biweekly) el concepto de
+ * "period month" es menos limpio — devolvemos el mes del next_due_on
+ * shift back por la cantidad de days correspondiente.
+ */
+function previousCuotaPeriodMonth(item: FixedExpense): string | null {
+  if (!item.next_due_on) return null
+  const due = new Date(item.next_due_on)
+  switch (item.frequency) {
+    case 'weekly':
+      due.setUTCDate(due.getUTCDate() - 7)
+      break
+    case 'biweekly':
+      due.setUTCDate(due.getUTCDate() - 14)
+      break
+    case 'monthly':
+      due.setUTCMonth(due.getUTCMonth() - 1)
+      break
+    case 'quarterly':
+      due.setUTCMonth(due.getUTCMonth() - 3)
+      break
+    case 'semiannual':
+      due.setUTCMonth(due.getUTCMonth() - 6)
+      break
+    case 'annual':
+      due.setUTCFullYear(due.getUTCFullYear() - 1)
+      break
+    default:
+      due.setUTCMonth(due.getUTCMonth() - 1)
+  }
+  const iso = due.toISOString().slice(0, 7) // YYYY-MM
+  return `${iso}-01`
 }
 
 /**
