@@ -18,13 +18,22 @@ import {
 
 const THEME_PREFERENCE_KEY = 'manifiesto:theme-preference'
 
-interface ThemeContextValue {
+interface ThemeModeContextValue {
   preference: ThemePreference
   setPreference: (value: ThemePreference) => void
-  theme: AppTheme
+  resolvedMode: 'light' | 'dark'
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+// Theme split: `ThemeMode` changes when the user toggles
+// preference (rare). `ThemeTokens` is a frozen palette derived from
+// the mode. Splitting lets hot-path subscribers (row components
+// re-rendered hundreds of times) consume only the tokens — flipping
+// preference invalidates the mode context, the tokens context
+// recomputes once, but components subscribed to `useThemeTokens()`
+// only re-render once (not on every parent state change that
+// happens to bubble through `useAppTheme()`).
+const ThemeModeContext = createContext<ThemeModeContextValue | null>(null)
+const ThemeTokensContext = createContext<AppTheme | null>(null)
 
 export function AppThemeProvider({ children }: PropsWithChildren) {
   const systemColorScheme = useColorScheme()
@@ -32,13 +41,9 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let isMounted = true
-
     void (async () => {
       const storedPreference = await getPersistentValue(THEME_PREFERENCE_KEY)
-      if (!isMounted) {
-        return
-      }
-
+      if (!isMounted) return
       if (
         storedPreference === 'system' ||
         storedPreference === 'light' ||
@@ -47,59 +52,72 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
         setPreferenceState(storedPreference)
       }
     })()
-
     return () => {
       isMounted = false
     }
   }, [])
 
-  const resolvedMode =
+  const resolvedMode: 'light' | 'dark' =
     preference === 'system' ? (systemColorScheme === 'dark' ? 'dark' : 'light') : preference
+
   const setPreference = useCallback((nextPreference: ThemePreference) => {
     setPreferenceState(nextPreference)
     void setPersistentValue(THEME_PREFERENCE_KEY, nextPreference)
   }, [])
 
-  const value = useMemo<ThemeContextValue>(() => {
-    return {
-      preference,
-      setPreference,
-      theme: buildTheme(resolvedMode),
-    }
-  }, [preference, resolvedMode, setPreference])
+  const modeValue = useMemo<ThemeModeContextValue>(
+    () => ({ preference, setPreference, resolvedMode }),
+    [preference, setPreference, resolvedMode],
+  )
+  const tokens = useMemo<AppTheme>(() => buildTheme(resolvedMode), [resolvedMode])
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeModeContext.Provider value={modeValue}>
+      <ThemeTokensContext.Provider value={tokens}>{children}</ThemeTokensContext.Provider>
+    </ThemeModeContext.Provider>
+  )
 }
 
-export function useAppTheme() {
-  const value = useContext(ThemeContext)
+export function useThemeMode(): ThemeModeContextValue {
+  const value = useContext(ThemeModeContext)
   if (!value) {
-    throw new Error('useAppTheme must be used within AppThemeProvider.')
+    throw new Error('useThemeMode must be used within AppThemeProvider.')
   }
-
   return value
 }
 
-/**
- * Resolves the per-mode hue variant for a category by slug or id.
- * Known slugs (comida, transporte, casa, salud, ocio, servicios, ropa, otros)
- * return their canonical hue. Any other string hashes deterministically onto
- * one of the canonical hues.
- */
+export function useThemeTokens(): AppTheme {
+  const value = useContext(ThemeTokensContext)
+  if (!value) {
+    throw new Error('useThemeTokens must be used within AppThemeProvider.')
+  }
+  return value
+}
+
+// Backwards-compat shim. New code (especially hot-path row
+// components) should consume `useThemeTokens()` directly to avoid
+// re-rendering when only the preference changes.
+export function useAppTheme(): {
+  preference: ThemePreference
+  setPreference: (value: ThemePreference) => void
+  theme: AppTheme
+} {
+  const mode = useThemeMode()
+  const theme = useThemeTokens()
+  return useMemo(
+    () => ({ preference: mode.preference, setPreference: mode.setPreference, theme }),
+    [mode.preference, mode.setPreference, theme],
+  )
+}
+
 export function useCategoryHue(categoryKeyOrId: string): CategoryHueVariant {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const hue = resolveCategoryHue(categoryKeyOrId)
   return theme.isDark ? hue.dark : hue.light
 }
 
-/**
- * Like `useCategoryHue` but takes the human-readable category name and
- * always prefers semantic keyword matching ("Comida" → durazno,
- * "Restaurante" → coral, etc.). Use from surfaces that render with the
- * name in hand so each category reads as its own color.
- */
 export function useCategoryHueByName(name: string): CategoryHueVariant {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const hue = resolveCategoryHueByName(name)
   return theme.isDark ? hue.dark : hue.light
 }
