@@ -1,11 +1,18 @@
 // PIN-based app lock — PBKDF2-hardened hash in SecureStore.
 //
-// Threat model: a CASUAL lock + offline brute-force resistance. A
-// 4-digit PIN has 10k combinations; with naive SHA-256 + Keychain
-// dump an attacker brute-forces in milliseconds. PBKDF2 with 100k
-// iterations makes it cost ~100ms/attempt on modern phones — 10k
-// PINs × 100ms = ~17 min, plus the OS-level lockout below caps the
-// online attack window separately.
+// Threat model: a CASUAL lock + offline brute-force resistance.
+// Real-world attackers don't enumerate all 10k 4-digit combinations
+// — they try the ~100 most common PINs first (1234, 0000, 1111,
+// 2580, birthdays, repeats). PBKDF2 with 100k iterations costs
+// ~100ms/attempt on modern phones:
+//   - top-100 PINs:  ~10s   to brute-force offline
+//   - full 10k space: ~17min to brute-force offline
+// Plus the in-app lockout (5 attempts → 30s/1m/2m/4m/8m exponential
+// backoff) caps the ONLINE attack budget. The lockout state lives
+// in SecureStore, so a user-controlled wipe (uninstall+reinstall,
+// SecureStore.deleteItemAsync) resets the counter — that's the
+// "casual lock" boundary, not full anti-forensics defense. A
+// server-mirrored lockout is tracked as future work.
 //
 // Pure-JS is intentional: adding a native crypto module
 // (expo-crypto / expo-standard-web-crypto) requires a dev-client
@@ -49,24 +56,36 @@ interface LockoutState {
 
 // CSPRNG salt via Web Crypto. Hermes (RN >= 0.74) ships
 // `crypto.getRandomValues` as a JS builtin — no native module
-// needed. If it ever vanishes we fall back to a non-crypto source
-// with a noisy console.warn so the regression is detectable.
+// needed. We THROW rather than silently fall back to Math.random
+// because a predictable salt collapses PBKDF2 to a rainbow-table
+// lookup. The throw surfaces immediately at setPin time (visible
+// in dev / crash reports) instead of degrading the security of a
+// real user's PIN. Pinned RN >= 0.81.x in package.json so this
+// throw should never fire in practice.
 function randomSalt(): string {
   const bytes = new Uint8Array(16)
   const webCrypto = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto
-  if (webCrypto?.getRandomValues) {
-    webCrypto.getRandomValues(bytes)
-  } else {
-    console.warn('[pin-lock] crypto.getRandomValues unavailable; salt is NOT cryptographically random')
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256)
-    }
+  if (!webCrypto?.getRandomValues) {
+    throw new Error(
+      '[pin-lock] crypto.getRandomValues unavailable — refusing to set a PIN with a non-CSPRNG salt. ' +
+        'This indicates a runtime regression (Hermes >= 0.74 ships getRandomValues natively).',
+    )
   }
+  webCrypto.getRandomValues(bytes)
   return Buffer.from(bytes).toString('hex')
 }
 
 function hashPin(salt: string, pin: string, iterations: number): string {
   return pbkdf2Sync(Buffer.from(pin, 'utf8'), Buffer.from(salt, 'hex'), iterations, PBKDF2_KEYLEN, PBKDF2_DIGEST).toString('hex')
+}
+
+// PBKDF2-Sync blocks the JS thread ~100ms on modern devices. Yielding
+// one macrotask before the call lets React commit a pending render
+// (e.g. the PinPad "checking…" loading state) so the user sees
+// feedback instead of staring at a frozen UI. Cheap; one tick.
+async function hashPinAsync(salt: string, pin: string, iterations: number): Promise<string> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  return hashPin(salt, pin, iterations)
 }
 
 async function readLockout(): Promise<LockoutState> {
@@ -106,7 +125,7 @@ export async function setPin(pin: string): Promise<void> {
   const salt = randomSalt()
   await SecureStore.setItemAsync(PIN_SALT_KEY, salt, storeOptions)
   await SecureStore.setItemAsync(PIN_ITER_KEY, String(PBKDF2_ITERATIONS), storeOptions)
-  await SecureStore.setItemAsync(PIN_HASH_KEY, hashPin(salt, pin, PBKDF2_ITERATIONS), storeOptions)
+  await SecureStore.setItemAsync(PIN_HASH_KEY, await hashPinAsync(salt, pin, PBKDF2_ITERATIONS), storeOptions)
   await clearLockout()
   await setPinEnabledFlag()
 }
@@ -131,7 +150,7 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
       return { ok: false, lockedForMs: 0 }
     }
     const iter = iterRaw ? Number.parseInt(iterRaw, 10) : PBKDF2_ITERATIONS
-    const computed = hashPin(salt, pin, Number.isFinite(iter) && iter > 0 ? iter : PBKDF2_ITERATIONS)
+    const computed = await hashPinAsync(salt, pin, Number.isFinite(iter) && iter > 0 ? iter : PBKDF2_ITERATIONS)
     if (computed === hash) {
       await clearLockout()
       return { ok: true, lockedForMs: 0 }
