@@ -314,11 +314,17 @@ async function handler(request: Request): Promise<Response> {
   }
 
   // notifications-orchestrator path: caller pre-resolved tokens and
-  // built ExpoPushMessage[]. Skip the legacy familyId membership
-  // gate — the orchestrator runs with the service-role key and is
-  // the only thing that should hit this branch. Bulk-send to Expo
-  // in batches of 100 and return a count.
+  // built ExpoPushMessage[]. This branch must ONLY be reachable by
+  // the orchestrator (service-role). Without this gate, since
+  // verify_jwt is off at the gateway (ES256 workaround), an
+  // unauthenticated caller could spam arbitrary Expo push tokens.
   if (Array.isArray(payload.messages)) {
+    const orchestratorToken = extractBearerToken(
+      request.headers.get('Authorization') ?? request.headers.get('authorization'),
+    )
+    if (!orchestratorToken || orchestratorToken !== supabaseServiceRoleKey) {
+      return jsonResponse({ error: 'Unauthorized (service-role required for batch path).' }, 401)
+    }
     const messages = payload.messages
     if (messages.length === 0) {
       return jsonResponse({ ok: true, count: 0 })
