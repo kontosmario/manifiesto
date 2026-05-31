@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import type { ControlSectionAnchor as ControlSectionAnchorType } from '@/features/insights/control-action'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -23,7 +23,7 @@ import { ControlV2VsMesCard } from '@/components/control-v2/control-v2-vsmes-car
 import { DailyGoalSheet } from '@/components/control-v2/daily-goal-sheet'
 import { Screen } from '@/components/ui/screen'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { brand, DARK_TAB_CANVAS } from '@/theme/palette'
 import {
   buildFamilyFinanceInput,
   useFamilyFinance,
@@ -33,6 +33,7 @@ import { useStreak } from '@/features/streaks/use-streak'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
@@ -94,6 +95,19 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const dashboard = useFamilyDashboard(familyId)
   const streakQuery = useStreak(familyId, userId)
   const upsertFamilyFinance = useUpsertFamilyFinance(familyId)
+  // Snapshot del home — su refetch re-seedea el cluster control
+  // (control_intelligence, expenses, finance, etc.) en 1 round-trip.
+  // Lo usa el pull-to-refresh.
+  const snapshot = useHomeSnapshot(userId)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await snapshot.refetch()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [snapshot])
   const missingIncome = (financeQuery.data?.monthly_income ?? 0) <= 0
   const missingExpenses = (expensesQuery.data ?? []).length === 0
 
@@ -351,6 +365,14 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           // tap "scroll to section" del Asistente.
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={brand.bright}
+              colors={[brand.deep]}
+            />
+          }
         >
           <View style={styles.stack}>
             <ControlV2Header

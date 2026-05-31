@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, View, type ScrollView } from 'react-native'
+import { Alert, RefreshControl, StyleSheet, View, type ScrollView } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -22,6 +22,7 @@ import {
   useTourTargetRef,
 } from '@/features/tours'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
@@ -34,10 +35,12 @@ import { errorMessages } from '@/lib/copy/states'
 import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { brand, DARK_TAB_CANVAS } from '@/theme/palette'
 
 interface FijosV2ScreenProps {
   familyId: string
+  /** Required for pull-to-refresh — `useHomeSnapshot` keys by userId. */
+  userId: string
 }
 
 /**
@@ -45,7 +48,7 @@ interface FijosV2ScreenProps {
  * cycle ring hero first and will grow to include smart alerts, the
  * upcoming strip, status tabs and the per-category list.
  */
-export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
+export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
   // Auto-start the Fijos guided tour on first visit. No-op once seen.
@@ -84,6 +87,23 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
   const queryClient = useQueryClient()
   // React Query cached — same source feeding the Control screen.
   const { signals: advisorSignals } = useControlV2Data(familyId)
+  // Snapshot del home — su refetch re-seedea todos los caches del
+  // cluster fijos (fixed_expenses, fixed_expense_payments, expenses,
+  // categories, etc.) en un solo round-trip. Lo usa el pull-to-refresh.
+  const snapshot = useHomeSnapshot(userId)
+
+  // Pull-to-refresh: setea refreshing local + dispara el refetch del
+  // snapshot. El RefreshControl muestra el spinner mientras la promise
+  // resuelve.
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await snapshot.refetch()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [snapshot])
 
   /**
    * Revierte un pago confirmado. Llamado desde el botón "Revertir pago"
@@ -371,6 +391,14 @@ export function FijosV2Screen({ familyId }: FijosV2ScreenProps) {
       // drifts behind the actual scroll and the highlight lands
       // off-target.
       scrollEventThrottle={16}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor={brand.bright}
+          colors={[brand.deep]}
+        />
+      }
     >
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>
