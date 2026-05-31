@@ -28,8 +28,11 @@ interface FijoRowProps {
   item?: FijoItem
   categoryColor?: string
   categoryName?: string
-  /** Current UTC day-of-month, passed from the parent so every row shares
-   *  the same value and we don't create a Date per row per render. */
+  /** Current UTC day-of-month. Histórico — el row ahora computa los
+   *  días al vencimiento desde `item.next_due_on` directo (cálculo
+   *  proper con UTC midnight), así que esta prop ya no se usa para
+   *  el detail label. Se mantiene en la interfaz por backwards-compat
+   *  con `FijoCategoryGroups` que la pasa; no impacta performance. */
   todayDay?: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
@@ -71,7 +74,9 @@ function FijoRowReal({
   item,
   categoryColor = '#888888',
   categoryName = '',
-  todayDay = 1,
+  // todayDay sigue aceptándose como prop pero ya no se desestructura —
+  // el cálculo del detail label usa `next_due_on` directo (proper UTC
+  // midnight diff), no day-of-month math.
   onMarkPaid,
   onEdit,
   onDelete,
@@ -153,12 +158,22 @@ function FijoRowReal({
     }
   })()
 
-  const diffDays = fijo.dayOfMonth - todayDay
-  // Days-since-due — solo significativo en 'overdue' (mora arrastrada).
-  // Usa `daysUntilDue` (que el aggregates wrap-around al próximo ciclo)
-  // para inferir cuántos días pasaron del vencimiento real.
-  // Para overdue: `cycleDays - daysUntilDue` → días desde que venció.
-  const overdueDays = Math.max(1, Math.abs(diffDays))
+  // Días reales entre HOY y `next_due_on` (no day-of-month wrap).
+  // Positivo → vencimiento futuro (pending / future).
+  // Negativo → ya pasó (overdue).
+  // 0 → vence hoy.
+  // Cálculo en UTC midnight para que un fijo con next_due_on=2026-06-10
+  // visto hoy 2026-05-30 devuelva exactamente 11, no 10 (la versión
+  // anterior usaba `dayOfMonth - todayDay` que daba números mal cuando
+  // los meses tenían distinta cantidad de días).
+  const daysToNextDue = useMemo(() => {
+    if (!fijo.next_due_on) return null
+    const due = new Date(fijo.next_due_on)
+    const dueUtc = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate())
+    const now = new Date()
+    const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    return Math.round((dueUtc - nowUtc) / 86_400_000)
+  }, [fijo.next_due_on])
 
   // Accent palette derivada del status — usada para tintar el expand
   // panel (stats hero bg + accent stripe + border-top dashed). Cada
@@ -200,48 +215,38 @@ function FijoRowReal({
     }
   }, [status, theme.isDark])
 
-  // Label de mes capitalizado: "junio" → "Junio". Lead con el mes
-  // para que sea lo primero que el ojo enganche.
+  // Label de mes capitalizado: "junio" → "Junio". Va en un CHIP a la
+  // izquierda del detail label, tintado con el accent del status —
+  // hace que "qué cuota" sea el ancla visual de la sub-line.
   const cuotaShort = fijo.cuotaMonth ? capitalize(monthOfLabel(fijo.cuotaMonth)) : null
 
-  // Sub-line concisa: lead con el mes (lo más identificativo) +
-  // detalle del estado. Sin prefijo "Cuota de" — implícito por
-  // estar viendo un row de fijo. Mantiene el mes visible incluso
-  // en pantallas chicas donde antes "Cuota de septiembre · vencida
-  // 12d" quedaba truncado.
+  // Detail label: solo el estado/timing (sin el mes — el chip lo cubre).
+  // Wording DISTINTO por status para que vencidos y pendientes no se
+  // confundan visualmente (antes ambos podían decir "vencida Xd"):
+  //   overdue → "{N}d de mora"  (verbo "mora" = arrears, claramente pasado)
+  //   pending → "vence hoy" / "vence en {N}d"  (verbo futuro)
+  //   paid    → "pagada"
+  //   future  → "próxima"
   //
-  // Ejemplos:
-  //   paid     → "Junio · pagada"
-  //   overdue  → "Mayo · vencida 12d"
-  //   future   → "Próxima: julio"
-  //   pending  → "Junio · en 5d" / "Junio · vence hoy"
-  //
-  // Fallback al día cuando no hay cuotaMonth (raro, sin next_due_on
-  // ni payment record).
-  const dueLabel =
-    status === 'paid'
-      ? cuotaShort
-        ? `${cuotaShort} · pagada`
-        : `Pagado · día ${fijo.dayOfMonth}`
-      : status === 'overdue'
-        ? cuotaShort
-          ? `${cuotaShort} · vencida ${overdueDays}d`
-          : `Vencida ${overdueDays}d`
-        : status === 'future'
-          ? cuotaShort
-            ? `Próxima: ${cuotaShort.toLowerCase()}`
-            : `Próximo · día ${fijo.dayOfMonth}`
-          : cuotaShort
-            ? diffDays === 0
-              ? `${cuotaShort} · vence hoy`
-              : diffDays > 0
-                ? `${cuotaShort} · en ${diffDays}d`
-                : `${cuotaShort} · vencida ${Math.abs(diffDays)}d`
-            : diffDays === 0
-              ? 'Vence hoy'
-              : diffDays > 0
-                ? `Vence en ${diffDays}d`
-                : `Vencido hace ${Math.abs(diffDays)}d`
+  // Fallback sin cuotaShort (sin next_due_on): usa el día como antes.
+  const detailLabel = (() => {
+    if (status === 'paid') return cuotaShort ? 'pagada' : `Pagado · día ${fijo.dayOfMonth}`
+    if (status === 'overdue') {
+      const d = daysToNextDue != null ? Math.max(1, Math.abs(daysToNextDue)) : null
+      return d != null
+        ? `${d}d de mora`
+        : cuotaShort
+          ? 'en mora'
+          : `Vencida · día ${fijo.dayOfMonth}`
+    }
+    if (status === 'future') return cuotaShort ? 'próxima' : `Próximo · día ${fijo.dayOfMonth}`
+    // pending
+    if (daysToNextDue == null) return cuotaShort ? 'pendiente' : `Pendiente · día ${fijo.dayOfMonth}`
+    if (daysToNextDue === 0) return 'vence hoy'
+    if (daysToNextDue > 0) return `vence en ${daysToNextDue}d`
+    // Fallback defensivo (no debería pasar: pending implica daysToNextDue >= 0)
+    return `vence en ${Math.abs(daysToNextDue)}d`
+  })()
 
   // catChipText hue-preserved (mismo helper que GastoRow). Antes el
   // pastel original sobre tinted bg light fallaba contraste 1.6:1.
@@ -374,34 +379,54 @@ function FijoRowReal({
                 ) : null}
               </View>
               {/*
-                Sub-line: categoría + dueLabel en UN solo Text node con
-                runs coloreados (no chip pill). Decisión de poda (gpt-taste
-                + impeccable): el chip era duplicación visual — el icon
-                tile a la izquierda ya tinta con categoryColor + muestra
-                el emoji, así que la pill bordeada agregaba chrome sin
-                info nueva. Sacarla libera ~14pt horizontales para que
-                el dueLabel ("Septiembre · vencida 12d") entre completo
-                sin truncarse en pantallas chicas.
+                Sub-line: categoría (texto inline) · chip del mes (tintado
+                por status accent) · detail-label (estado/timing).
 
-                Misma jerarquía visual con menos ruido: catName en color
-                de categoría (hue-preserved) + middle dot + dueLabel en
-                color de estado (muted normal / rojo overdue). El usuario
-                sigue viendo "qué categoría" a la izquierda del texto, y
-                "qué pasa" a la derecha. Una sola línea de 13sp.
+                El CHIP DEL MES es el ancla visual: "qué cuota es esta".
+                Pill subtle con bg + border + texto en accent.solid del
+                status. Hace que vencidos / pendientes / pagados /
+                próximos sean distinguibles a simple vista (no solo por
+                el texto del detail label sino por el color del chip).
+
+                Wrap controlado en cada hijo:
+                  · catName: numberOfLines=1 (no se come la sub-line si
+                    es categoría larga — el chip + detail deben seguir
+                    siendo visibles).
+                  · detailLabel: numberOfLines=2 (puede wrappear si
+                    cuota+detail son largos juntos).
               */}
-              <Text
-                style={[styles.metaLine]}
-                // 2 líneas: si catName + dueLabel no entran en una sola
-                // (categorías largas + dueLabels largos), wrap a una
-                // segunda. La card crece ~16pt verticales — preferible
-                // a truncar info que el usuario necesita ver completa.
-                numberOfLines={2}
-              >
-                <Text style={[styles.metaCat, { color: catChipTextColor }]}>
+              <View style={styles.metaRow}>
+                <Text
+                  style={[styles.metaCat, { color: catChipTextColor }]}
+                  numberOfLines={1}
+                >
                   {categoryName}
                 </Text>
+                {cuotaShort ? (
+                  <>
+                    <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
+                      ·
+                    </Text>
+                    <View
+                      style={[
+                        styles.monthChip,
+                        {
+                          backgroundColor: accent.bg,
+                          borderColor: accent.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.monthChipText, { color: accent.solid }]}
+                        numberOfLines={1}
+                      >
+                        {cuotaShort}
+                      </Text>
+                    </View>
+                  </>
+                ) : null}
                 <Text style={[styles.metaSep, { color: theme.colors.textMuted }]}>
-                  {'  ·  '}
+                  ·
                 </Text>
                 <Text
                   style={[
@@ -409,17 +434,19 @@ function FijoRowReal({
                     {
                       color:
                         status === 'overdue'
-                          ? theme.isDark
-                            ? '#F18C8C'
-                            : '#A8211B'
-                          : theme.colors.textMuted,
+                          ? accent.solid
+                          : status === 'paid'
+                            ? accent.solid
+                            : theme.colors.textMuted,
                       fontWeight: status === 'overdue' ? '700' : '500',
+                      flexShrink: 1,
                     },
                   ]}
+                  numberOfLines={2}
                 >
-                  {dueLabel}
+                  {detailLabel}
                 </Text>
-              </Text>
+              </View>
             </View>
 
             <View style={styles.amountBlock}>
@@ -1128,18 +1155,47 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
-  // Sub-line: UN solo Text con 3 runs coloreados (categoría · separador
-  // · dueLabel). Antes era catChip pill + metaText separados → chrome
-  // duplicado (icon tile ya tinta con categoryColor) + el metaText
-  // truncaba en pantallas chicas. Ahora todo en línea sin chrome extra.
-  metaLine: {
-    fontSize: 11.5,
-    marginTop: 3,
-    letterSpacing: -0.1,
+  // Sub-line del row: row flex con catName + chip del mes + detail.
+  // Antes era un solo Text node con runs coloreados — la nueva versión
+  // separa el mes en un chip pill tintado por status (gpt-taste) lo
+  // que hace que el estado se lea sin texto a través del color del chip.
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
   },
-  metaCat: { fontWeight: '700' },
-  metaSep: { fontWeight: '400' },
-  metaDue: { fontWeight: '500' },
+  metaCat: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+    flexShrink: 0,
+  },
+  metaSep: {
+    fontSize: 11.5,
+    fontWeight: '400',
+  },
+  metaDue: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    lineHeight: 15,
+  },
+  // Chip del mes — pill subtle tintado por accent del status.
+  // Padding tight, borde 1pt en accent.border, texto en accent.solid
+  // (bold + uppercase letter-spacing para que lea como "tag").
+  monthChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  monthChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
   // ── Placeholder / preview ────────────────────────────────────────
   placeholderCard: {
