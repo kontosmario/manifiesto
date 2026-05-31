@@ -217,7 +217,7 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
   return normalized.length > 0 ? normalized : null
 }
 
-async function handler(request: Request): Promise<Response> {
+export async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405)
   }
