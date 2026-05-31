@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import type { ListRenderItem } from 'react-native'
 import {
   FlatList,
   Pressable,
@@ -76,6 +77,64 @@ export function NotificationFeedList({
     return map
   }, [membersQuery.data])
 
+  const cardBg = theme.isDark
+    ? (theme.colors.surfaceMuted ?? theme.colors.creamCard)
+    : theme.colors.creamCard
+
+  // Hoisted via useCallback so FlatList row memo isn't invalidated on
+  // every parent re-render (refresh, theme toggle). Deps capture only
+  // the values the row actually depends on.
+  const renderItem = useCallback<ListRenderItem<FamilyNotification>>(
+    ({ item, index }) => {
+      const author = item.created_by
+        ? memberById.get(item.created_by) ?? null
+        : null
+      // Entrada escalonada de 40ms por fila, tope en index 8 → 320ms.
+      const staggerDelay = Math.min(index, 8) * motionStagger.listItem
+      return (
+        <Animated.View
+          entering={FadeIn.delay(staggerDelay)
+            .duration(motionDurations.enterTab)
+            .reduceMotion(ReduceMotion.System)}
+          // Salida intuitiva: la fila se desliza a la derecha mientras
+          // se desvanece (lee como "la despachaste / listo"), más corta
+          // que la entrada (exit-faster-than-enter). El reflow de las
+          // filas restantes usa un spring para que el hueco se cierre
+          // suave y natural en vez de un colapso lineal mecánico.
+          exiting={FadeOutRight.duration(220).reduceMotion(
+            ReduceMotion.System,
+          )}
+          layout={LinearTransition.springify()
+            .damping(22)
+            .stiffness(190)
+            .mass(0.6)
+            .reduceMotion(ReduceMotion.System)}
+        >
+          <SwipeRow
+            accessibilityHint="Desliza para marcar como leída"
+            borderRadius={16}
+            rightActions={[
+              {
+                label: 'Listo',
+                tone: 'neutral',
+                icon: 'done',
+                onPress: () => onMarkRead(item),
+              },
+            ]}
+          >
+            <NotificationRow
+              notification={item}
+              author={author}
+              cardBg={cardBg}
+              onMarkRead={() => onMarkRead(item)}
+            />
+          </SwipeRow>
+        </Animated.View>
+      )
+    },
+    [memberById, cardBg, onMarkRead],
+  )
+
   if (isLoading && notifications.length === 0) {
     return (
       <View style={styles.container}>
@@ -98,10 +157,6 @@ export function NotificationFeedList({
     )
   }
 
-  const cardBg = theme.isDark
-    ? (theme.colors.surfaceMuted ?? theme.colors.creamCard)
-    : theme.colors.creamCard
-
   return (
     <FlatList
       data={notifications}
@@ -114,53 +169,7 @@ export function NotificationFeedList({
         />
       }
       ListHeaderComponent={ListHeaderComponent ?? null}
-      renderItem={({ item, index }) => {
-        const author = item.created_by
-          ? memberById.get(item.created_by) ?? null
-          : null
-        // Entrada escalonada de 40ms por fila, tope en index 8 → 320ms.
-        const staggerDelay = Math.min(index, 8) * motionStagger.listItem
-        return (
-          <Animated.View
-            entering={FadeIn.delay(staggerDelay)
-              .duration(motionDurations.enterTab)
-              .reduceMotion(ReduceMotion.System)}
-            // Salida intuitiva: la fila se desliza a la derecha mientras
-            // se desvanece (lee como "la despachaste / listo"), más corta
-            // que la entrada (exit-faster-than-enter). El reflow de las
-            // filas restantes usa un spring para que el hueco se cierre
-            // suave y natural en vez de un colapso lineal mecánico.
-            exiting={FadeOutRight.duration(220).reduceMotion(
-              ReduceMotion.System,
-            )}
-            layout={LinearTransition.springify()
-              .damping(22)
-              .stiffness(190)
-              .mass(0.6)
-              .reduceMotion(ReduceMotion.System)}
-          >
-            <SwipeRow
-              accessibilityHint="Desliza para marcar como leída"
-              borderRadius={16}
-              rightActions={[
-                {
-                  label: 'Listo',
-                  tone: 'neutral',
-                  icon: 'done',
-                  onPress: () => onMarkRead(item),
-                },
-              ]}
-            >
-              <NotificationRow
-                notification={item}
-                author={author}
-                cardBg={cardBg}
-                onMarkRead={() => onMarkRead(item)}
-              />
-            </SwipeRow>
-          </Animated.View>
-        )
-      }}
+      renderItem={renderItem}
       ListEmptyComponent={
         <View style={styles.emptyWrapper}>
           <EmptyState
@@ -174,9 +183,16 @@ export function NotificationFeedList({
         notifications.length === 0 ? styles.emptyContent : styles.content
       }
       showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.rowSpacer} />}
+      ItemSeparatorComponent={RowSeparator}
     />
   )
+}
+
+// Module-level separator: stable identity across every render of every
+// instance of NotificationFeedList so FlatList won't remount separator
+// nodes on parent re-render.
+function RowSeparator() {
+  return <View style={styles.rowSpacer} />
 }
 
 interface NotificationRowProps {
