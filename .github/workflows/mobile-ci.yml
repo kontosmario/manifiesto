@@ -23,20 +23,31 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Steps below use `if: always()` so a single early failure
+      # doesn't hide downstream failures — devs get the full picture
+      # in one CI run instead of fixing-pushing-fixing-pushing.
+      # Install must succeed (no point running tests without deps);
+      # everything after is independent enough to surface in parallel.
       - name: Lint
+        if: always()
         run: npm run lint
 
       - name: Typecheck
+        if: always()
         run: npm run typecheck
 
       - name: Unit tests
+        if: always()
         run: npm test
 
       - name: Guard — legacy spacing
+        if: always()
         run: npm run guard:legacy-spacing
 
       - name: Guard — forbidden copy
+        if: always()
         run: npm run guard:forbidden-copy
 
       - name: Guard — motion tokens
+        if: always()
         run: npm run guard:motion-tokens
