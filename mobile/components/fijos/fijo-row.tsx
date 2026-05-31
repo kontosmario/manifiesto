@@ -220,32 +220,61 @@ function FijoRowReal({
   // hace que "qué cuota" sea el ancla visual de la sub-line.
   const cuotaShort = fijo.cuotaMonth ? capitalize(monthOfLabel(fijo.cuotaMonth)) : null
 
-  // Detail label: solo el estado/timing (sin el mes — el chip lo cubre).
-  // Wording DISTINTO por status para que vencidos y pendientes no se
-  // confundan visualmente (antes ambos podían decir "vencida Xd"):
-  //   overdue → "{N}d de mora"  (verbo "mora" = arrears, claramente pasado)
-  //   pending → "vence hoy" / "vence en {N}d"  (verbo futuro)
-  //   paid    → "pagada"
-  //   future  → "próxima"
+  // Detail label + icon — la línea 3 de la sub-info, renderizada como
+  // status badge (pill bg-tinted + icon + texto bold). Wording humano:
+  // palabras completas en vez de abreviaturas ("días" vs "d"), verbos
+  // distintos por status (mora/vence/pagada/próxima) y singular/plural
+  // correctos. El icon prefijo hace que el ojo enganche el estado
+  // antes de leer el texto.
   //
-  // Fallback sin cuotaShort (sin next_due_on): usa el día como antes.
-  const detailLabel = (() => {
-    if (status === 'paid') return cuotaShort ? 'pagada' : `Pagado · día ${fijo.dayOfMonth}`
+  // Wording por status:
+  //   overdue → "Vencida hace {N} {día/días}"  (warning icon)
+  //   pending → "Vence hoy" (hoy) | "Vence en {N} {día/días}" (futuro)
+  //   paid    → "Pagada"  (check_circle)
+  //   future  → "Próxima cuota"  (event/calendar)
+  //
+  // Fallback sin next_due_on: copy genérico + día of month.
+  const detail = (() => {
+    if (status === 'paid') {
+      return { label: 'Pagada', icon: 'check-circle' as const }
+    }
     if (status === 'overdue') {
       const d = daysToNextDue != null ? Math.max(1, Math.abs(daysToNextDue)) : null
-      return d != null
-        ? `${d}d de mora`
-        : cuotaShort
-          ? 'en mora'
-          : `Vencida · día ${fijo.dayOfMonth}`
+      if (d == null) {
+        return {
+          label: cuotaShort ? 'En mora' : `Vencida · día ${fijo.dayOfMonth}`,
+          icon: 'warning' as const,
+        }
+      }
+      return {
+        label: `Vencida hace ${d} ${d === 1 ? 'día' : 'días'}`,
+        icon: 'warning' as const,
+      }
     }
-    if (status === 'future') return cuotaShort ? 'próxima' : `Próximo · día ${fijo.dayOfMonth}`
+    if (status === 'future') {
+      return { label: 'Próxima cuota', icon: 'event' as const }
+    }
     // pending
-    if (daysToNextDue == null) return cuotaShort ? 'pendiente' : `Pendiente · día ${fijo.dayOfMonth}`
-    if (daysToNextDue === 0) return 'vence hoy'
-    if (daysToNextDue > 0) return `vence en ${daysToNextDue}d`
-    // Fallback defensivo (no debería pasar: pending implica daysToNextDue >= 0)
-    return `vence en ${Math.abs(daysToNextDue)}d`
+    if (daysToNextDue == null) {
+      return {
+        label: cuotaShort ? 'Pendiente' : `Pendiente · día ${fijo.dayOfMonth}`,
+        icon: 'schedule' as const,
+      }
+    }
+    if (daysToNextDue === 0) {
+      return { label: 'Vence hoy', icon: 'schedule' as const }
+    }
+    if (daysToNextDue > 0) {
+      return {
+        label: `Vence en ${daysToNextDue} ${daysToNextDue === 1 ? 'día' : 'días'}`,
+        icon: 'schedule' as const,
+      }
+    }
+    // Fallback defensivo (pending implica daysToNextDue >= 0)
+    return {
+      label: `Vence en ${Math.abs(daysToNextDue)} días`,
+      icon: 'schedule' as const,
+    }
   })()
 
   // catChipText hue-preserved (mismo helper que GastoRow). Antes el
@@ -427,23 +456,45 @@ function FijoRowReal({
                     </>
                   ) : null}
                 </View>
-                <Text
+                {/*
+                  Status badge — pill bg-tinted + icon prefix + texto
+                  bold. Le da peso visual a la info del estado/timing
+                  (dato más relevante del row: "qué pasa AHORA con esta
+                  cuota"). El icon engancha el ojo antes que el texto
+                  → estado scanneable en milisegundos.
+
+                  alignSelf: 'flex-start' para que el badge hug content
+                  (no se estire al ancho del body — sería pesado visual).
+                */}
+                <View
                   style={[
-                    styles.metaDue,
+                    styles.statusBadge,
                     {
-                      color:
-                        status === 'overdue'
-                          ? accent.solid
-                          : status === 'paid'
-                            ? accent.solid
-                            : theme.colors.textMuted,
-                      fontWeight: status === 'overdue' ? '700' : '500',
+                      backgroundColor: accent.bg,
+                      borderColor: accent.border,
                     },
                   ]}
-                  numberOfLines={2}
                 >
-                  {detailLabel}
-                </Text>
+                  <MaterialIcons
+                    name={detail.icon}
+                    size={13}
+                    color={accent.solid}
+                  />
+                  <Text
+                    style={[
+                      styles.statusBadgeText,
+                      {
+                        color: accent.solid,
+                        // Overdue agrega un stop más de weight — la
+                        // urgencia se siente sin alarmismo.
+                        fontWeight: status === 'overdue' ? '800' : '700',
+                      },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {detail.label}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -1178,11 +1229,27 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '400',
   },
-  metaDue: {
-    fontSize: 11.5,
-    fontWeight: '500',
-    letterSpacing: -0.1,
+  // Status badge — pill compacto con bg tintado + icon + texto bold.
+  // Reemplaza el metaDue plain text por algo con peso visual: el ojo
+  // engancha el icon, lee el wording bold, capta el estado en
+  // milisegundos. alignSelf: flex-start para que NO ocupe el ancho
+  // entero del body (pill hugs content).
+  statusBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: '100%',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    letterSpacing: -0.2,
     lineHeight: 15,
+    flexShrink: 1,
   },
   // Chip del mes — pill subtle tintado por accent del status.
   // Padding tight, borde 1pt en accent.border, texto en accent.solid
