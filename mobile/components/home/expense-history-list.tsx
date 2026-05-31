@@ -1,4 +1,4 @@
-import { SectionList, StyleSheet } from 'react-native'
+import { Platform, SectionList, StyleSheet } from 'react-native'
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler'
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated'
 import { ExpenseHistoryRow } from '@/components/home/expense-history-row'
@@ -29,7 +29,11 @@ export function ExpenseHistoryList({
       initialNumToRender={18}
       keyExtractor={(item) => item.id}
       maxToRenderPerBatch={12}
-      removeClippedSubviews={true}
+      // iOS-only. Android's removeClippedSubviews has long-standing
+      // bugs around dead touchables and sticky headers; the savings
+      // (40-80MB on long histories) only justify the risk on iOS,
+      // where the implementation is mature.
+      removeClippedSubviews={Platform.OS === 'ios'}
       renderScrollComponent={(props) => <GHScrollView {...props} />}
       style={styles.list}
       renderItem={({ item, index }) => {
