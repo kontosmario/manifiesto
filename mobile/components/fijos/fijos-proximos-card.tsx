@@ -49,9 +49,9 @@ interface FijosProximosCardProps {
   onOpenHike?: (fixedExpenseId: string) => void
   /**
    * Modo empty / preview (onboarding). Renderea el MISMO card frame —
-   * header "PRÓXIMOS A PAGAR" + RuleScale + filas con su layout (label
-   * de día · dot de categoría · nombre · monto) — pero con dashes
-   * neutros, sin ítems fabricados. Backwards-compatible default `false`.
+   * header "POR PAGAR · ESTE CICLO" + RuleScale + filas con su layout
+   * (label de día · dot de categoría · nombre · monto) — pero con
+   * dashes neutros, sin ítems fabricados. Default `false`.
    */
   empty?: boolean
 }
@@ -60,13 +60,19 @@ interface FijosProximosCardProps {
  * Reemplaza `FijosUpcomingStrip` + `FijosSmartAlerts` con una sola card
  * compacta de dos sub-secciones:
  *
- *   PRÓXIMOS A PAGAR
+ *   POR PAGAR · ESTE CICLO
  *   ─────────
- *   • Hasta 3 rows: día · nombre + cat dot · amount
- *     (sin nested cards, sin emojis, sin acciones)
+ *   • Marquee horizontal con upcoming items del ciclo activo
+ *     (pending + overdue). Tickets ticket-style, ticker continuo,
+ *     drag-aware (Gesture.Pan).
  *
  *   AVISOS  ──────
  *   • Compacto: ↑ +X% nombre · semana cargada · ratio alto
+ *
+ * Naming nota: el header dice "POR PAGAR · ESTE CICLO" (no "PRÓXIMOS
+ * A PAGAR" que era ambiguo — podía leerse como "lo programado para
+ * después"). Los fijos programados a futuro viven en el
+ * `FijosScheduledBanner` separado, arriba del listado.
  *
  * La sub-section AVISOS solo se renderea cuando hay hikes o signals
  * relevantes al dominio fijos. Si no hay próximos, primer slot pasa a
@@ -120,10 +126,10 @@ export function FijosProximosCard({
   )
 
   // ── Empty / preview mode ─────────────────────────────────────────
-  // Mismo card frame (header PRÓXIMOS A PAGAR + RuleScale) con filas
-  // placeholder: cada fila conserva el layout real (label de día · dot
-  // de categoría · nombre · monto) pero con dashes neutros. Sin ítems
-  // inventados. Renderea después de los hooks.
+  // Mismo card frame (header "POR PAGAR · ESTE CICLO" + RuleScale)
+  // con filas placeholder: cada fila conserva el layout real (label
+  // de día · dot de categoría · nombre · monto) pero con dashes
+  // neutros. Sin ítems inventados. Renderea después de los hooks.
   if (empty) {
     return <FijosProximosCardEmpty />
   }
@@ -144,11 +150,19 @@ export function FijosProximosCard({
           },
         ]}
       >
-        {/* Header — eyebrow + header dot urgente (si aplica) + count */}
+        {/*
+          Header — eyebrow + header dot urgente (si aplica) + count.
+          Copy "POR PAGAR · ESTE CICLO" en vez de "PRÓXIMOS A PAGAR"
+          (refinado 2026-05-31): el segundo era ambiguo — podía
+          interpretarse como "lo siguiente urgente" o "lo programado
+          para después". Con "ESTE CICLO" queda claro que es el bucket
+          de cuotas que tocan AHORA (pending + overdue). Los fijos
+          programados a futuro viven en el FijosScheduledBanner aparte.
+        */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              PRÓXIMOS A PAGAR
+              POR PAGAR · ESTE CICLO
             </Text>
             {hasUrgent ? (
               <UrgentHeaderDot
@@ -258,7 +272,7 @@ function FijosProximosCardEmpty() {
     >
       <View style={styles.headerRow}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          PRÓXIMOS A PAGAR
+          POR PAGAR · ESTE CICLO
         </Text>
       </View>
       {/* Rule estático (sin scaleX animation) — preview inerte. */}
