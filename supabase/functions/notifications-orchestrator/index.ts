@@ -190,6 +190,21 @@ async function processKind(kind: Kind) {
   return { kind, processed, sent, chunks: chunks.length }
 }
 
+// Constant-time string equality. The naive `a === b` short-circuits
+// on first byte mismatch, leaking how many leading bytes matched
+// through response timing. The risk over the public internet is
+// extremely low (gateway latency dwarfs single-byte timing
+// differences) but the cost of doing it right is one helper. Used
+// for the service-role bearer check below.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let mismatch = 0
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return mismatch === 0
+}
+
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) {
     return null
@@ -215,7 +230,11 @@ async function handler(request: Request): Promise<Response> {
   const callerToken = extractBearerToken(
     request.headers.get('Authorization') ?? request.headers.get('authorization'),
   )
-  if (!callerToken || callerToken !== supabaseServiceRoleKey) {
+  if (
+    !callerToken ||
+    !supabaseServiceRoleKey ||
+    !timingSafeEqual(callerToken, supabaseServiceRoleKey)
+  ) {
     return jsonResponse({ error: 'Unauthorized (service-role required).' }, 401)
   }
 

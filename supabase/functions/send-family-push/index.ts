@@ -92,6 +92,21 @@ function isServerReady(): boolean {
   return Boolean(supabaseUrl && supabaseAnonKey && supabaseServiceRoleKey)
 }
 
+// Constant-time string equality. The naive `a === b` short-circuits
+// on first byte mismatch, leaking how many leading bytes matched
+// through response timing. The risk over the public internet is
+// extremely low (gateway latency dwarfs single-byte timing
+// differences) but the cost of doing it right is one helper. Used
+// for service-role bearer checks below.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let mismatch = 0
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return mismatch === 0
+}
+
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) {
     return null
@@ -322,7 +337,11 @@ async function handler(request: Request): Promise<Response> {
     const orchestratorToken = extractBearerToken(
       request.headers.get('Authorization') ?? request.headers.get('authorization'),
     )
-    if (!orchestratorToken || orchestratorToken !== supabaseServiceRoleKey) {
+    if (
+      !orchestratorToken ||
+      !supabaseServiceRoleKey ||
+      !timingSafeEqual(orchestratorToken, supabaseServiceRoleKey)
+    ) {
       return jsonResponse({ error: 'Unauthorized (service-role required for batch path).' }, 401)
     }
     const messages = payload.messages
