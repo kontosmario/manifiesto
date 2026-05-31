@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   Pressable,
   ScrollView,
@@ -7,8 +7,10 @@ import {
   Text,
   View,
 } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   cancelAnimation,
+  runOnJS,
   useAnimatedStyle,
   useFrameCallback,
   useSharedValue,
@@ -325,27 +327,36 @@ function UrgentHeaderDot({ color }: { color: string }) {
 // con el ancho real del set de items (seamless wrap, sin "jump"
 // visible en cada repetición).
 //
-// 2026-05-31: compactado a single-row layout. TICKET_WIDTH bumpeado
-// de 220 → 250 porque ahora el contenido va en UNA fila horizontal
-// (●name + amount + timing pill) y necesita más espacio horizontal,
-// pero gana ~32pt verticales al ticket mismo.
-const TICKET_WIDTH = 250
+// 2026-05-31 v2: single-row layout. TICKET_WIDTH 240 (era 250 — un
+// toque más compacto). Es CRITICO que este valor coincida con el
+// `width` del style `ticket` abajo — el loop seamless del marquee
+// usa esta constante para calcular el wrap.
+const TICKET_WIDTH = 240
 const TICKET_GAP = 8
 
 /**
- * Marquee horizontal de upcoming. Look-and-feel iOS (Apple Wallet /
- * App Store featured row): items en horizontal scroll que cortan
- * limpio en el borde del card, sin overlay shadows/fades. Animación
- * continua via useFrameCallback + modulo (no withRepeat reset).
+ * Marquee horizontal de upcoming — iOS look-and-feel + gesture-aware.
  *
- * Antes tenía edge fade gradients (LinearGradient overlay con color
- * del card → transparente) — en dark mode el color del card es
- * near-black y el alpha-blending creaba una "sombra gris oscura"
- * en los laterales que el usuario reportó como invasiva. Removidos
- * para abrazar el patrón iOS de "clean cut at the boundary".
+ * Animación CONTINUA (no withRepeat reset):
+ *   · useFrameCallback corre cada frame en UI thread (~16ms a 60fps).
+ *   · Avanza un shared value `elapsed` por dt*SPEED/1000 pixeles,
+ *     APLICANDO MODULO dentro del callback para prevenir drift de
+ *     float después de muchas horas de runtime.
+ *   · translateX = -elapsed.value — sin operación extra en el style.
  *
- * ReduceMotion-aware: fallback a ScrollView manual.
- * Performance: animación en UI thread vía useFrameCallback + worklet.
+ * Gesture (Gesture.Pan):
+ *   · onBegin: captura elapsed actual, pausa el frame loop.
+ *   · onUpdate: elapsed = startElapsed - translationX (drag right →
+ *     marquee va right; drag left → marquee sigue izquierda).
+ *     Modulo aplicado para que el wrap funcione durante el drag.
+ *   · onEnd: re-activa el frame loop — la animación CONTINÚA desde
+ *     la posición exacta donde el user soltó. Sin saltos.
+ *
+ * activeOffsetX([-10,10]): la pan solo se activa con drag horizontal
+ * neto >10pt — evita interferir con scroll vertical de la screen
+ * (mismo patrón que SwipeRow).
+ *
+ * ReduceMotion-aware: fallback a ScrollView nativo manual.
  */
 function UpcomingMarquee({
   items,
@@ -357,6 +368,8 @@ function UpcomingMarquee({
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const elapsed = useSharedValue(0)
+  // Snapshot del elapsed al inicio del drag — para offsetar correcto.
+  const dragStart = useSharedValue(0)
 
   const setWidth = items.length * (TICKET_WIDTH + TICKET_GAP)
   const SPEED_PX_PER_SEC = 35
@@ -364,8 +377,19 @@ function UpcomingMarquee({
   const frame = useFrameCallback((info) => {
     'worklet'
     const dt = info.timeSincePreviousFrame ?? 16
-    elapsed.value += (dt * SPEED_PX_PER_SEC) / 1000
+    // Wrap dentro del callback para evitar float drift en runtime largo.
+    const next = elapsed.value + (dt * SPEED_PX_PER_SEC) / 1000
+    elapsed.value = setWidth > 0 ? next % setWidth : 0
   }, false)
+
+  // Wrapper JS-callable para `frame.setActive` — el gesture worklet
+  // lo invoca via runOnJS para pausar/reanudar el loop según drag.
+  const setFrameActive = useCallback(
+    (active: boolean) => {
+      frame.setActive(active)
+    },
+    [frame],
+  )
 
   useEffect(() => {
     const active = !reduced && setWidth > 0 && items.length > 0
@@ -373,12 +397,46 @@ function UpcomingMarquee({
     if (!active) elapsed.value = 0
   }, [reduced, setWidth, items.length, frame, elapsed])
 
-  const animStyle = useAnimatedStyle(() => {
-    const w = setWidth > 0 ? setWidth : 1
-    return {
-      transform: [{ translateX: -(elapsed.value % w) }],
-    }
-  })
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -elapsed.value }],
+  }))
+
+  // Pan gesture — user puede arrastrar lateral, al soltar la
+  // animación continúa desde la nueva posición.
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-10, 10]) // solo activa con drag horizontal neto
+        .onBegin(() => {
+          'worklet'
+          dragStart.value = elapsed.value
+          runOnJS(setFrameActive)(false)
+        })
+        .onUpdate((e) => {
+          'worklet'
+          // Drag right (+translationX) → marquee va right → reducir elapsed
+          const raw = dragStart.value - e.translationX
+          // Wrap defensivo para que items duplicados estén siempre alineados.
+          if (setWidth > 0) {
+            // Modulo positivo (JS % puede dar negativo)
+            elapsed.value = ((raw % setWidth) + setWidth) % setWidth
+          } else {
+            elapsed.value = raw
+          }
+        })
+        .onEnd(() => {
+          'worklet'
+          // Re-activa el loop — la animación continúa desde
+          // `elapsed.value` actual (NO desde 0). Sin salto.
+          if (!reduced) runOnJS(setFrameActive)(true)
+        })
+        .onFinalize(() => {
+          'worklet'
+          // Fallback: por si el gesture es cancelado sin onEnd.
+          if (!reduced) runOnJS(setFrameActive)(true)
+        }),
+    [dragStart, elapsed, setWidth, reduced, setFrameActive],
+  )
 
   if (reduced) {
     return (
@@ -404,30 +462,32 @@ function UpcomingMarquee({
   }
 
   return (
-    <View style={styles.marqueeContainer}>
-      <Animated.View style={[styles.marqueeRow, animStyle]}>
-        {items.map((item) => (
-          <MarqueeTicket
-            key={`a-${item.id}`}
-            item={item}
-            category={
-              item.category_id ? categoriesById?.get(item.category_id) : undefined
-            }
-            theme={theme}
-          />
-        ))}
-        {items.map((item) => (
-          <MarqueeTicket
-            key={`b-${item.id}`}
-            item={item}
-            category={
-              item.category_id ? categoriesById?.get(item.category_id) : undefined
-            }
-            theme={theme}
-          />
-        ))}
-      </Animated.View>
-    </View>
+    <GestureDetector gesture={pan}>
+      <View style={styles.marqueeContainer}>
+        <Animated.View style={[styles.marqueeRow, animStyle]}>
+          {items.map((item) => (
+            <MarqueeTicket
+              key={`a-${item.id}`}
+              item={item}
+              category={
+                item.category_id ? categoriesById?.get(item.category_id) : undefined
+              }
+              theme={theme}
+            />
+          ))}
+          {items.map((item) => (
+            <MarqueeTicket
+              key={`b-${item.id}`}
+              item={item}
+              category={
+                item.category_id ? categoriesById?.get(item.category_id) : undefined
+              }
+              theme={theme}
+            />
+          ))}
+        </Animated.View>
+      </View>
+    </GestureDetector>
   )
 }
 
@@ -752,8 +812,8 @@ export { pickIconForFixedExpenseCategory }
 const styles = StyleSheet.create({
   card: {
     borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
   },
   headerRow: {
@@ -772,10 +832,10 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   rule: {
-    width: 24,
+    width: 22,
     height: 2,
-    marginTop: 8,
-    marginBottom: 10,
+    marginTop: 6,
+    marginBottom: 6,
     opacity: 0.55,
   },
   emptyCard: { opacity: 0.86 },
@@ -801,21 +861,21 @@ const styles = StyleSheet.create({
   // Las edge fade gradients viven absolute encima del marquee para
   // que items se desvanecen entrando/saliendo.
   marqueeContainer: {
-    marginTop: 6,
-    marginHorizontal: -16,
+    marginTop: 4,
+    marginHorizontal: -14, // matchea el paddingHorizontal nuevo (14)
     overflow: 'hidden',
     position: 'relative',
   },
   marqueeRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8, // matchea TICKET_GAP (crítico para el loop seamless)
+    paddingHorizontal: 14,
     alignItems: 'stretch',
   },
   marqueeStaticRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 14,
     alignItems: 'stretch',
   },
   // Edge fade gradients REMOVIDAS 2026-05-31 — el overlay color del
@@ -825,49 +885,43 @@ const styles = StyleSheet.create({
   // prefiere "clean cut at the boundary" (Apple Wallet, App Store
   // featured row) — overflow:hidden del container ya da el corte
   // limpio sin overlay.
-  // ── Ticket — single-row compact (iOS list cell-style) ──────────
-  // Toda la info en una fila: dot + name + amount + timing pill.
-  // Ahorro ~32pt verticales respecto al layout vertical previo.
-  // Hairline border + radius 12pt matchea iOS list cells / cards.
+  // ── Ticket — single-row compact, ajustado a tamaño mínimo ──────
+  // 2026-05-31: compactado un toque más por feedback del usuario.
+  // Padding + font sizes reducidos manteniendo legibilidad. El radius
+  // 11pt y la hairline border mantienen el feel iOS list cell.
   ticket: {
-    width: 250,
+    width: 240,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 11,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 8,
-    paddingHorizontal: 11,
-    gap: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    gap: 7,
   },
-  // SF Pro-friendly: weight 600 (semibold) matchea iOS Settings cells.
-  // Flex 1 ocupa el ancho disponible; truncate si nombre largo.
   ticketName: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
-  // Amount — el dato más impactante. Tabular nums tight para densidad.
-  // No flex (auto-width); va inline con el name.
   ticketAmount: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: '700',
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
-  // Timing pill — iOS chip semantic feel: hairline border, padding
-  // tight, texto uppercase con tracking positivo (SF Compact-ish).
   timingPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     flexShrink: 0,
   },
   timingPillText: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
     fontVariant: ['tabular-nums'],
   },
   upcomingList: { gap: 0 },
