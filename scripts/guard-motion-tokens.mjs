@@ -35,12 +35,27 @@ const TOKENS_FILE = join(root, 'mobile/lib/motion/tokens.ts')
 const BASELINE_FILE = join(root, 'scripts/motion-tokens-baseline.json')
 
 // Files in the baseline are legacy — they shipped inline configs
-// before the guard existed and migrate incrementally. Their counts
-// are reported but don't fail CI. New files cannot appear here.
-let baselineSet = new Set()
+// before the guard existed and migrate incrementally. The baseline
+// snapshots the violation COUNT per file (or, in legacy format, just
+// the file list). A file in the baseline is allowed to keep its
+// existing count of violations, but if its count grows, the new
+// violations are blocking. Drain the list by migrating callsites to
+// motion tokens and reducing each count toward 0.
+let baselineCounts = new Map()
 try {
   const raw = JSON.parse(readFileSync(BASELINE_FILE, 'utf8'))
-  baselineSet = new Set(raw.allowlist ?? [])
+  if (raw.counts && typeof raw.counts === 'object') {
+    // New count-based format: { "path/to/file.tsx": 5, ... }
+    baselineCounts = new Map(Object.entries(raw.counts))
+  } else if (Array.isArray(raw.allowlist)) {
+    // Legacy format: array of file paths grandfathered with no cap.
+    // Map each to Infinity so they don't block during migration to
+    // the new format. Update the JSON to use `counts` to enable
+    // regression detection.
+    for (const file of raw.allowlist) {
+      baselineCounts.set(file, Number.POSITIVE_INFINITY)
+    }
+  }
 } catch {
   // Baseline missing — treat every violation as new.
 }
@@ -174,8 +189,34 @@ function scanFile(path) {
 
 walk(scanRoot)
 
-const blocking = violations.filter((v) => !baselineSet.has(v.file))
-const legacy = violations.filter((v) => baselineSet.has(v.file))
+// Per-file counts of violations in the current run. Used to detect
+// when a baseline file has more violations than its baseline cap.
+const currentCounts = new Map()
+for (const v of violations) {
+  currentCounts.set(v.file, (currentCounts.get(v.file) ?? 0) + 1)
+}
+
+const blocking = []
+const legacy = []
+const regressedFiles = []
+for (const v of violations) {
+  const cap = baselineCounts.get(v.file)
+  if (cap === undefined) {
+    blocking.push(v)
+    continue
+  }
+  // File is in baseline. Allowed up to `cap` violations. If current
+  // count exceeds cap, the excess violations are blocking.
+  const current = currentCounts.get(v.file) ?? 0
+  if (current > cap) {
+    if (!regressedFiles.includes(v.file)) {
+      regressedFiles.push(v.file)
+    }
+    blocking.push(v)
+  } else {
+    legacy.push(v)
+  }
+}
 
 if (blocking.length === 0) {
   if (legacy.length === 0) {
@@ -191,12 +232,23 @@ if (blocking.length === 0) {
 console.error(
   `motion-tokens guard: ${blocking.length} blocking violation(s) (${legacy.length} legacy in baseline).\n`,
 )
+if (regressedFiles.length > 0) {
+  console.error(
+    `Files in the baseline that regressed (current count > baseline cap):`,
+  )
+  for (const file of regressedFiles) {
+    const cap = baselineCounts.get(file)
+    const current = currentCounts.get(file) ?? 0
+    console.error(`  ${file}: ${current} now / ${cap} baseline`)
+  }
+  console.error('')
+}
 for (const v of blocking) {
   console.error(`  ${v.file}:${v.line}  [${v.kind}]`)
   console.error(`    ${v.hint}`)
   console.error(`    To allow this one-off, add  // @motion-allow: <reason>  on the call site.`)
   console.error(
-    `    To grandfather the whole file, add it to scripts/motion-tokens-baseline.json (requires reviewer approval).\n`,
+    `    To grandfather the whole file, bump its count in scripts/motion-tokens-baseline.json (requires reviewer approval).\n`,
   )
 }
 process.exit(1)

@@ -1,18 +1,18 @@
 {
-  "_comment": "Files allowed to ship inline spring/timing configs while the migration to motion tokens is underway. NEW files cannot appear here without explicit review. Goal is to drain this list to [] over time — when a file's audit count hits 0, remove it from this baseline.",
-  "_generatedFrom": "scripts/guard-motion-tokens.mjs",
-  "_2026_05_31_note": "P0 hardening (2026-05-31 code review) re-populated this baseline to wire the guard into CI. Each file uses designer-tuned durations that drifted from motionDurations/decorativeDurations after the 2026-05-03 clean state. P1 ticket: drain this list — each callsite should either migrate to a token or add an inline `// @motion-allow: <reason>` comment.",
+  "_comment": "Per-file violation counts for files allowed to ship inline spring/timing configs while the migration to motion tokens is underway. NEW files cannot appear here without explicit review, AND existing files cannot grow beyond their baseline count (the guard treats current count > baseline as a regression and fails CI). Goal is to drain this list — each PR migrating callsites should bump the count down toward 0, and when a file hits 0 it should be removed from this baseline.",
+  "_format": "counts (count-based, regression-detecting). Legacy `allowlist` array still supported but treated as Infinity cap and should be migrated to `counts`.",
+  "_2026_05_31_note": "P0 hardening (2026-05-31 code review) populated this baseline to wire the guard into CI. Each file uses designer-tuned durations that drifted from motionDurations/decorativeDurations after the 2026-05-03 clean state. P1 ticket: drain this list — each callsite should either migrate to a token or add an inline `// @motion-allow: <reason>` comment.",
   "_totalViolationsAtBaseline": 22,
-  "allowlist": [
-    "mobile/components/achievements/achievement-unlock-modal.tsx",
-    "mobile/components/auth/pin-pad.tsx",
-    "mobile/components/control-hero-preview/control-hero-a-titular.tsx",
-    "mobile/components/fijos/fijo-category-groups.tsx",
-    "mobile/components/fijos/fijo-row.tsx",
-    "mobile/components/fijos/fijos-hero-card.tsx",
-    "mobile/components/fijos/fijos-proximos-card.tsx",
-    "mobile/components/fijos/fijos-scheduled-banner.tsx",
-    "mobile/components/wrapped/cycle-wrapped-modal.tsx",
-    "mobile/screens/settings/achievements-gallery-screen.tsx"
-  ]
+  "counts": {
+    "mobile/components/achievements/achievement-unlock-modal.tsx": 1,
+    "mobile/components/auth/pin-pad.tsx": 4,
+    "mobile/components/control-hero-preview/control-hero-a-titular.tsx": 4,
+    "mobile/components/fijos/fijo-category-groups.tsx": 1,
+    "mobile/components/fijos/fijo-row.tsx": 1,
+    "mobile/components/fijos/fijos-hero-card.tsx": 1,
+    "mobile/components/fijos/fijos-proximos-card.tsx": 7,
+    "mobile/components/fijos/fijos-scheduled-banner.tsx": 1,
+    "mobile/components/wrapped/cycle-wrapped-modal.tsx": 1,
+    "mobile/screens/settings/achievements-gallery-screen.tsx": 1
+  }
 }
