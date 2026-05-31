@@ -176,7 +176,13 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
       }
       switch (action.kind) {
         case 'navigate': {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- expo-router typed routes don't cover our dynamic dispatch
+          // Dynamic dispatch: action.route comes from server-side
+          // control signals (string). expo-router's `pathname` type is
+          // a strict union of the static route map and parameterized
+          // template strings; a server-provided arbitrary string can't
+          // match it. We escape through `any` (documented) rather than
+          // build a runtime guard against the typed route map.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           router.push({ pathname: action.route as any, params: action.params ?? {} })
           return
         }
@@ -335,7 +341,9 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           void triggerHaptic('selection')
           const params: Record<string, string> = { signalId: action.signalId }
           if (action.topic) params.topic = action.topic
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- coach route is dynamic and not yet in expo-router's typed map
+          // Coach route is parameterized but not yet in expo-router's
+          // typed map. Same escape as the navigate case above.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           router.push({ pathname: '/(app)/coach/[signalId]' as any, params })
           return
         }
