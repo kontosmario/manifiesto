@@ -1,6 +1,18 @@
 {
   "_comment": "Files allowed to ship inline spring/timing configs while the migration to motion tokens is underway. NEW files cannot appear here without explicit review. Goal is to drain this list to [] over time — when a file's audit count hits 0, remove it from this baseline.",
-  "_generatedFrom": "scripts/guard-motion-tokens.mjs run on 2026-05-03 (post-migration)",
-  "_totalViolationsAtBaseline": 0,
-  "allowlist": []
+  "_generatedFrom": "scripts/guard-motion-tokens.mjs",
+  "_2026_05_31_note": "P0 hardening (2026-05-31 code review) re-populated this baseline to wire the guard into CI. Each file uses designer-tuned durations that drifted from motionDurations/decorativeDurations after the 2026-05-03 clean state. P1 ticket: drain this list — each callsite should either migrate to a token or add an inline `// @motion-allow: <reason>` comment.",
+  "_totalViolationsAtBaseline": 22,
+  "allowlist": [
+    "mobile/components/achievements/achievement-unlock-modal.tsx",
+    "mobile/components/auth/pin-pad.tsx",
+    "mobile/components/control-hero-preview/control-hero-a-titular.tsx",
+    "mobile/components/fijos/fijo-category-groups.tsx",
+    "mobile/components/fijos/fijo-row.tsx",
+    "mobile/components/fijos/fijos-hero-card.tsx",
+    "mobile/components/fijos/fijos-proximos-card.tsx",
+    "mobile/components/fijos/fijos-scheduled-banner.tsx",
+    "mobile/components/wrapped/cycle-wrapped-modal.tsx",
+    "mobile/screens/settings/achievements-gallery-screen.tsx"
+  ]
 }
