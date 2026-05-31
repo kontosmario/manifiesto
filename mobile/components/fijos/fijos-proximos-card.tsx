@@ -1,11 +1,20 @@
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native'
 import Animated, {
+  Easing,
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -138,29 +147,16 @@ export function FijosProximosCard({
         </View>
         <RuleScale color={theme.colors.text} delay={60} />
 
-        {/* Upcoming list */}
+        {/* Upcoming MARQUEE — banner horizontal con auto-scroll de
+            derecha → izquierda. Antes era una lista vertical de 3 rows
+            (alta y repetitiva); ahora es una sola fila ticker-style
+            que muestra TODOS los upcoming items uno tras otro,
+            ahorrando ~120pt verticales en la card. */}
         {hasUpcoming ? (
-          <View style={styles.upcomingList}>
-            {upcoming.slice(0, 3).map((item, idx) => (
-              <View key={item.id}>
-                <UpcomingRow
-                  item={item}
-                  category={
-                    item.category_id ? categoriesById?.get(item.category_id) : undefined
-                  }
-                  delay={120 + idx * 60}
-                />
-                {idx < Math.min(2, upcoming.length - 1) ? (
-                  <View
-                    style={[
-                      styles.rowDivider,
-                      { backgroundColor: theme.colors.line },
-                    ]}
-                  />
-                ) : null}
-              </View>
-            ))}
-          </View>
+          <UpcomingMarquee
+            items={upcoming}
+            categoriesById={categoriesById}
+          />
         ) : (
           <View style={styles.calmRow}>
             <MaterialIcons name="check-circle" size={18} color={theme.colors.primary} />
@@ -279,35 +275,131 @@ function FijosProximosCardEmpty() {
   )
 }
 
-function UpcomingRow({
-  item,
-  category,
-  delay,
+/**
+ * Marquee horizontal de "próximos a pagar". Items se renderean DUPLICADOS
+ * dentro de un Animated.View que slidea de derecha → izquierda. Cuando
+ * el primer set sale de pantalla, el segundo set ocupa exactamente la
+ * posición original → loop seamless sin "jump".
+ *
+ * Speed: 30 px/seg — read-speed natural para ticker, no marea ni
+ * obliga a esforzarse para leer.
+ * Easing: Linear (no acceleration/deceleration — un ticker debe sentir
+ * velocidad CONSTANTE, no orgánica).
+ * ReduceMotion: skip animación, render ScrollView horizontal estático
+ * para que el user pueda scrollear manualmente.
+ * Performance: animación corre en UI thread (Reanimated v3 worklets),
+ * 0 impacto en JS thread.
+ */
+function UpcomingMarquee({
+  items,
+  categoriesById,
 }: {
-  item: FijoItem
-  category?: { id: string; name: string; color: string }
-  delay: number
+  items: FijoItem[]
+  categoriesById?: Map<string, { id: string; name: string; color: string }>
 }) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
-  const opacity = useSharedValue(reduced ? 1 : 0)
-  const y = useSharedValue(reduced ? 0 : 8)
+  const translateX = useSharedValue(0)
+  const [setWidth, setSetWidth] = useState(0)
+
+  const onLayoutRow = (e: LayoutChangeEvent) => {
+    // El row contiene 2 sets duplicados. setWidth = ancho de UN set
+    // (la mitad del total). Cuando translateX = -setWidth, el segundo
+    // set queda exactamente en la posición inicial del primero.
+    const full = e.nativeEvent.layout.width
+    if (full > 0 && full / 2 !== setWidth) {
+      setSetWidth(full / 2)
+    }
+  }
 
   useEffect(() => {
-    if (reduced) return
-    opacity.value = withDelay(delay, withTiming(1, { duration: 320, easing: ENTER }))
-    y.value = withDelay(delay, withTiming(0, { duration: 320, easing: ENTER }))
-    return () => {
-      cancelAnimation(opacity)
-      cancelAnimation(y)
-    }
-  }, [delay, reduced, opacity, y])
+    if (setWidth === 0 || reduced) return
+    // 30 px/seg → duration en ms = setWidth / 30 * 1000.
+    // Ej: setWidth 600pt → 20s por loop completo.
+    const SPEED_PX_PER_SEC = 30
+    const duration = (setWidth / SPEED_PX_PER_SEC) * 1000
+    translateX.value = 0
+    translateX.value = withRepeat(
+      withTiming(-setWidth, { duration, easing: Easing.linear }),
+      -1, // infinite
+      false, // no reverse — el loop reset a 0 al completar (seamless por la duplicación)
+    )
+    return () => cancelAnimation(translateX)
+  }, [setWidth, reduced, translateX])
 
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: y.value }],
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
   }))
 
+  // ReduceMotion: fallback a ScrollView horizontal estático. El user
+  // puede scrollear manualmente para ver todos los items.
+  if (reduced) {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.marqueeStaticRow}
+      >
+        {items.map((item) => (
+          <MarqueeItem
+            key={item.id}
+            item={item}
+            category={
+              item.category_id ? categoriesById?.get(item.category_id) : undefined
+            }
+            theme={theme}
+          />
+        ))}
+      </ScrollView>
+    )
+  }
+
+  return (
+    <View style={styles.marqueeContainer}>
+      <Animated.View
+        style={[styles.marqueeRow, animStyle]}
+        onLayout={onLayoutRow}
+      >
+        {/* Set 1 + set 2 duplicado — necesario para el loop seamless */}
+        {items.map((item) => (
+          <MarqueeItem
+            key={`a-${item.id}`}
+            item={item}
+            category={
+              item.category_id ? categoriesById?.get(item.category_id) : undefined
+            }
+            theme={theme}
+          />
+        ))}
+        {items.map((item) => (
+          <MarqueeItem
+            key={`b-${item.id}`}
+            item={item}
+            category={
+              item.category_id ? categoriesById?.get(item.category_id) : undefined
+            }
+            theme={theme}
+          />
+        ))}
+      </Animated.View>
+    </View>
+  )
+}
+
+/**
+ * Item individual del marquee. Compacto: label de timing arriba (HOY /
+ * MAÑANA / EN 5D, urgente en peach) + categoryDot · nombre + amount.
+ * Width fijo (auto-hug content) para que la velocidad sea uniforme.
+ */
+function MarqueeItem({
+  item,
+  category,
+  theme,
+}: {
+  item: FijoItem
+  category?: { id: string; name: string; color: string }
+  theme: ReturnType<typeof useAppTheme>['theme']
+}) {
   const diffDays = Math.max(0, item.daysUntilDue)
   const urgent = diffDays <= 2
   const label = diffDays === 0 ? 'HOY' : diffDays === 1 ? 'MAÑANA' : `EN ${diffDays}D`
@@ -316,34 +408,41 @@ function UpcomingRow({
       ? '#F2A78C'
       : '#B84014'
     : theme.colors.textMuted
-
   const catColor = category?.color ?? theme.colors.peach
 
   return (
-    <Animated.View style={[styles.upcomingRow, style]}>
-      <View style={styles.upcomingLeft}>
-        <Text style={[styles.upcomingLabel, { color: labelColor }]}>{label}</Text>
-        <View style={styles.upcomingNameRow}>
-          <View
-            style={[
-              styles.categoryDot,
-              { backgroundColor: catColor },
-            ]}
-          />
-          <Text
-            style={[styles.upcomingName, { color: theme.colors.text }]}
-            numberOfLines={1}
-          >
-            {item.name}
-          </Text>
-        </View>
+    <View
+      style={[
+        styles.marqueeItem,
+        {
+          backgroundColor: theme.isDark
+            ? 'rgba(255,255,255,0.04)'
+            : 'rgba(15,42,30,0.04)',
+          borderColor: theme.colors.line,
+        },
+      ]}
+    >
+      <Text style={[styles.marqueeLabel, { color: labelColor }]}>{label}</Text>
+      <View style={styles.marqueeNameRow}>
+        <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
+        <Text
+          style={[styles.marqueeName, { color: theme.colors.text }]}
+          numberOfLines={1}
+        >
+          {item.name}
+        </Text>
       </View>
-      <Text style={[styles.upcomingAmount, { color: theme.colors.text }]}>
+      <Text style={[styles.marqueeAmount, { color: theme.colors.text }]}>
         {formatMoney(item.amount)}
       </Text>
-    </Animated.View>
+    </View>
   )
 }
+
+// UpcomingRow (v1 — lista vertical de 3 rows con fade-in stagger)
+// fue removida 2026-05-31 cuando el upcoming list pasó al marquee
+// horizontal (`UpcomingMarquee` arriba). Mantengo el comentario
+// ancla por si alguien busca el cambio.
 
 function HikeAlertRow({
   hike,
@@ -581,6 +680,57 @@ const styles = StyleSheet.create({
   },
   emptyCard: { opacity: 0.86 },
   phBar: { borderRadius: 5 },
+  // ── Marquee de upcoming ─────────────────────────────────────────
+  // Container: overflow hidden recorta los items que salen por los
+  // bordes del card. Sin esto, los items duplicados serían visibles
+  // afuera del card durante la animación.
+  marqueeContainer: {
+    marginTop: 4,
+    marginHorizontal: -16, // negativo para que el marquee toque los bordes del card
+    overflow: 'hidden',
+  },
+  marqueeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16, // restore padding interno
+  },
+  // Fallback estático para reduceMotion: igual layout que el animado.
+  marqueeStaticRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  marqueeItem: {
+    minWidth: 160,
+    maxWidth: 220,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 3,
+  },
+  marqueeLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+  },
+  marqueeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  marqueeName: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    flexShrink: 1,
+  },
+  marqueeAmount: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
+  },
   upcomingList: { gap: 0 },
   upcomingRow: {
     flexDirection: 'row',
