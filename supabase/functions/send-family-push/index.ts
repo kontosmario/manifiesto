@@ -72,17 +72,36 @@ if (hasWebPushConfig) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
 }
 
-const corsHeaders: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// Allowed origins: only the production site domain. The Edge
+// Function is invoked from the mobile app (which doesn't read CORS)
+// and from server-side notification orchestrator (which doesn't
+// either). The only browser-origin caller is the web-push subscribe
+// path on manifiesto.app. Echo back exactly the matched origin so
+// credentials can be set if needed in the future.
+const ALLOWED_ORIGINS = new Set([
+  'https://manifiesto.app',
+  'https://www.manifiesto.app',
+])
+
+function corsHeadersFor(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : ''
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  }
 }
 
-function jsonResponse(payload: unknown, status = 200): Response {
+function jsonResponse(
+  payload: unknown,
+  status = 200,
+  corsHeadersOverride: Record<string, string> = corsHeadersFor(null),
+): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersOverride,
       'Content-Type': 'application/json',
     },
   })
@@ -300,15 +319,17 @@ async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<void> {
   }
 }
 
-async function handler(request: Request): Promise<Response> {
+export async function handler(request: Request): Promise<Response> {
+  const cors = corsHeadersFor(request.headers.get('origin'))
+
   if (request.method === 'OPTIONS') {
     return new Response('ok', {
-      headers: corsHeaders,
+      headers: cors,
     })
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405)
+    return jsonResponse({ error: 'Method not allowed.' }, 405, cors)
   }
 
   if (!isServerReady()) {
@@ -318,6 +339,7 @@ async function handler(request: Request): Promise<Response> {
           'Missing env vars in Edge Function (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).',
       },
       500,
+      cors,
     )
   }
 
@@ -325,7 +347,7 @@ async function handler(request: Request): Promise<Response> {
   try {
     payload = (await request.json()) as PushRequestBody
   } catch {
-    return jsonResponse({ error: 'Invalid JSON payload.' }, 400)
+    return jsonResponse({ error: 'Invalid JSON payload.' }, 400, cors)
   }
 
   // notifications-orchestrator path: caller pre-resolved tokens and
@@ -342,14 +364,14 @@ async function handler(request: Request): Promise<Response> {
       !supabaseServiceRoleKey ||
       !timingSafeEqual(orchestratorToken, supabaseServiceRoleKey)
     ) {
-      return jsonResponse({ error: 'Unauthorized (service-role required for batch path).' }, 401)
+      return jsonResponse({ error: 'Unauthorized (service-role required for batch path).' }, 401, cors)
     }
     const messages = payload.messages
     if (messages.length === 0) {
-      return jsonResponse({ ok: true, count: 0 })
+      return jsonResponse({ ok: true, count: 0 }, 200, cors)
     }
     await sendExpoBatch(messages)
-    return jsonResponse({ ok: true, count: messages.length })
+    return jsonResponse({ ok: true, count: messages.length }, 200, cors)
   }
 
   // Sanitize + length-cap user-controlled strings BEFORE any auth /
@@ -366,7 +388,7 @@ async function handler(request: Request): Promise<Response> {
   const url = rawUrl.startsWith('/') ? rawUrl : '/home'
 
   if (!familyId || !title) {
-    return jsonResponse({ error: 'familyId and title are required.' }, 400)
+    return jsonResponse({ error: 'familyId and title are required.' }, 400, cors)
   }
 
   // Strict bearer-token auth. The previous gateway-header fallback
@@ -378,13 +400,13 @@ async function handler(request: Request): Promise<Response> {
     request.headers.get('Authorization') ?? request.headers.get('authorization'),
   )
   if (!token) {
-    return jsonResponse({ error: 'Unauthorized (missing token).' }, 401)
+    return jsonResponse({ error: 'Unauthorized (missing token).' }, 401, cors)
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
   const authUserResponse = await userClient.auth.getUser(token)
   if (authUserResponse.error || !authUserResponse.data.user) {
-    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401)
+    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401, cors)
   }
   const actorUserId = authUserResponse.data.user.id
 
@@ -402,7 +424,7 @@ async function handler(request: Request): Promise<Response> {
     p_window_seconds: 60,
   })
   if (rateLimitResponse.error) {
-    return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429)
+    return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429, cors)
   }
 
   const membershipResponse = await adminClient
@@ -413,7 +435,7 @@ async function handler(request: Request): Promise<Response> {
     .maybeSingle()
 
   if (membershipResponse.error || !membershipResponse.data) {
-    return jsonResponse({ error: 'User is not a member of this family.' }, 403)
+    return jsonResponse({ error: 'User is not a member of this family.' }, 403, cors)
   }
 
   // Reject blocked members — they can still hold a valid JWT briefly
@@ -424,7 +446,7 @@ async function handler(request: Request): Promise<Response> {
     blocked_at?: string | null
   }
   if (member.role === 'blocked' || member.blocked_at) {
-    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403)
+    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403, cors)
   }
 
   const subscriptionsResponse = await adminClient
@@ -437,12 +459,13 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse(
       { error: 'Could not fetch push subscriptions.', details: subscriptionsResponse.error.message },
       500,
+      cors,
     )
   }
 
   const subscriptions = (subscriptionsResponse.data ?? []) as PushSubscriptionRow[]
   if (subscriptions.length === 0) {
-    return jsonResponse({ sent: 0, failed: 0, removed: 0 })
+    return jsonResponse({ sent: 0, failed: 0, removed: 0 }, 200, cors)
   }
 
   const webPushPayload = JSON.stringify({
@@ -471,7 +494,7 @@ async function handler(request: Request): Promise<Response> {
     { sent: 0, failed: 0, removed: 0 },
   )
 
-  return jsonResponse(summary)
+  return jsonResponse(summary, 200, cors)
 }
 
 if (!denoGlobal.Deno?.serve) {
