@@ -552,7 +552,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           <Animated.View
             style={styles.rowWrap}
             entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
-            exiting={rowAnimationEnabled ? FadeOut.duration(140) : undefined}
+            exiting={FadeOut.duration(140)}
             layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
           >
             <SwipeRow
@@ -603,16 +603,17 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       return (
         // Wrapping in Animated.View with entering/exiting + layout
         // makes filter changes (category pill, day selection) feel
-        // smooth instead of snapping. `entering`/`layout` are gated
-        // by `rowAnimationEnabled` so cold mount + virtualized scroll
-        // recycle don't fire worklets that contend with the tab
-        // transition. `exiting` stays on because rows leaving the
-        // filtered set should always fade out (the parent stays
-        // mounted, so the cost is bounded to actual deletions).
+        // smooth instead of snapping. `entering` + `layout` are
+        // gated by `rowAnimationEnabled` so cold mount + virtualized
+        // scroll recycle don't fire worklets that contend with the
+        // tab transition. `exiting` stays on unconditionally because
+        // FlatList only unmounts a cell when its key leaves `data`
+        // (filter change or actual delete) — recycle reuses the same
+        // mount, so the cost is bounded to real removals.
         <Animated.View
           style={styles.rowWrap}
           entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
-          exiting={rowAnimationEnabled ? FadeOut.duration(140) : undefined}
+          exiting={FadeOut.duration(140)}
           layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
         >
           <SwipeRow
