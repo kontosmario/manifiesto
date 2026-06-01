@@ -126,6 +126,7 @@ export function GastosMonthCalendar({
         cycleDays={cycleDays}
         firstWeekdayOffset={firstWeekdayOffset}
         onSelectDay={onSelectDay}
+        noSpendMarkedDates={noSpendMarkedDates}
         inert
       />
     )
@@ -199,6 +200,7 @@ export function GastosMonthCalendar({
             cycleDays={cycleDays}
             firstWeekdayOffset={firstWeekdayOffset}
             onSelectDay={onSelectDay}
+            noSpendMarkedDates={noSpendMarkedDates}
           />
         </Animated.View>
       )}
@@ -212,6 +214,7 @@ function GridMode({
   cycleDays,
   firstWeekdayOffset,
   onSelectDay,
+  noSpendMarkedDates,
   inert = false,
 }: {
   dayMoods: Record<number, GastosDayMood>
@@ -219,6 +222,10 @@ function GridMode({
   cycleDays: number
   firstWeekdayOffset: number
   onSelectDay: (day: number) => void
+  /** Set of YYYY-MM-DD ISO date strings (in user-local tz) for days
+   *  already marked as no-spend. Drives the small leaf dot under
+   *  the day number. */
+  noSpendMarkedDates?: Set<string>
   /** Preview mode — cells render but aren't tappable. */
   inert?: boolean
 }) {
@@ -301,6 +308,14 @@ function GridMode({
                 const cellMs = cellDate.getTime()
                 const isToday = cellMs === todayMs
                 const isPast = cellMs <= todayMs
+                // Local YYYY-MM-DD (not toISOString — that shifts to
+                // UTC and can move the day by ±1 depending on tz
+                // offset). Same approach as the FocusMode lookup above.
+                const yIso = cellDate.getFullYear()
+                const mIso = String(cellDate.getMonth() + 1).padStart(2, '0')
+                const dIso = String(cellDate.getDate()).padStart(2, '0')
+                const cellIso = `${yIso}-${mIso}-${dIso}`
+                const isNoSpendMarked = noSpendMarkedDates?.has(cellIso) ?? false
                 return (
                   <DayCell
                     key={`${cellDate.getFullYear()}-${cellDate.getMonth()}-${dayNum}`}
@@ -309,6 +324,7 @@ function GridMode({
                     isToday={isToday}
                     isPast={isPast}
                     inert={inert}
+                    isNoSpendMarked={isNoSpendMarked}
                     onPress={() => onSelectDay(dayNum)}
                   />
                 )
@@ -344,6 +360,7 @@ function DayCell({
   isPast,
   onPress,
   inert = false,
+  isNoSpendMarked = false,
 }: {
   day: number
   mood: GastosDayMood | undefined
@@ -352,6 +369,9 @@ function DayCell({
   onPress: () => void
   /** Preview mode — render the cell chrome but disable interaction. */
   inert?: boolean
+  /** Day is in the user's `no_spend_days_this_cycle` list — paints
+   *  a small green leaf glyph below the day number. */
+  isNoSpendMarked?: boolean
 }) {
   const { theme } = useAppTheme()
   const moodStyle = getMoodStyle(mood, theme.isDark)
@@ -426,7 +446,26 @@ function DayCell({
         ]}
       >
         <Text style={[styles.dayNumber, { color }]}>{day}</Text>
-        {isToday ? (
+        {/* No-spend leaf dot — distinct from the mood-color fill and
+            from the today breath dot. When a day is both Today AND
+            marked, the leaf wins: the breath dot lives in the same
+            slot and would overlap, and "marked as no-spend" is the
+            stronger signal at a glance. Leaf path matches the eco
+            glyph used in the FocusMode "Marcar día sin gastos" button
+            for visual continuity. */}
+        {isNoSpendMarked ? (
+          <View style={styles.noSpendLeaf}>
+            <Svg width={8} height={8} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M5 19c0-7 5-13 14-13-1 9-6 14-14 14M5 19c2-3 5-5 9-7"
+                stroke={theme.colors.success}
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </View>
+        ) : isToday ? (
           <View style={styles.todayDot}>
             {/* Today dot debe contrastar con el bg de la cell Today.
                 En light bg = text #12211A (forest oscuro) → heroAccent
@@ -828,6 +867,10 @@ const styles = StyleSheet.create({
   },
   dayNumber: { fontSize: 13, fontWeight: '700' },
   todayDot: { position: 'absolute', bottom: 4, alignSelf: 'center' },
+  // Shares the same slot as todayDot (4pt from the bottom, centered)
+  // so the cell layout doesn't shift when a day toggles its marked
+  // state. They're mutually exclusive at render time (see DayCell).
+  noSpendLeaf: { position: 'absolute', bottom: 3, alignSelf: 'center' },
   moodPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   moodText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
   focusHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 4, paddingTop: 8 },

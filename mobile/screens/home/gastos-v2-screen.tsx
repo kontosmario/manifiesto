@@ -49,6 +49,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
@@ -266,12 +267,15 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const markNoSpendMutation = useMarkNoExpenseDay(familyId, userId)
   const unmarkNoSpendMutation = useUnmarkNoExpenseDay(familyId, userId)
 
-  // Marked days for current calendar view. F2 uses last 14 entries
-  // from the streak hook; F3 will switch to home_snapshot's cycle-
-  // scoped list. Stored as a Set for O(1) lookup in the calendar.
+  // Marked days for current calendar view. F3 swaps F2's placeholder
+  // (streak hook's last-14 markedDaysIso, not cycle-bounded) for the
+  // home_snapshot's `no_spend_days_this_cycle` — exactly the current
+  // cycle window, matching the Control hero stat. Stored as a Set for
+  // O(1) lookup in the calendar's grid.
+  const homeSnapshot = useHomeSnapshot(userId)
   const noSpendMarkedDates = useMemo(() => {
-    return new Set<string>(streakData.markedDaysIso ?? [])
-  }, [streakData.markedDaysIso])
+    return new Set<string>(homeSnapshot.data?.no_spend_days_this_cycle ?? [])
+  }, [homeSnapshot.data?.no_spend_days_this_cycle])
 
   const handleMarkNoSpend = useCallback(
     (date: Date) => {
