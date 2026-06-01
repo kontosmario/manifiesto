@@ -6,6 +6,7 @@ import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { AchievementUnlockBridge } from '@/components/bridges/achievement-unlock-bridge'
 import { CycleWrappedBridge } from '@/components/bridges/cycle-wrapped-bridge'
 import { ToastHost } from '@/components/ui/toast-host'
+import { NoSpendConfettiHost } from '@/components/ui/no-spend-confetti-host'
 import { DailyBudgetNudgeBridge } from '@/components/bridges/daily-budget-nudge-bridge'
 import { GlobalSettingsModalsHost } from '@/components/settings/global-settings-modals-host'
 import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-action-host'
@@ -162,6 +163,7 @@ export function AppStackShell() {
           <AchievementUnlockBridge userId={userId} />
           <CycleWrappedBridge />
           <ToastHost />
+          <NoSpendConfettiHost />
         </>
       ) : null}
       <Stack
