@@ -27,8 +27,29 @@ import { Platform } from 'react-native'
 
 const CHUNK_SIZE = 1800 // < 2KB SecureStore cap, with safety headroom
 
+// AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY (not WHEN_UNLOCKED) is the
+// iOS-recommended level for auth tokens that need background access.
+// The Supabase auth client refreshes the session every ~50min on a
+// timer — when the device is locked the timer still fires, and with
+// WHEN_UNLOCKED the Keychain refuses the read with "User interaction
+// is not allowed", which Supabase logs as `console.error` (visible
+// as a red LogBox banner in dev).
+//
+// Threat model comparison:
+//   - WHEN_UNLOCKED:        readable only while device is currently unlocked.
+//   - AFTER_FIRST_UNLOCK:   readable after the user has unlocked at least once
+//                           since boot. After reboot, NOT readable until
+//                           first unlock.
+//   - Both with THIS_DEVICE_ONLY: never travels in iCloud/iTunes backups,
+//                                  per-device hardware-backed key wrap.
+//
+// Apple's own credential-storage guidance for refresh tokens points at
+// AFTER_FIRST_UNLOCK. Both wipe the key on cold-boot until first
+// unlock, so post-mortem forensic acquisition gets the same nothing.
+// PIN hash in pin-lock.ts stays at WHEN_UNLOCKED because it's only
+// read on explicit user interaction.
 const writeOptions: SecureStore.SecureStoreOptions = {
-  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
 }
 
 interface ChunkManifest {
