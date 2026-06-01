@@ -4,7 +4,7 @@ import type { Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
 
 const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
@@ -31,7 +31,7 @@ export function ExpenseHistoryRowCard({
   onPress,
   palette,
 }: ExpenseHistoryRowCardProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
 
   return (
     <RectButton

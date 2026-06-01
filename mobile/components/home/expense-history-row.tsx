@@ -7,7 +7,7 @@ import type { Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 export const ExpenseHistoryRow = memo(function ExpenseHistoryRow({
   category,
@@ -22,7 +22,7 @@ export const ExpenseHistoryRow = memo(function ExpenseHistoryRow({
   onDelete: (expense: Expense) => void
   onEdit: (expense: Expense) => void
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const rowPalette = theme.isDark
     ? {
         backgroundColor: theme.colors.surfaceMuted,

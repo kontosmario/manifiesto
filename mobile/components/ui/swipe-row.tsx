@@ -21,7 +21,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 
@@ -107,7 +107,7 @@ export function SwipeRow({
   processingLabel = 'Procesando…',
   actionWidth = 96,
 }: SwipeRowProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const translateX = useSharedValue(0)
   // Posición de translateX cuando arranca el gesto. Sin esto, un segundo
   // pan desde el row ya abierto saltaba a translateX = event.translationX
@@ -325,7 +325,7 @@ interface SwipeActionButtonProps {
 }
 
 function SwipeActionButton({ action, width, onPress }: SwipeActionButtonProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const isDanger = action.tone === 'danger'
   const background = isDanger ? theme.colors.danger : theme.colors.primary
   const foreground = isDanger

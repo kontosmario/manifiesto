@@ -22,7 +22,7 @@ import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface FijoRowProps {
   item?: FijoItem
@@ -83,7 +83,7 @@ function FijoRowReal({
   onRevertPaid,
   isPending = false,
 }: FijoRowProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const [open, setOpen] = useState(false)
   const emoji = pickIconForFixedExpenseCategory(categoryName)
   // FijoRowReal is only rendered for non-placeholder rows, where `item`
@@ -752,7 +752,7 @@ function FijoRowReal({
  * placeholder estático.
  */
 function FijoRowPlaceholder() {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
   return (
     <View
@@ -839,7 +839,7 @@ function TrendBadge({
   deltaPct: number
   variant?: 'price' | 'arrears'
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const up = deltaPct > 0
   const isArrears = up && variant === 'arrears'
   // Bg alpha-based para que funcione sobre cualquier canvas (card en
@@ -1004,7 +1004,7 @@ function InfoLine({
 }: {
   icon: React.ComponentProps<typeof MaterialIcons>['name']
   label: string
-  theme: ReturnType<typeof useAppTheme>['theme']
+  theme: ReturnType<typeof useThemeTokens>
 }) {
   return (
     <View style={styles.infoLine}>

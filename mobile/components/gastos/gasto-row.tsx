@@ -4,7 +4,7 @@ import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 export interface GastoRowProps {
   title?: string
@@ -56,7 +56,7 @@ function GastoRowReal({
   time,
   notes,
 }: GastoRowProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const icon = pickIconForCategory(categoryName)
   const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
   // catChipText hue-preserved en ambos modos. Antes el pastel original
@@ -157,7 +157,7 @@ function GastoRowReal({
  * is a neutral muted dash. No fabricated category / author / amount.
  */
 function GastoRowPlaceholder() {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
   return (
     <View

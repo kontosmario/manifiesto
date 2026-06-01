@@ -25,7 +25,7 @@ import { LoadingBlock } from '@/components/ui/loading-block'
 import { SwipeRow } from '@/components/ui/swipe-row'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import type { FamilyNotification } from '@/features/notifications/use-notifications'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 import {
   formatRelativeNotificationTime,
   iconForKind,
@@ -63,7 +63,7 @@ export function NotificationFeedList({
   onMarkRead,
   ListHeaderComponent,
 }: NotificationFeedListProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const membersQuery = useFamilyMembers(familyId)
 
   const memberById = useMemo(() => {
@@ -208,7 +208,7 @@ function NotificationRow({
   cardBg,
   onMarkRead,
 }: NotificationRowProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const pill = pillForSeverity(notification.severity, theme.isDark)
   const relativeTime = formatRelativeNotificationTime(notification.created_at)
 

@@ -3,7 +3,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface ExpenseHistoryRowActionsProps {
   onDelete: () => void
@@ -45,7 +45,7 @@ function SwipeActionButton({
   tone: 'default' | 'danger'
   onPress: () => void
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const palette =
     tone === 'danger'
       ? {
