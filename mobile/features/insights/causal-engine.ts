@@ -20,6 +20,7 @@
 //   3. multi-tx-day → spending_spike (≥4 tx in a single day → that day's total +X%)
 
 import type { Expense } from '@/features/expenses/expense-repository'
+import { DAY_MS } from '@/utils/time'
 
 export type CausalCauseType = 'day' | 'category' | 'time'
 export type CausalEffectType = 'spending_spike'
@@ -43,7 +44,6 @@ interface BuildArgs {
   now?: Date
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
 const SPIKE_RATIO_FRIDAY_SAT = 1.4
 const PAIRED_TX_WINDOW_MS = 3 * 60 * 60 * 1000
 const STRESS_DAY_TX_THRESHOLD = 4

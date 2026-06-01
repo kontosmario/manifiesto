@@ -19,6 +19,7 @@
 import type { ControlView, DowBucket } from '@/features/insights/control-v2-mock'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
+import { DAY_MS } from '@/utils/time'
 
 export interface ForecastTrack {
   /** Per-day projected discretionary spend, length 7. */
@@ -63,8 +64,6 @@ interface ForecastInput {
   remaining: number
   now?: Date
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Convert a JS dow (0=Sun..6=Sat) to the project's convention (0=Mon..6=Sun). */
 function jsDowToProject(jsDow: number): number {

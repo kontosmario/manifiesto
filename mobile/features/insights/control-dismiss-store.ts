@@ -27,8 +27,8 @@ import {
   upsertAdvisorDismissal,
   type AdvisorDismissalRow,
 } from '@/features/insights/advisor-dismiss-repository'
+import { DAY_MS } from '@/utils/time'
 
-const DAY_MS = 24 * 60 * 60 * 1000
 /** Default cooldown for signals not listed in `BASE_TTL_DAYS`. */
 const COOLDOWN_DAYS = 7
 

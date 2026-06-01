@@ -1,3 +1,5 @@
+import { DAY_MS } from '@/utils/time'
+
 export interface PayCycle {
   start: Date
   end: Date
@@ -77,7 +79,7 @@ export function getCurrentPayCycle(
 
   const cycleDays = Math.max(
     1,
-    Math.round((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)),
+    Math.round((cycleEnd.getTime() - cycleStart.getTime()) / DAY_MS),
   )
 
   return {

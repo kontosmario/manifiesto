@@ -24,12 +24,12 @@ import { useEffect } from 'react'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { DAY_MS } from '@/utils/time'
 
 const STORAGE_KEY = 'advisor-piped:v1'
 /** Default minimum interval used when a signal has no specific entry. */
 const DEFAULT_INTERVAL_HOURS = 18
 const HOUR_MS = 60 * 60 * 1000
-const DAY_MS = 24 * HOUR_MS
 
 // ─── Cooldown variable por familia de señal ─────────────────────────
 //

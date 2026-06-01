@@ -51,6 +51,7 @@ import {
   fijosRatioBody,
   positiveForecastBody,
 } from '@/features/insights/control-signals-copy'
+import { DAY_MS } from '@/utils/time'
 
 export interface CategoryLimit {
   id: string
@@ -120,7 +121,6 @@ interface BuildSignalsArgs {
   now?: Date
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
 const DOW_NAMES_FULL = [
   'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
 ] as const
@@ -1555,8 +1555,6 @@ function buildMemberContributionImbalance(
 // and respects the existing dismiss / cooldown / diversity-budget
 // machinery.
 
-const DAY_MS_LOCAL = 24 * 60 * 60 * 1000
-
 function startOfLocalDay(date: Date): number {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
@@ -1571,7 +1569,7 @@ function buildHighSingleExpense(
   const today = startOfLocalDay(args.now ?? new Date())
   const todayExpenses = args.expenses.filter((e) => {
     const ts = new Date(e.created_at).getTime()
-    return ts >= today && ts < today + DAY_MS_LOCAL
+    return ts >= today && ts < today + DAY_MS
   })
   if (todayExpenses.length === 0) return null
   let max = todayExpenses[0]
@@ -1660,7 +1658,7 @@ function buildDataGapWarning(
   const last = args.expenses[0]
   const lastTs = new Date(last.created_at).getTime()
   const now = (args.now ?? new Date()).getTime()
-  const daysSince = Math.floor((now - lastTs) / DAY_MS_LOCAL)
+  const daysSince = Math.floor((now - lastTs) / DAY_MS)
   if (daysSince < 3) return null
   if (daysSince > 14) return null // beyond this we don't pester
   return {
