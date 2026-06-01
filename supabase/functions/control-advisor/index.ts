@@ -99,16 +99,32 @@ const supabaseAnonKey = env?.get('SUPABASE_ANON_KEY') ?? ''
 const supabaseServiceRoleKey = env?.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const anthropicApiKey = env?.get('ANTHROPIC_API_KEY') ?? ''
 
-const corsHeaders: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// Mirrors send-family-push: only echo Origin for the production
+// site. Mobile callers don't read CORS at all, so this is purely
+// defense-in-depth against browser-origin abuse.
+const ALLOWED_ORIGINS = new Set([
+  'https://manifiesto.app',
+  'https://www.manifiesto.app',
+])
+
+function corsHeadersFor(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : ''
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  }
 }
 
-function jsonResponse(payload: unknown, status = 200): Response {
+function jsonResponse(
+  payload: unknown,
+  status = 200,
+  corsHeadersOverride: Record<string, string> = corsHeadersFor(null),
+): Response {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersOverride, 'Content-Type': 'application/json' },
   })
 }
 
@@ -467,8 +483,9 @@ function fallbackTasks(): ControlAdvisorTask[] {
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 async function handler(request: Request): Promise<Response> {
+  const cors = corsHeadersFor(request.headers.get('origin'))
   if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: cors })
   }
 
   if (request.method !== 'POST') {
