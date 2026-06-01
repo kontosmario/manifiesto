@@ -280,12 +280,26 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
   }
 }
 
+export interface MarkNoExpenseDayInput {
+  /** YYYY-MM-DD in the user's local timezone. Omit for today. */
+  date?: string
+  /** Allow marking today even if expenses already exist. The UI
+   *  prompts an Alert before passing true. Has no effect on past
+   *  dates — those reject unconditionally if expenses exist. */
+  force?: boolean
+}
+
 /**
- * Marks today as a no-expense day. Server-side, this writes a row in
- * `streak_marked_days` and runs the streak state machine for today
- * (in the user's timezone), so the streak advances exactly as it would
- * on a real expense insert. Client cache is invalidated for both the
- * streak row and the marked-days list so the UI updates immediately.
+ * Marks a day as no-expense. Server-side, this writes a row in
+ * `streak_marked_days` and runs the streak state machine for that
+ * day (in the user's timezone), so the streak advances exactly as
+ * it would on a real expense insert. Client cache is invalidated for
+ * both the streak row and the marked-days list so the UI updates
+ * immediately.
+ *
+ * Default is "today in user-local tz". Pass `{ date: 'YYYY-MM-DD' }`
+ * to mark a past date. Server-side rejects future dates and past
+ * dates with existing expenses.
  */
 export function useMarkNoExpenseDay(
   familyId: string | undefined,
@@ -293,11 +307,13 @@ export function useMarkNoExpenseDay(
 ) {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: async () => {
+  return useMutation<string, Error, MarkNoExpenseDayInput | undefined>({
+    mutationFn: async (input) => {
       if (!familyId) throw new Error('No family selected')
       const { data, error } = await supabase.rpc('mark_no_expense_day', {
         p_family_id: familyId,
+        p_date: input?.date ?? null,
+        p_force: input?.force ?? false,
       })
       if (error) throw error
       return data as string
@@ -311,11 +327,20 @@ export function useMarkNoExpenseDay(
   })
 }
 
+export interface UnmarkNoExpenseDayInput {
+  /** YYYY-MM-DD in the user's local timezone. Omit for today. */
+  date?: string
+}
+
 /**
- * Reverts today's "no expense" mark. Server-side this clears the row
+ * Reverts a day's "no expense" mark. Server-side this clears the row
  * from `streak_marked_days` and recomputes the streak by replaying
- * every real expense + remaining marked day, so any side-effects from
- * the original mark (shield grants, level transitions) roll back too.
+ * every real expense + remaining marked day, so any side-effects
+ * from the original mark (shield grants, level transitions) roll
+ * back too.
+ *
+ * Default is "today". Pass `{ date: 'YYYY-MM-DD' }` to revert a
+ * specific past date.
  */
 export function useUnmarkNoExpenseDay(
   familyId: string | undefined,
@@ -323,11 +348,12 @@ export function useUnmarkNoExpenseDay(
 ) {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: async () => {
+  return useMutation<string, Error, UnmarkNoExpenseDayInput | undefined>({
+    mutationFn: async (input) => {
       if (!familyId) throw new Error('No family selected')
       const { data, error } = await supabase.rpc('unmark_no_expense_day', {
         p_family_id: familyId,
+        p_date: input?.date ?? null,
       })
       if (error) throw error
       return data as string
