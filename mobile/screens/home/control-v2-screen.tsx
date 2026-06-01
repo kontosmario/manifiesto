@@ -405,6 +405,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   view={view}
                   dailyGoalAmount={dailyGoalAmount}
                   dayLabel={dayLabel}
+                  noSpendDaysCount={snapshot.data?.no_spend_days_count_cycle ?? null}
                 />
               </ControlV2Anchor>
             </TourTarget>

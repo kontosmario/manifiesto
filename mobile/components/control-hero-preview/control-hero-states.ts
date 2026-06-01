@@ -47,6 +47,14 @@ export interface ControlHeroState {
   closedDays: number
   momentum: number // ratio last-7 vs prev-7
   noSpendCount: number
+  /** Cantidad de días explícitamente marcados como "sin gastos" este
+   *  ciclo (provenientes de `home_snapshot.no_spend_days_count_cycle`,
+   *  que cuenta filas en `streak_marked_days`). Distinto de
+   *  `noSpendCount`, que es el count derivado client-side de días con
+   *  gasto $0 en el ciclo. `null` cuando el snapshot no lo provee.
+   *  Renderiza el stat 🌱 en el footer SOLO cuando > 0 (la métrica
+   *  no aparece como cero, solo cuando hay algo que celebrar). */
+  noSpendDaysCount?: number | null
 
   /** Meta diaria auto-impuesta. `null` si el user no configuró goal.
    *  Cuando hay goal, pasa a ser el threshold "positive → caution"

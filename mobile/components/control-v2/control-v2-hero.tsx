@@ -11,6 +11,10 @@ interface ControlV2HeroProps {
   view: ControlView
   dailyGoalAmount: number | null
   dayLabel: string
+  /** Días explícitamente marcados como "sin gastos" en el ciclo,
+   *  según `home_snapshot.no_spend_days_count_cycle`. Cuando es
+   *  `null` o `0`, el stat 🌱 no se renderiza. */
+  noSpendDaysCount?: number | null
 }
 
 /**
@@ -27,6 +31,7 @@ function ControlV2HeroImpl({
   view,
   dailyGoalAmount,
   dayLabel,
+  noSpendDaysCount,
 }: ControlV2HeroProps) {
   const state = useMemo<ControlHeroState>(
     () => ({
@@ -59,6 +64,7 @@ function ControlV2HeroImpl({
       closedDays: view.closedDays,
       momentum: view.momentum,
       noSpendCount: view.noSpendCount,
+      noSpendDaysCount: noSpendDaysCount ?? null,
       // Optional · feed para futuras variantes
       dailyGoalAmount,
       score: view.score,
@@ -70,7 +76,7 @@ function ControlV2HeroImpl({
       vault: view.vault,
       mejorDowName: view.mejorDow?.name ?? null,
     }),
-    [data, view, dailyGoalAmount, dayLabel],
+    [data, view, dailyGoalAmount, dayLabel, noSpendDaysCount],
   )
 
   return <ControlHeroTitular state={state} />

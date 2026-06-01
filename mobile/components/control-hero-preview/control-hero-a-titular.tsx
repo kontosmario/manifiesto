@@ -132,6 +132,16 @@ export function ControlHeroTitular({ state }: Props) {
               }
             />
           )}
+          {state.noSpendDaysCount != null && state.noSpendDaysCount > 0 ? (
+            <>
+              <Divider />
+              <FooterStat
+                label="sin gastos"
+                value={`🌱 ${state.noSpendDaysCount}`}
+                color={palette.positive}
+              />
+            </>
+          ) : null}
           <Divider />
           <FooterStat
             label="al cobro"
