@@ -8,6 +8,13 @@ import { type ExpenseDaySection } from '@/features/expenses/expense-history'
 import { type Expense } from '@/features/expenses/use-expenses'
 import { motionDurations, motionStagger } from '@/lib/motion'
 
+// The stagger only applies to the first 8 rows so a long history
+// doesn't paint slowly. Past index 8 we skip the Animated.View
+// wrapper entirely — Reanimated still instantiates entering worklets
+// even on `undefined`, so omitting the wrapper is what frees the
+// cost.
+const ROW_STAGGER_CAP = 8
+
 interface ExpenseHistoryListProps {
   categoryById: Map<string, Category>
   groups: ExpenseDaySection[]
@@ -37,12 +44,6 @@ export function ExpenseHistoryList({
       renderScrollComponent={(props) => <GHScrollView {...props} />}
       style={styles.list}
       renderItem={({ item, index }) => {
-        // The stagger only applies to the first 8 rows so a long
-        // history doesn't paint slowly. Past index 8 we skip the
-        // Animated.View wrapper entirely — Reanimated still
-        // instantiates entering worklets on `undefined`, so omitting
-        // the wrapper is what actually frees the cost.
-        const ROW_STAGGER_CAP = 8
         const staggerDelay = Math.min(index, ROW_STAGGER_CAP) * motionStagger.listItem
         const row = (
           <ExpenseHistoryRow
