@@ -26,7 +26,10 @@ export const confetti = {
       durationMs: opts?.durationMs ?? 2000,
       origin: opts?.origin ?? 'top',
     }
-    listeners.forEach((l) => {
+    // Snapshot to array before iterating so a listener calling
+    // confetti.celebrate() again (rare but defensible) doesn't
+    // mutate the Set mid-iteration.
+    Array.from(listeners).forEach((l) => {
       l(payload)
     })
   },
