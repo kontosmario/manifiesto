@@ -37,12 +37,20 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // console.error. Official pattern documented at
 // https://supabase.com/docs/reference/javascript/auth-startautorefresh
 // — only wire on native; web has no AppState.
+//
+// The subscription is captured so a future HMR re-eval (or test
+// teardown) can call .remove() — at app runtime this module is
+// evaluated once, so the listener lives for the process lifetime
+// and there's no leak. Capturing is cheap insurance against the
+// Metro fast-refresh case duplicating listeners.
 if (Platform.OS !== 'web') {
-  AppState.addEventListener('change', (state) => {
+  const appStateSubscription = AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       supabase.auth.startAutoRefresh()
     } else {
       supabase.auth.stopAutoRefresh()
     }
   })
+  // Expose on the module record so HMR can find and detach it.
+  ;(globalThis as { __manifiesto_supabase_app_state_sub?: { remove: () => void } }).__manifiesto_supabase_app_state_sub = appStateSubscription
 }
