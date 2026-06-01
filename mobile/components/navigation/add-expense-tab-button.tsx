@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
+import { NoSpendConfirmSheet } from '@/components/gastos/no-spend-confirm-sheet'
+import { useCategories, type Category } from '@/features/categories/use-categories'
+import type { Expense } from '@/features/expenses/use-expenses'
 import {
   type PressableProps,
   type PressableStateCallbackType,
-  Alert,
   Pressable,
   StyleSheet,
   View,
@@ -88,35 +90,65 @@ export function AddExpenseTabButton({
 
   const hasMarkedToday = streakResult.data?.hasMarkedNoExpenseToday ?? false
 
-  const hasExpensesTodayOwn = useMemo(() => {
-    if (!userId) return false
+  // Today's own expenses + the list itself. Computed once: the
+  // boolean drives the petal state machine, the array feeds the
+  // confirm sheet so the user can verify what they registered.
+  const expensesTodayOwn = useMemo((): Expense[] => {
+    if (!userId) return []
     const expenses = expensesQuery.data ?? []
     const todayKey = new Date().toLocaleDateString('en-CA')
+    const mine: Expense[] = []
     for (const e of expenses) {
       if (e.created_by !== userId) continue
       const created = new Date(e.created_at)
-      if (created.toLocaleDateString('en-CA') === todayKey) return true
+      if (created.toLocaleDateString('en-CA') === todayKey) mine.push(e)
     }
-    return false
+    return mine
   }, [userId, expensesQuery.data])
+  const hasExpensesTodayOwn = expensesTodayOwn.length > 0
 
-  const doMark = useCallback(() => {
-    markNoExpenseMutation.mutate(undefined, {
-      onSuccess: () => {
-        void triggerHaptic('success')
-        confetti.celebrate({ durationMs: 2000, origin: 'top' })
-        toast.success('Día sin gastos registrado')
-      },
-      onError: (error: unknown) => {
-        void triggerHaptic('error')
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'No se pudo marcar. Reintentá en un momento.',
-        )
-      },
-    })
-  }, [markNoExpenseMutation])
+  // Sheet visibility for the "today has expenses, confirm anyway?"
+  // flow. Replaces the previous Alert.alert with a ModalCard that
+  // also lists the expenses so the user can verify.
+  const [confirmSheetVisible, setConfirmSheetVisible] = useState(false)
+
+  // Category lookup for the confirm sheet rows. useCategories is
+  // already seeded by home_snapshot — cheap to call again.
+  const categoriesQuery = useCategories(familyId)
+  const categoryById = useMemo(() => {
+    const map = new Map<string, Category>()
+    for (const c of categoriesQuery.data ?? []) map.set(c.id, c)
+    return map
+  }, [categoriesQuery.data])
+
+  // doMark accepts a `force` flag so the confirm-sheet path can
+  // bypass the server-side EXPENSES_EXIST_ON_DATE guard (the user
+  // already saw the expenses and consented). Without force, the
+  // RPC rejects today-with-expenses inserts.
+  const doMark = useCallback(
+    (options?: { force?: boolean }) => {
+      markNoExpenseMutation.mutate(
+        options?.force ? { force: true } : undefined,
+        {
+          onSuccess: () => {
+            void triggerHaptic('success')
+            confetti.celebrate({ durationMs: 2000, origin: 'top' })
+            toast.success('Día sin gastos registrado')
+            setConfirmSheetVisible(false)
+          },
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : 'No se pudo marcar. Reintentá en un momento.',
+            )
+          },
+        },
+      )
+    },
+    [markNoExpenseMutation],
+  )
 
   const { theme } = useAppTheme()
   const isReducedMotionEnabled = useReducedMotion()
@@ -205,14 +237,10 @@ export function AddExpenseTabButton({
             return
 
           case 'mark-confirm':
-            Alert.alert(
-              'Hoy tenés gastos cargados',
-              'Ya registraste gastos hoy. ¿Marcar igual el día como "sin gastos"? Después podés revertir la marca si te confundiste.',
-              [
-                { style: 'cancel', text: 'Cancelar' },
-                { text: 'Marcar igual', onPress: () => doMark() },
-              ],
-            )
+            // Open the project-style ModalCard sheet (instead of the
+            // generic Alert.alert) so the user can verify the list of
+            // expenses they registered today before confirming.
+            setConfirmSheetVisible(true)
             return
 
           case 'mark-direct':
@@ -308,6 +336,15 @@ export function AddExpenseTabButton({
         visible={quickActionsVisible}
         onDismiss={() => setQuickActionsVisible(false)}
         actions={quickActions}
+      />
+
+      <NoSpendConfirmSheet
+        visible={confirmSheetVisible}
+        expensesToday={expensesTodayOwn}
+        categoryById={categoryById}
+        isSubmitting={markNoExpenseMutation.isPending}
+        onCancel={() => setConfirmSheetVisible(false)}
+        onConfirm={() => doMark({ force: true })}
       />
     </>
   )

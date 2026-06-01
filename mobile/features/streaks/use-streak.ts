@@ -106,6 +106,7 @@ import {
   streakQueryKey,
   markedDaysQueryKey,
 } from '@/features/streaks/streak-query-keys'
+import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 
 interface MarkedDayRow {
   marked_date: string
@@ -327,9 +328,15 @@ export function useMarkNoExpenseDay(
       return data as string
     },
     onSuccess: async () => {
+      // home_snapshot also exposes no_spend_days_this_cycle (since
+      // migration 20260601007000). The calendar reads marked days
+      // from THERE for cycle-scoped accuracy, so we must invalidate
+      // it too — without this the calendar leaf-dot only updates
+      // after a full reload.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId, userId) }),
         queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId, userId) }),
+        queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
       ])
     },
   })
@@ -367,9 +374,15 @@ export function useUnmarkNoExpenseDay(
       return data as string
     },
     onSuccess: async () => {
+      // home_snapshot also exposes no_spend_days_this_cycle (since
+      // migration 20260601007000). The calendar reads marked days
+      // from THERE for cycle-scoped accuracy, so we must invalidate
+      // it too — without this the calendar leaf-dot only updates
+      // after a full reload.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId, userId) }),
         queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId, userId) }),
+        queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
       ])
     },
   })
