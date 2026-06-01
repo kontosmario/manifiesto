@@ -7,7 +7,7 @@ import {
 import { type Category, useCategories } from '@/features/categories/use-categories'
 import { filterVariableExpenseCategories } from '@/features/expenses/variable-expense-categories'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
-import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/home/add-expense-model'
+import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/expenses/category-ranking'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
