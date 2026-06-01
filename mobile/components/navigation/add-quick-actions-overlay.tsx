@@ -29,7 +29,7 @@ import {
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
-  key: 'expense' | 'fixed' | 'income'
+  key: 'expense' | 'fixed' | 'income' | 'no-spend'
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void
@@ -42,15 +42,19 @@ interface AddQuickActionsOverlayProps {
 }
 
 // ─── Fan layout ─────────────────────────────────────────────────
-// 3 actions emerge from the FAB center as a 60° fan arc, anchored
+// 4 actions emerge from the FAB center as a 90° fan arc, anchored
 // to the FAB so the menu reads as something unfurling FROM the
 // button, not floating beside it.
 //
 // Angles measured from horizontal (counter-clockwise), 90° = up.
-// Index 0 = leftmost, index 2 = rightmost. Order matches the
+// Index 0 = leftmost, index 3 = rightmost. Order matches the
 // `actions` prop, so the caller controls the L→R sequence.
-const FAN_ANGLES_DEG = [135, 90, 45]
-const FAN_RADIUS = 120 // distance from FAB center to each mini-FAB center
+//
+// Radius bumped 120 → 130 when we went from 3 to 4 petals so the
+// inner pair (105°/75°) has enough horizontal separation not to
+// overlap visually.
+const FAN_ANGLES_DEG = [135, 105, 75, 45]
+const FAN_RADIUS = 130 // distance from FAB center to each mini-FAB center
 const ACTION_SIZE = 56
 const LABEL_WIDTH = 96 // wide enough for "Gasto fijo" on one line
 // FAB center from screen bottom: tab bar bottom (14) + tab bar

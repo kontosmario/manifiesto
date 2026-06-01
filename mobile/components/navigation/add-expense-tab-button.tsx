@@ -22,6 +22,7 @@ import {
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -101,6 +102,21 @@ export function AddExpenseTabButton({
   }, [])
 
   const quickActions: QuickAction[] = [
+    {
+      key: 'no-spend',
+      label: 'No gasté hoy',
+      icon: 'eco',
+      // No backend: this is a moment-of-celebration nudge, not a
+      // persisted event. Recording it as a $0 Expense would pollute
+      // analytics (count, averages, streaks) and category 'Ahorro'
+      // doesn't fit semantically with variable-spend categories. If
+      // product later wants persistence (achievements / streaks),
+      // a dedicated `no_spend_days` table is the right shape.
+      onPress: () => {
+        void triggerHaptic('success')
+        toast.success('Bien hecho. Día sin gastos.')
+      },
+    },
     {
       key: 'income',
       label: 'Ingreso',
