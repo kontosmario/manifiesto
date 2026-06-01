@@ -77,6 +77,12 @@ function HomeActivitySectionImpl({
   pendingIncomeId,
   limit = 6,
 }: HomeActivitySectionProps) {
+  const memberById = useMemo(() => {
+    const map = new Map<string, (typeof familyMembers)[number]>()
+    for (const m of familyMembers) map.set(m.id, m)
+    return map
+  }, [familyMembers])
+
   const movements = useMemo<MovementItem[]>(() => {
     const merged: MovementItem[] = [
       ...expenses.map<MovementItem>((e) => ({
@@ -131,8 +137,8 @@ function HomeActivitySectionImpl({
               icon={INCOME_KIND_ICON[income.kind]}
               title={title}
               category={`Ingreso · ${kindLabel}`}
-              whoName={findName(familyMembers, income.created_by) ?? 'Alguien'}
-              whoColor={findColor(familyMembers, income.created_by) ?? '#329315'}
+              whoName={memberById.get(income.created_by)?.name ?? 'Alguien'}
+              whoColor={memberById.get(income.created_by)?.color ?? '#329315'}
               amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
               delay={delay}
             />
@@ -176,8 +182,8 @@ function HomeActivitySectionImpl({
               icon={pickIconForCategory(categoryName)}
               title={expense.description || categoryName}
               category={categoryName}
-              whoName={findName(familyMembers, expense.created_by) ?? 'Alguien'}
-              whoColor={findColor(familyMembers, expense.created_by) ?? '#329315'}
+              whoName={memberById.get(expense.created_by)?.name ?? 'Alguien'}
+              whoColor={memberById.get(expense.created_by)?.color ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
               delay={delay}
             />
@@ -195,16 +201,3 @@ const styles = StyleSheet.create({
   skeleton: { gap: 6 },
 })
 
-function findName(
-  members: Array<{ id: string; name: string; color: string }>,
-  userId: string,
-): string | undefined {
-  return members.find((m) => m.id === userId)?.name
-}
-
-function findColor(
-  members: Array<{ id: string; name: string; color: string }>,
-  userId: string,
-): string | undefined {
-  return members.find((m) => m.id === userId)?.color
-}
