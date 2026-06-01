@@ -357,6 +357,7 @@ function makeStreak(opts: {
     weekActivity: buildFakeWeekActivity(current, opts.hasLoggedToday),
     isBroken: Boolean(opts.isBroken),
     streakBrokenAt: opts.isBroken ? new Date().toISOString() : null,
+    markedDaysIso: [],
   }
 }
 

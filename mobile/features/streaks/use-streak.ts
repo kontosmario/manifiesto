@@ -46,6 +46,12 @@ export interface StreakData {
    *  truth for break detection — the client used to derive this
    *  locally but that race-conditioned with the at-risk window. */
   streakBrokenAt: string | null
+  /** ISO date strings (`YYYY-MM-DD`) of marked no-spend days,
+   *  ordered by `marked_date` descending. Limited to the last 14 by
+   *  the underlying query — sufficient for the calendar's current
+   *  cycle view. F3 will replace this with the cycle-scoped list
+   *  from home_snapshot. */
+  markedDaysIso: string[]
 }
 
 export interface StreakDerived {
@@ -235,6 +241,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
         weekActivity: week,
         isBroken: false,
         streakBrokenAt: null,
+        markedDaysIso: [],
       }
     }
 
@@ -268,6 +275,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
       weekActivity: week,
       isBroken,
       streakBrokenAt: row.streak_broken_at,
+      markedDaysIso: markedDaysQuery.data ?? [],
     }
   }, [familyId, userId, streakRowQuery.data, expensesQuery.data, markedDaysQuery.data])
 

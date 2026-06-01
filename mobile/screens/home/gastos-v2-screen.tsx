@@ -52,7 +52,14 @@ import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
-import { useStreak, type StreakData } from '@/features/streaks/use-streak'
+import {
+  useMarkNoExpenseDay,
+  useStreak,
+  useUnmarkNoExpenseDay,
+  type StreakData,
+} from '@/features/streaks/use-streak'
+import { confetti } from '@/lib/confetti-bus'
+import { toast } from '@/lib/toast-bus'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
@@ -76,6 +83,7 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
   weekActivity: Object.freeze([false, false, false, false, false, false, false]) as unknown as boolean[],
   isBroken: false,
   streakBrokenAt: null,
+  markedDaysIso: Object.freeze([]) as unknown as string[],
 })
 
 type MovementItem =
@@ -255,6 +263,70 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data ?? STREAK_DEFAULTS
+  const markNoSpendMutation = useMarkNoExpenseDay(familyId, userId)
+  const unmarkNoSpendMutation = useUnmarkNoExpenseDay(familyId, userId)
+
+  // Marked days for current calendar view. F2 uses last 14 entries
+  // from the streak hook; F3 will switch to home_snapshot's cycle-
+  // scoped list. Stored as a Set for O(1) lookup in the calendar.
+  const noSpendMarkedDates = useMemo(() => {
+    return new Set<string>(streakData.markedDaysIso ?? [])
+  }, [streakData.markedDaysIso])
+
+  const handleMarkNoSpend = useCallback(
+    (date: Date) => {
+      // Local-tz YYYY-MM-DD (avoid toISOString UTC shift — consistent
+      // with how the calendar component computes the Set lookup).
+      const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      markNoSpendMutation.mutate(
+        { date: iso },
+        {
+          onSuccess: () => {
+            void triggerHaptic('success')
+            confetti.celebrate({ durationMs: 2000, origin: 'top' })
+            toast.success('Día sin gastos registrado')
+          },
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            const message = error instanceof Error ? error.message : 'Error desconocido'
+            if (message.includes('EXPENSES_EXIST_ON_DATE')) {
+              toast.error('Ese día tiene gastos registrados — no se puede marcar como sin gasto.')
+            } else if (message.includes('FUTURE_DATE_NOT_ALLOWED')) {
+              toast.error('No podés marcar un día que aún no ocurrió.')
+            } else {
+              toast.error('No se pudo marcar. Reintentá en un momento.')
+            }
+          },
+        },
+      )
+    },
+    [markNoSpendMutation],
+  )
+
+  const handleUnmarkNoSpend = useCallback(
+    (date: Date) => {
+      const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      unmarkNoSpendMutation.mutate(
+        { date: iso },
+        {
+          onSuccess: () => {
+            void triggerHaptic('selection')
+            toast.info('Marca de día sin gastos removida.')
+          },
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : 'No se pudo revertir. Reintentá en un momento.',
+            )
+          },
+        },
+      )
+    },
+    [unmarkNoSpendMutation],
+  )
+
   const [streakSheetVisible, setStreakSheetVisible] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -824,6 +896,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               canGoPrev={navBounds.canGoPrev}
               canGoNext={navBounds.canGoNext}
               onRegisterForgottenExpense={handleRegisterForgotten}
+              onMarkNoSpend={handleMarkNoSpend}
+              onUnmarkNoSpend={handleUnmarkNoSpend}
+              noSpendMarkedDates={noSpendMarkedDates}
             />
           </Animated.View>
           </RiseView>
@@ -921,6 +996,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       handleNextDay,
       navBounds,
       handleRegisterForgotten,
+      handleMarkNoSpend,
+      handleUnmarkNoSpend,
+      noSpendMarkedDates,
       categoriesList,
       expenseCountByCategoryId,
       handleSelectCategory,
