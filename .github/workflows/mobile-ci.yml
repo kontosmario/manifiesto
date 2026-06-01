@@ -51,3 +51,19 @@ jobs:
       - name: Guard — motion tokens
         if: always()
         run: npm run guard:motion-tokens
+
+      - name: Bundle iOS (regression guard)
+        if: always()
+        run: npx expo export --platform ios --output-dir /tmp/expo-export --dump-sourcemap=false
+
+      - name: Setup Deno
+        if: always()
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Edge function smoke tests
+        if: always()
+        working-directory: supabase/functions
+        run: |
+          deno test --allow-env --allow-net send-family-push notifications-orchestrator
