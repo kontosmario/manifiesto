@@ -14,15 +14,15 @@
 // "casual lock" boundary, not full anti-forensics defense. A
 // server-mirrored lockout is tracked as future work.
 //
-// Pure-JS is intentional: adding a native crypto module
-// (expo-crypto / expo-standard-web-crypto) requires a dev-client
-// rebuild — `expo-standard-web-crypto` already crashed the app once
-// on a missing `ExpoCryptoAES` native module. The `pbkdf2` npm
-// package is pure JS and ships on Hermes with no rebuild.
+// PBKDF2 is implemented manually on top of `js-sha256`'s HMAC
+// (RN/Hermes-compatible, zero transitive deps). The `pbkdf2` npm
+// package pulls `readable-stream` → Node `events`, which Metro
+// can't resolve — that broke the bundle the first time we shipped
+// this hardening. js-sha256 was already a dep; building PBKDF2 on
+// top costs ~20 lines and avoids the Node-stdlib dependency chain.
 
 import * as SecureStore from 'expo-secure-store'
-import { pbkdf2Sync } from 'pbkdf2'
-import { Buffer } from 'buffer'
+import { sha256 } from 'js-sha256'
 import {
   clearPinEnabledFlag,
   isPinEnabledFlagSet,
@@ -40,8 +40,7 @@ const storeOptions: SecureStore.SecureStoreOptions = {
 
 const PIN_PATTERN = /^\d{4}$/
 const PBKDF2_ITERATIONS = 100_000
-const PBKDF2_KEYLEN = 32
-const PBKDF2_DIGEST = 'sha256'
+const SHA256_BLOCK_BYTES = 32
 
 // Lockout: 5 failed attempts triggers a backoff. Each subsequent
 // failure doubles the wait (30s, 1min, 2min, 4min, 8min cap).
@@ -52,6 +51,52 @@ const LOCKOUT_MAX_MS = 8 * 60 * 1000
 interface LockoutState {
   failedAttempts: number
   lockedUntilMs: number
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < out.length; i++) {
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return out
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < bytes.length; i++) {
+    s += bytes[i].toString(16).padStart(2, '0')
+  }
+  return s
+}
+
+// PBKDF2-HMAC-SHA256 specialized for 32-byte output (one block,
+// since SHA-256 produces 32-byte digests). This is enough for our
+// stored hash; we don't need the multi-block branch of the full
+// PBKDF2 spec.
+//
+//   T1 = U1 ^ U2 ^ ... ^ Uc
+//   U1 = HMAC(pwd, salt || INT32_BE(1))
+//   Uj = HMAC(pwd, U_{j-1})  for j = 2..c
+//
+// js-sha256's `sha256.hmac.array(key, msg)` returns a number[] of
+// length 32; we treat it as bytes and XOR-accumulate.
+function pbkdf2HmacSha256(password: string, salt: Uint8Array, iterations: number): Uint8Array {
+  const saltWithIndex = new Uint8Array(salt.length + 4)
+  saltWithIndex.set(salt)
+  // INT32 big-endian 1: [0, 0, 0, 1]. We only need block index 1
+  // because the requested output (32 bytes) ≤ HMAC-SHA256 output.
+  saltWithIndex[salt.length + 3] = 1
+
+  let u = sha256.hmac.array(password, Array.from(saltWithIndex))
+  const result = new Uint8Array(SHA256_BLOCK_BYTES)
+  for (let i = 0; i < SHA256_BLOCK_BYTES; i++) result[i] = u[i]
+
+  for (let j = 2; j <= iterations; j++) {
+    u = sha256.hmac.array(password, u)
+    for (let i = 0; i < SHA256_BLOCK_BYTES; i++) result[i] ^= u[i]
+  }
+
+  return result
 }
 
 // CSPRNG salt via Web Crypto. Hermes (RN >= 0.74) ships
@@ -72,14 +117,15 @@ function randomSalt(): string {
     )
   }
   webCrypto.getRandomValues(bytes)
-  return Buffer.from(bytes).toString('hex')
+  return bytesToHex(bytes)
 }
 
 function hashPin(salt: string, pin: string, iterations: number): string {
-  return pbkdf2Sync(Buffer.from(pin, 'utf8'), Buffer.from(salt, 'hex'), iterations, PBKDF2_KEYLEN, PBKDF2_DIGEST).toString('hex')
+  const dk = pbkdf2HmacSha256(pin, hexToBytes(salt), iterations)
+  return bytesToHex(dk)
 }
 
-// PBKDF2-Sync blocks the JS thread ~100ms on modern devices. Yielding
+// PBKDF2 blocks the JS thread ~100ms on modern devices. Yielding
 // one macrotask before the call lets React commit a pending render
 // (e.g. the PinPad "checking…" loading state) so the user sees
 // feedback instead of staring at a frozen UI. Cheap; one tick.
