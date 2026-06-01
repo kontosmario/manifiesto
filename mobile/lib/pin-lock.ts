@@ -80,7 +80,7 @@ function bytesToHex(bytes: Uint8Array): string {
 //
 // js-sha256's `sha256.hmac.array(key, msg)` returns a number[] of
 // length 32; we treat it as bytes and XOR-accumulate.
-function pbkdf2HmacSha256(password: string, salt: Uint8Array, iterations: number): Uint8Array {
+export function _pbkdf2HmacSha256ForTesting(password: string, salt: Uint8Array, iterations: number): Uint8Array {
   const saltWithIndex = new Uint8Array(salt.length + 4)
   saltWithIndex.set(salt)
   // INT32 big-endian 1: [0, 0, 0, 1]. We only need block index 1
@@ -121,7 +121,7 @@ function randomSalt(): string {
 }
 
 function hashPin(salt: string, pin: string, iterations: number): string {
-  const dk = pbkdf2HmacSha256(pin, hexToBytes(salt), iterations)
+  const dk = _pbkdf2HmacSha256ForTesting(pin, hexToBytes(salt), iterations)
   return bytesToHex(dk)
 }
 
