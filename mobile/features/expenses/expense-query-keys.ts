@@ -1,3 +1,6 @@
+// LEAF: do not add imports from `@/features/*` here. This file is
+// imported by `categories` and other domain modules — adding a
+// feature dep would create the kind of cycle review #2 just broke.
 export const expenseQueryKeys = {
   all: ['expenses'] as const,
   family: (familyId?: string) => ['expenses', familyId] as const,

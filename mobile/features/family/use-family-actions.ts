@@ -11,7 +11,7 @@ import { familyQueryKey } from '@/features/family/use-family'
 import { familyMembersKey } from '@/features/family/use-family-members'
 import { familyMembersDetailKey } from '@/features/family/use-family-members-detail'
 import { familyAdminMemberStatsQueryKey } from '@/features/family/use-family-admin'
-import { homeSnapshotQueryKey } from '@/features/home/use-home-snapshot'
+import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 import type { AccountKind } from '@/features/family/account-kind'
 
 interface FamilyRpcResult {
