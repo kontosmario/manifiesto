@@ -52,6 +52,9 @@ expo-env.d.ts
 # out of git so it can't accidentally ship PII or credentials.
 tmp/
 
+# Per-conversation scratch dropped at repo root by tooling.
+.tmp_*
+
 # Source archives don't belong in version control. The repo's source
 # is the source; tarballs / zips invariably end up stale and bloat
 # clones.
