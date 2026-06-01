@@ -46,6 +46,16 @@ interface GastosMonthCalendarProps {
    * offer this option (regular add-expense flow covers it).
    */
   onRegisterForgottenExpense?: (date: Date) => void
+  /** When set, the day-detail shows a "Marcar día sin gastos" button
+   *  on past-or-today days that have 0 expenses and aren't already
+   *  marked. The callback receives the local Date. */
+  onMarkNoSpend?: (date: Date) => void
+  /** When set, the day-detail shows a "Revertir marca de sin gastos"
+   *  button on days that ARE currently marked. */
+  onUnmarkNoSpend?: (date: Date) => void
+  /** Set of YYYY-MM-DD ISO date strings (in user-local tz) for days
+   *  already marked. Drives which of the two actions is shown. */
+  noSpendMarkedDates?: Set<string>
 }
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -95,6 +105,9 @@ export function GastosMonthCalendar({
   canGoPrev = true,
   canGoNext = true,
   onRegisterForgottenExpense,
+  onMarkNoSpend,
+  onUnmarkNoSpend,
+  noSpendMarkedDates,
   empty = false,
 }: GastosMonthCalendarProps) {
   // Crossfade between grid and focus via Reanimated layout animations
@@ -146,6 +159,32 @@ export function GastosMonthCalendar({
                   }
                 : undefined
             }
+            onMarkNoSpend={
+              onMarkNoSpend && selectedDayCount === 0
+                ? () => {
+                    const date = resolveCycleDate(cycleStart, cycleDays, selectedDay)
+                    if (date) onMarkNoSpend(date)
+                  }
+                : undefined
+            }
+            onUnmarkNoSpend={
+              onUnmarkNoSpend
+                ? () => {
+                    const date = resolveCycleDate(cycleStart, cycleDays, selectedDay)
+                    if (date) onUnmarkNoSpend(date)
+                  }
+                : undefined
+            }
+            hasNoSpendMark={(() => {
+              const date = resolveCycleDate(cycleStart, cycleDays, selectedDay)
+              if (!date || !noSpendMarkedDates) return false
+              // Local YYYY-MM-DD (not toISOString — that shifts to UTC
+              // and can move the day by ±1 depending on tz offset).
+              const y = date.getFullYear()
+              const m = String(date.getMonth() + 1).padStart(2, '0')
+              const d = String(date.getDate()).padStart(2, '0')
+              return noSpendMarkedDates.has(`${y}-${m}-${d}`)
+            })()}
           />
         </Animated.View>
       ) : (
@@ -449,6 +488,9 @@ function FocusMode({
   canGoPrev = true,
   canGoNext = true,
   onRegisterForgotten,
+  onMarkNoSpend,
+  onUnmarkNoSpend,
+  hasNoSpendMark = false,
 }: {
   day: number
   todayDay: number
@@ -462,6 +504,9 @@ function FocusMode({
   canGoPrev?: boolean
   canGoNext?: boolean
   onRegisterForgotten?: () => void
+  onMarkNoSpend?: () => void
+  onUnmarkNoSpend?: () => void
+  hasNoSpendMark?: boolean
 }) {
   const { theme } = useAppTheme()
   // Tres press hooks Emil-grade — uno por cada Pressable inline en
@@ -471,6 +516,8 @@ function FocusMode({
   //   - backChip (pill compacto con bg sólido): 0.95 más pronunciado
   const centerPress = usePressScale({ pressedScale: 0.97 })
   const registerPress = usePressScale({ pressedScale: 0.97 })
+  const markPress = usePressScale({ pressedScale: 0.97 })
+  const unmarkPress = usePressScale({ pressedScale: 0.97 })
   const backChipPress = usePressScale({ pressedScale: 0.95 })
   const isToday = day === todayDay
   const moodLabel =
@@ -569,6 +616,82 @@ function FocusMode({
               </Svg>
               <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
                 Registrar gasto olvidado
+              </Text>
+            </Animated.View>
+          </Pressable>
+        ) : null}
+
+        {/* No-spend day actions: mutually exclusive with the
+            forgotten-expense path. Mark shows only on empty past-or-
+            today days; revert shows only on already-marked days. */}
+        {onMarkNoSpend && !hasNoSpendMark ? (
+          <Pressable
+            onPress={onMarkNoSpend}
+            onPressIn={markPress.onPressIn}
+            onPressOut={markPress.onPressOut}
+            accessibilityRole="button"
+            accessibilityLabel="Marcar este día como sin gastos"
+          >
+            <Animated.View
+              style={[
+                styles.registerForgottenBtn,
+                {
+                  backgroundColor: theme.colors.creamSoft,
+                  borderColor: theme.colors.line,
+                },
+                markPress.animatedStyle,
+              ]}
+            >
+              {/* Leaf-ish glyph (eco). Inline SVG matches the
+                  forgotten-expense button's plus icon pattern — no
+                  MaterialIcons import in this file. */}
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M5 19c0-7 5-13 14-13-1 9-6 14-14 14M5 19c2-3 5-5 9-7"
+                  stroke={theme.colors.success}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+              <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
+                Marcar día sin gastos
+              </Text>
+            </Animated.View>
+          </Pressable>
+        ) : null}
+
+        {onUnmarkNoSpend && hasNoSpendMark ? (
+          <Pressable
+            onPress={onUnmarkNoSpend}
+            onPressIn={unmarkPress.onPressIn}
+            onPressOut={unmarkPress.onPressOut}
+            accessibilityRole="button"
+            accessibilityLabel="Revertir marca de día sin gastos"
+          >
+            <Animated.View
+              style={[
+                styles.registerForgottenBtn,
+                {
+                  backgroundColor: theme.colors.creamSoft,
+                  borderColor: theme.colors.line,
+                },
+                unmarkPress.animatedStyle,
+              ]}
+            >
+              {/* Undo arrow — curved arrow pointing back. Inline SVG
+                  matches the rest of the focus-mode glyph style. */}
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M9 14L4 9l5-5M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5h-5"
+                  stroke={theme.colors.textMuted}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+              <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
+                Revertir marca de sin gastos
               </Text>
             </Animated.View>
           </Pressable>
