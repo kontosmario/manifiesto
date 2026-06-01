@@ -15,13 +15,13 @@ import { logHomeEvent } from '@/features/home/log-home-event'
 import {
   isReopenInSession,
   newSessionId,
-} from '@/features/home/home-telemetry-helpers'
+} from '@/lib/telemetry-session'
 
 export {
   newSessionId,
   REOPEN_THRESHOLD_MS,
   isReopenInSession,
-} from '@/features/home/home-telemetry-helpers'
+} from '@/lib/telemetry-session'
 
 /** Module-level state survives Hot Reload and fast tab switches —
  *  React's StrictMode will mount/unmount twice in dev, and tab

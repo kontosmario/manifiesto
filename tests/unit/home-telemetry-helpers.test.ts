@@ -3,7 +3,7 @@ import {
   isReopenInSession,
   newSessionId,
   REOPEN_THRESHOLD_MS,
-} from '@/features/home/home-telemetry-helpers'
+} from '@/lib/telemetry-session'
 
 describe('newSessionId', () => {
   it('returns a non-empty string', () => {
