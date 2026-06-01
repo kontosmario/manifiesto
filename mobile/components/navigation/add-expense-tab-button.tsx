@@ -170,6 +170,7 @@ export function AddExpenseTabButton({
       key: 'no-spend',
       label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
       icon: 'eco',
+      visualState: hasMarkedToday ? 'marked' : 'default',
       onPress: () => {
         const decision = decideNoSpendPetal({
           isMutationPending:

@@ -26,6 +26,7 @@ import {
   motionSprings,
   motionStagger,
 } from '@/lib/motion/tokens'
+import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
@@ -33,6 +34,10 @@ export interface QuickAction {
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void
+  /** Optional visual override. 'marked' tints the petal in a paler
+   *  green to communicate "ya está hecho hoy" without removing the
+   *  petal from the menu (so the user can toggle it off). */
+  visualState?: 'default' | 'marked'
 }
 
 interface AddQuickActionsOverlayProps {
@@ -276,7 +281,14 @@ function ActionPetal({
         style={({ pressed }) => [
           styles.petalCircle,
           {
-            backgroundColor: theme.colors.primary,
+            backgroundColor:
+              action.visualState === 'marked'
+                ? // Paler tint communicates "done today" without
+                  // disappearing the petal (user can still toggle).
+                  theme.isDark
+                  ? withAlpha(theme.colors.primary, 0.55)
+                  : withAlpha(theme.colors.primary, 0.45)
+                : theme.colors.primary,
             opacity: pressed ? 0.92 : 1,
             shadowColor: theme.colors.primary,
             shadowOffset: { width: 0, height: 6 },
