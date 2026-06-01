@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   type PressableProps,
   type PressableStateCallbackType,
+  Alert,
   Pressable,
   StyleSheet,
   View,
@@ -14,6 +15,22 @@ import {
   type QuickAction,
 } from '@/components/navigation/add-quick-actions-overlay'
 import { useAddExpenseButtonBurst } from '@/components/navigation/add-expense-tab-button.model'
+// Pure decision function lives in a sibling `.ts` file so the unit
+// test can import it under vitest's Node environment without
+// pulling the component's transitive native deps (expo-router,
+// expo-linear-gradient, @expo/vector-icons …).
+import {
+  decideNoSpendPetal,
+  type NoSpendPetalDecision,
+} from '@/components/navigation/add-expense-tab-button-no-spend-decision'
+import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useExpenses } from '@/features/expenses/use-expenses'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
+import {
+  useMarkNoExpenseDay,
+  useStreak,
+  useUnmarkNoExpenseDay,
+} from '@/features/streaks/use-streak'
 import {
   HOME_TOUR,
   HOME_TOUR_STEPS,
@@ -21,11 +38,14 @@ import {
 } from '@/features/tours'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { confetti } from '@/lib/confetti-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
+
+export { decideNoSpendPetal, type NoSpendPetalDecision }
 
 /**
  * Center-stage FAB for "Agregar gasto".
@@ -54,6 +74,50 @@ export function AddExpenseTabButton({
   accessibilityState?: { selected?: boolean }
 }) {
   const router = useRouter()
+
+  const session = useAuthSession()
+  const userId = session.data?.user.id
+  const homeSnapshot = useHomeSnapshot(userId)
+  const familyId = homeSnapshot.data?.family?.familyId ?? undefined
+
+  const streakResult = useStreak(familyId, userId)
+  const expensesQuery = useExpenses(familyId)
+
+  const markNoExpenseMutation = useMarkNoExpenseDay(familyId, userId)
+  const unmarkNoExpenseMutation = useUnmarkNoExpenseDay(familyId, userId)
+
+  const hasMarkedToday = streakResult.data?.hasMarkedNoExpenseToday ?? false
+
+  const hasExpensesTodayOwn = useMemo(() => {
+    if (!userId) return false
+    const expenses = expensesQuery.data ?? []
+    const todayKey = new Date().toLocaleDateString('en-CA')
+    for (const e of expenses) {
+      if (e.created_by !== userId) continue
+      const created = new Date(e.created_at)
+      if (created.toLocaleDateString('en-CA') === todayKey) return true
+    }
+    return false
+  }, [userId, expensesQuery.data])
+
+  const doMark = useCallback(() => {
+    markNoExpenseMutation.mutate(undefined, {
+      onSuccess: () => {
+        void triggerHaptic('success')
+        confetti.celebrate({ durationMs: 2000, origin: 'top' })
+        toast.success('Día sin gastos registrado')
+      },
+      onError: (error: unknown) => {
+        void triggerHaptic('error')
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'No se pudo marcar. Reintentá en un momento.',
+        )
+      },
+    })
+  }, [markNoExpenseMutation])
+
   const { theme } = useAppTheme()
   const isReducedMotionEnabled = useReducedMotion()
   const pressScale = usePressScale({ pressedScale: 0.93 })
@@ -104,17 +168,56 @@ export function AddExpenseTabButton({
   const quickActions: QuickAction[] = [
     {
       key: 'no-spend',
-      label: 'No gasté hoy',
+      label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
       icon: 'eco',
-      // No backend: this is a moment-of-celebration nudge, not a
-      // persisted event. Recording it as a $0 Expense would pollute
-      // analytics (count, averages, streaks) and category 'Ahorro'
-      // doesn't fit semantically with variable-spend categories. If
-      // product later wants persistence (achievements / streaks),
-      // a dedicated `no_spend_days` table is the right shape.
       onPress: () => {
-        void triggerHaptic('success')
-        toast.success('Bien hecho. Día sin gastos.')
+        const decision = decideNoSpendPetal({
+          isMutationPending:
+            markNoExpenseMutation.isPending || unmarkNoExpenseMutation.isPending,
+          familyId,
+          hasMarkedToday,
+          hasExpensesTodayOwn,
+        })
+
+        switch (decision.kind) {
+          case 'noop':
+            if (decision.reason === 'no-family') {
+              toast.info('Estamos preparando tu cuenta, intenta de nuevo en un instante.')
+            }
+            return
+
+          case 'unmark':
+            unmarkNoExpenseMutation.mutate(undefined, {
+              onSuccess: () => {
+                void triggerHaptic('selection')
+                toast.info('Marca de día sin gastos removida.')
+              },
+              onError: (error: unknown) => {
+                void triggerHaptic('error')
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : 'No se pudo revertir. Reintentá en un momento.',
+                )
+              },
+            })
+            return
+
+          case 'mark-confirm':
+            Alert.alert(
+              'Hoy tenés gastos cargados',
+              'Ya registraste gastos hoy. ¿Marcar igual el día como "sin gastos"? Después podés revertir la marca si te confundiste.',
+              [
+                { style: 'cancel', text: 'Cancelar' },
+                { text: 'Marcar igual', onPress: () => doMark() },
+              ],
+            )
+            return
+
+          case 'mark-direct':
+            doMark()
+            return
+        }
       },
     },
     {
