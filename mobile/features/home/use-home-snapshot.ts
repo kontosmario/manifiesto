@@ -122,6 +122,15 @@ interface HomeSnapshotPayload {
     dismissed_at: string
     ignore_count: number
   }>
+  /** Count of streak_marked_days rows for this user in the current
+   *  pay cycle. Optional for backwards-compat — clients running
+   *  against an RPC that hasn't migrated yet treat undefined as 0.
+   *  Added by migración 20260601007000. */
+  no_spend_days_count_cycle?: number
+  /** ISO date strings (YYYY-MM-DD) of marked no-spend days in the
+   *  current cycle, ordered by date desc. Optional for backwards-
+   *  compat (see above). Added by migración 20260601007000. */
+  no_spend_days_this_cycle?: string[]
 }
 
 function toFixedExpenses(
