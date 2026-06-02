@@ -23,6 +23,15 @@ type Mood = 'green' | 'yellow' | 'red' | null
 
 interface ControlV2VsMesCardProps {
   hasPreviousMonth: boolean
+  /** Count of "outlier" days excluded from the projection. The
+   *  projection uses the typical daily rhythm (mean of days where
+   *  gasto ≤ 3× median), so a single $885k spike doesn't extrapolate
+   *  across the whole cycle. Null when robust algorithm didn't run
+   *  (e.g. < 5 closed days). */
+  outlierDaysExcluded?: number | null
+  /** Sum of the outlier-day spending — paired with the count for the
+   *  "Días atípicos descartados" chip. */
+  outlierDaysTotal?: number | null
   /** Display name of the closed cycle, e.g. "Abril". */
   mesPasadoNombre: string
   /** total_variable_spent at close. */
@@ -85,6 +94,8 @@ function ControlV2VsMesCardImpl({
   vsMesAhorro,
   vsMesMejor,
   diaActual,
+  outlierDaysExcluded,
+  outlierDaysTotal,
   onVerCierre,
 }: ControlV2VsMesCardProps) {
   const { theme } = useAppTheme()
@@ -305,6 +316,39 @@ function ControlV2VsMesCardImpl({
                 <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                   {mesPasadoTopCatLabel}
                 </Text>
+              </Text>
+            </View>
+          ) : null}
+          {outlierDaysExcluded != null && outlierDaysExcluded > 0 ? (
+            // Surfaces what the robust projection dropped. The
+            // projection extrapolates from the calm-day rhythm, so a
+            // single $885k Mercado run doesn't multiply across the
+            // remaining cycle. The chip is transparency: we're not
+            // hiding the spending — we're noting that those days were
+            // outliers and excluded from the "ritmo típico" math.
+            <View style={styles.recapRow}>
+              <MaterialIcons name="info-outline" size={13} color={theme.colors.textMuted} />
+              <Text
+                style={[styles.recapText, { color: theme.colors.textMuted }]}
+                numberOfLines={2}
+              >
+                {outlierDaysExcluded === 1 ? 'Día atípico' : 'Días atípicos'} fuera del
+                ritmo típico:{' '}
+                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                  {outlierDaysExcluded}
+                </Text>
+                {outlierDaysTotal != null && outlierDaysTotal > 0 ? (
+                  <>
+                    {' '}(suman{' '}
+                    <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                      {formatMoneyShort(outlierDaysTotal)}
+                    </Text>
+                    ).
+                  </>
+                ) : (
+                  <>.</>
+                )}{' '}
+                La proyección los excluye para no inflar el cierre.
               </Text>
             </View>
           ) : null}

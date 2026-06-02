@@ -106,6 +106,7 @@ export interface ControlMockData {
 }
 
 import type { ControlAction } from '@/features/insights/control-action'
+import { computeRobustDailyAverage } from '@/features/insights/robust-daily-average'
 
 export interface ControlAdvisorTask {
   id: string
@@ -325,6 +326,14 @@ export interface ControlView {
    *  activarse (1 gasto no es un patrón ni un promedio). */
   diasConGasto: number
   gastoProyectadoMes: number
+  /** Days excluded from the projection because their spend exceeded
+   *  3× median (outliers). Null when the robust algorithm didn't run
+   *  (early in cycle, no closed days, etc.). The UI surfaces this so
+   *  the user knows the projection ignored their spike days. */
+  outlierDaysExcluded: number | null
+  /** Sum of the outlier-day spending. Pairs with `outlierDaysExcluded`
+   *  for the "Días atípicos descartados" chip in the vs-mes card. */
+  outlierDaysTotal: number | null
   sobrantePresupuestadoMes: number
   diasRestantes: number
   restanteMes: number
@@ -382,8 +391,16 @@ export function computeControlView(d: ControlMockData): ControlView {
     detalleDias.filter((x) => x.gasto > 0).length + (d.gastoHoy > 0 ? 1 : 0)
   const diasPerdedores = detalleDias.length - diasGanadores
   const gastoTotalMes = detalleDias.reduce((s, x) => s + x.gasto, 0)
-  const promedioDiario =
-    detalleDias.length > 0 ? gastoTotalMes / detalleDias.length : 0
+
+  // Robust daily average — drops outlier days (gasto > 3× median) so
+  // a single $885k Mercado run doesn't extrapolate to "$8M cycle pace"
+  // when the other 11 days were ~$150k. The user still sees the
+  // outliers in the recap chip, but the projection rhythm follows the
+  // calm days. Falls back to plain mean when N < 5 closed days.
+  const robustAverage = computeRobustDailyAverage(
+    detalleDias.map((dd) => dd.gasto),
+  )
+  const promedioDiario = robustAverage.typicalAverage
 
   let racha = 0
   for (let i = detalleDias.length - 1; i >= 0; i--) {
@@ -588,6 +605,12 @@ export function computeControlView(d: ControlMockData): ControlView {
     hasReliableProjection,
     diasConGasto,
     gastoProyectadoMes,
+    outlierDaysExcluded: robustAverage.hadEnoughData
+      ? robustAverage.outlierDaysExcluded
+      : null,
+    outlierDaysTotal: robustAverage.hadEnoughData && robustAverage.outlierDaysExcluded > 0
+      ? robustAverage.outlierDaysTotal
+      : null,
     sobrantePresupuestadoMes,
     diasRestantes,
     restanteMes,

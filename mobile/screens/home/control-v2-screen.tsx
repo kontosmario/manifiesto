@@ -506,6 +506,8 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   vsMesMejor={view.vsMesMejor}
                   diasGanadores={view.diasGanadores}
                   diaActual={data.diaActual}
+                  outlierDaysExcluded={view.outlierDaysExcluded}
+                  outlierDaysTotal={view.outlierDaysTotal}
                   onVerCierre={wrappedPayload ? launchWrapped : undefined}
                 />
               </ControlV2Anchor>
