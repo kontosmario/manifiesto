@@ -229,6 +229,12 @@ Fuente: [auditorias/real-value-suggestions/05-quality-readiness/](../auditorias/
 > owner. Si la respuesta es "sí v1.0", esto bloquea el submit (paywalls
 > tienen que estar wireados antes). Si es "sí v1.1", se hace post-launch.
 > Fuente: [auditorias/real-value-suggestions/03-monetization/](../auditorias/real-value-suggestions/03-monetization/).
+>
+> **Update 2026-06-02:** la pantalla `Settings → Tu plan` ya está rediseñada
+> con cycle picker + morph card + digit-roll + trial CTA primario + wording
+> inclusivo solteros/grupos. UI 100% wireable; falta solo SDK (P5.4–P5.7)
+> + persistencia (P5.A) + paywall sheets en momentos específicos (P5.9).
+> Ver [`2026-06-02-plans-ui-redesign-shipped.md`](2026-06-02-plans-ui-redesign-shipped.md).
 
 ### P5.A · Schema (1 d)
 
