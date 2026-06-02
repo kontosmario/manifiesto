@@ -49,7 +49,7 @@ export interface BillingPlan {
 }
 
 const FEATURES_BASE = [
-  'Todos en casa ven los mismos números',
+  'Una sola fuente de números, contigo y con quien sumes',
   'Te avisamos cuánto puedes gastar cada día',
   'Gastos fijos y cuotas ordenados en un solo lugar',
   'Metas de ahorro con seguimiento automático',
@@ -63,7 +63,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
     id: 'hogar-mensual',
     cycle: 'monthly',
     productId: 'com.manifiesto.app.subscription.monthly',
-    name: 'Hogar Mensual',
+    name: 'Plan Mensual',
     tagline: 'Para empezar sin compromisos.',
     priceUsd: 4.99,
     priceArs: 5490,
@@ -71,7 +71,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
     savingsPercent: 0,
     savingsUsd: 0,
     highlights: [
-      'Hasta 2 personas en tu hogar',
+      'Hasta 2 personas en tu plan',
       ...FEATURES_BASE,
       'Cancelas cuando quieras',
     ],
@@ -81,8 +81,8 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
     id: 'hogar-anual',
     cycle: 'yearly',
     productId: 'com.manifiesto.app.subscription.yearly',
-    name: 'Hogar Anual',
-    tagline: 'El plan más elegido por las familias.',
+    name: 'Plan Anual',
+    tagline: 'El plan más elegido.',
     priceUsd: 39.99,
     priceArs: 43990,
     memberCap: 4,
@@ -90,7 +90,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
     savingsUsd: 19.89,
     effectiveCopy: 'Te sale como USD 3.33 al mes',
     highlights: [
-      'Hasta 4 personas, ideal si suman abuelos o hijos',
+      'Hasta 4 personas, ideal para tu grupo familiar',
       ...FEATURES_BASE,
       'Atención prioritaria por correo',
       'Estrenas las nuevas funciones antes que nadie',

@@ -187,12 +187,12 @@ function CompactHero({ status }: { status: ReturnType<typeof useBilling>['status
       <View style={styles.heroBody}>
         <View style={styles.heroPill}>
           <MaterialIcons name="auto-awesome" size={10} color="#0F2D06" />
-          <Text style={styles.heroPillText} numberOfLines={1}>PLAN DEL HOGAR</Text>
+          <Text style={styles.heroPillText} numberOfLines={1}>TU MANIFIESTO</Text>
         </View>
         <Text style={styles.heroLine} numberOfLines={2}>
           {isActive && activePlan
             ? `${activePlan.name}${expiresLabel ? `, se renueva el ${expiresLabel}` : ''}.`
-            : 'Lleven juntos las cuentas de la casa.'}
+            : 'Tus cuentas en orden. Solo o con quien quieras sumar.'}
         </Text>
       </View>
     </LinearGradient>
@@ -372,14 +372,14 @@ const FAQ_PRIMARY: ReadonlyArray<{ q: string; a: string }> = [
     a: 'Sigues pudiendo ver todo tu historial, pero no podrás agregar gastos nuevos hasta que reactives el plan. Tus datos quedan guardados, no se borran.',
   },
   {
-    q: '¿Por qué tiene un costo si es para familias?',
-    a: 'Mantener la app cuesta dinero (servidores, mejoras, soporte). Preferimos cobrar una suscripción justa antes que vender los datos de las familias a terceros.',
+    q: '¿Por qué tiene un costo?',
+    a: 'Mantener la app cuesta dinero (servidores, mejoras, soporte). Preferimos cobrar una suscripción justa antes que vender tus datos a terceros.',
   },
 ]
 const FAQ_SECONDARY: ReadonlyArray<{ q: string; a: string }> = [
   {
-    q: '¿Y si somos más personas que el límite?',
-    a: 'Si en el Mensual son más de 2, puedes pasar al Anual con un toque desde aquí, sin perder ningún dato.',
+    q: '¿Y si necesito más cuentas?',
+    a: 'Si en el Mensual ya usas las 2, puedes pasar al Anual con un toque desde aquí, sin perder ningún dato.',
   },
   {
     q: '¿Cómo funciona la prueba gratis?',

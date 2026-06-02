@@ -39,7 +39,10 @@ export const BillingPlanMorphCard = memo(function BillingPlanMorphCard({
   }, [theme])
 
   const cycleSuffix = isAnnual ? '/año' : '/mes'
-  const memberCapCopy = plan.memberCap === 4 ? 'Suma a abuelos o hijos.' : 'Para ti y una persona más.'
+  const memberCapCopy =
+    plan.memberCap === 4
+      ? 'Ideal para tu grupo familiar.'
+      : 'Para ti solo o con una persona más.'
 
   const fade = (delayMs: number) =>
     reduced ? undefined : FadeInDown.duration(220).delay(delayMs)
