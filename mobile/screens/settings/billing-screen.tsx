@@ -9,10 +9,14 @@ import {
   View,
 } from 'react-native'
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -23,41 +27,39 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { motionDurations } from '@/lib/motion/tokens'
 import {
   BILLING_PLANS,
   BILLING_TRIAL_DAYS,
+  type BillingCycle,
   type BillingPlan,
   type BillingPlanId,
 } from '@/features/billing/billing-plans'
 import { useBilling } from '@/features/billing/use-billing'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { BillingCyclePicker } from '@/components/billing/billing-cycle-picker'
+import { BillingPlanMorphCard } from '@/components/billing/billing-plan-morph-card'
+import { BillingPriceDigits } from '@/components/billing/billing-price-digits'
 
-// ─── Tokens premium dark forest, alineados con Asesor card ───
 const HERO_GRADIENT = ['#0F2D06', '#1F590D', '#297811'] as const
 const HERO_GLOW = 'rgba(166,239,143,0.18)'
-const ACCENT = '#A6EF8F' // primary-300
+const ACCENT = '#A6EF8F'
 const CREAM = '#F2EAD3'
 
 export function BillingScreen() {
   const { theme } = useAppTheme()
   const billing = useBilling()
-  const monthly = BILLING_PLANS['hogar-mensual']
-  const yearly = BILLING_PLANS['hogar-anual']
 
-  // El plan activo manda como inicial; si no hay, default al recomendado.
-  const initialId: BillingPlanId =
-    billing.status.activePlanId ?? 'hogar-anual'
+  const initialId: BillingPlanId = billing.status.activePlanId ?? 'hogar-anual'
   const [selectedId, setSelectedId] = useState<BillingPlanId>(initialId)
-  const selectedPlan =
-    selectedId === 'hogar-anual' ? yearly : monthly
+  const selectedPlan: BillingPlan = BILLING_PLANS[selectedId]
+  const selectedCycle: BillingCycle = selectedPlan.cycle
   const isCurrentPlan = billing.status.activePlanId === selectedPlan.id
 
-  const handleSelect = useCallback((id: BillingPlanId) => {
-    if (id === selectedId) return
-    void triggerHaptic('selection')
-    setSelectedId(id)
+  const handleCycleChange = useCallback((cycle: BillingCycle) => {
+    const nextId: BillingPlanId = cycle === 'yearly' ? 'hogar-anual' : 'hogar-mensual'
+    if (nextId === selectedId) return
+    setSelectedId(nextId)
   }, [selectedId])
 
   const handleSubscribe = useCallback(async () => {
@@ -65,10 +67,7 @@ export function BillingScreen() {
     const result = await billing.purchasePlan(selectedPlan)
     if (result.ok) {
       void triggerHaptic('success')
-      Alert.alert(
-        '¡Listo!',
-        `Ya tienes el ${selectedPlan.name} activo. Disfruta tu plan.`,
-      )
+      Alert.alert('¡Listo!', `Ya tienes el ${selectedPlan.name} activo. Disfruta tu plan.`)
     } else {
       void triggerHaptic('error')
       Alert.alert('Algo salió mal', result.reason)
@@ -102,6 +101,10 @@ export function BillingScreen() {
     void Linking.openURL(url)
   }, [])
 
+  const ambientTone: 'aurora' | 'calm' = selectedCycle === 'yearly' ? 'aurora' : 'calm'
+  const yearly = BILLING_PLANS['hogar-anual']
+  const savingsBadge = yearly.savingsPercent > 0 ? `−${yearly.savingsPercent}%` : null
+
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -110,24 +113,24 @@ export function BillingScreen() {
       contentContainerStyle={styles.screenContent}
     >
       <View style={styles.stack}>
-        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
+        <AmbientBlobs tone={ambientTone} />
 
         <RiseView>
           <CompactHero status={billing.status} />
         </RiseView>
 
         <RiseView delay={120}>
-          <PlanGrid
-            monthly={monthly}
-            yearly={yearly}
-            selectedId={selectedId}
-            activePlanId={billing.status.activePlanId}
-            onSelect={handleSelect}
+          <BillingCyclePicker
+            selected={selectedCycle}
+            monthlyLabel="Mensual"
+            yearlyLabel="Anual"
+            savingsBadgeText={savingsBadge}
+            onChange={handleCycleChange}
           />
         </RiseView>
 
         <RiseView delay={200}>
-          <PlanDetail selectedPlan={selectedPlan} />
+          <BillingPlanMorphCard plan={selectedPlan} isCurrentPlan={isCurrentPlan} />
         </RiseView>
 
         <RiseView delay={260}>
@@ -160,22 +163,15 @@ export function BillingScreen() {
   )
 }
 
-// ─── Compact hero ──────────────────────────────────────────────────
-function CompactHero({
-  status,
-}: {
-  status: ReturnType<typeof useBilling>['status']
-}) {
+// ─── Compact hero (unchanged from current) ─────────────────────────
+function CompactHero({ status }: { status: ReturnType<typeof useBilling>['status'] }) {
   const reduced = useReducedMotion()
   const isActive = status.activePlanId !== null
   const activePlan = isActive ? BILLING_PLANS[status.activePlanId!] : null
   const expiresLabel = useMemo(() => {
     if (!status.expiresAt) return null
     const date = new Date(status.expiresAt)
-    return date.toLocaleDateString('es-AR', {
-      day: 'numeric',
-      month: 'short',
-    })
+    return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
   }, [status.expiresAt])
 
   return (
@@ -188,20 +184,13 @@ function CompactHero({
       <View style={styles.heroGlow} pointerEvents="none" />
       <View style={styles.heroLeft}>
         <View style={styles.heroLogoBadge}>
-          <FernLogo
-            size={36}
-            palette="mono-light"
-            animate={!reduced}
-            iconMode
-          />
+          <FernLogo size={36} palette="mono-light" animate={!reduced} iconMode />
         </View>
       </View>
       <View style={styles.heroBody}>
         <View style={styles.heroPill}>
           <MaterialIcons name="auto-awesome" size={10} color="#0F2D06" />
-          <Text style={styles.heroPillText} numberOfLines={1}>
-            PLAN DEL HOGAR
-          </Text>
+          <Text style={styles.heroPillText} numberOfLines={1}>PLAN DEL HOGAR</Text>
         </View>
         <Text style={styles.heroLine} numberOfLines={2}>
           {isActive && activePlan
@@ -213,307 +202,7 @@ function CompactHero({
   )
 }
 
-// ─── Plan grid (replaces toggle + plan card + comparison) ──────────
-function PlanGrid({
-  monthly,
-  yearly,
-  selectedId,
-  activePlanId,
-  onSelect,
-}: {
-  monthly: BillingPlan
-  yearly: BillingPlan
-  selectedId: BillingPlanId
-  activePlanId: BillingPlanId | null
-  onSelect: (id: BillingPlanId) => void
-}) {
-  return (
-    <View style={styles.planGrid}>
-      <PlanTile
-        plan={monthly}
-        selected={selectedId === monthly.id}
-        isCurrent={activePlanId === monthly.id}
-        onPress={() => onSelect(monthly.id)}
-      />
-      <PlanTile
-        plan={yearly}
-        selected={selectedId === yearly.id}
-        isCurrent={activePlanId === yearly.id}
-        onPress={() => onSelect(yearly.id)}
-      />
-    </View>
-  )
-}
-
-function PlanTile({
-  plan,
-  selected,
-  isCurrent,
-  onPress,
-}: {
-  plan: BillingPlan
-  selected: boolean
-  isCurrent: boolean
-  onPress: () => void
-}) {
-  const { theme } = useAppTheme()
-  const progress = useSharedValue(selected ? 1 : 0)
-  useEffect(() => {
-    progress.value = withTiming(selected ? 1 : 0, { duration: motionDurations.standard })
-  }, [selected, progress])
-
-  const surfaceStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + progress.value * 0.012 }],
-    shadowOpacity: 0.05 + progress.value * 0.13,
-  }))
-
-  const cycleLabel = plan.cycle === 'yearly' ? 'ANUAL' : 'MENSUAL'
-  const priceMain = plan.priceUsd.toFixed(2)
-  const cycleSuffix = plan.cycle === 'yearly' ? '/año' : '/mes'
-
-  return (
-    <Animated.View style={[styles.tileWrap, surfaceStyle]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected }}
-        accessibilityLabel={`${plan.name}, ${plan.priceUsd} dólares ${cycleSuffix}, hasta ${plan.memberCap} cuentas`}
-        onPress={onPress}
-        style={[
-          styles.tile,
-          {
-            backgroundColor: selected
-              ? theme.colors.creamCard
-              : theme.isDark
-                ? theme.colors.surfaceMuted
-                : theme.colors.creamSoft,
-            borderColor: selected ? theme.colors.primary : theme.colors.line,
-            borderWidth: selected ? 1.6 : 1,
-          },
-        ]}
-      >
-        {plan.recommended ? (
-          <View
-            style={[
-              styles.savingsBadge,
-              {
-                backgroundColor: theme.colors.primary,
-              },
-            ]}
-          >
-            <Text style={styles.savingsBadgeText}>−{plan.savingsPercent}%</Text>
-          </View>
-        ) : null}
-
-        <Text
-          style={[
-            styles.tileEyebrow,
-            {
-              color: selected ? theme.colors.primary : theme.colors.textMuted,
-            },
-          ]}
-        >
-          {cycleLabel}
-        </Text>
-
-        <View style={styles.tilePriceBlock}>
-          <View style={styles.tilePriceRow}>
-            <Text style={[styles.tileCurrency, { color: theme.colors.textMuted }]}>
-              USD
-            </Text>
-            <Text
-              style={[styles.tilePrice, { color: theme.colors.text }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-            >
-              {priceMain}
-            </Text>
-            <Text style={[styles.tileCycleSuffix, { color: theme.colors.textMuted }]}>
-              {cycleSuffix}
-            </Text>
-          </View>
-          <Text
-            style={[styles.tileEffective, { color: theme.colors.textMuted }]}
-            numberOfLines={1}
-          >
-            {plan.cycle === 'yearly' ? 'Como USD 3.33/mes' : ' '}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.tileDivider,
-            { backgroundColor: theme.colors.line },
-          ]}
-        />
-
-        <View style={styles.tileCapRow}>
-          <MaterialIcons
-            name="group"
-            size={14}
-            color={selected ? theme.colors.primary : theme.colors.textMuted}
-          />
-          <Text
-            style={[styles.tileCapText, { color: theme.colors.text }]}
-            numberOfLines={1}
-          >
-            Hasta {plan.memberCap} personas
-          </Text>
-        </View>
-        <Text
-          style={[styles.tileCapSub, { color: theme.colors.textMuted }]}
-          numberOfLines={2}
-        >
-          {plan.memberCap === 4
-            ? 'Suma a abuelos o hijos.'
-            : 'Para ti y una persona más.'}
-        </Text>
-
-        <View style={styles.tileFooter}>
-          <SelectIndicator selected={selected} />
-          {isCurrent ? (
-            <Text
-              style={[styles.tileCurrent, { color: theme.colors.primary }]}
-              numberOfLines={1}
-            >
-              Tu plan
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
-    </Animated.View>
-  )
-}
-
-function SelectIndicator({ selected }: { selected: boolean }) {
-  const { theme } = useAppTheme()
-  return (
-    <View
-      style={[
-        styles.selectDot,
-        {
-          backgroundColor: selected ? theme.colors.primary : 'transparent',
-          borderColor: selected ? theme.colors.primary : theme.colors.borderStrong,
-        },
-      ]}
-    >
-      {selected ? (
-        <MaterialIcons name="check" size={11} color="#0F2D06" />
-      ) : null}
-    </View>
-  )
-}
-
-// ─── Plan detail (highlights del plan seleccionado, diff anual) ───
-// annualOnly se computa una sola vez: items que están en annual pero no en monthly.
-const _monthly = BILLING_PLANS['hogar-mensual']
-const _annual = BILLING_PLANS['hogar-anual']
-const ANNUAL_ONLY_SET = new Set(
-  _annual.highlights.filter((h) => !(_monthly.highlights as readonly string[]).includes(h)),
-)
-
-function PlanDetail({ selectedPlan }: { selectedPlan: BillingPlan }) {
-  const { theme } = useAppTheme()
-  const isAnnual = selectedPlan.cycle === 'yearly'
-
-  return (
-    <View
-      style={[
-        styles.detailWrap,
-        {
-          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-          borderColor: theme.colors.line,
-        },
-      ]}
-    >
-      {/* Header: nombre + tagline */}
-      <View style={styles.detailHeader}>
-        <Text style={[styles.detailName, { color: theme.colors.text }]}>
-          {selectedPlan.name}
-        </Text>
-        <Text style={[styles.detailTagline, { color: theme.colors.textMuted }]}>
-          {selectedPlan.tagline}
-        </Text>
-      </View>
-
-      <View
-        style={[styles.detailDivider, { backgroundColor: theme.colors.line }]}
-      />
-
-      {/* Eyebrow "Qué incluye" */}
-      <Text style={[styles.detailEyebrow, { color: theme.colors.textMuted }]}>
-        QUÉ INCLUYE
-      </Text>
-
-      {/* Checklist */}
-      <View style={styles.detailList}>
-        {selectedPlan.highlights.map((feature) => {
-          const isExclusive = isAnnual && ANNUAL_ONLY_SET.has(feature)
-          return (
-            <View key={feature} style={styles.detailRow}>
-              <MaterialIcons
-                name="check-circle"
-                size={16}
-                color={theme.colors.primary}
-                style={styles.detailCheckIcon}
-              />
-              <Text
-                style={[styles.detailFeatureText, { color: theme.colors.text }]}
-              >
-                {feature}
-              </Text>
-              {isExclusive ? (
-                <View
-                  style={[
-                    styles.exclusivePill,
-                    { backgroundColor: theme.colors.primarySurface, borderColor: theme.colors.primary },
-                  ]}
-                >
-                  <Text
-                    style={[styles.exclusivePillText, { color: theme.colors.primary }]}
-                  >
-                    Solo en Anual
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          )
-        })}
-      </View>
-
-      {/* Savings callout (solo plan anual) */}
-      {isAnnual && selectedPlan.savingsUsd > 0 ? (
-        <View
-          style={[
-            styles.savingsCallout,
-            {
-              backgroundColor: theme.colors.primarySurface,
-              borderColor: theme.colors.primary,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name="savings"
-            size={14}
-            color={theme.colors.primary}
-          />
-          <Text
-            style={[styles.savingsCalloutText, { color: theme.colors.text }]}
-          >
-            {'Ahorrás USD '}
-            {selectedPlan.savingsUsd.toFixed(2)}
-            {' al año'}
-            {selectedPlan.effectiveCopy
-              ? ` · ${selectedPlan.effectiveCopy.toLowerCase()}`
-              : ''}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
-// ─── Primary CTA (dinámica según plan seleccionado) ────────────────
+// ─── Primary CTA with shimmer ──────────────────────────────────────
 function PrimaryCTA({
   plan,
   isCurrentPlan,
@@ -528,24 +217,43 @@ function PrimaryCTA({
   onStartTrial: () => void
 }) {
   const { theme } = useAppTheme()
-  const priceLabel = `USD ${plan.priceUsd.toFixed(2)}${plan.cycle === 'yearly' ? '/año' : '/mes'}`
+  const reduced = useReducedMotion()
+  const shimmer = useSharedValue(0)
+  const cycleSuffix = plan.cycle === 'yearly' ? '/año' : '/mes'
+
+  const isIdleActive = !isCurrentPlan && !isPurchasing
+  useEffect(() => {
+    if (!isIdleActive || reduced) {
+      shimmer.value = 0
+      return
+    }
+    shimmer.value = 0
+    shimmer.value = withRepeat(
+      withSequence(
+        // @motion-allow: decorative CTA shimmer sweep (4s cycle, 700ms travel)
+        withDelay(3300, withTiming(1, { duration: 700, easing: Easing.bezier(0.4, 0, 0.2, 1) })),
+        // @motion-allow: instant reset to start of next sweep
+        withTiming(0, { duration: 0 }),
+      ),
+      -1,
+      false,
+    )
+  }, [isIdleActive, reduced, shimmer])
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    opacity: shimmer.value === 0 ? 0 : 0.6,
+    transform: [{ translateX: -100 + shimmer.value * 320 }],
+  }))
 
   if (isCurrentPlan) {
     return (
       <View
         style={[
           styles.currentCta,
-          {
-            backgroundColor: theme.colors.primarySurface,
-            borderColor: theme.colors.primary,
-          },
+          { backgroundColor: theme.colors.primarySurface, borderColor: theme.colors.primary },
         ]}
       >
-        <MaterialIcons
-          name="check-circle"
-          size={18}
-          color={theme.colors.primary}
-        />
+        <MaterialIcons name="check-circle" size={18} color={theme.colors.primary} />
         <Text style={[styles.currentCtaText, { color: theme.colors.primary }]}>
           Ya tienes el {plan.name}
         </Text>
@@ -567,12 +275,37 @@ function PrimaryCTA({
           },
         ]}
       >
-        <Text style={styles.primaryCtaText} numberOfLines={1}>
-          {isPurchasing ? 'Un momento…' : `Empezar por ${priceLabel}`}
-        </Text>
+        <View style={styles.ctaLabel}>
+          <Text style={styles.primaryCtaLead} numberOfLines={1}>
+            Empezar por USD{' '}
+          </Text>
+          <BillingPriceDigits
+            value={plan.priceUsd}
+            fractionDigits={2}
+            digitStyle={{
+              fontSize: 15,
+              fontWeight: '900',
+              color: '#0F2D06',
+              letterSpacing: -0.2,
+              fontVariant: ['tabular-nums'],
+              lineHeight: 18,
+            }}
+            separatorStyle={{
+              fontSize: 15,
+              fontWeight: '900',
+              color: '#0F2D06',
+              lineHeight: 18,
+            }}
+            accessibilityLabel={`USD ${plan.priceUsd.toFixed(2)}${cycleSuffix}`}
+          />
+          <Text style={styles.primaryCtaLead} numberOfLines={1}>
+            {cycleSuffix}
+          </Text>
+        </View>
         {!isPurchasing ? (
           <MaterialIcons name="arrow-forward" size={18} color="#0F2D06" />
         ) : null}
+        <Animated.View pointerEvents="none" style={[styles.shimmer, shimmerStyle]} />
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -589,14 +322,10 @@ function PrimaryCTA({
   )
 }
 
-// ─── Trust pills (single line, no card) ────────────────────────────
+// ─── Trust pills (unchanged from current) ──────────────────────────
 function TrustPills() {
   const { theme } = useAppTheme()
-  const items = [
-    'Pago seguro',
-    'Sin permanencia',
-    'Tus datos protegidos',
-  ] as const
+  const items = ['Pago seguro', 'Sin permanencia', 'Tus datos protegidos'] as const
   return (
     <View style={styles.pillsRow}>
       {items.map((item) => (
@@ -610,12 +339,7 @@ function TrustPills() {
             },
           ]}
         >
-          <View
-            style={[
-              styles.pillDot,
-              { backgroundColor: theme.colors.primary },
-            ]}
-          />
+          <View style={[styles.pillDot, { backgroundColor: theme.colors.primary }]} />
           <Text
             style={[styles.pillText, { color: theme.colors.textMuted }]}
             numberOfLines={1}
@@ -630,7 +354,7 @@ function TrustPills() {
   )
 }
 
-// ─── Compact FAQ (3 visibles, resto colapsado bajo "Ver más") ─────
+// ─── FAQ (unchanged from current) ──────────────────────────────────
 const FAQ_PRIMARY: ReadonlyArray<{ q: string; a: string }> = [
   {
     q: '¿Puedo cambiar de plan más adelante?',
@@ -664,9 +388,7 @@ function CompactFaq() {
 
   return (
     <View style={styles.faqStack}>
-      <Text style={[styles.faqEyebrow, { color: theme.colors.textMuted }]}>
-        PREGUNTAS COMUNES
-      </Text>
+      <Text style={[styles.faqEyebrow, { color: theme.colors.textMuted }]}>PREGUNTAS COMUNES</Text>
       <View
         style={[
           styles.faqCard,
@@ -700,23 +422,12 @@ function CompactFaq() {
                 style={styles.faqHead}
                 hitSlop={4}
               >
-                <Text style={[styles.faqQ, { color: theme.colors.text }]}>
-                  {item.q}
-                </Text>
-                <MaterialIcons
-                  name={isOpen ? 'remove' : 'add'}
-                  size={18}
-                  color={theme.colors.textMuted}
-                />
+                <Text style={[styles.faqQ, { color: theme.colors.text }]}>{item.q}</Text>
+                <MaterialIcons name={isOpen ? 'remove' : 'add'} size={18} color={theme.colors.textMuted} />
               </Pressable>
               {isOpen ? (
-                <Animated.View
-                  entering={FadeIn.duration(160)}
-                  exiting={FadeOut.duration(120)}
-                >
-                  <Text style={[styles.faqA, { color: theme.colors.textMuted }]}>
-                    {item.a}
-                  </Text>
+                <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)}>
+                  <Text style={[styles.faqA, { color: theme.colors.textMuted }]}>{item.a}</Text>
                 </Animated.View>
               ) : null}
             </View>
@@ -733,16 +444,14 @@ function CompactFaq() {
           style={styles.faqMore}
           hitSlop={6}
         >
-          <Text style={[styles.faqMoreText, { color: theme.colors.primary }]}>
-            Ver más preguntas
-          </Text>
+          <Text style={[styles.faqMoreText, { color: theme.colors.primary }]}>Ver más preguntas</Text>
         </Pressable>
       ) : null}
     </View>
   )
 }
 
-// ─── Footer micro ─────────────────────────────────────────────────
+// ─── Footer micro (unchanged from current) ─────────────────────────
 function FooterMicro({
   hasActivePlan,
   onRestore,
@@ -762,51 +471,33 @@ function FooterMicro({
           hitSlop={6}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>
-            Ya compré antes
-          </Text>
+          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Ya compré antes</Text>
         </Pressable>
         {hasActivePlan ? (
           <>
-            <View
-              style={[
-                styles.footerSep,
-                { backgroundColor: theme.colors.line },
-              ]}
-            />
+            <View style={[styles.footerSep, { backgroundColor: theme.colors.line }]} />
             <Pressable
               accessibilityRole="button"
               onPress={onManage}
               hitSlop={6}
               style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
             >
-              <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>
-                Ver mi suscripción
-              </Text>
+              <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Ver mi suscripción</Text>
             </Pressable>
           </>
         ) : null}
       </View>
       <Text style={[styles.legal, { color: theme.colors.textSoft }]}>
-        El plan se renueva solo al final del período. Puedes cancelar
-        desde la tienda cuando quieras. Los precios pueden variar según
-        tu país.
+        El plan se renueva solo al final del período. Puedes cancelar desde la tienda cuando quieras. Los precios pueden variar según tu país.
       </Text>
     </View>
   )
 }
 
-// ─── Styles ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screenContent: {
-    paddingTop: 4,
-  },
-  stack: {
-    gap: 16,
-    position: 'relative',
-  },
+  screenContent: { paddingTop: 4 },
+  stack: { gap: 16, position: 'relative' },
 
-  // Hero compacto (88pt incl. padding)
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -825,12 +516,7 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -60 }, { scale: 1.4 }],
     borderRadius: 999,
   },
-  heroLeft: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  heroLeft: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
   heroLogoBadge: {
     width: 52,
     height: 52,
@@ -841,10 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroBody: {
-    flex: 1,
-    gap: 6,
-  },
+  heroBody: { flex: 1, gap: 6 },
   heroPill: {
     alignSelf: 'flex-start',
     maxWidth: '100%',
@@ -872,214 +555,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Plan grid
-  planGrid: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 10,
-  },
-  tileWrap: {
-    flex: 1,
-    borderRadius: radii.xl,
-    shadowColor: '#0F2D06',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    shadowOpacity: 0.08,
-  },
-  tile: {
-    flex: 1,
-    borderRadius: radii.xl,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 12,
-    minHeight: 196,
-    overflow: 'hidden',
-  },
-  savingsBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    zIndex: 1,
-  },
-  savingsBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#0F2D06',
-    letterSpacing: 0.2,
-    fontVariant: ['tabular-nums'],
-  },
-  tileEyebrow: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.4,
-    paddingRight: 56,
-  },
-  tilePriceBlock: {
-    marginTop: 10,
-    minHeight: 46,
-    justifyContent: 'flex-start',
-  },
-  tilePriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  tileCurrency: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  tilePrice: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-    fontVariant: ['tabular-nums'],
-  },
-  tileCycleSuffix: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  tileEffective: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 14,
-    marginTop: 3,
-    fontVariant: ['tabular-nums'],
-  },
-  tileDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 12,
-  },
-  tileCapRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: 18,
-  },
-  tileCapText: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.1,
-    flexShrink: 1,
-  },
-  tileCapSub: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
-    lineHeight: 14,
-    minHeight: 28,
-  },
-  tileFooter: {
-    marginTop: 'auto',
-    paddingTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileCurrent: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-
-  // Plan detail section
-  detailWrap: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  detailHeader: {
-    gap: 2,
-  },
-  detailName: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  detailTagline: {
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 16,
-  },
-  detailDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 2,
-  },
-  detailEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    marginBottom: 2,
-  },
-  detailList: {
-    gap: 10,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  detailCheckIcon: {
-    flexShrink: 0,
-    marginTop: 0,
-  },
-  detailFeatureText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-    letterSpacing: -0.05,
-  },
-  exclusivePill: {
-    flexShrink: 0,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  exclusivePillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  savingsCallout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  savingsCalloutText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
-    letterSpacing: -0.05,
-  },
-
-  // Primary CTA
-  ctaStack: {
-    gap: 6,
-  },
+  ctaStack: { gap: 6 },
   primaryCta: {
     minHeight: 54,
     borderRadius: radii.lg,
@@ -1088,26 +564,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    overflow: 'hidden',
     shadowColor: '#0F2D06',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 14,
   },
-  primaryCtaText: {
+  ctaLabel: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  primaryCtaLead: {
     fontSize: 15,
     fontWeight: '900',
     color: '#0F2D06',
     letterSpacing: -0.2,
   },
-  trialLink: {
-    paddingVertical: 6,
-    alignItems: 'center',
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    transform: [{ skewX: '-20deg' }],
   },
-  trialLinkText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
+  trialLink: { paddingVertical: 6, alignItems: 'center' },
+  trialLinkText: { fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
   currentCta: {
     minHeight: 48,
     borderRadius: radii.lg,
@@ -1118,18 +600,9 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
   },
-  currentCtaText: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.1,
-  },
+  currentCtaText: { fontSize: 14, fontWeight: '800', letterSpacing: 0.1 },
 
-  // Trust pills, equally distributed across the row
-  pillsRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 6,
-  },
+  pillsRow: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },
   pill: {
     flex: 1,
     minHeight: 32,
@@ -1142,11 +615,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  pillDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 999,
-  },
+  pillDot: { width: 5, height: 5, borderRadius: 999 },
   pillText: {
     flexShrink: 1,
     fontSize: 11,
@@ -1155,60 +624,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // FAQ
-  faqStack: {
-    gap: 6,
-  },
-  faqEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.6,
-    paddingHorizontal: 4,
-  },
-  faqCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  faqRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  faqHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  faqQ: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-    letterSpacing: -0.1,
-  },
-  faqA: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '500',
-    paddingTop: 6,
-    paddingRight: 22,
-  },
-  faqMore: {
-    alignSelf: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  faqMoreText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.1,
-  },
+  faqStack: { gap: 6 },
+  faqEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, paddingHorizontal: 4 },
+  faqCard: { borderRadius: radii.lg, borderWidth: 1, overflow: 'hidden' },
+  faqRow: { paddingHorizontal: 14, paddingVertical: 11 },
+  faqHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  faqQ: { flex: 1, fontSize: 13, fontWeight: '700', lineHeight: 18, letterSpacing: -0.1 },
+  faqA: { fontSize: 12, lineHeight: 17, fontWeight: '500', paddingTop: 6, paddingRight: 22 },
+  faqMore: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
+  faqMoreText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.1 },
 
-  // Footer micro
-  footerStack: {
-    gap: 8,
-    marginTop: 4,
-  },
+  footerStack: { gap: 8, marginTop: 4 },
   footerLinks: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1216,20 +642,7 @@ const styles = StyleSheet.create({
     gap: 10,
     flexWrap: 'wrap',
   },
-  footerSep: {
-    width: 3,
-    height: 3,
-    borderRadius: 999,
-  },
-  footerLinkText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  legal: {
-    fontSize: 10,
-    lineHeight: 14,
-    textAlign: 'center',
-    paddingHorizontal: 12,
-  },
+  footerSep: { width: 3, height: 3, borderRadius: 999 },
+  footerLinkText: { fontSize: 12, fontWeight: '700' },
+  legal: { fontSize: 10, lineHeight: 14, textAlign: 'center', paddingHorizontal: 12 },
 })
-

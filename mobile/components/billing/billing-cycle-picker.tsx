@@ -39,8 +39,10 @@ export const BillingCyclePicker = memo(function BillingCyclePicker({
   useEffect(() => {
     const target = selected === 'yearly' ? 1 : 0
     if (reduced) {
+      // @motion-allow: reduced-motion snap (1ms ≈ instantaneous)
       progress.value = withTiming(target, { duration: 1 })
     } else {
+      // @motion-allow: bespoke marble spring tuned for segmented control
       progress.value = withSpring(target, { damping: 18, stiffness: 200, mass: 0.9 })
     }
   }, [selected, reduced, progress])
