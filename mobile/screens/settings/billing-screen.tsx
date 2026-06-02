@@ -165,7 +165,6 @@ export function BillingScreen() {
 
 // ─── Compact hero (unchanged from current) ─────────────────────────
 function CompactHero({ status }: { status: ReturnType<typeof useBilling>['status'] }) {
-  const reduced = useReducedMotion()
   const isActive = status.activePlanId !== null
   const activePlan = isActive ? BILLING_PLANS[status.activePlanId!] : null
   const expiresLabel = useMemo(() => {
@@ -183,7 +182,7 @@ function CompactHero({ status }: { status: ReturnType<typeof useBilling>['status
     >
       <View style={styles.heroGlow} pointerEvents="none" />
       <View style={styles.heroLogoColumn}>
-        <FernLogo size={56} palette="mono-light" animate={!reduced} />
+        <FernLogo size={56} palette="mono-light" animate={false} />
       </View>
       <View style={styles.heroBody}>
         <View style={styles.heroPill}>
