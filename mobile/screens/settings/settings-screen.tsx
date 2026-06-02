@@ -1220,19 +1220,34 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Dispara el Manifiesto Wrapped (recap del ciclo cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
                     icon="auto-stories"
+                    isLast
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
-                  />
-                  <SettingsRow
-                    helper="Selecciona una captura de actividad bancaria/wallet. Corre OCR on-device + parser. Muestra el ParseResult en JSON. Pensado para validar el pipeline antes de la UI productiva."
-                    icon="text-fields"
-                    isLast
-                    label="Activity OCR · preview"
-                    onPress={() => router.push('/(app)/settings/dev/activity-ocr' as never)}
                   />
                 </SettingsGroup>
               </RiseView>
             ) : null}
+
+            {/* TEMPORAL — Phase B sideload build (2026-06-02). Mostramos
+                el preview del OCR aún en release para poder ejercitar
+                el pipeline en device via IPA sideloaded. Revertir cuando
+                Phase D entregue la UI productiva: borrar este RiseView
+                y volver a poner la SettingsRow dentro del grupo
+                __DEV__ "Desarrollo" arriba con su isLast original. */}
+            <RiseView delay={325}>
+              <SettingsGroup
+                footer="Activa solo durante el desarrollo de la feature. Se va a sacar cuando la UI productiva esté lista."
+                title="Beta · Activity OCR"
+              >
+                <SettingsRow
+                  helper="Selecciona una captura de actividad bancaria/wallet. Corre OCR on-device + parser. Muestra el ParseResult en JSON."
+                  icon="text-fields"
+                  isLast
+                  label="Activity OCR · preview"
+                  onPress={() => router.push('/(app)/settings/dev/activity-ocr' as never)}
+                />
+              </SettingsGroup>
+            </RiseView>
 
             {/* 7b. Filtro del modo demo. Solo aparece cuando el modo
                 demo está encendido — en la lista normal de señales no
