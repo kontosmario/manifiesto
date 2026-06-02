@@ -10,8 +10,8 @@ import type { ParseResult } from './types'
  * For Phase-A-style isolated tests of the parser logic, call
  * `parseActivityLines(lines, imageWidth)` directly with a fixture.
  */
-export async function parseActivity(_uri: string): Promise<ParseResult> {
+export async function parseActivity(uri: string): Promise<ParseResult> {
   throw new Error(
-    'parseActivity requires Phase B (ML Kit wiring). Use parseActivityLines for unit tests.',
+    `parseActivity(${uri}) requires Phase B (ML Kit wiring). Use parseActivityLines for unit tests.`,
   )
 }
