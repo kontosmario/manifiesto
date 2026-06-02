@@ -219,6 +219,7 @@ function PrimaryCTA({
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const shimmer = useSharedValue(0)
+  const [ctaWidth, setCtaWidth] = useState(0)
   const cycleSuffix = plan.cycle === 'yearly' ? '/año' : '/mes'
 
   const isIdleActive = !isCurrentPlan && !isPurchasing
@@ -240,9 +241,17 @@ function PrimaryCTA({
     )
   }, [isIdleActive, reduced, shimmer])
 
+  // Shimmer band is 80pt wide (see styles.shimmer). It enters from the
+  // left edge (translateX = -80) and exits past the right edge
+  // (translateX = ctaWidth). We interpolate end-points off the measured
+  // CTA width so the sweep always fully traverses the button regardless
+  // of device width.
+  const SHIMMER_BAND = 80
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: shimmer.value === 0 ? 0 : 0.6,
-    transform: [{ translateX: -100 + shimmer.value * 320 }],
+    transform: [
+      { translateX: -SHIMMER_BAND + shimmer.value * (ctaWidth + SHIMMER_BAND) },
+    ],
   }))
 
   if (isCurrentPlan) {
@@ -267,6 +276,7 @@ function PrimaryCTA({
         accessibilityRole="button"
         disabled={isPurchasing}
         onPress={onSubscribe}
+        onLayout={(e) => setCtaWidth(e.nativeEvent.layout.width)}
         style={({ pressed }) => [
           styles.primaryCta,
           {
