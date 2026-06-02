@@ -197,12 +197,23 @@ export function AddExpenseTabButton({
     setQuickActionsVisible(true)
   }, [])
 
+  // Semantic accent tints per action role. Each ring telegraphs the
+  // action's category at-a-glance (positive cashflow vs scheduled
+  // commitment vs celebration). The primary action (Gasto) omits the
+  // ring on purpose so it stays the most chromatically minimal — that
+  // visual quiet reads as "default" and keeps the brand green as the
+  // strongest call-to-action.
+  const ACCENT_NO_SPEND = '#7DD18D' // verde celebración (más claro que brand)
+  const ACCENT_INCOME = '#5B9DF9'   // azul info (dinero que entra)
+  const ACCENT_FIXED = '#A0A4A8'    // gris neutral (compromiso programado)
+
   const quickActions: QuickAction[] = [
     {
       key: 'no-spend',
       label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
       icon: 'eco',
       visualState: hasMarkedToday ? 'marked' : 'default',
+      accentColor: ACCENT_NO_SPEND,
       onPress: () => {
         const decision = decideNoSpendPetal({
           isMutationPending:
@@ -253,18 +264,22 @@ export function AddExpenseTabButton({
       key: 'income',
       label: 'Ingreso',
       icon: 'trending-up',
+      accentColor: ACCENT_INCOME,
       onPress: () => router.push('/(app)/add-income'),
     },
     {
       key: 'fixed',
       label: 'Gasto fijo',
       icon: 'event-repeat',
+      accentColor: ACCENT_FIXED,
       onPress: () => router.push('/(app)/add-fixed-expense'),
     },
     {
       key: 'expense',
       label: 'Gasto',
       icon: 'add',
+      // No accentColor on purpose — the primary action stays the
+      // chromatically dominant petal (brand green, no ring).
       onPress: () => router.push('/(app)/add-expense'),
     },
   ]

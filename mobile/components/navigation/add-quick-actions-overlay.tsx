@@ -38,6 +38,12 @@ export interface QuickAction {
    *  green to communicate "ya está hecho hoy" without removing the
    *  petal from the menu (so the user can toggle it off). */
   visualState?: 'default' | 'marked'
+  /** Optional semantic accent. When set, the petal renders with a
+   *  thin colored ring around the brand-green circle that telegraphs
+   *  the action's role (celebración/ingreso/egreso). Omit for the
+   *  primary action (Gasto) so it stays visually dominant — minimal
+   *  chrome = strongest call-to-action. */
+  accentColor?: string
 }
 
 interface AddQuickActionsOverlayProps {
@@ -47,7 +53,7 @@ interface AddQuickActionsOverlayProps {
 }
 
 // ─── Fan layout ─────────────────────────────────────────────────
-// 4 actions emerge from the FAB center as a 90° fan arc, anchored
+// 4 actions emerge from the FAB center as a 120° fan arc, anchored
 // to the FAB so the menu reads as something unfurling FROM the
 // button, not floating beside it.
 //
@@ -55,13 +61,20 @@ interface AddQuickActionsOverlayProps {
 // Index 0 = leftmost, index 3 = rightmost. Order matches the
 // `actions` prop, so the caller controls the L→R sequence.
 //
-// Radius bumped 120 → 130 when we went from 3 to 4 petals so the
-// inner pair (105°/75°) has enough horizontal separation not to
-// overlap visually.
-const FAN_ANGLES_DEG = [135, 105, 75, 45]
-const FAN_RADIUS = 130 // distance from FAB center to each mini-FAB center
+// Evolution:
+//   • 3 petals: 90° arc at [135, 90, 45], radius 120
+//   • 4 petals (first attempt): 90° arc at [135, 105, 75, 45],
+//     radius 130. Adjacent petal centers ~67px apart vs 96px-wide
+//     labels → labels overlapped heavily and inner pair felt
+//     colapsed.
+//   • 4 petals (current): 120° arc at [150, 110, 70, 30] with 40°
+//     spacing, radius 170. Adjacent centers now ~116px → labels
+//     have 6px gap to breathe and the fan reads cleanly across the
+//     whole bottom of the screen.
+const FAN_ANGLES_DEG = [150, 110, 70, 30]
+const FAN_RADIUS = 170 // distance from FAB center to each mini-FAB center
 const ACTION_SIZE = 56
-const LABEL_WIDTH = 96 // wide enough for "Gasto fijo" on one line
+const LABEL_WIDTH = 110 // wide enough for "Día sin gasto" with breathing room
 // FAB center from screen bottom: tab bar bottom (14) + tab bar
 // half height (44) + FAB lift (18) ≈ 76. Bumped a touch so the
 // petals don't overlap the FAB face itself.
@@ -289,6 +302,14 @@ function ActionPetal({
                   ? withAlpha(theme.colors.primary, 0.55)
                   : withAlpha(theme.colors.primary, 0.45)
                 : theme.colors.primary,
+            // Semantic accent ring: only present for non-primary
+            // actions (sin gasto / ingreso / fijo). The primary
+            // action (Gasto) intentionally omits accentColor so it
+            // stays the most chromatically minimal petal — minimal
+            // chrome reads as "default action". The ring sits on
+            // the OUTSIDE so it doesn't shrink the icon area.
+            borderColor: action.accentColor ?? 'transparent',
+            borderWidth: action.accentColor ? 3 : 0,
             opacity: pressed ? 0.92 : 1,
             shadowColor: theme.colors.primary,
             shadowOffset: { width: 0, height: 6 },
