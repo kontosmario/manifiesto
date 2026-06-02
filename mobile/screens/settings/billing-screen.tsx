@@ -182,10 +182,8 @@ function CompactHero({ status }: { status: ReturnType<typeof useBilling>['status
       style={styles.hero}
     >
       <View style={styles.heroGlow} pointerEvents="none" />
-      <View style={styles.heroLeft}>
-        <View style={styles.heroLogoBadge}>
-          <FernLogo size={36} palette="mono-light" animate={!reduced} iconMode />
-        </View>
+      <View style={styles.heroLogoColumn}>
+        <FernLogo size={56} palette="mono-light" animate={!reduced} />
       </View>
       <View style={styles.heroBody}>
         <View style={styles.heroPill}>
@@ -511,10 +509,10 @@ const styles = StyleSheet.create({
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
     borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     borderWidth: 1,
     borderColor: 'rgba(166,239,143,0.22)',
     overflow: 'hidden',
@@ -526,18 +524,14 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -60 }, { scale: 1.4 }],
     borderRadius: 999,
   },
-  heroLeft: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
-  heroLogoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: 'rgba(242,234,211,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(242,234,211,0.20)',
+  // Logo column — no frame, the silhouette is its own shape. Width
+  // matches the FernLogo `size` prop so the column hugs the artwork.
+  heroLogoColumn: {
+    width: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroBody: { flex: 1, gap: 6 },
+  heroBody: { flex: 1, gap: 8 },
   heroPill: {
     alignSelf: 'flex-start',
     maxWidth: '100%',
@@ -558,11 +552,11 @@ const styles = StyleSheet.create({
   },
   heroLine: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: CREAM,
-    letterSpacing: -0.1,
-    lineHeight: 18,
+    letterSpacing: -0.15,
+    lineHeight: 20,
   },
 
   ctaStack: { gap: 6 },
