@@ -269,10 +269,13 @@ function PrimaryCTA({
 
   return (
     <View style={styles.ctaStack}>
+      {/* PRIMARY: trial — same offer aplica a Mensual o Anual */}
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Probar ${BILLING_TRIAL_DAYS} días gratis del ${plan.name}`}
+        accessibilityHint="Empieza una prueba gratuita sin pedir tarjeta."
         disabled={isPurchasing}
-        onPress={onSubscribe}
+        onPress={onStartTrial}
         onLayout={(e) => setCtaWidth(e.nativeEvent.layout.width)}
         style={({ pressed }) => [
           styles.primaryCta,
@@ -282,49 +285,62 @@ function PrimaryCTA({
           },
         ]}
       >
-        <View style={styles.ctaLabel}>
-          <Text style={styles.primaryCtaLead} numberOfLines={1}>
-            Empezar por USD{' '}
-          </Text>
-          <BillingPriceDigits
-            value={plan.priceUsd}
-            fractionDigits={2}
-            digitStyle={{
-              fontSize: 15,
-              fontWeight: '900',
-              color: '#0F2D06',
-              letterSpacing: -0.2,
-              fontVariant: ['tabular-nums'],
-              lineHeight: 18,
-            }}
-            separatorStyle={{
-              fontSize: 15,
-              fontWeight: '900',
-              color: '#0F2D06',
-              lineHeight: 18,
-            }}
-            accessibilityLabel={`USD ${plan.priceUsd.toFixed(2)}${cycleSuffix}`}
-          />
-          <Text style={styles.primaryCtaLead} numberOfLines={1}>
-            {cycleSuffix}
-          </Text>
-        </View>
+        <MaterialIcons name="redeem" size={18} color="#0F2D06" />
+        <Text style={styles.primaryCtaLead} numberOfLines={1}>
+          Probar {BILLING_TRIAL_DAYS} días gratis
+        </Text>
         {!isPurchasing ? (
           <MaterialIcons name="arrow-forward" size={18} color="#0F2D06" />
         ) : null}
         <Animated.View pointerEvents="none" style={[styles.shimmer, shimmerStyle]} />
       </Pressable>
+
+      {/* SECONDARY: pay now con digit-roll del precio del plan elegido */}
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Empezar ahora por USD ${plan.priceUsd.toFixed(2)}${cycleSuffix}`}
         disabled={isPurchasing}
-        onPress={onStartTrial}
-        style={styles.trialLink}
-        hitSlop={6}
+        onPress={onSubscribe}
+        style={({ pressed }) => [
+          styles.secondaryCta,
+          {
+            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+            borderColor: theme.colors.line,
+            opacity: isPurchasing ? 0.7 : pressed ? 0.85 : 1,
+          },
+        ]}
       >
-        <Text style={[styles.trialLinkText, { color: theme.colors.textMuted }]}>
-          O prueba {BILLING_TRIAL_DAYS} días gratis, sin tarjeta
-        </Text>
+        <View style={styles.ctaLabel}>
+          <Text style={[styles.secondaryCtaLead, { color: theme.colors.text }]} numberOfLines={1}>
+            Empezar ahora por USD{' '}
+          </Text>
+          <BillingPriceDigits
+            value={plan.priceUsd}
+            fractionDigits={2}
+            digitStyle={{
+              fontSize: 14,
+              fontWeight: '900',
+              color: theme.colors.text,
+              letterSpacing: -0.2,
+              fontVariant: ['tabular-nums'],
+              lineHeight: 18,
+            }}
+            separatorStyle={{
+              fontSize: 14,
+              fontWeight: '900',
+              color: theme.colors.text,
+              lineHeight: 18,
+            }}
+          />
+          <Text style={[styles.secondaryCtaLead, { color: theme.colors.text }]} numberOfLines={1}>
+            {cycleSuffix}
+          </Text>
+        </View>
       </Pressable>
+
+      <Text style={[styles.ctaReassurance, { color: theme.colors.textMuted }]}>
+        Sin tarjeta para la prueba. Cancelas cuando quieras.
+      </Text>
     </View>
   )
 }
@@ -558,15 +574,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  ctaStack: { gap: 6 },
+  ctaStack: { gap: 10 },
   primaryCta: {
-    minHeight: 54,
+    minHeight: 56,
     borderRadius: radii.lg,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     overflow: 'hidden',
     shadowColor: '#0F2D06',
     shadowOffset: { width: 0, height: 6 },
@@ -578,7 +594,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   primaryCtaLead: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: '#0F2D06',
     letterSpacing: -0.2,
@@ -591,8 +607,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.55)',
     transform: [{ skewX: '-20deg' }],
   },
-  trialLink: { paddingVertical: 6, alignItems: 'center' },
-  trialLinkText: { fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
+  secondaryCta: {
+    minHeight: 52,
+    borderRadius: radii.lg,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  secondaryCtaLead: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.1,
+  },
+  ctaReassurance: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.05,
+    paddingTop: 2,
+  },
   currentCta: {
     minHeight: 48,
     borderRadius: radii.lg,
