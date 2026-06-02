@@ -1,0 +1,134 @@
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/RNMLKitTextRecognition.podspec b/node_modules/@react-native-ml-kit/text-recognition/RNMLKitTextRecognition.podspec
+index 421bcfc..224fe92 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/RNMLKitTextRecognition.podspec
++++ b/node_modules/@react-native-ml-kit/text-recognition/RNMLKitTextRecognition.podspec
+@@ -21,15 +21,10 @@ Pod::Spec.new do |s|
+   s.requires_arc = true
+ 
+   s.dependency "React"
+-  # To recognize Latin script
++  # Latin only — cubre español, inglés, portugués, francés, italiano,
++  # etc. Los 4 packs no-Latin originales (Chinese, Devanagari, Japanese,
++  # Korean) se quitaron para reducir ~80MB del binario iOS. Mantenemos
++  # el patch via patch-package en patches/.
+   s.dependency 'GoogleMLKit/TextRecognition', '8.0.0'
+-  # To recognize Chinese script
+-  s.dependency 'GoogleMLKit/TextRecognitionChinese', '8.0.0'
+-  # To recognize Devanagari script
+-  s.dependency 'GoogleMLKit/TextRecognitionDevanagari', '8.0.0'
+-  # To recognize Japanese script
+-  s.dependency 'GoogleMLKit/TextRecognitionJapanese', '8.0.0'
+-  # To recognize Korean script
+-  s.dependency 'GoogleMLKit/TextRecognitionKorean', '8.0.0'
+ end
+ 
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle b/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
+index 6a2e36f..ab664dd 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
++++ b/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
+@@ -61,14 +61,8 @@ repositories {
+ dependencies {
+     //noinspection GradleDynamicVersion
+     implementation 'com.facebook.react:react-native:+'  // From node_modules
+-    // To recognize Latin script
++    // Latin only — cubre español/inglés y todo script latino. Los 4
++    // packs no-Latin (Chinese/Devanagari/Japanese/Korean) los
++    // quitamos via patch-package en patches/.
+     implementation 'com.google.mlkit:text-recognition:16.0.1'
+-    // To recognize Chinese script
+-    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+-    // To recognize Devanagari script
+-    implementation 'com.google.mlkit:text-recognition-devanagari:16.0.1'
+-    // To recognize Japanese script
+-    implementation 'com.google.mlkit:text-recognition-japanese:16.0.1'
+-    // To recognize Korean script
+-    implementation 'com.google.mlkit:text-recognition-korean:16.0.1'
+ }
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java b/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+index 004bfb3..7556979 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
++++ b/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+@@ -25,10 +25,8 @@ import com.google.mlkit.vision.text.Text;
+ import com.google.mlkit.vision.text.TextRecognition;
+ import com.google.mlkit.vision.text.TextRecognizer;
+ import com.google.mlkit.vision.text.TextRecognizerOptionsInterface;
+-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions;
+-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions;
++// Non-Latin scripts (Chinese/Devanagari/Japanese/Korean) removed via
++// patch-package — solo necesitamos Latin para es-AR.
+ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+ 
+ import java.io.IOException;
+@@ -140,22 +138,10 @@ public class TextRecognitionModule extends ReactContextBaseJavaModule {
+ 
+     @NonNull
+     TextRecognizerOptionsInterface getScriptTextRecognizerOptions(@Nullable String script) {
+-        if (script == null) {
+-            return TextRecognizerOptions.DEFAULT_OPTIONS;
+-        }
+-
+-        switch (script) {
+-            case "Chinese":
+-                return new ChineseTextRecognizerOptions.Builder().build();
+-            case "Devanagari":
+-                return new DevanagariTextRecognizerOptions.Builder().build();
+-            case "Japanese":
+-                return new JapaneseTextRecognizerOptions.Builder().build();
+-            case "Korean":
+-                return new KoreanTextRecognizerOptions.Builder().build();
+-            default:
+-                return TextRecognizerOptions.DEFAULT_OPTIONS;
+-        }
++        // Latin-only build via patch-package. Cualquier script param
++        // (incluso explícito "Chinese"/"Japanese"/etc) cae al default
++        // Latin porque los packs no están linkeados.
++        return TextRecognizerOptions.DEFAULT_OPTIONS;
+     }
+ 
+     @ReactMethod
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/ios/TextRecognition.m b/node_modules/@react-native-ml-kit/text-recognition/ios/TextRecognition.m
+index d23fb71..d2d39e7 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/ios/TextRecognition.m
++++ b/node_modules/@react-native-ml-kit/text-recognition/ios/TextRecognition.m
+@@ -3,10 +3,8 @@
+ @import MLKitVision.MLKVisionImage;
+ @import MLKitTextRecognition;
+ @import MLKitTextRecognitionCommon;
+-@import MLKitTextRecognitionChinese;
+-@import MLKitTextRecognitionJapanese;
+-@import MLKitTextRecognitionKorean;
+-@import MLKitTextRecognitionDevanagari;
++// Non-Latin scripts (Chinese/Japanese/Korean/Devanagari) removed
++// via patch-package — solo necesitamos Latin para es-AR.
+ 
+ @implementation TextRecognition
+ 
+@@ -89,22 +87,14 @@ - (NSDictionary*)blockToDict: (MLKTextBlock*)block {
+     MLKVisionImage *visionImage = [[MLKVisionImage alloc] initWithImage:image];
+     visionImage.orientation = image.imageOrientation;
+ 
+-    // text recognizer options based on the script params
++    // Latin-only build. Non-Latin script params are rejected; el resto
++    // de scripts (Chinese/Japanese/Korean/Devanagari) los packs se
++    // quitaron via patch-package para reducir el binario.
+     MLKCommonTextRecognizerOptions *options = nil;
+-
+-    // if the language param isn't specified, we can assume the user requirement is Latin text recognition
+     if (script == nil || [script isEqualToString:@"Latin"]) {
+         options = [[MLKTextRecognizerOptions alloc] init];
+-    } else if ([script isEqualToString:@"Chinese"]) {
+-        options = [[MLKChineseTextRecognizerOptions alloc] init];
+-    } else if ([script isEqualToString:@"Devanagari"]) {
+-        options = [[MLKDevanagariTextRecognizerOptions alloc] init];
+-    } else if ([script isEqualToString:@"Japanese"]) {
+-        options = [[MLKJapaneseTextRecognizerOptions alloc] init];
+-    } else if ([script isEqualToString:@"Korean"]) {
+-        options = [[MLKKoreanTextRecognizerOptions alloc] init];
+     } else {
+-        return reject(@"Text Recognition", @"Unsupported script", nil);
++        return reject(@"Text Recognition", @"Unsupported script (only Latin is bundled)", nil);
+     }
+     
+     MLKTextRecognizer *textRecognizer = [MLKTextRecognizer textRecognizerWithOptions:options];
