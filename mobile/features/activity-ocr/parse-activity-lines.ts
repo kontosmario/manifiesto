@@ -25,11 +25,28 @@ export function parseActivityLines(
   let currentSection: string | null = null
 
   for (const group of groups) {
-    if (group.lines.length === 1 && RE_SECTION.test(group.lines[0].text)) {
-      currentSection = group.lines[0].text
-      continue
+    // Detectá CUALQUIER línea del grupo que matchee section header
+    // ("Hoy" / "Ayer" / "<Mes Año>"). Esto cubre dos casos:
+    //   a) Grupo standalone de una línea con el header (gap suficiente
+    //      lo separó del próximo bloque).
+    //   b) Grupo "merged": el header quedó pegado a la primera tx
+    //      porque ML Kit no dejó suficiente gap vertical entre el
+    //      header y la fila siguiente. En ese caso el header está
+    //      bundleado con las líneas de la tx; lo extraemos antes de
+    //      clasificar.
+    const sectionLine = group.lines.find((l) => RE_SECTION.test(l.text)) ?? null
+    if (sectionLine) {
+      currentSection = sectionLine.text
     }
-    const tx = classify(group, imageWidth, options.columnDividerRatio)
+
+    // Si era standalone, no queda nada más para clasificar.
+    if (sectionLine && group.lines.length === 1) continue
+
+    const groupForClassify: TransactionGroup = sectionLine
+      ? { lines: group.lines.filter((l) => l !== sectionLine), top: group.top }
+      : group
+
+    const tx = classify(groupForClassify, imageWidth, options.columnDividerRatio)
     if (tx) {
       tx.section = currentSection
       transactions.push(tx)

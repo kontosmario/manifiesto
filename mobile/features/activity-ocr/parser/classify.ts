@@ -1,5 +1,5 @@
 import type { Amount, Line, Sign, Transaction, TransactionGroup } from '../types'
-import { MONTHS_ES, RE_AMOUNT, RE_DATE } from './patterns'
+import { MONTHS_ES, RE_AMOUNT, RE_DATE, RE_SECTION } from './patterns'
 
 const DEFAULT_COLUMN_DIVIDER_RATIO = 0.5
 
@@ -16,8 +16,14 @@ export function classify(
   }
 
   const dateLine = left.find((l) => RE_DATE.test(l.text)) ?? null
+  // Defensa: si un section header ("Hoy"/"Ayer"/"<Mes Año>") quedó
+  // bundleado en el grupo por gap chico, lo excluimos como candidato a
+  // merchant. parse-activity-lines también lo extrae como section, pero
+  // este filtro garantiza que ni siquiera lo elijamos acá.
   const merchantLine =
-    left.find((l) => l !== dateLine && !RE_AMOUNT.test(l.text)) ?? null
+    left.find(
+      (l) => l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
+    ) ?? null
 
   const amounts = right
     .slice()

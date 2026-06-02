@@ -110,6 +110,26 @@ describe('parseActivityLines — section inheritance', () => {
     expect(result.transactions[0].section).toBe('Hoy')
     expect(result.transactions[1].section).toBe('Ayer')
   })
+
+  it('extracts a section header bundled into a transaction group (merged by small gap)', () => {
+    // Regression: en device real (2026-06-02 captura kontosmario) ML Kit
+    // dejó "Hoy" en el mismo grupo Y que la primera transacción porque
+    // el gap entre header y fila era < gapFactor*height. Resultado
+    // anterior: merchant: "Hoy", section: null. Esperado tras fix:
+    // merchant: "MERPAGO*MRPROVO", section: "Hoy".
+    const lines: Line[] = [
+      mk('Hoy', 100, 100, 80, 30), // header
+      mk('MERPAGO*MRPROVO', 130, 215, 280, 60), // gap = 0 → merged
+      mk('02 jun 2026', 195, 215, 220, 45),
+      mk('- 55.984,50 ARS', 135, 940, 200, 55),
+    ]
+    const result = parseActivityLines(lines, IMAGE_WIDTH)
+    expect(result.transactions).toHaveLength(1)
+    expect(result.transactions[0].merchant).toBe('MERPAGO*MRPROVO')
+    expect(result.transactions[0].section).toBe('Hoy')
+    expect(result.transactions[0].primaryAmount.value).toBe(55984.5)
+    expect(result.unmatched).toEqual([])
+  })
 })
 
 describe('parseActivityLines — unmatched', () => {

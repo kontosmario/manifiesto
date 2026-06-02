@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Screen } from '@/components/ui/screen'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -104,11 +104,15 @@ export function ActivityOcrPreviewScreen() {
               {'\n'}transactions: {stage.result.transactions.length}
               {'\n'}unmatched: {stage.result.unmatched.length}
             </Text>
-            <ScrollView style={styles.jsonBox} horizontal>
+            {/* JSON box: sin ScrollView interno (horizontal bloqueaba el
+                scroll vertical). El Screen ya envuelve todo en scroll
+                vertical; el Text wrappea las líneas largas
+                naturalmente. */}
+            <View style={styles.jsonBox}>
               <Text style={[styles.json, { color: theme.colors.text }]}>
                 {JSON.stringify(stage.result, null, 2)}
               </Text>
-            </ScrollView>
+            </View>
             <Pressable
               onPress={() => handleCopy('rawBlocks', stage.rawBlocks)}
               style={styles.copyBtn}
@@ -154,7 +158,6 @@ const styles = StyleSheet.create({
   },
   summary: { fontFamily: 'Menlo', fontSize: 12 },
   jsonBox: {
-    maxHeight: 320,
     backgroundColor: '#0008',
     padding: 8,
     borderRadius: 8,
