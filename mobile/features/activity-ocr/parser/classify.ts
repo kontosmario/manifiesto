@@ -15,11 +15,16 @@ export function classify(
     ;(line.frame.left < mid ? left : right).push(line)
   }
 
+  // Ordenar por Y ascendente para que merchantLine = primer línea
+  // arriba de la columna izquierda (no depender del orden que ML Kit
+  // devolvió).
+  left.sort((a, b) => a.frame.top - b.frame.top)
+
   const dateLine = left.find((l) => RE_DATE.test(l.text)) ?? null
-  // Defensa: si un section header ("Hoy"/"Ayer"/"<Mes Año>") quedó
-  // bundleado en el grupo por gap chico, lo excluimos como candidato a
-  // merchant. parse-activity-lines también lo extrae como section, pero
-  // este filtro garantiza que ni siquiera lo elijamos acá.
+  // Defensa: si un section header quedó bundleado en el grupo por gap
+  // chico, lo excluimos como candidato a merchant. parse-activity-lines
+  // también lo extrae como section, pero este filtro garantiza que ni
+  // siquiera lo elijamos acá.
   const merchantLine =
     left.find(
       (l) => l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
@@ -48,10 +53,20 @@ function parseAmount(text: string): Amount | null {
   if (!m) return null
   const signChar = m[1]
   const sign: Sign = signChar === '+' ? 1 : -1
-  const numeric = m[2].replace(/\./g, '').replace(',', '.')
+  const hasDollar = m[2] === '$'
+  const currencyCode = m[4]
+  // Exigir al menos uno de los dos indicadores de moneda; si falta,
+  // no es un monto sino ruido (ej. "23:20 hs" en Mercado Pago no
+  // tiene signo y no llega acá, pero un hipotético "- 100" sin nada
+  // tampoco debería pasar como amount).
+  if (!hasDollar && !currencyCode) return null
+  const numeric = m[3].replace(/\./g, '').replace(',', '.')
   const value = Number.parseFloat(numeric)
   if (!Number.isFinite(value) || value < 0) return null
-  return { value, currency: m[3], sign }
+  // Si está el código de moneda, ese tiene prioridad. Si no, `$` →
+  // ARS por default (Mercado Pago AR muestra solo `$`).
+  const currency = currencyCode ?? 'ARS'
+  return { value, currency, sign }
 }
 
 function toISO(text: string): string | null {

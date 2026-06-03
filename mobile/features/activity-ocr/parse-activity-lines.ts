@@ -1,11 +1,17 @@
 import type { Line, ParseResult, Transaction, TransactionGroup } from './types'
 import { classify } from './parser/classify'
 import { groupRows } from './parser/group-rows'
-import { RE_SECTION } from './parser/patterns'
+import { RE_SECTION, sectionToISODate } from './parser/patterns'
 
 export interface ParseLinesOptions {
   gapFactor?: number
   columnDividerRatio?: number
+  /**
+   * Año a usar cuando un section header como "31 de mayo" (formato
+   * Mercado Pago) no incluye año. Default: año actual al momento del
+   * parse. Para tests pasarlo explícito y mantener determinismo.
+   */
+  defaultYear?: number
 }
 
 export function parseActivityLines(
@@ -17,6 +23,7 @@ export function parseActivityLines(
     return { transactions: [], unmatched: [] }
   }
 
+  const defaultYear = options.defaultYear ?? new Date().getFullYear()
   const groups = groupRows(lines, options.gapFactor)
   groups.sort((a, b) => a.top - b.top)
 
@@ -26,14 +33,13 @@ export function parseActivityLines(
 
   for (const group of groups) {
     // Detectá CUALQUIER línea del grupo que matchee section header
-    // ("Hoy" / "Ayer" / "<Mes Año>"). Esto cubre dos casos:
+    // ("Hoy" / "Ayer" / "<Mes Año>" / "31 de mayo"). Esto cubre dos
+    // casos:
     //   a) Grupo standalone de una línea con el header (gap suficiente
     //      lo separó del próximo bloque).
     //   b) Grupo "merged": el header quedó pegado a la primera tx
     //      porque ML Kit no dejó suficiente gap vertical entre el
-    //      header y la fila siguiente. En ese caso el header está
-    //      bundleado con las líneas de la tx; lo extraemos antes de
-    //      clasificar.
+    //      header y la fila siguiente.
     const sectionLine = group.lines.find((l) => RE_SECTION.test(l.text)) ?? null
     if (sectionLine) {
       currentSection = sectionLine.text
@@ -49,6 +55,13 @@ export function parseActivityLines(
     const tx = classify(groupForClassify, imageWidth, options.columnDividerRatio)
     if (tx) {
       tx.section = currentSection
+      // Date inheritance: si la fila no expuso fecha propia (caso
+      // Mercado Pago, donde la fecha vive en el section header), pero
+      // el section es parseable como "día de mes [año]", derivamos
+      // la fecha desde ahí.
+      if (tx.date === null && currentSection) {
+        tx.date = sectionToISODate(currentSection, defaultYear)
+      }
       transactions.push(tx)
     } else {
       unmatched.push(group)

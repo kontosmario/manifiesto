@@ -132,6 +132,113 @@ describe('parseActivityLines — section inheritance', () => {
   })
 })
 
+describe('parseActivityLines — Mercado Pago format', () => {
+  // Mercado Pago tiene un layout muy distinto al bank captura:
+  //   - Section headers son "31 de mayo" / "30 de mayo" (sin año)
+  //   - NO HAY fecha por fila — vive solo en el section header
+  //   - Currency es `$` prefix (no código ARS al final)
+  //   - 3 líneas por fila izq: merchant, tipo (Compra/Transferencia),
+  //     cuenta (Mastercard crédito / Visa crédito)
+  //   - 2 líneas por fila der: amount + hora "HH:MM hs"
+  //
+  // Este fixture replica la captura kontosmario @ 2026-06-02
+  // (Mercado Pago activity 31-may → 25-may). Esperado: 6 transactions,
+  // todas con date derivada desde section, ARS, sign -1.
+
+  it('parsea 6 transactions con date derivada del section header', () => {
+    const lines: Line[] = [
+      // section "31 de mayo"
+      mk('31 de mayo', 50, 50, 200, 40),
+      // tx 1 — Rio Uruguay Seguros
+      mk('Rio Uruguay Seguros', 130, 215, 320, 50),
+      mk('Compra', 185, 215, 100, 35),
+      mk('Mastercard crédito', 230, 215, 220, 35),
+      mk('- $65.600', 135, 800, 200, 45),
+      mk('23:20 hs', 185, 900, 110, 30),
+
+      // section "30 de mayo"
+      mk('30 de mayo', 380, 50, 200, 40),
+      // tx 2 — Claudia Beatriz Cardozo
+      mk('Claudia Beatriz Cardozo', 460, 215, 380, 50),
+      mk('Transferencia enviada', 515, 215, 280, 35),
+      mk('Mastercard crédito', 560, 215, 220, 35),
+      mk('- $16.048,50', 465, 800, 230, 45),
+      mk('23:04 hs', 515, 900, 110, 30),
+      // tx 3 — Mercado Libre
+      mk('Mercado Libre', 700, 215, 200, 50),
+      mk('Compra', 755, 215, 100, 35),
+      mk('Visa crédito', 800, 215, 160, 35),
+      mk('- $508.300', 705, 800, 220, 45),
+      mk('14:37 hs', 755, 900, 110, 30),
+      // tx 4 — Ludmila Sandra Anagua Chacon
+      mk('Ludmila Sandra Anagua Chacon', 920, 215, 460, 50),
+      mk('Transferencia enviada', 975, 215, 280, 35),
+      mk('Mastercard crédito', 1020, 215, 220, 35),
+      mk('- $51.355,20', 925, 800, 230, 45),
+      mk('12:38 hs', 975, 900, 110, 30),
+
+      // section "29 de mayo"
+      mk('29 de mayo', 1170, 50, 200, 40),
+      // tx 5 — Karla Belen Lencina Casabonne
+      mk('Karla Belen Lencina Casabonne', 1250, 215, 470, 50),
+      mk('Transferencia enviada', 1305, 215, 280, 35),
+      mk('Mastercard crédito', 1350, 215, 220, 35),
+      mk('- $12.478,24', 1255, 800, 230, 45),
+      mk('14:04 hs', 1305, 900, 110, 30),
+
+      // section "25 de mayo"
+      mk('25 de mayo', 1490, 50, 200, 40),
+      // tx 6 — Rodriguez Daniel Alejandro
+      mk('Rodriguez Daniel Alejandro', 1570, 215, 440, 50),
+      mk('Transferencia enviada', 1625, 215, 280, 35),
+      mk('- $20.000', 1575, 800, 200, 45),
+      mk('19:10 hs', 1625, 900, 110, 30),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(6)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Rio Uruguay Seguros',
+      section: '31 de mayo',
+      date: '2026-05-31',
+      primaryAmount: { value: 65600, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'Claudia Beatriz Cardozo',
+      section: '30 de mayo',
+      date: '2026-05-30',
+      primaryAmount: { value: 16048.5, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'Mercado Libre',
+      section: '30 de mayo',
+      date: '2026-05-30',
+      primaryAmount: { value: 508300, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[3]).toMatchObject({
+      merchant: 'Ludmila Sandra Anagua Chacon',
+      section: '30 de mayo',
+      date: '2026-05-30',
+      primaryAmount: { value: 51355.2, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[4]).toMatchObject({
+      merchant: 'Karla Belen Lencina Casabonne',
+      section: '29 de mayo',
+      date: '2026-05-29',
+      primaryAmount: { value: 12478.24, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[5]).toMatchObject({
+      merchant: 'Rodriguez Daniel Alejandro',
+      section: '25 de mayo',
+      date: '2026-05-25',
+      primaryAmount: { value: 20000, currency: 'ARS', sign: -1 },
+    })
+  })
+})
+
 describe('parseActivityLines — unmatched', () => {
   it('routes groups without a parseable amount into unmatched', () => {
     const lines: Line[] = [
