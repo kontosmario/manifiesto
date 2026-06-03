@@ -8,10 +8,10 @@ export function ImportReviewEmpty() {
     <View style={styles.wrap}>
       <MaterialIcons name="receipt-long" size={36} color={theme.colors.textMuted} />
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        No detecté gastos en esa captura.
+        No vi gastos en esa captura.
       </Text>
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-        Probá con otra imagen o cargá manualmente desde el botón principal.
+        Probá con otra imagen.
       </Text>
     </View>
   )
