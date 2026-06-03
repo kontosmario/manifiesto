@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Stub useHomeSnapshot so the cycle-context module's top-level import
+// resolves under vitest's node env. We only test the pure helpers in
+// this file; the hook itself is verified via device smoke.
+vi.mock('@/features/home/use-home-snapshot', () => ({
+  useHomeSnapshot: () => ({ data: null }),
+}))
+
 import {
   computeCycleFromBounds,
   computeFallbackCycle,
@@ -7,15 +15,15 @@ import {
 describe('computeCycleFromBounds', () => {
   it('returns the bounded cycle when both start and end are valid ISOs', () => {
     const result = computeCycleFromBounds('2026-05-20', '2026-06-19')
-    expect(result.cycleStart.getFullYear()).toBe(2026)
-    expect(result.cycleStart.getMonth()).toBe(4) // May (0-indexed)
-    expect(result.cycleStart.getDate()).toBe(20)
-    expect(result.cycleDays).toBe(31) // May 20 → Jun 19 inclusive = 31 days
+    expect(result?.cycleStart.getFullYear()).toBe(2026)
+    expect(result?.cycleStart.getMonth()).toBe(4) // May (0-indexed)
+    expect(result?.cycleStart.getDate()).toBe(20)
+    expect(result?.cycleDays).toBe(31) // May 20 → Jun 19 inclusive = 31 days
   })
 
   it('handles a same-month cycle', () => {
     const result = computeCycleFromBounds('2026-02-01', '2026-02-28')
-    expect(result.cycleDays).toBe(28)
+    expect(result?.cycleDays).toBe(28)
   })
 
   it('returns null when start is missing', () => {

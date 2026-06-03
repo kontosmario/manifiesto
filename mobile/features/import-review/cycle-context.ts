@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 
 export interface CycleInfo {
   /** First date of the current pay cycle, midnight LOCAL. */
@@ -40,7 +41,6 @@ export function computeFallbackCycle(today: Date): CycleInfo {
  * full-month heuristic while loading.
  */
 export function useCycleInfo(userId: string | undefined): CycleInfo {
-  const { useHomeSnapshot } = require('@/features/home/use-home-snapshot')
   const snapshot = useHomeSnapshot(userId)
   return useMemo(() => {
     const bounded = computeCycleFromBounds(
