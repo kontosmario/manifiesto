@@ -120,30 +120,85 @@ export function ImportReviewFooter({
         )}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={primaryLabel}
-        accessibilityState={{ disabled: primaryDisabled }}
+      <PrimaryCTA
+        label={primaryLabel}
+        icon={primaryIcon}
         disabled={primaryDisabled}
+        backgroundColor={theme.colors.primary}
         onPress={() => {
           void triggerHaptic(isSummary ? 'success' : 'selection')
           primaryAction()
         }}
+      />
+    </View>
+  )
+}
+
+interface PrimaryCTAProps {
+  label: string
+  icon: keyof typeof MaterialIcons.glyphMap
+  disabled: boolean
+  backgroundColor: string
+  onPress: () => void
+}
+
+/**
+ * Wrapped in an `Animated.View` so the press scale flows through a
+ * Reanimated shared value instead of toggling `transform` on the
+ * `Pressable`'s style function. RN's iOS bridge crashes
+ * (`Cannot read property 'forEach' of null`) when `transform` flips
+ * between `undefined` and an array across renders, because the bridge
+ * coerces `undefined → null` and `processTransform` calls `.forEach()`
+ * on it. Keeping the transform array stable AND off the Pressable's
+ * style function sidesteps the issue.
+ */
+function PrimaryCTA({
+  label,
+  icon,
+  disabled,
+  backgroundColor,
+  onPress,
+}: PrimaryCTAProps) {
+  const pressScale = useSharedValue(1)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }))
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPressIn={() => {
+          if (disabled) return
+          pressScale.value = withTiming(0.98, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
+        onPressOut={() => {
+          pressScale.value = withTiming(1, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
+        onPress={onPress}
         style={({ pressed }) => [
           styles.primary,
           {
-            backgroundColor: theme.colors.primary,
-            opacity: primaryDisabled ? 0.45 : pressed ? 0.92 : 1,
-            transform: pressed && !primaryDisabled ? [{ scale: 0.98 }] : undefined,
+            backgroundColor,
+            opacity: disabled ? 0.45 : pressed ? 0.92 : 1,
           },
         ]}
       >
         <Text style={styles.primaryText} numberOfLines={1}>
-          {primaryLabel}
+          {label}
         </Text>
-        <MaterialIcons name={primaryIcon} size={20} color="#0F2D06" />
+        <MaterialIcons name={icon} size={20} color="#0F2D06" />
       </Pressable>
-    </View>
+    </Animated.View>
   )
 }
 
