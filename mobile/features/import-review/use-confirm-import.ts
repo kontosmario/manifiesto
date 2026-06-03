@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
+import { isoDateToLocalNoonTimestamp } from './cycle-date-math'
 import type { ConfirmFailure, ConfirmResult, ReviewRow } from './types'
 
 export interface ConfirmContext {
@@ -59,7 +60,7 @@ async function insertOne(
       description: row.description,
       notes: row.notes ?? undefined,
       price: row.amount,
-      createdAt: row.date,
+      createdAt: isoDateToLocalNoonTimestamp(row.date),
     })
     return
   }

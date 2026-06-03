@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCycleDays,
   formatISO,
+  isoDateToLocalNoonTimestamp,
 } from '../../mobile/features/import-review/cycle-date-math'
 
 describe('formatISO', () => {
@@ -63,5 +64,36 @@ describe('buildCycleDays', () => {
     const result = buildCycleDays(start, 7, '2026-06-01')
     expect(result[0].weekday).toBe(1) // Monday
     expect(result[6].weekday).toBe(0) // Sunday
+  })
+})
+
+describe('isoDateToLocalNoonTimestamp', () => {
+  it('round-trips through local-time formatting back to the same day', () => {
+    // Regression for the off-by-one bug: passing "2026-06-02" raw to a
+    // timestamptz column was being read as UTC midnight (= June 1 21:00
+    // in AR), making the expense show under the previous day. Anchoring
+    // at noon local guarantees the local-day reading matches the input
+    // regardless of which AR-friendly timezone the test host uses.
+    const result = isoDateToLocalNoonTimestamp('2026-06-02')
+    expect(result).toBeDefined()
+    const parsed = new Date(result as string)
+    // Same local-day as the input ISO.
+    expect(formatISO(parsed)).toBe('2026-06-02')
+    // Noon (12:00) keeps us safely away from both midnight boundaries.
+    expect(parsed.getHours()).toBe(12)
+  })
+
+  it('returns undefined for malformed input so the DB default kicks in', () => {
+    expect(isoDateToLocalNoonTimestamp('')).toBeUndefined()
+    expect(isoDateToLocalNoonTimestamp('not-a-date')).toBeUndefined()
+    expect(isoDateToLocalNoonTimestamp('2026-6-2')).toBeUndefined()
+    expect(isoDateToLocalNoonTimestamp('2026/06/02')).toBeUndefined()
+  })
+
+  it('handles month/day boundaries without rolling over', () => {
+    const last = isoDateToLocalNoonTimestamp('2026-12-31')
+    expect(formatISO(new Date(last as string))).toBe('2026-12-31')
+    const first = isoDateToLocalNoonTimestamp('2026-01-01')
+    expect(formatISO(new Date(first as string))).toBe('2026-01-01')
   })
 })
