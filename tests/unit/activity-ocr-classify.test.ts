@@ -116,7 +116,7 @@ describe('classify — column divider', () => {
       { text: 'WIDER LEFT', top: 100, left: 700, width: 100, height: 60 },
       { text: '- 100 ARS', top: 100, left: 900, width: 100, height: 60 },
     ])
-    const tx = classify(group, IMAGE_WIDTH, 0.7)
+    const tx = classify(group, IMAGE_WIDTH, { columnDividerRatio: 0.7 })
     expect(tx!.merchant).toBe('WIDER LEFT')
     expect(tx!.primaryAmount.value).toBe(100)
   })

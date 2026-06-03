@@ -3,7 +3,9 @@ import {
   MONTHS_ES,
   RE_AMOUNT,
   RE_DATE,
+  RE_DATE_NUMERIC,
   RE_SECTION,
+  rowDateToISO,
   sectionToISODate,
 } from '../../mobile/features/activity-ocr/parser/patterns'
 
@@ -25,60 +27,46 @@ describe('RE_DATE', () => {
   })
 })
 
-describe('RE_AMOUNT', () => {
-  // Groups: m[1]=sign, m[2]=`$` or undef, m[3]=number, m[4]=currency code or undef.
+describe('RE_AMOUNT (detector)', () => {
+  // RE_AMOUNT es un detector "esto parece un monto" usado para
+  // filtrar la columna izquierda al elegir merchant. La parsing real
+  // de signo/valor/currency vive en parseAmount (classify.ts) y se
+  // testea via fixtures en parse-lines.test.ts.
 
-  it('matches "- 26.000 ARS" (currency code form)', () => {
-    const m = '- 26.000 ARS'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('-')
-    expect(m![2]).toBeUndefined()
-    expect(m![3]).toBe('26.000')
-    expect(m![4]).toBe('ARS')
+  it('matches sign-first form "- 26.000 ARS"', () => {
+    expect(RE_AMOUNT.test('- 26.000 ARS')).toBe(true)
   })
 
-  it('matches "+ 23.697,71 ARS"', () => {
-    const m = '+ 23.697,71 ARS'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('+')
-    expect(m![3]).toBe('23.697,71')
-    expect(m![4]).toBe('ARS')
+  it('matches sign-first with $: "- $65.600"', () => {
+    expect(RE_AMOUNT.test('- $65.600')).toBe(true)
   })
 
   it('matches Unicode minus "− 16 USDc"', () => {
-    const m = '− 16 USDc'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('−')
-    expect(m![3]).toBe('16')
-    expect(m![4]).toBe('USDc')
+    expect(RE_AMOUNT.test('− 16 USDc')).toBe(true)
   })
 
-  it('matches "- $65.600" (Mercado Pago $ prefix, no letter currency)', () => {
-    const m = '- $65.600'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('-')
-    expect(m![2]).toBe('$')
-    expect(m![3]).toBe('65.600')
-    expect(m![4]).toBeUndefined()
+  it('matches "+ $8,14" (Macro)', () => {
+    expect(RE_AMOUNT.test('+ $8,14')).toBe(true)
   })
 
-  it('matches "- $16.048,50" with es-AR decimal comma', () => {
-    const m = '- $16.048,50'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('-')
-    expect(m![2]).toBe('$')
-    expect(m![3]).toBe('16.048,50')
+  it('matches $-first negative "$ -5.000,00" (Francés)', () => {
+    expect(RE_AMOUNT.test('$ -5.000,00')).toBe(true)
   })
 
-  it('matches "+ $12.478,24"', () => {
-    const m = '+ $12.478,24'.match(RE_AMOUNT)
-    expect(m).not.toBeNull()
-    expect(m![1]).toBe('+')
-    expect(m![2]).toBe('$')
+  it('matches $-first positive without sign "$ 3,03" (Francés)', () => {
+    expect(RE_AMOUNT.test('$ 3,03')).toBe(true)
   })
 
   it('does not match "USDc → ARS"', () => {
-    expect('USDc → ARS'.match(RE_AMOUNT)).toBeNull()
+    expect(RE_AMOUNT.test('USDc → ARS')).toBe(false)
+  })
+
+  it('does not match a bare time "23:20 hs"', () => {
+    expect(RE_AMOUNT.test('23:20 hs')).toBe(false)
+  })
+
+  it('does not match a bare date "29/05"', () => {
+    expect(RE_AMOUNT.test('29/05')).toBe(false)
   })
 })
 
@@ -90,6 +78,12 @@ describe('RE_SECTION', () => {
 
   it('matches "Ayer"', () => {
     expect(RE_SECTION.test('Ayer')).toBe(true)
+  })
+
+  it('matches bare month name "Mayo" (Banco Macro)', () => {
+    expect(RE_SECTION.test('Mayo')).toBe(true)
+    expect(RE_SECTION.test('mayo')).toBe(true)
+    expect(RE_SECTION.test('Diciembre')).toBe(true)
   })
 
   it('matches "Junio 2026" (mes año)', () => {
@@ -108,12 +102,61 @@ describe('RE_SECTION', () => {
     expect(RE_SECTION.test('31 de mayo 2026')).toBe(true)
   })
 
-  it('matches "31 de mayo de 2026" with "de" before year', () => {
-    expect(RE_SECTION.test('31 de mayo de 2026')).toBe(true)
+  it('matches "02 de junio de 2026" with "de" before year (Francés)', () => {
+    expect(RE_SECTION.test('02 de junio de 2026')).toBe(true)
+  })
+
+  it('does not match arbitrary Spanish word "Operacion"', () => {
+    expect(RE_SECTION.test('Operacion')).toBe(false)
   })
 
   it('does not match "01 jun 2026" (per-row date format)', () => {
     expect(RE_SECTION.test('01 jun 2026')).toBe(false)
+  })
+})
+
+describe('RE_DATE_NUMERIC', () => {
+  it('matches "29/05" (día/mes sin año, Banco Macro)', () => {
+    expect(RE_DATE_NUMERIC.test('29/05')).toBe(true)
+  })
+
+  it('matches "29/05/26" (año a 2 dígitos)', () => {
+    expect(RE_DATE_NUMERIC.test('29/05/26')).toBe(true)
+  })
+
+  it('matches "29/05/2026" (año a 4 dígitos)', () => {
+    expect(RE_DATE_NUMERIC.test('29/05/2026')).toBe(true)
+  })
+
+  it('does not match "01 jun 2026" (formato de texto)', () => {
+    expect(RE_DATE_NUMERIC.test('01 jun 2026')).toBe(false)
+  })
+})
+
+describe('rowDateToISO', () => {
+  it('parsea "01 jun 2026" → "2026-06-01"', () => {
+    expect(rowDateToISO('01 jun 2026', 2026)).toBe('2026-06-01')
+  })
+
+  it('parsea "29/05" sin año → usa defaultYear', () => {
+    expect(rowDateToISO('29/05', 2026)).toBe('2026-05-29')
+  })
+
+  it('parsea "29/05/26" — año a 2 dígitos se asume 20XX', () => {
+    expect(rowDateToISO('29/05/26', 2099)).toBe('2026-05-29')
+  })
+
+  it('parsea "29/05/2026" — año a 4 dígitos gana sobre defaultYear', () => {
+    expect(rowDateToISO('29/05/2026', 2099)).toBe('2026-05-29')
+  })
+
+  it('pad de día/mes a 2 dígitos: "1/6" → "2026-06-01"', () => {
+    expect(rowDateToISO('1/6', 2026)).toBe('2026-06-01')
+  })
+
+  it('returns null para texto que no es fecha', () => {
+    expect(rowDateToISO('Hoy', 2026)).toBeNull()
+    expect(rowDateToISO('whatever', 2026)).toBeNull()
   })
 })
 

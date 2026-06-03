@@ -1,13 +1,33 @@
 import type { Amount, Line, Sign, Transaction, TransactionGroup } from '../types'
-import { MONTHS_ES, RE_AMOUNT, RE_DATE, RE_SECTION } from './patterns'
+import {
+  RE_AMOUNT,
+  RE_DATE,
+  RE_DATE_NUMERIC,
+  RE_SECTION,
+  rowDateToISO,
+} from './patterns'
 
 const DEFAULT_COLUMN_DIVIDER_RATIO = 0.5
+
+export interface ClassifyOptions {
+  columnDividerRatio?: number
+  /**
+   * Año a usar cuando una fecha por-fila viene sin año (ej. "29/05"
+   * del Banco Macro). El orquestador `parseActivityLines` lo pasa por
+   * default = año actual.
+   */
+  defaultYear?: number
+}
 
 export function classify(
   group: TransactionGroup,
   imageWidth: number,
-  columnDividerRatio: number = DEFAULT_COLUMN_DIVIDER_RATIO,
+  options: ClassifyOptions = {},
 ): Transaction | null {
+  const columnDividerRatio =
+    options.columnDividerRatio ?? DEFAULT_COLUMN_DIVIDER_RATIO
+  const defaultYear = options.defaultYear ?? new Date().getFullYear()
+
   const mid = imageWidth * columnDividerRatio
   const left: Line[] = []
   const right: Line[] = []
@@ -20,14 +40,17 @@ export function classify(
   // devolvió).
   left.sort((a, b) => a.frame.top - b.frame.top)
 
-  const dateLine = left.find((l) => RE_DATE.test(l.text)) ?? null
-  // Defensa: si un section header quedó bundleado en el grupo por gap
-  // chico, lo excluimos como candidato a merchant. parse-activity-lines
-  // también lo extrae como section, pero este filtro garantiza que ni
-  // siquiera lo elijamos acá.
+  // Date line: o el formato "01 jun 2026" o el numérico "29/05" o
+  // similares cubiertos por rowDateToISO.
+  const dateLine =
+    left.find((l) => RE_DATE.test(l.text) || RE_DATE_NUMERIC.test(l.text)) ?? null
+
+  // Merchant: la primera línea de la columna izquierda que no es ni
+  // fecha, ni amount, ni section header.
   const merchantLine =
     left.find(
-      (l) => l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
+      (l) =>
+        l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
     ) ?? null
 
   const amounts = right
@@ -40,7 +63,7 @@ export function classify(
 
   return {
     merchant: merchantLine?.text.trim() ?? '',
-    date: dateLine ? toISO(dateLine.text) : null,
+    date: dateLine ? rowDateToISO(dateLine.text, defaultYear) : null,
     section: null,
     primaryAmount: amounts[0],
     secondaryAmount: amounts[1] ?? null,
@@ -48,33 +71,64 @@ export function classify(
   }
 }
 
+/**
+ * Parser robusto de montos. Soporta múltiples formas observadas en
+ * distintas apps financieras AR:
+ *
+ *   - `+ 26.000 ARS` / `- 16 USDc`     (bank con código de moneda)
+ *   - `- $65.600`                       (Mercado Pago — $ tras signo)
+ *   - `$ -5.000,00`                     (Francés — $ antes de signo)
+ *   - `$ 3,03`                          (Francés positivo — sin signo explícito)
+ *   - `+ $8,14`                         (Macro — signo + $ + número)
+ *
+ * Reglas:
+ *   1. Exige `$` O un código de moneda de 2-5 letras. Si no hay
+ *      ninguno, no es un monto (rechazo). Esto evita matchear "23:20 hs"
+ *      o números sueltos como amounts.
+ *   2. El signo puede aparecer antes o después del `$`, o no aparecer
+ *      en absoluto. Si falta, asume positivo (caso `$ 3,03`).
+ *   3. Número en formato es-AR: `.` miles, `,` decimal.
+ *   4. Si el código de moneda está presente, usa ese; si no, asume
+ *      "ARS" cuando el `$` está presente.
+ */
 function parseAmount(text: string): Amount | null {
-  const m = text.match(RE_AMOUNT)
-  if (!m) return null
-  const signChar = m[1]
-  const sign: Sign = signChar === '+' ? 1 : -1
-  const hasDollar = m[2] === '$'
-  const currencyCode = m[4]
-  // Exigir al menos uno de los dos indicadores de moneda; si falta,
-  // no es un monto sino ruido (ej. "23:20 hs" en Mercado Pago no
-  // tiene signo y no llega acá, pero un hipotético "- 100" sin nada
-  // tampoco debería pasar como amount).
+  const trimmed = text.trim()
+
+  // ¿Es siquiera amount-like? (filtra inputs sin sign ni $)
+  if (!RE_AMOUNT.test(trimmed)) return null
+
+  // 1. Buscar la secuencia numérica (es-AR: dígitos + . + ,)
+  const numMatch = trimmed.match(/\d[\d.,]*/)
+  if (!numMatch) return null
+  const numStr = numMatch[0]
+  const numStart = numMatch.index ?? 0
+
+  // 2. Detectar $ (en cualquier posición)
+  const hasDollar = trimmed.includes('$')
+
+  // 3. Detectar signo (en cualquier posición, ANTES del número)
+  const beforeNum = trimmed.slice(0, numStart)
+  const signMatch = beforeNum.match(/[+\-−]/)
+  const signChar = signMatch?.[0]
+
+  // 4. Buscar código de moneda (2-5 letras) en lo que viene DESPUÉS del número.
+  const afterNum = trimmed.slice(numStart + numStr.length).trim()
+  const codeMatch = afterNum.match(/^([A-Za-z]{2,5})\b/)
+  const currencyCode = codeMatch?.[1]
+
+  // 5. Requerir uno de los dos indicadores.
   if (!hasDollar && !currencyCode) return null
-  const numeric = m[3].replace(/\./g, '').replace(',', '.')
+
+  // 6. Parsear número.
+  const numeric = numStr.replace(/\./g, '').replace(',', '.')
   const value = Number.parseFloat(numeric)
   if (!Number.isFinite(value) || value < 0) return null
-  // Si está el código de moneda, ese tiene prioridad. Si no, `$` →
-  // ARS por default (Mercado Pago AR muestra solo `$`).
-  const currency = currencyCode ?? 'ARS'
-  return { value, currency, sign }
-}
 
-function toISO(text: string): string | null {
-  const m = text.match(RE_DATE)
-  if (!m) return null
-  const day = m[1].padStart(2, '0')
-  const monthKey = m[2].toLowerCase().slice(0, 3)
-  const month = MONTHS_ES[monthKey]
-  if (!month) return null
-  return `${m[3]}-${month}-${day}`
+  // 7. Signo: explícito o positivo implícito.
+  const sign: Sign = signChar === '-' || signChar === '−' ? -1 : 1
+
+  // 8. Currency: código explícito gana; si no, $ → ARS.
+  const currency = currencyCode ?? 'ARS'
+
+  return { value, currency, sign }
 }

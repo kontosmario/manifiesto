@@ -52,7 +52,10 @@ export function parseActivityLines(
       ? { lines: group.lines.filter((l) => l !== sectionLine), top: group.top }
       : group
 
-    const tx = classify(groupForClassify, imageWidth, options.columnDividerRatio)
+    const tx = classify(groupForClassify, imageWidth, {
+      columnDividerRatio: options.columnDividerRatio,
+      defaultYear,
+    })
     if (tx) {
       tx.section = currentSection
       // Date inheritance: si la fila no expuso fecha propia (caso

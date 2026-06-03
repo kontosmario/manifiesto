@@ -239,6 +239,122 @@ describe('parseActivityLines — Mercado Pago format', () => {
   })
 })
 
+describe('parseActivityLines — Banco Macro format', () => {
+  // Macro tiene:
+  //   - Section: "Mayo" (solo el mes, sin año)
+  //   - Fecha por fila: "29/05" (DD/MM sin año)
+  //   - Amount: "+ $8,14" / "- $30.000,00" (signo, $, número)
+  //   - 1 línea izq (merchant), 1 fecha (debajo), 1 amount derecha
+  it('parsea sección "Mayo" + fechas DD/MM + amounts signo+$', () => {
+    // Spacing entre rows ~220pt (real Macro tiene divisor + padding
+    // entre cada fila). gapFactor 1.8 default separa OK.
+    const lines: Line[] = [
+      mk('Mayo', 50, 50, 100, 40),
+      // tx 1 — Intereses (positivo)
+      mk('Intereses', 200, 100, 200, 50),
+      mk('29/05', 260, 100, 80, 35),
+      mk('+ $8,14', 200, 940, 200, 45),
+      // tx 2 — TRANSFERENCIA REALIZADA
+      mk('TRANSFERENCIA REALIZADA', 420, 100, 380, 50),
+      mk('24/05', 480, 100, 80, 35),
+      mk('- $30.000,00', 420, 940, 250, 45),
+      // tx 3 — TRANSFERENCIA RECIBIDA (positivo)
+      mk('TRANSFERENCIA RECIBIDA', 640, 100, 380, 50),
+      mk('23/05', 700, 100, 80, 35),
+      mk('+ $290.000,00', 640, 940, 280, 45),
+      // tx 4 — COMPRA CON TARJETA DE DEBITO
+      mk('COMPRA CON TARJETA DE DEBITO', 860, 100, 480, 50),
+      mk('22/05', 920, 100, 80, 35),
+      mk('- $7.863,79', 860, 940, 220, 45),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(4)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Intereses',
+      section: 'Mayo',
+      date: '2026-05-29',
+      primaryAmount: { value: 8.14, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'TRANSFERENCIA REALIZADA',
+      date: '2026-05-24',
+      primaryAmount: { value: 30000, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'TRANSFERENCIA RECIBIDA',
+      date: '2026-05-23',
+      primaryAmount: { value: 290000, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[3]).toMatchObject({
+      merchant: 'COMPRA CON TARJETA DE DEBITO',
+      date: '2026-05-22',
+      primaryAmount: { value: 7863.79, currency: 'ARS', sign: -1 },
+    })
+  })
+})
+
+describe('parseActivityLines — Banco Francés format', () => {
+  // Francés tiene:
+  //   - Section: "02 de junio de 2026" (día + de + mes + de + año, ya soportado)
+  //   - SIN fecha por fila
+  //   - Amount: "$ -5.000,00" ($-first negativo) o "$ 3,03" ($-first positivo sin signo)
+  //   - 1-2 líneas izq (merchant solo, sin tipo ni cuenta)
+  it('parsea amounts $-first con y sin signo + date inheritance', () => {
+    // Spacing: el captura de Francés tiene cards con whitespace
+    // generoso entre rows. Usamos top deltas de ~150pt para que
+    // groupRows separe limpiamente.
+    const lines: Line[] = [
+      mk('02 de junio de 2026', 50, 50, 300, 40),
+      // tx 1 — Transferencia (negativo, $-first)
+      mk('Transferencia', 200, 50, 200, 50),
+      mk('$ -5.000,00', 200, 800, 220, 45),
+      // tx 2 — Movi.entre cuentas tarjeta
+      mk('Movi.entre cuentas tarjeta', 380, 50, 350, 50),
+      mk('$ -15.000,00', 380, 800, 230, 45),
+      // tx 3 — Ajuste intereses ganados (positivo SIN signo)
+      mk('Ajuste intereses ganados', 560, 50, 320, 50),
+      mk('$ 3,03', 560, 800, 100, 45),
+
+      mk('01 de junio de 2026', 740, 50, 300, 40),
+      // tx 4 — Pago con visa debito (negativo, $-first)
+      mk('Pago con visa debito', 890, 50, 280, 50),
+      mk('$ -7.299,75', 890, 800, 220, 45),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(4)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Transferencia',
+      section: '02 de junio de 2026',
+      date: '2026-06-02',
+      primaryAmount: { value: 5000, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'Movi.entre cuentas tarjeta',
+      date: '2026-06-02',
+      primaryAmount: { value: 15000, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'Ajuste intereses ganados',
+      date: '2026-06-02',
+      primaryAmount: { value: 3.03, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[3]).toMatchObject({
+      merchant: 'Pago con visa debito',
+      section: '01 de junio de 2026',
+      date: '2026-06-01',
+      primaryAmount: { value: 7299.75, currency: 'ARS', sign: -1 },
+    })
+  })
+})
+
 describe('parseActivityLines — unmatched', () => {
   it('routes groups without a parseable amount into unmatched', () => {
     const lines: Line[] = [
