@@ -86,7 +86,10 @@ function Segment({ status }: { status: StepStatus }) {
       case 'invalid':
         return theme.colors.danger
       case 'skipped':
-        return theme.colors.textMuted
+        // Warning tint reads as "intentional omission" — louder than a
+        // muted gray, softer than danger red. User wants the strip to
+        // reflect skipped reality, not whisper it.
+        return theme.colors.warning
       case 'done':
       case 'current':
         return theme.colors.primary
@@ -112,9 +115,11 @@ function toFill(status: StepStatus): number {
     case 'done':
     case 'current':
     case 'invalid':
-      return 1
     case 'skipped':
-      return 0.7
+      // Full opacity for skipped — the warning color is doing the
+      // semantic work; muting it would dilute the "this one's out"
+      // signal the user explicitly asked for.
+      return 1
     case 'pending':
     default:
       return 0.4

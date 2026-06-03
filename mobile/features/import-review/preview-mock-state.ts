@@ -1,26 +1,26 @@
-import type { ReviewState } from './types'
+import type { ReviewRow, ReviewState } from './types'
 
 /**
  * Builds a deterministic mock `ReviewState` for the wizard's "preview"
- * mode in Settings. The fixture mixes the cases we actually want to
- * iterate on visually:
+ * mode in Settings. Ten varied movements covering the visual cases we
+ * want to iterate on without burning IPA cycles:
  *
- *   1. Typical small expense — happy-path baseline.
- *   2. Large expense — stress-test the big-number rendering on
- *      AmountCard.
- *   3. Income — flips the kind toggle so we can see the "ingreso"
- *      copy and the income-kind picker.
- *   4. MercadoPago-style truncated merchant — what the user complained
- *      about in the screenshot ("MERPAGO*MRPROVO..").
- *   5. Mid-range expense with a date a few days back — covers the
- *      CycleDateSlider scrolling away from "today".
+ *   - Multiple typical expense sizes (small / medium / large) to test
+ *     the AmountCard compact rendering across magnitudes.
+ *   - One income with an `incomeKind` other than `other` so the income
+ *     kind picker has a non-default selection on entry.
+ *   - A MercadoPago-style truncated merchant ("MERPAGO*MRPROVO") that
+ *     the user complained about earlier — keeps that visual case
+ *     pinned in the preview.
+ *   - Two **pre-skipped** rows so the skipped state in the step strip
+ *     is visible from step 1, not something the user has to reach by
+ *     tapping "Saltear". Helps verify color encoding (warning tint)
+ *     without action.
+ *   - Dates span -7..0 days so the CycleDateSlider scrolls and the
+ *     summary's `formatRelativeDate` exercises hoy/ayer/weekday paths.
  *
- * Dates are computed relative to today so the slider lights up
- * correctly regardless of when the preview is opened.
- *
- * `imageUri` is intentionally empty — preview mode hides the
- * screenshot thumbnail because the wizard didn't actually OCR anything
- * (no real screenshot to show).
+ * Dates are computed relative to today on each call so the slider
+ * lights up the right tile regardless of when the preview is opened.
  */
 export function buildPreviewReviewState(): ReviewState {
   const today = new Date()
@@ -34,125 +34,112 @@ export function buildPreviewReviewState(): ReviewState {
     return `${y}-${m}-${day}`
   }
 
+  const makeRow = (
+    overrides: Partial<ReviewRow> & Pick<ReviewRow, 'id' | 'amount' | 'description' | 'date' | 'kind'>,
+  ): ReviewRow => ({
+    notes: null,
+    categoryId: null,
+    incomeKind: 'other',
+    warnings: [],
+    source: {
+      transaction: {
+        merchant: overrides.description,
+        date: overrides.date,
+        section: null,
+        primaryAmount: {
+          value: overrides.amount,
+          currency: 'ARS',
+          sign: overrides.kind === 'income' ? 1 : -1,
+        },
+        secondaryAmount: null,
+        raw: 'preview',
+      },
+      originalCurrency: 'ARS',
+      appliedRate: null,
+    },
+    ...overrides,
+  })
+
   return {
     imageUri: '',
     unmatched: 0,
     rows: [
-      {
-        id: 'preview-1',
+      makeRow({
+        id: 'preview-01',
         kind: 'expense',
         amount: 12_500,
         description: 'Mercado El Día',
         date: isoDaysAgo(0),
-        notes: null,
-        categoryId: null,
-        incomeKind: 'other',
-        warnings: [],
-        source: {
-          transaction: {
-            merchant: 'Mercado El Día',
-            date: isoDaysAgo(0),
-            section: null,
-            primaryAmount: { value: 12_500, currency: 'ARS', sign: -1 },
-            secondaryAmount: null,
-            raw: 'preview',
-          },
-          originalCurrency: 'ARS',
-          appliedRate: null,
-        },
-      },
-      {
-        id: 'preview-2',
+      }),
+      makeRow({
+        id: 'preview-02',
         kind: 'expense',
         amount: 185_000,
         description: 'Alquiler junio',
         date: isoDaysAgo(3),
-        notes: null,
-        categoryId: null,
-        incomeKind: 'other',
-        warnings: [],
-        source: {
-          transaction: {
-            merchant: 'Alquiler junio',
-            date: isoDaysAgo(3),
-            section: null,
-            primaryAmount: { value: 185_000, currency: 'ARS', sign: -1 },
-            secondaryAmount: null,
-            raw: 'preview',
-          },
-          originalCurrency: 'ARS',
-          appliedRate: null,
-        },
-      },
-      {
-        id: 'preview-3',
+      }),
+      makeRow({
+        id: 'preview-03',
         kind: 'income',
         amount: 850_000,
         description: 'Sueldo',
         date: isoDaysAgo(1),
-        notes: null,
-        categoryId: null,
         incomeKind: 'transfer',
-        warnings: [],
-        source: {
-          transaction: {
-            merchant: 'Sueldo',
-            date: isoDaysAgo(1),
-            section: null,
-            primaryAmount: { value: 850_000, currency: 'ARS', sign: 1 },
-            secondaryAmount: null,
-            raw: 'preview',
-          },
-          originalCurrency: 'ARS',
-          appliedRate: null,
-        },
-      },
-      {
-        id: 'preview-4',
-        kind: 'expense',
+      }),
+      // Pre-skipped: lets the wizard show the warning-colored segment
+      // in the strip from the first render.
+      makeRow({
+        id: 'preview-04',
+        kind: 'skip',
         amount: 2_350,
         description: 'MERPAGO*MRPROVO',
         date: isoDaysAgo(5),
-        notes: null,
-        categoryId: null,
-        incomeKind: 'other',
-        warnings: [],
-        source: {
-          transaction: {
-            merchant: 'MERPAGO*MRPROVO',
-            date: isoDaysAgo(5),
-            section: null,
-            primaryAmount: { value: 2_350, currency: 'ARS', sign: -1 },
-            secondaryAmount: null,
-            raw: 'preview',
-          },
-          originalCurrency: 'ARS',
-          appliedRate: null,
-        },
-      },
-      {
-        id: 'preview-5',
+      }),
+      makeRow({
+        id: 'preview-05',
         kind: 'expense',
         amount: 89_400,
         description: 'Carrefour Av. Pueyrredón',
         date: isoDaysAgo(2),
-        notes: null,
-        categoryId: null,
-        incomeKind: 'other',
-        warnings: [],
-        source: {
-          transaction: {
-            merchant: 'Carrefour Av. Pueyrredón',
-            date: isoDaysAgo(2),
-            section: null,
-            primaryAmount: { value: 89_400, currency: 'ARS', sign: -1 },
-            secondaryAmount: null,
-            raw: 'preview',
-          },
-          originalCurrency: 'ARS',
-          appliedRate: null,
-        },
-      },
+      }),
+      makeRow({
+        id: 'preview-06',
+        kind: 'expense',
+        amount: 4_800,
+        description: 'Cafetería',
+        date: isoDaysAgo(0),
+      }),
+      makeRow({
+        id: 'preview-07',
+        kind: 'expense',
+        amount: 32_500,
+        description: 'Farmacia City',
+        date: isoDaysAgo(4),
+      }),
+      makeRow({
+        id: 'preview-08',
+        kind: 'income',
+        amount: 45_000,
+        description: 'Devolución impuestos',
+        date: isoDaysAgo(6),
+        incomeKind: 'bonus',
+      }),
+      // Second pre-skipped: confirms warning color renders for
+      // non-adjacent skipped segments too.
+      makeRow({
+        id: 'preview-09',
+        kind: 'skip',
+        amount: 1_100,
+        description: 'Comisión bancaria',
+        date: isoDaysAgo(7),
+      }),
+      makeRow({
+        id: 'preview-10',
+        kind: 'expense',
+        amount: 67_200,
+        description: 'Combustible YPF',
+        date: isoDaysAgo(3),
+      }),
     ],
   }
 }
