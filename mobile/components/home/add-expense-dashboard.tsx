@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
@@ -11,12 +12,13 @@ import { AppButton } from '@/components/ui/button'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import type { Category } from '@/features/categories/use-categories'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { formatMissingFields } from '@/lib/form-missing-fields'
+import { triggerHaptic } from '@/lib/haptics'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface AddExpenseDashboardProps {
   amount: number
-  hasValidAmount: boolean
   rawPrice: string
   rankedCategories: Category[]
   selectedCategoryId: string
@@ -32,6 +34,16 @@ interface AddExpenseDashboardProps {
   /** Optional advisor signals to surface a contextual banner above
    *  the category rail (cap-breach, cat-accel, recovery-path). */
   advisorSignals?: ControlAdvisorTask[]
+  /** Human-readable list of required fields the user hasn't filled. */
+  missingFields: readonly string[]
+  /** Bumped by the controller every time the user taps Guardar with
+   *  required fields missing. The dashboard reads its initial value at
+   *  mount and flips into "flagged" mode once `highlightToken` moves —
+   *  paints `warning` on the specific unfilled inputs. */
+  highlightToken: number
+  /** Called by the dashboard when the CTA is tapped while
+   *  `missingFields.length > 0`. Controller bumps `highlightToken`. */
+  onFlagMissingFields: () => void
   onRawPriceChange: (value: string) => void
   onAddQuickAmount: (delta: number) => void
   onClearAmount: () => void
@@ -44,7 +56,6 @@ interface AddExpenseDashboardProps {
 
 export function AddExpenseDashboard({
   amount,
-  hasValidAmount,
   rawPrice,
   rankedCategories,
   selectedCategoryId,
@@ -56,6 +67,9 @@ export function AddExpenseDashboard({
   submitErrorMessage,
   forDate,
   advisorSignals,
+  missingFields,
+  highlightToken,
+  onFlagMissingFields,
   onRawPriceChange,
   onAddQuickAmount,
   onClearAmount,
@@ -68,7 +82,26 @@ export function AddExpenseDashboard({
   const { theme } = useAppTheme()
   const [numpadVisible, setNumpadVisible] = useState(false)
 
-  const canSubmit = hasValidAmount && Boolean(selectedCategoryId)
+  // Flagged once the user nudges Guardar with required fields empty.
+  // Stays true for the life of the screen so the warning marks persist
+  // and clear field-by-field as the user completes each input.
+  const initialTokenRef = useRef(highlightToken)
+  const isFlagged = highlightToken > initialTokenRef.current
+  const flagAmount = isFlagged && missingFields.includes('monto')
+  const flagCategory = isFlagged && missingFields.includes('categoría')
+
+  const canSubmit = missingFields.length === 0
+
+  const showMissingHelper = !canSubmit && missingFields.length > 0
+
+  const handlePrimaryPress = () => {
+    if (!canSubmit) {
+      void triggerHaptic('warning')
+      onFlagMissingFields()
+      return
+    }
+    onSubmit()
+  }
 
   // Any tap on a non-description control should release the
   // description input's focus and close the keyboard. Same pattern
@@ -125,6 +158,7 @@ export function AddExpenseDashboard({
           amount={amount}
           isActive={numpadVisible}
           onPress={handleOpenNumpad}
+          warning={flagAmount}
         />
       </RiseView>
 
@@ -143,6 +177,7 @@ export function AddExpenseDashboard({
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
           staticGrid
+          warning={flagCategory}
         />
       </RiseView>
 
@@ -177,13 +212,36 @@ export function AddExpenseDashboard({
 
       <RiseView delay={forDate ? 300 : 240}>
         <View style={[styles.footer, { borderTopColor: theme.colors.line }]}>
+          {/* `disabled={false}` keeps the press reachable so a tap on the
+              dim button routes through `handlePrimaryPress` which bumps
+              `highlightToken` and paints the missing inputs with their
+              `warning` glide. `lookDisabled` styling lives in the button
+              opacity via `loading`'s sibling state — we instead lean on
+              the AppButton's own disabled affordance with the in-flight
+              flag (`loading`) being the only hard-block. */}
           <AppButton
             label="Guardar gasto"
             variant="primary"
             loading={isBusy}
-            disabled={!canSubmit}
-            onPress={onSubmit}
+            disabled={false}
+            lookDisabled={!canSubmit}
+            onPress={handlePrimaryPress}
           />
+          {showMissingHelper ? (
+            <View style={styles.helperRow}>
+              <MaterialIcons
+                name="error-outline"
+                size={14}
+                color={theme.colors.warning}
+              />
+              <Text
+                style={[styles.helperText, { color: theme.colors.warning }]}
+                numberOfLines={2}
+              >
+                {formatMissingFields(missingFields)}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </RiseView>
 
@@ -250,5 +308,20 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: 8,
+    gap: 8,
+  },
+  helperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    flexShrink: 1,
   },
 })

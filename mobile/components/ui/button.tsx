@@ -16,6 +16,12 @@ interface AppButtonProps extends Omit<PressableProps, 'style'> {
   fullWidth?: boolean
   haptic?: AppHapticTone
   size?: ButtonSize
+  /** Paints the button at the disabled affordance (opacity 0.45,
+   *  no haptic on press) WITHOUT blocking the press. Use when a form
+   *  needs the tap reachable so it can route to a "highlight what's
+   *  missing" branch instead of submitting. `disabled` and `loading`
+   *  still hard-block the press; `lookDisabled` is purely visual. */
+  lookDisabled?: boolean
 }
 
 export function AppButton({
@@ -26,6 +32,7 @@ export function AppButton({
   fullWidth = true,
   haptic,
   size = 'default',
+  lookDisabled = false,
   onPress,
   onPressIn,
   onPressOut,
@@ -33,6 +40,7 @@ export function AppButton({
 }: AppButtonProps) {
   const { theme } = useAppTheme()
   const isDisabled = disabled || loading
+  const isDimmed = isDisabled || lookDisabled
   const pressScale = usePressScale({
     pressedScale: variant === 'ghost' ? 0.985 : 0.97,
   })
@@ -102,7 +110,7 @@ export function AppButton({
     <Pressable
       accessibilityLabel={pressableProps.accessibilityLabel ?? label}
       accessibilityRole="button"
-      accessibilityState={{ busy: loading, disabled: isDisabled }}
+      accessibilityState={{ busy: loading, disabled: isDimmed }}
       android_ripple={{
         color:
           variant === 'accent'
@@ -123,7 +131,7 @@ export function AppButton({
         {
           backgroundColor: activeColors.backgroundColor,
           borderColor: activeColors.borderColor,
-          opacity: isDisabled ? 0.6 : pressed ? 0.86 : 1,
+          opacity: isDimmed ? 0.45 : pressed ? 0.86 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
           borderRadius: sizeTokens.borderRadius,
           minHeight: sizeTokens.minHeight,
@@ -139,7 +147,9 @@ export function AppButton({
         onPressOut?.(event)
       }}
       onPress={(event) => {
-        if (resolvedHaptic !== 'none' && !isDisabled) {
+        // Skip haptic on look-disabled presses — the caller's flag path
+        // owns its own warning haptic so we don't double-tap the feel.
+        if (resolvedHaptic !== 'none' && !isDimmed) {
           void triggerHaptic(resolvedHaptic)
         }
         onPress?.(event)

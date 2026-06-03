@@ -117,7 +117,10 @@ describe('fixed-expense-editor-model', () => {
     })
 
     expect(createValues.kind).toBe('debt')
-    expect(createValues.categoryId).toBe('rent')
+    // No pre-selected category for new fijos — the user picks one
+    // explicitly. Same stance as the import-review wizard and the
+    // other add-* flows.
+    expect(createValues.categoryId).toBe('')
     expect(editValues.name).toBe('Heladera')
     expect(editValues.amount).toBe('85000')
     expect(editValues.nextDueOn).toBe('10/05/2026')

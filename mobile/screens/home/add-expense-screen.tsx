@@ -94,7 +94,6 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
       ) : (
         <AddExpenseDashboard
           amount={controller.amount}
-          hasValidAmount={controller.hasValidAmount}
           rawPrice={controller.rawPrice}
           rankedCategories={controller.rankedCategories}
           selectedCategoryId={controller.selectedCategoryId}
@@ -105,6 +104,9 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           isBusy={controller.createExpenseMutation.isPending}
           forDate={controller.forDate}
           advisorSignals={advisorSignals}
+          missingFields={controller.missingFields}
+          highlightToken={controller.highlightToken}
+          onFlagMissingFields={controller.actions.flagMissingFields}
           onRawPriceChange={controller.actions.setRawPrice}
           onAddQuickAmount={controller.actions.addQuickAmount}
           onClearAmount={controller.actions.clearAmount}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Keyboard,
@@ -194,7 +194,6 @@ export function AddFijoV2Screen({
   }
 
   // Hydrate form state from the fijo being edited, once it loads.
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional one-shot hydration of form state from loaded record */
   useEffect(() => {
     if (!editingFijo || editingFijo.id === hydratedFromFijoId) return
     setName(editingFijo.name)
@@ -210,7 +209,6 @@ export function AddFijoV2Screen({
     setNotify(editingFijo.notify_days_before != null)
     setHydratedFromFijoId(editingFijo.id)
   }, [editingFijo, hydratedFromFijoId])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isInstallment = freqChoice === 'cuotas'
   const totalCuotas = isInstallment ? amount * cuotaTot : 0
@@ -221,6 +219,29 @@ export function AddFijoV2Screen({
   // Step 1 doesn't depend on the day (chosen in step 2 next to the
   // calendar preview).
   const canSubmit = canContinue && day != null
+
+  // Missing-field tracking — same pattern as add-expense and the
+  // import-review wizard. Step 1 surfaces name/amount/category as
+  // missing; step 2 surfaces "día del mes" when the user hasn't
+  // tapped a day yet. Each step has its own list because the user
+  // can't see step 2 fields while on step 1.
+  // Step 1's required inputs feed the warning glide. Step 2 only has
+  // the day picker, which already carries its own copy-driven cue
+  // ("Elige el día del mes") via the bespoke CTA — no additional
+  // missing-fields list needed there.
+  const missingFieldsStep1 = useMemo<string[]>(() => {
+    const missing: string[] = []
+    if (name.trim().length === 0) missing.push('nombre')
+    if (amount <= 0) missing.push('monto')
+    if (!selectedCategory) missing.push('categoría')
+    return missing
+  }, [name, amount, selectedCategory])
+  const [highlightToken, setHighlightToken] = useState(0)
+  const initialTokenRef = useRef(highlightToken)
+  const isFlagged = highlightToken > initialTokenRef.current
+  const flagName = isFlagged && missingFieldsStep1.includes('nombre')
+  const flagAmount = isFlagged && missingFieldsStep1.includes('monto')
+  const flagCategory = isFlagged && missingFieldsStep1.includes('categoría')
 
   const nuevoTotal = prevTotal + amount
   const pctAntes = monthlyIncome > 0 ? Math.round((prevTotal / monthlyIncome) * 100) : 0
@@ -337,6 +358,7 @@ export function AddFijoV2Screen({
                 isFocused={isNameFocused}
                 onFocus={() => setIsNameFocused(true)}
                 onBlur={() => setIsNameFocused(false)}
+                warning={flagName}
               />
             </Field>
 
@@ -344,6 +366,7 @@ export function AddFijoV2Screen({
               amount={amount}
               isActive={isNumpadVisible}
               onPress={openNumpad}
+              warning={flagAmount}
             />
 
             {isInstallment && amount > 0 ? (
@@ -374,6 +397,7 @@ export function AddFijoV2Screen({
               iconResolver={pickIconForFixedExpenseCategory}
               tileWidth={fijosTileWidth}
               tileHeight={fijosTileHeight}
+              warning={flagCategory}
             />
 
             <Field label="FRECUENCIA">
@@ -745,13 +769,23 @@ export function AddFijoV2Screen({
       <StickyFooter divider={false}>
         {step === 1 ? (
           <Pressable
-            onPress={() => canContinue && setStep(2)}
-            disabled={!canContinue}
+            // Keep press reachable even when dimmed so a tap routes to
+            // the "flag missing fields" branch and paints the unfilled
+            // inputs with their warning glide. Same pattern as
+            // import-review's PrimaryCTA.
+            onPress={() => {
+              if (canContinue) {
+                setStep(2)
+                return
+              }
+              void triggerHaptic('warning')
+              setHighlightToken((t) => t + 1)
+            }}
             style={[
               styles.primaryCta,
               canContinue
                 ? { backgroundColor: theme.colors.text }
-                : { backgroundColor: theme.colors.line },
+                : { backgroundColor: theme.colors.text, opacity: 0.45 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={canContinue ? 'Ver impacto' : 'Completa los datos'}
@@ -760,7 +794,7 @@ export function AddFijoV2Screen({
               style={[
                 styles.primaryCtaText,
                 {
-                  color: canContinue ? theme.colors.creamCard : theme.colors.textMuted,
+                  color: theme.colors.creamCard,
                 },
               ]}
             >
@@ -769,13 +803,21 @@ export function AddFijoV2Screen({
           </Pressable>
         ) : (
           <Pressable
-            onPress={() => void handleConfirm()}
-            disabled={pending || !canSubmit}
+            onPress={() => {
+              if (pending) return
+              if (canSubmit) {
+                void handleConfirm()
+                return
+              }
+              void triggerHaptic('warning')
+              setHighlightToken((t) => t + 1)
+            }}
+            disabled={pending}
             style={[
               styles.primaryCta,
               canSubmit
                 ? { backgroundColor: theme.colors.text, opacity: pending ? 0.7 : 1 }
-                : { backgroundColor: theme.colors.line },
+                : { backgroundColor: theme.colors.text, opacity: 0.45 },
             ]}
             accessibilityRole="button"
             accessibilityLabel={
@@ -1202,12 +1244,25 @@ interface NameInputProps {
   isFocused: boolean
   onFocus: () => void
   onBlur: () => void
+  /** Same `warning` contract as `TextField` / `AmountCard`: glides the
+   *  border tint to `theme.colors.warning` without changing borderWidth
+   *  so the field can be marked "required and unfilled" with zero
+   *  layout shift. */
+  warning?: boolean
 }
 
-function NameInput({ value, onChange, isFocused, onFocus, onBlur }: NameInputProps) {
+function NameInput({
+  value,
+  onChange,
+  isFocused,
+  onFocus,
+  onBlur,
+  warning = false,
+}: NameInputProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const focusProgress = useSharedValue(isFocused ? 1 : 0)
+  const warningProgress = useSharedValue(warning ? 1 : 0)
 
   // Mirror AmountCard: interpolate the border color + width when focus
   // toggles, so the transition feels identical across the form.
@@ -1218,14 +1273,40 @@ function NameInput({ value, onChange, isFocused, onFocus, onBlur }: NameInputPro
       : withTiming(target, { duration: motionDurations.standard })
   }, [isFocused, reduceMotion, focusProgress])
 
-  const borderStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
+  useEffect(() => {
+    warningProgress.value = reduceMotion
+      ? (warning ? 1 : 0)
+      : withTiming(warning ? 1 : 0, {
+          duration: motionDurations.standard,
+          easing: Easing.bezier(0.32, 0.72, 0, 1),
+        })
+  }, [warning, reduceMotion, warningProgress])
+
+  // Same nested-interpolate pattern as TextField/AmountCard: width
+  // only follows focus (no layout shift on warning toggle), color
+  // blends between the focus-derived normal color and the warning
+  // color via warningProgress.
+  const borderStyle = useAnimatedStyle(() => {
+    'worklet'
+    const normalColor = interpolateColor(
       focusProgress.value,
       [0, 1],
       [theme.colors.line, theme.colors.primary],
-    ),
-    borderWidth: 1 + focusProgress.value,
-  }))
+    )
+    const warnColor = interpolateColor(
+      focusProgress.value,
+      [0, 1],
+      [theme.colors.warning, theme.colors.warning],
+    )
+    return {
+      borderColor: interpolateColor(
+        warningProgress.value,
+        [0, 1],
+        [normalColor, warnColor],
+      ),
+      borderWidth: 1 + focusProgress.value,
+    }
+  })
 
   return (
     <Animated.View

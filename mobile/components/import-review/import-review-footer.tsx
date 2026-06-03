@@ -10,6 +10,7 @@ import { motionDurations } from '@/lib/motion/tokens'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { loadingLabels } from '@/lib/copy/states'
+import { formatMissingFields } from '@/lib/form-missing-fields'
 
 interface Props {
   /** Zero-indexed current step. Last index = summary step. */
@@ -160,7 +161,7 @@ export function ImportReviewFooter({
             style={[styles.helperText, { color: theme.colors.warning }]}
             numberOfLines={2}
           >
-            {formatMissing(missingFields)}
+            {formatMissingFields(missingFields)}
           </Text>
         </View>
       ) : null}
@@ -168,26 +169,6 @@ export function ImportReviewFooter({
   )
 }
 
-/**
- * Builds "Completá monto y categoría para continuar." style copy.
- * Comma-separates the first N-1 with " y " for the last one — natural
- * Spanish enumeration. Capped at 3 visible items so the line stays
- * within two lines on small screens; anything beyond gets a "..."
- * tail.
- */
-function formatMissing(fields: readonly string[]): string {
-  const visible = fields.slice(0, 3)
-  let joined: string
-  if (visible.length === 1) {
-    joined = visible[0]
-  } else if (visible.length === 2) {
-    joined = `${visible[0]} y ${visible[1]}`
-  } else {
-    joined = `${visible.slice(0, -1).join(', ')} y ${visible[visible.length - 1]}`
-  }
-  const tail = fields.length > visible.length ? '…' : ''
-  return `Completá ${joined}${tail} para continuar.`
-}
 
 interface PrimaryCTAProps {
   label: string
