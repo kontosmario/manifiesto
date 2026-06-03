@@ -462,6 +462,109 @@ describe('parseActivityLines — Banco Santander format', () => {
   })
 })
 
+describe('parseActivityLines — Banco Galicia format', () => {
+  // Galicia tiene:
+  //   - Sin section headers
+  //   - Merchant arriba, fecha DD/MM/YY abajo (similar al bank original
+  //     pero con año a 2 dígitos)
+  //   - Amount `-$586.930,13` (sign pegado al $) o `$270.000,00`
+  //     (positivo $-first sin signo)
+
+  it('parsea sin sections + fechas DD/MM/YY + amounts pegados al $', () => {
+    const lines: Line[] = [
+      // tx 1 — Pago tarjeta visa
+      mk('Pago tarjeta visa', 100, 50, 280, 50),
+      mk('01/06/26', 155, 50, 110, 35),
+      mk('-$586.930,13', 100, 900, 230, 45),
+      // tx 2 — Credito transferencia (positivo sin signo)
+      mk('Credito transferencia', 290, 50, 320, 50),
+      mk('01/06/26', 345, 50, 110, 35),
+      mk('$270.000,00', 290, 900, 220, 45),
+      // tx 3 — Interes capitalizado (positivo decimal pequeño)
+      mk('Interes capitalizado', 480, 50, 280, 50),
+      mk('22/05/26', 535, 50, 110, 35),
+      mk('$14,85', 480, 900, 120, 45),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(3)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Pago tarjeta visa',
+      section: null,
+      date: '2026-06-01',
+      primaryAmount: { value: 586930.13, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'Credito transferencia',
+      date: '2026-06-01',
+      primaryAmount: { value: 270000, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'Interes capitalizado',
+      date: '2026-05-22',
+      primaryAmount: { value: 14.85, currency: 'ARS', sign: 1 },
+    })
+  })
+})
+
+describe('parseActivityLines — Naranja X format', () => {
+  // Naranja X tiene:
+  //   - "28 de mayo" como label PER FILA (no como section global) →
+  //     nuestro parser lo trata como section, lo cual es OK porque
+  //     funcionalmente equivale: cada row tiene su sección + el date
+  //     se deriva de ella.
+  //   - Merchant + opcional sub-descripción (Tarjeta Naranja X / Mario
+  //     Jorge Kontos) debajo del label de fecha.
+  //   - Amount `+ $ 0,23` / `- $ 701.665,29` (signo + espacio + $ +
+  //     espacio + número).
+
+  it('parsea "X de mayo" per-row labels + sub-descripción + amounts con espacios', () => {
+    const lines: Line[] = [
+      // tx 1 — Rendimiento diario simple
+      mk('28 de mayo', 100, 200, 180, 35),
+      mk('Rendimiento diario', 145, 200, 280, 50),
+      mk('+ $ 0,23', 130, 900, 150, 45),
+      // tx 2 — Pago de resumen con sub-descripción "Tarjeta Naranja X"
+      mk('25 de mayo', 320, 200, 180, 35),
+      mk('Pago de resumen', 365, 200, 250, 50),
+      mk('Tarjeta Naranja X', 415, 200, 220, 35),
+      mk('- $ 701.665,29', 350, 900, 230, 45),
+      // tx 3 — Transferencia recibida con sub-descripción "Mario Jorge Kontos"
+      mk('25 de mayo', 560, 200, 180, 35),
+      mk('Transferencia recibida', 605, 200, 320, 50),
+      mk('Mario Jorge Kontos', 655, 200, 240, 35),
+      mk('+ $ 700.000,00', 590, 900, 240, 45),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(3)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Rendimiento diario',
+      section: '28 de mayo',
+      date: '2026-05-28',
+      primaryAmount: { value: 0.23, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'Pago de resumen Tarjeta Naranja X',
+      section: '25 de mayo',
+      date: '2026-05-25',
+      primaryAmount: { value: 701665.29, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'Transferencia recibida Mario Jorge Kontos',
+      section: '25 de mayo',
+      date: '2026-05-25',
+      primaryAmount: { value: 700000, currency: 'ARS', sign: 1 },
+    })
+  })
+})
+
 describe('parseActivityLines — unmatched', () => {
   it('routes groups without a parseable amount into unmatched', () => {
     const lines: Line[] = [
