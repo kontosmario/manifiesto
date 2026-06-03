@@ -30,7 +30,7 @@ import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface QuickAction {
-  key: 'expense' | 'fixed' | 'income' | 'no-spend'
+  key: 'expense' | 'fixed' | 'income' | 'no-spend' | 'import'
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void
@@ -71,7 +71,10 @@ interface AddQuickActionsOverlayProps {
 //     spacing, radius 170. Adjacent centers now ~116px → labels
 //     have 6px gap to breathe and the fan reads cleanly across the
 //     whole bottom of the screen.
-const FAN_ANGLES_DEG = [150, 110, 70, 30]
+// 5 petals after Phase C: re-spaced to keep equal arc spacing across
+// the wider fan. The petal whose action is in the first slot of the
+// caller's array gets the leftmost angle (160°), etc.
+const FAN_ANGLES_DEG = [160, 130, 100, 70, 40]
 const FAN_RADIUS = 170 // distance from FAB center to each mini-FAB center
 const ACTION_SIZE = 56
 const LABEL_WIDTH = 110 // wide enough for "Día sin gasto" with breathing room

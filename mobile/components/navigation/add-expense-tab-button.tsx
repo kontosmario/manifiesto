@@ -25,6 +25,10 @@ import {
   decideNoSpendPetal,
   type NoSpendPetalDecision,
 } from '@/components/navigation/add-expense-tab-button-no-spend-decision'
+import { openImportFlow } from '@/features/import-review/open-import-flow'
+import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { useFamilyFinance } from '@/features/finance/use-family-finance'
+import type { ReviewState } from '@/features/import-review/types'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
@@ -206,6 +210,46 @@ export function AddExpenseTabButton({
   const ACCENT_NO_SPEND = '#7DD18D' // verde celebración (más claro que brand)
   const ACCENT_INCOME = '#5B9DF9'   // azul info (dinero que entra)
   const ACCENT_FIXED = '#A0A4A8'    // gris neutral (compromiso programado)
+  const ACCENT_IMPORT = '#B894FA'   // suave púrpura — distinto de los otros 4
+
+  const [importState, setImportState] = useState<ReviewState | null>(null)
+  const financeQuery = useFamilyFinance(familyId)
+  const categoriesForImportQuery = useCategories(familyId, 'expense')
+
+  const handleOpenImport = async () => {
+    if (!familyId || !userId) {
+      toast.error('Necesitás estar en sesión para importar.')
+      return
+    }
+    const rate = financeQuery.data?.usd_exchange_rate ?? 1000
+    const defaultCategoryId =
+      categoriesForImportQuery.data && categoriesForImportQuery.data.length > 0
+        ? categoriesForImportQuery.data[0].id
+        : null
+    const today = new Date().toISOString().slice(0, 10)
+    let idCounter = 0
+    const result = await openImportFlow({
+      today,
+      defaultCategoryId,
+      usdToArsRate: rate,
+      generateRowId: () => `r-${++idCounter}`,
+    })
+
+    switch (result.kind) {
+      case 'opened':
+        setImportState(result.state)
+        break
+      case 'cancelled':
+        // silent
+        break
+      case 'permission-denied':
+        toast.error('Necesito acceso a tus fotos para importar capturas.')
+        break
+      case 'error':
+        toast.error(`No pude leer esa captura: ${result.message}`)
+        break
+    }
+  }
 
   const quickActions: QuickAction[] = [
     {
@@ -281,6 +325,13 @@ export function AddExpenseTabButton({
       // No accentColor on purpose — the primary action stays the
       // chromatically dominant petal (brand green, no ring).
       onPress: () => router.push('/(app)/add-expense'),
+    },
+    {
+      key: 'import',
+      label: 'Importar captura',
+      icon: 'document-scanner',
+      accentColor: ACCENT_IMPORT,
+      onPress: handleOpenImport,
     },
   ]
 
@@ -360,6 +411,14 @@ export function AddExpenseTabButton({
         isSubmitting={markNoExpenseMutation.isPending}
         onCancel={() => setConfirmSheetVisible(false)}
         onConfirm={() => doMark({ force: true })}
+      />
+
+      <ImportReviewSheet
+        visible={importState !== null}
+        initialState={importState}
+        familyId={familyId ?? ''}
+        userId={userId ?? ''}
+        onClose={() => setImportState(null)}
       />
     </>
   )
