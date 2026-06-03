@@ -88,6 +88,7 @@ export function AddExpenseDashboard({
   const initialTokenRef = useRef(highlightToken)
   const isFlagged = highlightToken > initialTokenRef.current
   const flagAmount = isFlagged && missingFields.includes('monto')
+  const flagDescription = isFlagged && missingFields.includes('descripción')
   const flagCategory = isFlagged && missingFields.includes('categoría')
 
   const canSubmit = missingFields.length === 0
@@ -197,6 +198,7 @@ export function AddExpenseDashboard({
           onChange={onDescriptionChange}
           quickSuggestions={quickDescriptionSuggestions}
           onSelectSuggestion={handleSelectDescriptionSuggestion}
+          warning={flagDescription}
         />
       </RiseView>
 

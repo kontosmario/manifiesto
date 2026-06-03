@@ -98,11 +98,13 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const missingFields = useMemo<string[]>(() => {
     const missing: string[] = []
     if (!hasValidAmount) missing.push('monto')
+    if (description.trim().length === 0) missing.push('descripción')
     if (!kind) missing.push('tipo de ingreso')
     return missing
-  }, [hasValidAmount, kind])
+  }, [hasValidAmount, description, kind])
   const canSubmit = missingFields.length === 0
   const flagAmount = isFlagged && missingFields.includes('monto')
+  const flagDescription = isFlagged && missingFields.includes('descripción')
   const flagKind = isFlagged && missingFields.includes('tipo de ingreso')
 
   const eventDate = useMemo(() => {
@@ -324,6 +326,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
             onChange={setDescription}
             quickSuggestions={QUICK_DESCRIPTIONS}
             onSelectSuggestion={handleSelectDescriptionSuggestion}
+            warning={flagDescription}
           />
         </RiseView>
 

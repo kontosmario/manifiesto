@@ -8,6 +8,10 @@ interface DescriptionRowProps {
   quickSuggestions: string[]
   onSelectSuggestion: (value: string) => void
   onFocus?: () => void
+  /** Forwards to the underlying `TextField`'s warning mode so callers
+   *  can mark "descripción" as a required field that's currently empty
+   *  without the row wrapping itself in extra chrome. */
+  warning?: boolean
 }
 
 export function DescriptionRow({
@@ -16,6 +20,7 @@ export function DescriptionRow({
   quickSuggestions,
   onSelectSuggestion,
   onFocus,
+  warning = false,
 }: DescriptionRowProps) {
   return (
     <View style={styles.root}>
@@ -29,6 +34,7 @@ export function DescriptionRow({
         placeholder="Ej: Supermercado"
         returnKeyType="done"
         value={description}
+        warning={warning}
       />
       {quickSuggestions.length > 0 ? (
         <ScrollView

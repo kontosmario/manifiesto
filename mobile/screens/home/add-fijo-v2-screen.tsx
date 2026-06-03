@@ -142,7 +142,10 @@ export function AddFijoV2Screen({
       : '',
   )
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [freqChoice, setFreqChoice] = useState<FreqChoice>('monthly')
+  // No pre-selected frequency. The user must explicitly pick monthly /
+  // weekly / yearly / cuotas — same data-integrity stance the other
+  // add-* forms take for category / kind.
+  const [freqChoice, setFreqChoice] = useState<FreqChoice | null>(null)
   const [cuotaTot, setCuotaTot] = useState(12)
   // No default day on create. Forcing the user to pick prevents the
   // "I'll just hit confirm without checking" reflex — the calendar
@@ -214,17 +217,16 @@ export function AddFijoV2Screen({
   const totalCuotas = isInstallment ? amount * cuotaTot : 0
 
   const selectedCategory = categories.find((c) => c.id === categoryId)
-  const canContinue = amount > 0 && !!selectedCategory && name.trim().length > 0
+  const canContinue =
+    amount > 0 &&
+    !!selectedCategory &&
+    name.trim().length > 0 &&
+    freqChoice !== null
   // Step-2 gate: day must be picked before the user can confirm.
   // Step 1 doesn't depend on the day (chosen in step 2 next to the
   // calendar preview).
   const canSubmit = canContinue && day != null
 
-  // Missing-field tracking — same pattern as add-expense and the
-  // import-review wizard. Step 1 surfaces name/amount/category as
-  // missing; step 2 surfaces "día del mes" when the user hasn't
-  // tapped a day yet. Each step has its own list because the user
-  // can't see step 2 fields while on step 1.
   // Step 1's required inputs feed the warning glide. Step 2 only has
   // the day picker, which already carries its own copy-driven cue
   // ("Elige el día del mes") via the bespoke CTA — no additional
@@ -234,14 +236,16 @@ export function AddFijoV2Screen({
     if (name.trim().length === 0) missing.push('nombre')
     if (amount <= 0) missing.push('monto')
     if (!selectedCategory) missing.push('categoría')
+    if (freqChoice === null) missing.push('frecuencia')
     return missing
-  }, [name, amount, selectedCategory])
+  }, [name, amount, selectedCategory, freqChoice])
   const [highlightToken, setHighlightToken] = useState(0)
   const initialTokenRef = useRef(highlightToken)
   const isFlagged = highlightToken > initialTokenRef.current
   const flagName = isFlagged && missingFieldsStep1.includes('nombre')
   const flagAmount = isFlagged && missingFieldsStep1.includes('monto')
   const flagCategory = isFlagged && missingFieldsStep1.includes('categoría')
+  const flagFrequency = isFlagged && missingFieldsStep1.includes('frecuencia')
 
   const nuevoTotal = prevTotal + amount
   const pctAntes = monthlyIncome > 0 ? Math.round((prevTotal / monthlyIncome) * 100) : 0
@@ -255,7 +259,8 @@ export function AddFijoV2Screen({
   }
 
   const handleConfirm = async () => {
-    if (!canSubmit || !selectedCategory || day == null) return
+    if (!canSubmit || !selectedCategory || day == null || freqChoice === null)
+      return
     void triggerHaptic('success')
     const nextDueOn = buildNextDueOn(day)
     const basePayload = {
@@ -416,6 +421,7 @@ export function AddFijoV2Screen({
                     label={f.label}
                     selected={freqChoice === f.id}
                     onPress={() => handleSelectFreq(f.id)}
+                    warning={flagFrequency}
                   />
                 ))}
               </ScrollView>
@@ -1336,12 +1342,23 @@ interface FreqTileProps {
   label: string
   selected: boolean
   onPress: () => void
+  /** When true, the tile's resting border tints to `theme.colors.warning`
+   *  via a smooth glide. Selected tiles ignore the flag — they stay on
+   *  the brand color so the recovery state is unambiguous. */
+  warning?: boolean
 }
 
-function FreqTile({ icon, label, selected, onPress }: FreqTileProps) {
+function FreqTile({
+  icon,
+  label,
+  selected,
+  onPress,
+  warning = false,
+}: FreqTileProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const selectedProgress = useSharedValue(selected ? 1 : 0)
+  const warningProgress = useSharedValue(warning ? 1 : 0)
 
   useEffect(() => {
     const target = selected ? 1 : 0
@@ -1350,14 +1367,39 @@ function FreqTile({ icon, label, selected, onPress }: FreqTileProps) {
       : withTiming(target, { duration: motionDurations.standard })
   }, [selected, reduceMotion, selectedProgress])
 
-  const borderStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
+  useEffect(() => {
+    warningProgress.value = reduceMotion
+      ? (warning ? 1 : 0)
+      : withTiming(warning ? 1 : 0, {
+          duration: motionDurations.standard,
+          easing: Easing.bezier(0.32, 0.72, 0, 1),
+        })
+  }, [warning, reduceMotion, warningProgress])
+
+  // Same nested-interpolate pattern as the other shared inputs: width
+  // only follows the selected animation so warning toggle never resizes
+  // the tile.
+  const borderStyle = useAnimatedStyle(() => {
+    'worklet'
+    const normalColor = interpolateColor(
       selectedProgress.value,
       [0, 1],
       [theme.colors.line, theme.colors.primary],
-    ),
-    borderWidth: 1 + selectedProgress.value,
-  }))
+    )
+    const warnColor = interpolateColor(
+      selectedProgress.value,
+      [0, 1],
+      [theme.colors.warning, theme.colors.primary],
+    )
+    return {
+      borderColor: interpolateColor(
+        warningProgress.value,
+        [0, 1],
+        [normalColor, warnColor],
+      ),
+      borderWidth: 1 + selectedProgress.value,
+    }
+  })
 
   return (
     <Pressable

@@ -140,12 +140,13 @@ export function useAddExpenseController({
   const missingFields = useMemo<string[]>(() => {
     const missing: string[] = []
     if (!hasValidAmount) missing.push('monto')
+    if (description.trim().length === 0) missing.push('descripción')
     if (!selectedCategoryId) missing.push('categoría')
     return missing
-  }, [hasValidAmount, selectedCategoryId])
+  }, [hasValidAmount, description, selectedCategoryId])
 
   const submitExpense = () => {
-    if (!selectedCategoryId || !hasValidAmount) return
+    if (missingFields.length > 0) return
     createExpenseMutation.mutate(
       {
         categoryId: selectedCategoryId,
