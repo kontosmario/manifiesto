@@ -7,6 +7,7 @@ import { toast } from '@/lib/toast-bus'
 import { useImportReviewController } from '@/features/import-review/use-import-review-controller'
 import { useConfirmImport } from '@/features/import-review/use-confirm-import'
 import type { ReviewState } from '@/features/import-review/types'
+import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { ImportReviewRow } from './import-review-row'
 import { ImportReviewFooter } from './import-review-footer'
 import { ImportReviewEmpty } from './import-review-empty'
@@ -32,6 +33,10 @@ export function ImportReviewSheet({
   const categories = categoriesQuery.data ?? []
   const confirm = useConfirmImport({ familyId, userId })
   const [busy, setBusy] = useState(false)
+  const { cycle, today: cycleToday } = usePayCycle(familyId)
+  const cycleStart = cycle.start
+  const cycleDays = cycle.days
+  const todayIso = cycleToday.toISOString().slice(0, 10)
 
   // When a new initialState arrives (new captura), replace the controller state.
   useEffect(() => {
@@ -101,6 +106,9 @@ export function ImportReviewSheet({
                 row={row}
                 categories={categories}
                 invalid={controller.invalidIds.includes(row.id)}
+                cycleStart={cycleStart}
+                cycleDays={cycleDays}
+                today={todayIso}
                 onSetKind={(kind) => controller.setRowKind(row.id, kind)}
                 onPatch={(patch) => controller.patchRow(row.id, patch)}
                 onUnskip={() => controller.unskipRow(row.id)}

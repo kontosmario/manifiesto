@@ -1,15 +1,25 @@
-import { useMemo } from 'react'
+import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import type { Category } from '@/features/categories/use-categories'
-import type { IncomeKind, ReviewRow, ReviewRowKind } from '@/features/import-review/types'
+import type {
+  IncomeKind,
+  ReviewRow,
+  ReviewRowKind,
+} from '@/features/import-review/types'
+import { CycleDateSlider } from './cycle-date-slider'
+import { ImportReviewRowCollapsed } from './import-review-row-collapsed'
 
 interface Props {
   row: ReviewRow
   categories: readonly Category[]
   invalid: boolean
+  cycleStart: Date
+  cycleDays: number
+  today: string
   onSetKind: (kind: ReviewRowKind) => void
   onPatch: (patch: Partial<ReviewRow>) => void
   onUnskip: () => void
@@ -27,23 +37,33 @@ export function ImportReviewRow({
   row,
   categories,
   invalid,
+  cycleStart,
+  cycleDays,
+  today,
   onSetKind,
   onPatch,
   onUnskip,
 }: Props) {
   const { theme } = useAppTheme()
+  const [expanded, setExpanded] = useState(false)
 
   if (row.kind === 'skip') {
     return (
       <View
         style={[
           styles.cardSkipped,
-          { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.line },
+          {
+            backgroundColor: theme.colors.surfaceMuted,
+            borderColor: theme.colors.line,
+          },
         ]}
       >
         <View style={styles.skipLeft}>
           <MaterialIcons name="block" size={16} color={theme.colors.textMuted} />
-          <Text style={[styles.skipLabel, { color: theme.colors.textMuted }]} numberOfLines={1}>
+          <Text
+            style={[styles.skipLabel, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
             {row.description}
           </Text>
         </View>
@@ -56,8 +76,20 @@ export function ImportReviewRow({
     )
   }
 
+  if (!expanded) {
+    return (
+      <ImportReviewRowCollapsed
+        row={row}
+        invalid={invalid}
+        onExpand={() => setExpanded(true)}
+      />
+    )
+  }
+
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(180)}
+      exiting={FadeOut.duration(140)}
       style={[
         styles.card,
         {
@@ -66,69 +98,96 @@ export function ImportReviewRow({
         },
       ]}
     >
-      <KindToggle kind={row.kind} onChange={onSetKind} />
+      <Animated.View entering={FadeInDown.duration(220)}>
+        <KindToggle kind={row.kind} onChange={onSetKind} />
+      </Animated.View>
 
-      <LabeledInput
-        label="Descripción"
-        value={row.description}
-        onChangeText={(t) => onPatch({ description: t })}
-        invalid={invalid && row.description.trim() === ''}
-      />
-
-      <LabeledInput
-        label="Monto (ARS)"
-        value={String(row.amount)}
-        onChangeText={(t) => {
-          const n = parseFloat(t.replace(/\./g, '').replace(',', '.'))
-          onPatch({ amount: Number.isFinite(n) ? n : 0 })
-        }}
-        keyboardType="decimal-pad"
-        invalid={invalid && row.amount <= 0}
-      />
-
-      {row.source.appliedRate !== null ? (
-        <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-          {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ rate $${row.source.appliedRate}`}
-        </Text>
-      ) : null}
-
-      <LabeledInput
-        label="Fecha (YYYY-MM-DD)"
-        value={row.date}
-        onChangeText={(t) => onPatch({ date: t })}
-        autoCapitalize="none"
-      />
-
-      {row.kind === 'expense' ? (
-        <CategorySection
-          categories={categories}
-          selectedCategoryId={row.categoryId}
-          onSelect={(id) => onPatch({ categoryId: id })}
+      <Animated.View entering={FadeInDown.duration(220).delay(50)}>
+        <LabeledInput
+          label="Descripción"
+          value={row.description}
+          onChangeText={(t) => onPatch({ description: t })}
+          invalid={invalid && row.description.trim() === ''}
         />
-      ) : (
-        <IncomeKindSection
-          incomeKind={row.incomeKind}
-          onSelect={(k) => onPatch({ incomeKind: k })}
-        />
-      )}
+      </Animated.View>
 
-      <LabeledInput
-        label="Notas (opcional)"
-        value={row.notes ?? ''}
-        onChangeText={(t) => onPatch({ notes: t === '' ? null : t })}
-        multiline
-      />
+      <Animated.View entering={FadeInDown.duration(220).delay(100)}>
+        <LabeledInput
+          label="Monto (ARS)"
+          value={String(row.amount)}
+          onChangeText={(t) => {
+            const n = parseFloat(t.replace(/\./g, '').replace(',', '.'))
+            onPatch({ amount: Number.isFinite(n) ? n : 0 })
+          }}
+          keyboardType="decimal-pad"
+          invalid={invalid && row.amount <= 0}
+        />
+        {row.source.appliedRate !== null ? (
+          <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
+            {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ rate $${row.source.appliedRate}`}
+          </Text>
+        ) : null}
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(220).delay(150)} style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textMuted }]}>Fecha</Text>
+        <CycleDateSlider
+          value={row.date}
+          cycleStart={cycleStart}
+          cycleDays={cycleDays}
+          today={today}
+          onChange={(iso) => onPatch({ date: iso })}
+        />
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(220).delay(200)}>
+        {row.kind === 'expense' ? (
+          <CategorySection
+            categories={categories}
+            selectedCategoryId={row.categoryId}
+            onSelect={(id) => onPatch({ categoryId: id })}
+          />
+        ) : (
+          <IncomeKindSection
+            incomeKind={row.incomeKind}
+            onSelect={(k) => onPatch({ incomeKind: k })}
+          />
+        )}
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(220).delay(250)}>
+        <LabeledInput
+          label="Notas (opcional)"
+          value={row.notes ?? ''}
+          onChangeText={(t) => onPatch({ notes: t === '' ? null : t })}
+          multiline
+        />
+      </Animated.View>
 
       {row.warnings.length > 0 ? (
-        <View style={styles.warnings}>
+        <Animated.View entering={FadeInDown.duration(220).delay(300)} style={styles.warnings}>
           {row.warnings.map((w) => (
-            <Text key={w} style={[styles.warning, { color: theme.colors.textMuted }]}>
+            <Text
+              key={w}
+              style={[styles.warning, { color: theme.colors.textMuted }]}
+            >
               {warningLabel(w)}
             </Text>
           ))}
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Colapsar este movimiento"
+        onPress={() => setExpanded(false)}
+        style={styles.collapseBtn}
+      >
+        <Text style={[styles.collapseLabel, { color: theme.colors.textMuted }]}>
+          Listo
+        </Text>
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -227,12 +286,11 @@ function CategorySection({
   selectedCategoryId: string | null
   onSelect: (id: string) => void
 }) {
-  const cats = useMemo(() => categories.slice(), [categories])
-  if (cats.length === 0) return null
+  if (categories.length === 0) return null
   return (
     <View style={styles.field}>
       <CategoryHorizontalRail
-        categories={cats}
+        categories={categories.slice()}
         selectedCategoryId={selectedCategoryId ?? ''}
         onSelect={onSelect}
         label="Categoría"
@@ -289,15 +347,15 @@ function IncomeKindSection({
 function warningLabel(w: ReviewRow['warnings'][number]): string {
   switch (w) {
     case 'foreign-currency':
-      return '⚠ Moneda no soportada (EUR/BTC/etc). Editá el monto en ARS para importar.'
+      return 'Moneda no soportada. Editá el monto en ARS.'
     case 'swap-ambiguous':
-      return '⚠ Es un swap de monedas. Verificá antes de cargar.'
+      return 'Cambio de moneda. Verificá antes de cargar.'
     case 'no-merchant':
-      return '⚠ Sin descripción detectada. Completá antes de confirmar.'
+      return 'Sin descripción. Completá antes de confirmar.'
     case 'no-date':
-      return '⚠ Sin fecha detectada. Default: hoy.'
+      return 'Sin fecha clara. Asumimos hoy.'
     case 'value-zero':
-      return '⚠ Monto $0. Editá antes de confirmar.'
+      return 'Monto 0. Editá antes de confirmar.'
   }
 }
 
@@ -324,8 +382,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleLabel: { fontSize: 12, fontWeight: '800' },
-  field: { gap: 4 },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
+  field: { gap: 6 },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   input: {
     minHeight: 40,
     borderRadius: 8,
@@ -333,7 +396,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 14,
   },
-  hint: { fontSize: 11, fontWeight: '500' },
+  hint: { fontSize: 11, fontWeight: '500', marginTop: 4 },
   warnings: { gap: 4, marginTop: 2 },
   warning: { fontSize: 11, fontWeight: '600' },
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -344,4 +407,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   kindLabel: { fontSize: 12, fontWeight: '700' },
+  collapseBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  collapseLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
 })
