@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { isoDateToLocalNoonTimestamp } from './cycle-date-math'
 import type { ConfirmFailure, ConfirmResult, ReviewRow } from './types'
 
@@ -11,6 +13,7 @@ export interface ConfirmContext {
 
 export function useConfirmImport(ctx: ConfirmContext) {
   const createIncomeMut = useCreateIncomeEvent(ctx.userId)
+  const queryClient = useQueryClient()
 
   return useCallback(
     async (rows: readonly ReviewRow[]): Promise<ConfirmResult> => {
@@ -42,9 +45,37 @@ export function useConfirmImport(ctx: ConfirmContext) {
         }
       })
 
+      // Bulk-invalidate every query that depends on expenses or income
+      // so every surface (Home dashboard, Gastos calendar, Control v2,
+      // streaks, achievements, snapshot roots) refetches once the import
+      // settles. Per-row mutations would invalidate N times — fine for
+      // correctness but thrashes the network. We're doing a single pass
+      // at the tail because the user already dismissed the wizard by
+      // this point; the modal-exit animation is the visual signal that
+      // "the work is done", and any list refetches behind it stream in
+      // by the time the user lands back on their previous screen.
+      //
+      // We use `createExpense` raw (not `useCreateExpense`) for the
+      // expense path, so this sync IS the only thing keeping caches
+      // honest for expenses. Income goes through `useCreateIncomeEvent`
+      // which already calls `syncAllAfterMutation` per mutation; the
+      // bulk call here is redundant for that scope but harmless
+      // (invalidation is idempotent).
+      const insertedAny = insertedExpenses > 0 || insertedIncomes > 0
+      if (insertedAny) {
+        const scopes: Array<'expenses' | 'income'> = []
+        if (insertedExpenses > 0) scopes.push('expenses')
+        if (insertedIncomes > 0) scopes.push('income')
+        await syncAllAfterMutation(queryClient, {
+          familyId: ctx.familyId,
+          userId: ctx.userId,
+          scopes,
+        })
+      }
+
       return { insertedExpenses, insertedIncomes, skipped, failed }
     },
-    [ctx, createIncomeMut.mutateAsync],
+    [ctx, createIncomeMut.mutateAsync, queryClient],
   )
 }
 
