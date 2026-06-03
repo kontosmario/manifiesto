@@ -21,11 +21,18 @@ export function ImportReviewFooter({
 }: Props) {
   const { theme } = useAppTheme()
 
-  const label = busy
-    ? `${loadingLabels.import}…`
-    : expensesCount + incomesCount === 0
-      ? 'Nada para cargar'
-      : `Confirmar ${expensesCount} gasto${expensesCount === 1 ? '' : 's'} + ${incomesCount} ingreso${incomesCount === 1 ? '' : 's'}`
+  const label = (() => {
+    if (busy) return `${loadingLabels.import}…`
+    if (expensesCount + incomesCount === 0) return 'Nada para cargar'
+    const parts: string[] = []
+    if (expensesCount > 0) {
+      parts.push(`${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`)
+    }
+    if (incomesCount > 0) {
+      parts.push(`${incomesCount} ingreso${incomesCount === 1 ? '' : 's'}`)
+    }
+    return `Confirmar ${parts.join(' y ')}`
+  })()
 
   return (
     <View style={styles.stack}>

@@ -331,7 +331,12 @@ export function AddExpenseTabButton({
       label: 'Importar captura',
       icon: 'document-scanner',
       accentColor: ACCENT_IMPORT,
-      onPress: handleOpenImport,
+      // QuickAction.onPress es () => void; envolvemos el async handler
+      // para no dejar una promise floating sin manejar (handleOpenImport
+      // ya atrapa todos los errores internamente).
+      onPress: () => {
+        void handleOpenImport()
+      },
     },
   ]
 
