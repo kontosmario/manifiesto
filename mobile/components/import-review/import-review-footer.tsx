@@ -3,27 +3,59 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { loadingLabels } from '@/lib/copy/states'
 
 interface Props {
+  /** Zero-indexed current step. */
+  stepIndex: number
+  totalSteps: number
+  /** Number of submittable expenses across the whole import. */
   expensesCount: number
+  /** Number of submittable incomes across the whole import. */
   incomesCount: number
+  /** Whether confirm is allowed (no invalid steps, has at least one). */
   canConfirm: boolean
+  /** Whether the current step is already marked as skipped. */
+  isCurrentSkipped: boolean
   busy: boolean
+  onPrev: () => void
+  onNext: () => void
+  onSkip: () => void
   onConfirm: () => void
-  onCancel: () => void
 }
 
+/**
+ * Wizard footer. Two rows:
+ *
+ *   [← Anterior]               [Saltear este]
+ *   ┌─────────────────────────────────────────┐
+ *   │  Siguiente →   /   Confirmar (N)        │
+ *   └─────────────────────────────────────────┘
+ *
+ * On the last step, the primary CTA flips to "Confirmar N movimientos"
+ * — the change in copy is the wizard's "you're at the finish line"
+ * signal, paired with the filled progress strip above.
+ */
 export function ImportReviewFooter({
+  stepIndex,
+  totalSteps,
   expensesCount,
   incomesCount,
   canConfirm,
+  isCurrentSkipped,
   busy,
+  onPrev,
+  onNext,
+  onSkip,
   onConfirm,
-  onCancel,
 }: Props) {
   const { theme } = useAppTheme()
+  const isLast = stepIndex >= totalSteps - 1
+  const isFirst = stepIndex <= 0
 
-  const label = (() => {
+  const totalSubmittable = expensesCount + incomesCount
+
+  const primaryLabel = (() => {
     if (busy) return `${loadingLabels.import}…`
-    if (expensesCount + incomesCount === 0) return 'Nada para cargar'
+    if (!isLast) return 'Siguiente'
+    if (totalSubmittable === 0) return 'Nada para cargar'
     const parts: string[] = []
     if (expensesCount > 0) {
       parts.push(`${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`)
@@ -34,33 +66,63 @@ export function ImportReviewFooter({
     return `Confirmar ${parts.join(' y ')}`
   })()
 
+  const primaryAction = isLast ? onConfirm : onNext
+  const primaryDisabled = isLast ? !canConfirm || busy : busy
+
   return (
     <View style={styles.stack}>
+      <View style={styles.secondaryRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Movimiento anterior"
+          disabled={isFirst || busy}
+          onPress={onPrev}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            { opacity: isFirst || busy ? 0.35 : pressed ? 0.7 : 1 },
+          ]}
+          hitSlop={8}
+        >
+          <Text style={[styles.secondaryLabel, { color: theme.colors.textMuted }]}>
+            ← Anterior
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCurrentSkipped ? 'Restaurar este movimiento' : 'Saltear este movimiento'
+          }
+          disabled={busy}
+          onPress={onSkip}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            { opacity: busy ? 0.35 : pressed ? 0.7 : 1 },
+          ]}
+          hitSlop={8}
+        >
+          <Text style={[styles.secondaryLabel, { color: theme.colors.textMuted }]}>
+            {isCurrentSkipped ? 'Restaurar' : 'Saltear este'}
+          </Text>
+        </Pressable>
+      </View>
+
       <Pressable
         accessibilityRole="button"
-        accessibilityState={{ disabled: !canConfirm || busy }}
-        disabled={!canConfirm || busy}
-        onPress={onConfirm}
+        accessibilityState={{ disabled: primaryDisabled }}
+        disabled={primaryDisabled}
+        onPress={primaryAction}
         style={({ pressed }) => [
           styles.primary,
           {
             backgroundColor: theme.colors.primary,
-            opacity: !canConfirm || busy ? 0.55 : pressed ? 0.9 : 1,
+            opacity: primaryDisabled ? 0.55 : pressed ? 0.9 : 1,
           },
         ]}
       >
         <Text style={styles.primaryText} numberOfLines={1}>
-          {label}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        onPress={onCancel}
-        style={styles.cancel}
-      >
-        <Text style={[styles.cancelText, { color: theme.colors.textMuted }]}>
-          Cancelar
+          {primaryLabel}
+          {!isLast ? ' →' : ''}
         </Text>
       </Pressable>
     </View>
@@ -68,7 +130,15 @@ export function ImportReviewFooter({
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: 8 },
+  stack: { gap: 10 },
+  secondaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  secondaryBtn: { paddingVertical: 4, paddingHorizontal: 6 },
+  secondaryLabel: { fontSize: 13, fontWeight: '700' },
   primary: {
     minHeight: 52,
     borderRadius: 12,
@@ -76,7 +146,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 18,
   },
-  primaryText: { fontSize: 15, fontWeight: '900', color: '#0F2D06', letterSpacing: -0.2 },
-  cancel: { paddingVertical: 6, alignItems: 'center' },
-  cancelText: { fontSize: 13, fontWeight: '700' },
+  primaryText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F2D06',
+    letterSpacing: -0.2,
+  },
 })

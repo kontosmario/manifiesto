@@ -1,119 +1,90 @@
 import { Image, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface Props {
-  transactionsCount: number
-  breakdown: { expenses: number; incomes: number }
-  skipCount: number
+  /** 1-indexed position of the wizard. */
+  stepIndex: number
+  /** Total number of submittable + skipped rows. */
+  total: number
   imageUri: string
 }
 
-export function ImportReviewHeader({
-  transactionsCount,
-  breakdown,
-  skipCount,
-  imageUri,
-}: Props) {
+/**
+ * Slim wizard header — replaces the cinematic "Detecté N movimientos"
+ * heading with a compact row designed to live above the step indicator.
+ * The progress dots already say "5 movements detected"; this row's job
+ * is just to anchor the user inside the flow ("Movimiento 2 de 5") and
+ * keep the screenshot context visible while editing.
+ */
+export function ImportReviewHeader({ stepIndex, total, imageUri }: Props) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
-
-  const movementsWord = transactionsCount === 1 ? 'movimiento' : 'movimientos'
-  const breakdownText = buildBreakdownText(breakdown, skipCount)
-
-  const headingEnter = reduced ? undefined : FadeIn.duration(240)
-  const breakdownEnter = reduced ? undefined : FadeInDown.duration(220).delay(80)
-  const thumbEnter = reduced ? undefined : FadeIn.duration(280).delay(60)
+  const headingEnter = reduced ? undefined : FadeIn.duration(200)
 
   return (
-    <View style={styles.row}>
-      <View style={styles.textCol}>
-        <Animated.View entering={headingEnter}>
-          <Text style={[styles.heading, { color: theme.colors.text }]}>
-            <Text style={styles.headingMuted}>Detecté </Text>
-            <Text style={styles.headingNumber}>
-              {transactionsCount} {movementsWord}
-            </Text>
-            {'\n'}
-            <Text style={styles.headingMuted}>en tu captura</Text>
-          </Text>
-        </Animated.View>
-        {breakdownText !== '' ? (
-          <Animated.Text
-            entering={breakdownEnter}
-            style={[styles.breakdown, { color: theme.colors.textMuted }]}
-          >
-            {breakdownText}
-          </Animated.Text>
-        ) : null}
-      </View>
-
+    <Animated.View entering={headingEnter} style={styles.row}>
       {imageUri !== '' ? (
-        <Animated.View entering={thumbEnter}>
-          <Image
-            source={{ uri: imageUri }}
-            style={[
-              styles.thumb,
-              { borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceMuted },
-            ]}
-            resizeMode="cover"
-            accessible
-            accessibilityLabel="Miniatura de la captura importada"
-          />
-        </Animated.View>
+        <Image
+          source={{ uri: imageUri }}
+          style={[
+            styles.thumb,
+            {
+              borderColor: theme.colors.line,
+              backgroundColor: theme.colors.surfaceMuted,
+            },
+          ]}
+          resizeMode="cover"
+          accessible
+          accessibilityLabel="Miniatura de la captura importada"
+        />
       ) : null}
-    </View>
+      <View style={styles.textCol}>
+        <Text
+          style={[styles.eyebrow, { color: theme.colors.textMuted }]}
+          numberOfLines={1}
+        >
+          Captura importada
+        </Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          {total <= 1
+            ? 'Revisá el movimiento'
+            : `Movimiento ${stepIndex} de ${total}`}
+        </Text>
+      </View>
+    </Animated.View>
   )
-}
-
-function buildBreakdownText(
-  b: { expenses: number; incomes: number },
-  skip: number,
-): string {
-  const parts: string[] = []
-  if (b.expenses > 0) parts.push(`${b.expenses} ${b.expenses === 1 ? 'gasto' : 'gastos'}`)
-  if (b.incomes > 0) parts.push(`${b.incomes} ${b.incomes === 1 ? 'ingreso' : 'ingresos'}`)
-  if (skip > 0) parts.push(`${skip} a saltear`)
-  if (parts.length === 0) return ''
-  if (parts.length === 1) return parts[0]
-  return parts.join(', ')
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    paddingTop: 24,
-    paddingBottom: 16,
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    opacity: 0.85,
   },
   textCol: {
     flex: 1,
-    gap: 8,
+    gap: 2,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    lineHeight: 28,
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
-  headingNumber: {
+  title: {
+    fontSize: 17,
     fontWeight: '900',
-  },
-  headingMuted: {
-    fontWeight: '700',
-  },
-  breakdown: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-  thumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    borderWidth: 1,
-    opacity: 0.55,
+    letterSpacing: -0.3,
   },
 })

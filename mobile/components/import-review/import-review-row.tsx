@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 import { AmountCard } from '@/components/home/amount-card'
@@ -17,7 +16,6 @@ import type {
   ReviewRowKind,
 } from '@/features/import-review/types'
 import { CycleDateSlider } from './cycle-date-slider'
-import { ImportReviewRowCollapsed } from './import-review-row-collapsed'
 
 interface Props {
   row: ReviewRow
@@ -39,6 +37,14 @@ const INCOME_KIND_LABELS: Record<IncomeKind, string> = {
   other: 'Otro',
 }
 
+/**
+ * Single-movement form rendered as the current wizard step. No
+ * collapsed/expanded state — the wizard shows one row at a time, so the
+ * form is always fully visible. Skipped rows show a slim "saltado"
+ * confirmation card with a restore action; everything else renders the
+ * shared add-expense-family form (AmountCard + InAppNumpad + TextField
+ * + NotesRow + CycleDateSlider).
+ */
 export function ImportReviewRow({
   row,
   categories,
@@ -51,97 +57,60 @@ export function ImportReviewRow({
   onUnskip,
 }: Props) {
   const { theme } = useAppTheme()
-  const [expanded, setExpanded] = useState(false)
-
-  if (row.kind === 'skip') {
-    return (
-      <View
-        style={[
-          styles.cardSkipped,
-          {
-            backgroundColor: theme.colors.surfaceMuted,
-            borderColor: theme.colors.line,
-          },
-        ]}
-      >
-        <View style={styles.skipLeft}>
-          <MaterialIcons name="block" size={16} color={theme.colors.textMuted} />
-          <Text
-            style={[styles.skipLabel, { color: theme.colors.textMuted }]}
-            numberOfLines={1}
-          >
-            {row.description}
-          </Text>
-        </View>
-        <Pressable accessibilityRole="button" onPress={onUnskip} hitSlop={6}>
-          <Text style={[styles.skipAction, { color: theme.colors.primary }]}>
-            Restaurar
-          </Text>
-        </Pressable>
-      </View>
-    )
-  }
-
-  if (!expanded) {
-    return (
-      <ImportReviewRowCollapsed
-        row={row}
-        invalid={invalid}
-        onExpand={() => setExpanded(true)}
-      />
-    )
-  }
-
-  return (
-    <ExpandedRow
-      row={row}
-      categories={categories}
-      invalid={invalid}
-      cycleStart={cycleStart}
-      cycleDays={cycleDays}
-      today={today}
-      onSetKind={onSetKind}
-      onPatch={onPatch}
-      onCollapse={() => setExpanded(false)}
-    />
-  )
-}
-
-interface ExpandedProps extends Omit<Props, 'onUnskip'> {
-  onCollapse: () => void
-}
-
-function ExpandedRow({
-  row,
-  categories,
-  invalid,
-  cycleStart,
-  cycleDays,
-  today,
-  onSetKind,
-  onPatch,
-  onCollapse,
-}: ExpandedProps) {
-  const { theme } = useAppTheme()
   const [numpadVisible, setNumpadVisible] = useState(false)
-  // Local raw value mirrors the row's numeric amount so the numpad can
-  // edit it in-place. We seed from the row's current amount on mount
-  // and re-sync whenever an external patch changes it (e.g. swap-kind
-  // recomputes amount). Pushing edits OUT goes through `onPatch` —
-  // `rawValue` is only the display state for the keypad.
+  // Local raw mirrors the row's numeric amount so the shared numpad
+  // can edit it in-place. Source of truth stays in the controller —
+  // `rawValue` is just the display state. Re-syncs whenever an external
+  // patch moves the amount (e.g. swap-kind recomputes).
   const [rawValue, setRawValue] = useState(() =>
     row.amount > 0 ? serializePrice(row.amount) : '',
   )
   useEffect(() => {
-    // Keep raw in sync if the row's amount changes from outside the
-    // numpad (e.g. controller patch). We compare numerically so trailing
-    // commas typed by the user don't get clobbered every keystroke.
     const localNum = parsePrice(rawValue)
     if (!Number.isFinite(localNum) || Math.abs(localNum - row.amount) > 0.005) {
       setRawValue(row.amount > 0 ? serializePrice(row.amount) : '')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.amount])
+
+  if (row.kind === 'skip') {
+    return (
+      <View
+        style={[
+          styles.skipCard,
+          {
+            backgroundColor: theme.colors.surfaceMuted,
+            borderColor: theme.colors.line,
+          },
+        ]}
+      >
+        <View style={styles.skipHeader}>
+          <MaterialIcons name="block" size={18} color={theme.colors.textMuted} />
+          <Text
+            style={[styles.skipLabel, { color: theme.colors.textMuted }]}
+            numberOfLines={2}
+          >
+            Saltado
+          </Text>
+        </View>
+        <Text
+          style={[styles.skipDescription, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
+          {row.description}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onUnskip}
+          style={[styles.restoreBtn, { borderColor: theme.colors.line }]}
+        >
+          <Text style={[styles.restoreLabel, { color: theme.colors.primary }]}>
+            Restaurar este movimiento
+          </Text>
+        </Pressable>
+      </View>
+    )
+  }
 
   const handleRawChange = (next: string) => {
     setRawValue(next)
@@ -155,9 +124,7 @@ function ExpandedRow({
   }
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(180)}
-      exiting={FadeOut.duration(140)}
+    <View
       style={[
         styles.expanded,
         {
@@ -251,24 +218,13 @@ function ExpandedRow({
         </RiseView>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Colapsar este movimiento"
-        onPress={onCollapse}
-        style={styles.collapseBtn}
-      >
-        <Text style={[styles.collapseLabel, { color: theme.colors.textMuted }]}>
-          Listo
-        </Text>
-      </Pressable>
-
       <InAppNumpad
         visible={numpadVisible}
         rawValue={rawValue}
         onChangeRawValue={handleRawChange}
         onDismiss={() => setNumpadVisible(false)}
       />
-    </Animated.View>
+    </View>
   )
 }
 
@@ -283,7 +239,6 @@ function KindToggle({
   const options: ReadonlyArray<{ key: ReviewRowKind; label: string }> = [
     { key: 'expense', label: 'Gasto' },
     { key: 'income', label: 'Ingreso' },
-    { key: 'skip', label: 'Saltear' },
   ]
   return (
     <View style={styles.toggleRow}>
@@ -409,18 +364,30 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 14,
   },
-  cardSkipped: {
-    borderRadius: 14,
+  skipCard: {
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    padding: 18,
+    gap: 10,
+    alignItems: 'flex-start',
   },
-  skipLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  skipLabel: { flex: 1, fontSize: 13, fontWeight: '600' },
-  skipAction: { fontSize: 13, fontWeight: '800' },
+  skipHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  skipLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  skipDescription: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  restoreBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  restoreLabel: { fontSize: 12, fontWeight: '800' },
   toggleRow: { flexDirection: 'row', gap: 6 },
   toggleBtn: {
     flex: 1,
@@ -448,14 +415,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   kindLabel: { fontSize: 12, fontWeight: '700' },
-  collapseBtn: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  collapseLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
 })
