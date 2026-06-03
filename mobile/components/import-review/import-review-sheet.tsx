@@ -121,7 +121,7 @@ export function ImportReviewSheet({
             canConfirm={controller.canConfirm}
             busy={busy}
             onConfirm={handleConfirm}
-            onCancel={onClose}
+            onCancel={busy ? () => {} : onClose}
           />
         </View>
       </ScrollView>
