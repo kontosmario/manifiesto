@@ -179,10 +179,16 @@ export function AddQuickActionsOverlay({
             tint={theme.isDark ? 'dark' : 'systemChromeMaterialDark'}
             style={StyleSheet.absoluteFill}
           />
+          {/* Theme-aware dim on top of the blur. The palette's `overlay`
+              token is the canonical "dim while a sheet is open" value
+              (rgba forest-green at 0.32 in light, near-black 0.52 in
+              dark). Stacking it on the BlurView keeps bright underlying
+              content from leaking through while honoring the brand
+              tint instead of a hardcoded carbon. */}
           <View
             style={[
               StyleSheet.absoluteFill,
-              { backgroundColor: '#06120C', opacity: 0.46 },
+              { backgroundColor: theme.colors.overlay },
             ]}
           />
         </Animated.View>
@@ -195,7 +201,13 @@ export function AddQuickActionsOverlay({
             cardStyle,
             {
               backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.line,
+              // `borderStrong` instead of `line` so the card edge stays
+              // visible against the dark scrim — the regular `line`
+              // token in dark mode is `rgba(255,255,255,0.06)`, which
+              // makes the dark card blend into the scrim. `borderStrong`
+              // doubles that to 0.12, giving the card a clean rim on
+              // both themes.
+              borderColor: theme.colors.borderStrong,
             },
           ]}
         >
@@ -229,7 +241,10 @@ export function AddQuickActionsOverlay({
               style={[
                 styles.list,
                 {
-                  borderColor: withAlpha(theme.colors.line, 0.55),
+                  // `line` straight (no extra alpha multiplier): in
+                  // dark it's already `rgba(255,255,255,0.06)`; halving
+                  // it further made the list container invisible.
+                  borderColor: theme.colors.line,
                 },
               ]}
             >
@@ -253,7 +268,7 @@ export function AddQuickActionsOverlay({
                       isLast={idx === secondaries.length - 1}
                       onSelect={handleTileSelect}
                       surfaceMuted={theme.colors.surfaceMuted}
-                      line={withAlpha(theme.colors.line, 0.55)}
+                      line={theme.colors.line}
                       textColor={theme.colors.text}
                       mutedColor={theme.colors.textMuted}
                     />
@@ -296,8 +311,13 @@ function PrimaryTile({
     action.visualState === 'marked'
       ? withAlpha(primaryColor, isDark ? 0.55 : 0.45)
       : primaryColor
-  const fg = isDark ? '#0E1B14' : '#0F2D06'
-  const iconBg = withAlpha(fg, 0.14)
+  // Light theme primary is `#297811` (deep brand green) — we need a
+  // bright foreground for AA contrast. White lands at ~6.5:1; the
+  // previous dark-green `#0F2D06` failed at ~1.5:1. Dark theme primary
+  // is `#A6EF8F` (bright brand) so a near-black foreground is correct
+  // there (~9:1).
+  const fg = isDark ? '#0E1B14' : '#FFFFFF'
+  const iconBg = withAlpha(fg, isDark ? 0.14 : 0.18)
 
   return (
     <Animated.View style={animatedStyle}>

@@ -208,10 +208,15 @@ export function AddExpenseTabButton({
   // ring on purpose so it stays the most chromatically minimal — that
   // visual quiet reads as "default" and keeps the brand green as the
   // strongest call-to-action.
-  const ACCENT_NO_SPEND = '#7DD18D' // verde celebración (más claro que brand)
-  const ACCENT_INCOME = '#5B9DF9'   // azul info (dinero que entra)
-  const ACCENT_FIXED = '#A0A4A8'    // gris neutral (compromiso programado)
-  const ACCENT_IMPORT = '#B894FA'   // suave púrpura — distinto de los otros 4
+  // Accent colors are theme-paired: the dark variant lives on a dark
+  // (#102018) overlay surface where ~5–7:1 contrast holds; the light
+  // variant runs ~4.5:1 on the white card so the icons stay legible
+  // without going monochrome. Same hue family, deeper saturation +
+  // lower lightness for the light slot.
+  const ACCENT_NO_SPEND = theme.isDark ? '#7DD18D' : '#2E8540' // verde
+  const ACCENT_INCOME = theme.isDark ? '#5B9DF9' : '#1B66C9'   // azul
+  const ACCENT_FIXED = theme.isDark ? '#A0A4A8' : '#5F6368'    // gris
+  const ACCENT_IMPORT = theme.isDark ? '#B894FA' : '#7E50CC'   // púrpura
 
   const [importState, setImportState] = useState<ReviewState | null>(null)
   const financeQuery = useFamilyFinance(familyId)
