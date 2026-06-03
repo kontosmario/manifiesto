@@ -220,7 +220,6 @@ export function AddExpenseTabButton({
 
   const [importState, setImportState] = useState<ReviewState | null>(null)
   const financeQuery = useFamilyFinance(familyId)
-  const categoriesForImportQuery = useCategories(familyId, 'expense')
 
   const handleOpenImport = async () => {
     if (!familyId || !userId) {
@@ -237,15 +236,10 @@ export function AddExpenseTabButton({
       InteractionManager.runAfterInteractions(() => resolve())
     })
     const rate = financeQuery.data?.usd_exchange_rate ?? 1000
-    const defaultCategoryId =
-      categoriesForImportQuery.data && categoriesForImportQuery.data.length > 0
-        ? categoriesForImportQuery.data[0].id
-        : null
     const today = new Date().toISOString().slice(0, 10)
     let idCounter = 0
     const result = await openImportFlow({
       today,
-      defaultCategoryId,
       usdToArsRate: rate,
       generateRowId: () => `r-${++idCounter}`,
     })

@@ -24,8 +24,15 @@ export interface ImportReviewController {
   submittableBreakdown: { expenses: number; incomes: number }
   /** true cuando hay al menos una row submittable y ninguna invalida. */
   canConfirm: boolean
-  /** Invalid IDs (description vacía o amount<=0) entre las submittable. */
+  /** Invalid IDs entre las submittable: faltan campos requeridos
+   *  (descripción, monto > 0, y categoría para gastos). */
   invalidIds: string[]
+  /** Returns the human-readable list of missing required fields for a
+   *  given row. Used by the wizard footer to tell the user exactly
+   *  what's blocking the "Siguiente" button instead of just disabling
+   *  it with no explanation. Returns [] for skipped rows and for fully
+   *  valid rows. */
+  missingFieldsFor: (id: string) => string[]
 }
 
 export function useImportReviewController(
@@ -63,7 +70,7 @@ export function useImportReviewController(
     const incomes = submittable.filter((r) => r.kind === 'income').length
     const skipped = state.rows.length - submittable.length
     const invalidIds = submittable
-      .filter((r) => r.description.trim() === '' || r.amount <= 0)
+      .filter((r) => missingFieldsForRow(r).length > 0)
       .map((r) => r.id)
     return {
       submittableCount: submittable.length,
@@ -74,6 +81,15 @@ export function useImportReviewController(
     }
   }, [state.rows])
 
+  const missingFieldsFor = useCallback(
+    (id: string): string[] => {
+      const row = state.rows.find((r) => r.id === id)
+      if (!row) return []
+      return missingFieldsForRow(row)
+    },
+    [state.rows],
+  )
+
   return {
     state,
     setRowKind,
@@ -82,6 +98,22 @@ export function useImportReviewController(
     unskipRow,
     removeRow,
     replaceState,
+    missingFieldsFor,
     ...derived,
   }
+}
+
+/**
+ * Returns the human-readable names of fields missing from a row's
+ * required set. Skipped rows are exempt — they're explicitly opted out
+ * of submission. Used both for `invalidIds` computation and for the
+ * footer's helper line under a disabled "Siguiente".
+ */
+function missingFieldsForRow(row: ReviewRow): string[] {
+  if (row.kind === 'skip') return []
+  const missing: string[] = []
+  if (row.description.trim() === '') missing.push('descripción')
+  if (row.amount <= 0) missing.push('monto')
+  if (row.kind === 'expense' && !row.categoryId) missing.push('categoría')
+  return missing
 }

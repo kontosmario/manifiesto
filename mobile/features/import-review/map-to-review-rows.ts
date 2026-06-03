@@ -3,7 +3,6 @@ import type { IncomeKind, ReviewRow, ReviewRowKind, ReviewRowWarning } from './t
 
 export interface MapContext {
   today: string
-  defaultCategoryId: string | null
   usdToArsRate: number
   generateRowId: () => string
 }
@@ -64,7 +63,12 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     description: hasMerchant ? merchant : '(sin descripción)',
     date: tx.date ?? ctx.today,
     notes: null,
-    categoryId: kind === 'expense' ? ctx.defaultCategoryId : null,
+    // Category intentionally left unset. Pre-selecting "first available"
+    // led to silent miscategorization — users sailed past the picker
+    // without realizing they'd accepted a default that didn't match
+    // the actual purchase. Forcing manual pick on every expense costs
+    // one tap per row, gains data integrity.
+    categoryId: null,
     incomeKind: DEFAULT_INCOME_KIND,
     warnings,
     source: {

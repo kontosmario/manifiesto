@@ -27,6 +27,11 @@ interface AmountCardProps {
    *  generous padding). "compact" trims to a wizard-friendly size where
    *  the AmountCard shares a screen with five other inputs. */
   size?: 'default' | 'compact'
+  /** Mirrors the same prop on `TextField`. When true, the active
+   *  border color resolves to `theme.colors.warning` instead of
+   *  `primary` so the card reads as "amount required and currently
+   *  empty" without painting the whole import-review card red. */
+  warning?: boolean
 }
 
 export function AmountCard({
@@ -35,6 +40,7 @@ export function AmountCard({
   onPress,
   label = 'Monto',
   size = 'default',
+  warning = false,
 }: AmountCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
@@ -54,15 +60,17 @@ export function AmountCard({
 
   // Active focus border tracks `theme.colors.primary` so dark mode gets
   // the bright accent (brand.bright) and light mode gets the deep green
-  // (brand.deep). Hardcoding brand.deep made the focus invisible against
-  // dark surfaces.
+  // (brand.deep). When `warning` is set the rest + active targets both
+  // swap to the warning hue.
+  const restColor = warning ? theme.colors.warning : theme.colors.border
+  const activeColor = warning ? theme.colors.warning : theme.colors.primary
   const borderStyle = useAnimatedStyle(() => ({
     borderColor: interpolateColor(
       activeProgress.value,
       [0, 1],
-      [theme.colors.border, theme.colors.primary],
+      [restColor, activeColor],
     ),
-    borderWidth: 1 + activeProgress.value,
+    borderWidth: warning ? 1.5 : 1 + activeProgress.value,
   }))
 
   const hintStyle = useAnimatedStyle(() => ({

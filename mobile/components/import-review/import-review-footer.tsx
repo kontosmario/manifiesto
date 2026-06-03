@@ -24,13 +24,23 @@ interface Props {
   incomesCount: number
   /** Whether confirm is allowed (no invalid steps, has at least one). */
   canConfirm: boolean
+  /** Whether the current movement has every required field filled.
+   *  When false, "Siguiente" disables and the helper line below lists
+   *  the missing pieces. Always true on the summary step. */
+  canAdvanceCurrent: boolean
+  /** Human-readable missing field names for the current row
+   *  (`['descripción', 'monto', 'categoría']` etc). Empty on summary. */
+  missingFields: readonly string[]
   /** Whether the current step is already marked as skipped. */
   isCurrentSkipped: boolean
   busy: boolean
   onPrev: () => void
-  onNext: () => void
   onSkip: () => void
-  onConfirm: () => void
+  /** Single handler for the primary CTA. The sheet routes it
+   *  contextually: advance on a valid step, confirm on the summary,
+   *  or bump the row's highlightToken on a disabled tap so the row
+   *  marks its missing fields with `warning`. Footer stays dumb. */
+  onPrimary: () => void
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
@@ -53,12 +63,13 @@ export function ImportReviewFooter({
   expensesCount,
   incomesCount,
   canConfirm,
+  canAdvanceCurrent,
+  missingFields,
   isCurrentSkipped,
   busy,
   onPrev,
-  onNext,
   onSkip,
-  onConfirm,
+  onPrimary,
 }: Props) {
   const { theme } = useAppTheme()
   const isFirst = stepIndex <= 0
@@ -92,8 +103,17 @@ export function ImportReviewFooter({
     return 'arrow-forward'
   })()
 
-  const primaryAction = isSummary ? onConfirm : onNext
-  const primaryDisabled = isSummary ? !canConfirm || busy : busy
+  // Visual-only disabled: the CTA stays tappable even when "disabled"
+  // so a tap can route to the sheet's "bump highlightToken" branch
+  // instead of advancing. The caller's `onPrimary` decides what each
+  // press means. `lookDisabled` controls opacity/affordance; `busy`
+  // hard-disables (during the network roundtrip) because we genuinely
+  // do not want repeat presses there.
+  const lookDisabled = isSummary ? !canConfirm : !canAdvanceCurrent
+  const hardDisabled = busy
+
+  const showMissingHelper =
+    !isSummary && !canAdvanceCurrent && missingFields.length > 0
 
   return (
     <View style={styles.stack}>
@@ -123,39 +143,78 @@ export function ImportReviewFooter({
       <PrimaryCTA
         label={primaryLabel}
         icon={primaryIcon}
-        disabled={primaryDisabled}
+        lookDisabled={lookDisabled}
+        hardDisabled={hardDisabled}
         backgroundColor={theme.colors.primary}
-        onPress={() => {
-          void triggerHaptic(isSummary ? 'success' : 'selection')
-          primaryAction()
-        }}
+        onPress={onPrimary}
       />
+
+      {showMissingHelper ? (
+        <View style={styles.helperRow}>
+          <MaterialIcons
+            name="error-outline"
+            size={14}
+            color={theme.colors.warning}
+          />
+          <Text
+            style={[styles.helperText, { color: theme.colors.warning }]}
+            numberOfLines={2}
+          >
+            {formatMissing(missingFields)}
+          </Text>
+        </View>
+      ) : null}
     </View>
   )
+}
+
+/**
+ * Builds "Completá monto y categoría para continuar." style copy.
+ * Comma-separates the first N-1 with " y " for the last one — natural
+ * Spanish enumeration. Capped at 3 visible items so the line stays
+ * within two lines on small screens; anything beyond gets a "..."
+ * tail.
+ */
+function formatMissing(fields: readonly string[]): string {
+  const visible = fields.slice(0, 3)
+  let joined: string
+  if (visible.length === 1) {
+    joined = visible[0]
+  } else if (visible.length === 2) {
+    joined = `${visible[0]} y ${visible[1]}`
+  } else {
+    joined = `${visible.slice(0, -1).join(', ')} y ${visible[visible.length - 1]}`
+  }
+  const tail = fields.length > visible.length ? '…' : ''
+  return `Completá ${joined}${tail} para continuar.`
 }
 
 interface PrimaryCTAProps {
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
-  disabled: boolean
+  /** Renders the visual disabled affordance (lower opacity, no press
+   *  scale) but DOES NOT block the press. Used when required fields
+   *  are missing — the sheet wants the press to route to "bump the
+   *  row's highlightToken" rather than advance. */
+  lookDisabled: boolean
+  /** True disabled — no press, no haptic. Reserved for actual
+   *  in-flight states (network roundtrip) where re-pressing is a bug. */
+  hardDisabled: boolean
   backgroundColor: string
   onPress: () => void
 }
 
 /**
- * Wrapped in an `Animated.View` so the press scale flows through a
- * Reanimated shared value instead of toggling `transform` on the
- * `Pressable`'s style function. RN's iOS bridge crashes
- * (`Cannot read property 'forEach' of null`) when `transform` flips
- * between `undefined` and an array across renders, because the bridge
- * coerces `undefined → null` and `processTransform` calls `.forEach()`
- * on it. Keeping the transform array stable AND off the Pressable's
- * style function sidesteps the issue.
+ * Animated.View wrapper around the Pressable so the press scale flows
+ * through a Reanimated shared value, not through a `transform` prop
+ * that flips between an array and undefined — that pattern crashes
+ * iOS at the bridge ("Cannot read property 'forEach' of null").
  */
 function PrimaryCTA({
   label,
   icon,
-  disabled,
+  lookDisabled,
+  hardDisabled,
   backgroundColor,
   onPress,
 }: PrimaryCTAProps) {
@@ -169,10 +228,10 @@ function PrimaryCTA({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityState={{ disabled }}
-        disabled={disabled}
+        accessibilityState={{ disabled: lookDisabled || hardDisabled }}
+        disabled={hardDisabled}
         onPressIn={() => {
-          if (disabled) return
+          if (lookDisabled || hardDisabled) return
           pressScale.value = withTiming(0.98, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
@@ -189,7 +248,13 @@ function PrimaryCTA({
           styles.primary,
           {
             backgroundColor,
-            opacity: disabled ? 0.45 : pressed ? 0.92 : 1,
+            opacity: lookDisabled
+              ? 0.45
+              : hardDisabled
+                ? 0.55
+                : pressed
+                  ? 0.92
+                  : 1,
           },
         ]}
       >
@@ -321,5 +386,19 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#0F2D06',
     letterSpacing: -0.2,
+  },
+  helperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    flexShrink: 1,
   },
 })

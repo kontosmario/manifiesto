@@ -3,7 +3,6 @@ import { mapToReviewRows } from '../../mobile/features/import-review/map-to-revi
 import type { Transaction } from '../../mobile/features/activity-ocr/types'
 
 const TODAY = '2026-06-02'
-const DEFAULT_CATEGORY = 'cat-default'
 const RATE = 1000
 
 let _id = 0
@@ -14,7 +13,6 @@ const resetIds = () => {
 
 const ctx = () => ({
   today: TODAY,
-  defaultCategoryId: DEFAULT_CATEGORY,
   usdToArsRate: RATE,
   generateRowId: genId,
 })
@@ -39,7 +37,7 @@ describe('mapToReviewRows', () => {
       amount: 26000,
       description: 'LA EUROPEA',
       date: '2026-06-01',
-      categoryId: DEFAULT_CATEGORY,
+      categoryId: null,
       warnings: [],
     })
     expect(result[0].source.originalCurrency).toBe('ARS')
@@ -155,11 +153,20 @@ describe('mapToReviewRows', () => {
     expect(result[0].source.transaction).toBe(tx)
   })
 
-  it('defaults categoryId to null for income rows', () => {
+  it('leaves categoryId null for income rows', () => {
     const result = mapToReviewRows(
       [mkTx({ primaryAmount: { value: 100, currency: 'ARS', sign: 1 } })],
       ctx(),
     )
+    expect(result[0].categoryId).toBeNull()
+  })
+
+  it('leaves categoryId null for expense rows — no pre-selection', () => {
+    // Pre-selecting a default category led to silent miscategorization
+    // (users accepted the first category without realizing). Force the
+    // wizard to make the user pick.
+    const result = mapToReviewRows([mkTx()], ctx())
+    expect(result[0].kind).toBe('expense')
     expect(result[0].categoryId).toBeNull()
   })
 

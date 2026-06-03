@@ -19,6 +19,12 @@ interface TextFieldProps extends TextInputProps {
    *  border-animated wrap. Used for affordances like password
    *  visibility toggles. */
   trailing?: ReactNode
+  /** Swaps the focus-target border color from `primary` to `warning`
+   *  so the field reads as "required and currently empty" without
+   *  shouting via a full danger ring. Used by the import-review wizard
+   *  to mark only the unfilled required fields after a disabled-CTA
+   *  tap. Label color follows. */
+  warning?: boolean
 }
 
 /**
@@ -33,7 +39,7 @@ interface TextFieldProps extends TextInputProps {
  *   · borderWidth animates 1 → 2 to feel like the input "lifts".
  */
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, helper, trailing, style, ...inputProps },
+  { label, helper, trailing, style, warning = false, ...inputProps },
   ref,
 ) {
   const { theme } = useAppTheme()
@@ -48,19 +54,27 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       : withTiming(isFocused ? 1 : 0, { duration: motionDurations.standard })
   }, [isFocused, reduceMotion, focusProgress])
 
+  // When `warning` is on, the resting border + the focus-target color
+  // both swap to the warning hue so the field reads as "needs your
+  // attention" both at rest and while editing. Focus still bumps the
+  // width so the user gets the "lift" affordance.
+  const restColor = warning ? theme.colors.warning : theme.colors.line
+  const activeColor = warning ? theme.colors.warning : theme.colors.primary
   const wrapAnimatedStyle = useAnimatedStyle(() => ({
     borderColor: interpolateColor(
       focusProgress.value,
       [0, 1],
-      [theme.colors.line, theme.colors.primary],
+      [restColor, activeColor],
     ),
-    borderWidth: 1 + focusProgress.value,
+    borderWidth: warning ? 1.5 : 1 + focusProgress.value,
   }))
+
+  const labelColor = warning ? theme.colors.warning : theme.colors.textMuted
 
   return (
     <View style={styles.container}>
       {label ? (
-        <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>
+        <Text style={[typography.eyebrow, { color: labelColor }]}>
           {label}
         </Text>
       ) : null}

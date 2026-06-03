@@ -82,6 +82,11 @@ export function ImportReviewSheet({
   const [busy, setBusy] = useState(false)
   const [fadingOut, setFadingOut] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  // Bumped each time the user taps the disabled primary CTA. The
+  // current row reads it and flips its `isFlagged` state so unfilled
+  // required fields paint with their `warning` mode. Stored per-row
+  // implicitly via the row's remount-on-step semantics.
+  const [highlightToken, setHighlightToken] = useState(0)
   // Slide direction is tracked OUTSIDE state so the next render's
   // entering/exiting animations can read the right value without
   // re-rendering twice on every step change.
@@ -122,9 +127,37 @@ export function ImportReviewSheet({
 
   function goNext() {
     if (stepIndex >= summaryIndex) return
+    // Caller already checks `canAdvanceCurrent`; this guards alternate
+    // entry points (e.g. gestures, keyboard handlers).
+    if (currentRow && invalidIdSet.has(currentRow.id)) {
+      void triggerHaptic('warning')
+      setHighlightToken((t) => t + 1)
+      return
+    }
     directionRef.current = 'forward'
     void triggerHaptic('selection')
     setStepIndex(stepIndex + 1)
+  }
+
+  /**
+   * Routed primary-CTA handler. The footer keeps a single onPress; the
+   * sheet decides what each tap means based on current state:
+   *   - on summary: confirm (or jump-to-invalid if confirm blocked)
+   *   - on a movement step with all required fields filled: advance
+   *   - on a movement step with missing fields: bump highlightToken
+   *     so the current row paints its missing inputs with warning.
+   */
+  function handlePrimaryPress() {
+    if (isSummary) {
+      handleConfirmAttempt()
+      return
+    }
+    if (currentRow && invalidIdSet.has(currentRow.id)) {
+      void triggerHaptic('warning')
+      setHighlightToken((t) => t + 1)
+      return
+    }
+    goNext()
   }
 
   function goPrev() {
@@ -263,6 +296,10 @@ export function ImportReviewSheet({
     ? totalRows
     : editStep + 1
 
+  const currentMissingFields = currentRow
+    ? controller.missingFieldsFor(currentRow.id)
+    : []
+
   const wizardFooter =
     totalRows > 0 ? (
       <ImportReviewFooter
@@ -272,12 +309,13 @@ export function ImportReviewSheet({
         expensesCount={controller.submittableBreakdown.expenses}
         incomesCount={controller.submittableBreakdown.incomes}
         canConfirm={controller.canConfirm}
+        canAdvanceCurrent={currentMissingFields.length === 0}
+        missingFields={currentMissingFields}
         isCurrentSkipped={currentRow?.kind === 'skip'}
         busy={busy}
         onPrev={goPrev}
-        onNext={goNext}
+        onPrimary={handlePrimaryPress}
         onSkip={handleSkipToggle}
-        onConfirm={handleConfirmAttempt}
       />
     ) : undefined
 
@@ -329,10 +367,11 @@ export function ImportReviewSheet({
                 <ImportReviewRow
                   row={currentRow}
                   categories={categories}
-                  invalid={invalidIdSet.has(currentRow.id)}
                   cycleStart={payCycle.cycle.start}
                   cycleDays={cycleDays}
                   today={today}
+                  missingFields={currentMissingFields}
+                  highlightToken={highlightToken}
                   onSetKind={(kind) =>
                     controller.setRowKind(currentRow.id, kind)
                   }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
@@ -20,10 +21,20 @@ import { CycleDateSlider } from './cycle-date-slider'
 interface Props {
   row: ReviewRow
   categories: readonly Category[]
-  invalid: boolean
   cycleStart: Date
   cycleDays: number
   today: string
+  /** Names of required fields currently missing on this row, e.g.
+   *  `['descripción', 'categoría']`. Used together with `highlightToken`
+   *  to decorate each section. */
+  missingFields: readonly string[]
+  /** A monotonically increasing counter. The sheet increments it each
+   *  time the user taps the disabled "Siguiente" CTA. We use the
+   *  count, not a boolean, so we can distinguish "user has never
+   *  pushed forward" from "user just retried" — once the user nudges
+   *  once, the row enters its flagged state and stays there until
+   *  every required field is filled. */
+  highlightToken: number
   onSetKind: (kind: ReviewRowKind) => void
   onPatch: (patch: Partial<ReviewRow>) => void
   onUnskip: () => void
@@ -48,16 +59,28 @@ const INCOME_KIND_LABELS: Record<IncomeKind, string> = {
 export function ImportReviewRow({
   row,
   categories,
-  invalid,
   cycleStart,
   cycleDays,
   today,
+  missingFields,
+  highlightToken,
   onSetKind,
   onPatch,
   onUnskip,
 }: Props) {
   const { theme } = useAppTheme()
   const [numpadVisible, setNumpadVisible] = useState(false)
+  // `isFlagged` becomes true the first time the parent bumps
+  // `highlightToken` while this row was mounted. Stays true for the
+  // life of the row (resets on remount, which is per-step). Once
+  // flagged, each missing field gets its `warning` styling; flagged
+  // fields that get filled drop back to neutral automatically because
+  // `missingFields` updates with every patch.
+  const initialTokenRef = useRef(highlightToken)
+  const isFlagged = highlightToken > initialTokenRef.current
+  const flagDescription = isFlagged && missingFields.includes('descripción')
+  const flagAmount = isFlagged && missingFields.includes('monto')
+  const flagCategory = isFlagged && missingFields.includes('categoría')
   // Local raw mirrors the row's numeric amount so the shared numpad
   // can edit it in-place. Source of truth stays in the controller —
   // `rawValue` is just the display state. Re-syncs whenever an external
@@ -131,7 +154,12 @@ export function ImportReviewRow({
           backgroundColor: theme.isDark
             ? theme.colors.surfaceMuted
             : theme.colors.creamCard,
-          borderColor: invalid ? theme.colors.danger : theme.colors.line,
+          // Card border stays neutral always. We surface validation
+          // state at the field level (border tint on the specific
+          // unfilled inputs) instead of painting the whole expanded
+          // panel red — the user pushed back on that pattern as
+          // "invasivo y visualmente horrible".
+          borderColor: theme.colors.line,
         },
       ]}
     >
@@ -146,6 +174,7 @@ export function ImportReviewRow({
           onPress={handleOpenNumpad}
           label={row.kind === 'income' ? 'Monto del ingreso' : 'Monto'}
           size="compact"
+          warning={flagAmount}
         />
         {row.source.appliedRate !== null ? (
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
@@ -164,6 +193,7 @@ export function ImportReviewRow({
           maxLength={60}
           placeholder="Ej: Supermercado"
           returnKeyType="done"
+          warning={flagDescription}
         />
       </RiseView>
 
@@ -183,6 +213,7 @@ export function ImportReviewRow({
             categories={categories}
             selectedCategoryId={row.categoryId}
             onSelect={(id) => onPatch({ categoryId: id })}
+            warning={flagCategory}
           />
         ) : (
           <IncomeKindSection
@@ -273,12 +304,54 @@ function CategorySection({
   categories,
   selectedCategoryId,
   onSelect,
+  warning = false,
 }: {
   categories: readonly Category[]
   selectedCategoryId: string | null
   onSelect: (id: string) => void
+  warning?: boolean
 }) {
+  const { theme } = useAppTheme()
   if (categories.length === 0) return null
+  // When the row has been flagged as missing a category, wrap the rail
+  // in a warning-bordered container. Subtle inset padding keeps the
+  // rail's own grid intact; the warning border sits OUTSIDE the rail's
+  // chrome so we don't have to extend CategoryHorizontalRail itself.
+  if (warning) {
+    return (
+      <View
+        style={[
+          styles.categoryWarnWrap,
+          {
+            borderColor: theme.colors.warning,
+            // Soft tint of the warning hue — keeps the rail's tiles
+            // legible while giving the section a "needs attention"
+            // wash. ~10% alpha is enough to be felt without competing
+            // with the icon tiles' colors.
+            backgroundColor: withAlpha(theme.colors.warning, 0.08),
+          },
+        ]}
+      >
+        <View style={styles.categoryWarnHeader}>
+          <MaterialIcons
+            name="error-outline"
+            size={14}
+            color={theme.colors.warning}
+          />
+          <Text style={[styles.categoryWarnLabel, { color: theme.colors.warning }]}>
+            Elegí una categoría
+          </Text>
+        </View>
+        <CategoryHorizontalRail
+          categories={categories.slice()}
+          selectedCategoryId={selectedCategoryId ?? ''}
+          onSelect={onSelect}
+          label=""
+          rows={1}
+        />
+      </View>
+    )
+  }
   return (
     <CategoryHorizontalRail
       categories={categories.slice()}
@@ -419,4 +492,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   kindLabel: { fontSize: 12, fontWeight: '700' },
+  categoryWarnWrap: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 10,
+    gap: 8,
+  },
+  categoryWarnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  categoryWarnLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
 })
