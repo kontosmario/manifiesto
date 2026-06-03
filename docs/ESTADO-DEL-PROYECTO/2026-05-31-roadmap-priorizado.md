@@ -294,7 +294,7 @@ para v1.1 (post-launch corto), resto v1.2+.
 | # | Feature | Estado actual | Notas |
 |---|---------|---------------|-------|
 | P7.1 | **AI Coach LLM (Claude augmentation)** | 100% heurístico hoy (`control-signals.ts`, 2171 líneas) | Doc: [sistemas/asistente-llm-augmentation-notes.md](../sistemas/asistente-llm-augmentation-notes.md). Activar cuando ≥ 500 MAU y haya Bucket B presupuestal. |
-| P7.2 | **OCR ticket con Gemini 2.5 Flash** | Queued en `02-engagement-gaps/` | Add expense by photo. Effort: 2-3 d. ROI condicional a uso real. |
+| ~~P7.2~~ | ~~**OCR ticket con Gemini 2.5 Flash**~~ | ✅ **SHIPPED 2026-06-03** (variante ML Kit, no Gemini) | Ver [`2026-06-03-activity-ocr-shipped.md`](2026-06-03-activity-ocr-shipped.md) y [`sistemas/activity-ocr.md`](../sistemas/activity-ocr.md). Decisión final: ML Kit local (Apple) + parser determinista en vez de LLM (latencia, costo, control). 8 bancos soportados. |
 | P7.3 | **i18n (EN / PT / MX / ES neutro)** | No urgente | Hoy 100% es-AR. Re-evaluar si hay tracción fuera de AR. |
 | P7.4 | **Biometric auto-sign-in en mount** | En pausa | Doc: [02-auth-onboarding.md:621](2026-05-21-estado-actual/02-auth-onboarding.md#L621). Decisión cuando se mida fricción cold-start. |
 | P7.5 | **Verificar usuario test `aye.tello18@gmail.com`** | Pendiente | Doc: [pendientes-seguridad.md:109](../operaciones/pendientes-seguridad.md#L109). 1 minuto, query manual. |

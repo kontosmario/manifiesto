@@ -39,6 +39,16 @@ docs/ESTADO-DEL-PROYECTO/
 
 → **[`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-priorizado.md)** — todos los pendientes del repo organizados por prioridad P0–P7, con effort, dependencias y sprint plan. Trigger: Apple Developer Program pago confirmado por owner (2026-05-31), que desbloquea todo el bloque iOS/store deferred desde 2026-05-11.
 
+## 📑 Trabajo cerrado reciente (notas fechadas)
+
+| Fecha | Doc | Cubre |
+|---|---|---|
+| 2026-06-03 | [`2026-06-03-activity-ocr-shipped.md`](2026-06-03-activity-ocr-shipped.md) | Activity OCR + Import Review wizard (Phases A-D + wizard refactor + cross-form validation pattern rollout) — 73 commits, 8 bancos soportados, 4 forms migrados al patrón de validación nuevo |
+| 2026-06-02 | [`2026-06-02-plans-ui-redesign-shipped.md`](2026-06-02-plans-ui-redesign-shipped.md) | Redesign del Plans / Billing screen |
+| 2026-06-01 | [`2026-06-01-no-spend-day-feature-shipped.md`](2026-06-01-no-spend-day-feature-shipped.md) | "Día sin gasto" feature |
+| 2026-06-01 | [`2026-06-01-code-review-2-completed.md`](2026-06-01-code-review-2-completed.md) | Code review 2 cerrado |
+| 2026-05-31 | [`2026-05-31-code-review-hardening-completed.md`](2026-05-31-code-review-hardening-completed.md) | Code review 1 + hardening |
+
 ## 🔖 Convención de estados (heredada del audit)
 
 | Marcador | Significado |

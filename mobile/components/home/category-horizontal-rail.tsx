@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native'
 import Animated, {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -48,6 +49,12 @@ interface CategoryHorizontalRailProps {
    *  always fit (add-expense after the fixed-only filter). When false
    *  (default) the columns sit inside a horizontal ScrollView. */
   staticGrid?: boolean
+  /** When true, the label above the rail tints to `theme.colors.warning`
+   *  and the label text overrides to "Elegí una categoría". Used by
+   *  callers that need to surface "this field is required and unfilled"
+   *  without wrapping the rail in extra chrome (which would change
+   *  layout). The tint glides in smoothly via Reanimated. */
+  warning?: boolean
 }
 
 const DEFAULT_TILE_WIDTH = 60
@@ -76,9 +83,27 @@ export function CategoryHorizontalRail({
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
   staticGrid = false,
+  warning = false,
 }: CategoryHorizontalRailProps) {
   const { theme } = useAppTheme()
   const scrollRef = useRef<ScrollView>(null)
+  // Smooth label tint transition when `warning` toggles. iOS-cubic at
+  // standard duration so the color glides in instead of snapping.
+  const warningProgress = useSharedValue(warning ? 1 : 0)
+  useEffect(() => {
+    warningProgress.value = withTiming(warning ? 1 : 0, {
+      duration: motionDurations.standard,
+      easing: Easing.bezier(0.32, 0.72, 0, 1),
+    })
+  }, [warning, warningProgress])
+  const labelAnimatedStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      warningProgress.value,
+      [0, 1],
+      [theme.colors.textMuted, theme.colors.warning],
+    ),
+  }))
+  const labelText = warning ? 'Elegí una categoría' : label
 
   const columns = useMemo(() => {
     const chunked: Category[][] = []
@@ -146,9 +171,11 @@ export function CategoryHorizontalRail({
 
   return (
     <View style={styles.root}>
-      <Text style={[typography.eyebrow, { color: theme.colors.textMuted, paddingHorizontal: 4 }]}>
-        {label}
-      </Text>
+      <Animated.Text
+        style={[typography.eyebrow, { paddingHorizontal: 4 }, labelAnimatedStyle]}
+      >
+        {labelText}
+      </Animated.Text>
       {staticGrid ? (
         <View
           onLayout={handleStaticLayout}

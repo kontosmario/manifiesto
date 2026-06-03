@@ -45,6 +45,17 @@ const config: ExpoConfig = {
     // Google plugin — only included when EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
     // is set. Filtered out below.
     ...(googlePlugin ? [googlePlugin] : []),
+    // Bumps iOS deployment target to 15.5 to satisfy
+    // @react-native-ml-kit/text-recognition v2 (its podspec hardcodes
+    // `:ios => "15.5"` via the GoogleMLKit 8.0.0 pods). Sin esto,
+    // `pod install` falla con "specs satisfying ... required a higher
+    // minimum deployment target". 15.5 cubre ~96% de devices activos.
+    [
+      'expo-build-properties',
+      {
+        ios: { deploymentTarget: '15.5' },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

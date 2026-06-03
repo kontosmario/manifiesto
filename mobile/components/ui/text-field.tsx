@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native'
 import Animated, {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -19,6 +20,12 @@ interface TextFieldProps extends TextInputProps {
    *  border-animated wrap. Used for affordances like password
    *  visibility toggles. */
   trailing?: ReactNode
+  /** Swaps the focus-target border color from `primary` to `warning`
+   *  so the field reads as "required and currently empty" without
+   *  shouting via a full danger ring. Used by the import-review wizard
+   *  to mark only the unfilled required fields after a disabled-CTA
+   *  tap. Label color follows. */
+  warning?: boolean
 }
 
 /**
@@ -33,13 +40,14 @@ interface TextFieldProps extends TextInputProps {
  *   · borderWidth animates 1 → 2 to feel like the input "lifts".
  */
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, helper, trailing, style, ...inputProps },
+  { label, helper, trailing, style, warning = false, ...inputProps },
   ref,
 ) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const [isFocused, setFocused] = useState(false)
   const focusProgress = useSharedValue(0)
+  const warningProgress = useSharedValue(warning ? 1 : 0)
   const isMultiline = Boolean(inputProps.multiline)
 
   useEffect(() => {
@@ -48,21 +56,70 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       : withTiming(isFocused ? 1 : 0, { duration: motionDurations.standard })
   }, [isFocused, reduceMotion, focusProgress])
 
-  const wrapAnimatedStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
+  // Soft transition into/out of warning. iOS-cubic ease at standard
+  // duration so the tint glides in rather than snapping — same curve
+  // the focus animation uses, so a focused warning field feels like
+  // one continuous motion.
+  useEffect(() => {
+    warningProgress.value = reduceMotion
+      ? (warning ? 1 : 0)
+      : withTiming(warning ? 1 : 0, {
+          duration: motionDurations.standard,
+          easing: Easing.bezier(0.32, 0.72, 0, 1),
+        })
+  }, [warning, reduceMotion, warningProgress])
+
+  // `borderWidth` is decoupled from `warning` — only `focusProgress`
+  // moves it (1 → 2 on focus). This avoids the +0.5px jump the previous
+  // implementation introduced when warning toggled, which subtly
+  // resized the row and felt jittery on the wizard.
+  //
+  // `borderColor` nests two interpolations:
+  //   1. The "would-be" color at the current focus level in normal mode
+  //      (line → primary).
+  //   2. The "would-be" color at the current focus level in warning
+  //      mode (warning → warning).
+  //   3. Blend between the two by `warningProgress` (0..1).
+  // Both inner calls return color strings; Reanimated's
+  // `interpolateColor` accepts string anchors, so the outer call lerps
+  // cleanly between them.
+  const wrapAnimatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    const normalColor = interpolateColor(
       focusProgress.value,
       [0, 1],
       [theme.colors.line, theme.colors.primary],
+    )
+    const warnColor = interpolateColor(
+      focusProgress.value,
+      [0, 1],
+      [theme.colors.warning, theme.colors.warning],
+    )
+    return {
+      borderColor: interpolateColor(
+        warningProgress.value,
+        [0, 1],
+        [normalColor, warnColor],
+      ),
+      borderWidth: 1 + focusProgress.value,
+    }
+  })
+
+  // Label color also blends rather than snapping.
+  const labelAnimatedStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      warningProgress.value,
+      [0, 1],
+      [theme.colors.textMuted, theme.colors.warning],
     ),
-    borderWidth: 1 + focusProgress.value,
   }))
 
   return (
     <View style={styles.container}>
       {label ? (
-        <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>
+        <Animated.Text style={[typography.eyebrow, labelAnimatedStyle]}>
           {label}
-        </Text>
+        </Animated.Text>
       ) : null}
       <Animated.View
         style={[

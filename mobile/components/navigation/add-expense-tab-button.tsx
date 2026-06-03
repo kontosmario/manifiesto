@@ -5,6 +5,7 @@ import type { Expense } from '@/features/expenses/use-expenses'
 import {
   type PressableProps,
   type PressableStateCallbackType,
+  InteractionManager,
   Pressable,
   StyleSheet,
   View,
@@ -25,6 +26,10 @@ import {
   decideNoSpendPetal,
   type NoSpendPetalDecision,
 } from '@/components/navigation/add-expense-tab-button-no-spend-decision'
+import { openImportFlow } from '@/features/import-review/open-import-flow'
+import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { useFamilyFinance } from '@/features/finance/use-family-finance'
+import type { ReviewState } from '@/features/import-review/types'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
@@ -203,11 +208,80 @@ export function AddExpenseTabButton({
   // ring on purpose so it stays the most chromatically minimal — that
   // visual quiet reads as "default" and keeps the brand green as the
   // strongest call-to-action.
-  const ACCENT_NO_SPEND = '#7DD18D' // verde celebración (más claro que brand)
-  const ACCENT_INCOME = '#5B9DF9'   // azul info (dinero que entra)
-  const ACCENT_FIXED = '#A0A4A8'    // gris neutral (compromiso programado)
+  // Accent colors are theme-paired: the dark variant lives on a dark
+  // (#102018) overlay surface where ~5–7:1 contrast holds; the light
+  // variant runs ~4.5:1 on the white card so the icons stay legible
+  // without going monochrome. Same hue family, deeper saturation +
+  // lower lightness for the light slot.
+  const ACCENT_NO_SPEND = theme.isDark ? '#7DD18D' : '#2E8540' // verde
+  const ACCENT_INCOME = theme.isDark ? '#5B9DF9' : '#1B66C9'   // azul
+  const ACCENT_FIXED = theme.isDark ? '#A0A4A8' : '#5F6368'    // gris
+  const ACCENT_IMPORT = theme.isDark ? '#B894FA' : '#7E50CC'   // púrpura
+
+  const [importState, setImportState] = useState<ReviewState | null>(null)
+  const financeQuery = useFamilyFinance(familyId)
+
+  const handleOpenImport = async () => {
+    if (!familyId || !userId) {
+      toast.error('Necesitás estar en sesión para importar.')
+      return
+    }
+    // El FAB overlay usa un <Modal> que está cerrando justo cuando esta
+    // función arranca (onDismiss() fue llamado por la petal en el mismo
+    // tick). Si presentamos el image picker — otro <Modal> — antes de
+    // que el del FAB termine su dismiss, iOS descarta silenciosamente la
+    // segunda presentación. Esperamos a que terminen las animaciones
+    // pendientes antes de continuar.
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve())
+    })
+    const rate = financeQuery.data?.usd_exchange_rate ?? 1000
+    const today = new Date().toISOString().slice(0, 10)
+    let idCounter = 0
+    const result = await openImportFlow({
+      today,
+      usdToArsRate: rate,
+      generateRowId: () => `r-${++idCounter}`,
+    })
+
+    switch (result.kind) {
+      case 'opened':
+        setImportState(result.state)
+        break
+      case 'cancelled':
+        // silent
+        break
+      case 'permission-denied':
+        toast.error('Necesito acceso a tus fotos para importar capturas.')
+        break
+      case 'error':
+        toast.error(`No pude leer esa captura: ${result.message}`)
+        break
+    }
+  }
 
   const quickActions: QuickAction[] = [
+    {
+      key: 'expense',
+      label: 'Gasto',
+      icon: 'add',
+      tier: 'primary',
+      // No accentColor on purpose — the primary tile is already
+      // chromatically saturated (brand fill).
+      onPress: () => router.push('/(app)/add-expense'),
+    },
+    {
+      key: 'import',
+      label: 'Importar captura',
+      icon: 'document-scanner',
+      accentColor: ACCENT_IMPORT,
+      // QuickAction.onPress es () => void; envolvemos el async handler
+      // para no dejar una promise floating sin manejar (handleOpenImport
+      // ya atrapa todos los errores internamente).
+      onPress: () => {
+        void handleOpenImport()
+      },
+    },
     {
       key: 'no-spend',
       label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
@@ -273,14 +347,6 @@ export function AddExpenseTabButton({
       icon: 'event-repeat',
       accentColor: ACCENT_FIXED,
       onPress: () => router.push('/(app)/add-fixed-expense'),
-    },
-    {
-      key: 'expense',
-      label: 'Gasto',
-      icon: 'add',
-      // No accentColor on purpose — the primary action stays the
-      // chromatically dominant petal (brand green, no ring).
-      onPress: () => router.push('/(app)/add-expense'),
     },
   ]
 
@@ -360,6 +426,14 @@ export function AddExpenseTabButton({
         isSubmitting={markNoExpenseMutation.isPending}
         onCancel={() => setConfirmSheetVisible(false)}
         onConfirm={() => doMark({ force: true })}
+      />
+
+      <ImportReviewSheet
+        visible={importState !== null}
+        initialState={importState}
+        familyId={familyId ?? ''}
+        userId={userId ?? ''}
+        onClose={() => setImportState(null)}
       />
     </>
   )

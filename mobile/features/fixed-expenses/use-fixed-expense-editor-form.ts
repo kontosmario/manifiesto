@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Category } from '@/features/categories/use-categories'
 import {
   buildFixedExpenseEditorInitialValues,
@@ -26,22 +26,10 @@ export function useFixedExpenseEditorForm({
   const [isAmountFocused, setAmountFocused] = useState(false)
   const [isRemainingBalanceFocused, setRemainingBalanceFocused] = useState(false)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional one-shot default category seed when categories load */
-  useEffect(() => {
-    if (!values.categoryId && categories[0]?.id) {
-      setValues((current) => {
-        if (current.categoryId) {
-          return current
-        }
-
-        return {
-          ...current,
-          categoryId: categories[0].id,
-        }
-      })
-    }
-  }, [categories, values.categoryId])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // No one-shot "seed categoryId to categories[0]" effect. Same stance
+  // as the rest of the add-* forms: the user explicitly picks. The
+  // empty initial value is what surfaces "categoría" in the submit
+  // state's missing-fields list.
 
   const submitState = useMemo(() => buildFixedExpenseSubmitState(values), [values])
 

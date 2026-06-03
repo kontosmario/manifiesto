@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -15,6 +15,7 @@ import {
   useCreateIncomeEvent,
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
+import { formatMissingFields } from '@/lib/form-missing-fields'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { typography } from '@/theme/typography'
@@ -70,11 +71,21 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const headerPalette = buildScreenHeaderPalette(theme)
 
   const [rawAmount, setRawAmount] = useState('')
-  const [kind, setKind] = useState<IncomeEventKind>('transfer')
+  // No pre-selected kind. The user must explicitly pick transfer /
+  // bonus / gift / other — same data-integrity stance the
+  // import-review wizard takes for category. Null until chosen.
+  const [kind, setKind] = useState<IncomeEventKind | null>(null)
   const [description, setDescription] = useState('')
   const [dayOffset, setDayOffset] = useState<0 | 1 | 2>(0)
   const [numpadVisible, setNumpadVisible] = useState(false)
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null)
+  // Bumped each time the user taps Guardar while required fields are
+  // missing. Captured at mount via `initialTokenRef`; once it moves,
+  // the screen flips into "flagged" mode and paints warning hues on
+  // the unfilled inputs.
+  const [highlightToken, setHighlightToken] = useState(0)
+  const initialTokenRef = useRef(highlightToken)
+  const isFlagged = highlightToken > initialTokenRef.current
 
   const createMutation = useCreateIncomeEvent()
   const parsedAmount = useMemo(() => parsePrice(rawAmount), [rawAmount])
@@ -83,7 +94,18 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   // parsePrice() return NaN which would show as "NaN" in the card.
   // Mirror the add-expense controller and clamp to 0 when invalid.
   const displayAmount = hasValidAmount ? parsedAmount : 0
-  const canSubmit = hasValidAmount && Boolean(kind)
+
+  const missingFields = useMemo<string[]>(() => {
+    const missing: string[] = []
+    if (!hasValidAmount) missing.push('monto')
+    if (description.trim().length === 0) missing.push('descripción')
+    if (!kind) missing.push('tipo de ingreso')
+    return missing
+  }, [hasValidAmount, description, kind])
+  const canSubmit = missingFields.length === 0
+  const flagAmount = isFlagged && missingFields.includes('monto')
+  const flagDescription = isFlagged && missingFields.includes('descripción')
+  const flagKind = isFlagged && missingFields.includes('tipo de ingreso')
 
   const eventDate = useMemo(() => {
     const d = new Date()
@@ -122,8 +144,17 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
     setDayOffset(offset)
   }
 
+  const handlePrimaryPress = () => {
+    if (!canSubmit) {
+      void triggerHaptic('warning')
+      setHighlightToken((t) => t + 1)
+      return
+    }
+    handleSubmit()
+  }
+
   const handleSubmit = () => {
-    if (!canSubmit) return
+    if (!canSubmit || !kind) return
     Keyboard.dismiss()
     setSubmitErrorMessage(null)
     void triggerHaptic('medium')
@@ -190,6 +221,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
             isActive={numpadVisible}
             onPress={handleOpenNumpad}
             label="Monto del ingreso"
+            warning={flagAmount}
           />
         </RiseView>
 
@@ -210,10 +242,14 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
             <Text
               style={[
                 styles.sectionLabel,
-                { color: theme.colors.textMuted },
+                {
+                  color: flagKind
+                    ? theme.colors.warning
+                    : theme.colors.textMuted,
+                },
               ]}
             >
-              ¿De dónde?
+              {flagKind ? 'Elegí de dónde viene' : '¿De dónde?'}
             </Text>
             <View style={styles.kindGrid}>
               {KINDS.map((k) => {
@@ -228,9 +264,15 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                         backgroundColor: selected
                           ? theme.colors.primarySurface
                           : theme.colors.creamCard,
+                        // Unselected tiles tint to warning when the
+                        // user has flagged this section as missing.
+                        // Selected tiles keep brand color so the
+                        // recovery state is unambiguous.
                         borderColor: selected
                           ? theme.colors.primary
-                          : theme.colors.line,
+                          : flagKind
+                            ? theme.colors.warning
+                            : theme.colors.line,
                         opacity: pressed ? 0.92 : 1,
                       },
                     ]}
@@ -284,6 +326,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
             onChange={setDescription}
             quickSuggestions={QUICK_DESCRIPTIONS}
             onSelectSuggestion={handleSelectDescriptionSuggestion}
+            warning={flagDescription}
           />
         </RiseView>
 
@@ -333,9 +376,25 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
               label="Guardar ingreso"
               variant="primary"
               loading={createMutation.isPending}
-              disabled={!canSubmit}
-              onPress={handleSubmit}
+              disabled={false}
+              lookDisabled={!canSubmit}
+              onPress={handlePrimaryPress}
             />
+            {!canSubmit && missingFields.length > 0 ? (
+              <View style={styles.helperRow}>
+                <MaterialIcons
+                  name="error-outline"
+                  size={14}
+                  color={theme.colors.warning}
+                />
+                <Text
+                  style={[styles.helperText, { color: theme.colors.warning }]}
+                  numberOfLines={2}
+                >
+                  {formatMissingFields(missingFields)}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </RiseView>
       </View>
@@ -423,5 +482,20 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: 8,
+    gap: 8,
+  },
+  helperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    flexShrink: 1,
   },
 })

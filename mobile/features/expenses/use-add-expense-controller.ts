@@ -78,12 +78,22 @@ export function useAddExpenseController({
   const [notes, setNotes] = useState('')
   const [rawPrice, setRawPrice] = useState('')
   const [isNumpadVisible, setNumpadVisible] = useState(true)
+  // Increments each time the dashboard CTA is tapped while required
+  // fields are missing. The dashboard reads this against its initial
+  // value to flip into "flagged" mode and paint warning hues on the
+  // specific unfilled inputs. Same pattern as the import-review wizard.
+  const [highlightToken, setHighlightToken] = useState(0)
 
+  // Stay null/empty until the user actually picks a category. The
+  // earlier "fall back to categories[0].id" was silently nominating
+  // the first item as the user's choice, which let them submit
+  // miscategorized expenses without realizing — same data-integrity
+  // hole we closed on the import-review wizard.
   const selectedCategoryId = useMemo(() => {
     if (categories.length === 0) return ''
     return categories.some((c) => c.id === categorySelection)
       ? categorySelection
-      : categories[0].id
+      : ''
   }, [categories, categorySelection])
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null
@@ -123,8 +133,20 @@ export function useAddExpenseController({
     Alert.alert('Algo salió mal', getErrorMessage(error, fallback))
   }
 
+  // Human-readable list of required fields the user still has to
+  // fill. `submitExpense` and the dashboard's primary CTA both gate on
+  // `missingFields.length === 0`; the dashboard renders the list under
+  // a disabled-looking Guardar button via formatMissingFields.
+  const missingFields = useMemo<string[]>(() => {
+    const missing: string[] = []
+    if (!hasValidAmount) missing.push('monto')
+    if (description.trim().length === 0) missing.push('descripción')
+    if (!selectedCategoryId) missing.push('categoría')
+    return missing
+  }, [hasValidAmount, description, selectedCategoryId])
+
   const submitExpense = () => {
-    if (!selectedCategoryId || !hasValidAmount) return
+    if (missingFields.length > 0) return
     createExpenseMutation.mutate(
       {
         categoryId: selectedCategoryId,
@@ -175,6 +197,8 @@ export function useAddExpenseController({
     expensesQuery,
     hasValidAmount,
     isNumpadVisible,
+    missingFields,
+    highlightToken,
     normalizeSuggestionLabel,
     rawPrice,
     quickDescriptionSuggestions,
@@ -191,6 +215,7 @@ export function useAddExpenseController({
       addQuickAmount: (delta: number) => setRawPrice(serializePrice(amount + delta)),
       clearAmount: () => setRawPrice(''),
       useQuickDescription: setDescription,
+      flagMissingFields: () => setHighlightToken((t) => t + 1),
     },
   }
 }

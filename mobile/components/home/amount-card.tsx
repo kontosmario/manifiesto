@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -23,13 +24,30 @@ interface AmountCardProps {
    *  to repurpose the card for income / goal amount onboarding steps
    *  while keeping the focus animation + visual format consistent. */
   label?: string
+  /** "default" keeps the add-expense hero presentation (54px font,
+   *  generous padding). "compact" trims to a wizard-friendly size where
+   *  the AmountCard shares a screen with five other inputs. */
+  size?: 'default' | 'compact'
+  /** Mirrors the same prop on `TextField`. When true, the active
+   *  border color resolves to `theme.colors.warning` instead of
+   *  `primary` so the card reads as "amount required and currently
+   *  empty" without painting the whole import-review card red. */
+  warning?: boolean
 }
 
-export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: AmountCardProps) {
+export function AmountCard({
+  amount,
+  isActive,
+  onPress,
+  label = 'Monto',
+  size = 'default',
+  warning = false,
+}: AmountCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const activeProgress = useSharedValue(isActive ? 1 : 0)
+  const warningProgress = useSharedValue(warning ? 1 : 0)
 
   useEffect(() => {
     const target = isActive ? 1 : 0
@@ -38,22 +56,49 @@ export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: Amoun
       : withTiming(target, { duration: motionDurations.standard })
   }, [isActive, reduceMotion, activeProgress])
 
+  // Soft glide into/out of warning — iOS-cubic ease at standard duration
+  // so the tint slides in instead of snapping. Same curve the focus
+  // animation uses for visual continuity.
+  useEffect(() => {
+    warningProgress.value = reduceMotion
+      ? (warning ? 1 : 0)
+      : withTiming(warning ? 1 : 0, {
+          duration: motionDurations.standard,
+          easing: Easing.bezier(0.32, 0.72, 0, 1),
+        })
+  }, [warning, reduceMotion, warningProgress])
+
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }))
 
-  // Active focus border tracks `theme.colors.primary` so dark mode gets
-  // the bright accent (brand.bright) and light mode gets the deep green
-  // (brand.deep). Hardcoding brand.deep made the focus invisible against
-  // dark surfaces.
-  const borderStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
+  // `borderWidth` ONLY follows focus (1 → 2 active). Warning never
+  // resizes the card — the user pushed back on layout shifts during
+  // the validation state. The border color blends via nested
+  // `interpolateColor`: focus picks between line/primary in normal
+  // mode, focus picks between warning/warning in warning mode, then
+  // `warningProgress` lerps between the two results.
+  const borderStyle = useAnimatedStyle(() => {
+    'worklet'
+    const normalColor = interpolateColor(
       activeProgress.value,
       [0, 1],
       [theme.colors.border, theme.colors.primary],
-    ),
-    borderWidth: 1 + activeProgress.value,
-  }))
+    )
+    const warnColor = interpolateColor(
+      activeProgress.value,
+      [0, 1],
+      [theme.colors.warning, theme.colors.warning],
+    )
+    return {
+      borderColor: interpolateColor(
+        warningProgress.value,
+        [0, 1],
+        [normalColor, warnColor],
+      ),
+      borderWidth: 1 + activeProgress.value,
+    }
+  })
 
   const hintStyle = useAnimatedStyle(() => ({
     opacity: 1 - activeProgress.value,
@@ -89,7 +134,7 @@ export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: Amoun
       >
         <Animated.View
           style={[
-            styles.card,
+            size === 'compact' ? styles.cardCompact : styles.card,
             borderStyle,
             { backgroundColor: theme.colors.surface },
           ]}
@@ -103,7 +148,11 @@ export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: Amoun
             </Animated.Text>
           </View>
           <Text
-            style={[typography.hero, styles.value, { color: theme.colors.text }]}
+            style={[
+              size === 'compact' ? typography.metricLarge : typography.hero,
+              size === 'compact' ? styles.valueCompact : styles.value,
+              { color: theme.colors.text },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
             allowFontScaling
@@ -127,6 +176,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 4,
   },
+  cardCompact: {
+    borderRadius: radii.xl,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 2,
+  },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -134,5 +189,8 @@ const styles = StyleSheet.create({
   },
   value: {
     letterSpacing: -2,
+  },
+  valueCompact: {
+    letterSpacing: -0.8,
   },
 })
