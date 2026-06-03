@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -19,9 +11,9 @@ import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
 
-const TILE_WIDTH = 56
-const TILE_HEIGHT = 64
-const TILE_GAP = 8
+const TILE_WIDTH = 52
+const TILE_HEIGHT = 68
+const TILE_GAP = 6
 const TILE_TOTAL_WIDTH = TILE_WIDTH + TILE_GAP
 
 const WEEKDAY_LABELS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'] as const
@@ -45,7 +37,6 @@ export function CycleDateSlider({
 }: Props) {
   const { theme } = useAppTheme()
   const scrollRef = useRef<ScrollView>(null)
-  const containerWidth = useSharedValue(0)
 
   const days = useMemo(
     () => buildCycleDays(cycleStart, cycleDays, today),
@@ -57,7 +48,10 @@ export function CycleDateSlider({
     [days, value],
   )
 
-  // When `value` changes externally, scroll the strip to center that day.
+  // Center the strip on the selected day. We only auto-scroll when the
+  // selection changes externally (e.g., row patched) — the user's own
+  // free-swipe is left untouched so they can scan dates without the
+  // strip jumping under them.
   useEffect(() => {
     if (selectedIndex < 0) return
     const node = scrollRef.current
@@ -68,25 +62,9 @@ export function CycleDateSlider({
     })
   }, [selectedIndex])
 
-  // Snap-handler: when the user's scroll settles on a tile, that's
-  // the new selection.
-  const handleMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x
-    const index = Math.round(offsetX / TILE_TOTAL_WIDTH)
-    const clamped = Math.max(0, Math.min(days.length - 1, index))
-    const day = days[clamped]
-    if (day && day.iso !== value) {
-      void triggerHaptic('selection')
-      onChange(day.iso)
-    }
-  }
-
   return (
     <View
       style={styles.container}
-      onLayout={(e) => {
-        containerWidth.value = e.nativeEvent.layout.width
-      }}
       accessibilityRole="adjustable"
       accessibilityLabel="Fecha del movimiento"
     >
@@ -94,10 +72,13 @@ export function CycleDateSlider({
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
+        // Snap keeps the strip visually tidy when the user lets go after
+        // a free swipe, but we DON'T fire selection on momentum-end. The
+        // user told us that auto-selecting on swipe felt wrong — swipe
+        // should let them browse dates without committing; tap commits.
         snapToInterval={TILE_TOTAL_WIDTH}
         decelerationRate="fast"
         snapToAlignment="center"
-        onMomentumScrollEnd={handleMomentumEnd}
         contentContainerStyle={styles.scrollContent}
       >
         {days.map((d, idx) => (
@@ -141,18 +122,10 @@ function DayTile({
   textColor,
   mutedColor,
 }: TileProps) {
-  const scale = useSharedValue(isSelected ? 1.06 : 1)
   const press = useSharedValue(1)
 
-  useEffect(() => {
-    scale.value = withTiming(isSelected ? 1.06 : 1, {
-      duration: motionDurations.quick,
-      easing: Easing.bezier(0.32, 0.72, 0, 1),
-    })
-  }, [isSelected, scale])
-
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value * press.value }],
+    transform: [{ scale: press.value }],
   }))
 
   return (
@@ -160,7 +133,7 @@ function DayTile({
       <Pressable
         onPress={onPress}
         onPressIn={() => {
-          press.value = withTiming(0.97, {
+          press.value = withTiming(0.94, {
             duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
@@ -175,22 +148,34 @@ function DayTile({
         accessibilityLabel={`día ${day.day}`}
         accessibilityState={{ selected: isSelected }}
         hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
-        style={[
-          styles.tile,
-          isSelected ? { borderColor: primary } : { borderColor: 'transparent' },
-        ]}
+        style={styles.tile}
       >
-        <Text style={[styles.weekday, { color: mutedColor }]}>
-          {WEEKDAY_LABELS[day.weekday]}
-        </Text>
         <Text
           style={[
-            styles.dayNum,
-            { color: textColor, fontWeight: isSelected ? '900' : '700' },
+            styles.weekday,
+            { color: isSelected ? primary : mutedColor },
           ]}
         >
-          {day.day}
+          {WEEKDAY_LABELS[day.weekday]}
         </Text>
+        <View
+          style={[
+            styles.dayPill,
+            isSelected ? { backgroundColor: primary } : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.dayNum,
+              {
+                color: isSelected ? '#0F2D06' : textColor,
+                fontWeight: isSelected ? '900' : '700',
+              },
+            ]}
+          >
+            {day.day}
+          </Text>
+        </View>
         {day.isToday ? (
           <View style={[styles.todayDot, { backgroundColor: primary }]} />
         ) : (
@@ -216,21 +201,27 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: 14,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 4,
+    gap: 4,
   },
   weekday: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'lowercase',
-    marginBottom: 2,
+  },
+  dayPill: {
+    minWidth: 36,
+    height: 32,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayNum: {
-    fontSize: 22,
+    fontSize: 20,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.4,
   },
@@ -238,11 +229,9 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 999,
-    marginTop: 4,
   },
   todayDotSpacer: {
     width: 4,
     height: 4,
-    marginTop: 4,
   },
 })

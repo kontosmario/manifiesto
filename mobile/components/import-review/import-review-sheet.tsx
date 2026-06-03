@@ -101,10 +101,6 @@ export function ImportReviewSheet({
         } else {
           toast.success(baseMsg)
         }
-
-        if (total >= 5) {
-          confetti.celebrate({ durationMs: 2200, origin: 'top' })
-        }
       } else if (result.failed.length > 0) {
         toast.error(
           `No se pudo cargar ningún movimiento (${result.failed.length} errores).`,
@@ -112,6 +108,19 @@ export function ImportReviewSheet({
         )
       }
       onClose()
+
+      // Confetti fires AFTER `onClose()` because the host is mounted at
+      // the app shell (behind the ModalCard's native Modal). If we fire
+      // it while the sheet is still on screen, the burst paints behind
+      // the modal and the user never sees it. We delay one frame past
+      // the modal's exit animation (`motionDurations.standard`) so the
+      // cannon lands on the now-visible surface. Threshold ≥ 3 catches
+      // any real bulk-import; lone movements don't warrant a celebration.
+      if (total >= 3 && result.failed.length === 0) {
+        setTimeout(() => {
+          confetti.celebrate({ durationMs: 2200, origin: 'top' })
+        }, 260)
+      }
     } finally {
       setBusy(false)
       setFadingOut(false)

@@ -1,9 +1,15 @@
-import { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated'
+import { useEffect, useState } from 'react'
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
+import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
+import { NotesRow } from '@/components/home/notes-row'
+import { RiseView } from '@/components/home/animated/rise-view'
+import { InAppNumpad } from '@/components/ui/in-app-numpad'
+import { TextField } from '@/components/ui/text-field'
+import { parsePrice, serializePrice } from '@/utils/money'
 import type { Category } from '@/features/categories/use-categories'
 import type {
   IncomeKind,
@@ -87,60 +93,128 @@ export function ImportReviewRow({
   }
 
   return (
+    <ExpandedRow
+      row={row}
+      categories={categories}
+      invalid={invalid}
+      cycleStart={cycleStart}
+      cycleDays={cycleDays}
+      today={today}
+      onSetKind={onSetKind}
+      onPatch={onPatch}
+      onCollapse={() => setExpanded(false)}
+    />
+  )
+}
+
+interface ExpandedProps extends Omit<Props, 'onUnskip'> {
+  onCollapse: () => void
+}
+
+function ExpandedRow({
+  row,
+  categories,
+  invalid,
+  cycleStart,
+  cycleDays,
+  today,
+  onSetKind,
+  onPatch,
+  onCollapse,
+}: ExpandedProps) {
+  const { theme } = useAppTheme()
+  const [numpadVisible, setNumpadVisible] = useState(false)
+  // Local raw value mirrors the row's numeric amount so the numpad can
+  // edit it in-place. We seed from the row's current amount on mount
+  // and re-sync whenever an external patch changes it (e.g. swap-kind
+  // recomputes amount). Pushing edits OUT goes through `onPatch` —
+  // `rawValue` is only the display state for the keypad.
+  const [rawValue, setRawValue] = useState(() =>
+    row.amount > 0 ? serializePrice(row.amount) : '',
+  )
+  useEffect(() => {
+    // Keep raw in sync if the row's amount changes from outside the
+    // numpad (e.g. controller patch). We compare numerically so trailing
+    // commas typed by the user don't get clobbered every keystroke.
+    const localNum = parsePrice(rawValue)
+    if (!Number.isFinite(localNum) || Math.abs(localNum - row.amount) > 0.005) {
+      setRawValue(row.amount > 0 ? serializePrice(row.amount) : '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row.amount])
+
+  const handleRawChange = (next: string) => {
+    setRawValue(next)
+    const parsed = parsePrice(next)
+    onPatch({ amount: Number.isFinite(parsed) ? parsed : 0 })
+  }
+
+  const handleOpenNumpad = () => {
+    Keyboard.dismiss()
+    setNumpadVisible(true)
+  }
+
+  return (
     <Animated.View
       entering={FadeIn.duration(180)}
       exiting={FadeOut.duration(140)}
       style={[
-        styles.card,
+        styles.expanded,
         {
-          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
           borderColor: invalid ? theme.colors.danger : theme.colors.line,
         },
       ]}
     >
-      <Animated.View entering={FadeInDown.duration(220)}>
+      <RiseView delay={0}>
         <KindToggle kind={row.kind} onChange={onSetKind} />
-      </Animated.View>
+      </RiseView>
 
-      <Animated.View entering={FadeInDown.duration(220).delay(50)}>
-        <LabeledInput
-          label="Descripción"
-          value={row.description}
-          onChangeText={(t) => onPatch({ description: t })}
-          invalid={invalid && row.description.trim() === ''}
-        />
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.duration(220).delay(100)}>
-        <LabeledInput
-          label="Monto (ARS)"
-          value={String(row.amount)}
-          onChangeText={(t) => {
-            const n = parseFloat(t.replace(/\./g, '').replace(',', '.'))
-            onPatch({ amount: Number.isFinite(n) ? n : 0 })
-          }}
-          keyboardType="decimal-pad"
-          invalid={invalid && row.amount <= 0}
+      <RiseView delay={60}>
+        <AmountCard
+          amount={row.amount}
+          isActive={numpadVisible}
+          onPress={handleOpenNumpad}
+          label={row.kind === 'income' ? 'Monto del ingreso' : 'Monto'}
         />
         {row.source.appliedRate !== null ? (
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-            {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ rate $${row.source.appliedRate}`}
+            {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ $${row.source.appliedRate}`}
           </Text>
         ) : null}
-      </Animated.View>
+      </RiseView>
 
-      <Animated.View entering={FadeInDown.duration(220).delay(150)} style={styles.field}>
-        <Text style={[styles.label, { color: theme.colors.textMuted }]}>Fecha</Text>
-        <CycleDateSlider
-          value={row.date}
-          cycleStart={cycleStart}
-          cycleDays={cycleDays}
-          today={today}
-          onChange={(iso) => onPatch({ date: iso })}
+      <RiseView delay={120}>
+        <TextField
+          label="Descripción"
+          value={row.description}
+          onChangeText={(t) => onPatch({ description: t })}
+          autoCapitalize="sentences"
+          autoCorrect={false}
+          maxLength={60}
+          placeholder="Ej: Supermercado"
+          returnKeyType="done"
         />
-      </Animated.View>
+      </RiseView>
 
-      <Animated.View entering={FadeInDown.duration(220).delay(200)}>
+      <RiseView delay={180}>
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+            Fecha
+          </Text>
+          <CycleDateSlider
+            value={row.date}
+            cycleStart={cycleStart}
+            cycleDays={cycleDays}
+            today={today}
+            onChange={(iso) => onPatch({ date: iso })}
+          />
+        </View>
+      </RiseView>
+
+      <RiseView delay={240}>
         {row.kind === 'expense' ? (
           <CategorySection
             categories={categories}
@@ -153,40 +227,47 @@ export function ImportReviewRow({
             onSelect={(k) => onPatch({ incomeKind: k })}
           />
         )}
-      </Animated.View>
+      </RiseView>
 
-      <Animated.View entering={FadeInDown.duration(220).delay(250)}>
-        <LabeledInput
-          label="Notas (opcional)"
-          value={row.notes ?? ''}
-          onChangeText={(t) => onPatch({ notes: t === '' ? null : t })}
-          multiline
+      <RiseView delay={300}>
+        <NotesRow
+          notes={row.notes ?? ''}
+          onChange={(t) => onPatch({ notes: t === '' ? null : t })}
         />
-      </Animated.View>
+      </RiseView>
 
       {row.warnings.length > 0 ? (
-        <Animated.View entering={FadeInDown.duration(220).delay(300)} style={styles.warnings}>
-          {row.warnings.map((w) => (
-            <Text
-              key={w}
-              style={[styles.warning, { color: theme.colors.textMuted }]}
-            >
-              {warningLabel(w)}
-            </Text>
-          ))}
-        </Animated.View>
+        <RiseView delay={360}>
+          <View style={styles.warnings}>
+            {row.warnings.map((w) => (
+              <Text
+                key={w}
+                style={[styles.warning, { color: theme.colors.textMuted }]}
+              >
+                {warningLabel(w)}
+              </Text>
+            ))}
+          </View>
+        </RiseView>
       ) : null}
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Colapsar este movimiento"
-        onPress={() => setExpanded(false)}
+        onPress={onCollapse}
         style={styles.collapseBtn}
       >
         <Text style={[styles.collapseLabel, { color: theme.colors.textMuted }]}>
           Listo
         </Text>
       </Pressable>
+
+      <InAppNumpad
+        visible={numpadVisible}
+        rawValue={rawValue}
+        onChangeRawValue={handleRawChange}
+        onDismiss={() => setNumpadVisible(false)}
+      />
     </Animated.View>
   )
 }
@@ -237,46 +318,6 @@ function KindToggle({
   )
 }
 
-function LabeledInput({
-  label,
-  value,
-  onChangeText,
-  keyboardType,
-  invalid = false,
-  multiline = false,
-  autoCapitalize,
-}: {
-  label: string
-  value: string
-  onChangeText: (text: string) => void
-  keyboardType?: 'default' | 'decimal-pad'
-  invalid?: boolean
-  multiline?: boolean
-  autoCapitalize?: 'none' | 'sentences'
-}) {
-  const { theme } = useAppTheme()
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType ?? 'default'}
-        multiline={multiline}
-        autoCapitalize={autoCapitalize ?? 'sentences'}
-        style={[
-          styles.input,
-          {
-            color: theme.colors.text,
-            borderColor: invalid ? theme.colors.danger : theme.colors.line,
-            backgroundColor: theme.colors.surfaceMuted,
-          },
-        ]}
-      />
-    </View>
-  )
-}
-
 function CategorySection({
   categories,
   selectedCategoryId,
@@ -288,15 +329,13 @@ function CategorySection({
 }) {
   if (categories.length === 0) return null
   return (
-    <View style={styles.field}>
-      <CategoryHorizontalRail
-        categories={categories.slice()}
-        selectedCategoryId={selectedCategoryId ?? ''}
-        onSelect={onSelect}
-        label="Categoría"
-        rows={2}
-      />
-    </View>
+    <CategoryHorizontalRail
+      categories={categories.slice()}
+      selectedCategoryId={selectedCategoryId ?? ''}
+      onSelect={onSelect}
+      label="Categoría"
+      rows={2}
+    />
   )
 }
 
@@ -310,7 +349,9 @@ function IncomeKindSection({
   const { theme } = useAppTheme()
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>Tipo de ingreso</Text>
+      <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+        Tipo de ingreso
+      </Text>
       <View style={styles.kindRow}>
         {INCOME_KINDS.map((k) => {
           const active = k === incomeKind
@@ -323,7 +364,9 @@ function IncomeKindSection({
               style={[
                 styles.kindBtn,
                 {
-                  backgroundColor: active ? theme.colors.primary : 'transparent',
+                  backgroundColor: active
+                    ? theme.colors.primary
+                    : 'transparent',
                   borderColor: active ? theme.colors.primary : theme.colors.line,
                 },
               ]}
@@ -360,7 +403,12 @@ function warningLabel(w: ReviewRow['warnings'][number]): string {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  expanded: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 14,
+  },
   cardSkipped: {
     borderRadius: 14,
     borderWidth: 1,
@@ -389,15 +437,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
-  input: {
-    minHeight: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 14,
-  },
-  hint: { fontSize: 11, fontWeight: '500', marginTop: 4 },
-  warnings: { gap: 4, marginTop: 2 },
+  hint: { fontSize: 11, fontWeight: '500', marginTop: 6 },
+  warnings: { gap: 4 },
   warning: { fontSize: 11, fontWeight: '600' },
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   kindBtn: {
