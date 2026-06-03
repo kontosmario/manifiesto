@@ -15,6 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
 
@@ -145,7 +146,7 @@ function DayTile({
 
   useEffect(() => {
     scale.value = withTiming(isSelected ? 1.06 : 1, {
-      duration: 180,
+      duration: motionDurations.quick,
       easing: Easing.bezier(0.32, 0.72, 0, 1),
     })
   }, [isSelected, scale])
@@ -160,13 +161,13 @@ function DayTile({
         onPress={onPress}
         onPressIn={() => {
           press.value = withTiming(0.97, {
-            duration: 120,
+            duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}
         onPressOut={() => {
           press.value = withTiming(1, {
-            duration: 120,
+            duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}

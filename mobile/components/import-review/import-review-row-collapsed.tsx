@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { ReviewRow } from '@/features/import-review/types'
 
@@ -54,13 +55,13 @@ export function ImportReviewRowCollapsed({ row, invalid, onExpand }: Props) {
         onPress={onExpand}
         onPressIn={() => {
           press.value = withTiming(0.97, {
-            duration: 120,
+            duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}
         onPressOut={() => {
           press.value = withTiming(1, {
-            duration: 120,
+            duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}
