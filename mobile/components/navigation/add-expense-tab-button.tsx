@@ -263,6 +263,27 @@ export function AddExpenseTabButton({
 
   const quickActions: QuickAction[] = [
     {
+      key: 'expense',
+      label: 'Gasto',
+      icon: 'add',
+      tier: 'primary',
+      // No accentColor on purpose — the primary tile is already
+      // chromatically saturated (brand fill).
+      onPress: () => router.push('/(app)/add-expense'),
+    },
+    {
+      key: 'import',
+      label: 'Importar captura',
+      icon: 'document-scanner',
+      accentColor: ACCENT_IMPORT,
+      // QuickAction.onPress es () => void; envolvemos el async handler
+      // para no dejar una promise floating sin manejar (handleOpenImport
+      // ya atrapa todos los errores internamente).
+      onPress: () => {
+        void handleOpenImport()
+      },
+    },
+    {
       key: 'no-spend',
       label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
       icon: 'eco',
@@ -327,26 +348,6 @@ export function AddExpenseTabButton({
       icon: 'event-repeat',
       accentColor: ACCENT_FIXED,
       onPress: () => router.push('/(app)/add-fixed-expense'),
-    },
-    {
-      key: 'expense',
-      label: 'Gasto',
-      icon: 'add',
-      // No accentColor on purpose — the primary action stays the
-      // chromatically dominant petal (brand green, no ring).
-      onPress: () => router.push('/(app)/add-expense'),
-    },
-    {
-      key: 'import',
-      label: 'Importar captura',
-      icon: 'document-scanner',
-      accentColor: ACCENT_IMPORT,
-      // QuickAction.onPress es () => void; envolvemos el async handler
-      // para no dejar una promise floating sin manejar (handleOpenImport
-      // ya atrapa todos los errores internamente).
-      onPress: () => {
-        void handleOpenImport()
-      },
     },
   ]
 

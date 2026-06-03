@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  Dimensions,
   Modal,
   Pressable,
   StyleSheet,
@@ -7,14 +8,16 @@ import {
   View,
 } from 'react-native'
 import Animated, {
+  Easing,
   Extrapolation,
+  FadeInDown,
+  FadeOutDown,
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -24,7 +27,6 @@ import {
   motionDurations,
   motionEasings,
   motionSprings,
-  motionStagger,
 } from '@/lib/motion/tokens'
 import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -34,16 +36,17 @@ export interface QuickAction {
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void
-  /** Optional visual override. 'marked' tints the petal in a paler
-   *  green to communicate "ya está hecho hoy" without removing the
-   *  petal from the menu (so the user can toggle it off). */
+  /** Optional visual override. 'marked' tints the tile in a paler
+   *  green to communicate "ya está hecho hoy" without removing it
+   *  from the menu (so the user can toggle it off). */
   visualState?: 'default' | 'marked'
-  /** Optional semantic accent. When set, the petal renders with a
-   *  thin colored ring around the brand-green circle that telegraphs
-   *  the action's role (celebración/ingreso/egreso). Omit for the
-   *  primary action (Gasto) so it stays visually dominant — minimal
-   *  chrome = strongest call-to-action. */
+  /** Accent color used to tint the icon on secondary tiles. The
+   *  primary tile ignores this — it's already brand-saturated. */
   accentColor?: string
+  /** `'primary'` renders as the full-width top tile with brand fill;
+   *  `'secondary'` (default) renders in the 2×2 grid below. Exactly
+   *  one action should be marked primary per overlay. */
+  tier?: 'primary' | 'secondary'
 }
 
 interface AddQuickActionsOverlayProps {
@@ -52,37 +55,35 @@ interface AddQuickActionsOverlayProps {
   actions: QuickAction[]
 }
 
-// ─── Fan layout ─────────────────────────────────────────────────
-// 4 actions emerge from the FAB center as a 120° fan arc, anchored
-// to the FAB so the menu reads as something unfurling FROM the
-// button, not floating beside it.
-//
-// Angles measured from horizontal (counter-clockwise), 90° = up.
-// Index 0 = leftmost, index 3 = rightmost. Order matches the
-// `actions` prop, so the caller controls the L→R sequence.
-//
-// Evolution:
-//   • 3 petals: 90° arc at [135, 90, 45], radius 120
-//   • 4 petals (first attempt): 90° arc at [135, 105, 75, 45],
-//     radius 130. Adjacent petal centers ~67px apart vs 96px-wide
-//     labels → labels overlapped heavily and inner pair felt
-//     colapsed.
-//   • 4 petals (current): 120° arc at [150, 110, 70, 30] with 40°
-//     spacing, radius 170. Adjacent centers now ~116px → labels
-//     have 6px gap to breathe and the fan reads cleanly across the
-//     whole bottom of the screen.
-// 5 petals after Phase C: re-spaced to keep equal arc spacing across
-// the wider fan. The petal whose action is in the first slot of the
-// caller's array gets the leftmost angle (160°), etc.
-const FAN_ANGLES_DEG = [160, 130, 100, 70, 40]
-const FAN_RADIUS = 170 // distance from FAB center to each mini-FAB center
-const ACTION_SIZE = 56
-const LABEL_WIDTH = 110 // wide enough for "Día sin gasto" with breathing room
-// FAB center from screen bottom: tab bar bottom (14) + tab bar
-// half height (44) + FAB lift (18) ≈ 76. Bumped a touch so the
-// petals don't overlap the FAB face itself.
-const ANCHOR_BOTTOM = 76
+const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
+// Card lives just above the FAB. Tab bar bottom (14) + tab bar
+// half (44) + FAB lift (18) + FAB radius (28) + gap (18) ≈ 122.
+const CARD_BOTTOM_OFFSET = 122
+const CARD_HORIZONTAL_MARGIN = 16
+const PRIMARY_TILE_HEIGHT = 76
+const SECONDARY_TILE_HEIGHT = 84
 
+/**
+ * Hierarchical quick-actions card. Replaces the 5-petal radial fan
+ * which felt disproportionate once the wizard import shipped — five
+ * equal-sized petals gave the eye no hint about which action is the
+ * default ("cargar un gasto"), and the labels crowded each other.
+ *
+ * Layout, top to bottom:
+ *   1. Tiny eyebrow ("¿QUÉ CARGÁS?").
+ *   2. Primary tile (full-width, brand fill, biggest icon + label).
+ *      Reserved for the most-used action — typically "Gasto".
+ *   3. 2×2 grid of secondary tiles. Filled in caller order, left to
+ *      right, top to bottom. Up to 4 secondaries cleanly; more wraps
+ *      gracefully.
+ *
+ * Card enters anchored to the FAB: spring-driven scale (0.85→1) +
+ * translateY (40→0) + opacity (0→1), so it reads as the FAB
+ * "blooming" into a card rather than a sheet sliding from the bottom.
+ * Tiles stagger in with FadeInDown over the card's expansion. Dismiss
+ * uses a faster timing reverse so the user's tap returns focus to the
+ * underlying screen without lingering chrome.
+ */
 export function AddQuickActionsOverlay({
   visible,
   onDismiss,
@@ -91,25 +92,18 @@ export function AddQuickActionsOverlay({
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
-  // `mounted` decouples the Modal's lifecycle from the parent's
-  // `visible` prop so the dismiss spring has something to animate
-  // against. If we bound `<Modal visible={visible}>` directly, the
-  // Modal would unmount the moment the parent flipped the prop —
-  // before the spring had a chance to play — and the petals would
-  // just vanish on scrim tap.
   const [mounted, setMounted] = useState(false)
-  // Set by the petal's onSelect right before triggering the dismiss
-  // so the next render's effect skips the spring and unmounts the
-  // overlay on the same frame. Selecting a petal hands the user's
-  // attention off to the new route's entrance animation; a slow
-  // retraction here would just compete with it. Tap-on-scrim still
-  // takes the spring path because there's no follow-up animation
-  // to absorb the user's focus.
+  // Set right before triggering dismiss when the user taps a tile, so
+  // the next render's effect skips the spring and unmounts the overlay
+  // immediately. Selecting a tile hands focus off to the next route /
+  // sheet; a slow card retraction would just fight that animation.
   const skipNextExitRef = useRef(false)
+
+  const primary = actions.find((a) => a.tier === 'primary') ?? null
+  const secondaries = actions.filter((a) => a.tier !== 'primary')
 
   useEffect(() => {
     if (reduced) {
-      // Reduced-motion users skip the choreography in both directions.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync of mount state when visible toggles
       setMounted(visible)
       progress.value = visible ? 1 : 0
@@ -117,35 +111,16 @@ export function AddQuickActionsOverlay({
     }
     if (visible) {
       setMounted(true)
-      // `motionSprings.radialEnter` — soft enough that each petal
-      // lands with a hint of bounce as it settles into the fan.
       progress.value = withSpring(1, motionSprings.radialEnter)
     } else if (skipNextExitRef.current) {
-      // Petal selected — instant collapse so the next route's
-      // entrance has the stage to itself.
       skipNextExitRef.current = false
       progress.value = 0
       setMounted(false)
     } else {
-      // Timing-based exit, not a spring. Reasoning: a critically-
-      // damped spring landing at 0 only fires its `finished` callback
-      // once the value is within Reanimated's rest threshold (~5τ),
-      // which for the radialExit spring family was ~280ms. While
-      // that callback was pending, the native `<Modal>` remained
-      // mounted and OS-level captured all touches — the FAB
-      // underneath was un-tappable for the full window even though
-      // the petals were visually gone after ~150ms. That broke
-      // `interruptible` and `tap-feedback-speed` from the motion
-      // checklist.
-      //
-      // Replace with a deterministic 140ms timing using the
-      // `exitStandard` curve (ease-in cubic). The petals still
-      // accelerate into the FAB origin — visually compatible with
-      // the spring entrance — but the Modal unmounts in a known,
-      // short window. The per-petal interpolation windows below
-      // still run in reverse on the descending progress, just
-      // compressed into the shorter total. Exit is now ~50% of the
-      // spring entrance, satisfying `exit-faster-than-enter`.
+      // Timing-based exit (not a spring) so the Modal unmounts in a
+      // known, short window — the rest threshold on a critically-
+      // damped spring leaves the Modal capturing touches long after
+      // the card is visually gone. Same pattern as the old fan.
       progress.value = withTiming(
         0,
         {
@@ -165,6 +140,33 @@ export function AddQuickActionsOverlay({
     opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
   }))
 
+  const cardStyle = useAnimatedStyle(() => {
+    const t = progress.value
+    return {
+      opacity: interpolate(t, [0, 0.4, 1], [0, 0.9, 1], Extrapolation.CLAMP),
+      transform: [
+        { translateY: interpolate(t, [0, 1], [40, 0], Extrapolation.CLAMP) },
+        { scale: interpolate(t, [0, 1], [0.85, 1], Extrapolation.CLAMP) },
+      ],
+    }
+  })
+
+  const handleTileSelect = (action: QuickAction) => {
+    void triggerHaptic('selection')
+    skipNextExitRef.current = true
+    onDismiss()
+    action.onPress()
+  }
+
+  // Each tile's `entering` delay so the staggered reveal accelerates
+  // top-to-bottom, primary first. Tied to wall clock (not progress)
+  // because Reanimated layout-anim presets don't read shared values —
+  // good enough since the card enter spring lasts ~280ms which the
+  // stagger fits inside.
+  const PRIMARY_DELAY = 60
+  const SECONDARY_STAGGER = 60
+  const SECONDARY_BASE_DELAY = 140
+
   return (
     <Modal
       transparent
@@ -173,207 +175,335 @@ export function AddQuickActionsOverlay({
       statusBarTranslucent
       animationType="none"
     >
-      {/* Blurred scrim — feels closer to iOS Control Center / a
-          system sheet than a flat black overlay. Tap dismisses. */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onDismiss}
+        accessibilityLabel="Cerrar acciones"
+        accessibilityRole="button"
+      >
         <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
           <BlurView
-            intensity={32}
+            intensity={28}
             tint={theme.isDark ? 'dark' : 'systemChromeMaterialDark'}
             style={StyleSheet.absoluteFill}
           />
-          {/* Extra dim layer so the petals stay legible even when
-              the underlying screen is bright. */}
           <View
             style={[
               StyleSheet.absoluteFill,
-              { backgroundColor: '#06120C', opacity: 0.42 },
+              { backgroundColor: '#06120C', opacity: 0.44 },
             ]}
           />
         </Animated.View>
       </Pressable>
 
-      {/* Anchor — single zero-size point at the FAB center. Each
-          petal is `position: absolute` and translated outward from
-          this origin, so the layout is genuinely radial. */}
-      <View style={styles.anchorWrap} pointerEvents="box-none">
-        <View style={styles.anchorPoint} pointerEvents="box-none">
-          {actions.map((action, index) => (
-            <ActionPetal
-              key={action.key}
-              action={action}
-              index={index}
-              progress={progress}
-              reduced={reduced}
-              onSelect={() => {
-                void triggerHaptic('selection')
-                // Flip the skip flag *before* onDismiss so the effect
-                // triggered by the parent's setVisible(false) takes
-                // the instant-collapse branch instead of the spring.
-                skipNextExitRef.current = true
-                onDismiss()
-                // Push the route synchronously — the modal/sheet's
-                // own entrance animation now owns the user's focus.
-                action.onPress()
-              }}
-              theme={theme}
-            />
-          ))}
-        </View>
+      <View style={styles.cardWrap} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.card,
+            cardStyle,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+            ¿Qué cargás?
+          </Text>
+
+          {primary ? (
+            <Animated.View
+              entering={
+                reduced
+                  ? undefined
+                  : FadeInDown.duration(motionDurations.standard)
+                      .delay(PRIMARY_DELAY)
+                      .easing(EASE_IOS)
+              }
+            >
+              <PrimaryTile
+                action={primary}
+                onSelect={handleTileSelect}
+                primaryColor={theme.colors.primary}
+                isDark={theme.isDark}
+              />
+            </Animated.View>
+          ) : null}
+
+          {secondaries.length > 0 ? (
+            <View style={styles.grid}>
+              {secondaries.map((action, idx) => (
+                <Animated.View
+                  key={action.key}
+                  style={styles.gridCell}
+                  entering={
+                    reduced
+                      ? undefined
+                      : FadeInDown.duration(motionDurations.standard)
+                          .delay(SECONDARY_BASE_DELAY + idx * SECONDARY_STAGGER)
+                          .easing(EASE_IOS)
+                  }
+                  exiting={
+                    reduced
+                      ? undefined
+                      : FadeOutDown.duration(motionDurations.quick).easing(
+                          EASE_IOS,
+                        )
+                  }
+                >
+                  <SecondaryTile
+                    action={action}
+                    onSelect={handleTileSelect}
+                    surfaceMuted={theme.colors.surfaceMuted}
+                    line={theme.colors.line}
+                    textColor={theme.colors.text}
+                    mutedColor={theme.colors.textMuted}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+          ) : null}
+        </Animated.View>
       </View>
     </Modal>
   )
 }
 
-function ActionPetal({
-  action,
-  index,
-  progress,
-  reduced,
-  onSelect,
-  theme,
-}: {
+// ─── Tiles ──────────────────────────────────────────────────────
+
+interface PrimaryTileProps {
   action: QuickAction
-  index: number
-  progress: SharedValue<number>
-  reduced: boolean
-  onSelect: () => void
-  theme: ReturnType<typeof useAppTheme>['theme']
-}) {
-  const angleRad = (FAN_ANGLES_DEG[index] * Math.PI) / 180
-  const targetX = FAN_RADIUS * Math.cos(angleRad)
-  // Screen-y grows downward, so "up" is negative.
-  const targetY = -FAN_RADIUS * Math.sin(angleRad)
+  onSelect: (a: QuickAction) => void
+  primaryColor: string
+  isDark: boolean
+}
 
-  // Stagger the unfurl so the petals read sequentially L→R rather
-  // than all popping at once. The token is unitless (a fraction of
-  // `progress`), so the petals' interpolation windows shift in lock-
-  // step with the parent spring instead of using wall-clock delays.
-  const start = index * motionStagger.fanProgress
-  const end = Math.min(1, start + 0.7)
+function PrimaryTile({
+  action,
+  onSelect,
+  primaryColor,
+  isDark,
+}: PrimaryTileProps) {
+  const pressScale = useSharedValue(1)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }))
 
-  const petalStyle = useAnimatedStyle(() => {
-    const t = progress.value
-    if (reduced) {
-      return {
-        opacity: t,
-        transform: [
-          { translateX: targetX * t },
-          { translateY: targetY * t },
-        ],
-      }
-    }
-    const local = interpolate(t, [start, end], [0, 1], Extrapolation.CLAMP)
-    const opacity = interpolate(
-      local,
-      [0, 0.4, 1],
-      [0, 0.9, 1],
-      Extrapolation.CLAMP,
-    )
-    // Slight overshoot at 0.7 → settles at 1. Reads as a tiny pop
-    // when the petal arrives at its final position.
-    const scale = interpolate(
-      local,
-      [0, 0.7, 1],
-      [0.32, 1.06, 1],
-      Extrapolation.CLAMP,
-    )
-    return {
-      opacity,
-      transform: [
-        { translateX: targetX * local },
-        { translateY: targetY * local },
-        { scale },
-      ],
-    }
-  })
+  const baseBg =
+    action.visualState === 'marked'
+      ? withAlpha(primaryColor, isDark ? 0.55 : 0.45)
+      : primaryColor
+  // Foreground = darkest brand green on bright fills (legible across
+  // both themes). Mirrors the petal contrast from the legacy fan.
+  const fg = isDark ? '#0E1B14' : '#0F2D06'
 
   return (
-    <Animated.View style={[styles.petal, petalStyle]} pointerEvents="box-none">
+    <Animated.View style={animatedStyle}>
       <Pressable
         accessibilityLabel={action.label}
         accessibilityRole="button"
-        onPress={onSelect}
+        onPress={() => onSelect(action)}
+        onPressIn={() => {
+          pressScale.value = withTiming(0.97, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
+        onPressOut={() => {
+          pressScale.value = withTiming(1, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
         style={({ pressed }) => [
-          styles.petalCircle,
+          styles.primaryTile,
           {
-            backgroundColor:
-              action.visualState === 'marked'
-                ? // Paler tint communicates "done today" without
-                  // disappearing the petal (user can still toggle).
-                  theme.isDark
-                  ? withAlpha(theme.colors.primary, 0.55)
-                  : withAlpha(theme.colors.primary, 0.45)
-                : theme.colors.primary,
-            // Semantic accent ring: only present for non-primary
-            // actions (sin gasto / ingreso / fijo). The primary
-            // action (Gasto) intentionally omits accentColor so it
-            // stays the most chromatically minimal petal — minimal
-            // chrome reads as "default action". The ring sits on
-            // the OUTSIDE so it doesn't shrink the icon area.
-            borderColor: action.accentColor ?? 'transparent',
-            borderWidth: action.accentColor ? 3 : 0,
-            opacity: pressed ? 0.92 : 1,
-            shadowColor: theme.colors.primary,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: theme.isDark ? 0.42 : 0.34,
-            shadowRadius: 14,
-            elevation: 12,
+            backgroundColor: baseBg,
+            opacity: pressed ? 0.94 : 1,
+            shadowColor: primaryColor,
           },
         ]}
-        hitSlop={6}
       >
-        <MaterialIcons
-          name={action.icon}
-          size={26}
-          color={theme.isDark ? '#0E1B14' : '#FFFFFF'}
-        />
+        <View style={[styles.primaryIcon, { backgroundColor: withAlpha(fg, 0.12) }]}>
+          <MaterialIcons name={action.icon} size={26} color={fg} />
+        </View>
+        <View style={styles.primaryLabelCol}>
+          <Text
+            style={[styles.primaryLabel, { color: fg }]}
+            numberOfLines={1}
+          >
+            {action.label}
+          </Text>
+        </View>
+        <MaterialIcons name="arrow-forward" size={20} color={fg} />
       </Pressable>
-      <Text
-        style={styles.petalLabel}
-        numberOfLines={1}
-      >
-        {action.label}
-      </Text>
     </Animated.View>
   )
 }
 
+interface SecondaryTileProps {
+  action: QuickAction
+  onSelect: (a: QuickAction) => void
+  surfaceMuted: string
+  line: string
+  textColor: string
+  mutedColor: string
+}
+
+function SecondaryTile({
+  action,
+  onSelect,
+  surfaceMuted,
+  line,
+  textColor,
+  mutedColor,
+}: SecondaryTileProps) {
+  const pressScale = useSharedValue(1)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }))
+
+  const accent = action.accentColor ?? mutedColor
+  const iconBg = withAlpha(accent, 0.16)
+  const isMarked = action.visualState === 'marked'
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        accessibilityLabel={action.label}
+        accessibilityRole="button"
+        onPress={() => onSelect(action)}
+        onPressIn={() => {
+          pressScale.value = withTiming(0.97, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
+        onPressOut={() => {
+          pressScale.value = withTiming(1, {
+            duration: motionDurations.micro,
+            easing: EASE_IOS,
+          })
+        }}
+        style={({ pressed }) => [
+          styles.secondaryTile,
+          {
+            backgroundColor: surfaceMuted,
+            borderColor: isMarked ? accent : line,
+            opacity: pressed ? 0.92 : 1,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.secondaryIcon,
+            { backgroundColor: iconBg },
+          ]}
+        >
+          <MaterialIcons name={action.icon} size={22} color={accent} />
+        </View>
+        <Text
+          style={[styles.secondaryLabel, { color: textColor }]}
+          numberOfLines={2}
+        >
+          {action.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+// ─── Styles ─────────────────────────────────────────────────────
+
+const SCREEN_WIDTH = Dimensions.get('window').width
+
 const styles = StyleSheet.create({
-  anchorWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  anchorPoint: {
+  cardWrap: {
     position: 'absolute',
-    bottom: ANCHOR_BOTTOM,
-    left: '50%',
-    width: 0,
-    height: 0,
-  },
-  petal: {
-    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: CARD_BOTTOM_OFFSET,
     alignItems: 'center',
-    // Center the petal+label container on the anchor point.
-    left: -LABEL_WIDTH / 2,
-    top: -ACTION_SIZE / 2,
-    width: LABEL_WIDTH,
   },
-  petalCircle: {
-    width: ACTION_SIZE,
-    height: ACTION_SIZE,
-    borderRadius: ACTION_SIZE / 2,
+  card: {
+    width: Math.min(SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2, 480),
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 18,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    paddingLeft: 4,
+  },
+  primaryTile: {
+    minHeight: PRIMARY_TILE_HEIGHT,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  primaryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  petalLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+  primaryLabelCol: {
+    flex: 1,
+    gap: 2,
+  },
+  primaryLabel: {
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gridCell: {
+    width: '48.5%',
+  },
+  secondaryTile: {
+    minHeight: SECONDARY_TILE_HEIGHT,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 8,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  secondaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    lineHeight: 16,
   },
 })
