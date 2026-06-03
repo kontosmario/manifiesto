@@ -34,6 +34,13 @@ interface Props {
   familyId: string
   userId: string
   onClose: () => void
+  /**
+   * When true, the sheet mounts a fake confirm that just plays the
+   * exit animation + success toast WITHOUT writing anything to the DB.
+   * Used by the Settings preview so we can iterate on the wizard UI
+   * without burning an IPA build cycle and without polluting real data.
+   */
+  previewMode?: boolean
 }
 
 const STEP_ENTER_MS = 280
@@ -47,6 +54,7 @@ export function ImportReviewSheet({
   familyId,
   userId,
   onClose,
+  previewMode = false,
 }: Props) {
   const { theme } = useAppTheme()
   const controller = useImportReviewController(initialState ?? undefined)
@@ -160,7 +168,18 @@ export function ImportReviewSheet({
   async function handleConfirm() {
     setBusy(true)
     try {
-      const result = await confirm(controller.state.rows)
+      // Preview mode: fake the confirm result so we can drive the exit
+      // animation + confetti + toast without touching the DB. The
+      // breakdown comes from the controller so the toast wording still
+      // reflects what the user actually saw.
+      const result = previewMode
+        ? {
+            insertedExpenses: controller.submittableBreakdown.expenses,
+            insertedIncomes: controller.submittableBreakdown.incomes,
+            skipped: controller.skippedCount,
+            failed: [],
+          }
+        : await confirm(controller.state.rows)
       const total = result.insertedExpenses + result.insertedIncomes
 
       // Cinematic fade-out: the form fades up before the modal dismisses
@@ -182,7 +201,9 @@ export function ImportReviewSheet({
             `${result.insertedIncomes} ingreso${result.insertedIncomes === 1 ? '' : 's'}`,
           )
         }
-        const baseMsg = `Cargué ${parts.join(' y ')}.`
+        const baseMsg = previewMode
+          ? `Vista previa: ${parts.join(' y ')} (no se cargó nada).`
+          : `Cargué ${parts.join(' y ')}.`
         if (result.failed.length > 0) {
           toast.error(
             `${baseMsg} ${result.failed.length} no se pudieron cargar.`,

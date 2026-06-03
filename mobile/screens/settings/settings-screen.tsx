@@ -18,6 +18,9 @@ import {
 } from '@/components/settings/settings-grouped-list'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
 import { DeleteAccountConfirmSheet } from '@/components/settings/sheets/delete-account-confirm-sheet'
+import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { buildPreviewReviewState } from '@/features/import-review/preview-mock-state'
+import type { ReviewState } from '@/features/import-review/types'
 import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-sheet'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
@@ -191,6 +194,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
   const [deleteAccountSheetOpen, setDeleteAccountSheetOpen] = useState(false)
+  // Preview state lives here so the dates are regenerated relative to
+  // "today" each time the user opens the preview, not snapshotted at
+  // mount. `null` while closed so the sheet doesn't render with stale
+  // rows from a previous open.
+  const [importPreviewState, setImportPreviewState] =
+    useState<ReviewState | null>(null)
   const requestAccountDeletion = useRequestAccountDeletion()
 
   // Motion preference — drives `useReducedMotion()` for every consumer
@@ -1021,10 +1030,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   helper="Vuelve a disparar los tutoriales guiados de Inicio, Gastos, Fijos y Control la próxima vez que entres a cada pantalla."
                   icon="school"
-                  isLast
                   label="Reactivar visitas guiadas"
                   onPress={() => {
                     void handleResetTours()
+                  }}
+                />
+                <SettingsRow
+                  helper="Abrí el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
+                  icon="preview"
+                  isLast
+                  label="Vista previa: wizard de importación"
+                  onPress={() => {
+                    setImportPreviewState(buildPreviewReviewState())
                   }}
                 />
               </SettingsGroup>
@@ -1438,6 +1455,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         }}
         onConfirm={handleConfirmDeleteAccount}
         visible={deleteAccountSheetOpen}
+      />
+      <ImportReviewSheet
+        visible={importPreviewState !== null}
+        initialState={importPreviewState}
+        familyId={familyId}
+        userId={userId}
+        onClose={() => setImportPreviewState(null)}
+        previewMode
       />
     </Screen>
   )

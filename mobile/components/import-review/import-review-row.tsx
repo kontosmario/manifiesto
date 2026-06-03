@@ -361,8 +361,8 @@ const styles = StyleSheet.create({
   expanded: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
-    gap: 14,
+    padding: 12,
+    gap: 12,
   },
   skipCard: {
     borderRadius: 16,
@@ -388,15 +388,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   restoreLabel: { fontSize: 12, fontWeight: '800' },
-  toggleRow: { flexDirection: 'row', gap: 6 },
+  // KindToggle takes the upper width but is purely a binary choice —
+  // cap its width so it doesn't dominate the form. Centered to keep
+  // visual balance with the AmountCard below.
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 4,
+    alignSelf: 'center',
+    width: '70%',
+  },
   toggleBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: 'center',
   },
-  toggleLabel: { fontSize: 12, fontWeight: '800' },
+  toggleLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
   field: { gap: 6 },
   label: {
     fontSize: 11,
