@@ -10,8 +10,8 @@
 
 **Manifiesto** es una app mobile (Expo + React Native + Supabase) de **finanzas familiares compartidas** (es-AR). Está **feature-complete desde 2026-05-09**; el foco actual es operación, hardening, performance y pulido — no scope nuevo.
 
-- ✅ **LIVE:** auth completo, onboarding, Home + Control + Fijos (V2), Gastos (V2), asistente heurístico, rachas, logros, Manifiesto Wrapped, ediciones, account deletion end-to-end.
-- ⏸️ **En pausa:** monetización (RevenueCat/IAP), Sentry, PostHog, AI Coach LLM, OCR.
+- ✅ **LIVE:** auth completo, onboarding, Home + Control + Fijos (V2), Gastos (V2), asistente heurístico, rachas, logros, Manifiesto Wrapped, ediciones, account deletion end-to-end, **Activity OCR + Import Review wizard** (2026-06-03 — captura de feed bancario → wizard one-by-one → bulk insert).
+- ⏸️ **En pausa:** monetización (RevenueCat/IAP), Sentry, PostHog, AI Coach LLM.
 - ⛔ **Bloqueado por Apple Developer Program** (sin comprar): submit a App Store, IAP, push iOS, widgets.
 - 🔴 **Deuda crítica abierta** (independiente de Apple): vulnerabilidad RLS en `expenses` (cualquier miembro de familia puede editar/borrar gastos de otro).
 
@@ -65,6 +65,8 @@ Snapshots completos del proyecto verificados contra el código. Foto vigente: **
 | [editions.md](sistemas/editions.md) | ✅ vigente | Archivo de Wrappeds anteriores |
 | [asistente-financiero.md](sistemas/asistente-financiero.md) | ✅ vigente | Asistente heurístico (doc canónico, ex-v2) |
 | [asistente-llm-augmentation-notes.md](sistemas/asistente-llm-augmentation-notes.md) | ✅ vigente | Plan de augmentation con LLM (deferred) |
+| [activity-ocr.md](sistemas/activity-ocr.md) | ✅ vigente (2026-06-03) | OCR de feeds bancarios + wizard de import. Bancos soportados + recipe para agregar nuevos. |
+| [form-validation-pattern.md](sistemas/form-validation-pattern.md) | ✅ vigente (2026-06-03) | Patrón compartido: no preselect, visual-only disabled CTA, per-field warning glide. |
 
 ### 🔧 [`operaciones/`](operaciones/) — setup, runbooks, backlog operativo
 
