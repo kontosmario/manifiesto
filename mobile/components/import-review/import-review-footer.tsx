@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
+import { loadingLabels } from '@/lib/copy/states'
 
 interface Props {
   expensesCount: number
@@ -21,7 +22,7 @@ export function ImportReviewFooter({
   const { theme } = useAppTheme()
 
   const label = busy
-    ? 'Cargando…'
+    ? `${loadingLabels.import}…`
     : expensesCount + incomesCount === 0
       ? 'Nada para cargar'
       : `Confirmar ${expensesCount} gasto${expensesCount === 1 ? '' : 's'} + ${incomesCount} ingreso${incomesCount === 1 ? '' : 's'}`

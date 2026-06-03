@@ -60,6 +60,7 @@ export const loadingLabels = {
   categories:    'Cargando categorías',
   notifications: 'Cargando novedades',
   settings:      'Cargando tus preferencias',
+  import:        'Cargando importación',
 } as const
 
 export const errorMessages = {
