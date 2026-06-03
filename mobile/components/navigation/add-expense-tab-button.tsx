@@ -5,6 +5,7 @@ import type { Expense } from '@/features/expenses/use-expenses'
 import {
   type PressableProps,
   type PressableStateCallbackType,
+  InteractionManager,
   Pressable,
   StyleSheet,
   View,
@@ -221,6 +222,15 @@ export function AddExpenseTabButton({
       toast.error('Necesitás estar en sesión para importar.')
       return
     }
+    // El FAB overlay usa un <Modal> que está cerrando justo cuando esta
+    // función arranca (onDismiss() fue llamado por la petal en el mismo
+    // tick). Si presentamos el image picker — otro <Modal> — antes de
+    // que el del FAB termine su dismiss, iOS descarta silenciosamente la
+    // segunda presentación. Esperamos a que terminen las animaciones
+    // pendientes antes de continuar.
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve())
+    })
     const rate = financeQuery.data?.usd_exchange_rate ?? 1000
     const defaultCategoryId =
       categoriesForImportQuery.data && categoriesForImportQuery.data.length > 0
