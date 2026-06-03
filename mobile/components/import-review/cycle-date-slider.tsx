@@ -11,8 +11,8 @@ import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
 
-const TILE_WIDTH = 52
-const TILE_HEIGHT = 68
+const TILE_WIDTH = 48
+const TILE_HEIGHT = 58
 const TILE_GAP = 6
 const TILE_TOTAL_WIDTH = TILE_WIDTH + TILE_GAP
 
@@ -213,15 +213,15 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
   },
   dayPill: {
-    minWidth: 36,
-    height: 32,
+    minWidth: 32,
+    height: 28,
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayNum: {
-    fontSize: 20,
+    fontSize: 17,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.4,
   },

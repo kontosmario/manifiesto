@@ -326,8 +326,8 @@ export function ImportReviewSheet({
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: 12, paddingBottom: 8 },
-  stepHost: { marginTop: 4 },
+  wrapper: { gap: 8, paddingBottom: 4 },
+  stepHost: { marginTop: 0 },
   unmatched: {
     fontSize: 12,
     fontWeight: '600',

@@ -145,6 +145,7 @@ export function ImportReviewRow({
           isActive={numpadVisible}
           onPress={handleOpenNumpad}
           label={row.kind === 'income' ? 'Monto del ingreso' : 'Monto'}
+          size="compact"
         />
         {row.source.appliedRate !== null ? (
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
@@ -167,18 +168,13 @@ export function ImportReviewRow({
       </RiseView>
 
       <RiseView delay={180}>
-        <View style={styles.field}>
-          <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-            Fecha
-          </Text>
-          <CycleDateSlider
-            value={row.date}
-            cycleStart={cycleStart}
-            cycleDays={cycleDays}
-            today={today}
-            onChange={(iso) => onPatch({ date: iso })}
-          />
-        </View>
+        <CycleDateSlider
+          value={row.date}
+          cycleStart={cycleStart}
+          cycleDays={cycleDays}
+          today={today}
+          onChange={(iso) => onPatch({ date: iso })}
+        />
       </RiseView>
 
       <RiseView delay={240}>
@@ -289,7 +285,7 @@ function CategorySection({
       selectedCategoryId={selectedCategoryId ?? ''}
       onSelect={onSelect}
       label="Categoría"
-      rows={2}
+      rows={1}
     />
   )
 }
@@ -362,7 +358,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 12,
-    gap: 12,
+    gap: 10,
   },
   skipCard: {
     borderRadius: 16,

@@ -130,17 +130,17 @@ export function ImportReviewFooter({
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: 10 },
+  stack: { gap: 6 },
   secondaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 4,
   },
-  secondaryBtn: { paddingVertical: 4, paddingHorizontal: 6 },
-  secondaryLabel: { fontSize: 13, fontWeight: '700' },
+  secondaryBtn: { paddingVertical: 2, paddingHorizontal: 6 },
+  secondaryLabel: { fontSize: 12, fontWeight: '700' },
   primary: {
-    minHeight: 52,
+    minHeight: 46,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

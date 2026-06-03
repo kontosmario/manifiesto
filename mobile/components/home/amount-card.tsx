@@ -23,9 +23,19 @@ interface AmountCardProps {
    *  to repurpose the card for income / goal amount onboarding steps
    *  while keeping the focus animation + visual format consistent. */
   label?: string
+  /** "default" keeps the add-expense hero presentation (54px font,
+   *  generous padding). "compact" trims to a wizard-friendly size where
+   *  the AmountCard shares a screen with five other inputs. */
+  size?: 'default' | 'compact'
 }
 
-export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: AmountCardProps) {
+export function AmountCard({
+  amount,
+  isActive,
+  onPress,
+  label = 'Monto',
+  size = 'default',
+}: AmountCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
@@ -89,7 +99,7 @@ export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: Amoun
       >
         <Animated.View
           style={[
-            styles.card,
+            size === 'compact' ? styles.cardCompact : styles.card,
             borderStyle,
             { backgroundColor: theme.colors.surface },
           ]}
@@ -103,7 +113,11 @@ export function AmountCard({ amount, isActive, onPress, label = 'Monto' }: Amoun
             </Animated.Text>
           </View>
           <Text
-            style={[typography.hero, styles.value, { color: theme.colors.text }]}
+            style={[
+              size === 'compact' ? typography.metricLarge : typography.hero,
+              size === 'compact' ? styles.valueCompact : styles.value,
+              { color: theme.colors.text },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
             allowFontScaling
@@ -127,6 +141,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 4,
   },
+  cardCompact: {
+    borderRadius: radii.xl,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 2,
+  },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -134,5 +154,8 @@ const styles = StyleSheet.create({
   },
   value: {
     letterSpacing: -2,
+  },
+  valueCompact: {
+    letterSpacing: -0.8,
   },
 })
