@@ -11,7 +11,6 @@ import Animated, {
   Easing,
   Extrapolation,
   FadeInDown,
-  FadeOutDown,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -30,9 +29,10 @@ import {
 } from '@/lib/motion/tokens'
 import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
+import { AddQuickActionIcon, type ActionKey } from './add-quick-action-icon'
 
 export interface QuickAction {
-  key: 'expense' | 'fixed' | 'income' | 'no-spend' | 'import'
+  key: ActionKey
   label: string
   icon: keyof typeof MaterialIcons.glyphMap
   onPress: () => void
@@ -40,13 +40,15 @@ export interface QuickAction {
    *  green to communicate "ya está hecho hoy" without removing it
    *  from the menu (so the user can toggle it off). */
   visualState?: 'default' | 'marked'
-  /** Accent color used to tint the icon on secondary tiles. The
-   *  primary tile ignores this — it's already brand-saturated. */
+  /** Accent color used to tint the icon on secondary rows. The
+   *  primary row ignores this — it's already brand-saturated. */
   accentColor?: string
   /** `'primary'` renders as the full-width top tile with brand fill;
-   *  `'secondary'` (default) renders in the 2×2 grid below. Exactly
-   *  one action should be marked primary per overlay. */
+   *  `'secondary'` (default) renders in the vertical list below. */
   tier?: 'primary' | 'secondary'
+  /** Optional one-line context shown under the primary label (e.g.
+   *  "lo más cargado"). Ignored on secondary rows. */
+  subtitle?: string
 }
 
 interface AddQuickActionsOverlayProps {
@@ -56,33 +58,32 @@ interface AddQuickActionsOverlayProps {
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
-// Card lives just above the FAB. Tab bar bottom (14) + tab bar
-// half (44) + FAB lift (18) + FAB radius (28) + gap (18) ≈ 122.
 const CARD_BOTTOM_OFFSET = 122
 const CARD_HORIZONTAL_MARGIN = 16
-const PRIMARY_TILE_HEIGHT = 76
-const SECONDARY_TILE_HEIGHT = 84
+const PRIMARY_TILE_HEIGHT = 84
+const SECONDARY_ROW_HEIGHT = 60
 
 /**
- * Hierarchical quick-actions card. Replaces the 5-petal radial fan
- * which felt disproportionate once the wizard import shipped — five
- * equal-sized petals gave the eye no hint about which action is the
- * default ("cargar un gasto"), and the labels crowded each other.
+ * Hierarchical FAB action menu. Replaces the legacy 5-petal radial
+ * fan + (briefly) a 2×2 card grid, both of which read as "identical
+ * card grid" once we had five actions. New composition:
  *
- * Layout, top to bottom:
- *   1. Tiny eyebrow ("¿QUÉ CARGÁS?").
- *   2. Primary tile (full-width, brand fill, biggest icon + label).
- *      Reserved for the most-used action — typically "Gasto".
- *   3. 2×2 grid of secondary tiles. Filled in caller order, left to
- *      right, top to bottom. Up to 4 secondaries cleanly; more wraps
- *      gracefully.
+ *   [eyebrow]
+ *   [PRIMARY full-width tile — brand fill, pulsing icon]
+ *   [vertical list of secondary rows — accent-tinted icons]
  *
- * Card enters anchored to the FAB: spring-driven scale (0.85→1) +
- * translateY (40→0) + opacity (0→1), so it reads as the FAB
- * "blooming" into a card rather than a sheet sliding from the bottom.
- * Tiles stagger in with FadeInDown over the card's expansion. Dismiss
- * uses a faster timing reverse so the user's tap returns focus to the
- * underlying screen without lingering chrome.
+ * Each row carries a signature entrance animation via `AddQuickActionIcon`
+ * so individual actions announce themselves (the "+" rotates in, the
+ * scanner pass sweeps, the trending-up arrow climbs, the leaf wiggles,
+ * the loop rotates). Combined with the tile-level FadeInDown stagger,
+ * opening the overlay becomes a tiny choreography moment instead of a
+ * generic "five buttons appear".
+ *
+ * Card bloom enters anchored to the FAB (spring scale 0.85→1,
+ * translateY 40→0, opacity 0→1) so it reads as the FAB unfurling.
+ * Exit uses timing (not a spring) to keep the Modal's touch-capture
+ * window short — the rest threshold on a critically-damped spring
+ * left the Modal grabbing taps long after the card was visually gone.
  */
 export function AddQuickActionsOverlay({
   visible,
@@ -93,10 +94,6 @@ export function AddQuickActionsOverlay({
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
   const [mounted, setMounted] = useState(false)
-  // Set right before triggering dismiss when the user taps a tile, so
-  // the next render's effect skips the spring and unmounts the overlay
-  // immediately. Selecting a tile hands focus off to the next route /
-  // sheet; a slow card retraction would just fight that animation.
   const skipNextExitRef = useRef(false)
 
   const primary = actions.find((a) => a.tier === 'primary') ?? null
@@ -117,10 +114,6 @@ export function AddQuickActionsOverlay({
       progress.value = 0
       setMounted(false)
     } else {
-      // Timing-based exit (not a spring) so the Modal unmounts in a
-      // known, short window — the rest threshold on a critically-
-      // damped spring leaves the Modal capturing touches long after
-      // the card is visually gone. Same pattern as the old fan.
       progress.value = withTiming(
         0,
         {
@@ -158,14 +151,13 @@ export function AddQuickActionsOverlay({
     action.onPress()
   }
 
-  // Each tile's `entering` delay so the staggered reveal accelerates
-  // top-to-bottom, primary first. Tied to wall clock (not progress)
-  // because Reanimated layout-anim presets don't read shared values —
-  // good enough since the card enter spring lasts ~280ms which the
-  // stagger fits inside.
-  const PRIMARY_DELAY = 60
-  const SECONDARY_STAGGER = 60
-  const SECONDARY_BASE_DELAY = 140
+  // Choreography timing: primary tile enters at 80ms, then each
+  // secondary at +70ms. The ActionIcon's signature animation runs
+  // with the SAME delay (offset from mount) so the icon's identity
+  // play lands just as the row's tile fade-in completes.
+  const PRIMARY_DELAY = 80
+  const SECONDARY_STAGGER = 70
+  const SECONDARY_BASE_DELAY = 180
 
   return (
     <Modal
@@ -190,7 +182,7 @@ export function AddQuickActionsOverlay({
           <View
             style={[
               StyleSheet.absoluteFill,
-              { backgroundColor: '#06120C', opacity: 0.44 },
+              { backgroundColor: '#06120C', opacity: 0.46 },
             ]}
           />
         </Animated.View>
@@ -223,6 +215,8 @@ export function AddQuickActionsOverlay({
             >
               <PrimaryTile
                 action={primary}
+                active={mounted}
+                signatureDelay={PRIMARY_DELAY + 60}
                 onSelect={handleTileSelect}
                 primaryColor={theme.colors.primary}
                 isDark={theme.isDark}
@@ -231,36 +225,41 @@ export function AddQuickActionsOverlay({
           ) : null}
 
           {secondaries.length > 0 ? (
-            <View style={styles.grid}>
-              {secondaries.map((action, idx) => (
-                <Animated.View
-                  key={action.key}
-                  style={styles.gridCell}
-                  entering={
-                    reduced
-                      ? undefined
-                      : FadeInDown.duration(motionDurations.standard)
-                          .delay(SECONDARY_BASE_DELAY + idx * SECONDARY_STAGGER)
-                          .easing(EASE_IOS)
-                  }
-                  exiting={
-                    reduced
-                      ? undefined
-                      : FadeOutDown.duration(motionDurations.quick).easing(
-                          EASE_IOS,
-                        )
-                  }
-                >
-                  <SecondaryTile
-                    action={action}
-                    onSelect={handleTileSelect}
-                    surfaceMuted={theme.colors.surfaceMuted}
-                    line={theme.colors.line}
-                    textColor={theme.colors.text}
-                    mutedColor={theme.colors.textMuted}
-                  />
-                </Animated.View>
-              ))}
+            <View
+              style={[
+                styles.list,
+                {
+                  borderColor: withAlpha(theme.colors.line, 0.55),
+                },
+              ]}
+            >
+              {secondaries.map((action, idx) => {
+                const rowDelay = SECONDARY_BASE_DELAY + idx * SECONDARY_STAGGER
+                return (
+                  <Animated.View
+                    key={action.key}
+                    entering={
+                      reduced
+                        ? undefined
+                        : FadeInDown.duration(motionDurations.standard)
+                            .delay(rowDelay)
+                            .easing(EASE_IOS)
+                    }
+                  >
+                    <SecondaryRow
+                      action={action}
+                      active={mounted}
+                      signatureDelay={rowDelay + 40}
+                      isLast={idx === secondaries.length - 1}
+                      onSelect={handleTileSelect}
+                      surfaceMuted={theme.colors.surfaceMuted}
+                      line={withAlpha(theme.colors.line, 0.55)}
+                      textColor={theme.colors.text}
+                      mutedColor={theme.colors.textMuted}
+                    />
+                  </Animated.View>
+                )
+              })}
             </View>
           ) : null}
         </Animated.View>
@@ -273,6 +272,8 @@ export function AddQuickActionsOverlay({
 
 interface PrimaryTileProps {
   action: QuickAction
+  active: boolean
+  signatureDelay: number
   onSelect: (a: QuickAction) => void
   primaryColor: string
   isDark: boolean
@@ -280,6 +281,8 @@ interface PrimaryTileProps {
 
 function PrimaryTile({
   action,
+  active,
+  signatureDelay,
   onSelect,
   primaryColor,
   isDark,
@@ -293,14 +296,14 @@ function PrimaryTile({
     action.visualState === 'marked'
       ? withAlpha(primaryColor, isDark ? 0.55 : 0.45)
       : primaryColor
-  // Foreground = darkest brand green on bright fills (legible across
-  // both themes). Mirrors the petal contrast from the legacy fan.
   const fg = isDark ? '#0E1B14' : '#0F2D06'
+  const iconBg = withAlpha(fg, 0.14)
 
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
         accessibilityLabel={action.label}
+        accessibilityHint={action.subtitle}
         accessibilityRole="button"
         onPress={() => onSelect(action)}
         onPressIn={() => {
@@ -324,25 +327,39 @@ function PrimaryTile({
           },
         ]}
       >
-        <View style={[styles.primaryIcon, { backgroundColor: withAlpha(fg, 0.12) }]}>
-          <MaterialIcons name={action.icon} size={26} color={fg} />
-        </View>
+        <AddQuickActionIcon
+          actionKey={action.key}
+          icon={action.icon}
+          size={28}
+          color={fg}
+          bgColor={iconBg}
+          delay={signatureDelay}
+          active={active}
+        />
         <View style={styles.primaryLabelCol}>
-          <Text
-            style={[styles.primaryLabel, { color: fg }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.primaryLabel, { color: fg }]} numberOfLines={1}>
             {action.label}
           </Text>
+          {action.subtitle ? (
+            <Text
+              style={[styles.primarySubtitle, { color: withAlpha(fg, 0.7) }]}
+              numberOfLines={1}
+            >
+              {action.subtitle}
+            </Text>
+          ) : null}
         </View>
-        <MaterialIcons name="arrow-forward" size={20} color={fg} />
+        <MaterialIcons name="arrow-forward" size={22} color={fg} />
       </Pressable>
     </Animated.View>
   )
 }
 
-interface SecondaryTileProps {
+interface SecondaryRowProps {
   action: QuickAction
+  active: boolean
+  signatureDelay: number
+  isLast: boolean
   onSelect: (a: QuickAction) => void
   surfaceMuted: string
   line: string
@@ -350,21 +367,24 @@ interface SecondaryTileProps {
   mutedColor: string
 }
 
-function SecondaryTile({
+function SecondaryRow({
   action,
+  active,
+  signatureDelay,
+  isLast,
   onSelect,
   surfaceMuted,
   line,
   textColor,
   mutedColor,
-}: SecondaryTileProps) {
+}: SecondaryRowProps) {
   const pressScale = useSharedValue(1)
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }))
 
   const accent = action.accentColor ?? mutedColor
-  const iconBg = withAlpha(accent, 0.16)
+  const iconBg = withAlpha(accent, 0.18)
   const isMarked = action.visualState === 'marked'
 
   return (
@@ -374,7 +394,7 @@ function SecondaryTile({
         accessibilityRole="button"
         onPress={() => onSelect(action)}
         onPressIn={() => {
-          pressScale.value = withTiming(0.97, {
+          pressScale.value = withTiming(0.98, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
           })
@@ -386,28 +406,34 @@ function SecondaryTile({
           })
         }}
         style={({ pressed }) => [
-          styles.secondaryTile,
+          styles.secondaryRow,
           {
-            backgroundColor: surfaceMuted,
-            borderColor: isMarked ? accent : line,
-            opacity: pressed ? 0.92 : 1,
+            backgroundColor: isMarked
+              ? withAlpha(accent, 0.08)
+              : pressed
+                ? surfaceMuted
+                : 'transparent',
+            borderBottomColor: line,
+            borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
           },
         ]}
       >
-        <View
-          style={[
-            styles.secondaryIcon,
-            { backgroundColor: iconBg },
-          ]}
-        >
-          <MaterialIcons name={action.icon} size={22} color={accent} />
-        </View>
+        <AddQuickActionIcon
+          actionKey={action.key}
+          icon={action.icon}
+          size={20}
+          color={accent}
+          bgColor={iconBg}
+          delay={signatureDelay}
+          active={active}
+        />
         <Text
           style={[styles.secondaryLabel, { color: textColor }]}
-          numberOfLines={2}
+          numberOfLines={1}
         >
           {action.label}
         </Text>
+        <MaterialIcons name="chevron-right" size={20} color={mutedColor} />
       </Pressable>
     </Animated.View>
   )
@@ -431,13 +457,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingTop: 14,
-    paddingBottom: 14,
+    paddingBottom: 10,
     gap: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.28,
-    shadowRadius: 24,
-    elevation: 18,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.32,
+    shadowRadius: 28,
+    elevation: 22,
   },
   eyebrow: {
     fontSize: 10,
@@ -454,56 +480,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.32,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  primaryIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.36,
+    shadowRadius: 18,
+    elevation: 12,
   },
   primaryLabelCol: {
     flex: 1,
     gap: 2,
   },
   primaryLabel: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  primarySubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  gridCell: {
-    width: '48.5%',
+  list: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  secondaryTile: {
-    minHeight: SECONDARY_TILE_HEIGHT,
-    borderRadius: 16,
-    borderWidth: 1,
+  secondaryRow: {
+    minHeight: SECONDARY_ROW_HEIGHT,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  secondaryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
+    paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 14,
   },
   secondaryLabel: {
-    fontSize: 13,
+    flex: 1,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: -0.2,
-    lineHeight: 16,
   },
 })
