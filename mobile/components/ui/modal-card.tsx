@@ -292,14 +292,20 @@ export function ModalCard({
               style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]}
             />
           </View>
-          <View style={styles.headerBlock}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-            {subtitle ? (
-              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-                {subtitle}
-              </Text>
-            ) : null}
-          </View>
+          {title !== '' || subtitle !== '' ? (
+            <View style={styles.headerBlock}>
+              {title !== '' ? (
+                <Text style={[styles.title, { color: theme.colors.text }]}>
+                  {title}
+                </Text>
+              ) : null}
+              {subtitle !== '' ? (
+                <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={styles.content}

@@ -4,24 +4,35 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface Props {
-  /** 1-indexed position of the wizard. */
+  /** 1-indexed position of the wizard, or the total when in summary. */
   stepIndex: number
   /** Total number of submittable + skipped rows. */
   total: number
   imageUri: string
+  mode?: 'edit' | 'summary'
 }
 
 /**
- * Slim wizard header — replaces the cinematic "Detecté N movimientos"
- * heading with a compact row designed to live above the step indicator.
- * The progress dots already say "5 movements detected"; this row's job
- * is just to anchor the user inside the flow ("Movimiento 2 de 5") and
- * keep the screenshot context visible while editing.
+ * Slim wizard header. Reads "Movimiento 2 de 5" while editing and flips
+ * to "Resumen final" copy on the summary step so the user never has to
+ * guess what surface they're on.
  */
-export function ImportReviewHeader({ stepIndex, total, imageUri }: Props) {
+export function ImportReviewHeader({
+  stepIndex,
+  total,
+  imageUri,
+  mode = 'edit',
+}: Props) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
   const headingEnter = reduced ? undefined : FadeIn.duration(200)
+
+  const eyebrow = mode === 'summary' ? 'Casi terminás' : 'Captura importada'
+  const title = (() => {
+    if (mode === 'summary') return 'Resumen final'
+    if (total <= 1) return 'Revisá el movimiento'
+    return `Movimiento ${stepIndex} de ${total}`
+  })()
 
   return (
     <Animated.View entering={headingEnter} style={styles.row}>
@@ -45,12 +56,10 @@ export function ImportReviewHeader({ stepIndex, total, imageUri }: Props) {
           style={[styles.eyebrow, { color: theme.colors.textMuted }]}
           numberOfLines={1}
         >
-          Captura importada
+          {eyebrow}
         </Text>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          {total <= 1
-            ? 'Revisá el movimiento'
-            : `Movimiento ${stepIndex} de ${total}`}
+          {title}
         </Text>
       </View>
     </Animated.View>

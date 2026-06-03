@@ -23,6 +23,7 @@ import { ImportReviewRow } from './import-review-row'
 import { ImportReviewFooter } from './import-review-footer'
 import { ImportReviewEmpty } from './import-review-empty'
 import { ImportReviewHeader } from './import-review-header'
+import { ImportReviewSummary } from './import-review-summary'
 import {
   ImportReviewStepIndicator,
   type StepStatus,
@@ -48,6 +49,14 @@ const STEP_EXIT_MS = 200
 const CONFIRM_FADE_MS = 220
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
+/**
+ * `stepIndex` lives on an extended index space:
+ *   [0, totalRows)        → per-movement editing
+ *   totalRows             → summary / confirm step
+ *
+ * Going past the last movement enters summary; tapping "Volver a editar"
+ * from the summary drops back into the last movement step.
+ */
 export function ImportReviewSheet({
   visible,
   initialState,
@@ -88,8 +97,11 @@ export function ImportReviewSheet({
   }, [initialState])
 
   const totalRows = controller.state.rows.length
-  const clampedStep = Math.min(stepIndex, Math.max(0, totalRows - 1))
-  const currentRow = controller.state.rows[clampedStep]
+  // stepIndex range: [0, totalRows]  — last index is the summary step.
+  const summaryIndex = totalRows
+  const isSummary = stepIndex >= summaryIndex && totalRows > 0
+  const editStep = Math.min(stepIndex, Math.max(0, totalRows - 1))
+  const currentRow = isSummary ? null : controller.state.rows[editStep]
   const invalidIdSet = useMemo(
     () => new Set(controller.invalidIds),
     [controller.invalidIds],
@@ -98,32 +110,33 @@ export function ImportReviewSheet({
   const statuses: StepStatus[] = useMemo(() => {
     return controller.state.rows.map((row, idx) => {
       if (row.kind === 'skip') return 'skipped'
+      if (isSummary) return 'done'
       if (invalidIdSet.has(row.id)) {
-        return idx === clampedStep ? 'current' : 'invalid'
+        return idx === editStep ? 'current' : 'invalid'
       }
-      if (idx === clampedStep) return 'current'
-      if (idx < clampedStep) return 'done'
+      if (idx === editStep) return 'current'
+      if (idx < editStep) return 'done'
       return 'pending'
     })
-  }, [controller.state.rows, invalidIdSet, clampedStep])
+  }, [controller.state.rows, invalidIdSet, editStep, isSummary])
 
   function goNext() {
-    if (clampedStep >= totalRows - 1) return
+    if (stepIndex >= summaryIndex) return
     directionRef.current = 'forward'
     void triggerHaptic('selection')
-    setStepIndex(clampedStep + 1)
+    setStepIndex(stepIndex + 1)
   }
 
   function goPrev() {
-    if (clampedStep <= 0) return
+    if (stepIndex <= 0) return
     directionRef.current = 'back'
     void triggerHaptic('selection')
-    setStepIndex(clampedStep - 1)
+    setStepIndex(stepIndex - 1)
   }
 
   function jumpTo(idx: number) {
-    if (idx === clampedStep) return
-    directionRef.current = idx > clampedStep ? 'forward' : 'back'
+    if (idx === stepIndex) return
+    directionRef.current = idx > stepIndex ? 'forward' : 'back'
     setStepIndex(idx)
   }
 
@@ -136,11 +149,12 @@ export function ImportReviewSheet({
     void triggerHaptic('warning')
     controller.skipRow(currentRow.id)
     // Auto-advance past a skipped row — the user said "this one is
-    // noise" so we move on. Last step stays put (nothing to advance to);
-    // the user reads the new state on screen and decides what to do.
-    if (clampedStep < totalRows - 1) {
+    // noise" so we move on. If we were already on the last movement,
+    // we jump straight into the summary so the wizard keeps moving
+    // forward — never feels stuck.
+    if (stepIndex < summaryIndex) {
       directionRef.current = 'forward'
-      setStepIndex(clampedStep + 1)
+      setStepIndex(stepIndex + 1)
     }
   }
 
@@ -236,28 +250,36 @@ export function ImportReviewSheet({
     }
   }
 
-  // Build a stable key per step that ALSO bakes in row.id — if the user
-  // skips a row mid-flow and the controller reorders/changes it, we
-  // still re-mount cleanly. Direction is captured by entering/exiting.
-  const stepKey = currentRow
-    ? `${clampedStep}-${currentRow.id}`
-    : `step-${clampedStep}`
+  // Stable key per step so the entering/exiting transition fires on
+  // every navigation. Bakes in row.id (or "summary") so unrelated
+  // re-renders never trigger an unwanted slide animation.
+  const stepKey = isSummary
+    ? 'summary'
+    : currentRow
+      ? `${editStep}-${currentRow.id}`
+      : `step-${editStep}`
 
-  const wizardFooter = currentRow ? (
-    <ImportReviewFooter
-      stepIndex={clampedStep}
-      totalSteps={totalRows}
-      expensesCount={controller.submittableBreakdown.expenses}
-      incomesCount={controller.submittableBreakdown.incomes}
-      canConfirm={controller.canConfirm}
-      isCurrentSkipped={currentRow.kind === 'skip'}
-      busy={busy}
-      onPrev={goPrev}
-      onNext={goNext}
-      onSkip={handleSkipToggle}
-      onConfirm={handleConfirmAttempt}
-    />
-  ) : undefined
+  const headerLabel = isSummary
+    ? totalRows
+    : editStep + 1
+
+  const wizardFooter =
+    totalRows > 0 ? (
+      <ImportReviewFooter
+        stepIndex={stepIndex}
+        totalSteps={totalRows}
+        isSummary={isSummary}
+        expensesCount={controller.submittableBreakdown.expenses}
+        incomesCount={controller.submittableBreakdown.incomes}
+        canConfirm={controller.canConfirm}
+        isCurrentSkipped={currentRow?.kind === 'skip'}
+        busy={busy}
+        onPrev={goPrev}
+        onNext={goNext}
+        onSkip={handleSkipToggle}
+        onConfirm={handleConfirmAttempt}
+      />
+    ) : undefined
 
   return (
     <ModalCard
@@ -272,29 +294,38 @@ export function ImportReviewSheet({
       ) : (
         <View style={styles.wrapper}>
           <ImportReviewHeader
-            stepIndex={clampedStep + 1}
+            stepIndex={headerLabel}
             total={totalRows}
             imageUri={controller.state.imageUri}
+            mode={isSummary ? 'summary' : 'edit'}
           />
           <ImportReviewStepIndicator statuses={statuses} />
 
           <View style={styles.stepHost}>
-            {currentRow ? (
-              <Animated.View
-                key={stepKey}
-                entering={
-                  directionRef.current === 'forward'
-                    ? FadeInRight.duration(STEP_ENTER_MS).easing(EASE_IOS)
-                    : FadeInLeft.duration(STEP_ENTER_MS).easing(EASE_IOS)
-                }
-                exiting={
-                  fadingOut
-                    ? FadeOutUp.duration(CONFIRM_FADE_MS).easing(EASE_IOS)
-                    : directionRef.current === 'forward'
-                      ? FadeOutLeft.duration(STEP_EXIT_MS).easing(EASE_IOS)
-                      : FadeOutRight.duration(STEP_EXIT_MS).easing(EASE_IOS)
-                }
-              >
+            <Animated.View
+              key={stepKey}
+              entering={
+                directionRef.current === 'forward'
+                  ? FadeInRight.duration(STEP_ENTER_MS).easing(EASE_IOS)
+                  : FadeInLeft.duration(STEP_ENTER_MS).easing(EASE_IOS)
+              }
+              exiting={
+                fadingOut
+                  ? FadeOutUp.duration(CONFIRM_FADE_MS).easing(EASE_IOS)
+                  : directionRef.current === 'forward'
+                    ? FadeOutLeft.duration(STEP_EXIT_MS).easing(EASE_IOS)
+                    : FadeOutRight.duration(STEP_EXIT_MS).easing(EASE_IOS)
+              }
+            >
+              {isSummary ? (
+                <ImportReviewSummary
+                  rows={controller.state.rows}
+                  categories={categories}
+                  expensesCount={controller.submittableBreakdown.expenses}
+                  incomesCount={controller.submittableBreakdown.incomes}
+                  skippedCount={controller.skippedCount}
+                />
+              ) : currentRow ? (
                 <ImportReviewRow
                   row={currentRow}
                   categories={categories}
@@ -310,11 +341,11 @@ export function ImportReviewSheet({
                   }
                   onUnskip={() => controller.unskipRow(currentRow.id)}
                 />
-              </Animated.View>
-            ) : null}
+              ) : null}
+            </Animated.View>
           </View>
 
-          {controller.state.unmatched > 0 ? (
+          {controller.state.unmatched > 0 && !isSummary ? (
             <Text style={[styles.unmatched, { color: theme.colors.textMuted }]}>
               {`${controller.state.unmatched} líneas no se pudieron clasificar.`}
             </Text>

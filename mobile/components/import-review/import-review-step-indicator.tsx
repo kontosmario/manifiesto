@@ -3,9 +3,10 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -24,9 +25,9 @@ const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
  * glance at the strip and see what's done, what's flagged, what's still
  * pending — no need to step through to find issues.
  *
- * Heights flatten/swell based on whether the segment is "current" so
- * the eye is pulled to the active step without leaning on color alone
- * (a11y-friendly).
+ * On `current → done` transition the segment briefly swells + flashes
+ * to ack the forward motion. Subtle but enough that a confused user
+ * gets a "yep, I just moved forward" signal beyond the slide animation.
  */
 export function ImportReviewStepIndicator({ statuses }: Props) {
   if (statuses.length <= 1) return null
@@ -43,6 +44,11 @@ function Segment({ status }: { status: StepStatus }) {
   const { theme } = useAppTheme()
   const fillProgress = useSharedValue(toFill(status))
   const heightProgress = useSharedValue(status === 'current' ? 1 : 0)
+  // Brief celebratory bump when the segment transitions from "current"
+  // to "done". Combined with the slide-in of the next step it tells the
+  // user "this one's locked in" — confidence-building for the timid.
+  const advancePulse = useSharedValue(0)
+  const prevStatusRef = useRef<StepStatus>(status)
 
   useEffect(() => {
     fillProgress.value = withTiming(toFill(status), {
@@ -53,12 +59,26 @@ function Segment({ status }: { status: StepStatus }) {
       duration: motionDurations.quick,
       easing: EASE_IOS,
     })
-  }, [status, fillProgress, heightProgress])
+
+    if (prevStatusRef.current === 'current' && status === 'done') {
+      advancePulse.value = withSequence(
+        withTiming(1, {
+          duration: motionDurations.micro,
+          easing: EASE_IOS,
+        }),
+        withTiming(0, {
+          duration: motionDurations.standard,
+          easing: EASE_IOS,
+        }),
+      )
+    }
+    prevStatusRef.current = status
+  }, [status, fillProgress, heightProgress, advancePulse])
 
   const animatedStyle = useAnimatedStyle(() => ({
-    // 4px when inactive, 6px when current — subtle swell to mark focus.
-    height: 4 + heightProgress.value * 2,
-    opacity: 0.35 + fillProgress.value * 0.65,
+    // 4px when inactive, 6px when current, briefly 8px on advance pulse.
+    height: 4 + heightProgress.value * 2 + advancePulse.value * 2,
+    opacity: Math.min(1, 0.35 + fillProgress.value * 0.65 + advancePulse.value * 0.3),
   }))
 
   const color = (() => {
