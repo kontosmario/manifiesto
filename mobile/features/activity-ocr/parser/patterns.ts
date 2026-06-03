@@ -34,13 +34,19 @@ export const RE_DATE_NUMERIC = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/
  *   - `- $65.600`                       → Mercado Pago, $-tras-signo
  *   - `$ -5.000,00` / `$ 3,03`          → Francés, $-antes-de-signo, signo opcional
  *   - `+ $8,14`                         → Macro, signo + $ + número
+ *   - `- $ 35.000,00`                   → Provincia, signo + espacio + $
+ *   - `-$200.000,00` / `$200.000,00`    → Santander, signo pegado a $
+ *
+ * Anclado con `^...$` para evitar falsos positivos en descripciones
+ * largas que tienen `-` entre dígitos (ej. "PERIODO DESDE 24-04-2026
+ * HASTA 22-05-2026" en Provincia ACREDITACION INTERESES).
  *
  * Este regex se usa SOLO como filtro ("esta línea es un monto, no la
  * elijas como merchant"). La parsing real la hace `parseAmount` en
  * classify.ts con lógica más cuidada porque las capturas varían.
  */
 export const RE_AMOUNT =
-  /(?:[+\-−]\s*\$?\s*[\d.,]+(?:\s*[A-Za-z]{2,5})?|\$\s*[+\-−]?\s*[\d.,]+)/
+  /^\s*(?:[+\-−]\s*\$?\s*[\d.,]+(?:\s*[A-Za-z]{2,5})?|\$\s*[+\-−]?\s*[\d.,]+)\s*$/
 
 /**
  * Header de sección sin monto. Acepta:

@@ -200,38 +200,44 @@ describe('parseActivityLines — Mercado Pago format', () => {
     expect(result.unmatched).toEqual([])
     expect(result.transactions).toHaveLength(6)
 
+    // Nota: tras el cambio a "join all merchant-candidate lines"
+    // para soportar descripciones multi-línea de Santander/Provincia,
+    // los merchants de Mercado Pago incluyen el tipo (Compra /
+    // Transferencia enviada) y la cuenta (Mastercard crédito / Visa
+    // crédito) joineadas con espacios. Es verbose pero accurate; la
+    // UI de Phase D permitirá al user limpiarlos antes de guardar.
     expect(result.transactions[0]).toMatchObject({
-      merchant: 'Rio Uruguay Seguros',
+      merchant: 'Rio Uruguay Seguros Compra Mastercard crédito',
       section: '31 de mayo',
       date: '2026-05-31',
       primaryAmount: { value: 65600, currency: 'ARS', sign: -1 },
     })
     expect(result.transactions[1]).toMatchObject({
-      merchant: 'Claudia Beatriz Cardozo',
+      merchant: 'Claudia Beatriz Cardozo Transferencia enviada Mastercard crédito',
       section: '30 de mayo',
       date: '2026-05-30',
       primaryAmount: { value: 16048.5, currency: 'ARS', sign: -1 },
     })
     expect(result.transactions[2]).toMatchObject({
-      merchant: 'Mercado Libre',
+      merchant: 'Mercado Libre Compra Visa crédito',
       section: '30 de mayo',
       date: '2026-05-30',
       primaryAmount: { value: 508300, currency: 'ARS', sign: -1 },
     })
     expect(result.transactions[3]).toMatchObject({
-      merchant: 'Ludmila Sandra Anagua Chacon',
+      merchant: 'Ludmila Sandra Anagua Chacon Transferencia enviada Mastercard crédito',
       section: '30 de mayo',
       date: '2026-05-30',
       primaryAmount: { value: 51355.2, currency: 'ARS', sign: -1 },
     })
     expect(result.transactions[4]).toMatchObject({
-      merchant: 'Karla Belen Lencina Casabonne',
+      merchant: 'Karla Belen Lencina Casabonne Transferencia enviada Mastercard crédito',
       section: '29 de mayo',
       date: '2026-05-29',
       primaryAmount: { value: 12478.24, currency: 'ARS', sign: -1 },
     })
     expect(result.transactions[5]).toMatchObject({
-      merchant: 'Rodriguez Daniel Alejandro',
+      merchant: 'Rodriguez Daniel Alejandro Transferencia enviada',
       section: '25 de mayo',
       date: '2026-05-25',
       primaryAmount: { value: 20000, currency: 'ARS', sign: -1 },
@@ -351,6 +357,107 @@ describe('parseActivityLines — Banco Francés format', () => {
       section: '01 de junio de 2026',
       date: '2026-06-01',
       primaryAmount: { value: 7299.75, currency: 'ARS', sign: -1 },
+    })
+  })
+})
+
+describe('parseActivityLines — Banco Provincia format', () => {
+  // Provincia tiene:
+  //   - SIN section headers (solo transactions con per-row date)
+  //   - Fecha DD/MM al top de cada row (sin año)
+  //   - Amount con `- $ 35.000,00` (signo + espacio + $ + número) o
+  //     `$ 50.000,00` ($ + número, sin signo = positivo)
+  //   - Descripción multi-línea debajo de la fecha (full-width)
+
+  it('parsea sin sections + amounts $-with-space + descripciones multi-línea', () => {
+    const lines: Line[] = [
+      // tx 1 — DEBITO DEBIN (descripción 1 línea)
+      mk('28/05', 100, 50, 80, 35),
+      mk('- $ 35.000,00', 100, 900, 250, 45),
+      mk('DEBITO DEBIN DB.DEBIN 28/05-S.064925 C:20236622445', 160, 50, 850, 40),
+      // tx 2 — CREDITO TRASPASO (descripción 2 líneas)
+      mk('28/05', 320, 50, 80, 35),
+      mk('$ 50.000,00', 320, 900, 220, 45),
+      mk('CREDITO TRASPASO CAJERO AUTOM. TRANSF DE', 380, 50, 700, 40),
+      mk('CONTI/ARIEL ALFREDO (20207008142) VAR', 425, 50, 600, 40),
+      // tx 3 — ACREDITACION INTERESES (positivo $-first sin signo)
+      mk('26/05', 580, 50, 80, 35),
+      mk('$ 11,23', 580, 900, 130, 45),
+      mk('ACREDITACION INTERESES ACREDIT. INTERESES', 640, 50, 700, 40),
+      mk('PERIODO DESDE 24-04-2026 HASTA 22-05-2026', 685, 50, 700, 40),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(3)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'DEBITO DEBIN DB.DEBIN 28/05-S.064925 C:20236622445',
+      section: null,
+      date: '2026-05-28',
+      primaryAmount: { value: 35000, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'CREDITO TRASPASO CAJERO AUTOM. TRANSF DE CONTI/ARIEL ALFREDO (20207008142) VAR',
+      date: '2026-05-28',
+      primaryAmount: { value: 50000, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'ACREDITACION INTERESES ACREDIT. INTERESES PERIODO DESDE 24-04-2026 HASTA 22-05-2026',
+      date: '2026-05-26',
+      primaryAmount: { value: 11.23, currency: 'ARS', sign: 1 },
+    })
+  })
+})
+
+describe('parseActivityLines — Banco Santander format', () => {
+  // Santander tiene:
+  //   - Sin section headers de fecha (sólo "Mov. Últimos 7 días" como label)
+  //   - Fecha DD/MM/YY (año 2 dígitos = 20YY)
+  //   - Amount tipo `-$200.000,00` (signo pegado a $) o `$200.000,00`
+  //     (sin signo = positivo)
+  //   - Concepto en 2 líneas: tipo + ID/sub-descripción
+
+  it('parsea fechas DD/MM/YY + amounts -$ y conceptos multi-línea', () => {
+    const lines: Line[] = [
+      // tx 1 — Debito debin (negativo)
+      mk('02/06/26', 100, 50, 110, 35),
+      mk('Debito debin', 100, 220, 200, 45),
+      mk('Id Debin 0v1jxon1lg6lgd0g...', 145, 240, 280, 35),
+      mk('-$200.000,00', 100, 900, 220, 45),
+      // tx 2 — Transf recibida cvu (positivo, sin signo)
+      mk('01/06/26', 290, 50, 110, 35),
+      mk('Transf recibida cvu dif titular', 290, 220, 400, 45),
+      mk('De Lucas Dario Palacio / Mer...', 335, 240, 380, 35),
+      mk('$200.000,00', 290, 900, 200, 45),
+      // tx 3 — Compra con tarjeta de debito (negativo)
+      mk('30/05/26', 480, 50, 110, 35),
+      mk('Compra con tarjeta de debito', 480, 220, 380, 45),
+      mk('Pago Tc Cenco - Tarj Nro. 3322', 525, 240, 380, 35),
+      mk('-$174.856,53', 480, 900, 230, 45),
+    ]
+
+    const result = parseActivityLines(lines, IMAGE_WIDTH, { defaultYear: 2026 })
+
+    expect(result.unmatched).toEqual([])
+    expect(result.transactions).toHaveLength(3)
+
+    expect(result.transactions[0]).toMatchObject({
+      merchant: 'Debito debin Id Debin 0v1jxon1lg6lgd0g...',
+      section: null,
+      date: '2026-06-02',
+      primaryAmount: { value: 200000, currency: 'ARS', sign: -1 },
+    })
+    expect(result.transactions[1]).toMatchObject({
+      merchant: 'Transf recibida cvu dif titular De Lucas Dario Palacio / Mer...',
+      date: '2026-06-01',
+      primaryAmount: { value: 200000, currency: 'ARS', sign: 1 },
+    })
+    expect(result.transactions[2]).toMatchObject({
+      merchant: 'Compra con tarjeta de debito Pago Tc Cenco - Tarj Nro. 3322',
+      date: '2026-05-30',
+      primaryAmount: { value: 174856.53, currency: 'ARS', sign: -1 },
     })
   })
 })

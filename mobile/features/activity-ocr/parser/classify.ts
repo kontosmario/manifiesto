@@ -45,13 +45,19 @@ export function classify(
   const dateLine =
     left.find((l) => RE_DATE.test(l.text) || RE_DATE_NUMERIC.test(l.text)) ?? null
 
-  // Merchant: la primera línea de la columna izquierda que no es ni
-  // fecha, ni amount, ni section header.
-  const merchantLine =
-    left.find(
-      (l) =>
-        l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
-    ) ?? null
+  // Merchant: TODAS las líneas no-fecha, no-amount, no-section de la
+  // columna izquierda, unidas con espacio. Esto preserva descripciones
+  // multi-línea (Santander concepto, Provincia transferencias) sin
+  // perder texto. Para apps que tienen líneas extra como metadata
+  // (Mercado Pago: tipo + cuenta debajo del merchant), el join produce
+  // un merchant verboso pero accurate — Phase D's UI permite editar.
+  const merchantLines = left.filter(
+    (l) =>
+      l !== dateLine && !RE_AMOUNT.test(l.text) && !RE_SECTION.test(l.text),
+  )
+  // left ya está ordenado por Y arriba, así que merchantLines mantiene
+  // el orden top-down.
+  const merchantText = merchantLines.map((l) => l.text.trim()).join(' ')
 
   const amounts = right
     .slice()
@@ -62,7 +68,7 @@ export function classify(
   if (amounts.length === 0) return null
 
   return {
-    merchant: merchantLine?.text.trim() ?? '',
+    merchant: merchantText,
     date: dateLine ? rowDateToISO(dateLine.text, defaultYear) : null,
     section: null,
     primaryAmount: amounts[0],
