@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
@@ -311,47 +310,11 @@ function CategorySection({
   onSelect: (id: string) => void
   warning?: boolean
 }) {
-  const { theme } = useAppTheme()
   if (categories.length === 0) return null
-  // When the row has been flagged as missing a category, wrap the rail
-  // in a warning-bordered container. Subtle inset padding keeps the
-  // rail's own grid intact; the warning border sits OUTSIDE the rail's
-  // chrome so we don't have to extend CategoryHorizontalRail itself.
-  if (warning) {
-    return (
-      <View
-        style={[
-          styles.categoryWarnWrap,
-          {
-            borderColor: theme.colors.warning,
-            // Soft tint of the warning hue — keeps the rail's tiles
-            // legible while giving the section a "needs attention"
-            // wash. ~10% alpha is enough to be felt without competing
-            // with the icon tiles' colors.
-            backgroundColor: withAlpha(theme.colors.warning, 0.08),
-          },
-        ]}
-      >
-        <View style={styles.categoryWarnHeader}>
-          <MaterialIcons
-            name="error-outline"
-            size={14}
-            color={theme.colors.warning}
-          />
-          <Text style={[styles.categoryWarnLabel, { color: theme.colors.warning }]}>
-            Elegí una categoría
-          </Text>
-        </View>
-        <CategoryHorizontalRail
-          categories={categories.slice()}
-          selectedCategoryId={selectedCategoryId ?? ''}
-          onSelect={onSelect}
-          label=""
-          rows={1}
-        />
-      </View>
-    )
-  }
+  // Render the rail flat — `warning` only swaps its label color + text
+  // ("Elegí una categoría") via the rail's own animated style. No
+  // wrapper that would change the section's layout height when the
+  // warning state toggles. Subtle, smooth, no jump.
   return (
     <CategoryHorizontalRail
       categories={categories.slice()}
@@ -359,6 +322,7 @@ function CategorySection({
       onSelect={onSelect}
       label="Categoría"
       rows={1}
+      warning={warning}
     />
   )
 }
@@ -492,22 +456,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   kindLabel: { fontSize: 12, fontWeight: '700' },
-  categoryWarnWrap: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 10,
-    gap: 8,
-  },
-  categoryWarnHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  categoryWarnLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
 })

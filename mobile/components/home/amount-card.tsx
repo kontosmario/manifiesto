@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -46,6 +47,7 @@ export function AmountCard({
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const activeProgress = useSharedValue(isActive ? 1 : 0)
+  const warningProgress = useSharedValue(warning ? 1 : 0)
 
   useEffect(() => {
     const target = isActive ? 1 : 0
@@ -54,24 +56,49 @@ export function AmountCard({
       : withTiming(target, { duration: motionDurations.standard })
   }, [isActive, reduceMotion, activeProgress])
 
+  // Soft glide into/out of warning — iOS-cubic ease at standard duration
+  // so the tint slides in instead of snapping. Same curve the focus
+  // animation uses for visual continuity.
+  useEffect(() => {
+    warningProgress.value = reduceMotion
+      ? (warning ? 1 : 0)
+      : withTiming(warning ? 1 : 0, {
+          duration: motionDurations.standard,
+          easing: Easing.bezier(0.32, 0.72, 0, 1),
+        })
+  }, [warning, reduceMotion, warningProgress])
+
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }))
 
-  // Active focus border tracks `theme.colors.primary` so dark mode gets
-  // the bright accent (brand.bright) and light mode gets the deep green
-  // (brand.deep). When `warning` is set the rest + active targets both
-  // swap to the warning hue.
-  const restColor = warning ? theme.colors.warning : theme.colors.border
-  const activeColor = warning ? theme.colors.warning : theme.colors.primary
-  const borderStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
+  // `borderWidth` ONLY follows focus (1 → 2 active). Warning never
+  // resizes the card — the user pushed back on layout shifts during
+  // the validation state. The border color blends via nested
+  // `interpolateColor`: focus picks between line/primary in normal
+  // mode, focus picks between warning/warning in warning mode, then
+  // `warningProgress` lerps between the two results.
+  const borderStyle = useAnimatedStyle(() => {
+    'worklet'
+    const normalColor = interpolateColor(
       activeProgress.value,
       [0, 1],
-      [restColor, activeColor],
-    ),
-    borderWidth: warning ? 1.5 : 1 + activeProgress.value,
-  }))
+      [theme.colors.border, theme.colors.primary],
+    )
+    const warnColor = interpolateColor(
+      activeProgress.value,
+      [0, 1],
+      [theme.colors.warning, theme.colors.warning],
+    )
+    return {
+      borderColor: interpolateColor(
+        warningProgress.value,
+        [0, 1],
+        [normalColor, warnColor],
+      ),
+      borderWidth: 1 + activeProgress.value,
+    }
+  })
 
   const hintStyle = useAnimatedStyle(() => ({
     opacity: 1 - activeProgress.value,
