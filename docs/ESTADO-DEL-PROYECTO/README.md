@@ -43,7 +43,7 @@ docs/ESTADO-DEL-PROYECTO/
 
 | Fecha | Doc | Cubre |
 |---|---|---|
-| 2026-06-04 | [`2026-06-04-gastos-cronologia-fixes-shipped.md`](2026-06-04-gastos-cronologia-fixes-shipped.md) | Pulido del listado Gastos: fix today/yesterday at bottom (day-of-month sort bleed), income visualization aligned to expense row chrome via new `IncomeRow` (3 iteraciones), section header polish, animation re-fire fix, delete crash defensive guards — 6 commits |
+| 2026-06-04 | [`2026-06-04-gastos-cronologia-fixes-shipped.md`](2026-06-04-gastos-cronologia-fixes-shipped.md) | Pulido del listado Gastos: fix today/yesterday at bottom (day-of-month sort bleed), income visualization aligned to expense row chrome via new `IncomeRow` (3 iteraciones), section header polish, animation re-fire fix, delete crash defensive guards — 6 commits. + Fix encadenado del badge de variación en Fijos (2 bugs: fórmula post-payment + cap del snapshot ocultaba pagos viejos), nuevo `useCommitmentExpenses` query dedicado — 2 commits |
 | 2026-06-03 | [`2026-06-03-activity-ocr-shipped.md`](2026-06-03-activity-ocr-shipped.md) | Activity OCR + Import Review wizard (Phases A-D + wizard refactor + cross-form validation pattern rollout) — 73 commits, 8 bancos soportados, 4 forms migrados al patrón de validación nuevo |
 | 2026-06-02 | [`2026-06-02-plans-ui-redesign-shipped.md`](2026-06-02-plans-ui-redesign-shipped.md) | Redesign del Plans / Billing screen |
 | 2026-06-01 | [`2026-06-01-no-spend-day-feature-shipped.md`](2026-06-01-no-spend-day-feature-shipped.md) | "Día sin gasto" feature |

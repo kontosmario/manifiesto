@@ -287,7 +287,32 @@ export function summarizeFijos(input: {
       const historyPrices = historyByCommitment.get(i.id) ?? []
       const currentAmount = Number(i.amount ?? 0)
       const priceHistory = [...historyPrices, currentAmount]
-      const prev = historyPrices[historyPrices.length - 1]
+      // `prev` semantics: the price we compare `currentAmount` against
+      // when computing the trend delta. Two cases coexist on a fijo
+      // depending on whether the user has paid at the current price
+      // yet:
+      //
+      //   1. **Pending price change** — fijo.amount was updated (via
+      //      the editor or RPC override) but the user hasn't recorded
+      //      a payment at that new price yet. `currentAmount` ≠ last
+      //      historical payment → compare against the last payment so
+      //      the badge reads "+X% pending since last payment".
+      //
+      //   2. **Just paid** — the most recent payment was recorded at
+      //      `currentAmount` (the RPC sets fijo.amount to the override
+      //      AND inserts an expense at that price). The last entry in
+      //      `historyPrices` equals `currentAmount`. The user wants to
+      //      see "+X% vs prior payment" on the row, not 0% — so we
+      //      compare against the PENULTIMATE historical payment.
+      //
+      // Threshold for "matches the last payment": within $1 to absorb
+      // floating-point noise on percentage overrides.
+      const lastPaymentPrice = historyPrices[historyPrices.length - 1] ?? null
+      const penultimatePaymentPrice = historyPrices[historyPrices.length - 2] ?? null
+      const isJustPaid =
+        lastPaymentPrice != null &&
+        Math.abs(currentAmount - lastPaymentPrice) < 1
+      const prev = isJustPaid ? penultimatePaymentPrice : lastPaymentPrice
       const trendDeltaPct =
         prev != null && prev > 0 && currentAmount > 0
           ? Math.round(((currentAmount - prev) / prev) * 100)

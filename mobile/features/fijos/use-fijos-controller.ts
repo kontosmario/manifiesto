@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
-import { useExpenses } from '@/features/expenses/use-expenses'
+import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
@@ -96,7 +96,11 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const financeQuery = useFamilyFinance(familyId)
-  const expensesQuery = useExpenses(familyId)
+  // Histórico de pagos de fijos sin pasar por el cap del `home_snapshot`
+  // — necesario para que el badge de variación de precio compare contra
+  // el pago anterior real, incluso cuando la familia tiene mucho gasto
+  // variable en el medio.
+  const commitmentExpensesQuery = useCommitmentExpenses(familyId)
 
   const itemsData = fixedExpensesQuery.data
   const items = useMemo(() => itemsData ?? [], [itemsData])
@@ -122,7 +126,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     return summarizeFijos({
       items,
       paymentsThisCycle: paymentsQuery.data ?? [],
-      commitmentExpenses: expensesQuery.data ?? [],
+      commitmentExpenses: commitmentExpensesQuery.data ?? [],
       categoriesById,
       today,
       cycleStart: cycle.start,
@@ -133,7 +137,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   }, [
     items,
     paymentsQuery.data,
-    expensesQuery.data,
+    commitmentExpensesQuery.data,
     categoriesById,
     today,
     cycle.start,

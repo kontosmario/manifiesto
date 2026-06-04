@@ -10,6 +10,7 @@ import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import {
   createExpense,
   deleteExpense,
+  loadCommitmentExpenses,
   loadExpenses,
   updateExpense,
   type CreateExpenseInput,
@@ -33,6 +34,7 @@ export type {
 
 export const expensesQueryKey = expenseQueryKeys.list
 export const recentExpensesQueryKey = expenseQueryKeys.recent
+export const commitmentExpenseHistoryKey = expenseQueryKeys.commitmentHistory
 
 export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
@@ -49,6 +51,44 @@ export function useExpenses(familyId?: string, categoryId?: string) {
       }
 
       return loadExpenses(familyId, { categoryId })
+    },
+  })
+}
+
+/**
+ * Histórico de pagos de fijos — todos los expenses con `commitment_id`
+ * no-null, sin pasar por el cap del `home_snapshot` (120 filas) que
+ * cortaba pagos viejos cuando había mucho volumen de gasto variable en
+ * el medio.
+ *
+ * Por qué un query dedicado en lugar de levantar el cap del snapshot:
+ * el snapshot debe seguir siendo liviano (cold start de Home), y los
+ * pagos de fijos crecen ~linealmente con el tiempo (no con el volumen
+ * de gastos variables). Una familia con 10 fijos activos x 12 meses
+ * acumula ~120 rows — el dataset es bounded y barato de fetchear.
+ *
+ * Consumido por `useFijosController` para que `summarizeFijos` pueda
+ * comparar el pago actual de cada fijo contra el penúltimo registrado
+ * (necesario para el badge de variación de precio, ej. "Seguro auto
+ * −56% vs mes pasado"). Sin esto, el badge desaparecía silenciosamente
+ * cuando el cap dejaba afuera el pago anterior.
+ *
+ * Cache key bajo el prefijo `expenseQueryKeys.family(familyId)`, así
+ * `syncAllAfterMutation({ scopes: ['expenses'|'fixedPayment'] })` lo
+ * invalida automáticamente sin tener que mantenerlo a mano.
+ */
+export function useCommitmentExpenses(familyId?: string) {
+  return useQuery<Expense[]>({
+    queryKey: commitmentExpenseHistoryKey(familyId),
+    enabled: Boolean(familyId),
+    // Mismo staleTime que `useExpenses` — los pagos de fijos los crea
+    // `record_fixed_expense_payment`, que dispara `expenses`/`fixedPayment`
+    // en `syncAllAfterMutation` y por tanto invalida este key vía el
+    // prefijo `expenseQueryKeys.family`.
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      if (!familyId) return []
+      return loadCommitmentExpenses(familyId)
     },
   })
 }
@@ -205,21 +245,29 @@ function patchPaginatedPrepend(
     )
   }
 
-  // For-day cache: only the bucket for the row's local day. The key
-  // shape is ['gastos-expenses-for-day', familyId, isoDate, categoryId].
-  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+  // For-day cache: only the bucket for the row's local day. El key
+  // shape es ['gastos-expenses-for-day', familyId, isoDate, categoryId].
+  //
+  // OJO con la shape: `useGastosExpensesForDay` queryFn devuelve
+  // `GastosExpenseRow[]` directo (NO `{ expenses: GastosExpenseRow[] }`
+  // — el RPC devuelve la wrapper pero el queryFn la deshace antes de
+  // setear el cache). Si tratamos current como un object wrapper, el
+  // `...current` spreadea el array como índices numéricos y deja un
+  // mutante `{0, 1, ..., expenses: [...]}` que crashea el próximo
+  // `.map`. Bug que tuvo el cache corrupto en familias con muchas
+  // visitas a day-detail (regresión introducida en c56df7d).
+  for (const [key] of qc.getQueriesData<GastosExpenseRow[]>({
     queryKey: gastosEndpointKeys.forDayFamily(familyId),
   })) {
     const isoDate = key[2] as string | undefined
     if (!isoDate) continue
     const rowDay = optimistic.created_at.slice(0, 10)
     if (isoDate !== rowDay) continue
-    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+    qc.setQueryData<GastosExpenseRow[] | undefined>(
       key,
       (current) => {
-        if (!current) return current
-        const existing = Array.isArray(current.expenses) ? current.expenses : []
-        return { ...current, expenses: [row, ...existing] }
+        if (!Array.isArray(current)) return current
+        return [row, ...current]
       },
     )
   }
@@ -259,19 +307,15 @@ function patchPaginatedRemove(
       },
     )
   }
-  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+  // For-day cache: array shape, ver nota en `patchPaginatedPrepend`.
+  for (const [key] of qc.getQueriesData<GastosExpenseRow[]>({
     queryKey: gastosEndpointKeys.forDayFamily(familyId),
   })) {
-    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+    qc.setQueryData<GastosExpenseRow[] | undefined>(
       key,
       (current) => {
-        if (!current) return current
-        return {
-          ...current,
-          expenses: Array.isArray(current.expenses)
-            ? current.expenses.filter((e) => e.id !== expenseId)
-            : [],
-        }
+        if (!Array.isArray(current)) return current
+        return current.filter((e) => e.id !== expenseId)
       },
     )
   }
