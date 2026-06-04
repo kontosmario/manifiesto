@@ -39,7 +39,6 @@ import {
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
 import {
-  useDeleteIncomeEvent,
   useIncomeEvents,
   type IncomeEvent,
 } from '@/features/income/use-income-events'
@@ -312,7 +311,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const familyMembersData = membersQuery.data
   const familyMembers = useMemo(() => familyMembersData ?? [], [familyMembersData])
   const deleteExpenseMutation = useDeleteExpense(familyId, userId)
-  const deleteIncomeMutation = useDeleteIncomeEvent(userId)
+  // `useDeleteIncomeEvent` previously fueled the inline delete on the
+  // income banner. Removed for "income persistente": income now stays
+  // read-only inside Gastos.
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data ?? STREAK_DEFAULTS
   const markNoSpendMutation = useMarkNoExpenseDay(familyId, userId)
@@ -440,27 +441,12 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     [deleteExpenseMutation, trackTap],
   )
 
-  const handleDeleteIncome = useCallback(
-    (incomeId: string) => {
-      if (!familyId) return
-      void triggerHaptic('warning')
-      trackTap('income_row_delete', 'list')
-      deleteIncomeMutation.mutate(
-        { id: incomeId, familyId },
-        {
-          onError: (error: unknown) => {
-            void triggerHaptic('error')
-            Alert.alert(
-              'No pudimos eliminar',
-              getErrorMessage(error, errorMessages.server),
-            )
-          },
-          onSuccess: () => void triggerHaptic('success'),
-        },
-      )
-    },
-    [deleteIncomeMutation, familyId, trackTap],
-  )
+  // Income deletion intentionally NOT exposed from this screen. The
+  // IncomeDayBanner reads as a "context" cue inside the Gastos
+  // chronology — accidentally tapping a tiny X used to wipe the income
+  // from the only surface where it was visible. Income management
+  // (delete, edit) belongs to a dedicated income surface; this view
+  // stays read-only for income.
 
   const expenseCountByCategoryId = useMemo(() => {
     const map = new Map<string, number>()
@@ -819,7 +805,6 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         </View>
         <IncomeDayBanner
           incomes={section.incomes}
-          onDeleteIncome={handleDeleteIncome}
         />
       </Animated.View>
     ),
@@ -829,7 +814,6 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       theme.colors.textSoft,
       theme.colors.line,
       rowAnimationEnabled,
-      handleDeleteIncome,
     ],
   )
 

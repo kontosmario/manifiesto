@@ -187,12 +187,17 @@ function patchPaginatedPrepend(
     qc.setQueryData<InfiniteData<GastosExpensesPage> | undefined>(
       key,
       (current) => {
-        if (!current || current.pages.length === 0) return current
+        if (!current || !Array.isArray(current.pages) || current.pages.length === 0) {
+          return current
+        }
         const [firstPage, ...rest] = current.pages
+        const firstPageExpenses = Array.isArray(firstPage?.expenses)
+          ? firstPage.expenses
+          : []
         return {
           ...current,
           pages: [
-            { ...firstPage, expenses: [row, ...firstPage.expenses] },
+            { ...firstPage, expenses: [row, ...firstPageExpenses] },
             ...rest,
           ],
         }
@@ -213,7 +218,8 @@ function patchPaginatedPrepend(
       key,
       (current) => {
         if (!current) return current
-        return { ...current, expenses: [row, ...current.expenses] }
+        const existing = Array.isArray(current.expenses) ? current.expenses : []
+        return { ...current, expenses: [row, ...existing] }
       },
     )
   }
@@ -234,12 +240,20 @@ function patchPaginatedRemove(
     qc.setQueryData<InfiniteData<GastosExpensesPage> | undefined>(
       key,
       (current) => {
-        if (!current) return current
+        if (!current || !Array.isArray(current.pages)) return current
         return {
           ...current,
           pages: current.pages.map((p) => ({
             ...p,
-            expenses: p.expenses.filter((e) => e.id !== expenseId),
+            // Guard `p.expenses` because the cache shape can be polluted
+            // from older / partial seeds (e.g. a page that arrived with
+            // only `next_cursor` and `has_more` while expenses streamed
+            // in). Crashed before with "Cannot read property 'filter'
+            // of undefined" when deleting a fixed expense whose payment
+            // row had landed in a half-formed page.
+            expenses: Array.isArray(p?.expenses)
+              ? p.expenses.filter((e) => e.id !== expenseId)
+              : [],
           })),
         }
       },
@@ -254,7 +268,9 @@ function patchPaginatedRemove(
         if (!current) return current
         return {
           ...current,
-          expenses: current.expenses.filter((e) => e.id !== expenseId),
+          expenses: Array.isArray(current.expenses)
+            ? current.expenses.filter((e) => e.id !== expenseId)
+            : [],
         }
       },
     )

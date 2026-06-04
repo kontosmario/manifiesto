@@ -19,7 +19,6 @@ import type { IncomeEvent } from '@/features/income/use-income-events'
 
 interface Props {
   incomes: readonly IncomeEvent[]
-  onDeleteIncome?: (id: string) => void
 }
 
 const KIND_LABEL: Record<IncomeEvent['kind'], string> = {
@@ -62,7 +61,7 @@ const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
  * - Banner above the rows = "context for today's day", expenses
  *   below = "what you spent". Crisp mental separation.
  */
-export function IncomeDayBanner({ incomes, onDeleteIncome }: Props) {
+export function IncomeDayBanner({ incomes }: Props) {
   const { theme } = useAppTheme()
   const [expanded, setExpanded] = useState(false)
   const chevronRotation = useSharedValue(0)
@@ -166,7 +165,6 @@ export function IncomeDayBanner({ incomes, onDeleteIncome }: Props) {
               key={income.id}
               income={income}
               isLast={idx === incomes.length - 1}
-              onDelete={onDeleteIncome}
             />
           ))}
         </Animated.View>
@@ -178,10 +176,17 @@ export function IncomeDayBanner({ incomes, onDeleteIncome }: Props) {
 interface IncomeRowProps {
   income: IncomeEvent
   isLast: boolean
-  onDelete?: (id: string) => void
 }
 
-function IncomeRow({ income, isLast, onDelete }: IncomeRowProps) {
+/**
+ * Read-only row inside the income banner. Income persists in the
+ * Gastos view — deleting it from the inline banner was too easy a
+ * mistap, and once gone the user couldn't see it anymore (the only
+ * surface where it showed today). To delete, the user goes to a
+ * dedicated income management surface; this banner is purely a
+ * "context" cue inside the Gastos chronology.
+ */
+function IncomeRow({ income, isLast }: IncomeRowProps) {
   const { theme } = useAppTheme()
   const description =
     income.description?.trim() || KIND_LABEL[income.kind]
@@ -210,24 +215,6 @@ function IncomeRow({ income, isLast, onDelete }: IncomeRowProps) {
       <Text style={[styles.itemAmount, { color: theme.colors.primary }]} numberOfLines={1}>
         +${formatThousands(Math.abs(Number(income.amount ?? 0)))}
       </Text>
-      {onDelete ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Borrar ingreso"
-          onPress={() => {
-            void triggerHaptic('warning')
-            onDelete(income.id)
-          }}
-          hitSlop={8}
-          style={styles.deleteBtn}
-        >
-          <MaterialIcons
-            name="close"
-            size={14}
-            color={theme.colors.textMuted}
-          />
-        </Pressable>
-      ) : null}
     </View>
   )
 }
@@ -304,12 +291,5 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.2,
-  },
-  deleteBtn: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
   },
 })
