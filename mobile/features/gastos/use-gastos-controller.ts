@@ -18,7 +18,9 @@ import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-import { MONTH_SHORT } from '@/utils/date-format'
+import { useFamilyFinance } from '@/features/finance/use-family-finance'
+import { financeToCycleConfig } from '@/utils/finance-cycle-config'
+import { formatCycleLabel } from '@/utils/format-cycle-label'
 
 export interface UseGastosControllerOptions {
   /** Seed initial filter from route params (Asistente deep-links). */
@@ -82,6 +84,7 @@ export function useGastosController(
 ): UseGastosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
   const dashboard = useFamilyDashboard(familyId)
+  const financeQuery = useFamilyFinance(familyId)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     options.initialCategoryId ?? null,
   )
@@ -98,11 +101,14 @@ export function useGastosController(
     return Math.max(1, Math.min(cycleDays, elapsed))
   }, [today, cycleStartMs, cycleDays])
 
-  const cycleLabel = useMemo(() => {
-    const startLabel = `${cycleStart.getDate()} ${MONTH_SHORT[cycleStart.getMonth()]}`
-    const endLabel = `${cycleEnd.getDate()} ${MONTH_SHORT[cycleEnd.getMonth()]}`
-    return `${startLabel} → ${endLabel}`
-  }, [cycleStart, cycleEnd])
+  const cycleType = useMemo(
+    () => financeToCycleConfig(financeQuery.data).cycle_type,
+    [financeQuery.data],
+  )
+  const cycleLabel = useMemo(
+    () => formatCycleLabel(cycle, cycleType),
+    [cycle, cycleType],
+  )
 
   // Cupo diario canónico — pasado al server para anchorar moods.
   const cupoDiario = useMemo(() => {
