@@ -94,6 +94,12 @@ type MovementItem =
 interface MovimientosSection {
   title: string
   day: number
+  /** Local-day epoch ms (startOf the section's day in the user's local
+   *  timezone). Used to sort sections chronologically across month
+   *  boundaries — sorting by `day` (1–31) alone bleeds: in a May 25 →
+   *  Jun 24 cycle, day 31 (May) numerically beats day 4 (Jun) and
+   *  today / yesterday ended up at the BOTTOM of the list. */
+  dateMs: number
   total: number
   data: MovementItem[]
 }
@@ -521,12 +527,29 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // Si un día tiene SOLO income (sin expenses), creamos una sección
   // nueva. El income NO afecta `total` (que es total de gastos).
   const sections = useMemo<MovimientosSection[]>(() => {
+    // Helper: epoch ms at startOf the local-day for the given ISO.
+    // Used as the canonical bucketing key + sort key so month boundaries
+    // don't bleed (the old key was `day` 1–31 — same number for May 31
+    // and "Jun 31 doesn't exist", and lower numbers in early June sorted
+    // BELOW high numbers in late May).
+    const dayMsFromIso = (iso: string): number => {
+      const d = new Date(iso)
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+    }
+
     if (controller.selectedDay != null) {
-      // Modo "día tappeado": el controller ya filtró a un solo día.
-      // Mezclamos income solo de ese día, sin generar otras secciones.
+      // Modo "día tappeado": el controller ya filtró expenses a un solo
+      // día. Para el merge de income usamos el dateMs del primer
+      // expense del grupo (groups[0].items[0]) como anchor — así el
+      // filter de income matchea EL MISMO DÍA REAL (mes + año), no
+      // sólo el día-del-mes.
       const base = controller.groups.map<MovimientosSection>((g) => ({
         title: g.label,
         day: g.day,
+        dateMs:
+          g.items.length > 0
+            ? dayMsFromIso(g.items[0].created_at)
+            : 0,
         total: g.total,
         data: g.items.map<MovementItem>((e) => ({
           kind: 'expense',
@@ -534,10 +557,13 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           expense: e,
         })),
       }))
-      const dayIncomes = cycleIncomeEvents.filter((i) => {
-        const d = new Date(i.created_at)
-        return d.getDate() === controller.selectedDay
-      })
+      const selectedDateMs = base[0]?.dateMs ?? null
+      const dayIncomes =
+        selectedDateMs != null
+          ? cycleIncomeEvents.filter(
+              (i) => dayMsFromIso(i.created_at) === selectedDateMs,
+            )
+          : []
       if (base.length > 0 && dayIncomes.length > 0) {
         base[0]!.data = [
           ...base[0]!.data,
@@ -552,11 +578,16 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     }
 
     // Vista normal del cycle: mergeamos income en los buckets de día.
+    // El Map ahora rasgua por `dateMs` en vez de `day` 1–31 para que
+    // cycles que cruzan mes no colapsen "May 15" y "Jun 15".
     const byDay = new Map<number, MovimientosSection>()
     for (const g of controller.groups) {
-      byDay.set(g.day, {
+      const dateMs =
+        g.items.length > 0 ? dayMsFromIso(g.items[0].created_at) : 0
+      byDay.set(dateMs, {
         title: g.label,
         day: g.day,
+        dateMs,
         total: g.total,
         data: g.items.map<MovementItem>((e) => ({
           kind: 'expense',
@@ -566,9 +597,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       })
     }
     for (const income of cycleIncomeEvents) {
+      const dateMs = dayMsFromIso(income.created_at)
       const d = new Date(income.created_at)
-      const day = d.getDate()
-      const existing = byDay.get(day)
+      const existing = byDay.get(dateMs)
       const item: MovementItem = {
         kind: 'income',
         iso: income.created_at,
@@ -580,20 +611,23 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         // Día sin gastos pero con ingreso → sección nueva. Total = 0
         // (no afecta el agregado de gastos). El header sigue mostrando
         // la fecha; el row income explica la fila.
-        byDay.set(day, {
+        byDay.set(dateMs, {
           title: formatStandaloneIncomeDay(d),
-          day,
+          day: d.getDate(),
+          dateMs,
           total: 0,
           data: [item],
         })
       }
     }
-    // Sort within day desc + sort sections by day desc.
+    // Sort within day desc + sort sections by actual date desc — NOT
+    // by day-of-month integer. Latter bled across May → June (the
+    // original "today/yesterday at the bottom" bug).
     const merged = Array.from(byDay.values())
     for (const s of merged) {
       s.data.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
     }
-    merged.sort((a, b) => b.day - a.day)
+    merged.sort((a, b) => b.dateMs - a.dateMs)
     return merged
   }, [controller.groups, controller.selectedDay, cycleIncomeEvents])
 
