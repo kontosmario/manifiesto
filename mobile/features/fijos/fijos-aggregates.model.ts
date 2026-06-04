@@ -36,6 +36,16 @@ export interface FijoItem extends FixedExpense {
   priceHistory: number[]
   /** % change between the previous payment and current amount. Null when no history. */
   trendDeltaPct: number | null
+  /** Precio contra el que `trendDeltaPct` está comparando `amount`.
+   *  Usa la misma selección dual-mode que `trendDeltaPct`:
+   *    · Si el último pago histórico coincide con `amount` (just-paid /
+   *      paid-at-current-price), el "prev" relevante es el penúltimo.
+   *    · Sino, es el último pago histórico.
+   *  Lo consumen los avisos de hike para renderizar
+   *  `previousPrice → currentPrice` sin caer en el bug de mostrar
+   *  `current → current` cuando ya hubo un pago al precio nuevo. Null
+   *  cuando no hay historial suficiente para comparar. */
+  trendPrevAmount: number | null
   /** True cuando el último pago registrado para este commitment se hizo
    *  sobre un fijo VENCIDO (flag `expenses.paid_in_arrears = true`).
    *  Usado por la UI para distinguir el chip "Incremento con intereses"
@@ -317,6 +327,7 @@ export function summarizeFijos(input: {
         prev != null && prev > 0 && currentAmount > 0
           ? Math.round(((currentAmount - prev) / prev) * 100)
           : null
+      const trendPrevAmount = prev != null && prev > 0 ? prev : null
       const status = computeItemStatus({
         item: i,
         paidThisPeriod,
@@ -374,6 +385,7 @@ export function summarizeFijos(input: {
         daysSinceLastPaid,
         priceHistory,
         trendDeltaPct,
+        trendPrevAmount,
         arrearsOnLastPayment: arrearsByCommitment.get(i.id) === true,
         paidPaymentId: status === 'paid' && payment ? payment.id : null,
         cuotaMonth,
@@ -446,8 +458,12 @@ function detectHikes(input: {
   const alerts: FijoHikeAlert[] = []
   for (const item of items) {
     if (item.trendDeltaPct == null || item.trendDeltaPct < HIKE_MIN_DELTA_PCT) continue
-    const history = item.priceHistory
-    const previousPrice = history[history.length - 2]
+    // `trendPrevAmount` ya aplica la selección dual-mode (penúltimo
+    // cuando el último pago coincide con el currentAmount). Usar
+    // `priceHistory[length - 2]` ciego rompía cuando había un pago
+    // al precio actual — devolvía `currentAmount` como "previous" y
+    // el aviso renderizaba "$X → $X" con un delta % desconectado.
+    const previousPrice = item.trendPrevAmount
     if (previousPrice == null || previousPrice <= 0) continue
     alerts.push({
       fixedExpenseId: item.id,
