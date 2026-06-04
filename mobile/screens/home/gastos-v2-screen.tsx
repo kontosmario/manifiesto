@@ -39,6 +39,7 @@ import {
 } from '@/features/tours'
 import { useDeleteExpense, type Expense } from '@/features/expenses/use-expenses'
 import {
+  useDeleteIncomeEvent,
   useIncomeEvents,
   type IncomeEvent,
 } from '@/features/income/use-income-events'
@@ -331,9 +332,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const familyMembersData = membersQuery.data
   const familyMembers = useMemo(() => familyMembersData ?? [], [familyMembersData])
   const deleteExpenseMutation = useDeleteExpense(familyId, userId)
-  // `useDeleteIncomeEvent` previously fueled the inline delete on the
-  // income banner. Removed for "income persistente": income now stays
-  // read-only inside Gastos.
+  // Income delete now lives on the SwipeRow — swipe-to-delete matches
+  // how expense rows behave, requires intentional gesture, can't be
+  // mistapped like the X used to be. Same plumbing as the expense
+  // mutation (optimistic + sync invalidation).
+  const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data ?? STREAK_DEFAULTS
   const markNoSpendMutation = useMarkNoExpenseDay(familyId, userId)
@@ -461,12 +464,28 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     [deleteExpenseMutation, trackTap],
   )
 
-  // Income deletion intentionally NOT exposed from this screen. The
-  // IncomeDayBanner reads as a "context" cue inside the Gastos
-  // chronology — accidentally tapping a tiny X used to wipe the income
-  // from the only surface where it was visible. Income management
-  // (delete, edit) belongs to a dedicated income surface; this view
-  // stays read-only for income.
+  const handleDeleteIncome = useCallback(
+    (incomeId: string) => {
+      if (!familyId) return
+      void triggerHaptic('warning')
+      trackTap('income_row_delete', 'list')
+      deleteIncomeMutation.mutate(
+        { id: incomeId, familyId },
+        {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No pudimos eliminar',
+              getErrorMessage(error, errorMessages.server),
+            )
+          },
+          onSuccess: () => void triggerHaptic('success'),
+        },
+      )
+    },
+    [deleteIncomeMutation, familyId, trackTap],
+  )
+
 
   const expenseCountByCategoryId = useMemo(() => {
     const map = new Map<string, number>()
@@ -729,13 +748,24 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const renderItem = useCallback(
     ({ item: mv }: { item: MovementItem }) => {
       // Income row: mirrors GastoRow's chrome (same card, same radius,
-      // same padding) but tints icon + amount in primary and swaps the
-      // category pill for an income-kind pill. Read-only — no SwipeRow
-      // wrap. See income-row.tsx for the visual spec.
+      // same padding) AND wraps in the same SwipeRow so swipe-to-delete
+      // works identically. Differentiation lives in color + pill, never
+      // in interaction model — the row feels native to the feed.
       if (mv.kind === 'income') {
         const income = mv.income
         const who = memberById.get(income.created_by)
         const title = income.description?.trim() || incomeKindFallback(income.kind)
+        const incomeActions: SwipeAction[] = [
+          {
+            label: 'Eliminar',
+            tone: 'danger',
+            icon: 'delete',
+            onPress: () => handleDeleteIncome(income.id),
+          },
+        ]
+        const isIncomePending =
+          deleteIncomeMutation.isPending &&
+          deleteIncomeMutation.variables?.id === income.id
         return (
           <Animated.View
             style={styles.rowWrap}
@@ -743,14 +773,27 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             exiting={FadeOut.duration(140)}
             layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
           >
-            <IncomeRow
-              title={title}
-              kind={income.kind}
-              whoName={who?.name ?? 'Alguien'}
-              whoColor={who?.color ?? '#329315'}
-              amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
-              time={formatTime(income.created_at)}
-            />
+            <SwipeRow
+              accessibilityLabel={`${title}, ingreso`}
+              accessibilityHint="Desliza a la izquierda para eliminar"
+              accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+              onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'delete') {
+                  handleDeleteIncome(income.id)
+                }
+              }}
+              rightActions={incomeActions}
+              isProcessing={isIncomePending}
+            >
+              <IncomeRow
+                title={title}
+                kind={income.kind}
+                whoName={who?.name ?? 'Alguien'}
+                whoColor={who?.color ?? '#329315'}
+                amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
+                time={formatTime(income.created_at)}
+              />
+            </SwipeRow>
           </Animated.View>
         )
       }
@@ -821,7 +864,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       controller.categoriesById,
       memberById,
       handleDelete,
+      handleDeleteIncome,
       deleteExpenseMutation,
+      deleteIncomeMutation,
       theme.colors.textMuted,
       rowAnimationEnabled,
     ],
