@@ -191,6 +191,9 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
         lastSalaryConfirmedAt: finance.last_salary_confirmed_at,
         currentCycleStartingBalance: finance.current_cycle_starting_balance,
         currentCycleAnchor: finance.current_cycle_anchor,
+        cycleType: 'monthly',
+        cycleAnchorDate: null,
+        cycleLengthDays: null,
       })
       try {
         await upsertFamilyFinance.mutateAsync(input)

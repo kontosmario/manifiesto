@@ -102,6 +102,9 @@ export function buildFinanceSubmitState({
       savingsGoal: deriveSavingsGoalAmount(income, savingsPercent),
       savingsGoalPercent: savingsPercent,
       usdExchangeRate: usdRate,
+      cycleType: 'monthly',
+      cycleAnchorDate: null,
+      cycleLengthDays: null,
     }),
   }
 }

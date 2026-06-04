@@ -23,6 +23,13 @@ export interface FinanceStoragePayload {
    * is treated as stale and the user is re-prompted.
    */
   current_cycle_anchor: string | null
+  /** Tipo de ciclo activo. Default 'monthly' para familias existentes. */
+  cycle_type: 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  /** Para cycle_type rolling, fecha de inicio del primer ciclo (YYYY-MM-DD).
+   *  NULL para cycle_type='monthly'. */
+  cycle_anchor_date: string | null
+  /** Para cycle_type rolling, días por ciclo (14/7/N). NULL para monthly. */
+  cycle_length_days: number | null
 }
 
 export interface FamilyFinance extends FinanceStoragePayload {
@@ -42,6 +49,9 @@ export interface UpsertFamilyFinanceInput {
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
   currentCycleAnchor: string | null
+  cycleType: 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  cycleAnchorDate: string | null
+  cycleLengthDays: number | null
 }
 
 export interface FamilyFinanceInputSnapshot {
@@ -57,6 +67,9 @@ export interface FamilyFinanceInputSnapshot {
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
   currentCycleAnchor: string | null
+  cycleType: 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  cycleAnchorDate: string | null
+  cycleLengthDays: number | null
 }
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
@@ -132,6 +145,9 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     last_salary_confirmed_at: null,
     current_cycle_starting_balance: null,
     current_cycle_anchor: null,
+    cycle_type: 'monthly',
+    cycle_anchor_date: null,
+    cycle_length_days: null,
   }
 }
 
@@ -198,6 +214,24 @@ export function normalizeFinancePayload(
       typeof payload?.current_cycle_anchor === 'string' && payload.current_cycle_anchor.trim() !== ''
         ? payload.current_cycle_anchor
         : null,
+    cycle_type:
+      payload?.cycle_type === 'biweekly' ||
+      payload?.cycle_type === 'weekly' ||
+      payload?.cycle_type === 'custom'
+        ? payload.cycle_type
+        : 'monthly',
+    cycle_anchor_date:
+      typeof payload?.cycle_anchor_date === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(payload.cycle_anchor_date)
+        ? payload.cycle_anchor_date
+        : null,
+    cycle_length_days:
+      typeof payload?.cycle_length_days === 'number' &&
+      Number.isInteger(payload.cycle_length_days) &&
+      payload.cycle_length_days >= 1 &&
+      payload.cycle_length_days <= 365
+        ? payload.cycle_length_days
+        : null,
   }
 }
 
@@ -262,6 +296,9 @@ export function financeInputToStoragePayload(
     last_salary_confirmed_at: input.lastSalaryConfirmedAt,
     current_cycle_starting_balance: input.currentCycleStartingBalance,
     current_cycle_anchor: input.currentCycleAnchor,
+    cycle_type: input.cycleType,
+    cycle_anchor_date: input.cycleAnchorDate,
+    cycle_length_days: input.cycleLengthDays,
   }
 }
 
@@ -316,6 +353,38 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     throw new Error('La fecha de inicio de ciclo es invalida.')
   }
 
+  if (
+    !['monthly', 'biweekly', 'weekly', 'custom'].includes(input.cycleType)
+  ) {
+    throw new Error('Tipo de ciclo invalido.')
+  }
+  if (input.cycleType === 'monthly') {
+    if (input.cycleAnchorDate !== null || input.cycleLengthDays !== null) {
+      throw new Error('Configuración mensual no debe tener anchor ni length.')
+    }
+  } else {
+    if (
+      typeof input.cycleAnchorDate !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(input.cycleAnchorDate)
+    ) {
+      throw new Error('Falta la fecha de inicio del ciclo.')
+    }
+    if (
+      typeof input.cycleLengthDays !== 'number' ||
+      !Number.isInteger(input.cycleLengthDays) ||
+      input.cycleLengthDays < 1 ||
+      input.cycleLengthDays > 365
+    ) {
+      throw new Error('Largo del ciclo invalido.')
+    }
+    if (input.cycleType === 'biweekly' && input.cycleLengthDays !== 14) {
+      throw new Error('Quincenal debe ser cada 14 días.')
+    }
+    if (input.cycleType === 'weekly' && input.cycleLengthDays !== 7) {
+      throw new Error('Semanal debe ser cada 7 días.')
+    }
+  }
+
   return financeInputToStoragePayload(input)
 }
 
@@ -335,6 +404,9 @@ export function buildFamilyFinanceInput(
     lastSalaryConfirmedAt: snapshot.lastSalaryConfirmedAt,
     currentCycleStartingBalance: snapshot.currentCycleStartingBalance,
     currentCycleAnchor: snapshot.currentCycleAnchor,
+    cycleType: snapshot.cycleType,
+    cycleAnchorDate: snapshot.cycleAnchorDate,
+    cycleLengthDays: snapshot.cycleLengthDays,
   }
 }
 

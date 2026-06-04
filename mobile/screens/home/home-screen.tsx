@@ -217,6 +217,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
           currentCycleAnchor:
             dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+          cycleType: 'monthly',
+          cycleAnchorDate: null,
+          cycleLengthDays: null,
         },
         cycleAnchor,
         startingBalance,

@@ -294,6 +294,9 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         currentCycleStartingBalance:
           existingFinance?.current_cycle_starting_balance ?? null,
         currentCycleAnchor: existingFinance?.current_cycle_anchor ?? null,
+        cycleType: 'monthly',
+        cycleAnchorDate: null,
+        cycleLengthDays: null,
       } as const
       const financePayload = buildFamilyFinanceInput(baseSnapshot)
       await upsertFinance.mutateAsync(financePayload)
