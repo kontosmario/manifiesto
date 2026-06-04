@@ -10,6 +10,7 @@ import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import {
   createExpense,
   deleteExpense,
+  loadCommitmentExpenses,
   loadExpenses,
   updateExpense,
   type CreateExpenseInput,
@@ -33,6 +34,7 @@ export type {
 
 export const expensesQueryKey = expenseQueryKeys.list
 export const recentExpensesQueryKey = expenseQueryKeys.recent
+export const commitmentExpenseHistoryKey = expenseQueryKeys.commitmentHistory
 
 export function useExpenses(familyId?: string, categoryId?: string) {
   return useQuery<Expense[]>({
@@ -49,6 +51,44 @@ export function useExpenses(familyId?: string, categoryId?: string) {
       }
 
       return loadExpenses(familyId, { categoryId })
+    },
+  })
+}
+
+/**
+ * Histórico de pagos de fijos — todos los expenses con `commitment_id`
+ * no-null, sin pasar por el cap del `home_snapshot` (120 filas) que
+ * cortaba pagos viejos cuando había mucho volumen de gasto variable en
+ * el medio.
+ *
+ * Por qué un query dedicado en lugar de levantar el cap del snapshot:
+ * el snapshot debe seguir siendo liviano (cold start de Home), y los
+ * pagos de fijos crecen ~linealmente con el tiempo (no con el volumen
+ * de gastos variables). Una familia con 10 fijos activos x 12 meses
+ * acumula ~120 rows — el dataset es bounded y barato de fetchear.
+ *
+ * Consumido por `useFijosController` para que `summarizeFijos` pueda
+ * comparar el pago actual de cada fijo contra el penúltimo registrado
+ * (necesario para el badge de variación de precio, ej. "Seguro auto
+ * −56% vs mes pasado"). Sin esto, el badge desaparecía silenciosamente
+ * cuando el cap dejaba afuera el pago anterior.
+ *
+ * Cache key bajo el prefijo `expenseQueryKeys.family(familyId)`, así
+ * `syncAllAfterMutation({ scopes: ['expenses'|'fixedPayment'] })` lo
+ * invalida automáticamente sin tener que mantenerlo a mano.
+ */
+export function useCommitmentExpenses(familyId?: string) {
+  return useQuery<Expense[]>({
+    queryKey: commitmentExpenseHistoryKey(familyId),
+    enabled: Boolean(familyId),
+    // Mismo staleTime que `useExpenses` — los pagos de fijos los crea
+    // `record_fixed_expense_payment`, que dispara `expenses`/`fixedPayment`
+    // en `syncAllAfterMutation` y por tanto invalida este key vía el
+    // prefijo `expenseQueryKeys.family`.
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      if (!familyId) return []
+      return loadCommitmentExpenses(familyId)
     },
   })
 }

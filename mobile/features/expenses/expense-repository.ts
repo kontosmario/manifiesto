@@ -125,6 +125,66 @@ export async function loadExpenses(
 }
 
 /**
+ * Cargar TODOS los expenses de la familia con `commitment_id` no-null,
+ * sin pasar por el cap del `home_snapshot` (120 rows). Necesario para
+ * que `summarizeFijos` pueda calcular `trendDeltaPct` comparando contra
+ * el penúltimo pago de un fijo cuando ya pasaron muchos gastos no-fijos
+ * en el medio. Sin esto, familias con >120 expenses en una ventana
+ * corta pierden el histórico de fijos en el cliente y el badge de
+ * variación de precio nunca aparece.
+ *
+ * Bounded por el número total de pagos históricos de fijos, no por
+ * gastos variables: para una familia con 10 fijos activos × 12 meses
+ * son ~120 rows. Crece linealmente con el tiempo, no con el volumen
+ * de gasto diario.
+ */
+export async function loadCommitmentExpenses(
+  familyId: string,
+): Promise<Expense[]> {
+  const embedRequest = supabase
+    .from('expenses')
+    .select(EXPENSE_COLUMNS_WITH_PROFILE)
+    .eq('family_id', familyId)
+    .not('commitment_id', 'is', null)
+    .order('created_at', { ascending: false })
+
+  const embedResponse = await embedRequest
+
+  if (!embedResponse.error) {
+    const rows = (embedResponse.data ?? []) as unknown as Array<
+      RawExpense & {
+        profiles?:
+          | { display_name: string }
+          | { display_name: string }[]
+          | null
+      }
+    >
+    return enrichExpensesFromEmbed(rows)
+  }
+
+  // Envs legacy sin la column `commitment_id` no tienen pagos de fijos
+  // tracked en `expenses` — devolvemos [] silenciosamente.
+  if (isMissingCommitmentIdColumnError(embedResponse.error)) {
+    return []
+  }
+
+  if (isMissingProfilesEmbedError(embedResponse.error)) {
+    const baseRequest = supabase
+      .from('expenses')
+      .select(EXPENSE_COLUMNS)
+      .eq('family_id', familyId)
+      .not('commitment_id', 'is', null)
+      .order('created_at', { ascending: false })
+
+    const baseResponse = await baseRequest
+    if (baseResponse.error) throw baseResponse.error
+    return enrichExpenses(baseResponse.data as RawExpense[])
+  }
+
+  throw embedResponse.error
+}
+
+/**
  * PostgREST signals an unknown embed relationship with code PGRST200.
  * Detect that exact case so the legacy fallback only triggers when the
  * schema cache has not seen the new FK yet.
