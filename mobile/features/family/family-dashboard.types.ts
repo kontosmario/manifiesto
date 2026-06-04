@@ -15,6 +15,9 @@ export interface FamilyDashboardFinanceSnapshot {
   last_salary_confirmed_at: string | null
   current_cycle_starting_balance: number | null
   current_cycle_anchor: string | null
+  cycle_type: 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  cycle_anchor_date: string | null
+  cycle_length_days: number | null
 }
 
 export interface FamilyDashboardMonthlyHistoryRow extends FamilyMonthlySpent {
