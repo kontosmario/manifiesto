@@ -784,24 +784,30 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       // ("what I spent today") and makes income a glanceable signal
       // independent of the expense rhythm.
       <Animated.View
-        style={[
-          styles.sectionHeaderShell,
-          {
-            backgroundColor: theme.isDark
-              ? DARK_TAB_CANVAS
-              : theme.colors.background,
-          },
-        ]}
+        style={styles.sectionHeaderShell}
         entering={rowAnimationEnabled ? FadeIn.duration(160) : undefined}
         exiting={FadeOut.duration(120)}
         layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
       >
+        {/* Hairline rule above the date — replaces the opaque "block"
+            background that used to wrap the header. Reads as a soft
+            day-boundary divider; the date itself sits naturally on the
+            canvas instead of inside a heavy band. */}
+        <View
+          style={[styles.daySeparator, { backgroundColor: theme.colors.line }]}
+        />
         <View style={styles.groupHeader}>
-          <View>
-            <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
-              {section.title}
+          <View style={styles.groupTitleCol}>
+            <Text
+              style={[styles.groupLabel, { color: theme.colors.textMuted }]}
+              numberOfLines={1}
+            >
+              {section.title.toUpperCase()}
             </Text>
-            <Text style={[styles.groupMeta, { color: theme.colors.textSoft }]}>
+            <Text
+              style={[styles.groupMeta, { color: theme.colors.textSoft }]}
+              numberOfLines={1}
+            >
               {sectionMetaCopy(section.data.length, section.incomes.length)}
             </Text>
           </View>
@@ -818,10 +824,10 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       </Animated.View>
     ),
     [
-      theme.isDark,
-      theme.colors.background,
       theme.colors.text,
+      theme.colors.textMuted,
       theme.colors.textSoft,
+      theme.colors.line,
       rowAnimationEnabled,
       handleDeleteIncome,
     ],
@@ -1380,27 +1386,61 @@ const styles = StyleSheet.create({
   headerStack: { gap: 10, marginBottom: 8 },
   rowWrap: { paddingTop: 6 },
   sectionHeaderShell: {
-    // SectionList sticky-header shell. The bg covers the canvas so
-    // scrolling expense rows slide cleanly under the date/count/total
-    // row above. The `IncomeDayBanner` rendered below the
-    // date row is NOT sticky — it scrolls with the section content,
-    // which is the right behavior (banner belongs to a specific day).
+    // Transparent shell — the section header used to carry an opaque
+    // dark bg (DARK_TAB_CANVAS in dark, background in light) inherited
+    // from when sticky headers were enabled. They aren't anymore
+    // (`stickySectionHeadersEnabled={false}` on the SectionList) so the
+    // bg was creating a heavy "band" behind the date that felt
+    // aggressive. Without it the date sits on the canvas like a label,
+    // not inside a card.
+    backgroundColor: 'transparent',
+  },
+  daySeparator: {
+    // Hairline divider above each day group. Replaces the opaque bg as
+    // the day-boundary cue — minimal chrome, visible but not loud.
+    height: StyleSheet.hairlineWidth,
+    marginTop: 16,
+    marginBottom: 2,
+    marginHorizontal: 2,
+    opacity: 0.7,
   },
   groupHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'flex-start',
     paddingHorizontal: 2,
-    paddingTop: 14,
-    paddingBottom: 6,
+    paddingTop: 6,
+    paddingBottom: 8,
+    gap: 12,
   },
-  groupLabel: { fontSize: 14, fontWeight: '700' },
-  groupMeta: { fontSize: 11 },
+  groupTitleCol: {
+    flex: 1,
+    gap: 2,
+  },
+  // Eyebrow-style date label: uppercase, letter-spaced, in `textMuted`.
+  // The previous treatment (14px / weight 700 / `text`) read as a
+  // section TITLE — too heavy for what's essentially a chronological
+  // label between expense rows.
+  groupLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  groupMeta: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
   // Tabular nums acá porque el total se renderea en columna right-aligned
   // por encima del groupTotal de la siguiente sección. Sin tabular, los
   // dígitos proporcionales (1 vs 8) hacen que la columna wobblee al
   // scrollear. Mismo principio para GastoRow.amount.
-  groupTotal: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  groupTotal: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.2,
+  },
   movimientosTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
