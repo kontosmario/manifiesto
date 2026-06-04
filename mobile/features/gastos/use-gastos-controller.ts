@@ -18,6 +18,7 @@ import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { MONTH_SHORT } from '@/utils/date-format'
 
 export interface UseGastosControllerOptions {
   /** Seed initial filter from route params (Asistente deep-links). */
@@ -72,11 +73,6 @@ export interface UseGastosControllerResult {
   clearDay: () => void
   clearAll: () => void
 }
-
-const MONTH_SHORT = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 

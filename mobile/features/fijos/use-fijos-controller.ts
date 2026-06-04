@@ -12,6 +12,7 @@ import {
   type FijosCycleSummary,
 } from '@/features/fijos/fijos-aggregates.model'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { MONTH_SHORT } from '@/utils/date-format'
 
 /**
  * Tabs del listado (2026-05-31, refinado a 3 buckets):
@@ -72,11 +73,6 @@ const DEFAULT_SUMMARY: FijosCycleSummary = {
   cycleDays: 30,
   daysRemaining: 30,
 }
-
-const MONTH_SHORT = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
