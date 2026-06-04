@@ -25,6 +25,9 @@ describe('settings-form.model', () => {
     expect(submitState.input).toEqual({
       currentCycleAnchor: null,
       currentCycleStartingBalance: null,
+      cycleAnchorDate: null,
+      cycleLengthDays: null,
+      cycleType: 'monthly',
       dailyBudgetBufferMode: 'percent',
       dailyBudgetBufferValue: 10,
       dailyBudgetCheckinHour: 8,
