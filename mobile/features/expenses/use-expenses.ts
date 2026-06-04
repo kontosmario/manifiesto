@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import {
   createExpense,
@@ -10,6 +16,11 @@ import {
   type Expense,
   type UpdateExpenseInput,
 } from '@/features/expenses/expense-repository'
+import { gastosEndpointKeys } from '@/features/gastos/use-gastos-endpoints'
+import type {
+  GastosExpenseRow,
+  GastosExpensesPage,
+} from '@/features/gastos/gastos-endpoints.types'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
@@ -95,6 +106,186 @@ function snapshotExpenseLists(
   }
 }
 
+/**
+ * Projects an `Expense` (the in-memory model used by `useExpenses` and
+ * the home feed) into a `GastosExpenseRow` (the shape returned by the
+ * `gastos_expenses_paginated` RPC). Both shapes share the bulk of
+ * their fields; the projection mostly aliases names. Used to inject
+ * an optimistic insert into the paginated InfiniteData so the Gastos
+ * screen reflects the new row IMMEDIATELY — before the RPC roundtrip.
+ */
+function expenseToGastosRow(e: Expense): GastosExpenseRow {
+  return {
+    id: e.id,
+    family_id: e.family_id,
+    category_id: e.category_id,
+    // `category_name` and `category_color` are normally embedded by the
+    // RPC. Optimistic insert can't resolve them without the categories
+    // cache; we leave them null and the row component falls back to
+    // its category lookup via `categoriesQuery`. At settle the RPC
+    // refetch brings the resolved values.
+    category_name: null,
+    category_color: null,
+    commitment_id: e.commitment_id ?? null,
+    description: e.description,
+    notes: e.notes,
+    price: e.price,
+    created_at: e.created_at,
+    created_by: e.created_by,
+    creator_display_name: e.creator_display_name ?? '',
+    // Local-day key for the optimistic row — same shape the RPC emits
+    // (YYYY-MM-DD slice of created_at).
+    iso_date: e.created_at.slice(0, 10),
+    paid_in_arrears: e.paid_in_arrears ?? false,
+  }
+}
+
+/**
+ * Snapshot ALL paginated InfiniteData caches that match the family.
+ * Used so optimistic mutations can roll back on error without
+ * remembering which cycle window / category combination was active.
+ */
+function snapshotPaginatedCaches(
+  qc: QueryClient,
+  familyId: string,
+): ReadonlyArray<readonly [readonly unknown[], unknown]> {
+  return qc
+    .getQueriesData({ queryKey: gastosEndpointKeys.paginatedFamily(familyId) })
+    .map(([key, data]) => [key, data] as const)
+}
+
+function snapshotForDayCaches(
+  qc: QueryClient,
+  familyId: string,
+): ReadonlyArray<readonly [readonly unknown[], unknown]> {
+  return qc
+    .getQueriesData({ queryKey: gastosEndpointKeys.forDayFamily(familyId) })
+    .map(([key, data]) => [key, data] as const)
+}
+
+/**
+ * Prepend an optimistic row to every paginated InfiniteData cache for
+ * the family, plus every for-day cache where the new row's local day
+ * matches. Mirrors the `expenseQueryKeys.list/recent` prepend so the
+ * Gastos screen — which reads from `gastos-expenses-paginated` — shows
+ * the new row instantly instead of waiting for syncAllAfterMutation.
+ */
+function patchPaginatedPrepend(
+  qc: QueryClient,
+  familyId: string,
+  optimistic: Expense,
+): void {
+  const row = expenseToGastosRow(optimistic)
+  // Recent feed pre-filters fijos auto-pagados; do the same here so
+  // the optimistic insert doesn't show up in surfaces that wouldn't
+  // have seen it post-settle.
+  if (optimistic.commitment_id) return
+
+  for (const [key] of qc.getQueriesData<InfiniteData<GastosExpensesPage>>({
+    queryKey: gastosEndpointKeys.paginatedFamily(familyId),
+  })) {
+    qc.setQueryData<InfiniteData<GastosExpensesPage> | undefined>(
+      key,
+      (current) => {
+        if (!current || !Array.isArray(current.pages) || current.pages.length === 0) {
+          return current
+        }
+        const [firstPage, ...rest] = current.pages
+        const firstPageExpenses = Array.isArray(firstPage?.expenses)
+          ? firstPage.expenses
+          : []
+        return {
+          ...current,
+          pages: [
+            { ...firstPage, expenses: [row, ...firstPageExpenses] },
+            ...rest,
+          ],
+        }
+      },
+    )
+  }
+
+  // For-day cache: only the bucket for the row's local day. The key
+  // shape is ['gastos-expenses-for-day', familyId, isoDate, categoryId].
+  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+    queryKey: gastosEndpointKeys.forDayFamily(familyId),
+  })) {
+    const isoDate = key[2] as string | undefined
+    if (!isoDate) continue
+    const rowDay = optimistic.created_at.slice(0, 10)
+    if (isoDate !== rowDay) continue
+    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+      key,
+      (current) => {
+        if (!current) return current
+        const existing = Array.isArray(current.expenses) ? current.expenses : []
+        return { ...current, expenses: [row, ...existing] }
+      },
+    )
+  }
+}
+
+/**
+ * Remove a row from every paginated InfiniteData page + every for-day
+ * cache that contains it. Used in optimistic delete.
+ */
+function patchPaginatedRemove(
+  qc: QueryClient,
+  familyId: string,
+  expenseId: string,
+): void {
+  for (const [key] of qc.getQueriesData<InfiniteData<GastosExpensesPage>>({
+    queryKey: gastosEndpointKeys.paginatedFamily(familyId),
+  })) {
+    qc.setQueryData<InfiniteData<GastosExpensesPage> | undefined>(
+      key,
+      (current) => {
+        if (!current || !Array.isArray(current.pages)) return current
+        return {
+          ...current,
+          pages: current.pages.map((p) => ({
+            ...p,
+            // Guard `p.expenses` because the cache shape can be polluted
+            // from older / partial seeds (e.g. a page that arrived with
+            // only `next_cursor` and `has_more` while expenses streamed
+            // in). Crashed before with "Cannot read property 'filter'
+            // of undefined" when deleting a fixed expense whose payment
+            // row had landed in a half-formed page.
+            expenses: Array.isArray(p?.expenses)
+              ? p.expenses.filter((e) => e.id !== expenseId)
+              : [],
+          })),
+        }
+      },
+    )
+  }
+  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+    queryKey: gastosEndpointKeys.forDayFamily(familyId),
+  })) {
+    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+      key,
+      (current) => {
+        if (!current) return current
+        return {
+          ...current,
+          expenses: Array.isArray(current.expenses)
+            ? current.expenses.filter((e) => e.id !== expenseId)
+            : [],
+        }
+      },
+    )
+  }
+}
+
+function restoreCacheSnapshots(
+  qc: QueryClient,
+  snapshots: ReadonlyArray<readonly [readonly unknown[], unknown]>,
+): void {
+  for (const [key, data] of snapshots) {
+    qc.setQueryData(key, data)
+  }
+}
+
 function restoreExpenseLists(
   qc: ReturnType<typeof useQueryClient>,
   familyId: string,
@@ -115,7 +306,17 @@ export function useCreateExpense(familyId?: string, userId?: string) {
     mutate: (input: CreateExpenseInput) => void
   } | null>(null)
 
-  const result = useMutation<void, Error, CreateExpenseInput, { previous: ExpenseListSnapshot } | undefined>({
+  const result = useMutation<
+    void,
+    Error,
+    CreateExpenseInput,
+    | {
+        previous: ExpenseListSnapshot
+        paginatedSnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+        forDaySnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+      }
+    | undefined
+  >({
     mutationFn: async ({
       categoryId,
       commitmentId,
@@ -141,7 +342,15 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       await queryClient.cancelQueries({
         queryKey: expenseQueryKeys.family(familyId),
       })
+      await queryClient.cancelQueries({
+        queryKey: gastosEndpointKeys.paginatedFamily(familyId),
+      })
       const previous = snapshotExpenseLists(queryClient, familyId)
+      // Snapshot the paginated + for-day caches too — they're what the
+      // Gastos screen actually reads from. Without these the optimistic
+      // insert on `expenseQueryKeys.list/recent` was invisible there.
+      const paginatedSnap = snapshotPaginatedCaches(queryClient, familyId)
+      const forDaySnap = snapshotForDayCaches(queryClient, familyId)
 
       // Construimos un Expense optimista. `creator_display_name` queda
       // vacío — el ActivityRowV2 de Home resuelve el nombre por
@@ -183,8 +392,14 @@ export function useCreateExpense(familyId?: string, userId?: string) {
           prepend,
         )
       }
+      // Mirror to the paginated + for-day caches the Gastos screen reads
+      // from. Was missing before — the new row only landed in the home
+      // recent feed (which doesn't surface inside Gastos) and the user
+      // saw NO change in Gastos until the RPC roundtripped ~200-500ms
+      // later.
+      patchPaginatedPrepend(queryClient, familyId, optimistic)
 
-      return { previous }
+      return { previous, paginatedSnap, forDaySnap }
     },
     onSuccess: (_data, variables) => {
       if (familyId) {
@@ -202,6 +417,8 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       if (familyId && ctx?.previous) {
         restoreExpenseLists(queryClient, familyId, ctx.previous)
       }
+      if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
+      if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
       toast.error('No se pudo guardar el gasto.', {
         actionLabel: 'Reintentar',
         onAction: () => ref.current?.mutate(input),
@@ -304,7 +521,12 @@ export function useDeleteExpense(familyId?: string, userId?: string) {
     void,
     Error,
     string,
-    { snapshots: ReadonlyArray<readonly [readonly unknown[], unknown]> } | undefined
+    | {
+        snapshots: ReadonlyArray<readonly [readonly unknown[], unknown]>
+        paginatedSnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+        forDaySnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+      }
+    | undefined
   >({
     mutationFn: async (expenseId) => {
       if (!familyId) {
@@ -325,21 +547,32 @@ export function useDeleteExpense(familyId?: string, userId?: string) {
           queryClient.cancelQueries({ queryKey: k }),
         ),
       )
+      await queryClient.cancelQueries({
+        queryKey: gastosEndpointKeys.paginatedFamily(familyId),
+      })
       const snapshots = exactKeys.map(
         (k) => [k, queryClient.getQueryData(k)] as const,
       )
+      const paginatedSnap = snapshotPaginatedCaches(queryClient, familyId)
+      const forDaySnap = snapshotForDayCaches(queryClient, familyId)
       for (const k of exactKeys) {
         queryClient.setQueryData<Expense[] | undefined>(k, (old) =>
           old ? old.filter((e) => e.id !== expenseId) : old,
         )
       }
-      return { snapshots }
+      // Mirror the removal to the Gastos screen's caches. Without this,
+      // the row stayed visible until the RPC roundtripped — the row's
+      // own swipe-delete spinner was the only feedback.
+      patchPaginatedRemove(queryClient, familyId, expenseId)
+      return { snapshots, paginatedSnap, forDaySnap }
     },
     onError: (_err, expenseId, ctx) => {
       const snapshots = ctx?.snapshots ?? []
       for (const [k, data] of snapshots) {
         queryClient.setQueryData(k, data)
       }
+      if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
+      if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
       toast.error('No se pudo borrar el gasto.', {
         actionLabel: 'Reintentar',
         onAction: () => ref.current?.mutate(expenseId),
