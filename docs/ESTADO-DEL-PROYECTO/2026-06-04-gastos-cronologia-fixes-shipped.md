@@ -111,9 +111,27 @@ Identifica como income sin romper la UI — color + pill hacen el trabajo semán
 
 ---
 
-## 6. Lección guardada
+## 6. Trend badge en Fijos — fix encadenado (2026-06-04 PM)
 
-**`home_snapshot` cap de 120 expenses puede sub-estimar el cycle spend** ([migración 20260512020000](supabase/migrations/20260512020000_home_snapshot_payload_trim.sql)). Si una familia tiene más de 120 gastos en el ciclo, el dashboard subestima `variableSpentInCurrentCycle` → saldo inflado. Cuando `useExpenses` se invalida y refetchea con loadExpenses sin límite, el saldo cae al valor correcto. No es bug introducido pero es un footgun latente — recomendado future fix: separar la query del saldo del seed del snapshot, o levantar el cap a 300+ para ciclos densos.
+Después del sprint principal, owner reportó: "en Seguro del auto pagué 150k el mes pasado y 65k este mes, pero el badge de variación no aparece". DB inspection confirmó que los 2 pagos están correctos con `commitment_id` seteado.
+
+**Dos bugs encadenados, ambos arreglados:**
+
+### 6.1. Fórmula colapsaba post-payment ([commit 98e0c42](98e0c42))
+
+`fijos-aggregates.model.ts` comparaba `currentAmount` (= `fijo.amount`) vs el último pago histórico. Pero el RPC `record_fixed_expense_payment` sobrescribe `fijo.amount` al valor pagado → currentAmount === lastPaymentPrice → delta=0 → badge oculto.
+
+**Fix**: dual-mode prev selection. Si `|currentAmount − lastPaymentPrice| < 1` (just paid), comparar contra el **penúltimo** pago. Sino, contra el último.
+
+### 6.2. Cache del cliente faltaba pagos viejos ([commit 098abaa](098abaa))
+
+El [footgun latente del `home_snapshot` cap de 120](supabase/migrations/20260512020000_home_snapshot_payload_trim.sql) pegó. `useFijosController` leía de `useExpenses` (seeded por home_snapshot con `limit 120`). Familia con 125 expenses desde el 25 de abril → el pago de abril ($150k) **nunca llegaba al cliente** → `historyPrices` tenía 1 sola entrada → `penultimatePaymentPrice = null` → la fórmula del 6.1 no podía hacer nada.
+
+**Fix**: query dedicado `useCommitmentExpenses(familyId)` que fetchea TODOS los expenses con `commitment_id is not null`, sin pasar por el snapshot. Bounded por #pagos históricos de fijos (lineal en el tiempo, no en volumen de gasto diario — ~10 fijos × 12 meses = ~120 rows). Cache key bajo el prefijo `expenseQueryKeys.family`, así `syncAllAfterMutation` lo invalida automáticamente al registrar un pago o crear un gasto.
+
+**Por qué query dedicado y no levantar el cap**: el snapshot debe seguir siendo liviano para el cold start de Home; el cap también protege otras superficies. Separar el query del historial de fijos del seed del saldo era la jugada correcta.
+
+**Footgun residual**: `home_snapshot` sigue subestimando `variableSpentInCurrentCycle` en familias con >120 expenses en el ciclo (saldo inflado hasta que `useExpenses` se refetchea sin límite). No es bug introducido pero queda en el radar — recomendado future fix: separar la query del saldo del seed del snapshot, o levantar el cap a 300+ para ciclos densos.
 
 ---
 
