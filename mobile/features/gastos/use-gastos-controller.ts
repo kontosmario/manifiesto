@@ -251,7 +251,15 @@ export function useGastosController(
   )
 
   const dayDetailExpenses = useMemo<Expense[]>(
-    () => (forDayQuery.data ?? []).map(rowToExpense),
+    () => {
+      // Guard: clientes que tengan un cache corrupto del bug previo
+      // (object-spread sobre el array por el optimistic mirror con
+      // shape equivocada) llegan acá con un objeto mutante en vez de
+      // array. Detectamos y devolvemos []; el próximo refetch trae la
+      // shape correcta.
+      const data = forDayQuery.data
+      return Array.isArray(data) ? data.map(rowToExpense) : []
+    },
     [forDayQuery.data],
   )
 

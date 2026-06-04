@@ -245,21 +245,29 @@ function patchPaginatedPrepend(
     )
   }
 
-  // For-day cache: only the bucket for the row's local day. The key
-  // shape is ['gastos-expenses-for-day', familyId, isoDate, categoryId].
-  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+  // For-day cache: only the bucket for the row's local day. El key
+  // shape es ['gastos-expenses-for-day', familyId, isoDate, categoryId].
+  //
+  // OJO con la shape: `useGastosExpensesForDay` queryFn devuelve
+  // `GastosExpenseRow[]` directo (NO `{ expenses: GastosExpenseRow[] }`
+  // — el RPC devuelve la wrapper pero el queryFn la deshace antes de
+  // setear el cache). Si tratamos current como un object wrapper, el
+  // `...current` spreadea el array como índices numéricos y deja un
+  // mutante `{0, 1, ..., expenses: [...]}` que crashea el próximo
+  // `.map`. Bug que tuvo el cache corrupto en familias con muchas
+  // visitas a day-detail (regresión introducida en c56df7d).
+  for (const [key] of qc.getQueriesData<GastosExpenseRow[]>({
     queryKey: gastosEndpointKeys.forDayFamily(familyId),
   })) {
     const isoDate = key[2] as string | undefined
     if (!isoDate) continue
     const rowDay = optimistic.created_at.slice(0, 10)
     if (isoDate !== rowDay) continue
-    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+    qc.setQueryData<GastosExpenseRow[] | undefined>(
       key,
       (current) => {
-        if (!current) return current
-        const existing = Array.isArray(current.expenses) ? current.expenses : []
-        return { ...current, expenses: [row, ...existing] }
+        if (!Array.isArray(current)) return current
+        return [row, ...current]
       },
     )
   }
@@ -299,19 +307,15 @@ function patchPaginatedRemove(
       },
     )
   }
-  for (const [key] of qc.getQueriesData<{ expenses: GastosExpenseRow[] }>({
+  // For-day cache: array shape, ver nota en `patchPaginatedPrepend`.
+  for (const [key] of qc.getQueriesData<GastosExpenseRow[]>({
     queryKey: gastosEndpointKeys.forDayFamily(familyId),
   })) {
-    qc.setQueryData<{ expenses: GastosExpenseRow[] } | undefined>(
+    qc.setQueryData<GastosExpenseRow[] | undefined>(
       key,
       (current) => {
-        if (!current) return current
-        return {
-          ...current,
-          expenses: Array.isArray(current.expenses)
-            ? current.expenses.filter((e) => e.id !== expenseId)
-            : [],
-        }
+        if (!Array.isArray(current)) return current
+        return current.filter((e) => e.id !== expenseId)
       },
     )
   }
