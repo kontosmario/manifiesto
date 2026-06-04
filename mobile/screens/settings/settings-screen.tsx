@@ -92,6 +92,8 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import { financeToCycleConfig } from '@/utils/finance-cycle-config'
+import { formatCycleSummary } from '@/utils/format-cycle-label'
 import {
   PRIVACY_POLICY_URL,
   TERMS_OF_SERVICE_URL,
@@ -746,6 +748,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
       : undefined
   const usdValue = currencyFormatter.format(financeSnapshot.usdExchangeRate)
+  const cycleConfigValue = formatCycleSummary(
+    financeToCycleConfig(dashboard.familyFinanceQuery.data),
+  )
   const savingsPercentValue = `${financeSnapshot.savingsGoalPercent}%`
   const bufferValueLabel =
     financeSnapshot.dailyBudgetBufferMode === 'none'
@@ -908,6 +913,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   label="Día de cobro"
                   onPress={() => setPaydaySheetOpen(true)}
                   value={`Día ${financeSnapshot.salaryPaymentDay}`}
+                />
+                <SettingsRow
+                  disabled={!isOwner}
+                  disabledHint={DISABLED_HINT}
+                  icon="autorenew"
+                  label="Ciclo de cobro"
+                  onPress={() =>
+                    router.push('/(app)/settings/cycle-config' as never)
+                  }
+                  value={cycleConfigValue}
                 />
                 <SettingsRow
                   disabled={!isOwner}
