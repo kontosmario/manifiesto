@@ -43,7 +43,7 @@ import {
   useIncomeEvents,
   type IncomeEvent,
 } from '@/features/income/use-income-events'
-import { ActivityRowV2 } from '@/components/home/activity-row-v2'
+import { IncomeDayBanner } from '@/components/gastos/income-day-banner'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
@@ -87,9 +87,11 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
   markedDaysIso: Object.freeze([]) as unknown as string[],
 })
 
-type MovementItem =
-  | { kind: 'expense'; iso: string; expense: Expense }
-  | { kind: 'income'; iso: string; income: IncomeEvent }
+// Note: only expense items live in the SectionList `data` now. Income
+// for the day surfaces via the `IncomeDayBanner` rendered in the
+// section header. The discriminator stays in the type for the
+// section/renderItem signature consistency.
+type MovementItem = { kind: 'expense'; iso: string; expense: Expense }
 
 interface MovimientosSection {
   title: string
@@ -101,21 +103,59 @@ interface MovimientosSection {
    *  today / yesterday ended up at the BOTTOM of the list. */
   dateMs: number
   total: number
+  /** Expense rows only. Incomes were previously mixed into this array;
+   *  they now live on `incomes` and render via `IncomeDayBanner` as a
+   *  strip above the expense rows. Visually separates "what entered"
+   *  from "what I spent", which the inline mix muddled. */
   data: MovementItem[]
+  incomes: IncomeEvent[]
 }
 
-const INCOME_KIND_LABEL_G: Record<IncomeEvent['kind'], string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Ingreso',
+// Income labels + icons used to live here when income rendered inline
+// via ActivityRowV2. They moved to `IncomeDayBanner` now that incomes
+// surface as a per-day banner above the expense rows.
+
+/**
+ * Canonical "what time did this income happen" — local-noon epoch ms
+ * derived from `event_date` ("YYYY-MM-DD") when present, falling back
+ * to `created_at` when the row is from a code path that doesn't set
+ * event_date. Used everywhere that needs to slot an income into a day
+ * bucket or sort it chronologically alongside expenses. Eliminates the
+ * back-date bug where filtering/sorting by created_at filed a
+ * backdated income under "today" instead of the day the user picked.
+ */
+function incomeHappenedAtMs(income: IncomeEvent): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(income.event_date)
+  if (m) {
+    return new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      12,
+      0,
+      0,
+      0,
+    ).getTime()
+  }
+  return Date.parse(income.created_at)
 }
 
-const INCOME_KIND_ICON_G: Record<IncomeEvent['kind'], string> = {
-  transfer: '💸',
-  bonus: '⭐',
-  gift: '🎁',
-  other: '💵',
+/**
+ * Builds the meta line under the section title: "3 gastos · 1 ingreso"
+ * style. Pluralization in Spanish + handles 0 / 1 / N for each side.
+ * Skipped when both counts are zero (the parent section won't render
+ * in that case anyway).
+ */
+function sectionMetaCopy(expenseCount: number, incomeCount: number): string {
+  const parts: string[] = []
+  if (expenseCount > 0) {
+    parts.push(`${expenseCount} gasto${expenseCount === 1 ? '' : 's'}`)
+  }
+  if (incomeCount > 0) {
+    parts.push(`${incomeCount} ingreso${incomeCount === 1 ? '' : 's'}`)
+  }
+  if (parts.length === 0) return 'sin movimientos'
+  return parts.join(' · ')
 }
 
 const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
@@ -239,7 +279,12 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     const startMs = controller.cycleStart.getTime()
     const endMs = controller.cycleEnd.getTime()
     return all.filter((i) => {
-      const t = Date.parse(i.created_at)
+      // Bucket by `event_date` (the day the income happened) not
+      // `created_at` (when the row was registered). Users can backdate
+      // an income via the add-income form; using created_at would file
+      // a backdated income under "today" and miss the actual day in
+      // the cycle. Same fix applied in `home-activity-section.tsx`.
+      const t = incomeHappenedAtMs(i)
       return Number.isFinite(t) && t >= startMs && t < endMs
     })
   }, [incomeEventsQuery.data, controller.cycleStart, controller.cycleEnd])
@@ -364,6 +409,21 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     const timeout = setTimeout(() => setRowAnimationEnabled(false), 500)
     return () => clearTimeout(timeout)
   }, [filterSignature])
+
+  // Also flip the animation flag when the expense count changes via a
+  // mutation (add / delete). Otherwise the new row from an optimistic
+  // prepend popped in without a fade, and on delete the sibling reflow
+  // happened without LinearTransition smoothing. Same 500ms window as
+  // filter changes — long enough for FadeIn (180) + LinearTransition
+  // (220) to land.
+  const expensesCountRef = useRef(controller.expenses.length)
+  useEffect(() => {
+    if (expensesCountRef.current === controller.expenses.length) return
+    expensesCountRef.current = controller.expenses.length
+    setRowAnimationEnabled(true)
+    const timeout = setTimeout(() => setRowAnimationEnabled(false), 500)
+    return () => clearTimeout(timeout)
+  }, [controller.expenses.length])
 
   const handleDelete = useCallback(
     (expenseId: string) => {
@@ -556,30 +616,25 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           iso: e.created_at,
           expense: e,
         })),
+        incomes: [],
       }))
       const selectedDateMs = base[0]?.dateMs ?? null
       const dayIncomes =
         selectedDateMs != null
           ? cycleIncomeEvents.filter(
-              (i) => dayMsFromIso(i.created_at) === selectedDateMs,
+              (i) => incomeHappenedAtMs(i) === selectedDateMs,
             )
           : []
       if (base.length > 0 && dayIncomes.length > 0) {
-        base[0]!.data = [
-          ...base[0]!.data,
-          ...dayIncomes.map<MovementItem>((i) => ({
-            kind: 'income',
-            iso: i.created_at,
-            income: i,
-          })),
-        ].sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
+        base[0]!.incomes = dayIncomes
       }
       return base
     }
 
-    // Vista normal del cycle: mergeamos income en los buckets de día.
-    // El Map ahora rasgua por `dateMs` en vez de `day` 1–31 para que
-    // cycles que cruzan mes no colapsen "May 15" y "Jun 15".
+    // Vista normal del cycle: incomes ya NO se mezclan con expenses en
+    // `data` — viven en `incomes` y rinden como banner above the
+    // expense rows. El Map rasgua por `dateMs` para no colapsar
+    // "May 15" y "Jun 15" cuando el ciclo cruza el mes.
     const byDay = new Map<number, MovimientosSection>()
     for (const g of controller.groups) {
       const dateMs =
@@ -594,38 +649,41 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           iso: e.created_at,
           expense: e,
         })),
+        incomes: [],
       })
     }
     for (const income of cycleIncomeEvents) {
-      const dateMs = dayMsFromIso(income.created_at)
-      const d = new Date(income.created_at)
+      // Bucket by event_date (what day did this income happen), not
+      // created_at (when registered). Backdated incomes file under
+      // the right day.
+      const dateMs = incomeHappenedAtMs(income)
+      const d = new Date(dateMs)
       const existing = byDay.get(dateMs)
-      const item: MovementItem = {
-        kind: 'income',
-        iso: income.created_at,
-        income,
-      }
       if (existing) {
-        existing.data.push(item)
+        existing.incomes.push(income)
       } else {
-        // Día sin gastos pero con ingreso → sección nueva. Total = 0
-        // (no afecta el agregado de gastos). El header sigue mostrando
-        // la fecha; el row income explica la fila.
+        // Día sin gastos pero con ingreso → sección nueva con `data`
+        // vacío (SectionList renderea solo el header) y el income
+        // surfaceando como banner.
         byDay.set(dateMs, {
           title: formatStandaloneIncomeDay(d),
           day: d.getDate(),
           dateMs,
           total: 0,
-          data: [item],
+          data: [],
+          incomes: [income],
         })
       }
     }
-    // Sort within day desc + sort sections by actual date desc — NOT
-    // by day-of-month integer. Latter bled across May → June (the
-    // original "today/yesterday at the bottom" bug).
+    // Sort expense rows within day desc + sort sections by actual date
+    // desc — NOT by day-of-month integer (that bled across May → June).
     const merged = Array.from(byDay.values())
     for (const s of merged) {
       s.data.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0))
+      // Income order within the day banner: most recent first too.
+      s.incomes.sort((a, b) =>
+        a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+      )
     }
     merged.sort((a, b) => b.dateMs - a.dateMs)
     return merged
@@ -639,56 +697,10 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
 
   const renderItem = useCallback(
     ({ item: mv }: { item: MovementItem }) => {
-      // Income row — usamos ActivityRowV2 (amount positivo en verde +
-      // ícono por kind) wrapped en SwipeRow para borrar igual que
-      // los gastos.
-      if (mv.kind === 'income') {
-        const income = mv.income
-        const kindLabel = INCOME_KIND_LABEL_G[income.kind]
-        const title = income.description?.trim() || kindLabel
-        const who = memberById.get(income.created_by)
-        const isIncomePending =
-          deleteIncomeMutation.isPending &&
-          deleteIncomeMutation.variables?.id === income.id
-        const incomeActions: SwipeAction[] = [
-          {
-            label: 'Eliminar',
-            tone: 'danger',
-            icon: 'delete',
-            onPress: () => handleDeleteIncome(income.id),
-          },
-        ]
-        return (
-          <Animated.View
-            style={styles.rowWrap}
-            entering={rowAnimationEnabled ? FadeIn.duration(180) : undefined}
-            exiting={FadeOut.duration(140)}
-            layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
-          >
-            <SwipeRow
-              accessibilityLabel={`${title}, ingreso, ${kindLabel}`}
-              accessibilityHint="Desliza a la izquierda para eliminar"
-              accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
-              onAccessibilityAction={(event) => {
-                if (event.nativeEvent.actionName === 'delete') {
-                  handleDeleteIncome(income.id)
-                }
-              }}
-              rightActions={incomeActions}
-              isProcessing={isIncomePending}
-            >
-              <ActivityRowV2
-                icon={INCOME_KIND_ICON_G[income.kind]}
-                title={title}
-                category={`Ingreso · ${kindLabel}`}
-                whoName={who?.name ?? 'Alguien'}
-                whoColor={who?.color ?? '#329315'}
-                amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
-              />
-            </SwipeRow>
-          </Animated.View>
-        )
-      }
+      // Income rows are no longer rendered inline — they surface via
+      // the per-day `IncomeDayBanner` rendered in the section header.
+      // Keeping the discriminator narrow on `item.kind === 'expense'`
+      // gives TS proper exhaustiveness for any future variant.
       const item = mv.expense
       const cat = controller.categoriesById.get(item.category_id)
       const who = memberById.get(item.created_by)
@@ -756,9 +768,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       controller.categoriesById,
       memberById,
       handleDelete,
-      handleDeleteIncome,
       deleteExpenseMutation,
-      deleteIncomeMutation,
       theme.colors.textMuted,
       rowAnimationEnabled,
     ],
@@ -766,17 +776,16 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<MovementItem, MovimientosSection> }) => (
-      // Section headers also fade in / reflow when filtering changes
-      // which day groups exist. Same gating logic as rows: cold mount
-      // → no entering animation; user toggles a filter → 500ms window
-      // where new sections fade in.
+      // The section "header" is now a small column: top row = the
+      // standard sticky-style header (date + count + expense total),
+      // and below it (NOT sticky) an `IncomeDayBanner` strip when the
+      // day had income. Pulling income into a distinct banner instead
+      // of mixing it inline gives the expense list a clean meaning
+      // ("what I spent today") and makes income a glanceable signal
+      // independent of the expense rhythm.
       <Animated.View
-        // Sticky date-group header: its opaque bg must match the canvas
-        // so scrolling rows slide cleanly under it. On the near-black
-        // dark canvas that means DARK_TAB_CANVAS, not the forest
-        // `background` token.
         style={[
-          styles.groupHeader,
+          styles.sectionHeaderShell,
           {
             backgroundColor: theme.isDark
               ? DARK_TAB_CANVAS
@@ -787,25 +796,39 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         exiting={FadeOut.duration(120)}
         layout={rowAnimationEnabled ? LinearTransition.duration(220) : undefined}
       >
-        <View>
-          <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
-            {section.title}
-          </Text>
-          <Text style={[styles.groupMeta, { color: theme.colors.textSoft }]}>
-            {section.data.length} movimiento{section.data.length === 1 ? '' : 's'}
-          </Text>
+        <View style={styles.groupHeader}>
+          <View>
+            <Text style={[styles.groupLabel, { color: theme.colors.text }]}>
+              {section.title}
+            </Text>
+            <Text style={[styles.groupMeta, { color: theme.colors.textSoft }]}>
+              {sectionMetaCopy(section.data.length, section.incomes.length)}
+            </Text>
+          </View>
+          {section.data.length > 0 ? (
+            <Text style={[styles.groupTotal, { color: theme.colors.text }]}>
+              -{formatMoney(section.total)}
+            </Text>
+          ) : null}
         </View>
-        <Text style={[styles.groupTotal, { color: theme.colors.text }]}>
-          -{formatMoney(section.total)}
-        </Text>
+        <IncomeDayBanner
+          incomes={section.incomes}
+          onDeleteIncome={handleDeleteIncome}
+        />
       </Animated.View>
     ),
-    [theme.isDark, theme.colors.background, theme.colors.text, theme.colors.textSoft, rowAnimationEnabled],
+    [
+      theme.isDark,
+      theme.colors.background,
+      theme.colors.text,
+      theme.colors.textSoft,
+      rowAnimationEnabled,
+      handleDeleteIncome,
+    ],
   )
 
   const keyExtractor = useCallback(
-    (item: MovementItem) =>
-      item.kind === 'expense' ? `e-${item.expense.id}` : `i-${item.income.id}`,
+    (item: MovementItem) => `e-${item.expense.id}`,
     [],
   )
 
@@ -1356,6 +1379,13 @@ const styles = StyleSheet.create({
   },
   headerStack: { gap: 10, marginBottom: 8 },
   rowWrap: { paddingTop: 6 },
+  sectionHeaderShell: {
+    // SectionList sticky-header shell. The bg covers the canvas so
+    // scrolling expense rows slide cleanly under the date/count/total
+    // row above. The `IncomeDayBanner` rendered below the
+    // date row is NOT sticky — it scrolls with the section content,
+    // which is the right behavior (banner belongs to a specific day).
+  },
   groupHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

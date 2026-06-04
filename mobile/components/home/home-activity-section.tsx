@@ -33,6 +33,20 @@ interface HomeActivitySectionProps {
   limit?: number
 }
 
+/**
+ * Builds the chronological ISO key for an income event. Anchors at
+ * noon of `event_date` (YYYY-MM-DD) when present so a backdated
+ * income sorts into its real day rather than its insertion timestamp.
+ * Falls back to `created_at` only when event_date is missing or
+ * malformed (shouldn't happen post-`useCreateIncomeEvent`, which
+ * always sets event_date).
+ */
+function incomeChronologicalIso(income: IncomeEvent): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(income.event_date)
+  if (m) return `${income.event_date}T12:00:00.000Z`
+  return income.created_at
+}
+
 type MovementItem =
   | { kind: 'expense'; iso: string; expense: Expense }
   | { kind: 'income'; iso: string; income: IncomeEvent }
@@ -92,7 +106,12 @@ function HomeActivitySectionImpl({
       })),
       ...incomeEvents.map<MovementItem>((i) => ({
         kind: 'income',
-        iso: i.created_at,
+        // Use `event_date` (the day the income actually happened) as
+        // the chronological key — fall back to `created_at` only if
+        // event_date is missing/malformed. Anchored to T12:00:00 so
+        // backdated incomes slot into the right calendar day instead
+        // of jumping to the top via their insertion timestamp.
+        iso: incomeChronologicalIso(i),
         income: i,
       })),
     ]
