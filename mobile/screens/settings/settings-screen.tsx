@@ -909,14 +909,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  icon="event"
-                  label="Día de cobro"
-                  onPress={() => setPaydaySheetOpen(true)}
-                  value={`Día ${financeSnapshot.salaryPaymentDay}`}
-                />
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
                   icon="autorenew"
                   label="Ciclo de cobro"
                   onPress={() =>
