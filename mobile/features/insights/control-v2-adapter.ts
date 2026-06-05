@@ -248,7 +248,7 @@ export function buildControlDataFromSnapshot(
   const commitmentSummary = computeFixedExpenseCycleSummary({
     items: fixedExpenses,
     expenses,
-    payCycle,
+    window: { start: payCycle.start, end: payCycle.end },
     today: now,
   })
   const fijosMes = commitmentSummary.pressureTotal

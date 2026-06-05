@@ -26,6 +26,10 @@ import {
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
 import { financeToCycleConfig } from '@/utils/finance-cycle-config'
+import {
+  computeMonthlyAccountingWindow,
+  type MonthlyAccountingWindow,
+} from '@/utils/monthly-accounting'
 const DEFAULT_SALARY_PAYMENT_DAY = 1
 const DEFAULT_USD_EXCHANGE_RATE = 1000
 
@@ -47,6 +51,16 @@ interface BuildFamilyDashboardSnapshotInput {
   finance?: FamilyDashboardFinanceSnapshot | null
   monthsBack?: number
   today?: Date
+  /**
+   * Plano de accounting mensual — la ventana sobre la que se calculan
+   * saldo del mes, cupo diario, presión de fijos y proyección. Para
+   * usuarios `monthly` coincide con `payCycle`; para weekly/biweekly/custom
+   * es el mes calendario. Optional para call-sites legacy/tests; cuando
+   * no se pasa se deriva de `finance + today`.
+   *
+   * Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
+   */
+  monthlyAccounting?: MonthlyAccountingWindow
 }
 
 function parseConfirmedDate(value?: string | null): Date | null {
@@ -68,6 +82,7 @@ export function buildFamilyDashboardSnapshot({
   finance,
   monthsBack = 6,
   today = new Date(),
+  monthlyAccounting,
 }: BuildFamilyDashboardSnapshotInput): FamilyDashboardSnapshot {
   const todayDate = normalizeToStartOfDay(today)
   const salaryPaymentDay = finance?.salary_payment_day ?? DEFAULT_SALARY_PAYMENT_DAY
@@ -80,11 +95,19 @@ export function buildFamilyDashboardSnapshot({
   const isSalaryPendingConfirmation =
     todayDate >= currentMonthPayDate &&
     (!lastSalaryConfirmedDate || lastSalaryConfirmedDate < currentMonthPayDate)
+  const cycleConfig = financeToCycleConfig(finance ?? undefined)
   const payCycle = getCurrentPayCycle(
     todayDate,
-    financeToCycleConfig(finance ?? undefined),
+    cycleConfig,
     isSalaryPendingConfirmation,
   )
+  // Monthly accounting window — el plano donde viven saldo/cupo/proyección
+  // y la presión de fijos. Para monthly users coincide con `payCycle`; para
+  // weekly/biweekly/custom es el mes calendario (sin regresión: el call-site
+  // puede pasarlo explícito para mantener identidad estable con el hook,
+  // si no lo derivamos acá).
+  const accounting =
+    monthlyAccounting ?? computeMonthlyAccountingWindow(cycleConfig, todayDate)
 
   const currentMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
   const nextMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 1)
@@ -109,7 +132,11 @@ export function buildFamilyDashboardSnapshot({
       return
     }
 
-    if (expenseDate >= payCycle.start && expenseDate < payCycle.end) {
+    // Bucket "este ciclo" se computa sobre la ventana mensual de
+    // accounting — para monthly users coincide con `payCycle`; para
+    // weekly/biweekly/custom es el mes calendario (que es lo que el
+    // usuario percibe como "lo que llevo gastado este mes").
+    if (expenseDate >= accounting.start && expenseDate < accounting.end) {
       actualSpentInCurrentCycle += expense.price
       if (expense.commitment_id) {
         commitmentPaymentsInCurrentCycle += expense.price
@@ -132,10 +159,14 @@ export function buildFamilyDashboardSnapshot({
     }
   })
 
+  // Presión de fijos sobre la ventana mensual: clasifica next_due_on
+  // contra `[accounting.start, accounting.end)` y suma pagos del mismo
+  // window. Para monthly users es idéntico al payCycle; para no-monthly
+  // los fijos ahora se clasifican por mes calendario.
   const currentCycleCommitmentSummary = computeFixedExpenseCycleSummary({
     items: commitments,
     expenses,
-    payCycle,
+    window: { start: accounting.start, end: accounting.end },
     today: todayDate,
   })
   const monthlyIncome = finance?.monthly_income ?? 0
@@ -187,11 +218,10 @@ export function buildFamilyDashboardSnapshot({
   const effectiveCycleIncome = hasCycleOverride
     ? (cycleStartingBalanceOverride as number)
     : monthlyIncome
-  const remainingDaysFromToday = Math.max(
-    1,
-    Math.round((payCycle.end.getTime() - todayDate.getTime()) / DAY_MS),
-  )
-  const totalCycleDays = Math.max(payCycle.days, 1)
+  // Días restantes/total del MES de accounting (no del salary cycle):
+  // el cupo diario se proyecta sobre el plano mensual fijo.
+  const remainingDaysFromToday = Math.max(1, accounting.daysRemaining)
+  const totalCycleDays = Math.max(accounting.days, 1)
   // Effective cycle length the daily-budget formula divides into.
   // With override active, the daily cap spreads the user's reported
   // balance across the remaining days only (matches engine output).
@@ -254,6 +284,7 @@ export function buildFamilyDashboardSnapshot({
     isSalaryPendingConfirmation,
     monthlyHistory,
     monthlyHistoryTotals,
+    monthlyAccounting: accounting,
     monthlyIncome,
     payCycle,
     remainingUntilPayday,

@@ -1,5 +1,6 @@
 import type { FamilyMonthlySpent } from '@/features/expenses/expense-repository'
 import type { FixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-utils'
+import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 
 export interface FamilyDashboardFinanceSnapshot {
@@ -54,6 +55,18 @@ export interface FamilyDashboardSnapshot {
   monthlyHistory: FamilyDashboardMonthlyHistoryRow[]
   monthlyHistoryTotals: FamilyDashboardMonthlyHistoryTotals
   monthlyIncome: number
+  /**
+   * Plano de accounting mensual — la ventana sobre la que se reporta
+   * el spent del ciclo (`actualSpentInCurrentCycle`, `variableSpentInCurrentCycle`),
+   * la presión de fijos y la división del cupo diario. Para usuarios
+   * `monthly` coincide con `payCycle`; para weekly/biweekly/custom es
+   * el mes calendario. UIs que necesitan "lo del mes" leen de acá; UIs
+   * que necesitan "lo del cobro" (countdown, confirmar sueldo) siguen
+   * leyendo `payCycle`.
+   *
+   * Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
+   */
+  monthlyAccounting: MonthlyAccountingWindow
   payCycle: PayCycle
   remainingUntilPayday: number
   salaryPaymentDay: number
