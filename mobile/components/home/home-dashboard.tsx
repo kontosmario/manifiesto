@@ -5,6 +5,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
+import { MonthCloseDecisionSheet } from '@/components/home/sheets/month-close-decision-sheet'
+import {
+  useApplyMonthCloseDecision,
+  useMonthCloseDecisionPending,
+  type ApplyDecisionInput,
+} from '@/features/month-close/use-month-close-decision'
 import { MetaCard } from '@/components/home/meta-card'
 import { MetaEmptyCard } from '@/components/home/meta-empty-card'
 import {
@@ -131,6 +137,12 @@ export function HomeDashboard({
   const today = useCurrentDate()
   const queryClient = useQueryClient()
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
+  const [decisionSheetOpen, setDecisionSheetOpen] = useState(false)
+
+  // Spec B — month-close leftover decision. Detecta sobrante del mes
+  // pasado y abre el sheet automáticamente cuando hay decisión pendiente.
+  const pendingDecision = useMonthCloseDecisionPending(familyId)
+  const applyDecision = useApplyMonthCloseDecision(familyId)
 
   // ─── Tour targets that can't be wrapped via <TourTarget> ────────
   // Some targets live inside leaf components (HomeHeader's actions
@@ -316,6 +328,45 @@ export function HomeDashboard({
     if (isSavingSalary) return
     setCycleBalanceSheetOpen(false)
   }, [isSavingSalary])
+
+  // Auto-open del MonthCloseDecisionSheet cuando hay sobrante del mes
+  // pasado sin decidir. Gating mínimo — la propia query verifica que
+  // no haya decisión registrada y que el monto supere el threshold.
+  useEffect(() => {
+    if (pendingDecision && !decisionSheetOpen) {
+      setDecisionSheetOpen(true)
+    }
+  }, [pendingDecision, decisionSheetOpen])
+
+  const handleApplyDecision = useCallback(
+    async (input: ApplyDecisionInput) => {
+      await applyDecision.mutateAsync(input)
+      setDecisionSheetOpen(false)
+    },
+    [applyDecision],
+  )
+
+  const handleSkipDecision = useCallback(async () => {
+    if (!pendingDecision) return
+    await applyDecision.mutateAsync({
+      monthIso: pendingDecision.monthIso,
+      sobrante: pendingDecision.sobrante,
+      decision: 'skip',
+    })
+    setDecisionSheetOpen(false)
+  }, [applyDecision, pendingDecision])
+
+  const handleDecisionSheetClose = useCallback(() => {
+    if (applyDecision.isPending) return
+    setDecisionSheetOpen(false)
+  }, [applyDecision.isPending])
+
+  const activeGoalForSheet = useMemo(() => {
+    const g = savingsGoalQuery.data
+    if (!g) return null
+    if (g.isActive === false) return null
+    return { id: g.id, title: g.title, emoji: g.emoji }
+  }, [savingsGoalQuery.data])
   // Dispara el "Manifiesto Wrapped" del ciclo recién cerrado. Gating:
   //   - Solo en flow recurrente (NO en onboarding — el primer cobro
   //     no cierra nada).
@@ -727,6 +778,18 @@ export function HomeDashboard({
         onSaveBalance={handleCycleSheetSave}
         onKeepDefault={handleCycleSheetKeepDefault}
       />
+      {pendingDecision ? (
+        <MonthCloseDecisionSheet
+          visible={decisionSheetOpen}
+          pending={pendingDecision}
+          activeGoal={activeGoalForSheet}
+          currentMonthStart={dashboard.monthlyAccounting.start}
+          onApply={handleApplyDecision}
+          onSkip={handleSkipDecision}
+          onClose={handleDecisionSheetClose}
+          isApplying={applyDecision.isPending}
+        />
+      ) : null}
     </View>
   )
 }
