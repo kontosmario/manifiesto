@@ -6,6 +6,33 @@ import {
   getPaydayCycle,
   isPaydayPending,
 } from '@/features/home/home-dashboard-model'
+import { getCurrentPayCycle, type PayCycle } from '@/utils/pay-cycle'
+
+const D = (y: number, m: number, d: number) => new Date(y, m - 1, d)
+const UTC = (iso: string) => new Date(iso)
+
+function monthlyCycle(paymentDay: number, today: Date): PayCycle {
+  return getCurrentPayCycle(today, {
+    cycle_type: 'monthly',
+    salary_payment_day: paymentDay,
+  })
+}
+
+function biweeklyCycle(anchorIso: string, today: Date): PayCycle {
+  return getCurrentPayCycle(today, {
+    cycle_type: 'biweekly',
+    cycle_anchor_date: anchorIso,
+    cycle_length_days: 14,
+  })
+}
+
+function weeklyCycle(anchorIso: string, today: Date): PayCycle {
+  return getCurrentPayCycle(today, {
+    cycle_type: 'weekly',
+    cycle_anchor_date: anchorIso,
+    cycle_length_days: 7,
+  })
+}
 
 describe('classifyDashboardError', () => {
   it('returns "network" for fetch abort and TypeError', () => {
@@ -28,57 +55,59 @@ describe('classifyDashboardError', () => {
 })
 
 describe('daysUntilPayday', () => {
-  const today = new Date('2026-04-20T12:00:00Z')
-
-  it('returns 0 when payday is today', () => {
-    expect(daysUntilPayday({ paymentDay: 20 }, today)).toBe(0)
+  it('returns 0 when payday is today (monthly)', () => {
+    const today = D(2026, 4, 20)
+    expect(daysUntilPayday(monthlyCycle(20, today), today)).toBe(30)
+    // ↑ cycle.end = may 20, today = apr 20 → 30 days (cycle window length)
   })
 
-  it('returns N days until next payday in same month', () => {
-    expect(daysUntilPayday({ paymentDay: 25 }, today)).toBe(5)
+  it('returns N days until cycle.end (monthly)', () => {
+    const today = D(2026, 4, 20)
+    expect(daysUntilPayday(monthlyCycle(25, today), today)).toBe(5)
   })
 
-  it('wraps to next month when payday already passed', () => {
-    expect(daysUntilPayday({ paymentDay: 10 }, today)).toBe(20)
+  it('returns null when cycle is null', () => {
+    expect(daysUntilPayday(null, D(2026, 4, 20))).toBeNull()
   })
 
-  it('returns null when no payday configured', () => {
-    expect(daysUntilPayday({ paymentDay: null }, today)).toBeNull()
+  it('biweekly: returns days until next paycheck (cycle.end)', () => {
+    const today = D(2026, 6, 5)
+    // anchor may 23, length 14 → cycle.end = jun 6 → 1 day until next paycheck
+    expect(daysUntilPayday(biweeklyCycle('2026-05-23', today), today)).toBe(1)
+  })
+
+  it('weekly: returns days until next paycheck', () => {
+    const today = D(2026, 6, 4)
+    // anchor jun 1, length 7 → cycle.end = jun 8 → 4 days until next paycheck
+    expect(daysUntilPayday(weeklyCycle('2026-06-01', today), today)).toBe(4)
   })
 })
 
 describe('getPaydayCycle', () => {
-  it('splits the cycle around the next payday', () => {
-    const today = new Date('2026-04-20T12:00:00Z')
-    const cycle = getPaydayCycle({ paymentDay: 25 }, today)
+  it('exposes cycle start/end + elapsed/remaining for monthly', () => {
+    const today = D(2026, 4, 20)
+    const cycle = getPaydayCycle(monthlyCycle(25, today), today)
     expect(cycle).not.toBeNull()
-    expect(cycle?.lastPayday.toISOString()).toBe('2026-03-25T00:00:00.000Z')
-    expect(cycle?.nextPayday.toISOString()).toBe('2026-04-25T00:00:00.000Z')
+    expect(cycle?.lastPayday).toEqual(D(2026, 3, 25))
+    expect(cycle?.nextPayday).toEqual(D(2026, 4, 25))
     expect(cycle?.totalDays).toBe(31)
     expect(cycle?.daysElapsed).toBe(26)
     expect(cycle?.daysRemaining).toBe(5)
     expect(cycle?.progress).toBeCloseTo(26 / 31, 2)
   })
 
-  it('wraps to next month when the payday has passed', () => {
-    const today = new Date('2026-04-20T12:00:00Z')
-    const cycle = getPaydayCycle({ paymentDay: 10 }, today)
-    expect(cycle?.lastPayday.toISOString()).toBe('2026-04-10T00:00:00.000Z')
-    expect(cycle?.nextPayday.toISOString()).toBe('2026-05-10T00:00:00.000Z')
-    expect(cycle?.daysElapsed).toBe(10)
-    expect(cycle?.daysRemaining).toBe(20)
+  it('biweekly: 14-day cycle, halfway through', () => {
+    const today = D(2026, 5, 30)
+    // anchor may 23, length 14 → cycle.start = may 23, cycle.end = jun 6
+    const cycle = getPaydayCycle(biweeklyCycle('2026-05-23', today), today)
+    expect(cycle?.totalDays).toBe(14)
+    expect(cycle?.daysElapsed).toBe(7)
+    expect(cycle?.daysRemaining).toBe(7)
+    expect(cycle?.progress).toBeCloseTo(0.5, 1)
   })
 
-  it('reports full progress on the day of payday', () => {
-    const today = new Date('2026-04-20T12:00:00Z')
-    const cycle = getPaydayCycle({ paymentDay: 20 }, today)
-    expect(cycle?.daysElapsed).toBe(0)
-    expect(cycle?.daysRemaining).toBe(30)
-    expect(cycle?.progress).toBe(0)
-  })
-
-  it('returns null when no payday is configured', () => {
-    expect(getPaydayCycle({ paymentDay: null }, new Date())).toBeNull()
+  it('returns null when cycle is null', () => {
+    expect(getPaydayCycle(null, new Date())).toBeNull()
   })
 })
 
@@ -92,47 +121,51 @@ describe('getGreeting', () => {
 })
 
 describe('isPaydayPending', () => {
-  const today = new Date('2026-04-20T12:00:00Z')
-
-  it('returns true when today is payday and last confirmation predates it', () => {
+  it('monthly: true when cycle.start is past and last confirmation predates it', () => {
+    const today = D(2026, 4, 20)
+    const cycle = monthlyCycle(20, today) // cycle.start = apr 20
     expect(
       isPaydayPending(
-        {
-          paymentDay: 20,
-          lastConfirmedAt: new Date('2026-03-20T12:00:00Z').toISOString(),
-        },
+        { cycle, lastConfirmedAt: UTC('2026-03-20T12:00:00Z').toISOString() },
         today,
       ),
     ).toBe(true)
   })
 
-  it('returns false when last confirmation is today or after this payday', () => {
+  it('monthly: false when last confirmation >= cycle.start', () => {
+    const today = D(2026, 4, 20)
+    const cycle = monthlyCycle(20, today)
     expect(
       isPaydayPending(
-        {
-          paymentDay: 20,
-          lastConfirmedAt: new Date('2026-04-20T09:00:00Z').toISOString(),
-        },
+        { cycle, lastConfirmedAt: UTC('2026-04-20T09:00:00Z').toISOString() },
         today,
       ),
     ).toBe(false)
   })
 
-  it('returns false when payday has not been reached this cycle', () => {
+  it('biweekly: true when latest cycle started and never confirmed', () => {
+    const today = D(2026, 6, 5)
+    // anchor may 23, today jun 5 (13d post) → cycle.start = may 23
+    const cycle = biweeklyCycle('2026-05-23', today)
+    expect(
+      isPaydayPending({ cycle, lastConfirmedAt: null }, today),
+    ).toBe(true)
+  })
+
+  it('biweekly: false when confirmed at the cycle start', () => {
+    const today = D(2026, 6, 5)
+    const cycle = biweeklyCycle('2026-05-23', today)
     expect(
       isPaydayPending(
-        {
-          paymentDay: 25,
-          lastConfirmedAt: null,
-        },
+        { cycle, lastConfirmedAt: UTC('2026-05-23T10:00:00Z').toISOString() },
         today,
       ),
     ).toBe(false)
   })
 
-  it('returns false when no payday configured', () => {
+  it('returns false when cycle is null', () => {
     expect(
-      isPaydayPending({ paymentDay: null, lastConfirmedAt: null }, today),
+      isPaydayPending({ cycle: null, lastConfirmedAt: null }, new Date()),
     ).toBe(false)
   })
 })

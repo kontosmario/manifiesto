@@ -26,7 +26,7 @@ import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
 import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
-import { EditPaydaySheet } from '@/components/settings/sheets/edit-payday-sheet'
+import { EditCycleConfigSheet } from '@/components/settings/sheets/edit-cycle-config-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
 import { EditUsdRateSheet } from '@/components/settings/sheets/edit-usd-rate-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -92,6 +92,8 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
+import { formatCycleSummary } from '@/utils/format-cycle-label'
 import {
   PRIVACY_POLICY_URL,
   TERMS_OF_SERVICE_URL,
@@ -167,6 +169,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
       currentCycleAnchor:
         dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+      // Cycle config: leer del query — NO hardcodear monthly. Cualquier
+      // save vía `saveFinanceSnapshot` (USD rate, ahorro, etc.) hubiera
+      // reseteado la config del ciclo si quedaban estos hardcodeados.
+      cycleType: dashboard.familyFinanceQuery.data?.cycle_type ?? 'monthly',
+      cycleAnchorDate: dashboard.familyFinanceQuery.data?.cycle_anchor_date ?? null,
+      cycleLengthDays: dashboard.familyFinanceQuery.data?.cycle_length_days ?? null,
     }),
     [
       dashboard.dailyBudgetBufferMode,
@@ -177,6 +185,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       dashboard.familyFinanceQuery.data?.savings_goal_percent,
       dashboard.familyFinanceQuery.data?.current_cycle_starting_balance,
       dashboard.familyFinanceQuery.data?.current_cycle_anchor,
+      dashboard.familyFinanceQuery.data?.cycle_type,
+      dashboard.familyFinanceQuery.data?.cycle_anchor_date,
+      dashboard.familyFinanceQuery.data?.cycle_length_days,
       dashboard.monthlyIncome,
       dashboard.salaryPaymentDay,
       dashboard.savingsGoal,
@@ -188,7 +199,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [nameSheetOpen, setNameSheetOpen] = useState(false)
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
-  const [paydaySheetOpen, setPaydaySheetOpen] = useState(false)
+  const [cycleConfigSheetOpen, setCycleConfigSheetOpen] = useState(false)
   const [usdSheetOpen, setUsdSheetOpen] = useState(false)
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
@@ -415,11 +426,22 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     [showError, updateMyContributionMutation],
   )
 
-  const handleSavePayday = useCallback(
-    (value: number) => {
+  const handleSaveCycleConfig = useCallback(
+    (next: FinanceCycleConfig) => {
       saveFinanceSnapshot(
-        { ...financeSnapshot, salaryPaymentDay: value },
-        () => setPaydaySheetOpen(false),
+        {
+          ...financeSnapshot,
+          // Persistimos el día de cobro en `salaryPaymentDay` solo cuando
+          // el ciclo es mensual (mantiene compat con el resto de la app).
+          // Para rolling types, el día de cobro lo derivan los consumidores
+          // de `cycle_anchor_date` cuando lo necesitan.
+          salaryPaymentDay:
+            next.cycle_type === 'monthly' ? next.salary_payment_day : financeSnapshot.salaryPaymentDay,
+          cycleType: next.cycle_type,
+          cycleAnchorDate: next.cycle_type === 'monthly' ? null : next.cycle_anchor_date,
+          cycleLengthDays: next.cycle_type === 'monthly' ? null : next.cycle_length_days,
+        },
+        () => setCycleConfigSheetOpen(false),
       )
     },
     [financeSnapshot, saveFinanceSnapshot],
@@ -743,6 +765,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
       : undefined
   const usdValue = currencyFormatter.format(financeSnapshot.usdExchangeRate)
+  const currentCycleConfig = useMemo<FinanceCycleConfig>(
+    () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
+    [dashboard.familyFinanceQuery.data],
+  )
+  const cycleConfigValue = formatCycleSummary(currentCycleConfig)
   const savingsPercentValue = `${financeSnapshot.savingsGoalPercent}%`
   const bufferValueLabel =
     financeSnapshot.dailyBudgetBufferMode === 'none'
@@ -901,10 +928,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  icon="event"
-                  label="Día de cobro"
-                  onPress={() => setPaydaySheetOpen(true)}
-                  value={`Día ${financeSnapshot.salaryPaymentDay}`}
+                  icon="autorenew"
+                  label="Ciclo de cobro"
+                  onPress={() => setCycleConfigSheetOpen(true)}
+                  value={cycleConfigValue}
                 />
                 <SettingsRow
                   disabled={!isOwner}
@@ -1406,12 +1433,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onSave={handleSaveMyContribution}
         visible={incomeSheetOpen}
       />
-      <EditPaydaySheet
-        currentValue={financeSnapshot.salaryPaymentDay}
+      <EditCycleConfigSheet
+        currentConfig={currentCycleConfig}
         isSaving={upsertFamilyFinanceMutation.isPending}
-        onClose={() => setPaydaySheetOpen(false)}
-        onSave={handleSavePayday}
-        visible={paydaySheetOpen}
+        onClose={() => setCycleConfigSheetOpen(false)}
+        onSave={handleSaveCycleConfig}
+        visible={cycleConfigSheetOpen}
       />
       <EditUsdRateSheet
         currentValue={financeSnapshot.usdExchangeRate}

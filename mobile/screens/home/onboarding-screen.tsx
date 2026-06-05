@@ -37,6 +37,7 @@ import {
 import { useFamilyFinance, useUpsertFamilyFinance } from '@/features/finance/use-family-finance'
 import { useConsumeFamilyInvite } from '@/features/family/use-family-actions'
 import { buildFamilyFinanceInput } from '@/features/finance/use-family-finance'
+import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -129,6 +130,38 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
 
   const [numpadTarget, setNumpadTarget] = useState<'income' | 'goal' | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Local cycle config state for step 4 (creator income step).
+  // Default: monthly cycle with day 15. When the screen is re-entered
+  // (rejoin) and `family_finance` already has a cycle, we hydrate from
+  // it via the effect below so the user sees their current config.
+  const [cycleConfig, setCycleConfig] = useState<FinanceCycleConfig>({
+    cycle_type: 'monthly',
+    salary_payment_day: 15,
+  })
+  // Hydration race fix (2026-06-05): si el user cambia el config ANTES
+  // de que `existingFinance` resuelva (caso típico en onboarding nuevo
+  // — la query tarda y el user toca el picker), el effect previo
+  // pisaba la elección con el default de la DB. Trackeamos "userTouched"
+  // separado de "hydrated" para que la primera interacción del user
+  // bloquee cualquier hidratación posterior.
+  const cycleConfigUserTouchedRef = useRef(false)
+  const [hydratedCycleConfig, setHydratedCycleConfig] = useState(false)
+  useEffect(() => {
+    if (hydratedCycleConfig) return
+    if (cycleConfigUserTouchedRef.current) {
+      // El user ya pickeó antes de que arrancara la hidratación.
+      // Saltamos y marcamos como hidratado para que no vuelva a correr.
+      setHydratedCycleConfig(true)
+      return
+    }
+    if (!existingFinance) return
+    setCycleConfig(financeToCycleConfig(existingFinance))
+    setHydratedCycleConfig(true)
+  }, [existingFinance, hydratedCycleConfig])
+  const handleCycleConfigChange = useCallback((next: FinanceCycleConfig) => {
+    cycleConfigUserTouchedRef.current = true
+    setCycleConfig(next)
+  }, [])
   const scrollRef = useRef<ScrollView>(null)
   const scrollY = useRef(0)
   // Snapshot of the scroll position taken at the moment the user
@@ -175,7 +208,18 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           if (state.contributesIncome === true) return monthlyIncome > 0
           return true
         }
-        return monthlyIncome > 0 && state.salaryPaymentDay >= 1 && state.salaryPaymentDay <= 31
+        // For rolling cycles (biweekly/weekly/custom), the anchor +
+        // length are picked from constrained controls in
+        // `CycleConfigSection`, so the only thing that can be invalid
+        // here is the monthly day. For monthly, we still bound 1..31.
+        if (monthlyIncome <= 0) return false
+        if (cycleConfig.cycle_type === 'monthly') {
+          return (
+            cycleConfig.salary_payment_day >= 1 &&
+            cycleConfig.salary_payment_day <= 31
+          )
+        }
+        return true
       case 5: {
         // Joiner step 5 is the family summary — always ready to
         // confirm.
@@ -274,7 +318,10 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         savingsGoal: 0, // derived by the model from percent × income.
         savingsGoalPercent: state.savingsGoalPercent,
         usdExchangeRate: existingFinance?.usd_exchange_rate ?? 1000,
-        salaryPaymentDay: state.salaryPaymentDay,
+        salaryPaymentDay:
+          cycleConfig.cycle_type === 'monthly'
+            ? cycleConfig.salary_payment_day
+            : 1,
         // Stampeamos la confirmación de sueldo al terminar onboarding.
         // El modelo del pay-cycle tiene un "freeze" que mantiene al
         // usuario en el ciclo anterior si hoy >= payday y no hay
@@ -294,6 +341,15 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         currentCycleStartingBalance:
           existingFinance?.current_cycle_starting_balance ?? null,
         currentCycleAnchor: existingFinance?.current_cycle_anchor ?? null,
+        cycleType: cycleConfig.cycle_type,
+        cycleAnchorDate:
+          cycleConfig.cycle_type === 'monthly'
+            ? null
+            : cycleConfig.cycle_anchor_date,
+        cycleLengthDays:
+          cycleConfig.cycle_type === 'monthly'
+            ? null
+            : cycleConfig.cycle_length_days,
       } as const
       const financePayload = buildFamilyFinanceInput(baseSnapshot)
       await upsertFinance.mutateAsync(financePayload)
@@ -329,7 +385,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     state.pendingFamily,
     state.contributesIncome,
     state.savingsGoalPercent,
-    state.salaryPaymentDay,
+    cycleConfig,
     state.createFirstGoal,
     state.firstGoalTargetRaw,
     state.firstGoalTitle,
@@ -572,6 +628,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
               setGoalAmountCardRef,
               isRejoin,
               closedByOwner,
+              cycleConfig,
+              onChangeCycleConfig: handleCycleConfigChange,
             })}
           </Animated.View>
         </Pressable>
@@ -630,6 +688,8 @@ interface RenderStepContext {
   setGoalAmountCardRef: (node: View | null) => void
   isRejoin: boolean
   closedByOwner: boolean
+  cycleConfig: FinanceCycleConfig
+  onChangeCycleConfig: (next: FinanceCycleConfig) => void
 }
 
 function renderStep(
@@ -682,9 +742,9 @@ function renderStep(
       return (
         <StepIncome
           monthlyIncomeRaw={state.monthlyIncomeRaw}
-          salaryPaymentDay={state.salaryPaymentDay}
+          cycleConfig={ctx.cycleConfig}
           onRequestNumpad={ctx.openIncomeNumpad}
-          onChangeSalaryDay={actions.setSalaryDay}
+          onChangeCycleConfig={ctx.onChangeCycleConfig}
           isNumpadActive={ctx.numpadTarget === 'income'}
           amountCardRef={ctx.setIncomeAmountCardRef}
         />

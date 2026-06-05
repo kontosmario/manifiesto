@@ -1,28 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { MonthDayPicker } from '@/components/ui/month-day-picker'
+import { CycleConfigSection } from '@/components/finance/cycle-config-section'
 import { parsePrice } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
 
 interface StepIncomeProps {
   monthlyIncomeRaw: string
-  salaryPaymentDay: number
+  cycleConfig: FinanceCycleConfig
   onRequestNumpad: () => void
-  onChangeSalaryDay: (value: number) => void
-  /** True while the InAppNumpad is open targeting this card.
-   *  Drives the AmountCard's focus border animation. */
+  onChangeCycleConfig: (next: FinanceCycleConfig) => void
   isNumpadActive?: boolean
-  /** Callback ref for the AmountCard wrapper. Parent uses it to
-   *  measure the card and scroll it into view when the numpad opens. */
   amountCardRef?: (node: View | null) => void
 }
 
 export function StepIncome({
   monthlyIncomeRaw,
-  salaryPaymentDay,
+  cycleConfig,
   onRequestNumpad,
-  onChangeSalaryDay,
+  onChangeCycleConfig,
   isNumpadActive = false,
   amountCardRef,
 }: StepIncomeProps) {
@@ -52,12 +49,9 @@ export function StepIncome({
 
       <RiseView delay={140}>
         <Text style={[styles.eyebrow, styles.dayEyebrow, { color: theme.colors.textMuted }]}>
-          DÍA DE COBRO
+          TU CICLO DE COBRO
         </Text>
-        <MonthDayPicker
-          value={salaryPaymentDay}
-          onChange={onChangeSalaryDay}
-        />
+        <CycleConfigSection value={cycleConfig} onChange={onChangeCycleConfig} />
         <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
           Siempre puedes editarlo desde Ajustes.
         </Text>

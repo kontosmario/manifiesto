@@ -25,6 +25,7 @@ import {
   getCurrentPayCycle,
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
+import { financeToCycleConfig } from '@/utils/finance-cycle-config'
 const DEFAULT_SALARY_PAYMENT_DAY = 1
 const DEFAULT_USD_EXCHANGE_RATE = 1000
 
@@ -79,7 +80,11 @@ export function buildFamilyDashboardSnapshot({
   const isSalaryPendingConfirmation =
     todayDate >= currentMonthPayDate &&
     (!lastSalaryConfirmedDate || lastSalaryConfirmedDate < currentMonthPayDate)
-  const payCycle = getCurrentPayCycle(todayDate, salaryPaymentDay, isSalaryPendingConfirmation)
+  const payCycle = getCurrentPayCycle(
+    todayDate,
+    financeToCycleConfig(finance ?? undefined),
+    isSalaryPendingConfirmation,
+  )
 
   const currentMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
   const nextMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 1)

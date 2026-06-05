@@ -12,6 +12,8 @@ import {
   type FijosCycleSummary,
 } from '@/features/fijos/fijos-aggregates.model'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { financeToCycleConfig } from '@/utils/finance-cycle-config'
+import { formatCycleLabel } from '@/utils/format-cycle-label'
 
 /**
  * Tabs del listado (2026-05-31, refinado a 3 buckets):
@@ -72,11 +74,6 @@ const DEFAULT_SUMMARY: FijosCycleSummary = {
   cycleDays: 30,
   daysRemaining: 30,
 }
-
-const MONTH_SHORT = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
@@ -225,11 +222,14 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   const pctOfIncome =
     monthlyIncome > 0 ? Math.round((summary.total / monthlyIncome) * 100) : 0
 
-  const cycleLabel = useMemo(() => {
-    const start = cycle.start
-    const end = cycle.end
-    return `${start.getDate()} ${MONTH_SHORT[start.getMonth()]} → ${end.getDate()} ${MONTH_SHORT[end.getMonth()]}`
-  }, [cycle.start, cycle.end])
+  const cycleType = useMemo(
+    () => financeToCycleConfig(financeQuery.data).cycle_type,
+    [financeQuery.data],
+  )
+  const cycleLabel = useMemo(
+    () => formatCycleLabel(cycle, cycleType),
+    [cycle, cycleType],
+  )
 
   return {
     isLoading:

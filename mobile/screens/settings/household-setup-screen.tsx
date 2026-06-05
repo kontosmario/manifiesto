@@ -73,6 +73,9 @@ function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputS
     usdExchangeRate: finance.usd_exchange_rate,
     currentCycleStartingBalance: finance.current_cycle_starting_balance,
     currentCycleAnchor: finance.current_cycle_anchor,
+    cycleType: 'monthly',
+    cycleAnchorDate: null,
+    cycleLengthDays: null,
   }
 }
 
