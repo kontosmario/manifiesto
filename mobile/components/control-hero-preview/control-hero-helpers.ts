@@ -24,7 +24,7 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (state.alreadyExhausted) {
     const exceso = Math.max(0, Math.abs(state.libreHoy))
     return {
-      primary: 'Te pasaste del ciclo.',
+      primary: 'Te pasaste del mes.',
       secondary: `Faltan ${state.proximoSueldoEnDias} días al cobro. Cuidá lo que queda.`,
       status: 'urgent',
       primaryNumber: exceso,

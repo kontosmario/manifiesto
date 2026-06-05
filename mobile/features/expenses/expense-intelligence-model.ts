@@ -30,12 +30,12 @@ export function buildExpenseIntelligenceViewModel(
     analytics.projectedAvailableAtCycleEnd >= 0 ? 'success' : 'warning'
   const headlineText =
     analytics.projectedAvailableAtCycleEnd >= 0
-      ? 'Si sigues así, todavía debería quedar aire al final del ciclo.'
-      : 'Si sigues así, el ciclo termina corto y conviene corregir ahora.'
+      ? 'Si sigues así, todavía debería quedar aire al final del mes.'
+      : 'Si sigues así, el mes termina corto y conviene corregir ahora.'
 
   const leadMetrics: IntelligenceMetric[] = [
     {
-      helper: `${analytics.daysRemainingInCycle} días restantes en el ciclo.`,
+      helper: `${analytics.daysRemainingInCycle} días restantes en el mes.`,
       icon: 'speed',
       label: 'Tope diario',
       tone: analytics.adjustmentNeededPerDay > 0 ? 'warning' : 'default',
@@ -81,7 +81,7 @@ export function buildExpenseIntelligenceViewModel(
     focusMetrics.push({
       helper: `${analytics.topCategory.label} suma ${currencyFormatter.format(
         analytics.topCategory.total,
-      )} en este ciclo.`,
+      )} en este mes.`,
       icon: 'category',
       label: 'Categoría líder',
       tone: analytics.topCategory.share >= 0.35 ? 'warning' : 'default',

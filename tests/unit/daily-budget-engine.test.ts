@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { computeDailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import type { Expense } from '@/features/expenses/use-expenses'
-import type { PayCycle } from '@/utils/pay-cycle'
+import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 
-function buildCycle(startIso: string, endIso: string, days: number): PayCycle {
-  return {
-    days,
-    end: new Date(endIso),
-    start: new Date(startIso),
-    weeks: Math.ceil(days / 7),
-  }
+function buildAccounting(
+  startIso: string,
+  endIso: string,
+  days: number,
+  todayIso: string,
+): MonthlyAccountingWindow {
+  const start = new Date(startIso)
+  const end = new Date(endIso)
+  const today = new Date(todayIso)
+  const msPerDay = 86_400_000
+  const daysIntoMonth = Math.floor((today.getTime() - start.getTime()) / msPerDay) + 1
+  const daysRemaining = Math.max(1, Math.ceil((end.getTime() - today.getTime()) / msPerDay))
+  return { start, end, days, today, daysIntoMonth, daysRemaining }
 }
 
 function buildExpense(createdAt: string, price: number): Expense {
@@ -34,7 +40,12 @@ describe('computeDailyBudgetSummary', () => {
       expenses: [buildExpense('2026-04-01T12:00:00.000Z', 50_000)],
       fixedExpensesMonthlyTotal: 0,
       monthlyIncome: 30_000,
-      payCycle: buildCycle('2026-04-01T00:00:00.000Z', '2026-04-11T00:00:00.000Z', 10),
+      monthlyAccounting: buildAccounting(
+        '2026-04-01T00:00:00.000Z',
+        '2026-04-11T00:00:00.000Z',
+        10,
+        '2026-04-01T15:00:00.000Z',
+      ),
       savingsGoal: 0,
       today: new Date('2026-04-01T15:00:00.000Z'),
     })
@@ -52,7 +63,12 @@ describe('computeDailyBudgetSummary', () => {
       expenses: [],
       fixedExpensesMonthlyTotal: 20_000,
       monthlyIncome: 120_000,
-      payCycle: buildCycle('2026-04-01T00:00:00.000Z', '2026-05-01T00:00:00.000Z', 30),
+      monthlyAccounting: buildAccounting(
+        '2026-04-01T00:00:00.000Z',
+        '2026-05-01T00:00:00.000Z',
+        30,
+        '2026-04-04T10:00:00.000Z',
+      ),
       savingsGoal: 20_000,
       today: new Date('2026-04-04T10:00:00.000Z'),
     })

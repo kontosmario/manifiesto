@@ -41,7 +41,7 @@ interface Props {
 }
 
 const FAMILY_LABELS: Record<string, string> = {
-  velocity: 'Ritmo del ciclo',
+  velocity: 'Ritmo del mes',
   'recovery-hard': 'Recuperación urgente',
   'recovery-soft': 'Recuperación moderada',
   'fijos-ratio': 'Fijos altos',
@@ -64,7 +64,7 @@ const FAMILY_LABELS: Record<string, string> = {
   duplicate: 'Cargos duplicados',
   'data-gap-warning': 'Días sin registros',
   'savings-milestone': 'Hitos de meta',
-  'cycle-start-projection': 'Inicio del ciclo',
+  'cycle-start-projection': 'Inicio del mes',
   'forecast-tomorrow-risk': 'Riesgo de mañana',
   'forecast-storm-week': 'Semana cargada',
   'forecast-payday-gap': 'Hasta cobro',

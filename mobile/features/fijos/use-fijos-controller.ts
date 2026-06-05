@@ -12,6 +12,7 @@ import {
   type FijosCycleSummary,
 } from '@/features/fijos/fijos-aggregates.model'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 import { financeToCycleConfig } from '@/utils/finance-cycle-config'
 import { formatCycleLabel } from '@/utils/format-cycle-label'
 
@@ -76,7 +77,14 @@ const DEFAULT_SUMMARY: FijosCycleSummary = {
 }
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
+  // PayCycle sigue siendo el plano salarial — lo necesitamos para los
+  // payments del cycle (la tabla `fixed_expense_payments` registra cada
+  // pago contra un período del cobro) y para el label del header.
+  // MonthlyAccounting es el plano de clasificación: paid/pending/overdue
+  // se decide contra el mes calendario (para non-monthly users) o
+  // contra el cycle (para monthly users — coinciden).
   const { cycle, today } = usePayCycle(familyId)
+  const monthlyAccounting = useMonthlyAccounting(familyId)
   // El default se inicializa a 'pendientes' pero el effect abajo lo
   // promueve a 'vencidos' si hay vencidos al cargar — para que el
   // primer paint muestre lo más urgente (mora arrastrada).
@@ -126,9 +134,9 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
       commitmentExpenses: commitmentExpensesQuery.data ?? [],
       categoriesById,
       today,
-      cycleStart: cycle.start,
-      cycleEnd: cycle.end,
-      cycleDays: cycle.days,
+      monthlyStart: monthlyAccounting.start,
+      monthlyEnd: monthlyAccounting.end,
+      monthlyDays: monthlyAccounting.days,
       monthlyIncome: monthlyIncomeForSummary,
     })
   }, [
@@ -137,9 +145,9 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     commitmentExpensesQuery.data,
     categoriesById,
     today,
-    cycle.start,
-    cycle.end,
-    cycle.days,
+    monthlyAccounting.start,
+    monthlyAccounting.end,
+    monthlyAccounting.days,
     monthlyIncomeForSummary,
   ])
 

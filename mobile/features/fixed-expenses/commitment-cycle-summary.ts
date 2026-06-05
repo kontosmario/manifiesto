@@ -1,5 +1,4 @@
 import type { Expense } from '@/features/expenses/use-expenses'
-import type { PayCycle } from '@/utils/pay-cycle'
 import { normalizeToStartOfDay } from '@/utils/pay-cycle'
 import {
   clamp,
@@ -14,17 +13,29 @@ import type { FixedExpense } from './fixed-expense-types'
 
 import { DAY_MS } from "@/utils/time"
 
+/**
+ * Window genérica para clasificar fijos (paid/pending/overdue/future)
+ * y filtrar payments del período. Es agnostic del nombre del plano: lo
+ * llaman `payCycle` los call-sites históricos pero hoy también recibe
+ * la ventana mensual de accounting (Spec A.5 — monthly accounting
+ * reframe). Lo único que importa es `[start, end)` half-open.
+ */
+interface CycleWindow {
+  start: Date
+  end: Date
+}
+
 function isCommitmentActive(status: FixedExpense['status']) {
   return status === 'active'
 }
 
-function isExpenseInCycle(expense: Pick<Expense, 'created_at'>, payCycle: PayCycle) {
+function isExpenseInCycle(expense: Pick<Expense, 'created_at'>, window: CycleWindow) {
   const expenseDate = normalizeToStartOfDay(new Date(expense.created_at))
   if (Number.isNaN(expenseDate.getTime())) {
     return false
   }
 
-  return expenseDate >= payCycle.start && expenseDate < payCycle.end
+  return expenseDate >= window.start && expenseDate < window.end
 }
 
 function diffDays(start: Date, end: Date) {
@@ -33,9 +44,9 @@ function diffDays(start: Date, end: Date) {
   )
 }
 
-function buildPaidInCycleByCommitment(expenses: Expense[], payCycle: PayCycle) {
+function buildPaidInCycleByCommitment(expenses: Expense[], window: CycleWindow) {
   return expenses.reduce((totals, expense) => {
-    if (!expense.commitment_id || !isExpenseInCycle(expense, payCycle)) {
+    if (!expense.commitment_id || !isExpenseInCycle(expense, window)) {
       return totals
     }
 
@@ -46,7 +57,7 @@ function buildPaidInCycleByCommitment(expenses: Expense[], payCycle: PayCycle) {
 
 function deriveFixedExpenseFromPaidAmount(
   item: FixedExpense,
-  payCycle: PayCycle,
+  window: CycleWindow,
   today: Date,
   paidInCycleAmount: number,
 ): DerivedFixedExpense {
@@ -54,7 +65,7 @@ function deriveFixedExpenseFromPaidAmount(
   const safeToday = normalizeToStartOfDay(today)
   const scheduledAmount = getFixedExpenseScheduledAmount(item)
   const isDueThisCycle =
-    isCommitmentActive(item.status) && nextDueDate ? nextDueDate < payCycle.end : false
+    isCommitmentActive(item.status) && nextDueDate ? nextDueDate < window.end : false
   const reservedAmountInCycle = isDueThisCycle ? clamp(scheduledAmount - paidInCycleAmount) : 0
   const daysUntilDue = nextDueDate ? diffDays(safeToday, nextDueDate) : null
   const isOverdue =
@@ -86,14 +97,14 @@ function deriveFixedExpenseFromPaidAmount(
 export function deriveFixedExpense(
   item: FixedExpense,
   expenses: Expense[],
-  payCycle: PayCycle,
+  window: CycleWindow,
   today: Date,
 ): DerivedFixedExpense {
-  const paidInCycleByCommitment = buildPaidInCycleByCommitment(expenses, payCycle)
+  const paidInCycleByCommitment = buildPaidInCycleByCommitment(expenses, window)
 
   return deriveFixedExpenseFromPaidAmount(
     item,
-    payCycle,
+    window,
     today,
     paidInCycleByCommitment.get(item.id) ?? 0,
   )
@@ -102,20 +113,20 @@ export function deriveFixedExpense(
 export function computeFixedExpenseCycleSummary({
   items,
   expenses,
-  payCycle,
+  window,
   today,
 }: {
   items: FixedExpense[]
   expenses: Expense[]
-  payCycle: PayCycle
+  window: CycleWindow
   today: Date
 }): FixedExpenseCycleSummary {
-  const paidInCycleByCommitment = buildPaidInCycleByCommitment(expenses, payCycle)
+  const paidInCycleByCommitment = buildPaidInCycleByCommitment(expenses, window)
   const derivedItems = items
     .map((item) =>
       deriveFixedExpenseFromPaidAmount(
         item,
-        payCycle,
+        window,
         today,
         paidInCycleByCommitment.get(item.id) ?? 0,
       ),

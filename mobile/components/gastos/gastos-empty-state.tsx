@@ -117,7 +117,7 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
           <PreviewBlock
             description="Cuánto llevas gastado y tu cupo diario disponible."
             icon="donut-large"
-            title="Resumen del ciclo"
+            title="Resumen del mes"
           >
             <GastosHeroCard empty />
           </PreviewBlock>,
@@ -129,7 +129,7 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         {wrap(
           'calendar',
           <PreviewBlock
-            description="Un calendario con tus días de gasto del ciclo."
+            description="Un calendario con tus días de gasto del mes."
             icon="calendar-month"
             title="Mapa del mes"
           >

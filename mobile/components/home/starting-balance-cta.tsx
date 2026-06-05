@@ -68,7 +68,7 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
       <Animated.View style={animatedStyle}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Confirmá tu saldo inicial del ciclo"
+          accessibilityLabel="Confirmá tu saldo inicial del mes"
           onPress={handlePress}
           style={({ pressed }) => [
             styles.card,

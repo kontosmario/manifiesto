@@ -639,7 +639,7 @@ function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
               {formatMoney(Math.round(top.amount))}
             </Text>
             <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.72)' }]}>
-              {Math.round(top.share * 100)}% del ciclo
+              {Math.round(top.share * 100)}% del mes
             </Text>
           </View>
 
@@ -739,8 +739,8 @@ function buildClosingScene(payload: CycleWrappedPayload): Scene {
             <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
             <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
               {payload.achievementsEarnedInCycle === 1
-                ? '1 logro desbloqueado este ciclo'
-                : `${payload.achievementsEarnedInCycle} logros desbloqueados este ciclo`}
+                ? '1 logro desbloqueado este mes'
+                : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
             </Text>
           </View>
         ) : null}

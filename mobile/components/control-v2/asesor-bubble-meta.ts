@@ -106,7 +106,7 @@ export function bubbleHeadline(task: ControlAdvisorTask): string {
   if (id === 'fijos-ratio') return 'Fijos altos'
   if (id === 'stress-week') return 'Semana cargada'
   if (id === 'payday-proximity') return 'Hasta cobro'
-  if (id === 'start-splurge') return 'Arranque del ciclo'
+  if (id === 'start-splurge') return 'Arranque del mes'
   if (id === 'end-acceleration') return 'Cierre acelerando'
   if (id.startsWith('cap-')) return 'Tope de categoría'
   if (id.startsWith('cat-dominance-')) return 'Categoría dominante'

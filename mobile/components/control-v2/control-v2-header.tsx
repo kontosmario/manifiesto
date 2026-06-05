@@ -208,7 +208,7 @@ function WrappedButton({
       hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel="Ver el resumen del cierre de mes"
-      accessibilityHint="Abre la animación del cierre del ciclo anterior"
+      accessibilityHint="Abre la animación del cierre del mes anterior"
       style={styles.wrappedPressable}
     >
       <Animated.View style={press.animatedStyle}>

@@ -45,8 +45,8 @@ export function velocityBody(
   args: VelocityCopyArgs,
 ): string {
   const base = args.faster
-    ? `Es ${args.momentumPct}% más rápido que el promedio del ciclo.`
-    : 'El ritmo bajó respecto al promedio del ciclo.'
+    ? `Es ${args.momentumPct}% más rápido que el promedio del mes.`
+    : 'El ritmo bajó respecto al promedio del mes.'
   switch (framing) {
     case 'loss':
       return args.over
@@ -106,7 +106,7 @@ export function positiveForecastBody(
     case 'loss':
       return `El excedente proyectado de ${args.sobra} es fácil de perder si no lo destinás antes del cierre.`
     case 'gain':
-      return `Cierre del ciclo con ${args.sobra} a favor — buen momento para definir una meta de ahorro y capitalizar la racha.`
+      return `Cierre del mes con ${args.sobra} a favor — buen momento para definir una meta de ahorro y capitalizar la racha.`
     default:
       return `Si el ritmo se mantiene los ${args.diasRestantes} días que quedan, el ciclo cierra con saldo a favor. Ese excedente puede ir a una meta de ahorro o quedar como reserva.`
   }

@@ -22,7 +22,7 @@ export const CONTROL_TOUR_STEPS = {
   },
   alcancia: {
     order: 3,
-    text: 'Tu alcancía del ciclo: lo que NO gastaste cada día se acumula aquí. Es el ahorro automático que generas al quedarte por debajo del cupo diario. Toca la tarjeta para ver el detalle.',
+    text: 'Tu alcancía del mes: lo que NO gastaste cada día se acumula aquí. Es el ahorro automático que generas al quedarte por debajo del cupo diario. Toca la tarjeta para ver el detalle.',
   },
   semana: {
     order: 4,

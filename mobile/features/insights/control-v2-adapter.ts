@@ -11,6 +11,7 @@ import type { ControlMockData } from './control-v2-mock'
 import type { Expense } from '@/features/expenses/expense-repository'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import type { FamilyFinance } from '@/features/finance/use-family-finance'
+import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
 import { emptyStates } from '@/lib/copy/states'
@@ -90,8 +91,17 @@ interface BuildControlDataArgs {
   finance: FamilyFinance
   /** Last N monthly summaries ordered by period_start DESC. */
   summaries: MonthlySummaryHistory[]
-  /** Current pay-cycle window anchored to `salary_payment_day`. */
+  /** Current pay-cycle window anchored to `salary_payment_day`. Sigue
+   *  necesario para `proximoSueldoEnDias` (countdown salarial) y para
+   *  filtrar payments del cobro. */
   payCycle: PayCycle
+  /** Monthly accounting window — saldo, cupo diario y proyección de
+   *  cierre se calculan sobre este plano. Para monthly users coincide
+   *  con `payCycle`; para weekly/biweekly/custom es el mes calendario.
+   *
+   *  Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
+   */
+  monthlyAccounting: MonthlyAccountingWindow
   /** Override for testing — defaults to new Date(). */
   now?: Date
 }
@@ -167,16 +177,17 @@ function lastCycleDays(periodStart: string, periodEnd: string): number {
 export function buildControlDataFromSnapshot(
   args: BuildControlDataArgs,
 ): ControlMockData {
-  const { expenses, fixedExpenses, finance, summaries, payCycle } = args
+  const { expenses, fixedExpenses, finance, summaries, payCycle, monthlyAccounting } = args
   const now = args.now ?? new Date()
 
-  // "diasMes" is reinterpreted as days-in-cycle; "diaActual" as the
-  // 1-based position within the cycle. Both keep the same field
-  // names so the downstream mock / UI components don't need renaming,
-  // but the math is now anchored to `salary_payment_day` rather than
-  // the calendar month.
-  const cycleStart = payCycle.start
-  const diasMes = payCycle.days
+  // "diasMes" y "diaActual" ahora viven sobre la ventana mensual de
+  // accounting (Spec A.5). Para monthly users coincide con el cobro;
+  // para weekly/biweekly/custom es el mes calendario — el saldo, el
+  // cupo diario y la proyección de cierre del mes se reportan sobre
+  // ese plano. Los nombres del field se preservan para no romper el
+  // contrato con `computeControlView` y la UI.
+  const cycleStart = monthlyAccounting.start
+  const diasMes = monthlyAccounting.days
   const msPerDay = 86_400_000
   const diaActual = Math.max(
     1,
@@ -248,7 +259,7 @@ export function buildControlDataFromSnapshot(
   const commitmentSummary = computeFixedExpenseCycleSummary({
     items: fixedExpenses,
     expenses,
-    payCycle,
+    window: { start: monthlyAccounting.start, end: monthlyAccounting.end },
     today: now,
   })
   const fijosMes = commitmentSummary.pressureTotal

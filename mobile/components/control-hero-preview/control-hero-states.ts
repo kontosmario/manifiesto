@@ -304,8 +304,8 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   },
   {
     id: 'exhausto',
-    label: 'Exhausto (pasado del ciclo)',
-    description: 'Día 22/30 · ya gastaste $145k MÁS que el cupo total del ciclo',
+    label: 'Exhausto (pasado del mes)',
+    description: 'Día 22/30 · ya gastaste $145k MÁS que el cupo total del mes',
     cupoDiario: 32_000,
     gastoHoy: 45_000,
     libreHoy: -13_000,

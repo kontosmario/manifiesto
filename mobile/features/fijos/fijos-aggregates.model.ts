@@ -234,14 +234,17 @@ export function summarizeFijos(input: {
   commitmentExpenses?: Expense[]
   categoriesById?: Map<string, { id: string; name: string; color: string }>
   today: Date
-  cycleStart: Date
-  /** End of the current pay cycle (exclusive). Required: necesario para
-   *  gating "no toca este ciclo" vs "vence en este ciclo". Antes
-   *  inferiamos esto sumando `cycleDays` a `cycleStart`; ahora lo
-   *  recibimos explícito desde `usePayCycle` para evitar discrepancias
-   *  de TZ entre el cómputo del controller y el de aggregates. */
-  cycleEnd: Date
-  cycleDays: number
+  /** Inicio de la ventana mensual de accounting (inclusive). Para
+   *  monthly users coincide con `payCycle.start`; para non-monthly es
+   *  el primer día del mes calendario. Lo usa la clasificación
+   *  paid/pending/overdue/future del row. */
+  monthlyStart: Date
+  /** Fin de la ventana mensual de accounting (exclusive). Necesario
+   *  para gating "no toca este mes" vs "vence en este mes". Antes
+   *  recibíamos `cycleStart`/`cycleEnd`/`cycleDays` desde `usePayCycle`;
+   *  ahora son las bounds del plano mensual fijo. */
+  monthlyEnd: Date
+  monthlyDays: number
   /** Sueldo mensual familiar — usado para calcular `pctOfIncome` por
    *  fijo. Opcional: si no se pasa (o es 0), pctOfIncome queda null. */
   monthlyIncome?: number
@@ -252,9 +255,9 @@ export function summarizeFijos(input: {
     commitmentExpenses = [],
     categoriesById,
     today,
-    cycleStart,
-    cycleEnd,
-    cycleDays,
+    monthlyStart,
+    monthlyEnd,
+    monthlyDays,
     monthlyIncome = 0,
   } = input
   const paidIds = new Set(paymentsThisCycle.map((p) => p.fixedExpenseId))
@@ -275,8 +278,8 @@ export function summarizeFijos(input: {
   const cycleDayIndex = Math.max(
     1,
     Math.min(
-      cycleDays,
-      Math.floor((todayStartOfDay.getTime() - cycleStart.getTime()) / msPerDay) + 1,
+      monthlyDays,
+      Math.floor((todayStartOfDay.getTime() - monthlyStart.getTime()) / msPerDay) + 1,
     ),
   )
 
@@ -332,7 +335,7 @@ export function summarizeFijos(input: {
         item: i,
         paidThisPeriod,
         today,
-        cycleEnd,
+        cycleEnd: monthlyEnd,
       })
       const payment = paymentByFixedExpense.get(i.id) ?? null
       // cuotaMonth: qué cuota cubre/toca este row.
@@ -379,7 +382,7 @@ export function summarizeFijos(input: {
       return {
         ...i,
         dayOfMonth,
-        daysUntilDue: daysUntilDue(dayOfMonth, todayDay, cycleDays),
+        daysUntilDue: daysUntilDue(dayOfMonth, todayDay, monthlyDays),
         computedStatus: status,
         isZombie: false,
         daysSinceLastPaid,
@@ -422,7 +425,7 @@ export function summarizeFijos(input: {
   const zombies: FijoItem[] = []
   const hikes = detectHikes({ items: enriched, categoriesById })
   const daysToNextPayment = upcoming[0] ? upcoming[0].daysUntilDue : null
-  const daysRemaining = Math.max(0, cycleDays - cycleDayIndex)
+  const daysRemaining = Math.max(0, monthlyDays - cycleDayIndex)
 
   return {
     total,
@@ -441,7 +444,7 @@ export function summarizeFijos(input: {
     hikes,
     daysToNextPayment,
     todayDay,
-    cycleDays,
+    cycleDays: monthlyDays,
     daysRemaining,
   }
 }

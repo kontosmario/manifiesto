@@ -121,7 +121,7 @@ function HomeHeroCardImpl({
           ? `Cierre proyectado: ${formatMoney(data.projectedClose)}.`
           : ''
       } ${savingsChip ? savingsChip.a11y : ''}`.trim()
-    : 'Configura tu ingreso mensual para activar el seguimiento del ciclo.'
+    : 'Configura tu ingreso mensual para activar el seguimiento del mes.'
 
   return (
     <RiseView delay={60}>
@@ -312,7 +312,7 @@ function HomeHeroCardImpl({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel="Saldo ajustado para este ciclo"
+                  accessibilityLabel="Saldo ajustado para este mes"
                   style={[
                     styles.adjustedChip,
                     {
@@ -329,7 +329,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
                   >
-                    Ajustado para este ciclo
+                    Ajustado para este mes
                   </Text>
                 </View>
               </RiseView>

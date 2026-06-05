@@ -162,7 +162,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
               Alert.alert(
                 '¿Por qué veo esto?',
                 task.dummyExplanation ??
-                  'Esta sugerencia se basa en patrones detectados en tus gastos del ciclo. La acción del CTA es la palanca más directa para mover el número.',
+                  'Esta sugerencia se basa en patrones detectados en tus gastos del mes. La acción del CTA es la palanca más directa para mover el número.',
               )
             },
           },

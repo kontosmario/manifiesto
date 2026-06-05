@@ -21,6 +21,7 @@ import { useCategories } from '@/features/categories/use-categories'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyNotifications } from '@/features/notifications/use-notifications'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 import { useDismissedHikes } from '@/features/fijos/use-hike-dismiss-store'
 import {
   buildControlDataFromSnapshot,
@@ -354,6 +355,7 @@ export function useControlV2Data(
   })
 
   const { cycle: payCycle, isSalaryPendingConfirmation } = usePayCycle(familyId)
+  const monthlyAccounting = useMonthlyAccounting(familyId)
   const dismissedHikes = useDismissedHikes()
   // Each `useMemo` here delegates to a module-level LRU(1) cache via
   // `singleEntryMemoize`. With three Home-tree invocations sharing the
@@ -373,8 +375,9 @@ export function useControlV2Data(
       finance,
       summaries,
       payCycle,
+      monthlyAccounting,
     })
-  }, [noConfig, expenses, fixedExpenses, finance, summaries, payCycle])
+  }, [noConfig, expenses, fixedExpenses, finance, summaries, payCycle, monthlyAccounting])
 
   const view = useMemo<ControlView>(() => memoizedComputeView(data), [data])
 

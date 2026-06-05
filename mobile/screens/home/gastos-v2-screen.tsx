@@ -961,7 +961,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     if (controller.filteredExpenses.length === 0) {
       return {
         kind: 'cycle' as const,
-        primary: 'Aún sin gastos en este ciclo',
+        primary: 'Aún sin gastos en este mes',
         secondary: 'Cuando cargues uno, lo vas a ver aquí',
         actionLabel: undefined,
         onAction: undefined,
@@ -1384,9 +1384,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
                 <Text
                   style={[styles.endOfList, { color: theme.colors.textMuted }]}
                   accessibilityRole="text"
-                  accessibilityLabel="Fin del ciclo"
+                  accessibilityLabel="Fin del mes"
                 >
-                  FIN DEL CICLO
+                  FIN DEL MES
                 </Text>
                 <View
                   style={[

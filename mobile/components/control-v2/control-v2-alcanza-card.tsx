@@ -215,12 +215,12 @@ function ControlV2AlcanzaCardImpl({
 
   // ── Headline copy ───────────────────────────────────────────
   const headline = alreadyExhausted
-    ? `Presupuesto libre superado cerca del día ${Math.max(1, diaAgotamiento)} del ciclo.`
+    ? `Presupuesto libre superado cerca del día ${Math.max(1, diaAgotamiento)} del mes.`
     : alcanzaElMes
       ? isComfortable
         ? 'El presupuesto alcanza todo el mes — con margen de sobra.'
         : 'Llega al próximo cobro, pero ajustado.'
-      : `Al ritmo actual, el presupuesto se agota el día ${diaAgotamiento} del ciclo.`
+      : `Al ritmo actual, el presupuesto se agota el día ${diaAgotamiento} del mes.`
 
   // ── Timeline math (forward-projection only) ─────────────────
   const safeDiasMes = diasMes > 0 ? diasMes : 1
@@ -298,7 +298,7 @@ function ControlV2AlcanzaCardImpl({
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {formatMoneyShort(cycleStartingBalanceOverride)}
               </Text>{' '}
-              confirmados este ciclo.
+              confirmados este mes.
             </Text>
           </View>
         ) : null}
@@ -561,7 +561,7 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
           <View style={styles.calloutBody}>
             <Text style={[styles.calloutText, { color: theme.colors.text }]}>
               Registra gastos en al menos {MIN_CLOSED_DAYS_FLOOR} días distintos para
-              proyectar hasta qué día del ciclo te alcanza el dinero libre.
+              proyectar hasta qué día del mes te alcanza el dinero libre.
             </Text>
             <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
               Gasto en {progreso} de {MIN_CLOSED_DAYS_FLOOR} días.

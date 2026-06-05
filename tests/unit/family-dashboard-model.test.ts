@@ -115,7 +115,12 @@ describe('buildFamilyDashboardSnapshot', () => {
     // Refactor: cycle anchor now starts on the salary day itself (inclusive) instead of day-after.
     expect(formatLocalDateKey(snapshot.payCycle.start)).toBe('2026-03-01')
     expect(formatLocalDateKey(snapshot.payCycle.end)).toBe('2026-04-01')
-    expect(snapshot.spentInCurrentCycle).toBe(8_000)
+    // Spec A.5 reframe: `spentInCurrentCycle` ahora vive sobre la ventana
+    // mensual de accounting (que NO se congela cuando falta confirmar el
+    // sueldo — el plano mensual sigue su curso). Para monthly users, la
+    // ventana es el mes actual (abril), no el cycle congelado (marzo).
+    // Por eso registramos los $12.000 de abril, no los $8.000 de marzo.
+    expect(snapshot.spentInCurrentCycle).toBe(12_000)
     expect(snapshot.remainingUntilPayday).toBeLessThan(0)
   })
 

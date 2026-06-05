@@ -313,7 +313,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                     iconBg: fijosTone.bandIconBg,
                     iconFg: fijosTone.bandIconFg,
                     primary: 'Todos pagados',
-                    a11yLabel: `Los ${data.fixedCount} gastos fijos del ciclo están pagados.`,
+                    a11yLabel: `Los ${data.fixedCount} gastos fijos del mes están pagados.`,
                     onPress: null,
                   }
                 : nextFixedFallback

@@ -54,7 +54,7 @@ export function buildExpenseAnalyticsSuggestions({
     suggestions.push({
       detail: `${topCategory.label} concentra ${Math.round(
         topCategory.share * 100,
-      )}% del ciclo. Es la mejor categoría para buscar recortes sin tocar todo el presupuesto.`,
+      )}% del mes. Es la mejor categoría para buscar recortes sin tocar todo el presupuesto.`,
       title: 'La concentración del gasto está muy cargada',
       tone: 'primary',
     })
@@ -97,7 +97,7 @@ export function buildExpenseAnalyticsSuggestions({
           ? `Con el patrón actual cerrarías el ciclo con ${currencyFormatter.format(
               projectedAvailableAtCycleEnd,
             )} disponibles.`
-          : 'No hay alertas fuertes todavía, pero conviene seguir de cerca el cierre del ciclo.',
+          : 'No hay alertas fuertes todavía, pero conviene seguir de cerca el cierre del mes.',
       title: projectedAvailableAtCycleEnd >= 0 ? 'El ritmo viene sano' : 'No hay alertas fuertes todavía',
       tone: projectedAvailableAtCycleEnd >= 0 ? 'success' : 'primary',
     })

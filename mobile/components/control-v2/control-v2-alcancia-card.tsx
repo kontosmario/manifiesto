@@ -171,7 +171,7 @@ function ControlV2AlcanciaCardImpl({
   const subSpendDays = `${diasGanadores} de ${Math.max(closedDays, diasGanadores)} días`
   const subSpendCopy =
     vault > 0
-      ? `Gasto debajo del cupo en ${subSpendDays} cerrados de este ciclo.`
+      ? `Gasto debajo del cupo en ${subSpendDays} cerrados de este mes.`
       : closedDays === 0
         ? 'Aún no hay días cerrados — empezamos a calcular mañana.'
         : `Esta semana el gasto superó el cupo casi todos los días. Cuando bajes, lo guardamos aquí.`
@@ -274,7 +274,7 @@ function ControlV2AlcanciaCardImpl({
             sub={
               closedDays > 0
                 ? `${noSpendCount} de ${closedDays} días`
-                : 'días del ciclo'
+                : 'días del mes'
             }
             bg={tileBg}
             border={tileBorder}

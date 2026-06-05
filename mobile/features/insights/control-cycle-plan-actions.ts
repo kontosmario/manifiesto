@@ -30,7 +30,7 @@ export function buildCyclePlanActions({
     actions.push({
       detail: `El ajuste sugerido es de ${currencyFormatter.format(
         expenseAnalytics.adjustmentNeededPerDay,
-      )} por dia durante lo que queda del ciclo.`,
+      )} por dia durante lo que queda del mes.`,
       title: 'Corrige el ritmo diario antes de tocar todo el presupuesto',
       tone: 'warning',
     })
@@ -48,7 +48,7 @@ export function buildCyclePlanActions({
     actions.push({
       detail: `${expenseAnalytics.topCategory.label} ya explica ${Math.round(
         expenseAnalytics.topCategory.share * 100,
-      )}% del ciclo.`,
+      )}% del mes.`,
       title: `Empieza por ${expenseAnalytics.topCategory.label}`,
       tone: 'primary',
     })
@@ -68,7 +68,7 @@ export function buildCyclePlanActions({
     actions.push({
       detail: `Hay ${currencyFormatter.format(
         commitmentSummary.reservedTotal,
-      )} comprometidos entre fijos, cuotas y deuda para este ciclo.`,
+      )} comprometidos entre fijos, cuotas y deuda para este mes.`,
       title: 'Separa primero lo comprometido y despues mira el resto',
       tone: commitmentSummary.overdueCount > 0 ? 'warning' : 'primary',
     })

@@ -109,7 +109,7 @@ export function buildTodayMetrics({
       value: currencyFormatter.format(dailyBudgetSummary.todaySpent),
     },
     {
-      helper: 'Comparado con el ritmo ideal del ciclo.',
+      helper: 'Comparado con el ritmo ideal del mes.',
       icon: dailyBudgetSummary.carryoverAmount >= 0 ? 'insights' : 'bolt',
       label: dailyBudgetSummary.carryoverAmount >= 0 ? 'Aire acumulado' : 'Deuda diaria',
       tone: carryoverTone,
@@ -131,7 +131,7 @@ export function buildTodayMetrics({
     {
       helper:
         dailyBudgetSummary.zeroSpendStreak > 0
-          ? `${dailyBudgetSummary.zeroSpendDaysInCycle} dias sin gasto en este ciclo.`
+          ? `${dailyBudgetSummary.zeroSpendDaysInCycle} dias sin gasto en este mes.`
           : `Si no gastas mas, manana abres con ${currencyFormatter.format(
               dailyBudgetSummary.projectedTomorrowOpening,
             )}.`,

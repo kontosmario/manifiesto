@@ -524,7 +524,7 @@ function tryComposeHiddenDrain(
     emoji: '💧',
     cat: 'Drenaje',
     title: 'Drenaje invisible',
-    body: 'Filtraciones chicas, una categoría dominante y/o un monto repetido sin registrar como fijo. Tres señales que en conjunto suelen explicar el goteo del ciclo.',
+    body: 'Filtraciones chicas, una categoría dominante y/o un monto repetido sin registrar como fijo. Tres señales que en conjunto suelen explicar el goteo del mes.',
     impact: `Goteo anual estimado: ${fmt(annualizedSum)}`,
     impactRaw: Math.round(annualizedSum),
     impactScope: 'oneTime',
@@ -618,7 +618,7 @@ function buildPaydayProximity(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Divide el saldo restante del ciclo por los días que faltan al próximo cobro. El resultado es el monto máximo a gastar por día para no quedar en cero antes del cierre.',
+      'Divide el saldo restante del mes por los días que faltan al próximo cobro. El resultado es el monto máximo a gastar por día para no quedar en cero antes del cierre.',
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
   }
 }
@@ -677,7 +677,7 @@ function buildEndOfCycleAcceleration(
     emoji: '⚠️',
     cat: 'Cierre',
     title: `Aceleración del ${Math.round((ratio - 1) * 100)}% en los últimos 3 días`,
-    body: `Promedio reciente: ${fmt(last3Avg)}/día vs ${fmt(cycleAvg)} del ciclo. Quedan ${args.diasRestantes} días — al ritmo actual, el cierre se va por encima del presupuesto.`,
+    body: `Promedio reciente: ${fmt(last3Avg)}/día vs ${fmt(cycleAvg)} del mes. Quedan ${args.diasRestantes} días — al ritmo actual, el cierre se va por encima del presupuesto.`,
     impact: `Volver al promedio: ${fmtDelta(-extra)}`,
     impactRaw: Math.round(extra),
     impactScope: 'cycle',
@@ -686,7 +686,7 @@ function buildEndOfCycleAcceleration(
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Es común relajar el control al final del ciclo, justo cuando una aceleración golpea más al cierre. Comparar los últimos 3 días contra el promedio del ciclo ayuda a detectar el cambio a tiempo.',
+      'Es común relajar el control al final del mes, justo cuando una aceleración golpea más al cierre. Comparar los últimos 3 días contra el promedio del mes ayuda a detectar el cambio a tiempo.',
     action: { kind: 'dismiss', dismissId: 'end-acceleration' },
   }
 }
@@ -786,7 +786,7 @@ function buildVelocityWarning(
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara la velocidad de gasto reciente (últimos 7 días) contra el promedio del ciclo. Si la velocidad se aceleró, proyecta el monto estimado de cierre para anticipar el resultado del mes.',
+      'Compara la velocidad de gasto reciente (últimos 7 días) contra el promedio del mes. Si la velocidad se aceleró, proyecta el monto estimado de cierre para anticipar el resultado del mes.',
     action: { kind: 'dismiss', dismissId: 'velocity' },
   }
 }
@@ -827,7 +827,7 @@ function buildPositiveForecast(
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Proyecta el cierre del ciclo combinando el ritmo de gasto actual con los días restantes. Cuando el resultado es positivo, anticipa el monto excedente disponible para meta de ahorro o reserva.',
+      'Proyecta el cierre del mes combinando el ritmo de gasto actual con los días restantes. Cuando el resultado es positivo, anticipa el monto excedente disponible para meta de ahorro o reserva.',
     action:
       hasActiveGoal && proposed > 0
         ? {
@@ -931,7 +931,7 @@ function buildCategoryCapBreaches(
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Si pones un tope mensual a una categoría, la app avisa cuando te acercas o lo superas. Funciona como una meta personal: ayuda a frenar el gasto antes de que afecte el cierre del ciclo.',
+        'Si pones un tope mensual a una categoría, la app avisa cuando te acercas o lo superas. Funciona como una meta personal: ayuda a frenar el gasto antes de que afecte el cierre del mes.',
       action: {
         kind: 'open-expenses-filtered',
         filter: { categoryId: limit.category_id },
@@ -1542,7 +1542,7 @@ function buildMemberContributionImbalance(
     action: {
       kind: 'send-member-warning',
       targetUserId: topId,
-      message: `Aviso del asistente: este ciclo concentraste el ${Math.round(pct)}% del gasto del hogar (${fmt(topAmount)} de ${fmt(total)}).`,
+      message: `Aviso del asistente: este mes concentraste el ${Math.round(pct)}% del gasto del hogar (${fmt(topAmount)} de ${fmt(total)}).`,
     },
   }
 }
@@ -1666,7 +1666,7 @@ function buildDataGapWarning(
     emoji: '📭',
     cat: 'Registros',
     title: `${daysSince} días sin gastos cargados`,
-    body: `Si tuviste movimientos esos días, registralos para que el cierre del ciclo refleje la realidad. Si no, ignorá este aviso.`,
+    body: `Si tuviste movimientos esos días, registralos para que el cierre del mes refleje la realidad. Si no, ignorá este aviso.`,
     impact: `Hace ${daysSince} días`,
     impactRaw: 0,
     impactScope: 'oneTime',
@@ -1767,7 +1767,7 @@ function buildCycleStartProjection(
     confidence: 1.0,
     dataDays: closedDays,
     dummyExplanation:
-      '"Libre" es lo que te queda del ingreso después de pagar fijos y separar la meta de ahorro. Si arranca bajo, cualquier imprevisto pega más fuerte. Mejor avisarlo al inicio del ciclo cuando todavía hay margen para ajustar.',
+      '"Libre" es lo que te queda del ingreso después de pagar fijos y separar la meta de ahorro. Si arranca bajo, cualquier imprevisto pega más fuerte. Mejor avisarlo al inicio del mes cuando todavía hay margen para ajustar.',
     action: { kind: 'navigate', route: '/(app)/(tabs)/fixed-expenses' },
   }
 }
@@ -2034,7 +2034,7 @@ function buildStreakEncouragement(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuenta días seguidos en los que el gasto del día se mantuvo dentro del cupo. Ver la racha refuerza el hábito y hace visible el progreso del ciclo.',
+      'Cuenta días seguidos en los que el gasto del día se mantuvo dentro del cupo. Ver la racha refuerza el hábito y hace visible el progreso del mes.',
     action: { kind: 'dismiss', dismissId: 'streak-ok' },
   }
 }

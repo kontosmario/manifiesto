@@ -56,7 +56,7 @@ export function buildFocusMetrics({
     metrics.push({
       helper: `${commitmentSummary.dueSoonCount} cerca · ${commitmentSummary.overdueCount} vencidos`,
       icon: 'account-balance',
-      label: 'Compromisos del ciclo',
+      label: 'Compromisos del mes',
       tone:
         commitmentSummary.overdueCount > 0 || commitmentSummary.dueSoonCount > 0
           ? 'warning'

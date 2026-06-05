@@ -5,6 +5,7 @@ import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { buildFamilyDashboardSnapshot } from '@/features/family/family-dashboard-model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 
 const EMPTY_EXPENSES: Expense[] = []
 const EMPTY_COMMITMENTS: FixedExpense[] = []
@@ -13,6 +14,7 @@ export function useFamilyDashboard(familyId?: string) {
   const familyFinanceQuery = useFamilyFinance(familyId)
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const expensesQuery = useExpenses(familyId)
+  const monthlyAccounting = useMonthlyAccounting(familyId)
   const expenses = expensesQuery.data ?? EMPTY_EXPENSES
   const commitments = fixedExpensesQuery.data ?? EMPTY_COMMITMENTS
   const dashboardError =
@@ -23,8 +25,10 @@ export function useFamilyDashboard(familyId?: string) {
         commitments,
         expenses,
         finance: familyFinanceQuery.data,
+        today: monthlyAccounting.today,
+        monthlyAccounting,
       }),
-    [commitments, expenses, familyFinanceQuery.data],
+    [commitments, expenses, familyFinanceQuery.data, monthlyAccounting],
   )
 
   return {
