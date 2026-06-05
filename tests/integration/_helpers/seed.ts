@@ -29,10 +29,24 @@ export type SeededFamily = {
   ownerAccessToken: string
 }
 
+export type CycleConfigSeed =
+  | { cycle_type: 'monthly'; salary_payment_day: number }
+  | { cycle_type: 'biweekly'; cycle_anchor_date: string; cycle_length_days: 14 }
+  | { cycle_type: 'weekly'; cycle_anchor_date: string; cycle_length_days: 7 }
+  | { cycle_type: 'custom'; cycle_anchor_date: string; cycle_length_days: number }
+
+export interface SeedOptions {
+  /** Cycle config a setear en `family_finance` post-seed. Default monthly day 1. */
+  cycle?: CycleConfigSeed
+  /** Override de monthly_income. Default 1_000_000. */
+  monthlyIncome?: number
+}
+
 const TEST_PASSWORD = 'test1234!'
 
 export async function seedMinimalFamily(
   suffix = '',
+  options: SeedOptions = {},
 ): Promise<SeededFamily> {
   const admin = adminClient()
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
@@ -70,15 +84,26 @@ export async function seedMinimalFamily(
   // The `family_members` insert above triggers `recompute_family_income`,
   // which upserts a `family_finance` row. Update the auto-created row with
   // the values we need for the snapshot fixture.
+  const cycle = options.cycle ?? { cycle_type: 'monthly' as const, salary_payment_day: 1 }
+  const financeUpdate: Record<string, unknown> = {
+    monthly_income: options.monthlyIncome ?? 1_000_000,
+    savings_goal: 0,
+    savings_goal_percent: 0,
+    usd_exchange_rate: 1000,
+    cycle_type: cycle.cycle_type,
+  }
+  if (cycle.cycle_type === 'monthly') {
+    financeUpdate.salary_payment_day = cycle.salary_payment_day
+    financeUpdate.cycle_anchor_date = null
+    financeUpdate.cycle_length_days = null
+  } else {
+    financeUpdate.salary_payment_day = 1
+    financeUpdate.cycle_anchor_date = cycle.cycle_anchor_date
+    financeUpdate.cycle_length_days = cycle.cycle_length_days
+  }
   const { error: financeErr } = await admin
     .from('family_finance')
-    .update({
-      monthly_income: 1_000_000,
-      savings_goal: 0,
-      savings_goal_percent: 0,
-      usd_exchange_rate: 1000,
-      salary_payment_day: 1,
-    })
+    .update(financeUpdate)
     .eq('family_id', familyId)
   if (financeErr) throw financeErr
 
