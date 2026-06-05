@@ -141,6 +141,10 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const fixedExpenses = useMemo(() => fixedExpensesData ?? [], [fixedExpensesData])
   const expensesData = dashboard.expensesQuery.data
   const expenses = useMemo(() => expensesData ?? [], [expensesData])
+  // Payments del cycle salarial — la tabla `fixed_expense_payments` se
+  // indexa por período del cobro (period_month). La clasificación
+  // paid/pending/overdue contra el mes (`monthlyAccounting`) se hace
+  // adentro de `summarizeFijos`.
   const paymentsQuery = useFixedExpensePayments({
     familyId,
     fixedExpenseIds: fixedExpenses.map((f) => f.id),
@@ -165,9 +169,9 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       commitmentExpenses: expenses,
       categoriesById,
       today,
-      cycleStart: dashboard.payCycle.start,
-      cycleEnd: dashboard.payCycle.end,
-      cycleDays: dashboard.payCycle.days,
+      monthlyStart: dashboard.monthlyAccounting.start,
+      monthlyEnd: dashboard.monthlyAccounting.end,
+      monthlyDays: dashboard.monthlyAccounting.days,
     })
   }, [
     fixedExpenses,
@@ -175,9 +179,9 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     expenses,
     categoriesById,
     today,
-    dashboard.payCycle.start,
-    dashboard.payCycle.end,
-    dashboard.payCycle.days,
+    dashboard.monthlyAccounting.start,
+    dashboard.monthlyAccounting.end,
+    dashboard.monthlyAccounting.days,
   ])
 
   return useMemo<HomeMetrics>(() => {
