@@ -332,13 +332,20 @@ export function HomeDashboard({
   }, [isSavingSalary])
 
   // Auto-open del MonthCloseDecisionSheet cuando hay sobrante del mes
-  // pasado sin decidir. Gating mínimo — la propia query verifica que
-  // no haya decisión registrada y que el monto supere el threshold.
+  // pasado sin decidir. Track del último summary id "mostrado" en este
+  // mount para que NO se reabra apenas el user cierra. Cuando el
+  // componente se re-monta (vuelve a Home tras navegar fuera), el ref
+  // se resetea y la sheet vuelve a aparecer si el pending sigue ahí.
+  const lastShownDecisionIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (pendingDecision && !decisionSheetOpen) {
+    if (
+      pendingDecision &&
+      lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
+    ) {
+      lastShownDecisionIdRef.current = pendingDecision.monthlySummaryId
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision, decisionSheetOpen])
+  }, [pendingDecision])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
@@ -348,14 +355,15 @@ export function HomeDashboard({
     [applyDecision],
   )
 
-  const handleSkipDecision = useCallback(async () => {
-    if (!pendingDecision) return
-    await applyDecision.mutateAsync({
-      monthlySummaryId: pendingDecision.monthlySummaryId,
-      decision: 'skip',
-    })
+  // "Decidir más tarde" cierra el sheet pero NO persiste una decisión
+  // 'skip' en DB. La query sigue devolviendo el row pendiente y la
+  // sheet vuelve a aparecer en el próximo mount de Home. Solo
+  // meta/acumular/reserva la hacen desaparecer realmente.
+  // (V1 persistía 'skip' acá; UX confuso — el copy dice "después" pero
+  // el comportamiento era "nunca más". Removido.)
+  const handleSkipDecision = useCallback(() => {
     setDecisionSheetOpen(false)
-  }, [applyDecision, pendingDecision])
+  }, [])
 
   const handleDecisionSheetClose = useCallback(() => {
     if (applyDecision.isPending) return
