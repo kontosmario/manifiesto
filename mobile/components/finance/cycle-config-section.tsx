@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useMemo } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { MonthDayPicker } from '@/components/ui/month-day-picker'
 import { BaseMonthCalendar } from '@/components/ui/base-month-calendar'
 import { useAppTheme } from '@/theme/theme-provider'
+import { triggerHaptic } from '@/lib/haptics'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
 
@@ -26,6 +28,9 @@ const HELPER: Record<FinanceCycleConfig['cycle_type'], string> = {
   custom:   'Indicá la fecha del próximo cobro y cuántos días dura el ciclo.',
 }
 
+const CUSTOM_LENGTH_MIN = 1
+const CUSTOM_LENGTH_MAX = 365
+
 interface CycleConfigSectionProps {
   value: FinanceCycleConfig
   onChange: (next: FinanceCycleConfig) => void
@@ -41,21 +46,15 @@ interface CycleConfigSectionProps {
 export function CycleConfigSection({ value, onChange, currentConfig }: CycleConfigSectionProps) {
   const { theme } = useAppTheme()
   const today = useMemo(() => normalizeToStartOfDay(new Date()), [])
-
-  // Texto del input numérico para Custom — separamos del config para
-  // que el user pueda tipear "" o "1" sin que onChange dispare un
-  // estado inválido en cada keystroke.
-  const [customLengthText, setCustomLengthText] = useState(
-    value.cycle_type === 'custom' ? String(value.cycle_length_days) : '10',
-  )
+  const todayIso = useMemo(() => formatLocalDateKey(today), [today])
 
   const handleTypeChange = (next: FinanceCycleConfig['cycle_type']) => {
     if (next === value.cycle_type) return
+    void triggerHaptic('selection')
     if (next === 'monthly') {
       onChange({ cycle_type: 'monthly', salary_payment_day: 15 })
       return
     }
-    const todayIso = formatLocalDateKey(today)
     if (next === 'biweekly') {
       onChange({ cycle_type: 'biweekly', cycle_anchor_date: todayIso, cycle_length_days: 14 })
       return
@@ -67,7 +66,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
     onChange({
       cycle_type: 'custom',
       cycle_anchor_date: todayIso,
-      cycle_length_days: parseLengthOr(customLengthText, 10),
+      cycle_length_days: 10,
     })
   }
 
@@ -76,11 +75,12 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
     onChange({ ...value, cycle_anchor_date: iso })
   }
 
-  const handleCustomLengthChange = (text: string) => {
-    setCustomLengthText(text)
+  const handleCustomLengthStep = (delta: number) => {
     if (value.cycle_type !== 'custom') return
-    const n = parseLengthOr(text, value.cycle_length_days)
-    onChange({ ...value, cycle_length_days: n })
+    const next = clamp(value.cycle_length_days + delta, CUSTOM_LENGTH_MIN, CUSTOM_LENGTH_MAX)
+    if (next === value.cycle_length_days) return
+    void triggerHaptic('selection')
+    onChange({ ...value, cycle_length_days: next })
   }
 
   const transitionNotice =
@@ -100,8 +100,10 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
               style={[
                 styles.chip,
                 {
-                  borderColor: selected ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: selected ? `${theme.colors.primary}1A` : 'transparent',
+                  borderColor: selected ? theme.colors.primary : theme.colors.line,
+                  backgroundColor: selected
+                    ? `${theme.colors.primary}1A`
+                    : theme.colors.creamSoft,
                 },
               ]}
               accessibilityRole="button"
@@ -123,25 +125,65 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
           />
         </View>
       ) : (
-        <View>
-          <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>¿CUÁNDO ES TU PRÓXIMO COBRO?</Text>
-          <BaseMonthCalendar
-            year={anchorYear(value.cycle_anchor_date, today)}
-            month={anchorMonth(value.cycle_anchor_date, today)}
-            selectedIsoDate={value.cycle_anchor_date}
-            today={today}
-            onSelectDay={handleAnchorChange}
-          />
+        <View style={styles.rollingStack}>
+          <View>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>¿CUÁNDO ES TU PRÓXIMO COBRO?</Text>
+            <BaseMonthCalendar
+              initialYear={anchorYear(value.cycle_anchor_date, today)}
+              initialMonth={anchorMonth(value.cycle_anchor_date, today)}
+              selectedIsoDate={value.cycle_anchor_date}
+              today={today}
+              onSelectDay={handleAnchorChange}
+            />
+          </View>
           {value.cycle_type === 'custom' ? (
-            <View style={styles.lengthRow}>
+            <View>
               <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>CADA CUÁNTOS DÍAS COBRÁS</Text>
-              <TextInput
-                value={customLengthText}
-                onChangeText={handleCustomLengthChange}
-                keyboardType="number-pad"
-                maxLength={3}
-                style={[styles.lengthInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
-              />
+              <View
+                style={[
+                  styles.stepperCard,
+                  { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+                ]}
+              >
+                <Pressable
+                  onPress={() => handleCustomLengthStep(-1)}
+                  disabled={value.cycle_length_days <= CUSTOM_LENGTH_MIN}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Restar un día"
+                  style={({ pressed }) => [
+                    styles.stepperBtn,
+                    { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
+                    value.cycle_length_days <= CUSTOM_LENGTH_MIN && styles.stepperBtnDisabled,
+                    pressed && value.cycle_length_days > CUSTOM_LENGTH_MIN && styles.stepperBtnPressed,
+                  ]}
+                >
+                  <MaterialIcons name="remove" size={18} color={theme.colors.text} />
+                </Pressable>
+                <View style={styles.stepperValue}>
+                  <Text style={[styles.stepperValueNum, { color: theme.colors.text }]}>
+                    {value.cycle_length_days}
+                  </Text>
+                  <Text style={[styles.stepperValueUnit, { color: theme.colors.textMuted }]}>
+                    {value.cycle_length_days === 1 ? 'día' : 'días'}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => handleCustomLengthStep(+1)}
+                  disabled={value.cycle_length_days >= CUSTOM_LENGTH_MAX}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sumar un día"
+                  style={({ pressed }) => [
+                    styles.stepperBtn,
+                    { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
+                    value.cycle_length_days >= CUSTOM_LENGTH_MAX && styles.stepperBtnDisabled,
+                    pressed && value.cycle_length_days < CUSTOM_LENGTH_MAX && styles.stepperBtnPressed,
+                  ]}
+                >
+                  <MaterialIcons name="add" size={18} color={theme.colors.text} />
+                </Pressable>
+              </View>
             </View>
           ) : null}
         </View>
@@ -150,7 +192,12 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
       <Text style={[styles.helper, { color: theme.colors.textMuted }]}>{HELPER[value.cycle_type]}</Text>
 
       {transitionNotice ? (
-        <View style={[styles.notice, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted ?? 'transparent' }]}>
+        <View
+          style={[
+            styles.notice,
+            { borderColor: theme.colors.line, backgroundColor: theme.colors.creamSoft },
+          ]}
+        >
           <Text style={[styles.noticeText, { color: theme.colors.textMuted }]}>{transitionNotice}</Text>
         </View>
       ) : null}
@@ -165,10 +212,8 @@ function typeLabel(t: FinanceCycleConfig['cycle_type']): string {
     : 'Custom'
 }
 
-function parseLengthOr(text: string, fallback: number): number {
-  const n = parseInt(text, 10)
-  if (!Number.isInteger(n) || n < 1 || n > 365) return fallback
-  return n
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n))
 }
 
 function anchorYear(iso: string, today: Date): number {
@@ -194,16 +239,34 @@ const styles = StyleSheet.create({
   chipTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
   chipSubtitle: { fontSize: 11 },
   fieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginBottom: 8 },
-  lengthRow: { marginTop: 14, gap: 6 },
-  lengthInput: {
-    borderRadius: 10,
+  rollingStack: { gap: 16 },
+  stepperCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontWeight: '600',
-    width: 110,
   },
+  stepperBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnPressed: { opacity: 0.6 },
+  stepperBtnDisabled: { opacity: 0.35 },
+  stepperValue: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  stepperValueNum: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+  stepperValueUnit: { fontSize: 13, fontWeight: '600' },
   helper: { fontSize: 12, marginTop: 4 },
   notice: {
     marginTop: 4,

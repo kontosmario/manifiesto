@@ -138,13 +138,30 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     cycle_type: 'monthly',
     salary_payment_day: 15,
   })
+  // Hydration race fix (2026-06-05): si el user cambia el config ANTES
+  // de que `existingFinance` resuelva (caso típico en onboarding nuevo
+  // — la query tarda y el user toca el picker), el effect previo
+  // pisaba la elección con el default de la DB. Trackeamos "userTouched"
+  // separado de "hydrated" para que la primera interacción del user
+  // bloquee cualquier hidratación posterior.
+  const cycleConfigUserTouchedRef = useRef(false)
   const [hydratedCycleConfig, setHydratedCycleConfig] = useState(false)
   useEffect(() => {
     if (hydratedCycleConfig) return
+    if (cycleConfigUserTouchedRef.current) {
+      // El user ya pickeó antes de que arrancara la hidratación.
+      // Saltamos y marcamos como hidratado para que no vuelva a correr.
+      setHydratedCycleConfig(true)
+      return
+    }
     if (!existingFinance) return
     setCycleConfig(financeToCycleConfig(existingFinance))
     setHydratedCycleConfig(true)
   }, [existingFinance, hydratedCycleConfig])
+  const handleCycleConfigChange = useCallback((next: FinanceCycleConfig) => {
+    cycleConfigUserTouchedRef.current = true
+    setCycleConfig(next)
+  }, [])
   const scrollRef = useRef<ScrollView>(null)
   const scrollY = useRef(0)
   // Snapshot of the scroll position taken at the moment the user
@@ -612,7 +629,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
               isRejoin,
               closedByOwner,
               cycleConfig,
-              onChangeCycleConfig: setCycleConfig,
+              onChangeCycleConfig: handleCycleConfigChange,
             })}
           </Animated.View>
         </Pressable>
