@@ -416,14 +416,57 @@ export function HomeDashboard({
     const latest = fresh?.summaries?.[0]
     if (!latest) return
     if ((latest.expenses_count ?? 0) === 0) return
+
+    // Spec B integration — si el summary recién cerrado matchea con la
+    // decisión pendiente y el sobrante supera umbral, lo pasamos al
+    // payload para que la closing scene del wrapped maneje la decisión
+    // inline en vez del MonthCloseDecisionSheet standalone.
+    const summaryId = (latest as { id?: string }).id ?? null
+    const sobranteFromSummary = Math.max(
+      0,
+      Number((latest as { monthly_income?: number | string }).monthly_income ?? 0)
+        - Number((latest as { total_spent?: number | string }).total_spent ?? 0)
+        - Number((latest as { savings_delta?: number | string }).savings_delta ?? 0),
+    )
+    const pendingForWrapped =
+      summaryId != null
+      && sobranteFromSummary >= 1000
+      && pendingDecision?.monthlySummaryId === summaryId
+        ? { monthlySummaryId: summaryId, sobrante: sobranteFromSummary }
+        : undefined
+
+    // Si la integramos en el wrapped, marcamos esa summary id como "ya
+    // mostrada" en el ref del sheet standalone para evitar que se abra
+    // detrás/encima del modal cuando el query se invalide.
+    if (pendingForWrapped) {
+      lastShownDecisionIdRef.current = pendingForWrapped.monthlySummaryId
+    }
+
     triggerCycleWrapped(
       buildWrappedPayloadFromSummary({
         summary: latest,
         categoryNameById,
         achievementsEarnedAt: [],
+        pendingLeftoverDecision: pendingForWrapped,
+        activeGoal: activeGoalForSheet,
+        nextCycleAnchor: formatLocalDateKey(dashboard.monthlyAccounting.start),
+        onApplyLeftoverDecision: pendingForWrapped
+          ? async (input) => {
+              await applyDecision.mutateAsync(input)
+            }
+          : undefined,
       }),
     )
-  }, [isOnboardingFlow, queryClient, familyId, categoryNameById])
+  }, [
+    isOnboardingFlow,
+    queryClient,
+    familyId,
+    categoryNameById,
+    pendingDecision,
+    activeGoalForSheet,
+    dashboard.monthlyAccounting.start,
+    applyDecision,
+  ])
 
   const handleCycleSheetSave = useCallback((amount: number) => {
     onConfirmCycleStartingBalance(amount)

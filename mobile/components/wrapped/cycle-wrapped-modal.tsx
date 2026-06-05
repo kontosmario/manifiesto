@@ -25,6 +25,9 @@ import { triggerHaptic } from '@/lib/haptics'
 import { currencyFormatter, formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
+import type { ApplyDecisionInput } from '@/features/month-close/use-month-close-decision'
+
+type LeftoverOption = 'meta' | 'acumular' | 'reserva'
 
 interface CycleWrappedModalProps {
   /** Payload del ciclo cerrado. `null` mantiene el modal oculto. */
@@ -68,14 +71,27 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   const reduced = useReducedMotion()
   const insets = useSafeAreaInsets()
 
-  const scenes = useMemo(
-    () => (payload ? buildScenes(payload, theme.isDark) : []),
-    [payload, theme.isDark],
-  )
-  const sceneCount = scenes.length
-
   const [sceneIndex, setSceneIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  // Spec B — selección dentro de la closing scene cuando hay decisión
+  // pendiente. Null = aún no eligió → CTA queda disabled. Se resetea
+  // al llegar un payload nuevo (ver effect de hidratación más abajo).
+  const [leftoverSelected, setLeftoverSelected] = useState<LeftoverOption | null>(null)
+  const [applyingLeftover, setApplyingLeftover] = useState(false)
+
+  const handleSelectLeftover = useCallback((next: LeftoverOption) => {
+    void triggerHaptic('selection')
+    setLeftoverSelected(next)
+  }, [])
+
+  const scenes = useMemo(
+    () =>
+      payload
+        ? buildScenes(payload, theme.isDark, leftoverSelected, handleSelectLeftover)
+        : [],
+    [payload, theme.isDark, leftoverSelected, handleSelectLeftover],
+  )
+  const sceneCount = scenes.length
 
   // Master entrance driver: scrim + first scene fade-in.
   const enter = useSharedValue(0)
@@ -96,6 +112,10 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
     setSceneIndex(0)
     setIsPaused(false)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+    setLeftoverSelected(null)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+    setApplyingLeftover(false)
     enter.value = 0
     if (reduced) {
       enter.value = 1
@@ -282,32 +302,93 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
         {/* ── Footer: CTA on last scene, hint otherwise ────── */}
         <View style={styles.footer}>
-          {sceneIndex === sceneCount - 1 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Empezar el próximo ciclo"
-              onPress={() => {
-                void triggerHaptic('selection')
-                onDismiss()
-              }}
-              style={({ pressed }) => [
-                styles.cta,
-                {
-                  backgroundColor: scene.ctaBg,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
-                },
-              ]}
-            >
-              <Text style={[styles.ctaText, { color: scene.ctaFg }]}>
-                Empezar el próximo
-              </Text>
-              <MaterialIcons
-                name="arrow-forward"
-                size={18}
-                color={scene.ctaFg}
-              />
-            </Pressable>
-          ) : (
+          {sceneIndex === sceneCount - 1 ? (() => {
+            const hasPendingDecision = Boolean(
+              payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision,
+            )
+            const disabled =
+              applyingLeftover || (hasPendingDecision && leftoverSelected === null)
+            const label = hasPendingDecision
+              ? leftoverSelected
+                ? 'Confirmar y empezar'
+                : 'Elegí una opción'
+              : 'Empezar el próximo'
+            const handlePress = async () => {
+              if (disabled) return
+              void triggerHaptic('selection')
+              if (
+                hasPendingDecision &&
+                leftoverSelected &&
+                payload?.onApplyLeftoverDecision &&
+                payload?.pendingLeftoverDecision
+              ) {
+                setApplyingLeftover(true)
+                try {
+                  let input: ApplyDecisionInput
+                  if (leftoverSelected === 'meta') {
+                    if (!payload.activeGoal) {
+                      // Sin meta: la opción NO debe ser seleccionable
+                      // (gating en la card). Defensa por si llega acá.
+                      setApplyingLeftover(false)
+                      return
+                    }
+                    input = {
+                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+                      decision: 'meta',
+                      metaGoalId: payload.activeGoal.id,
+                    }
+                  } else if (leftoverSelected === 'acumular') {
+                    input = {
+                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+                      decision: 'acumular',
+                      newCycleAnchor:
+                        payload.nextCycleAnchor ??
+                        new Date().toISOString().slice(0, 10),
+                    }
+                  } else {
+                    input = {
+                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+                      decision: 'reserva',
+                    }
+                  }
+                  await payload.onApplyLeftoverDecision(input)
+                  setApplyingLeftover(false)
+                  onDismiss()
+                } catch {
+                  setApplyingLeftover(false)
+                  // Errores de RPC los maneja el caller (mutation onError).
+                }
+                return
+              }
+              onDismiss()
+            }
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityState={{ disabled }}
+                disabled={disabled}
+                onPress={() => void handlePress()}
+                style={({ pressed }) => [
+                  styles.cta,
+                  {
+                    backgroundColor: scene.ctaBg,
+                    opacity: disabled ? 0.4 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
+                ]}
+              >
+                <Text style={[styles.ctaText, { color: scene.ctaFg }]}>
+                  {label}
+                </Text>
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={18}
+                  color={scene.ctaFg}
+                />
+              </Pressable>
+            )
+          })() : (
             <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
               {isPaused ? 'En pausa. Soltá para seguir.' : 'Mantené presionado para pausar.'}
             </Text>
@@ -407,7 +488,12 @@ interface Scene {
   render: (args: SceneRenderArgs) => React.ReactNode
 }
 
-function buildScenes(payload: CycleWrappedPayload, isDark: boolean): Scene[] {
+function buildScenes(
+  payload: CycleWrappedPayload,
+  isDark: boolean,
+  leftoverSelected: LeftoverOption | null,
+  onSelectLeftover: (next: LeftoverOption) => void,
+): Scene[] {
   // El veredicto carga su propia paleta state-driven. El cierre usa
   // forest-deep para hacer statement de cierre, deliberadamente
   // desvinculado del estado anímico del veredicto (un over-budget
@@ -419,7 +505,7 @@ function buildScenes(payload: CycleWrappedPayload, isDark: boolean): Scene[] {
     buildVerdictScene(payload, verdict),
     ...(payload.topCategory ? [buildTopCategoryScene(payload)] : []),
     ...(payload.topExpense ? [buildTopExpenseScene(payload)] : []),
-    buildClosingScene(payload),
+    buildClosingScene(payload, leftoverSelected, onSelectLeftover),
   ]
 }
 
@@ -706,7 +792,11 @@ function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
 }
 
 // 5. Closing scene
-function buildClosingScene(payload: CycleWrappedPayload): Scene {
+function buildClosingScene(
+  payload: CycleWrappedPayload,
+  leftoverSelected: LeftoverOption | null,
+  onSelectLeftover: (next: LeftoverOption) => void,
+): Scene {
   return {
     id: 'closing',
     background: '#0F2E1F', // forest deep, brand statement
@@ -718,51 +808,180 @@ function buildClosingScene(payload: CycleWrappedPayload): Scene {
     progressFill: '#A6EF8F',
     ctaBg: '#A6EF8F',
     ctaFg: '#0F2E1F',
-    render: () => (
-      <View style={closingStyles.stage}>
-        <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-          EL PRÓXIMO ARRANCA HOY
-        </Text>
-        <Text
-          style={[closingStyles.title, { color: '#F4FDF2' }]}
-          accessibilityRole="header"
-        >
-          Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
-        </Text>
-        {payload.achievementsEarnedInCycle > 0 ? (
-          <View
-            style={[
-              closingStyles.achievementsRow,
-              { borderColor: 'rgba(166,239,143,0.55)' },
-            ]}
-          >
-            <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
-            <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
-              {payload.achievementsEarnedInCycle === 1
-                ? '1 logro desbloqueado este mes'
-                : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
+    render: () => {
+      const hasPending = Boolean(
+        payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision,
+      )
+      if (hasPending && payload.pendingLeftoverDecision) {
+        const goalTitle = payload.activeGoal?.title ?? null
+        return (
+          <View style={closingStyles.stage}>
+            <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+              EL PRÓXIMO ARRANCA HOY
             </Text>
+            <Text
+              style={[closingStyles.titleSmaller, { color: '#F4FDF2' }]}
+              accessibilityRole="header"
+            >
+              Te sobraron{'\n'}{formatMoney(Math.round(payload.pendingLeftoverDecision.sobrante))}
+            </Text>
+            <Text style={[closingStyles.subtitle, { color: 'rgba(244,253,242,0.82)' }]}>
+              ¿Qué hacés con esto?
+            </Text>
+            <View style={closingStyles.optionsStack}>
+              <LeftoverOptionCard
+                icon="track-changes"
+                title={goalTitle ? `Sumar a ${goalTitle}` : 'A una meta'}
+                subtitle={goalTitle ? 'Aporte directo' : 'Primero creá una meta'}
+                selected={leftoverSelected === 'meta'}
+                disabled={!payload.activeGoal}
+                onPress={() => onSelectLeftover('meta')}
+              />
+              <LeftoverOptionCard
+                icon="trending-up"
+                title="Sumar al mes actual"
+                subtitle="Queda como disponible extra"
+                selected={leftoverSelected === 'acumular'}
+                onPress={() => onSelectLeftover('acumular')}
+              />
+              <LeftoverOptionCard
+                icon="savings"
+                title="Guardar como reserva"
+                subtitle="Plata aparte, sin destino"
+                selected={leftoverSelected === 'reserva'}
+                onPress={() => onSelectLeftover('reserva')}
+              />
+            </View>
           </View>
-        ) : null}
-        <View style={closingStyles.summaryRow}>
-          <SummaryStat
-            label="Gastaste"
-            value={formatMoney(Math.round(payload.totalSpent))}
-            color="#F4FDF2"
-            mutedColor="rgba(244,253,242,0.82)"
-          />
-          <View style={closingStyles.summaryDivider} />
-          <SummaryStat
-            label="Movimientos"
-            value={String(payload.expensesCount)}
-            color="#F4FDF2"
-            mutedColor="rgba(244,253,242,0.82)"
-          />
+        )
+      }
+      return (
+        <View style={closingStyles.stage}>
+          <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+            EL PRÓXIMO ARRANCA HOY
+          </Text>
+          <Text
+            style={[closingStyles.title, { color: '#F4FDF2' }]}
+            accessibilityRole="header"
+          >
+            Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+          </Text>
+          {payload.achievementsEarnedInCycle > 0 ? (
+            <View
+              style={[
+                closingStyles.achievementsRow,
+                { borderColor: 'rgba(166,239,143,0.55)' },
+              ]}
+            >
+              <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
+              <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
+                {payload.achievementsEarnedInCycle === 1
+                  ? '1 logro desbloqueado este mes'
+                  : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
+              </Text>
+            </View>
+          ) : null}
+          <View style={closingStyles.summaryRow}>
+            <SummaryStat
+              label="Gastaste"
+              value={formatMoney(Math.round(payload.totalSpent))}
+              color="#F4FDF2"
+              mutedColor="rgba(244,253,242,0.82)"
+            />
+            <View style={closingStyles.summaryDivider} />
+            <SummaryStat
+              label="Movimientos"
+              value={String(payload.expensesCount)}
+              color="#F4FDF2"
+              mutedColor="rgba(244,253,242,0.82)"
+            />
+          </View>
         </View>
-      </View>
-    ),
+      )
+    },
   }
 }
+
+// Card de opción de leftover. Compacta, dark-friendly sobre forest deep.
+// Radio button visual a la derecha + tap full-card → onPress.
+function LeftoverOptionCard({
+  icon,
+  title,
+  subtitle,
+  selected,
+  disabled = false,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof MaterialIcons>['name']
+  title: string
+  subtitle: string
+  selected: boolean
+  disabled?: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
+      style={({ pressed }) => [
+        leftoverCardStyles.card,
+        {
+          borderColor: selected ? '#A6EF8F' : 'rgba(244,253,242,0.18)',
+          backgroundColor: selected
+            ? 'rgba(166,239,143,0.10)'
+            : 'rgba(244,253,242,0.04)',
+          opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+        },
+      ]}
+    >
+      <View style={leftoverCardStyles.iconWrap}>
+        <MaterialIcons
+          name={icon}
+          size={18}
+          color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.82)'}
+        />
+      </View>
+      <View style={leftoverCardStyles.text}>
+        <Text style={leftoverCardStyles.title} numberOfLines={1}>{title}</Text>
+        <Text style={leftoverCardStyles.subtitle} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      <MaterialIcons
+        name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+        size={18}
+        color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.62)'}
+      />
+    </Pressable>
+  )
+}
+
+const leftoverCardStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(244,253,242,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: { flex: 1 },
+  title: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F4FDF2',
+    marginBottom: 1,
+  },
+  subtitle: { fontSize: 11, color: 'rgba(244,253,242,0.72)' },
+})
 
 // ── Small subcomponents ──────────────────────────────────────────────
 
@@ -1062,6 +1281,26 @@ const closingStyles = StyleSheet.create({
     letterSpacing: -1.2,
     lineHeight: Math.min(46, SCREEN_WIDTH * 0.12),
     fontVariant: ['tabular-nums'],
+  },
+  titleSmaller: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -1,
+    lineHeight: 34,
+    textAlign: 'center',
+    marginBottom: 4,
+    fontVariant: ['tabular-nums'],
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  optionsStack: {
+    width: '100%',
+    gap: 8,
+    marginTop: 4,
   },
   achievementsRow: {
     flexDirection: 'row',

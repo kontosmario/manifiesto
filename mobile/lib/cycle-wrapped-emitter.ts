@@ -59,6 +59,34 @@ export interface CycleWrappedPayload {
   /** Mood string del rollup ('great' | 'good' | 'ok' | 'tight' |
    *  'over'). Drive copy + tone. Null si el rollup no lo seteó. */
   mood: string | null
+
+  /**
+   * Spec B: decisión pendiente sobre el saldo a favor del ciclo que se
+   * está mostrando. Cuando viene, la closing scene del modal cambia de
+   * "Tenés $X para administrar" a un flujo de selección de 3 opciones
+   * (meta / acumular / reserva). El CTA "Empezar el próximo" aplica
+   * la decisión seleccionada antes de dismissar.
+   *
+   * Opcional para preservar compat con el dev preview (Settings) y
+   * con replays de cycles viejos desde editions-screen donde no hay
+   * decision flow.
+   */
+  pendingLeftoverDecision?: {
+    monthlySummaryId: string
+    sobrante: number
+  }
+  /** Meta activa para la opción "A tu meta". Null si user no tiene. */
+  activeGoal?: { id: string; title: string; emoji: string } | null
+  /** YYYY-MM-DD del inicio del mes accounting actual (para la opción
+   *  "acumular" — se setea como new cycle anchor). */
+  nextCycleAnchor?: string
+  /** Callback que aplica la decisión vía RPC. Inyectado por home-dashboard
+   *  desde useApplyMonthCloseDecision. Si no viene Y pendingLeftoverDecision
+   *  viene → la closing scene SE COMPORTA como si no hubiera pending
+   *  (compat — no crashea). */
+  onApplyLeftoverDecision?: (
+    input: import('@/features/month-close/use-month-close-decision').ApplyDecisionInput,
+  ) => Promise<void>
 }
 
 type Listener = (payload: CycleWrappedPayload) => void
