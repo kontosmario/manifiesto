@@ -123,13 +123,14 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const categoriesQuery = useCategories(familyId, 'fixed_expense')
   const comparisonQuery = useMonthlyExpenseComparison(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
-  // One-time income events that fall inside the current pay cycle —
-  // bumps `availableToday` and `projectedClose` so the user sees the
-  // saldo positivo extra reflected immediately.
+  // One-time income events that fall inside the current accounting
+  // month — bumps `availableToday` y `projectedClose` (ambos son
+  // métricas de saldo del mes, no del cobro). Para monthly users
+  // coincide con el salary cycle; para no-monthly es el mes calendario.
   const cycleIncomeQuery = useCycleIncomeEventsTotal(
     familyId,
-    formatLocalDateKey(dashboard.payCycle.start),
-    formatLocalDateKey(dashboard.payCycle.end),
+    formatLocalDateKey(dashboard.monthlyAccounting.start),
+    formatLocalDateKey(dashboard.monthlyAccounting.end),
   )
   const cycleExtraIncome = cycleIncomeQuery.data ?? 0
 
@@ -180,19 +181,18 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   ])
 
   return useMemo<HomeMetrics>(() => {
-    const cycleStart = dashboard.payCycle.start
+    // Plano de accounting: saldo, cupo y proyección viven sobre el mes
+    // calendario (para non-monthly) o sobre el cycle (para monthly).
+    // El countdown salarial sigue separado (paydayPending / paydayDaysOverdue)
+    // y lee `payCycle` abajo.
+    const monthStart = dashboard.monthlyAccounting.start
+    const monthEnd = dashboard.monthlyAccounting.end
     const cycleEnd = dashboard.payCycle.end
     const msPerDay = 86_400_000
-    const cycleTotalDays = Math.max(
-      1,
-      Math.round((cycleEnd.getTime() - cycleStart.getTime()) / msPerDay),
-    )
+    const cycleTotalDays = Math.max(1, dashboard.monthlyAccounting.days)
     const cycleDay = Math.max(
       1,
-      Math.min(
-        cycleTotalDays,
-        Math.floor((today.getTime() - cycleStart.getTime()) / msPerDay) + 1,
-      ),
+      Math.min(cycleTotalDays, dashboard.monthlyAccounting.daysIntoMonth),
     )
     // "Disponible hoy" = plata discrecional restante del ciclo
     // (dashboard.totalAvailable ya excluye fijos y ahorro). Le sumamos
@@ -252,7 +252,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       availableToday,
       cycleDay,
       cycleTotalDays,
-      cycleMonth: formatCycleLabel(cycleStart, cycleEnd),
+      cycleMonth: formatCycleLabel(monthStart, monthEnd),
       dailyBudget,
       projectedClose,
       cycleAdjusted: dashboard.cycleStartingBalanceOverride !== null,
@@ -263,11 +263,13 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
+    // Conteo de variables del mes (mismo plano que `variableTotal` y el
+    // resto del bucket de gasto del mes).
     const variableCount = expenses.filter(
       (e) =>
         !e.commitment_id &&
-        new Date(e.created_at) >= cycleStart &&
-        new Date(e.created_at) < cycleEnd,
+        new Date(e.created_at) >= monthStart &&
+        new Date(e.created_at) < monthEnd,
     ).length
     const trendPct = comparisonQuery.data?.deltaPercent ?? null
     const variableTrend = trendPct == null ? null : trendPct / 100
@@ -312,6 +314,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   }, [
     today,
     dashboard.payCycle,
+    dashboard.monthlyAccounting,
     dashboard.totalAvailable,
     dashboard.variableSpentInCurrentCycle,
     dashboard.effectiveCycleIncome,
