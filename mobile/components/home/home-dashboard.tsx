@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router'
 import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 import { MonthCloseDecisionSheet } from '@/components/home/sheets/month-close-decision-sheet'
 import {
+  monthCloseDecisionQueryKey,
   useApplyMonthCloseDecision,
   useMonthCloseDecisionPending,
   type ApplyDecisionInput,
@@ -379,10 +380,19 @@ export function HomeDashboard({
   const fireWrappedForClosedCycle = useCallback(async () => {
     if (isOnboardingFlow) return
     await new Promise<void>((resolve) => setTimeout(resolve, 700))
-    await queryClient.refetchQueries({
-      queryKey: controlIntelligenceQueryKey(familyId),
-      type: 'active',
-    })
+    await Promise.all([
+      queryClient.refetchQueries({
+        queryKey: controlIntelligenceQueryKey(familyId),
+        type: 'active',
+      }),
+      // Spec B: el trigger DB crea el row en `monthly_summaries` que
+      // dispara la decisión de saldo a favor. Refetcheamos también la
+      // query de spec B para que la sheet aparezca justo después del
+      // confirm cobro (en vez de tener que cerrar/abrir Home).
+      queryClient.invalidateQueries({
+        queryKey: monthCloseDecisionQueryKey(familyId),
+      }),
+    ])
     const fresh = queryClient.getQueryData<{
       summaries: MonthlySummaryHistory[]
     }>(controlIntelligenceQueryKey(familyId))

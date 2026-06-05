@@ -42,7 +42,14 @@ export function useMonthCloseDecisionPending(familyId?: string): PendingDecision
   const query = useQuery({
     queryKey: monthCloseDecisionQueryKey(familyId),
     enabled: Boolean(familyId),
-    staleTime: 60_000,
+    // staleTime: 0 + refetchOnMount: 'always' garantiza que al volver al
+    // Home (e.g. tras confirmar cobro, que dispara el trigger DB que
+    // crea el monthly_summaries row), el hook re-evalúa la presencia
+    // de decisión pendiente. Sin esto, el cache stale enmascaraba el
+    // nuevo summary y la sheet no aparecía.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<PendingRow | null> => {
       if (!familyId) return null
       // LEFT JOIN equivalente vía 2 queries simple (PostgREST no joina natural sin FK explícita en metadata).
