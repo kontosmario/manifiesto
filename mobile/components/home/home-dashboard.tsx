@@ -12,6 +12,7 @@ import {
   useMonthCloseDecisionPending,
   type ApplyDecisionInput,
 } from '@/features/month-close/use-month-close-decision'
+import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { MetaCard } from '@/components/home/meta-card'
 import { MetaEmptyCard } from '@/components/home/meta-empty-card'
 import {
@@ -336,8 +337,16 @@ export function HomeDashboard({
   // mount para que NO se reabra apenas el user cierra. Cuando el
   // componente se re-monta (vuelve a Home tras navegar fuera), el ref
   // se resetea y la sheet vuelve a aparecer si el pending sigue ahí.
+  //
+  // Gate adicional: esperamos a que el auth-transition splash (el fern
+  // entrance ~2.4s + idle breath) termine. Sin esto el sheet aparece
+  // sobre el splash y se ve mal — el user todavía está mirando la
+  // animación de "entrando a Manifiesto".
   const lastShownDecisionIdRef = useRef<string | null>(null)
+  const authSplash = useAuthTransitionSplash()
+  const splashIsHidden = authSplash.phase === 'hidden'
   useEffect(() => {
+    if (!splashIsHidden) return
     if (
       pendingDecision &&
       lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
@@ -345,7 +354,7 @@ export function HomeDashboard({
       lastShownDecisionIdRef.current = pendingDecision.monthlySummaryId
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision])
+  }, [pendingDecision, splashIsHidden])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
