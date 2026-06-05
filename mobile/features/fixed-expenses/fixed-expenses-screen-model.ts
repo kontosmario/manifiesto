@@ -130,10 +130,10 @@ export function buildFixedExpensesSections(
       summary:
         upcomingItems.length > 0
           ? `${formatCount(upcomingItems.length, 'caso activo', 'casos activos')} · ${currencyFormatter.format(commitmentSummary.reservedTotal)} pendientes`
-          : 'Sin pendientes por cubrir en este ciclo.',
+          : 'Sin pendientes por cubrir en este mes.',
       items: upcomingItems,
-      emptyTitle: 'Ciclo en orden',
-      emptySubtitle: 'No hay gastos fijos urgentes o pendientes para este ciclo.',
+      emptyTitle: 'Mes en orden',
+      emptySubtitle: 'No hay gastos fijos urgentes o pendientes para este mes.',
       emptyIcon: 'event-available',
     },
     {

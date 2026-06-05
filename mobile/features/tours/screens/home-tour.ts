@@ -33,11 +33,11 @@ export const HOME_TOUR_STEPS = {
   // steps so the user understands each side does its own thing.
   variables: {
     order: 3,
-    text: 'Tus gastos variables del ciclo: cuánto llevas gastado y cuál es la categoría que lidera. Toca la tarjeta para abrir el detalle en Gastos.',
+    text: 'Tus gastos variables del mes: cuánto llevas gastado y cuál es la categoría que lidera. Toca la tarjeta para abrir el detalle en Gastos.',
   },
   fixed: {
     order: 4,
-    text: 'Tus compromisos fijos del ciclo: cuántos pagaste y cuál es el próximo a vencer. Toca la tarjeta para abrir el detalle en Fijos.',
+    text: 'Tus compromisos fijos del mes: cuántos pagaste y cuál es el próximo a vencer. Toca la tarjeta para abrir el detalle en Fijos.',
   },
   // Conditional — only registers if MetaCard renders (savings goal
   // configured). When MetaEmptyCard renders instead, this step
@@ -49,7 +49,7 @@ export const HOME_TOUR_STEPS = {
   // Activity feed.
   activity: {
     order: 6,
-    text: 'Tus movimientos recientes del ciclo, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca "Ver todos" para abrir la pantalla completa.',
+    text: 'Tus movimientos recientes del mes, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca "Ver todos" para abrir la pantalla completa.',
   },
   // Last: bottom chrome — FAB long-press hint.
   fab: {

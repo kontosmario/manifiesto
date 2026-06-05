@@ -32,8 +32,8 @@ export const emptyStates = {
     action: 'Sumar cuota',
   },
   cycleInOrder: {
-    title: 'Ciclo en orden',
-    description: 'No hay gastos fijos urgentes o pendientes para este ciclo.',
+    title: 'Mes en orden',
+    description: 'No hay gastos fijos urgentes o pendientes para este mes.',
   },
   categories: {
     title: 'Todavía no hay categorías',

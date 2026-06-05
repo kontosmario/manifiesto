@@ -172,7 +172,7 @@ function renderInsight(state: ControlHeroState): string | null {
   if (state.alcanzaElMes === false) return null
   const vault = state.vault ?? 0
   if (vault >= state.cupoDiario) {
-    return `Acumulaste ${formatMoneyShort(vault)} este ciclo`
+    return `Acumulaste ${formatMoneyShort(vault)} este mes`
   }
   return null
 }

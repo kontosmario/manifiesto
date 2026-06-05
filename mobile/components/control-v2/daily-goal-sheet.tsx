@@ -92,18 +92,18 @@ interface DailyGoalSheetProps {
  */
 function pickGoalSubtitle(stats: DailyGoalSheetProps['userStats']): string {
   if (stats.racha >= 5) {
-    return `Llevás ${stats.racha} días seguidos cerrando bajo cupo. Tu disciplina ya es real — ¿probás un techo un poco más ajustado y ves cómo se acelera tu meta del ciclo?`
+    return `Llevás ${stats.racha} días seguidos cerrando bajo cupo. Tu disciplina ya es real — ¿probás un techo un poco más ajustado y ves cómo se acelera tu meta del mes?`
   }
   if (stats.closedDays >= 5 && stats.diasGanadores / stats.closedDays >= 0.7) {
     const pct = Math.round((stats.diasGanadores / stats.closedDays) * 100)
-    return `${pct}% de los días del ciclo los cerrás dentro del cupo. Vos ya tenés el control — ponerte una meta más exigente te da el empuje para que el progreso se sienta más rápido.`
+    return `${pct}% de los días del mes los cerrás dentro del cupo. Vos ya tenés el control — ponerte una meta más exigente te da el empuje para que el progreso se sienta más rápido.`
   }
   if (stats.momentum <= 0.85 && stats.closedDays >= 7) {
     const pct = Math.round((1 - stats.momentum) * 100)
     return `Tu gasto bajó ${pct}% vs la semana anterior. Buen momento para fijar un techo personal y consolidar el cambio antes de que se afloje.`
   }
   if (stats.noSpendCount >= 3) {
-    return `Llevás ${stats.noSpendCount} días sin gasto este ciclo. Una meta diaria un toque más ajustada te ayuda a sumar más días así, casi sin esfuerzo.`
+    return `Llevás ${stats.noSpendCount} días sin gasto este mes. Una meta diaria un toque más ajustada te ayuda a sumar más días así, casi sin esfuerzo.`
   }
   return 'Tu cupo real no cambia — esto es un techo personal que vos elegís para acelerar tu meta del mes.'
 }
@@ -359,7 +359,7 @@ export function DailyGoalSheet({
                 style={[styles.impactCopy, { color: theme.colors.textMuted }]}
               >
                 Activá una meta diaria un poco más exigente y vas a ver
-                cómo el ahorro del ciclo se acelera.
+                cómo el ahorro del mes se acelera.
               </Animated.Text>
             )}
           </View>

@@ -81,7 +81,7 @@ export function ExpenseIntelligencePanel({
           {headlineText}
         </Text>
         <Text style={[styles.headlineSubhelper, { color: theme.colors.textMuted }]}>
-          Gasto estimado del ciclo: {currencyFormatter.format(analytics.projectedCycleTotal)}
+          Gasto estimado del mes: {currencyFormatter.format(analytics.projectedCycleTotal)}
         </Text>
       </View>
 

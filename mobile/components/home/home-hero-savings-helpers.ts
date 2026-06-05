@@ -59,8 +59,8 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
   if (remaining <= 0) {
     return {
       kind: 'consumed',
-      label: 'Te comiste el ahorro de este ciclo',
-      a11y: `Aviso: tus gastos consumieron los ${formatMoney(target)} de ahorro previstos para este ciclo.`,
+      label: 'Te comiste el ahorro de este mes',
+      a11y: `Aviso: tus gastos consumieron los ${formatMoney(target)} de ahorro previstos para este mes.`,
     }
   }
 
@@ -68,13 +68,13 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
     return {
       kind: 'healthy',
       label: `Apartando ${formatMoneyShort(target)}${percentSuffix}`,
-      a11y: `Estás apartando ${formatMoney(target)} de ahorro este ciclo${percent > 0 ? `, equivalente al ${percent} por ciento del ingreso` : ''}.`,
+      a11y: `Estás apartando ${formatMoney(target)} de ahorro este mes${percent > 0 ? `, equivalente al ${percent} por ciento del ingreso` : ''}.`,
     }
   }
 
   return {
     kind: 'partial',
     label: `Apartando ${formatMoneyShort(remaining)} de ${formatMoneyShort(target)}${percentSuffix}`,
-    a11y: `Estás apartando ${formatMoney(remaining)} de ${formatMoney(target)} previstos para este ciclo${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
+    a11y: `Estás apartando ${formatMoney(remaining)} de ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
   }
 }

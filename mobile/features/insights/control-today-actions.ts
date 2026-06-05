@@ -91,7 +91,7 @@ export function buildTodayActions({
       detail: `El mix 50/${targetFlexiblePercent}/${savingsGoalPercent} te dejaba ${currencyFormatter.format(
         flexibleTargetAmount,
       )} para flexible y ya llevas ${currencyFormatter.format(variableSpentInCurrentCycle)}.`,
-      title: 'El flexible ya se pasó del objetivo del ciclo',
+      title: 'El flexible ya se pasó del objetivo del mes',
       tone: 'warning',
     })
   } else if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {

@@ -182,7 +182,7 @@ function ControlV2PatronCardImpl({
     }
     return {
       icon: 'savings' as const,
-      text: `Si los ${dowPlural(peorDow.name)} bajan al promedio, ahorras ~${formatMoneyShort(ahorroProyectado)} en este ciclo.`,
+      text: `Si los ${dowPlural(peorDow.name)} bajan al promedio, ahorras ~${formatMoneyShort(ahorroProyectado)} en este mes.`,
     }
   })()
 

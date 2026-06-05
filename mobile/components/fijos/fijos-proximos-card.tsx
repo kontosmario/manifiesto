@@ -162,7 +162,7 @@ export function FijosProximosCard({
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              POR PAGAR · ESTE CICLO
+              POR PAGAR · ESTE MES
             </Text>
             {hasUrgent ? (
               <UrgentHeaderDot
@@ -272,7 +272,7 @@ function FijosProximosCardEmpty() {
     >
       <View style={styles.headerRow}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          POR PAGAR · ESTE CICLO
+          POR PAGAR · ESTE MES
         </Text>
       </View>
       {/* Rule estático (sin scaleX animation) — preview inerte. */}

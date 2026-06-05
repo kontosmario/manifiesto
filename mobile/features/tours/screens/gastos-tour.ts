@@ -14,7 +14,7 @@ export const GASTOS_TOUR = TOUR_KEYS.gastos
 export const GASTOS_TOUR_STEPS = {
   hero: {
     order: 0,
-    text: 'El resumen del ciclo: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.',
+    text: 'El resumen del mes: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.',
   },
   streak: {
     order: 1,
@@ -30,6 +30,6 @@ export const GASTOS_TOUR_STEPS = {
   },
   list: {
     order: 4,
-    text: 'Tu lista de movimientos del ciclo, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba.',
+    text: 'Tu lista de movimientos del mes, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba.',
   },
 } as const satisfies Record<string, TourStepCopy>

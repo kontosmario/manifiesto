@@ -58,7 +58,7 @@ export function buildHeroState({
       } vencido${commitmentSummary.overdueCount === 1 ? '' : 's'} y ${currencyFormatter.format(
         commitmentSummary.reservedTotal,
       )} todavia por cubrir.`,
-      eyebrow: 'Atencion del ciclo',
+      eyebrow: 'Atencion del mes',
       title: 'Los compromisos fijos necesitan orden ya',
       variant: 'accent',
     }
@@ -70,7 +70,7 @@ export function buildHeroState({
         expenseAnalytics.adjustmentNeededPerDay,
       )} por dia todavia podes llegar prolijo al cierre.`,
       eyebrow: 'Ajuste sugerido',
-      title: 'El resto del ciclo necesita una correccion simple',
+      title: 'El resto del mes necesita una correccion simple',
       variant: 'accent',
     }
   }
@@ -90,7 +90,7 @@ export function buildHeroState({
 
   if (dailyBudgetSummary.zeroSpendStreak >= 2) {
     return {
-      detail: `Llevas ${dailyBudgetSummary.zeroSpendStreak} dias seguidos construyendo aire para el resto del ciclo.`,
+      detail: `Llevas ${dailyBudgetSummary.zeroSpendStreak} dias seguidos construyendo aire para el resto del mes.`,
       eyebrow: 'Lectura rapida',
       title: 'Vienes acumulando margen real',
       variant: 'hero',

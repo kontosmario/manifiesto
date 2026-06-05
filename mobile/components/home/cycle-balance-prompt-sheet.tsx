@@ -97,7 +97,7 @@ export function OnboardingAvailableSheet(props: SharedProps) {
         title: '¿Cuál es tu saldo hoy?',
         contextPrefixLabel: 'Sueldo configurado',
         helperEmpty:
-          'Anota el monto en mano. Lo usamos para arrancar este ciclo con la realidad.',
+          'Anota el monto en mano. Lo usamos para arrancar este mes con la realidad.',
         saveLabel: 'Guardar saldo',
         eyebrow: 'O AJUSTÁ EL SALDO',
         chipTitle: 'Tengo el sueldo completo',
@@ -126,7 +126,7 @@ export function SalaryConfirmationSheet(props: SharedProps) {
         title: '¿Cobraste? Confirma el monto',
         contextPrefixLabel: 'Sueldo recurrente',
         helperEmpty:
-          'Anota el monto que recibiste este mes. Solo aplica a este ciclo.',
+          'Anota el monto que recibiste este mes. Solo aplica a este mes.',
         saveLabel: 'Guardar cobro',
         eyebrow: 'O AJUSTÁ EL MONTO COBRADO',
         chipTitle: 'Cobré el sueldo completo',

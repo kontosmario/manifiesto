@@ -1262,7 +1262,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/preview' as never)}
                   />
                   <SettingsRow
-                    helper="Dispara el Manifiesto Wrapped (recap del ciclo cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
+                    helper="Dispara el Manifiesto Wrapped (recap del mes cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
                     icon="auto-stories"
                     isLast
                     label="Preview · Cierre de ciclo"

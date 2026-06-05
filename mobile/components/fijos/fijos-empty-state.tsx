@@ -79,7 +79,7 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
           <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
             Aquí registras lo que se paga sí o sí cada mes: alquiler,
             servicios, cuotas y suscripciones. Agrega el primero y armamos el
-            resumen del ciclo.
+            resumen del mes.
           </Text>
           <View style={styles.introCta}>
             <AppButton
@@ -106,7 +106,7 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
           <PreviewBlock
             description="Cuánto llevas pagado y cuánto te queda libre este mes."
             icon="donut-large"
-            title="Resumen del ciclo"
+            title="Resumen del mes"
           >
             <FijosHeroCard empty />
           </PreviewBlock>,
