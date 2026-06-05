@@ -164,14 +164,17 @@ export function HomeDashboard({
     },
   )
 
-  const paymentDay = dashboard.familyFinanceQuery.data?.salary_payment_day ?? null
   const lastConfirmedAt = dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null
+  // `dashboard.payCycle` viene de `usePayCycle` (Task 6) y respeta los
+  // 4 tipos de ciclo. Derivamos el countdown del chip directamente de
+  // ahí en vez del legacy `salary_payment_day` que asumía monthly.
+  const payCycle = dashboard.payCycle
   const pending = useMemo(
-    () => isPaydayPending({ paymentDay, lastConfirmedAt }, today),
-    [paymentDay, lastConfirmedAt, today],
+    () => isPaydayPending({ cycle: payCycle, lastConfirmedAt }, today),
+    [payCycle, lastConfirmedAt, today],
   )
-  const days = useMemo(() => daysUntilPayday({ paymentDay }, today), [paymentDay, today])
-  const cycle = useMemo(() => getPaydayCycle({ paymentDay }, today), [paymentDay, today])
+  const days = useMemo(() => daysUntilPayday(payCycle, today), [payCycle, today])
+  const cycle = useMemo(() => getPaydayCycle(payCycle, today), [payCycle, today])
   void cycle
 
   const membersQuery = useFamilyMembers(familyId)
