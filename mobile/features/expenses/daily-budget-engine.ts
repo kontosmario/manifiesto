@@ -1,5 +1,5 @@
 import type { Expense } from '@/features/expenses/use-expenses'
-import type { PayCycle } from '@/utils/pay-cycle'
+import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
 
 import { DAY_MS } from "@/utils/time"
@@ -45,7 +45,15 @@ interface ComputeDailyBudgetSummaryInput {
   expenses: Expense[]
   fixedExpensesMonthlyTotal: number
   monthlyIncome: number
-  payCycle: PayCycle
+  /**
+   * Ventana mensual de accounting — sobre este plano se proyecta cupo
+   * diario, "in cycle" buckets y proration del override. Para monthly
+   * users coincide con el salary cycle; para weekly/biweekly/custom es
+   * el mes calendario.
+   *
+   * Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
+   */
+  monthlyAccounting: MonthlyAccountingWindow
   savingsGoal: number
   today: Date
   /**
@@ -85,14 +93,15 @@ export function computeDailyBudgetSummary({
   expenses,
   fixedExpensesMonthlyTotal,
   monthlyIncome,
-  payCycle,
+  monthlyAccounting,
   savingsGoal,
   today,
   cycleStartingBalance,
 }: ComputeDailyBudgetSummaryInput): DailyBudgetSummary {
   const safeToday = normalizeToStartOfDay(today)
-  const originalCycleStart = normalizeToStartOfDay(payCycle.start)
-  const cycleEnd = normalizeToStartOfDay(payCycle.end)
+  const originalCycleStart = normalizeToStartOfDay(monthlyAccounting.start)
+  const cycleEnd = normalizeToStartOfDay(monthlyAccounting.end)
+  const monthlyDays = Math.max(monthlyAccounting.days, 1)
 
   // ── Override path ───────────────────────────────────────────────
   // When the user has reported a starting balance for THIS cycle,
@@ -108,9 +117,9 @@ export function computeDailyBudgetSummary({
   const remainingDaysFromToday = Math.max(1, diffDays(safeToday, cycleEnd))
   const effectiveCycleDays = hasOverride
     ? remainingDaysFromToday
-    : Math.max(payCycle.days, 1)
+    : monthlyDays
   const proration = hasOverride
-    ? remainingDaysFromToday / Math.max(payCycle.days, 1)
+    ? remainingDaysFromToday / monthlyDays
     : 1
   const effectiveMonthlyIncome = hasOverride
     ? (cycleStartingBalance as number)
