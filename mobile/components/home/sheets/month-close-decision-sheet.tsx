@@ -7,7 +7,6 @@ import { ModalCard } from '@/components/ui/modal-card'
 import { useAppTheme } from '@/theme/theme-provider'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoney } from '@/utils/money'
-import { formatLocalDateKey } from '@/utils/pay-cycle'
 import type {
   ApplyDecisionInput,
   PendingDecision,
@@ -15,17 +14,13 @@ import type {
 
 type OptionId = 'meta' | 'acumular' | 'reserva'
 
-const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-] as const
-
 interface Props {
   visible: boolean
   pending: PendingDecision
   activeGoal: { id: string; title: string; emoji: string } | null
-  /** Inicio del mes actual — usado para el cycle anchor cuando se elige `acumular`. */
-  currentMonthStart: Date
+  /** Fecha ISO (YYYY-MM-DD) que se seteará como cycle anchor cuando el
+   *  user elija `acumular`. La calcula el parent desde el ciclo actual. */
+  nextCycleAnchor: string
   onApply: (input: ApplyDecisionInput) => Promise<void> | void
   onSkip: () => Promise<void> | void
   onClose: () => void
@@ -36,7 +31,7 @@ export function MonthCloseDecisionSheet({
   visible,
   pending,
   activeGoal,
-  currentMonthStart,
+  nextCycleAnchor,
   onApply,
   onSkip,
   onClose,
@@ -45,8 +40,9 @@ export function MonthCloseDecisionSheet({
   const { theme } = useAppTheme()
   const [selected, setSelected] = useState<OptionId | null>(null)
 
-  const monthName = MONTH_NAMES[pending.lastMonthStart.getMonth()]
-  const subtitle = `Cerraste ${monthName} con un saldo a favor. ¿Qué hacés con esa plata?`
+  // `period_label` viene formateado por el backend ("Mayo 2026" o
+  // "20 may → 19 jun" según cycle_type). Lo usamos tal cual.
+  const subtitle = `Cerraste ${pending.periodLabel} con un saldo a favor. ¿Qué hacés con esa plata?`
 
   const handlePickOption = (id: OptionId) => {
     void triggerHaptic('selection')
@@ -58,8 +54,7 @@ export function MonthCloseDecisionSheet({
     if (selected === 'meta') {
       if (!activeGoal) return
       await onApply({
-        monthIso: pending.monthIso,
-        sobrante: pending.sobrante,
+        monthlySummaryId: pending.monthlySummaryId,
         decision: 'meta',
         metaGoalId: activeGoal.id,
       })
@@ -67,16 +62,14 @@ export function MonthCloseDecisionSheet({
     }
     if (selected === 'acumular') {
       await onApply({
-        monthIso: pending.monthIso,
-        sobrante: pending.sobrante,
+        monthlySummaryId: pending.monthlySummaryId,
         decision: 'acumular',
-        newCycleAnchor: formatLocalDateKey(currentMonthStart),
+        newCycleAnchor: nextCycleAnchor,
       })
       return
     }
     await onApply({
-      monthIso: pending.monthIso,
-      sobrante: pending.sobrante,
+      monthlySummaryId: pending.monthlySummaryId,
       decision: 'reserva',
     })
   }

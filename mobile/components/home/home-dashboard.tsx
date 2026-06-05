@@ -61,6 +61,7 @@ import { controlIntelligenceQueryKey } from '@/features/insights/use-control-v2-
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppTheme } from '@/theme/theme-provider'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 
 interface HomeDashboardProps {
   dashboard: FamilyDashboard
@@ -349,8 +350,7 @@ export function HomeDashboard({
   const handleSkipDecision = useCallback(async () => {
     if (!pendingDecision) return
     await applyDecision.mutateAsync({
-      monthIso: pendingDecision.monthIso,
-      sobrante: pendingDecision.sobrante,
+      monthlySummaryId: pendingDecision.monthlySummaryId,
       decision: 'skip',
     })
     setDecisionSheetOpen(false)
@@ -783,7 +783,7 @@ export function HomeDashboard({
           visible={decisionSheetOpen}
           pending={pendingDecision}
           activeGoal={activeGoalForSheet}
-          currentMonthStart={dashboard.monthlyAccounting.start}
+          nextCycleAnchor={formatLocalDateKey(dashboard.monthlyAccounting.start)}
           onApply={handleApplyDecision}
           onSkip={handleSkipDecision}
           onClose={handleDecisionSheetClose}
