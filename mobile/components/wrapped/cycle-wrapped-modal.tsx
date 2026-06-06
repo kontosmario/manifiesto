@@ -404,27 +404,35 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           )}
         </View>
 
-        {/* ── Tap zones (above content, below close) ───────── */}
-        <View style={styles.tapZones} pointerEvents="box-none">
-          <Pressable
-            onPress={handleTapLeft}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            accessibilityLabel="Escena anterior"
-            style={styles.tapZoneLeft}
-          />
-          <Pressable
-            onPress={handleTapRight}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            accessibilityLabel={
-              sceneIndex + 1 >= sceneCount
-                ? 'Cerrar resumen'
-                : 'Escena siguiente'
-            }
-            style={styles.tapZoneRight}
-          />
-        </View>
+        {/* ── Tap zones (above content, below close) ─────────
+            En la última escena con decisión pendiente NO mostramos las
+            tap zones — los OptionCards deben recibir los taps directo
+            (sin que el wrapper de "siguiente/anterior escena" los
+            intercepte). El user maneja el flow con el CTA y el botón
+            de cerrar (X) sigue disponible. */}
+        {!(sceneIndex + 1 >= sceneCount &&
+          Boolean(payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision)) ? (
+          <View style={styles.tapZones} pointerEvents="box-none">
+            <Pressable
+              onPress={handleTapLeft}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              accessibilityLabel="Escena anterior"
+              style={styles.tapZoneLeft}
+            />
+            <Pressable
+              onPress={handleTapRight}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              accessibilityLabel={
+                sceneIndex + 1 >= sceneCount
+                  ? 'Cerrar resumen'
+                  : 'Escena siguiente'
+              }
+              style={styles.tapZoneRight}
+            />
+          </View>
+        ) : null}
 
         {/* Confetti solo en el veredicto positivo */}
         {scene.confetti ? (

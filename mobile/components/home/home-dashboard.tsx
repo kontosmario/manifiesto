@@ -142,6 +142,12 @@ export function HomeDashboard({
   const queryClient = useQueryClient()
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
   const [decisionSheetOpen, setDecisionSheetOpen] = useState(false)
+  // Lock para evitar race entre standalone sheet y wrapped tras confirm
+  // cobro: el confirm flippea pending → false → el useEffect del
+  // standalone correría con pending=false, pero el wrapped tarda 700ms
+  // en dispararse y ahí la decisión va integrada. Mantenemos lockeado el
+  // standalone durante esa ventana.
+  const [wrappedInFlight, setWrappedInFlight] = useState(false)
 
   // Spec B — month-close leftover decision. Detecta sobrante del mes
   // pasado y abre el sheet automáticamente cuando hay decisión pendiente.
@@ -357,6 +363,12 @@ export function HomeDashboard({
     // arranca (e.g., expenses_count=0), este sheet standalone es el
     // fallback que aparece para que el user igual pueda decidir.
     if (pending) return
+    // Lock activo durante los 700ms post-confirm-cobro: el wrapped está
+    // por dispararse con la decisión integrada. NO abrimos el sheet
+    // standalone hasta saber si wrapped arrancó o si terminó haciendo
+    // early-return (caso expenses_count=0, en el que el standalone SÍ es
+    // el fallback correcto).
+    if (wrappedInFlight) return
     if (
       pendingDecision &&
       lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
@@ -364,7 +376,7 @@ export function HomeDashboard({
       lastShownDecisionIdRef.current = pendingDecision.monthlySummaryId
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision, splashIsHidden, pending])
+  }, [pendingDecision, splashIsHidden, pending, wrappedInFlight])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
@@ -406,16 +418,17 @@ export function HomeDashboard({
   // invalidamos la cache + refetch para leer la summary fresca.
   const fireWrappedForClosedCycle = useCallback(async () => {
     if (isOnboardingFlow) return
+    // Lock SINCRONO: evita que el sheet standalone se abra durante los
+    // 700ms de wait + refetch. Se libera en TODOS los early-return y
+    // al final del flujo, garantizando que el standalone funcione como
+    // fallback cuando wrapped no arranca.
+    setWrappedInFlight(true)
     await new Promise<void>((resolve) => setTimeout(resolve, 700))
     await Promise.all([
       queryClient.refetchQueries({
         queryKey: controlIntelligenceQueryKey(familyId),
         type: 'active',
       }),
-      // Spec B: el trigger DB crea el row en `monthly_summaries` que
-      // dispara la decisión de saldo a favor. Refetcheamos también la
-      // query de spec B para que la sheet aparezca justo después del
-      // confirm cobro (en vez de tener que cerrar/abrir Home).
       queryClient.invalidateQueries({
         queryKey: monthCloseDecisionQueryKey(familyId),
       }),
@@ -424,8 +437,16 @@ export function HomeDashboard({
       summaries: MonthlySummaryHistory[]
     }>(controlIntelligenceQueryKey(familyId))
     const latest = fresh?.summaries?.[0]
-    if (!latest) return
-    if ((latest.expenses_count ?? 0) === 0) return
+    if (!latest) {
+      setWrappedInFlight(false)
+      return
+    }
+    if ((latest.expenses_count ?? 0) === 0) {
+      // Wrapped no arranca (sin historia). Liberamos el lock para que
+      // el standalone se abra como fallback con la decisión pendiente.
+      setWrappedInFlight(false)
+      return
+    }
 
     // Spec B integration — si el summary recién cerrado matchea con la
     // decisión pendiente y el sobrante supera umbral, lo pasamos al
@@ -476,6 +497,11 @@ export function HomeDashboard({
           : undefined,
       }),
     )
+    // Wrapped lanzado. `lastShownDecisionIdRef` ya quedó seteado más
+    // arriba si correspondía → el standalone NO se abre detrás. Podemos
+    // liberar el lock para que el useEffect vuelva a operar normalmente
+    // (será no-op por el ref).
+    setWrappedInFlight(false)
   }, [
     isOnboardingFlow,
     queryClient,
