@@ -348,6 +348,15 @@ export function HomeDashboard({
   const splashIsHidden = authSplash.phase === 'hidden'
   useEffect(() => {
     if (!splashIsHidden) return
+    // Gate clave (2026-06-05): la decisión sobre el saldo a favor es
+    // parte del flujo POST-confirm-cobro. Si el user todavía no
+    // confirmó el cobro del cycle activo, NO disparamos el sheet
+    // standalone — primero tiene que pasar por "Ya cobré". Después
+    // de confirmar, el camino principal es el wrapped integrado
+    // (`fireWrappedForClosedCycle` → closing scene). Si wrapped no
+    // arranca (e.g., expenses_count=0), este sheet standalone es el
+    // fallback que aparece para que el user igual pueda decidir.
+    if (pending) return
     if (
       pendingDecision &&
       lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
@@ -355,7 +364,7 @@ export function HomeDashboard({
       lastShownDecisionIdRef.current = pendingDecision.monthlySummaryId
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision, splashIsHidden])
+  }, [pendingDecision, splashIsHidden, pending])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
