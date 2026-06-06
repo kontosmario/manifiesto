@@ -49,6 +49,10 @@ import {
 import { triggerHaptic } from '@/lib/haptics'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { useMarkCycleWrappedSeen } from '@/features/wrapped/use-mark-cycle-wrapped-seen'
+import { useApplyMonthCloseDecision } from '@/features/month-close/use-month-close-decision'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
+import { supabase } from '@/lib/supabase'
 
 interface ControlV2ScreenProps {
   familyId: string
@@ -82,16 +86,79 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const { data, view, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
     useControlV2Data(familyId)
   const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
-  const launchWrapped = useCallback(() => {
+  // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
+  // Control debe disparar el flujo de decisión sobre el sobrante si el
+  // cycle no fue decidido. Si ya hay decisión persistida, replay normal.
+  const applyDecision = useApplyMonthCloseDecision(familyId)
+  const monthlyAccounting = useMonthlyAccounting(familyId)
+  const savingsGoalQuery = useSavingsGoal(familyId)
+  const activeGoalForWrapped = useMemo(() => {
+    const g = savingsGoalQuery.data
+    if (!g) return null
+    if (g.isActive === false) return null
+    return { id: g.id, title: g.title, emoji: g.emoji }
+  }, [savingsGoalQuery.data])
+  const launchWrapped = useCallback(async () => {
     if (!wrappedPayload) return
-    triggerCycleWrapped(wrappedPayload)
+    // Si el cycle aún no fue decidido, enriquecer el payload con la
+    // integración Spec B antes del trigger. Query directo a las tablas
+    // (no React Query state) para evitar cache stale y leer los
+    // valores canónicos del summary (savings_delta incluido).
+    let enrichedPayload = wrappedPayload
+    if (wrappedSummaryId) {
+      const [summaryRes, existingRes] = await Promise.all([
+        supabase
+          .from('monthly_summaries')
+          .select('monthly_income, total_spent, savings_delta')
+          .eq('id', wrappedSummaryId)
+          .maybeSingle(),
+        supabase
+          .from('month_close_decisions')
+          .select('id')
+          .eq('monthly_summary_id', wrappedSummaryId)
+          .maybeSingle(),
+      ])
+      const summary = summaryRes.data as
+        | { monthly_income: number | string; total_spent: number | string; savings_delta: number | string }
+        | null
+      const sobrante = summary
+        ? Math.max(
+            0,
+            Number(summary.monthly_income ?? 0)
+              - Number(summary.total_spent ?? 0)
+              - Number(summary.savings_delta ?? 0),
+          )
+        : 0
+      if (!existingRes.data && sobrante >= 1000) {
+        enrichedPayload = {
+          ...wrappedPayload,
+          pendingLeftoverDecision: {
+            monthlySummaryId: wrappedSummaryId,
+            sobrante,
+          },
+          activeGoal: activeGoalForWrapped,
+          nextCycleAnchor: formatLocalDateKey(monthlyAccounting.start),
+          onApplyLeftoverDecision: async (input) => {
+            await applyDecision.mutateAsync(input)
+          },
+        }
+      }
+    }
+    triggerCycleWrapped(enrichedPayload)
     if (wrappedSummaryId && !wrappedSeen) {
       markWrappedSeen.mutate(wrappedSummaryId)
     }
-  }, [wrappedPayload, wrappedSummaryId, wrappedSeen, markWrappedSeen])
+  }, [
+    wrappedPayload,
+    wrappedSummaryId,
+    wrappedSeen,
+    markWrappedSeen,
+    applyDecision,
+    activeGoalForWrapped,
+    monthlyAccounting,
+  ])
   const financeQuery = useFamilyFinance(familyId)
   const expensesQuery = useExpenses(familyId)
-  const savingsGoalQuery = useSavingsGoal(familyId)
   const dashboard = useFamilyDashboard(familyId)
   const streakQuery = useStreak(familyId, userId)
   const upsertFamilyFinance = useUpsertFamilyFinance(familyId)
