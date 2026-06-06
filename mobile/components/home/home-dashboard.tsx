@@ -464,13 +464,39 @@ export function HomeDashboard({
     // ve el nuevo row pendiente. Vamos directo a la tabla para
     // chequear si HAY una decisión ya tomada para este summary.
     let pendingForWrapped: { monthlySummaryId: string; sobrante: number } | undefined
-    if (summaryId != null && sobranteFromSummary >= 1000) {
+    let pastForWrapped:
+      | import('@/lib/cycle-wrapped-emitter').CycleWrappedPayload['pastLeftoverDecision']
+      | undefined
+    if (summaryId != null) {
       const { data: existing } = await supabase
         .from('month_close_decisions')
-        .select('id')
+        .select('id, decision, sobrante, decided_at, meta_goal_id')
         .eq('monthly_summary_id', summaryId)
         .maybeSingle()
-      if (!existing) {
+      if (existing) {
+        // Decisión persistida → modo read-only en la closing scene.
+        const dec = existing as {
+          decision: 'meta' | 'acumular' | 'reserva' | 'skip'
+          sobrante: number | string
+          decided_at: string
+          meta_goal_id: string | null
+        }
+        let metaGoalTitle: string | null = null
+        if (dec.decision === 'meta' && dec.meta_goal_id) {
+          const { data: goal } = await supabase
+            .from('savings_goals')
+            .select('title')
+            .eq('id', dec.meta_goal_id)
+            .maybeSingle()
+          metaGoalTitle = (goal as { title?: string } | null)?.title ?? null
+        }
+        pastForWrapped = {
+          decision: dec.decision,
+          sobrante: Number(dec.sobrante),
+          metaGoalTitle,
+          decidedAt: dec.decided_at,
+        }
+      } else if (sobranteFromSummary >= 1000) {
         pendingForWrapped = { monthlySummaryId: summaryId, sobrante: sobranteFromSummary }
       }
     }
@@ -488,6 +514,7 @@ export function HomeDashboard({
         categoryNameById,
         achievementsEarnedAt: [],
         pendingLeftoverDecision: pendingForWrapped,
+        pastLeftoverDecision: pastForWrapped,
         activeGoal: activeGoalForSheet,
         nextCycleAnchor: formatLocalDateKey(dashboard.monthlyAccounting.start),
         onApplyLeftoverDecision: pendingForWrapped

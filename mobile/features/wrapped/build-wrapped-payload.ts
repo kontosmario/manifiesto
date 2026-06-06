@@ -17,6 +17,10 @@ interface BuildArgs {
   achievementsEarnedAt: readonly string[]
   /** Spec B — decisión pendiente sobre el saldo a favor (opcional). */
   pendingLeftoverDecision?: CycleWrappedPayload['pendingLeftoverDecision']
+  /** Decisión ya tomada para este cycle (replay read-only). Mutuamente
+   *  exclusivo con `pendingLeftoverDecision` — si llegan los dos, el
+   *  modal prevalece `pastLeftoverDecision`. */
+  pastLeftoverDecision?: CycleWrappedPayload['pastLeftoverDecision']
   /** Meta activa para la opción "A tu meta" (opcional). */
   activeGoal?: CycleWrappedPayload['activeGoal']
   /** YYYY-MM-DD del inicio del nuevo ciclo (opcional). */
@@ -30,6 +34,7 @@ export function buildWrappedPayloadFromSummary({
   categoryNameById,
   achievementsEarnedAt,
   pendingLeftoverDecision,
+  pastLeftoverDecision,
   activeGoal,
   nextCycleAnchor,
   onApplyLeftoverDecision,
@@ -85,6 +90,7 @@ export function buildWrappedPayloadFromSummary({
     achievementsEarnedInCycle,
     mood: summary.mood ?? null,
     pendingLeftoverDecision,
+    pastLeftoverDecision,
     activeGoal,
     nextCycleAnchor,
     onApplyLeftoverDecision,

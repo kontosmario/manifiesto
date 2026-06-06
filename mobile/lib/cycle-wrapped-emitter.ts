@@ -87,6 +87,24 @@ export interface CycleWrappedPayload {
   onApplyLeftoverDecision?: (
     input: import('@/features/month-close/use-month-close-decision').ApplyDecisionInput,
   ) => Promise<void>
+
+  /**
+   * Decisión sobre el saldo a favor YA TOMADA para este cycle. Cuando
+   * viene, la closing scene muestra el modo read-only: las 3 opciones
+   * aparecen pero la elegida está marcada y las otras inertes; el CTA
+   * dice "Decidiste: [opción]" en vez de "Confirmar y empezar".
+   *
+   * Mutuamente exclusivo con `pendingLeftoverDecision`. Si por accidente
+   * llegan los dos, prevalece `pastLeftoverDecision`.
+   */
+  pastLeftoverDecision?: {
+    decision: 'meta' | 'acumular' | 'reserva' | 'skip'
+    sobrante: number
+    /** Nombre de la meta a la que se aportó. Solo cuando decision='meta'. */
+    metaGoalTitle?: string | null
+    /** ISO timestamp de cuándo se decidió. */
+    decidedAt: string
+  }
 }
 
 type Listener = (payload: CycleWrappedPayload) => void

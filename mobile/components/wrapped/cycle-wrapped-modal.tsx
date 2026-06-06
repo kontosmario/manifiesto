@@ -829,6 +829,20 @@ function buildClosingScene(
       const hasPending = Boolean(
         payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision,
       )
+      // `past` solo se considera cuando NO hay pending (mutuamente
+      // exclusivos en spec). Si por error llegan los dos, `pending`
+      // gana porque está actualmente operando un flow no-decidido.
+      // — la guard del spec dice "prevalece pastLeftoverDecision",
+      // pero acá lo invertimos para preservar el contrato actual del
+      // CTA aplicador (si el caller pidió pending+callback es porque
+      // todavía hay decisión que tomar). En la práctica los dos NUNCA
+      // vienen juntos: control-v2-screen y home-dashboard branch-an
+      // entre uno u el otro.
+      const past = hasPending ? undefined : payload.pastLeftoverDecision
+      // skip no es interesante visualizarlo (el user explícitamente
+      // se saltó la decisión) → fallback a la closing scene vanilla.
+      const showLeftoverSection =
+        hasPending || (past != null && past.decision !== 'skip')
       const goalTitle = payload.activeGoal?.title ?? null
       return (
         <View style={closingStyles.stage}>
@@ -838,7 +852,7 @@ function buildClosingScene(
           </Text>
           <Text
             style={[
-              hasPending ? closingStyles.titleCompact : closingStyles.title,
+              showLeftoverSection ? closingStyles.titleCompact : closingStyles.title,
               { color: '#F4FDF2' },
             ]}
             accessibilityRole="header"
@@ -876,43 +890,75 @@ function buildClosingScene(
             />
           </View>
 
-          {/* ── Sección decisión sobrante (solo si hay pending) ── */}
-          {hasPending && payload.pendingLeftoverDecision ? (
+          {/* ── Sección decisión sobrante (pending o past) ── */}
+          {showLeftoverSection ? (
             <>
               <View style={closingStyles.sectionDivider} />
               <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-                Y TE SOBRARON
+                {past ? 'YA DECIDISTE' : 'Y TE SOBRARON'}
               </Text>
               <Text style={[closingStyles.leftoverAmount, { color: '#A6EF8F' }]}>
-                {formatMoney(Math.round(payload.pendingLeftoverDecision.sobrante))}
+                {formatMoney(
+                  Math.round(
+                    past ? past.sobrante : payload.pendingLeftoverDecision!.sobrante,
+                  ),
+                )}
               </Text>
-              <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
-                ¿Qué hacés con esto?
-              </Text>
+              {!past ? (
+                <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
+                  ¿Qué hacés con esto?
+                </Text>
+              ) : null}
               <View style={closingStyles.optionsStack}>
                 <LeftoverOptionCard
                   icon="track-changes"
-                  title={goalTitle ? `Sumar a ${goalTitle}` : 'A una meta'}
-                  subtitle={goalTitle ? 'Aporte directo' : 'Primero creá una meta'}
-                  selected={leftoverSelected === 'meta'}
-                  disabled={!payload.activeGoal}
-                  onPress={() => onSelectLeftover('meta')}
+                  title={
+                    past?.decision === 'meta' && past?.metaGoalTitle
+                      ? `Aportaste a ${past.metaGoalTitle}`
+                      : goalTitle
+                        ? `Sumar a ${goalTitle}`
+                        : 'A una meta'
+                  }
+                  subtitle={
+                    past?.decision === 'meta'
+                      ? 'Aporte realizado'
+                      : goalTitle
+                        ? 'Aporte directo'
+                        : 'Primero creá una meta'
+                  }
+                  selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
+                  disabled={Boolean(past) || !payload.activeGoal}
+                  readOnly={Boolean(past)}
+                  onPress={past ? () => {} : () => onSelectLeftover('meta')}
                 />
                 <LeftoverOptionCard
                   icon="trending-up"
                   title="Sumar al mes actual"
-                  subtitle="Queda como disponible extra"
-                  selected={leftoverSelected === 'acumular'}
-                  onPress={() => onSelectLeftover('acumular')}
+                  subtitle={
+                    past?.decision === 'acumular' ? 'Hecho' : 'Queda como disponible extra'
+                  }
+                  selected={past ? past.decision === 'acumular' : leftoverSelected === 'acumular'}
+                  disabled={Boolean(past)}
+                  readOnly={Boolean(past)}
+                  onPress={past ? () => {} : () => onSelectLeftover('acumular')}
                 />
                 <LeftoverOptionCard
                   icon="savings"
                   title="Guardar como reserva"
-                  subtitle="Plata aparte, sin destino"
-                  selected={leftoverSelected === 'reserva'}
-                  onPress={() => onSelectLeftover('reserva')}
+                  subtitle={
+                    past?.decision === 'reserva' ? 'Guardado' : 'Plata aparte, sin destino'
+                  }
+                  selected={past ? past.decision === 'reserva' : leftoverSelected === 'reserva'}
+                  disabled={Boolean(past)}
+                  readOnly={Boolean(past)}
+                  onPress={past ? () => {} : () => onSelectLeftover('reserva')}
                 />
               </View>
+              {past ? (
+                <Text style={closingStyles.pastDecisionHint}>
+                  Decidiste el {formatPastDate(past.decidedAt)}
+                </Text>
+              ) : null}
             </>
           ) : null}
         </View>
@@ -929,6 +975,7 @@ function LeftoverOptionCard({
   subtitle,
   selected,
   disabled = false,
+  readOnly = false,
   onPress,
 }: {
   icon: React.ComponentProps<typeof MaterialIcons>['name']
@@ -936,14 +983,22 @@ function LeftoverOptionCard({
   subtitle: string
   selected: boolean
   disabled?: boolean
+  /** Replay mode: ya hay decisión persistida. La selected card se ve
+   *  como confirmed (borde + tint primary); las no-selected se
+   *  silencian con opacity 0.35. Disabled true → sin onPress, sin
+   *  haptic. */
+  readOnly?: boolean
   onPress: () => void
 }) {
+  // En readOnly: la card seleccionada brilla normal (borde + bg
+  // primary), las no-seleccionadas se silencian a 0.35. Esto mantiene
+  // la lectura "esta fue la decisión" sin parecer un control activo.
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
+      onPress={readOnly ? () => {} : onPress}
+      disabled={disabled || readOnly}
       accessibilityRole="button"
-      accessibilityState={{ selected, disabled }}
+      accessibilityState={{ selected, disabled: disabled || readOnly }}
       style={({ pressed }) => [
         leftoverCardStyles.card,
         {
@@ -951,7 +1006,14 @@ function LeftoverOptionCard({
           backgroundColor: selected
             ? 'rgba(166,239,143,0.10)'
             : 'rgba(244,253,242,0.04)',
-          opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+          opacity:
+            readOnly && !selected
+              ? 0.35
+              : disabled
+                ? 0.4
+                : pressed
+                  ? 0.85
+                  : 1,
         },
       ]}
     >
@@ -1033,12 +1095,25 @@ function formatLongDate(iso: string): string {
   const year = Number(match[1])
   const day = Number(match[3])
   const month = Number(match[2])
-  const MES = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-  ]
-  return `${day} de ${MES[month - 1]}, ${year}`
+  return `${day} de ${MONTH_NAMES[month - 1]}, ${year}`
 }
+
+/** Formato compacto para "Decidiste el ..." en replay read-only.
+ *  Parsea timestamptz/ISO completo (no solo YYYY-MM-DD) — `decided_at`
+ *  es timestamptz en la DB. */
+function formatPastDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const dd = d.getDate()
+  const mm = MONTH_NAMES[d.getMonth()]
+  const yy = d.getFullYear()
+  return `${dd} de ${mm} ${yy}`
+}
+
+const MONTH_NAMES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+] as const
 
 // ── Styles ───────────────────────────────────────────────────────────
 
@@ -1341,6 +1416,13 @@ const closingStyles = StyleSheet.create({
     width: '100%',
     gap: 8,
     marginTop: 4,
+  },
+  pastDecisionHint: {
+    marginTop: 14,
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(244,253,242,0.62)',
+    textAlign: 'center',
   },
   achievementsRow: {
     flexDirection: 'row',

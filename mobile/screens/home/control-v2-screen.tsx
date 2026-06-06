@@ -114,7 +114,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           .maybeSingle(),
         supabase
           .from('month_close_decisions')
-          .select('id')
+          .select('id, decision, sobrante, decided_at, meta_goal_id')
           .eq('monthly_summary_id', wrappedSummaryId)
           .maybeSingle(),
       ])
@@ -129,7 +129,38 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               - Number(summary.savings_delta ?? 0),
           )
         : 0
-      if (!existingRes.data && sobrante >= 1000) {
+      if (existingRes.data) {
+        // Hay decisión persistida → modo read-only en closing scene.
+        // Las 3 opciones siguen apareciendo, pero la elegida queda
+        // marcada y las otras inertes (CTA "Empezar el próximo" =
+        // simple dismiss, sin RPC).
+        const dec = existingRes.data as {
+          decision: 'meta' | 'acumular' | 'reserva' | 'skip'
+          sobrante: number | string
+          decided_at: string
+          meta_goal_id: string | null
+        }
+        let metaGoalTitle: string | null = null
+        if (dec.decision === 'meta' && dec.meta_goal_id) {
+          // Lookup del título de la meta (puede haberse renombrado o
+          // borrado entre que se tomó la decisión y este replay).
+          const { data: goal } = await supabase
+            .from('savings_goals')
+            .select('title')
+            .eq('id', dec.meta_goal_id)
+            .maybeSingle()
+          metaGoalTitle = (goal as { title?: string } | null)?.title ?? null
+        }
+        enrichedPayload = {
+          ...wrappedPayload,
+          pastLeftoverDecision: {
+            decision: dec.decision,
+            sobrante: Number(dec.sobrante),
+            metaGoalTitle,
+            decidedAt: dec.decided_at,
+          },
+        }
+      } else if (sobrante >= 1000) {
         enrichedPayload = {
           ...wrappedPayload,
           pendingLeftoverDecision: {
