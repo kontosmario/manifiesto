@@ -64,6 +64,7 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
+import { supabase } from '@/lib/supabase'
 
 interface HomeDashboardProps {
   dashboard: FamilyDashboard
@@ -428,12 +429,21 @@ export function HomeDashboard({
         - Number((latest as { total_spent?: number | string }).total_spent ?? 0)
         - Number((latest as { savings_delta?: number | string }).savings_delta ?? 0),
     )
-    const pendingForWrapped =
-      summaryId != null
-      && sobranteFromSummary >= 1000
-      && pendingDecision?.monthlySummaryId === summaryId
-        ? { monthlySummaryId: summaryId, sobrante: sobranteFromSummary }
-        : undefined
+    // Query DB fresca (no React state) — el `pendingDecision` del
+    // closure es stale: este callback se arma antes del refetch y no
+    // ve el nuevo row pendiente. Vamos directo a la tabla para
+    // chequear si HAY una decisión ya tomada para este summary.
+    let pendingForWrapped: { monthlySummaryId: string; sobrante: number } | undefined
+    if (summaryId != null && sobranteFromSummary >= 1000) {
+      const { data: existing } = await supabase
+        .from('month_close_decisions')
+        .select('id')
+        .eq('monthly_summary_id', summaryId)
+        .maybeSingle()
+      if (!existing) {
+        pendingForWrapped = { monthlySummaryId: summaryId, sobrante: sobranteFromSummary }
+      }
+    }
 
     // Si la integramos en el wrapped, marcamos esa summary id como "ya
     // mostrada" en el ref del sheet standalone para evitar que se abra
@@ -462,7 +472,6 @@ export function HomeDashboard({
     queryClient,
     familyId,
     categoryNameById,
-    pendingDecision,
     activeGoalForSheet,
     dashboard.monthlyAccounting.start,
     applyDecision,

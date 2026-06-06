@@ -162,6 +162,14 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     }
 
     if (isPaused || reduced) return
+    // Última escena con decisión pendiente → no auto-advance. El user
+    // tiene que tomar la decisión con el CTA; cerrar solo por timer le
+    // saca tiempo y desactiva la oportunidad de Spec B inline.
+    const isLastScene = sceneIndex + 1 >= sceneCount
+    const hasPendingOnLast =
+      isLastScene &&
+      Boolean(payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision)
+    if (hasPendingOnLast) return
     // Arranca el progress timer — al llegar a 1, avanza.
     progress.value = withTiming(
       1,
@@ -175,6 +183,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     }
   }, [
     sceneIndex,
+    sceneCount,
     isPaused,
     payload,
     reduced,
@@ -812,56 +821,18 @@ function buildClosingScene(
       const hasPending = Boolean(
         payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision,
       )
-      if (hasPending && payload.pendingLeftoverDecision) {
-        const goalTitle = payload.activeGoal?.title ?? null
-        return (
-          <View style={closingStyles.stage}>
-            <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-              EL PRÓXIMO ARRANCA HOY
-            </Text>
-            <Text
-              style={[closingStyles.titleSmaller, { color: '#F4FDF2' }]}
-              accessibilityRole="header"
-            >
-              Te sobraron{'\n'}{formatMoney(Math.round(payload.pendingLeftoverDecision.sobrante))}
-            </Text>
-            <Text style={[closingStyles.subtitle, { color: 'rgba(244,253,242,0.82)' }]}>
-              ¿Qué hacés con esto?
-            </Text>
-            <View style={closingStyles.optionsStack}>
-              <LeftoverOptionCard
-                icon="track-changes"
-                title={goalTitle ? `Sumar a ${goalTitle}` : 'A una meta'}
-                subtitle={goalTitle ? 'Aporte directo' : 'Primero creá una meta'}
-                selected={leftoverSelected === 'meta'}
-                disabled={!payload.activeGoal}
-                onPress={() => onSelectLeftover('meta')}
-              />
-              <LeftoverOptionCard
-                icon="trending-up"
-                title="Sumar al mes actual"
-                subtitle="Queda como disponible extra"
-                selected={leftoverSelected === 'acumular'}
-                onPress={() => onSelectLeftover('acumular')}
-              />
-              <LeftoverOptionCard
-                icon="savings"
-                title="Guardar como reserva"
-                subtitle="Plata aparte, sin destino"
-                selected={leftoverSelected === 'reserva'}
-                onPress={() => onSelectLeftover('reserva')}
-              />
-            </View>
-          </View>
-        )
-      }
+      const goalTitle = payload.activeGoal?.title ?? null
       return (
         <View style={closingStyles.stage}>
+          {/* ── Sección histórica (siempre presente) ────────── */}
           <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
             EL PRÓXIMO ARRANCA HOY
           </Text>
           <Text
-            style={[closingStyles.title, { color: '#F4FDF2' }]}
+            style={[
+              hasPending ? closingStyles.titleCompact : closingStyles.title,
+              { color: '#F4FDF2' },
+            ]}
             accessibilityRole="header"
           >
             Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
@@ -896,6 +867,46 @@ function buildClosingScene(
               mutedColor="rgba(244,253,242,0.82)"
             />
           </View>
+
+          {/* ── Sección decisión sobrante (solo si hay pending) ── */}
+          {hasPending && payload.pendingLeftoverDecision ? (
+            <>
+              <View style={closingStyles.sectionDivider} />
+              <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+                Y TE SOBRARON
+              </Text>
+              <Text style={[closingStyles.leftoverAmount, { color: '#A6EF8F' }]}>
+                {formatMoney(Math.round(payload.pendingLeftoverDecision.sobrante))}
+              </Text>
+              <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
+                ¿Qué hacés con esto?
+              </Text>
+              <View style={closingStyles.optionsStack}>
+                <LeftoverOptionCard
+                  icon="track-changes"
+                  title={goalTitle ? `Sumar a ${goalTitle}` : 'A una meta'}
+                  subtitle={goalTitle ? 'Aporte directo' : 'Primero creá una meta'}
+                  selected={leftoverSelected === 'meta'}
+                  disabled={!payload.activeGoal}
+                  onPress={() => onSelectLeftover('meta')}
+                />
+                <LeftoverOptionCard
+                  icon="trending-up"
+                  title="Sumar al mes actual"
+                  subtitle="Queda como disponible extra"
+                  selected={leftoverSelected === 'acumular'}
+                  onPress={() => onSelectLeftover('acumular')}
+                />
+                <LeftoverOptionCard
+                  icon="savings"
+                  title="Guardar como reserva"
+                  subtitle="Plata aparte, sin destino"
+                  selected={leftoverSelected === 'reserva'}
+                  onPress={() => onSelectLeftover('reserva')}
+                />
+              </View>
+            </>
+          ) : null}
         </View>
       )
     },
@@ -1282,20 +1293,41 @@ const closingStyles = StyleSheet.create({
     lineHeight: Math.min(46, SCREEN_WIDTH * 0.12),
     fontVariant: ['tabular-nums'],
   },
-  titleSmaller: {
-    fontSize: 28,
+  // Variant compacta cuando la closing scene tiene además la sección
+  // de decisión de sobrante debajo — entra todo sin clip en pantallas
+  // chicas (SE).
+  titleCompact: {
+    fontSize: 34,
     fontWeight: '900',
     letterSpacing: -1,
-    lineHeight: 34,
-    textAlign: 'center',
+    lineHeight: 38,
+    textAlign: 'left',
+    marginBottom: 12,
+    fontVariant: ['tabular-nums'],
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(244,253,242,0.18)',
+    marginVertical: 18,
+    marginHorizontal: -4,
+  },
+  leftoverEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    marginBottom: 6,
+  },
+  leftoverAmount: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.6,
     marginBottom: 4,
     fontVariant: ['tabular-nums'],
   },
-  subtitle: {
-    fontSize: 14,
+  leftoverSubtitle: {
+    fontSize: 13,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 18,
+    marginBottom: 12,
   },
   optionsStack: {
     width: '100%',
