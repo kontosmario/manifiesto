@@ -390,8 +390,25 @@ function resolveTone(
       shadowColor: '#E8976A',
     }
   }
+  // Brand tone — primary del theme. Theme-aware para legibilidad:
+  //   • Light: primary = #297811 (forest deep) → text white (5.7:1 AA)
+  //   • Dark: primary = #A6EF8F (bright lime) → text DARK (#0A1410)
+  //     porque blanco daría 1.37:1 (FAIL). Validado con color-palette
+  //     skill (luminance #A6EF8F = 0.719; #0A1410 encima = 13.7:1 AAA).
+  if (theme.isDark) {
+    return {
+      filled: theme.colors.primary, // #A6EF8F bright lime
+      // Overlay oscuro sobre el lime claro — mismo rol que el white-22
+      // overlay en light, pero invertido para legibilidad.
+      iconOverlay: 'rgba(15, 46, 31, 0.18)',
+      iconFg: '#0A1410',
+      textOnFilled: '#0A1410',
+      textMutedOnFilled: 'rgba(10, 20, 16, 0.72)',
+      shadowColor: theme.colors.primary,
+    }
+  }
   return {
-    filled: theme.colors.primary,
+    filled: theme.colors.primary, // #297811 forest deep
     iconOverlay: 'rgba(255,255,255,0.22)',
     iconFg: '#FFFFFF',
     textOnFilled: '#FFFFFF',
