@@ -234,13 +234,11 @@ function CycleBalancePromptSheetBase({
           />
         </View>
       }
-      helper={
-        isValid
-          ? `~${currencyFormatter.format(
-              parsed / Math.max(remainingDaysInCycle, 1),
-            )} por día hasta fin de ciclo.`
-          : copy.helperEmpty
-      }
+      // Helper "$X por día hasta fin de ciclo" removido (2026-06-07):
+      // como `remainingDaysInCycle` está clampeado a 1 durante el cycle
+      // freeze, la división daba todo-el-sueldo-por-día — engañoso. El
+      // sheet ya tiene la decisión clara con el CTA primario; no hace
+      // falta agregar metric load.
       errorText={
         showError ? 'Tiene que ser mayor a cero.' : errorMessage ?? undefined
       }
