@@ -116,6 +116,16 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // y baja a 0 en 280ms ease-out-expo. Movimiento sutil que da sensación
   // de "página que entra" sin distraer del contenido.
   const sceneTranslateX = useSharedValue(0)
+  // Background crossfade entre escenas. 0 = bg previo, 1 = bg actual.
+  // Se anima junto con sceneAlpha en cada transición → en vez del salto
+  // duro de color (forest→cream→…), el bg interpola smooth.
+  const sceneBgProgress = useSharedValue(1)
+  // Trackers para el render-sync de los shared values. Sin esto, el
+  // sceneAlpha=0 corre en useEffect (DESPUÉS del paint), lo que causaba
+  // 1 frame de flash a opacity=1 antes del fade-in. Setear durante el
+  // render coloca initialValues ANTES del primer paint del nuevo scene.
+  const prevSceneIdxRef = useRef(0)
+  const prevSceneBgRef = useRef<string | null>(null)
 
   // ── Reset on new payload ────────────────────────────────────
   // Hydrate scene state cada vez que llega un wrapped nuevo. Fires
@@ -159,11 +169,11 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     // Cancel cualquier animación previa y resetea
     cancelAnimation(progress)
     progress.value = 0
-    // Parallax slide direccional al cambiar de escena. En reduced
-    // motion solo el fade — sin translateX.
+    // Animar hacia los valores finales. Los initialValues (alpha=0,
+    // translateX=12, bgProgress=0) ya están seteados sincrónicamente
+    // durante el render via el tracker abajo — sin eso, el primer
+    // paint del scene nuevo flasheaba a opacity=1.
     if (!reduced) {
-      sceneAlpha.value = 0
-      sceneTranslateX.value = 12
       sceneAlpha.value = withTiming(1, {
         duration: SCENE_TRANSITION_MS,
         easing: EXPO_OUT,
@@ -172,9 +182,14 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
         duration: SCENE_TRANSITION_MS,
         easing: EXPO_OUT,
       })
+      sceneBgProgress.value = withTiming(1, {
+        duration: SCENE_TRANSITION_MS,
+        easing: EXPO_OUT,
+      })
     } else {
       sceneAlpha.value = 1
       sceneTranslateX.value = 0
+      sceneBgProgress.value = 1
     }
 
     if (isPaused || reduced) return
@@ -206,6 +221,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     progress,
     sceneAlpha,
     sceneTranslateX,
+    sceneBgProgress,
     advance,
   ])
 
@@ -251,11 +267,54 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     transform: [{ translateX: sceneTranslateX.value }],
   }))
 
+  // Background interpolado entre el bg de la escena previa y la actual.
+  // sceneBgProgress 0→1 driveado en el useEffect de cambio de escena;
+  // el render-sync abajo capta el prev bg ANTES de actualizar el ref.
+  // Sin esto, el bg saltaba bruscamente (forest → cream → otro) entre
+  // escenas. Ahora cross-fadea suave en 280ms ease-out-expo.
+  const currentSceneBg = scenes[sceneIndex]?.background ?? '#000000'
+  const cardBgStyle = useAnimatedStyle(
+    () => ({
+      backgroundColor: interpolateColor(
+        sceneBgProgress.value,
+        [0, 1],
+        [prevSceneBgRef.current ?? currentSceneBg, currentSceneBg],
+      ),
+    }),
+    [currentSceneBg],
+  )
+
   // ── Early return ────────────────────────────────────────────
   if (!payload || sceneCount === 0) return null
 
   const scene = scenes[sceneIndex]
   if (!scene) return null
+
+  // ── Render-sync de shared values en cambio de escena ────────
+  // Setear sceneAlpha=0/translateX=12/bgProgress=0 DURANTE el render
+  // (no en useEffect) garantiza que el primer paint del nuevo scene
+  // ya tenga esos initialValues. Sin esto, el nuevo scene se paintaba
+  // 1 frame a alpha=1 (flash), después snap a 0, después fade-in.
+  // useEffect dispara las animaciones a 1 inmediatamente después.
+  //
+  // Capturamos también la PREVIA bg del scene para que el
+  // interpolateColor abajo tenga el color de origen correcto para el
+  // crossfade — sin este snapshot, prev y current serían iguales y
+  // el bg saltaría sin animar.
+  if (prevSceneIdxRef.current !== sceneIndex) {
+    const previousScene = scenes[prevSceneIdxRef.current]
+    prevSceneBgRef.current =
+      previousScene?.background ?? prevSceneBgRef.current ?? scene.background
+    prevSceneIdxRef.current = sceneIndex
+    if (!reduced) {
+      sceneAlpha.value = 0
+      sceneTranslateX.value = 12
+      sceneBgProgress.value = 0
+    }
+  }
+  if (prevSceneBgRef.current == null) {
+    prevSceneBgRef.current = scene.background
+  }
 
   return (
     <Animated.View
@@ -273,10 +332,10 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
         style={[
           styles.card,
           {
-            backgroundColor: scene.background,
             paddingTop: Math.max(16, insets.top + 8),
             paddingBottom: Math.max(20, insets.bottom + 16),
           },
+          cardBgStyle,
           cardStyle,
         ]}
       >
