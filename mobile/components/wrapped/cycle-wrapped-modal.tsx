@@ -278,8 +278,34 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           ))}
         </View>
 
-        {/* ── Header strip: brand + close ──────────────────── */}
+        {/* ── Header strip: back (cuando aplica) + brand + close ── */}
         <View style={styles.headerRow}>
+          {/* Back chevron — visible cuando estamos en la última escena
+              con decisión pendiente (las tap zones de navegación están
+              deshabilitadas en ese modo para que los OptionCards reciban
+              taps). Permite revisar las historias anteriores antes de
+              decidir. En otras escenas las tap zones manejan la
+              navegación, así que no hace falta el botón. */}
+          {sceneIndex > 0 &&
+          sceneIndex + 1 >= sceneCount &&
+          Boolean(payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision) ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Escena anterior"
+              onPress={handleTapLeft}
+              hitSlop={16}
+              style={({ pressed }) => [
+                styles.closeBtn,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}
+            >
+              <MaterialIcons
+                name="chevron-left"
+                size={22}
+                color={scene.foregroundSoft}
+              />
+            </Pressable>
+          ) : null}
           <Text
             style={[styles.brandMark, { color: scene.foregroundSoft }]}
             accessibilityRole="header"
