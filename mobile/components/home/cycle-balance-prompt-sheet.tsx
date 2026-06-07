@@ -210,16 +210,17 @@ function CycleBalancePromptSheetBase({
       numpadCollapsedByDefault
       headerExtra={
         <View style={styles.headerStack}>
+          {/* Context line: nombre del sueldo configurado. El "días
+              restantes" se sacó porque cuando este sheet aparece el
+              cycle está FROZEN (cobro pendiente) y `remainingUntilPayday`
+              quedaba clampeado a 1 — confundía al user con un falso
+              countdown ("1 día restante") en vez de explicar que es el
+              momento de confirmar el nuevo cobro. */}
           <Text style={[styles.contextLine, { color: theme.colors.textMuted }]}>
             {copy.contextPrefixLabel}{' '}
             <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
               {currencyFormatter.format(monthlyIncome)}
             </Text>
-            {' · '}
-            <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-              {remainingDaysInCycle}
-            </Text>{' '}
-            {remainingDaysInCycle === 1 ? 'día restante' : 'días restantes'}
           </Text>
 
           <QuickConfirmCta
@@ -392,18 +393,19 @@ function resolveTone(
   }
   // Brand tone — primary del theme. Theme-aware para legibilidad:
   //   • Light: primary = #297811 (forest deep) → text white (5.7:1 AA)
-  //   • Dark: primary = #A6EF8F (bright lime) → text DARK (#0A1410)
-  //     porque blanco daría 1.37:1 (FAIL). Validado con color-palette
-  //     skill (luminance #A6EF8F = 0.719; #0A1410 encima = 13.7:1 AAA).
+  //   • Dark: primary = #A6EF8F (bright lime) → text FOREST DEEP
+  //     (#0F2E1F) en vez de near-black. Feedback owner: "me gustaria
+  //     un tono mas clarito acorde al darkmode, pero no negro oscuro".
+  //     #0F2E1F (forest, mismo que usa el wrapped) → 9.7:1 AAA
+  //     mantiene legibilidad y se siente brand, no pure black.
   if (theme.isDark) {
     return {
       filled: theme.colors.primary, // #A6EF8F bright lime
-      // Overlay oscuro sobre el lime claro — mismo rol que el white-22
-      // overlay en light, pero invertido para legibilidad.
-      iconOverlay: 'rgba(15, 46, 31, 0.18)',
-      iconFg: '#0A1410',
-      textOnFilled: '#0A1410',
-      textMutedOnFilled: 'rgba(10, 20, 16, 0.72)',
+      // Overlay forest sutil sobre el lime claro (no near-black).
+      iconOverlay: 'rgba(15, 46, 31, 0.16)',
+      iconFg: '#0F2E1F',
+      textOnFilled: '#0F2E1F',
+      textMutedOnFilled: 'rgba(15, 46, 31, 0.70)',
       shadowColor: theme.colors.primary,
     }
   }
