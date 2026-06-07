@@ -295,28 +295,11 @@ function HomeHeroCardImpl({
                 // Tighter gap when the override pill is present so the
                 // amount/chip read as a single block, otherwise keep
                 // the original generous spacing before the tiles.
-                marginBottom:
-                  data.cycleAdjusted || savingsChip || data.acumulado ? 8 : 18,
+                marginBottom: data.cycleAdjusted || savingsChip ? 8 : 18,
               },
             ]}
           />
         </RiseView>
-
-        {data.acumulado ? (
-          // Breakdown explícito del saldo: "$X sueldo · $Y acumulado de
-          // <mes>". Tipografía chica, color muted, sin competir con el
-          // amount grande. Solo aparece cuando hay acumulado real del
-          // mes anterior.
-          <RiseView delay={100}>
-            <Text
-              style={[styles.breakdown, { color: theme.colors.heroMuted }]}
-              numberOfLines={1}
-              accessibilityLabel={`Compuesto por ${formatMoney(data.monthlyIncome)} de sueldo y ${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}.`}
-            >
-              {`${formatMoney(data.monthlyIncome)} sueldo · ${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}`}
-            </Text>
-          </RiseView>
-        ) : null}
 
         {data.cycleAdjusted || savingsChip || data.acumulado ? (
           // Read-only chip stack between the saldo amount and the
@@ -671,15 +654,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
-  },
-  // Breakdown subtitle bajo el amount cuando el saldo viene de un
-  // acumulado del mes anterior. Tipografía chica + muted para no
-  // competir con el monto grande.
-  breakdown: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-    marginBottom: 8,
   },
   // Stack wrapper for the read-only chips that may sit between the
   // saldo amount and the tiles row. `gap` controls inter-chip
