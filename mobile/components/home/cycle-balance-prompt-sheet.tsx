@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   currencyFormatter,
@@ -204,42 +206,15 @@ function CycleBalancePromptSheetBase({
             {remainingDaysInCycle === 1 ? 'día restante' : 'días restantes'}
           </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.chipA11y(formatMoney(monthlyIncome))}
+          <QuickConfirmCta
+            label={copy.chipTitle}
+            sublabel={copy.chipSubtitle}
+            amount={formatMoney(monthlyIncome)}
+            tone={tone}
             disabled={isSaving}
+            a11yLabel={copy.chipA11y(formatMoney(monthlyIncome))}
             onPress={handleQuickConfirm}
-            style={({ pressed }) => [
-              styles.quickConfirm,
-              {
-                backgroundColor: tone.background,
-                borderColor: tone.border,
-                opacity: pressed && !isSaving ? 0.85 : 1,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.quickConfirmIcon,
-                { backgroundColor: tone.iconBg },
-              ]}
-            >
-              <MaterialIcons name="check" size={16} color={tone.iconFg} />
-            </View>
-            <ChipBody
-              title={copy.chipTitle}
-              subtitle={copy.chipSubtitle}
-              amount={formatMoney(monthlyIncome)}
-              titleColor={tone.titleColor}
-              subColor={theme.colors.textMuted}
-              amountColor={tone.titleColor}
-            />
-            <MaterialIcons
-              name="chevron-right"
-              size={20}
-              color={tone.titleColor}
-            />
-          </Pressable>
+          />
         </View>
       }
       helper={
@@ -264,34 +239,78 @@ function CycleBalancePromptSheetBase({
   )
 }
 
-interface ChipBodyProps {
-  title: string
-  subtitle: string
+interface QuickConfirmCtaProps {
+  label: string
+  sublabel: string
   amount: string
-  titleColor: string
-  subColor: string
-  amountColor: string
+  tone: ReturnType<typeof resolveTone>
+  disabled: boolean
+  a11yLabel: string
+  onPress: () => void
 }
 
-function ChipBody({
-  title,
-  subtitle,
+/**
+ * CTA primaria del sheet de cobro — antes era una "chip card" sutil
+ * (alpha bg, border, chevron) que el user no identificaba como botón.
+ * Rediseñada como CTA primaria saturada: background filled tone,
+ * texto blanco, sombra leve para elevación, press scale 0.97 con
+ * spring (usePressScale), touch target 56pt+ — clara afordancia táctil.
+ *
+ * Principios aplicados:
+ *   - impeccable: filled color para primary action, elevación clara
+ *   - emil-design-eng: scale 0.97 on press con spring (no opacity flash);
+ *     "buttons must feel responsive"
+ *   - ui-ux-pro-max: touch target ≥44pt (acá ~56pt), affordance no
+ *     ambigua (no parece card), shadow consistente
+ */
+function QuickConfirmCta({
+  label,
+  sublabel,
   amount,
-  titleColor,
-  subColor,
-  amountColor,
-}: ChipBodyProps): ReactNode {
+  tone,
+  disabled,
+  a11yLabel,
+  onPress,
+}: QuickConfirmCtaProps) {
+  const press = usePressScale({ pressedScale: 0.97 })
   return (
-    <View style={styles.quickConfirmText}>
-      <Text style={[styles.quickConfirmTitle, { color: titleColor }]}>
-        {title}
-      </Text>
-      <Text style={[styles.quickConfirmSub, { color: subColor }]}>
-        {subtitle}
-        {' · '}
-        <Text style={{ color: amountColor, fontWeight: '700' }}>{amount}</Text>
-      </Text>
-    </View>
+    <Animated.View style={[styles.ctaWrap, press.animatedStyle]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={[
+          styles.ctaPressable,
+          {
+            backgroundColor: tone.filled,
+            opacity: disabled ? 0.6 : 1,
+          },
+        ]}
+      >
+        <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
+          <MaterialIcons name="check" size={18} color={tone.iconFg} />
+        </View>
+        <View style={styles.ctaTextWrap}>
+          <Text style={[styles.ctaLabel, { color: tone.textOnFilled }]}>
+            {label}
+          </Text>
+          <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
+            {sublabel}
+            {' · '}
+            <Text style={{ color: tone.textOnFilled, fontWeight: '800' }}>
+              {amount}
+            </Text>
+          </Text>
+        </View>
+        <View style={[styles.ctaArrow, { backgroundColor: tone.iconOverlay }]}>
+          <MaterialIcons name="arrow-forward" size={16} color={tone.iconFg} />
+        </View>
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -301,19 +320,23 @@ function resolveTone(
 ) {
   if (chipTone === 'peach') {
     return {
-      background: 'rgba(232,151,106,0.16)',
-      border: 'rgba(232,151,106,0.55)',
-      iconBg: '#E8976A',
+      // Filled solid CTA — el usuario lo lee como botón sin dudar.
+      filled: '#E8976A',
+      // Overlay sutil sobre el filled (para el icon circle y el arrow).
+      iconOverlay: 'rgba(255,255,255,0.22)',
       iconFg: '#FFFFFF',
-      titleColor: '#C25A3E',
+      textOnFilled: '#FFFFFF',
+      textMutedOnFilled: 'rgba(255,255,255,0.78)',
+      shadowColor: '#E8976A',
     }
   }
   return {
-    background: theme.colors.primarySurface,
-    border: theme.colors.primary,
-    iconBg: theme.colors.primary,
+    filled: theme.colors.primary,
+    iconOverlay: 'rgba(255,255,255,0.22)',
     iconFg: '#FFFFFF',
-    titleColor: theme.colors.primaryStrong,
+    textOnFilled: '#FFFFFF',
+    textMutedOnFilled: 'rgba(255,255,255,0.78)',
+    shadowColor: theme.colors.primary,
   }
 }
 
@@ -325,6 +348,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  // CTA wrapper: contiene la shadow para elevación (el Pressable
+  // adentro ya tiene el bg filled).
+  ctaWrap: {
+    borderRadius: radii.lg,
+    // boxShadow se interpreta como elevation en RN nuevo
+    // ('0px 6px 14px -4px rgba(0,0,0,0.28)') — flat sin sombra
+    // en plataformas sin support.
+    boxShadow: '0px 6px 14px -4px rgba(0,0,0,0.28)' as unknown as string,
+  },
+  ctaPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: radii.lg,
+    minHeight: 56,
+  },
+  ctaIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  ctaLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  ctaSublabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  ctaArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ────────── Legacy chip styles (kept for back-compat if otros call-sites
+  // todavía referencian; no se usan en el rediseño actual) ──────────
   quickConfirm: {
     flexDirection: 'row',
     alignItems: 'center',

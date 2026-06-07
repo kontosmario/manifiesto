@@ -154,6 +154,12 @@ export function HomeDashboard({
   const pendingDecision = useMonthCloseDecisionPending(familyId)
   const applyDecision = useApplyMonthCloseDecision(familyId)
 
+  // Splash visibility — gate compartido entre el cycle balance prompt
+  // y la decisión standalone para que NINGÚN sheet/modal aparezca
+  // mientras el warm-fern entrance del splash todavía está visible.
+  const authSplash = useAuthTransitionSplash()
+  const splashIsHidden = authSplash.phase === 'hidden'
+
   // ─── Tour targets that can't be wrapped via <TourTarget> ────────
   // Some targets live inside leaf components (HomeHeader's actions
   // row, the two halves of MonthSummaryCard) where wrapping
@@ -306,6 +312,10 @@ export function HomeDashboard({
     !onboardingSkippedViaExpense
   useEffect(() => {
     if (!shouldAutoOpenCycleSheet) return
+    // Gate: esperar a que el auth-transition splash termine. Sino el
+    // sheet aparece sobre el fern entrance — mismo bug que tenía la
+    // decisión standalone, resuelto con el mismo enfoque.
+    if (!splashIsHidden) return
     // Wait for the dashboard's hero + cards to finish their RiseView
     // entrance animations (the longest delay in the chain is ~320ms;
     // we add some padding so the screen "settles" first). Letting
@@ -317,7 +327,7 @@ export function HomeDashboard({
       setCycleBalanceSheetOpen(true)
     }, 650)
     return () => clearTimeout(handle)
-  }, [shouldAutoOpenCycleSheet])
+  }, [shouldAutoOpenCycleSheet, splashIsHidden])
 
   const handleChipConfirm = useCallback(() => {
     // Open the cycle prompt when there's something to do:
@@ -350,8 +360,6 @@ export function HomeDashboard({
   // sobre el splash y se ve mal — el user todavía está mirando la
   // animación de "entrando a Manifiesto".
   const lastShownDecisionIdRef = useRef<string | null>(null)
-  const authSplash = useAuthTransitionSplash()
-  const splashIsHidden = authSplash.phase === 'hidden'
   useEffect(() => {
     if (!splashIsHidden) return
     // Gate clave (2026-06-05): la decisión sobre el saldo a favor es
