@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import { usePressScale } from '@/hooks/use-press-scale'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   currencyFormatter,
@@ -192,6 +201,10 @@ function CycleBalancePromptSheetBase({
       displayPlaceholder="$ 0"
       maxIntegerDigits={11}
       maxDecimalDigits={2}
+      // Numpad arranca colapsado — la primary action acá es el quick
+      // confirm CTA del header. El numpad de ajuste fino aparece solo
+      // si el user tapea el display.
+      numpadCollapsedByDefault
       headerExtra={
         <View style={styles.headerStack}>
           <Text style={[styles.contextLine, { color: theme.colors.textMuted }]}>
@@ -250,18 +263,25 @@ interface QuickConfirmCtaProps {
 }
 
 /**
- * CTA primaria del sheet de cobro — antes era una "chip card" sutil
- * (alpha bg, border, chevron) que el user no identificaba como botón.
- * Rediseñada como CTA primaria saturada: background filled tone,
- * texto blanco, sombra leve para elevación, press scale 0.97 con
- * spring (usePressScale), touch target 56pt+ — clara afordancia táctil.
+ * CTA primaria del sheet de cobro — rediseño jerárquico con
+ * animación idle.
+ *
+ * Iteración 2 (2026-06-07): el user pidió "mejor formato y estilo" +
+ * "alguna animacion". Esta versión cambia la jerarquía visual:
+ *   - Eyebrow chico arriba ("CONFIRMAR")
+ *   - Amount grande como hero (la decisión del user es el monto)
+ *   - Sublabel chico abajo (contexto)
+ *   - Arrow circle a la derecha con idle pulse (1 → 1.08 cada 2.4s,
+ *     respetando reduced-motion)
+ *   - Press scale 0.97 spring sobre todo
  *
  * Principios aplicados:
- *   - impeccable: filled color para primary action, elevación clara
- *   - emil-design-eng: scale 0.97 on press con spring (no opacity flash);
- *     "buttons must feel responsive"
- *   - ui-ux-pro-max: touch target ≥44pt (acá ~56pt), affordance no
- *     ambigua (no parece card), shadow consistente
+ *   - impeccable: hierarchy via scale/weight (no flat); motion
+ *     respira/atrae sin distraer
+ *   - emil-design-eng: idle pulse decorative pero contenido; press
+ *     spring inmediato
+ *   - ui-ux-pro-max: touch target ≥44pt; affordance "tap to confirm"
+ *     reforzada por el pulse del arrow
  */
 function QuickConfirmCta({
   label,
@@ -273,6 +293,32 @@ function QuickConfirmCta({
   onPress,
 }: QuickConfirmCtaProps) {
   const press = usePressScale({ pressedScale: 0.97 })
+  const reducedMotion = useReducedMotion()
+  const pulse = useSharedValue(1)
+
+  useEffect(() => {
+    if (reducedMotion || disabled) {
+      cancelAnimation(pulse)
+      pulse.value = 1
+      return
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    )
+    return () => {
+      cancelAnimation(pulse)
+    }
+  }, [reducedMotion, disabled, pulse])
+
+  const arrowAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }))
+
   return (
     <Animated.View style={[styles.ctaWrap, press.animatedStyle]}>
       <Pressable
@@ -292,23 +338,31 @@ function QuickConfirmCta({
         ]}
       >
         <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
-          <MaterialIcons name="check" size={18} color={tone.iconFg} />
+          <MaterialIcons name="check-circle" size={22} color={tone.iconFg} />
         </View>
         <View style={styles.ctaTextWrap}>
-          <Text style={[styles.ctaLabel, { color: tone.textOnFilled }]}>
-            {label}
+          <Text style={[styles.ctaEyebrow, { color: tone.textMutedOnFilled }]}>
+            {label.toUpperCase()}
+          </Text>
+          <Text
+            style={[styles.ctaAmount, { color: tone.textOnFilled }]}
+            numberOfLines={1}
+          >
+            {amount}
           </Text>
           <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
             {sublabel}
-            {' · '}
-            <Text style={{ color: tone.textOnFilled, fontWeight: '800' }}>
-              {amount}
-            </Text>
           </Text>
         </View>
-        <View style={[styles.ctaArrow, { backgroundColor: tone.iconOverlay }]}>
-          <MaterialIcons name="arrow-forward" size={16} color={tone.iconFg} />
-        </View>
+        <Animated.View
+          style={[
+            styles.ctaArrow,
+            { backgroundColor: tone.iconOverlay },
+            arrowAnimatedStyle,
+          ]}
+        >
+          <MaterialIcons name="arrow-forward" size={18} color={tone.iconFg} />
+        </Animated.View>
       </Pressable>
     </Animated.View>
   )
@@ -360,35 +414,43 @@ const styles = StyleSheet.create({
   ctaPressable: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderRadius: radii.lg,
-    minHeight: 56,
+    minHeight: 76,
   },
   ctaIcon: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaTextWrap: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
-  ctaLabel: {
-    fontSize: 15,
+  ctaEyebrow: {
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: 1.4,
+  },
+  ctaAmount: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+    marginBottom: 2,
   },
   ctaSublabel: {
     fontSize: 11,
     fontWeight: '500',
   },
   ctaArrow: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
