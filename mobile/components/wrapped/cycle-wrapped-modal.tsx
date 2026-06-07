@@ -145,12 +145,6 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
     setSceneIndex(0)
     sceneIndexRef.current = 0
-    // Inicializar bg prev con el bg de la primera escena (evita
-    // crossfade desde negro en el primer paint).
-    const firstScene = payload
-      ? buildScenes(payload, theme.isDark, leftoverSelected, handleSelectLeftover)[0]
-      : undefined
-    if (firstScene) prevSceneBgSv.value = firstScene.background
     setIsPaused(false)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
     setLeftoverSelected(null)
@@ -162,15 +156,26 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     } else {
       enter.value = withTiming(1, { duration: 420, easing: EXPO_OUT })
     }
-  }, [
-    payload,
-    reduced,
-    enter,
-    theme.isDark,
-    leftoverSelected,
-    handleSelectLeftover,
-    prevSceneBgSv,
-  ])
+    // CRITICAL: deps == solo lo que define una NUEVA sesión de wrapped.
+    // NO incluir leftoverSelected / handleSelectLeftover / scenes
+    // porque cualquiera cambia al tap-ear una opción → el effect se
+    // re-ejecutaría → setSceneIndex(0) → reset desde escena 1. Bug
+    // exacto reportado por el owner.
+  }, [payload, reduced, enter])
+
+  // Init del bg previo cuando llega un payload nuevo. Separado del
+  // reset arriba para mantener sus deps mínimas (ver comentario).
+  // Lee la primera escena directamente del useMemo `scenes` — para el
+  // bg, leftoverSelected no influye porque las primeras escenas no
+  // tocan el leftover state.
+  useEffect(() => {
+    if (!payload) return
+    const firstBg = scenes[0]?.background
+    if (firstBg) prevSceneBgSv.value = firstBg
+    // Solo re-init cuando arranca un wrapped nuevo, no en cada cambio
+    // de scenes (que pasa al tap-ear option).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload, prevSceneBgSv])
 
   // Transición a una escena nueva. Captura el bg previo en el shared
   // value, resetea sceneAlpha/translateX/bgProgress a sus initialValues
