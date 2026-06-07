@@ -8,7 +8,13 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
   runOnJS,
+  SlideInDown,
+  SlideOutDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -248,6 +254,16 @@ export function NumericEditSheet({
 
         <GestureDetector gesture={panGesture}>
           <Animated.View
+            // layout: cuando aparece/desaparece el numpad por demand, la
+            // altura intrínseca del sheet cambia. LinearTransition con
+            // ease-out-expo smoothea ese resize en vez de saltar de golpe.
+            layout={
+              reduceMotion
+                ? undefined
+                : LinearTransition.duration(280).easing(
+                    Easing.bezier(0.16, 1, 0.30, 1),
+                  )
+            }
             style={[
               styles.sheet,
               sheetAnimatedStyle,
@@ -399,7 +415,22 @@ export function NumericEditSheet({
             </View>
 
             {numpadExpanded ? (
-              <View
+              <Animated.View
+                // Slide-up suave desde abajo + fade. Matchea el feel de
+                // un keyboard apareciendo. Curve ease-out-expo (la misma
+                // que usa el cycle wrapped) — natural y sin bounce.
+                entering={
+                  reduceMotion
+                    ? FadeIn.duration(120)
+                    : SlideInDown.duration(320)
+                        .easing(Easing.bezier(0.16, 1, 0.30, 1))
+                }
+                exiting={
+                  reduceMotion
+                    ? FadeOut.duration(120)
+                    : SlideOutDown.duration(220)
+                        .easing(Easing.bezier(0.16, 1, 0.30, 1))
+                }
                 pointerEvents={numpadDisabled ? 'none' : 'auto'}
                 style={numpadDisabled ? styles.numpadDimmed : undefined}
               >
@@ -411,7 +442,7 @@ export function NumericEditSheet({
                   maxIntegerDigits={maxIntegerDigits}
                   maxDecimalDigits={maxDecimalDigits}
                 />
-              </View>
+              </Animated.View>
             ) : null}
           </Animated.View>
         </GestureDetector>
