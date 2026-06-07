@@ -8,6 +8,10 @@ import {
 import { useMonthlyExpenseComparison } from '@/features/home/use-monthly-expense-comparison'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
+import {
+  useCurrentCycleAcumulado,
+  type CycleAcumulado,
+} from '@/features/month-close/use-current-cycle-acumulado'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
@@ -80,6 +84,21 @@ export interface HomeHeroMetrics {
    * a setup CTA instead of "$0 disponible".
    */
   incomeConfigured: boolean
+  /**
+   * Sueldo mensual base — usado por el hero para mostrar el breakdown
+   * "$X sueldo · $Y acumulado de mayo" cuando `acumulado != null`.
+   * Siempre poblado (0 cuando `incomeConfigured === false`).
+   */
+  monthlyIncome: number
+  /**
+   * Cuando el `current_cycle_starting_balance` proviene de una decisión
+   * "acumular" del mes anterior, contiene el monto + label del periodo
+   * origen para mostrar contexto positivo ("+$2.2M acumulado de mayo")
+   * en lugar del chip neutral "Ajustado para este mes". `null` cuando
+   * el saldo del cycle no viene de un acumular (sea por override
+   * manual del user o por estado default).
+   */
+  acumulado: CycleAcumulado | null
 }
 
 export interface HomeMonthSummary {
@@ -133,6 +152,14 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     formatLocalDateKey(dashboard.monthlyAccounting.end),
   )
   const cycleExtraIncome = cycleIncomeQuery.data ?? 0
+  // Cuando el saldo del cycle viene de "acumular" del mes anterior,
+  // el hero muestra breakdown explícito + chip verde en lugar del
+  // chip neutral "Ajustado". El hook matchea la decisión vigente
+  // contra `current_cycle_anchor` (self-correcting al avanzar cycle).
+  const acumulado = useCurrentCycleAcumulado(
+    familyId,
+    dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+  )
 
   const today = dashboard.todayDate
   // Stabilise the `?? []` fallbacks so downstream memos don't bust
@@ -264,6 +291,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       paydayDaysOverdue,
       projectionReliable,
       incomeConfigured,
+      monthlyIncome: dashboard.monthlyIncome,
+      acumulado,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
@@ -334,6 +363,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     fijosSummary,
     savingsGoalQuery.data,
     dismissedHikes,
+    acumulado,
   ])
 }
 

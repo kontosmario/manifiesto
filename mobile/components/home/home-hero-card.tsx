@@ -295,20 +295,74 @@ function HomeHeroCardImpl({
                 // Tighter gap when the override pill is present so the
                 // amount/chip read as a single block, otherwise keep
                 // the original generous spacing before the tiles.
-                marginBottom: data.cycleAdjusted || savingsChip ? 8 : 18,
+                marginBottom:
+                  data.cycleAdjusted || savingsChip || data.acumulado ? 8 : 18,
               },
             ]}
           />
         </RiseView>
 
-        {data.cycleAdjusted || savingsChip ? (
+        {data.acumulado ? (
+          // Breakdown explícito del saldo: "$X sueldo · $Y acumulado de
+          // <mes>". Tipografía chica, color muted, sin competir con el
+          // amount grande. Solo aparece cuando hay acumulado real del
+          // mes anterior.
+          <RiseView delay={100}>
+            <Text
+              style={[styles.breakdown, { color: theme.colors.heroMuted }]}
+              numberOfLines={1}
+              accessibilityLabel={`Compuesto por ${formatMoney(data.monthlyIncome)} de sueldo y ${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}.`}
+            >
+              {`${formatMoney(data.monthlyIncome)} sueldo · ${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}`}
+            </Text>
+          </RiseView>
+        ) : null}
+
+        {data.cycleAdjusted || savingsChip || data.acumulado ? (
           // Read-only chip stack between the saldo amount and the
-          // tiles row. Two captions can co-exist: "Ajustado para este
-          // ciclo" (cycle override) and "Apartando ahorro" (savings).
+          // tiles row. Two captions can co-exist: "Ajustado/Acumulado"
+          // (cycle override origin) y "Apartando ahorro" (savings).
           // The wrapper owns the bottom spacing so adding/removing
           // either chip doesn't shift the tiles.
           <View style={styles.heroChipStack}>
-            {data.cycleAdjusted ? (
+            {data.acumulado ? (
+              // Acumulado del mes anterior — tono verde positivo.
+              // Reemplaza al chip neutral "Ajustado" cuando el override
+              // del cycle proviene de una decisión "acumular" (no de
+              // un ajuste manual del user). Semántica: celebrar plata
+              // que sobró, no advertir corrección.
+              <RiseView delay={120}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Tenés ${formatMoney(data.acumulado.amount)} acumulado del mes pasado.`}
+                  style={[
+                    styles.adjustedChip,
+                    theme.mode === 'dark'
+                      ? {
+                          backgroundColor: 'rgba(166,239,143,0.18)',
+                          borderColor: 'rgba(166,239,143,0.45)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(41,120,17,0.15)',
+                          borderColor: 'rgba(41,120,17,0.35)',
+                        },
+                  ]}
+                >
+                  <Text
+                    style={[styles.adjustedChipDot, { color: theme.colors.primary }]}
+                  >
+                    •
+                  </Text>
+                  <Text
+                    style={[styles.adjustedChipText, { color: theme.colors.primary }]}
+                  >
+                    {`+${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}`}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : data.cycleAdjusted ? (
+              // User-set override (sin acumulado): chip peach neutral
+              // que comunica "ajustaste manualmente el saldo del cycle".
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
@@ -617,6 +671,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
+  },
+  // Breakdown subtitle bajo el amount cuando el saldo viene de un
+  // acumulado del mes anterior. Tipografía chica + muted para no
+  // competir con el monto grande.
+  breakdown: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+    marginBottom: 8,
   },
   // Stack wrapper for the read-only chips that may sit between the
   // saldo amount and the tiles row. `gap` controls inter-chip

@@ -123,6 +123,11 @@ export function useApplyMonthCloseDecision(familyId?: string) {
         queryClient.invalidateQueries({ queryKey: ['family-finance', familyId] }),
         queryClient.invalidateQueries({ queryKey: ['savings-goal', familyId] }),
         queryClient.invalidateQueries({ queryKey: ['monthly-summaries', familyId] }),
+        // Hero del Home consulta ['cycle-acumulado', familyId, anchor]
+        // para mostrar contexto positivo cuando la decisión fue
+        // "acumular". Sin invalidar acá, el user que acaba de elegir
+        // acumular ve el chip "Ajustado" viejo hasta refresh manual.
+        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
       ])
     },
   })
