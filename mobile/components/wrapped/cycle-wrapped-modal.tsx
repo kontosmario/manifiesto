@@ -120,12 +120,20 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // Se anima junto con sceneAlpha en cada transición → en vez del salto
   // duro de color (forest→cream→…), el bg interpola smooth.
   const sceneBgProgress = useSharedValue(1)
-  // Trackers para el render-sync de los shared values. Sin esto, el
-  // sceneAlpha=0 corre en useEffect (DESPUÉS del paint), lo que causaba
-  // 1 frame de flash a opacity=1 antes del fade-in. Setear durante el
-  // render coloca initialValues ANTES del primer paint del nuevo scene.
-  const prevSceneIdxRef = useRef(0)
-  const prevSceneBgRef = useRef<string | null>(null)
+  // Background previo como SHARED VALUE (no ref) — el worklet del
+  // cardBgStyle lo lee. Si fuera ref-en-worklet, Reanimated alerta
+  // sobre mutación de propiedad ya serializada.
+  const prevSceneBgSv = useSharedValue<string>('#000000')
+
+  // sceneIndex como ref JS-only (no entra al worklet). Permite que
+  // los event handlers lean el index actual sin recrear el callback en
+  // cada render — y critically, evita warnings "modify key current of
+  // serialized worklet object" si lo refactoreáramos para entrar al UI
+  // thread (lo cual NO hacemos: solo lo lee JS).
+  const sceneIndexRef = useRef(0)
+  useEffect(() => {
+    sceneIndexRef.current = sceneIndex
+  }, [sceneIndex])
 
   // ── Reset on new payload ────────────────────────────────────
   // Hydrate scene state cada vez que llega un wrapped nuevo. Fires
@@ -136,6 +144,13 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     void triggerHaptic('success')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
     setSceneIndex(0)
+    sceneIndexRef.current = 0
+    // Inicializar bg prev con el bg de la primera escena (evita
+    // crossfade desde negro en el primer paint).
+    const firstScene = payload
+      ? buildScenes(payload, theme.isDark, leftoverSelected, handleSelectLeftover)[0]
+      : undefined
+    if (firstScene) prevSceneBgSv.value = firstScene.background
     setIsPaused(false)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
     setLeftoverSelected(null)
@@ -147,22 +162,59 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     } else {
       enter.value = withTiming(1, { duration: 420, easing: EXPO_OUT })
     }
-  }, [payload, reduced, enter])
+  }, [
+    payload,
+    reduced,
+    enter,
+    theme.isDark,
+    leftoverSelected,
+    handleSelectLeftover,
+    prevSceneBgSv,
+  ])
+
+  // Transición a una escena nueva. Captura el bg previo en el shared
+  // value, resetea sceneAlpha/translateX/bgProgress a sus initialValues
+  // SINCRÓNICAMENTE en el event handler (BEFORE el setState), y dispara
+  // setSceneIndex. Como las shared value mutations pasan ANTES del
+  // re-render de React, el primer paint del scene nuevo ya tiene los
+  // valores iniciales correctos — no hay flash. Y como las mutations
+  // pasan en handler (no en render), no hay warning de strict mode.
+  const transitionToScene = useCallback(
+    (nextIdx: number) => {
+      const currentIdx = sceneIndexRef.current
+      if (nextIdx === currentIdx) return
+      const prevScene = scenes[currentIdx]
+      if (prevScene) prevSceneBgSv.value = prevScene.background
+      if (!reduced) {
+        sceneAlpha.value = 0
+        sceneTranslateX.value = 12
+        sceneBgProgress.value = 0
+      }
+      sceneIndexRef.current = nextIdx
+      setSceneIndex(nextIdx)
+    },
+    [
+      scenes,
+      reduced,
+      sceneAlpha,
+      sceneTranslateX,
+      sceneBgProgress,
+      prevSceneBgSv,
+    ],
+  )
 
   // ── Auto-advance driver ─────────────────────────────────────
   // Maneja: (a) avanzar al cumplirse la duración, (b) llenar el
   // progress bar linearmente, (c) respetar pausa por long-press,
   // (d) reduced motion → no auto-advance (usuario controla manual).
   const advance = useCallback(() => {
-    setSceneIndex((idx) => {
-      if (idx + 1 >= sceneCount) {
-        // Último: dismiss
-        runOnJSDismiss(onDismiss)
-        return idx
-      }
-      return idx + 1
-    })
-  }, [sceneCount, onDismiss])
+    const idx = sceneIndexRef.current
+    if (idx + 1 >= sceneCount) {
+      onDismiss()
+      return
+    }
+    transitionToScene(idx + 1)
+  }, [sceneCount, onDismiss, transitionToScene])
 
   useEffect(() => {
     if (!payload) return
@@ -228,16 +280,18 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // ── Touch zone handlers ─────────────────────────────────────
   const handleTapLeft = useCallback(() => {
     void triggerHaptic('selection')
-    setSceneIndex((i) => Math.max(0, i - 1))
-  }, [])
+    const next = Math.max(0, sceneIndexRef.current - 1)
+    transitionToScene(next)
+  }, [transitionToScene])
   const handleTapRight = useCallback(() => {
     void triggerHaptic('selection')
-    if (sceneIndex + 1 >= sceneCount) {
+    const idx = sceneIndexRef.current
+    if (idx + 1 >= sceneCount) {
       onDismiss()
     } else {
-      setSceneIndex((i) => Math.min(sceneCount - 1, i + 1))
+      transitionToScene(idx + 1)
     }
-  }, [sceneIndex, sceneCount, onDismiss])
+  }, [sceneCount, onDismiss, transitionToScene])
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handlePressIn = useCallback(() => {
     // Hold ≥160ms → pause. Tap simple no debe pausar.
@@ -269,16 +323,16 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
   // Background interpolado entre el bg de la escena previa y la actual.
   // sceneBgProgress 0→1 driveado en el useEffect de cambio de escena;
-  // el render-sync abajo capta el prev bg ANTES de actualizar el ref.
-  // Sin esto, el bg saltaba bruscamente (forest → cream → otro) entre
-  // escenas. Ahora cross-fadea suave en 280ms ease-out-expo.
+  // prevSceneBgSv lo seta `transitionToScene` ANTES del setSceneIndex,
+  // así que el worklet siempre tiene el color de origen correcto para
+  // el crossfade.
   const currentSceneBg = scenes[sceneIndex]?.background ?? '#000000'
   const cardBgStyle = useAnimatedStyle(
     () => ({
       backgroundColor: interpolateColor(
         sceneBgProgress.value,
         [0, 1],
-        [prevSceneBgRef.current ?? currentSceneBg, currentSceneBg],
+        [prevSceneBgSv.value, currentSceneBg],
       ),
     }),
     [currentSceneBg],
@@ -289,32 +343,6 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
   const scene = scenes[sceneIndex]
   if (!scene) return null
-
-  // ── Render-sync de shared values en cambio de escena ────────
-  // Setear sceneAlpha=0/translateX=12/bgProgress=0 DURANTE el render
-  // (no en useEffect) garantiza que el primer paint del nuevo scene
-  // ya tenga esos initialValues. Sin esto, el nuevo scene se paintaba
-  // 1 frame a alpha=1 (flash), después snap a 0, después fade-in.
-  // useEffect dispara las animaciones a 1 inmediatamente después.
-  //
-  // Capturamos también la PREVIA bg del scene para que el
-  // interpolateColor abajo tenga el color de origen correcto para el
-  // crossfade — sin este snapshot, prev y current serían iguales y
-  // el bg saltaría sin animar.
-  if (prevSceneIdxRef.current !== sceneIndex) {
-    const previousScene = scenes[prevSceneIdxRef.current]
-    prevSceneBgRef.current =
-      previousScene?.background ?? prevSceneBgRef.current ?? scene.background
-    prevSceneIdxRef.current = sceneIndex
-    if (!reduced) {
-      sceneAlpha.value = 0
-      sceneTranslateX.value = 12
-      sceneBgProgress.value = 0
-    }
-  }
-  if (prevSceneBgRef.current == null) {
-    prevSceneBgRef.current = scene.background
-  }
 
   return (
     <Animated.View
@@ -1151,6 +1179,10 @@ function LeftoverOptionCard({
     readOnly && !selected ? 0.35 : disabled ? 0.4 : 1
 
   return (
+    // Outer wrapper: SOLO el entering (FadeIn) layout animation. Sin
+    // estilos de opacity/transform compitiendo — Reanimated alertaba
+    // "Property opacity may be overwritten by a layout animation" si
+    // el mismo Animated.View tenía entering={FadeIn} + style={opacity}.
     <Animated.View
       entering={
         stagger
@@ -1159,8 +1191,13 @@ function LeftoverOptionCard({
               .easing(EXPO_OUT)
           : undefined
       }
-      style={[press.animatedStyle, { opacity: baseOpacity }]}
     >
+      {/* Inner wrapper: press scale + opacity statica del estado
+          (readOnly/disabled/normal). Separado del entering = sin
+          conflicto. */}
+      <Animated.View
+        style={[press.animatedStyle, { opacity: baseOpacity }]}
+      >
       <Pressable
         onPress={readOnly ? () => {} : onPress}
         onPressIn={readOnly || disabled ? undefined : press.onPressIn}
@@ -1188,6 +1225,7 @@ function LeftoverOptionCard({
           />
         </Animated.View>
       </Pressable>
+      </Animated.View>
     </Animated.View>
   )
 }
