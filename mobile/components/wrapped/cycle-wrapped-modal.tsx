@@ -10,16 +10,21 @@ import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   cancelAnimation,
   Easing,
+  FadeIn,
   interpolate,
+  interpolateColor,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { CountUpText } from '@/components/home/animated/count-up-text'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { currencyFormatter, formatMoney } from '@/utils/money'
@@ -40,8 +45,12 @@ interface CycleWrappedModalProps {
 // usuario quiere leer. 4500ms por escena permite mirar el número,
 // procesar la copy, y avanzar antes de aburrir.
 const SCENE_DURATION_MS = 4500
-const SCENE_TRANSITION_MS = 360
+const SCENE_TRANSITION_MS = 280
 const EXPO_OUT = Easing.bezier(0.16, 1, 0.30, 1) // ease-out-expo
+// Stagger entrance entre OptionCards (Spec B). Solo aplica al primer
+// mount de la closing scene en MODE pending.
+const OPTION_STAGGER_MS = 70
+const OPTION_ENTER_MS = 260
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 
@@ -78,6 +87,10 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // al llegar un payload nuevo (ver effect de hidratación más abajo).
   const [leftoverSelected, setLeftoverSelected] = useState<LeftoverOption | null>(null)
   const [applyingLeftover, setApplyingLeftover] = useState(false)
+  // Confetti pulse — increment cuando el user confirma una decisión
+  // real (meta/acumular/reserva). NO en flow vanilla "Empezar el
+  // próximo" ni en past mode (read-only).
+  const [confettiToken, setConfettiToken] = useState(0)
 
   const handleSelectLeftover = useCallback((next: LeftoverOption) => {
     void triggerHaptic('selection')
@@ -99,8 +112,10 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   const progress = useSharedValue(0)
   // Scene-content opacity for crossfade between scenes.
   const sceneAlpha = useSharedValue(1)
-  // Tiny rise on each scene reveal.
-  const sceneRise = useSharedValue(0)
+  // Parallax X slide al cambiar de escena — incoming arranca en +12
+  // y baja a 0 en 280ms ease-out-expo. Movimiento sutil que da sensación
+  // de "página que entra" sin distraer del contenido.
+  const sceneTranslateX = useSharedValue(0)
 
   // ── Reset on new payload ────────────────────────────────────
   // Hydrate scene state cada vez que llega un wrapped nuevo. Fires
@@ -144,21 +159,22 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     // Cancel cualquier animación previa y resetea
     cancelAnimation(progress)
     progress.value = 0
-    // Crossfade del contenido entre escenas
+    // Parallax slide direccional al cambiar de escena. En reduced
+    // motion solo el fade — sin translateX.
     if (!reduced) {
       sceneAlpha.value = 0
-      sceneRise.value = 8
+      sceneTranslateX.value = 12
       sceneAlpha.value = withTiming(1, {
         duration: SCENE_TRANSITION_MS,
         easing: EXPO_OUT,
       })
-      sceneRise.value = withTiming(0, {
+      sceneTranslateX.value = withTiming(0, {
         duration: SCENE_TRANSITION_MS,
         easing: EXPO_OUT,
       })
     } else {
       sceneAlpha.value = 1
-      sceneRise.value = 0
+      sceneTranslateX.value = 0
     }
 
     if (isPaused || reduced) return
@@ -189,7 +205,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     reduced,
     progress,
     sceneAlpha,
-    sceneRise,
+    sceneTranslateX,
     advance,
   ])
 
@@ -232,7 +248,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   }))
   const sceneContentStyle = useAnimatedStyle(() => ({
     opacity: sceneAlpha.value,
-    transform: [{ translateY: sceneRise.value }],
+    transform: [{ translateX: sceneTranslateX.value }],
   }))
 
   // ── Early return ────────────────────────────────────────────
@@ -289,22 +305,30 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           {sceneIndex > 0 &&
           sceneIndex + 1 >= sceneCount &&
           Boolean(payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision) ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Escena anterior"
-              onPress={handleTapLeft}
-              hitSlop={16}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
+            <Animated.View
+              entering={
+                reduced
+                  ? undefined
+                  : FadeIn.duration(220).easing(EXPO_OUT)
+              }
             >
-              <MaterialIcons
-                name="chevron-left"
-                size={22}
-                color={scene.foregroundSoft}
-              />
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Escena anterior"
+                onPress={handleTapLeft}
+                hitSlop={16}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                <MaterialIcons
+                  name="chevron-left"
+                  size={22}
+                  color={scene.foregroundSoft}
+                />
+              </Pressable>
+            </Animated.View>
           ) : null}
           <Text
             style={[styles.brandMark, { color: scene.foregroundSoft }]}
@@ -337,93 +361,19 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
         {/* ── Footer: CTA on last scene, hint otherwise ────── */}
         <View style={styles.footer}>
-          {sceneIndex === sceneCount - 1 ? (() => {
-            const hasPendingDecision = Boolean(
-              payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision,
-            )
-            const disabled =
-              applyingLeftover || (hasPendingDecision && leftoverSelected === null)
-            const label = hasPendingDecision
-              ? leftoverSelected
-                ? 'Confirmar y empezar'
-                : 'Elegí una opción'
-              : 'Empezar el próximo'
-            const handlePress = async () => {
-              if (disabled) return
-              void triggerHaptic('selection')
-              if (
-                hasPendingDecision &&
-                leftoverSelected &&
-                payload?.onApplyLeftoverDecision &&
-                payload?.pendingLeftoverDecision
-              ) {
-                setApplyingLeftover(true)
-                try {
-                  let input: ApplyDecisionInput
-                  if (leftoverSelected === 'meta') {
-                    if (!payload.activeGoal) {
-                      // Sin meta: la opción NO debe ser seleccionable
-                      // (gating en la card). Defensa por si llega acá.
-                      setApplyingLeftover(false)
-                      return
-                    }
-                    input = {
-                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
-                      decision: 'meta',
-                      metaGoalId: payload.activeGoal.id,
-                    }
-                  } else if (leftoverSelected === 'acumular') {
-                    input = {
-                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
-                      decision: 'acumular',
-                      newCycleAnchor:
-                        payload.nextCycleAnchor ??
-                        new Date().toISOString().slice(0, 10),
-                    }
-                  } else {
-                    input = {
-                      monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
-                      decision: 'reserva',
-                    }
-                  }
-                  await payload.onApplyLeftoverDecision(input)
-                  setApplyingLeftover(false)
-                  onDismiss()
-                } catch {
-                  setApplyingLeftover(false)
-                  // Errores de RPC los maneja el caller (mutation onError).
-                }
-                return
-              }
-              onDismiss()
-            }
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                accessibilityState={{ disabled }}
-                disabled={disabled}
-                onPress={() => void handlePress()}
-                style={({ pressed }) => [
-                  styles.cta,
-                  {
-                    backgroundColor: scene.ctaBg,
-                    opacity: disabled ? 0.4 : 1,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  },
-                ]}
-              >
-                <Text style={[styles.ctaText, { color: scene.ctaFg }]}>
-                  {label}
-                </Text>
-                <MaterialIcons
-                  name="arrow-forward"
-                  size={18}
-                  color={scene.ctaFg}
-                />
-              </Pressable>
-            )
-          })() : (
+          {sceneIndex === sceneCount - 1 ? (
+            <CycleWrappedCta
+              payload={payload}
+              leftoverSelected={leftoverSelected}
+              applyingLeftover={applyingLeftover}
+              setApplyingLeftover={setApplyingLeftover}
+              onDismiss={onDismiss}
+              fireConfetti={() => setConfettiToken((t) => t + 1)}
+              ctaBg={scene.ctaBg}
+              ctaFg={scene.ctaFg}
+              reduced={reduced}
+            />
+          ) : (
             <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
               {isPaused ? 'En pausa. Soltá para seguir.' : 'Mantené presionado para pausar.'}
             </Text>
@@ -463,6 +413,13 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
         {/* Confetti solo en el veredicto positivo */}
         {scene.confetti ? (
           <ConfettiBurst pulseToken={sceneIndex === scene.confettiSceneIdx ? 1 : 0} originY={200} />
+        ) : null}
+
+        {/* Confetti al confirmar decisión de leftover real (meta /
+            acumular / reserva). Disparado por setConfettiToken en el
+            CTA. Skip en reduced motion (es decorativo). */}
+        {!reduced ? (
+          <ConfettiBurst pulseToken={confettiToken} originY={400} />
         ) : null}
       </Animated.View>
     </Animated.View>
@@ -851,150 +808,222 @@ function buildClosingScene(
     progressFill: '#A6EF8F',
     ctaBg: '#A6EF8F',
     ctaFg: '#0F2E1F',
-    render: () => {
-      const hasPending = Boolean(
-        payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision,
-      )
-      // `past` solo se considera cuando NO hay pending (mutuamente
-      // exclusivos en spec). Si por error llegan los dos, `pending`
-      // gana porque está actualmente operando un flow no-decidido.
-      // — la guard del spec dice "prevalece pastLeftoverDecision",
-      // pero acá lo invertimos para preservar el contrato actual del
-      // CTA aplicador (si el caller pidió pending+callback es porque
-      // todavía hay decisión que tomar). En la práctica los dos NUNCA
-      // vienen juntos: control-v2-screen y home-dashboard branch-an
-      // entre uno u el otro.
-      const past = hasPending ? undefined : payload.pastLeftoverDecision
-      // skip no es interesante visualizarlo (el user explícitamente
-      // se saltó la decisión) → fallback a la closing scene vanilla.
-      const showLeftoverSection =
-        hasPending || (past != null && past.decision !== 'skip')
-      const goalTitle = payload.activeGoal?.title ?? null
-      return (
-        <View style={closingStyles.stage}>
-          {/* ── Sección histórica (siempre presente) ────────── */}
-          <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-            EL PRÓXIMO ARRANCA HOY
+    render: ({ reduced }) => (
+      <ClosingSceneRender
+        payload={payload}
+        leftoverSelected={leftoverSelected}
+        onSelectLeftover={onSelectLeftover}
+        reduced={reduced}
+      />
+    ),
+  }
+}
+
+// Closing scene como sub-componente: necesita hooks propios para el
+// pulse del amount y el stagger de las OptionCards. Extraerlo del
+// builder mantiene los hooks dentro de una React component (no en una
+// pure function), evitando "hooks called in non-component".
+function ClosingSceneRender({
+  payload,
+  leftoverSelected,
+  onSelectLeftover,
+  reduced,
+}: {
+  payload: CycleWrappedPayload
+  leftoverSelected: LeftoverOption | null
+  onSelectLeftover: (next: LeftoverOption) => void
+  reduced: boolean
+}) {
+  const hasPending = Boolean(
+    payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision,
+  )
+  // `past` solo se considera cuando NO hay pending (mutuamente
+  // exclusivos en spec). Si por error llegan los dos, `pending`
+  // gana porque está actualmente operando un flow no-decidido.
+  const past = hasPending ? undefined : payload.pastLeftoverDecision
+  // skip no es interesante visualizarlo (el user explícitamente
+  // se saltó la decisión) → fallback a la closing scene vanilla.
+  const showLeftoverSection =
+    hasPending || (past != null && past.decision !== 'skip')
+  const goalTitle = payload.activeGoal?.title ?? null
+
+  // ── Pulse del amount en mode pending ────────────────────
+  // Loop sutil 1 → 1.015 → 1 cada 2.5s (1250ms por dirección).
+  // Solo en pending — past mode es read-only, sería ruido.
+  const amountPulse = useSharedValue(1)
+  useEffect(() => {
+    if (reduced || !hasPending) {
+      cancelAnimation(amountPulse)
+      amountPulse.value = 1
+      return
+    }
+    amountPulse.value = withRepeat(
+      withSequence(
+        withTiming(1.015, {
+          duration: 1250,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        withTiming(1, {
+          duration: 1250,
+          easing: Easing.inOut(Easing.quad),
+        }),
+      ),
+      -1,
+      false,
+    )
+    return () => {
+      cancelAnimation(amountPulse)
+    }
+  }, [reduced, hasPending, amountPulse])
+
+  const amountAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: amountPulse.value }],
+  }))
+
+  return (
+    <View style={closingStyles.stage}>
+      {/* ── Sección histórica (siempre presente) ────────── */}
+      <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+        EL PRÓXIMO ARRANCA HOY
+      </Text>
+      <Text
+        style={[
+          showLeftoverSection ? closingStyles.titleCompact : closingStyles.title,
+          { color: '#F4FDF2' },
+        ]}
+        accessibilityRole="header"
+      >
+        Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+      </Text>
+      {payload.achievementsEarnedInCycle > 0 ? (
+        <View
+          style={[
+            closingStyles.achievementsRow,
+            { borderColor: 'rgba(166,239,143,0.55)' },
+          ]}
+        >
+          <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
+          <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
+            {payload.achievementsEarnedInCycle === 1
+              ? '1 logro desbloqueado este mes'
+              : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
           </Text>
-          <Text
-            style={[
-              showLeftoverSection ? closingStyles.titleCompact : closingStyles.title,
-              { color: '#F4FDF2' },
-            ]}
-            accessibilityRole="header"
-          >
-            Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+        </View>
+      ) : null}
+      <View style={closingStyles.summaryRow}>
+        <SummaryStat
+          label="Gastaste"
+          value={formatMoney(Math.round(payload.totalSpent))}
+          color="#F4FDF2"
+          mutedColor="rgba(244,253,242,0.82)"
+        />
+        <View style={closingStyles.summaryDivider} />
+        <SummaryStat
+          label="Movimientos"
+          value={String(payload.expensesCount)}
+          color="#F4FDF2"
+          mutedColor="rgba(244,253,242,0.82)"
+        />
+      </View>
+
+      {/* ── Sección decisión sobrante (pending o past) ── */}
+      {showLeftoverSection ? (
+        <>
+          <View style={closingStyles.sectionDivider} />
+          <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+            {past ? 'YA DECIDISTE' : 'Y TE SOBRARON'}
           </Text>
-          {payload.achievementsEarnedInCycle > 0 ? (
-            <View
+          {hasPending ? (
+            <Animated.Text
               style={[
-                closingStyles.achievementsRow,
-                { borderColor: 'rgba(166,239,143,0.55)' },
+                closingStyles.leftoverAmount,
+                { color: '#A6EF8F' },
+                amountAnimatedStyle,
               ]}
             >
-              <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
-              <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
-                {payload.achievementsEarnedInCycle === 1
-                  ? '1 logro desbloqueado este mes'
-                  : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
-              </Text>
-            </View>
+              {formatMoney(Math.round(payload.pendingLeftoverDecision!.sobrante))}
+            </Animated.Text>
+          ) : (
+            <Text style={[closingStyles.leftoverAmount, { color: '#A6EF8F' }]}>
+              {formatMoney(Math.round(past!.sobrante))}
+            </Text>
+          )}
+          {!past ? (
+            <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
+              ¿Qué hacés con esto?
+            </Text>
           ) : null}
-          <View style={closingStyles.summaryRow}>
-            <SummaryStat
-              label="Gastaste"
-              value={formatMoney(Math.round(payload.totalSpent))}
-              color="#F4FDF2"
-              mutedColor="rgba(244,253,242,0.82)"
+          <View style={closingStyles.optionsStack}>
+            <LeftoverOptionCard
+              icon="track-changes"
+              title={
+                past?.decision === 'meta' && past?.metaGoalTitle
+                  ? `Aportaste a ${past.metaGoalTitle}`
+                  : goalTitle
+                    ? `Sumar a ${goalTitle}`
+                    : 'A una meta'
+              }
+              subtitle={
+                past?.decision === 'meta'
+                  ? 'Aporte realizado'
+                  : goalTitle
+                    ? 'Aporte directo'
+                    : 'Primero creá una meta'
+              }
+              selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
+              disabled={Boolean(past) || !payload.activeGoal}
+              readOnly={Boolean(past)}
+              onPress={past ? () => {} : () => onSelectLeftover('meta')}
+              staggerIndex={0}
+              stagger={hasPending && !reduced}
             />
-            <View style={closingStyles.summaryDivider} />
-            <SummaryStat
-              label="Movimientos"
-              value={String(payload.expensesCount)}
-              color="#F4FDF2"
-              mutedColor="rgba(244,253,242,0.82)"
+            <LeftoverOptionCard
+              icon="trending-up"
+              title="Sumar al mes actual"
+              subtitle={
+                past?.decision === 'acumular' ? 'Hecho' : 'Queda como disponible extra'
+              }
+              selected={past ? past.decision === 'acumular' : leftoverSelected === 'acumular'}
+              disabled={Boolean(past)}
+              readOnly={Boolean(past)}
+              onPress={past ? () => {} : () => onSelectLeftover('acumular')}
+              staggerIndex={1}
+              stagger={hasPending && !reduced}
+            />
+            <LeftoverOptionCard
+              icon="savings"
+              title="Guardar como reserva"
+              subtitle={
+                past?.decision === 'reserva' ? 'Guardado' : 'Plata aparte, sin destino'
+              }
+              selected={past ? past.decision === 'reserva' : leftoverSelected === 'reserva'}
+              disabled={Boolean(past)}
+              readOnly={Boolean(past)}
+              onPress={past ? () => {} : () => onSelectLeftover('reserva')}
+              staggerIndex={2}
+              stagger={hasPending && !reduced}
             />
           </View>
-
-          {/* ── Sección decisión sobrante (pending o past) ── */}
-          {showLeftoverSection ? (
-            <>
-              <View style={closingStyles.sectionDivider} />
-              <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-                {past ? 'YA DECIDISTE' : 'Y TE SOBRARON'}
-              </Text>
-              <Text style={[closingStyles.leftoverAmount, { color: '#A6EF8F' }]}>
-                {formatMoney(
-                  Math.round(
-                    past ? past.sobrante : payload.pendingLeftoverDecision!.sobrante,
-                  ),
-                )}
-              </Text>
-              {!past ? (
-                <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
-                  ¿Qué hacés con esto?
-                </Text>
-              ) : null}
-              <View style={closingStyles.optionsStack}>
-                <LeftoverOptionCard
-                  icon="track-changes"
-                  title={
-                    past?.decision === 'meta' && past?.metaGoalTitle
-                      ? `Aportaste a ${past.metaGoalTitle}`
-                      : goalTitle
-                        ? `Sumar a ${goalTitle}`
-                        : 'A una meta'
-                  }
-                  subtitle={
-                    past?.decision === 'meta'
-                      ? 'Aporte realizado'
-                      : goalTitle
-                        ? 'Aporte directo'
-                        : 'Primero creá una meta'
-                  }
-                  selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
-                  disabled={Boolean(past) || !payload.activeGoal}
-                  readOnly={Boolean(past)}
-                  onPress={past ? () => {} : () => onSelectLeftover('meta')}
-                />
-                <LeftoverOptionCard
-                  icon="trending-up"
-                  title="Sumar al mes actual"
-                  subtitle={
-                    past?.decision === 'acumular' ? 'Hecho' : 'Queda como disponible extra'
-                  }
-                  selected={past ? past.decision === 'acumular' : leftoverSelected === 'acumular'}
-                  disabled={Boolean(past)}
-                  readOnly={Boolean(past)}
-                  onPress={past ? () => {} : () => onSelectLeftover('acumular')}
-                />
-                <LeftoverOptionCard
-                  icon="savings"
-                  title="Guardar como reserva"
-                  subtitle={
-                    past?.decision === 'reserva' ? 'Guardado' : 'Plata aparte, sin destino'
-                  }
-                  selected={past ? past.decision === 'reserva' : leftoverSelected === 'reserva'}
-                  disabled={Boolean(past)}
-                  readOnly={Boolean(past)}
-                  onPress={past ? () => {} : () => onSelectLeftover('reserva')}
-                />
-              </View>
-              {past ? (
-                <Text style={closingStyles.pastDecisionHint}>
-                  Decidiste el {formatPastDate(past.decidedAt)}
-                </Text>
-              ) : null}
-            </>
+          {past ? (
+            <Text style={closingStyles.pastDecisionHint}>
+              Decidiste el {formatPastDate(past.decidedAt)}
+            </Text>
           ) : null}
-        </View>
-      )
-    },
-  }
+        </>
+      ) : null}
+    </View>
+  )
 }
 
 // Card de opción de leftover. Compacta, dark-friendly sobre forest deep.
 // Radio button visual a la derecha + tap full-card → onPress.
+//
+// Motion stack:
+// 1. Entrance stagger (solo MODE pending, primer mount): opacity + Y
+//    rise con delay por staggerIndex.
+// 2. Selected state interpolado: borderColor + backgroundColor + glow
+//    shadow animados con interpolateColor sobre selectedProgress 0→1.
+// 3. Press scale 0.97 via usePressScale.
 function LeftoverOptionCard({
   icon,
   title,
@@ -1003,6 +1032,8 @@ function LeftoverOptionCard({
   disabled = false,
   readOnly = false,
   onPress,
+  staggerIndex,
+  stagger,
 }: {
   icon: React.ComponentProps<typeof MaterialIcons>['name']
   title: string
@@ -1015,51 +1046,260 @@ function LeftoverOptionCard({
    *  haptic. */
   readOnly?: boolean
   onPress: () => void
+  staggerIndex: number
+  /** Si true, la card entra con stagger (delay = idx * 70ms). False
+   *  en past mode (read-only) y en reduced motion. */
+  stagger: boolean
 }) {
-  // En readOnly: la card seleccionada brilla normal (borde + bg
-  // primary), las no-seleccionadas se silencian a 0.35. Esto mantiene
-  // la lectura "esta fue la decisión" sin parecer un control activo.
+  // selectedProgress va de 0 a 1 al seleccionar — interpolado a
+  // borderColor / backgroundColor / glow opacity para feedback layered.
+  const selectedProgress = useSharedValue(selected ? 1 : 0)
+  useEffect(() => {
+    selectedProgress.value = withTiming(selected ? 1 : 0, {
+      duration: 240,
+      easing: EXPO_OUT,
+    })
+  }, [selected, selectedProgress])
+
+  const press = usePressScale({ pressedScale: 0.97 })
+
+  const cardAnimatedStyle = useAnimatedStyle(() => {
+    const p = selectedProgress.value
+    return {
+      borderColor: interpolateColor(
+        p,
+        [0, 1],
+        ['rgba(244,253,242,0.10)', '#A6EF8F'],
+      ),
+      backgroundColor: interpolateColor(
+        p,
+        [0, 1],
+        ['rgba(244,253,242,0.05)', 'rgba(166,239,143,0.12)'],
+      ),
+      // Glow halo lime alrededor de la card seleccionada. Animado por
+      // la misma progress shared value para que aparezca on-select y
+      // desaparezca al deseleccionar.
+      shadowColor: '#A6EF8F',
+      shadowOpacity: 0.35 * p,
+      shadowRadius: 16 * p,
+      shadowOffset: { width: 0, height: 0 },
+    }
+  })
+
+  // Opacity wrapper — opaco siempre que esté enabled. Las cards en
+  // readOnly no-seleccionadas se silencian, y los disabled bajan.
+  const baseOpacity =
+    readOnly && !selected ? 0.35 : disabled ? 0.4 : 1
+
   return (
-    <Pressable
-      onPress={readOnly ? () => {} : onPress}
-      disabled={disabled || readOnly}
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled: disabled || readOnly }}
-      style={({ pressed }) => [
-        leftoverCardStyles.card,
-        {
-          borderColor: selected ? '#A6EF8F' : 'rgba(244,253,242,0.18)',
-          backgroundColor: selected
-            ? 'rgba(166,239,143,0.10)'
-            : 'rgba(244,253,242,0.04)',
-          opacity:
-            readOnly && !selected
-              ? 0.35
-              : disabled
-                ? 0.4
-                : pressed
-                  ? 0.85
-                  : 1,
-        },
-      ]}
+    <Animated.View
+      entering={
+        stagger
+          ? FadeIn.delay(staggerIndex * OPTION_STAGGER_MS)
+              .duration(OPTION_ENTER_MS)
+              .easing(EXPO_OUT)
+          : undefined
+      }
+      style={[press.animatedStyle, { opacity: baseOpacity }]}
     >
-      <View style={leftoverCardStyles.iconWrap}>
-        <MaterialIcons
-          name={icon}
-          size={18}
-          color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.82)'}
-        />
-      </View>
-      <View style={leftoverCardStyles.text}>
-        <Text style={leftoverCardStyles.title} numberOfLines={1}>{title}</Text>
-        <Text style={leftoverCardStyles.subtitle} numberOfLines={1}>{subtitle}</Text>
-      </View>
-      <MaterialIcons
-        name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
-        size={18}
-        color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.62)'}
-      />
-    </Pressable>
+      <Pressable
+        onPress={readOnly ? () => {} : onPress}
+        onPressIn={readOnly || disabled ? undefined : press.onPressIn}
+        onPressOut={readOnly || disabled ? undefined : press.onPressOut}
+        disabled={disabled || readOnly}
+        accessibilityRole="button"
+        accessibilityState={{ selected, disabled: disabled || readOnly }}
+      >
+        <Animated.View style={[leftoverCardStyles.card, cardAnimatedStyle]}>
+          <View style={leftoverCardStyles.iconWrap}>
+            <MaterialIcons
+              name={icon}
+              size={18}
+              color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.82)'}
+            />
+          </View>
+          <View style={leftoverCardStyles.text}>
+            <Text style={leftoverCardStyles.title} numberOfLines={1}>{title}</Text>
+            <Text style={leftoverCardStyles.subtitle} numberOfLines={1}>{subtitle}</Text>
+          </View>
+          <MaterialIcons
+            name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+            size={18}
+            color={selected ? '#A6EF8F' : 'rgba(244,253,242,0.62)'}
+          />
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+// ── CTA con motion stack ─────────────────────────────────────────────
+//
+// Reemplaza el Pressable inline previo. Maneja:
+// 1. Opacity transition cuando va de disabled → enabled (CTA emerge
+//    al elegir una opción): 0.55 → 1.
+// 2. Shadow bloom: 0 → 8px 22px -6px rgba(166,239,143,0.45).
+// 3. Idle pulse cuando enabled: scale 1 → 1.012 → 1 cada 1.8s.
+// 4. Press scale 0.97 via usePressScale combinado con el idle pulse.
+// 5. Confetti dispatch al confirmar decisión REAL (no en flow vanilla
+//    ni en past mode).
+function CycleWrappedCta({
+  payload,
+  leftoverSelected,
+  applyingLeftover,
+  setApplyingLeftover,
+  onDismiss,
+  fireConfetti,
+  ctaBg,
+  ctaFg,
+  reduced,
+}: {
+  payload: CycleWrappedPayload
+  leftoverSelected: LeftoverOption | null
+  applyingLeftover: boolean
+  setApplyingLeftover: (v: boolean) => void
+  onDismiss: () => void
+  fireConfetti: () => void
+  ctaBg: string
+  ctaFg: string
+  reduced: boolean
+}) {
+  const hasPendingDecision = Boolean(
+    payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision,
+  )
+  const disabled =
+    applyingLeftover || (hasPendingDecision && leftoverSelected === null)
+  const label = hasPendingDecision
+    ? leftoverSelected
+      ? 'Confirmar y empezar'
+      : 'Elegí una opción'
+    : 'Empezar el próximo'
+
+  // Una sola progress shared value que dispara opacity + shadow al
+  // pasar de disabled → enabled. Más simple que dos animaciones y se
+  // mantienen syncronizadas.
+  const enabledProgress = useSharedValue(disabled ? 0 : 1)
+  useEffect(() => {
+    enabledProgress.value = withTiming(disabled ? 0 : 1, {
+      duration: 280,
+      easing: EXPO_OUT,
+    })
+  }, [disabled, enabledProgress])
+
+  // Idle pulse cuando el CTA está enabled. Same vibe que el cobro CTA
+  // del home — scale sutil 1 → 1.012 → 1 con cycle 1.8s. Para
+  // no chocar con press scale, lo aplicamos a un wrapper externo y
+  // press en el inner.
+  const idlePulse = useSharedValue(1)
+  useEffect(() => {
+    if (reduced || disabled) {
+      cancelAnimation(idlePulse)
+      idlePulse.value = 1
+      return
+    }
+    idlePulse.value = withRepeat(
+      withSequence(
+        withTiming(1.012, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    )
+    return () => {
+      cancelAnimation(idlePulse)
+    }
+  }, [reduced, disabled, idlePulse])
+
+  const press = usePressScale({ pressedScale: 0.97 })
+
+  const wrapperStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(enabledProgress.value, [0, 1], [0.55, 1]),
+    transform: [{ scale: idlePulse.value }],
+    shadowColor: '#A6EF8F',
+    shadowOpacity: 0.45 * enabledProgress.value,
+    shadowRadius: 22 * enabledProgress.value,
+    shadowOffset: { width: 0, height: 8 * enabledProgress.value },
+  }))
+
+  const handlePress = useCallback(async () => {
+    if (disabled) return
+    void triggerHaptic('selection')
+    if (
+      hasPendingDecision &&
+      leftoverSelected &&
+      payload?.onApplyLeftoverDecision &&
+      payload?.pendingLeftoverDecision
+    ) {
+      setApplyingLeftover(true)
+      try {
+        let input: ApplyDecisionInput
+        if (leftoverSelected === 'meta') {
+          if (!payload.activeGoal) {
+            // Sin meta: la opción NO debe ser seleccionable
+            // (gating en la card). Defensa por si llega acá.
+            setApplyingLeftover(false)
+            return
+          }
+          input = {
+            monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+            decision: 'meta',
+            metaGoalId: payload.activeGoal.id,
+          }
+        } else if (leftoverSelected === 'acumular') {
+          input = {
+            monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+            decision: 'acumular',
+            newCycleAnchor:
+              payload.nextCycleAnchor ??
+              new Date().toISOString().slice(0, 10),
+          }
+        } else {
+          input = {
+            monthlySummaryId: payload.pendingLeftoverDecision.monthlySummaryId,
+            decision: 'reserva',
+          }
+        }
+        // Confetti antes del await — celebra la confirmación
+        // inmediatamente sin esperar al round-trip RPC.
+        fireConfetti()
+        await payload.onApplyLeftoverDecision(input)
+        setApplyingLeftover(false)
+        onDismiss()
+      } catch {
+        setApplyingLeftover(false)
+        // Errores de RPC los maneja el caller (mutation onError).
+      }
+      return
+    }
+    onDismiss()
+  }, [
+    disabled,
+    hasPendingDecision,
+    leftoverSelected,
+    payload,
+    fireConfetti,
+    onDismiss,
+    setApplyingLeftover,
+  ])
+
+  return (
+    <Animated.View style={wrapperStyle}>
+      <Animated.View style={press.animatedStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={() => void handlePress()}
+          onPressIn={disabled ? undefined : press.onPressIn}
+          onPressOut={disabled ? undefined : press.onPressOut}
+          style={[styles.cta, { backgroundColor: ctaBg }]}
+        >
+          <Text style={[styles.ctaText, { color: ctaFg }]}>{label}</Text>
+          <MaterialIcons name="arrow-forward" size={18} color={ctaFg} />
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   )
 }
 
@@ -1416,7 +1656,8 @@ const closingStyles = StyleSheet.create({
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: 'rgba(244,253,242,0.18)',
+    // Spec H — más sutil (0.18 → 0.10) para feel premium.
+    backgroundColor: 'rgba(244,253,242,0.10)',
     marginVertical: 18,
     marginHorizontal: -4,
   },
@@ -1447,7 +1688,8 @@ const closingStyles = StyleSheet.create({
     marginTop: 14,
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(244,253,242,0.62)',
+    // Spec H — más caption-y (0.62 → 0.55).
+    color: 'rgba(244,253,242,0.55)',
     textAlign: 'center',
   },
   achievementsRow: {
