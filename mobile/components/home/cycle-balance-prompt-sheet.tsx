@@ -144,7 +144,10 @@ export function SalaryConfirmationSheet(props: SharedProps) {
         chipSubtitle: 'Igual al sueldo recurrente',
         chipA11y: (formatted) =>
           `Cobré ${formatted}, igual al sueldo recurrente`,
-        chipTone: 'peach',
+        // 'brand' = primary forest green (calmo, on-brand, menos
+        // agresivo que el peach saturado). Feedback owner:
+        // "demasiado PEACH".
+        chipTone: 'brand',
       }}
     />
   )
@@ -294,6 +297,11 @@ function QuickConfirmCta({
 }: QuickConfirmCtaProps) {
   const press = usePressScale({ pressedScale: 0.97 })
   const reducedMotion = useReducedMotion()
+  // Pulse SUTIL del card completo (scale 1 → 1.012 → 1, ~1.6s loop).
+  // El "respiración" en toda la tarjeta comunica "esto es interactivo"
+  // sin ser intrusivo. Combinado con press scale 0.97 vía Animated.View
+  // anidado — las transformaciones de scale en jerarquía se
+  // multiplican naturalmente.
   const pulse = useSharedValue(1)
 
   useEffect(() => {
@@ -304,8 +312,8 @@ function QuickConfirmCta({
     }
     pulse.value = withRepeat(
       withSequence(
-        withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1.012, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,
       false,
@@ -315,55 +323,53 @@ function QuickConfirmCta({
     }
   }, [reducedMotion, disabled, pulse])
 
-  const arrowAnimatedStyle = useAnimatedStyle(() => ({
+  const pulseAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
   }))
 
   return (
-    <Animated.View style={[styles.ctaWrap, press.animatedStyle]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={a11yLabel}
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={[
-          styles.ctaPressable,
-          {
-            backgroundColor: tone.filled,
-            opacity: disabled ? 0.6 : 1,
-          },
-        ]}
-      >
-        <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
-          <MaterialIcons name="check-circle" size={22} color={tone.iconFg} />
-        </View>
-        <View style={styles.ctaTextWrap}>
-          <Text style={[styles.ctaEyebrow, { color: tone.textMutedOnFilled }]}>
-            {label.toUpperCase()}
-          </Text>
-          <Text
-            style={[styles.ctaAmount, { color: tone.textOnFilled }]}
-            numberOfLines={1}
-          >
-            {amount}
-          </Text>
-          <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
-            {sublabel}
-          </Text>
-        </View>
-        <Animated.View
+    // Outer wrapper: pulse breathing (idle). Inner wrapper: press
+    // scale. Nested → transforms multiplican.
+    <Animated.View style={[styles.ctaWrap, pulseAnimatedStyle]}>
+      <Animated.View style={press.animatedStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={a11yLabel}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onPress}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
           style={[
-            styles.ctaArrow,
-            { backgroundColor: tone.iconOverlay },
-            arrowAnimatedStyle,
+            styles.ctaPressable,
+            {
+              backgroundColor: tone.filled,
+              opacity: disabled ? 0.6 : 1,
+            },
           ]}
         >
-          <MaterialIcons name="arrow-forward" size={18} color={tone.iconFg} />
-        </Animated.View>
-      </Pressable>
+          <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
+            <MaterialIcons name="check-circle" size={22} color={tone.iconFg} />
+          </View>
+          <View style={styles.ctaTextWrap}>
+            <Text style={[styles.ctaEyebrow, { color: tone.textMutedOnFilled }]}>
+              {label.toUpperCase()}
+            </Text>
+            <Text
+              style={[styles.ctaAmount, { color: tone.textOnFilled }]}
+              numberOfLines={1}
+            >
+              {amount}
+            </Text>
+            <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
+              {sublabel}
+            </Text>
+          </View>
+          <View style={[styles.ctaArrow, { backgroundColor: tone.iconOverlay }]}>
+            <MaterialIcons name="arrow-forward" size={18} color={tone.iconFg} />
+          </View>
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   )
 }
