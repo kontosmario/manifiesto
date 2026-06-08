@@ -9,6 +9,7 @@ import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
+import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useStreak } from '@/features/streaks/use-streak'
 import { useApplyReserveDecision } from '@/features/month-close/use-apply-reserve'
@@ -107,6 +108,9 @@ function ControlV2AlcanciaCardImpl({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
+  // Mutation para reactivar una meta inactiva sin tener que ir a
+  // Settings. Reusa upsert con todos los fields existentes + isActive=true.
+  const upsertGoal = useUpsertSavingsGoal(familyId)
 
   // Press scale 0.97 — la CTA es el único elemento interactivo del
   // card. Antes usaba `opacity: pressed ? 0.78 : ...` (lento fade
@@ -155,17 +159,47 @@ function ControlV2AlcanciaCardImpl({
       ? Math.min(100, Math.round((goal.currentAmount / goal.goalAmount) * 100))
       : 0
 
-  // Active states for the primary CTA.
-  const hasGoal = goal != null
-  const canMove = hasGoal && vault > 0
-  const ctaLabel = !hasGoal
-    ? 'Crear meta de ahorro'
-    : vault > 0
-      ? `Mover ${formatMoneyShort(vault)} a tu meta`
-      : 'Sumar a tu meta'
+  // Active states for the primary CTA. 3 estados posibles:
+  //   - no goal (null)         → "Crear meta de ahorro" → wizard
+  //   - goal inactivo          → "Activar meta · 🎯 Title" → upsert(isActive=true)
+  //   - goal activo            → "Mover \$X a tu meta" / "Sumar..." → quick-add sheet
+  // `hasGoal` se mantiene como "goal activo" para no romper el resto
+  // de la card (eyebrow chip, progress, etc.). El estado "inactiva"
+  // se trata como afterthought de UX: la meta existe pero el resto del
+  // card debe mostrarse en modo "esperando reactivación".
+  const hasActiveGoal = goal != null && goal.isActive
+  const hasInactiveGoal = goal != null && !goal.isActive
+  const hasGoal = hasActiveGoal // alias para el resto del código existente
+  const canMove = hasActiveGoal && vault > 0
+  const ctaLabel = hasInactiveGoal
+    ? `Activar meta · ${goal.emoji} ${goal.title}`
+    : !hasActiveGoal
+      ? 'Crear meta de ahorro'
+      : vault > 0
+        ? `Mover ${formatMoneyShort(vault)} a tu meta`
+        : 'Sumar a tu meta'
 
   const handleCtaPress = () => {
-    if (!hasGoal) {
+    if (hasInactiveGoal && goal != null) {
+      // Reactivar la meta inline — un solo tap. Si ya hay sugerencia
+      // de aporte (vault > 0), después de activar el card se
+      // re-renderea con la rama "active" donde el siguiente tap
+      // ya abre el quick-add sheet.
+      void triggerHaptic('selection')
+      upsertGoal.mutate({
+        input: {
+          title: goal.title,
+          emoji: goal.emoji,
+          goalAmount: goal.goalAmount,
+          currentAmount: goal.currentAmount,
+          targetMonths: goal.targetMonths,
+          isActive: true,
+        },
+        existingId: goal.id,
+      })
+      return
+    }
+    if (!hasActiveGoal) {
       // No goal yet — open the inline wizard. Once the user completes
       // the 4 steps, the savings-goal query invalidates and this card
       // re-renders with the new goal so no further plumbing is needed
@@ -231,6 +265,29 @@ function ControlV2AlcanciaCardImpl({
                 META · {goalPct}%
               </Text>
             </View>
+          ) : hasInactiveGoal ? (
+            // Chip alternativo cuando la meta existe pero está inactiva.
+            // Tono muted (textMuted en lugar de success) → el user
+            // entiende que la meta está pausada sin perder el contexto.
+            <View
+              style={[
+                styles.metaChip,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'rgba(15,42,30,0.06)',
+                  borderColor: theme.colors.line,
+                },
+              ]}
+            >
+              <MaterialIcons name="pause" size={11} color={muted} />
+              <Text
+                style={[styles.metaChipText, { color: muted }]}
+                numberOfLines={1}
+              >
+                META · INACTIVA
+              </Text>
+            </View>
           ) : null}
         </View>
 
@@ -260,36 +317,60 @@ function ControlV2AlcanciaCardImpl({
           onPressOut={ctaPress.onPressOut}
           accessibilityRole="button"
           accessibilityLabel={ctaLabel}
-          disabled={addMutation.isPending}
+          disabled={addMutation.isPending || upsertGoal.isPending}
         >
           <Animated.View
             style={[
               styles.cta,
               {
-                backgroundColor: canMove || !hasGoal ? ctaBg : tileBg,
-                borderColor: canMove || !hasGoal ? ctaBorder : tileBorder,
-                // Disabled state retiene opacity 0.5 (semantica). Press
-                // feedback ahora vive en scale spring vía Animated.View.
-                opacity: addMutation.isPending ? 0.5 : 1,
+                // ctaEnabled: canMove (vault > 0 con goal activo), no-goal
+                // (crear), o hasInactiveGoal (activar). Estos 3 estados
+                // pintan el CTA con tono accent. "Sumar sin vault" cae
+                // a tono muted (sigue presionable pero menos prominente).
+                backgroundColor:
+                  canMove || !hasActiveGoal || hasInactiveGoal ? ctaBg : tileBg,
+                borderColor:
+                  canMove || !hasActiveGoal || hasInactiveGoal
+                    ? ctaBorder
+                    : tileBorder,
+                opacity:
+                  addMutation.isPending || upsertGoal.isPending ? 0.5 : 1,
               },
               ctaPress.animatedStyle,
             ]}
           >
             <MaterialIcons
-              name={hasGoal ? 'arrow-forward' : 'add'}
+              name={
+                hasInactiveGoal
+                  ? 'play-arrow'
+                  : hasActiveGoal
+                    ? 'arrow-forward'
+                    : 'add'
+              }
               size={16}
-              color={canMove || !hasGoal ? accentFg : muted}
+              color={
+                canMove || !hasActiveGoal || hasInactiveGoal ? accentFg : muted
+              }
             />
             <Text
               style={[
                 styles.ctaText,
-                { color: canMove || !hasGoal ? accentFg : muted },
+                {
+                  color:
+                    canMove || !hasActiveGoal || hasInactiveGoal
+                      ? accentFg
+                      : muted,
+                },
               ]}
               numberOfLines={1}
             >
-              {addMutation.isPending ? 'Sumando…' : ctaLabel}
+              {addMutation.isPending
+                ? 'Sumando…'
+                : upsertGoal.isPending
+                  ? 'Activando…'
+                  : ctaLabel}
             </Text>
-            {hasGoal && vault > 0 ? (
+            {hasActiveGoal && vault > 0 ? (
               <MaterialIcons name="chevron-right" size={16} color={accentFg} />
             ) : null}
           </Animated.View>
@@ -442,6 +523,17 @@ function ReserveBlock({
       void triggerHaptic('selection')
       setPendingReserveAfterCreate(monthlyReserveAmount)
       setWizardOpen(true)
+      return
+    }
+    if (!goal.isActive) {
+      // Meta existe pero está pausada — el aporte requeriría activarla
+      // primero. En lugar de bloquear, ofrecemos hacerlo en 1 paso
+      // desde el CTA principal de la alcancía (mismo card scroll-up).
+      void triggerHaptic('selection')
+      Alert.alert(
+        'Meta pausada',
+        `Tu meta "${goal.title}" está inactiva. Activala con el botón "Activar meta" de arriba y volvé a aportar.`,
+      )
       return
     }
     void triggerHaptic('selection')

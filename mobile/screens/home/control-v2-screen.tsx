@@ -31,7 +31,10 @@ import {
 } from '@/features/finance/use-family-finance'
 import { useStreak } from '@/features/streaks/use-streak'
 import { useExpenses } from '@/features/expenses/use-expenses'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+// useLatestSavingsGoal (no useSavingsGoal): incluye inactivas. La
+// alcancía debe mostrar el estado "meta inactiva" + ofrecer activarla,
+// no esconderla como si no existiera. Owner feedback 2026-06-08.
+import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
@@ -91,7 +94,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   // cycle no fue decidido. Si ya hay decisión persistida, replay normal.
   const applyDecision = useApplyMonthCloseDecision(familyId)
   const monthlyAccounting = useMonthlyAccounting(familyId)
-  const savingsGoalQuery = useSavingsGoal(familyId)
+  const savingsGoalQuery = useLatestSavingsGoal(familyId)
   const activeGoalForWrapped = useMemo(() => {
     const g = savingsGoalQuery.data
     if (!g) return null
