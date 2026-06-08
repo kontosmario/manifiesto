@@ -756,9 +756,18 @@ const styles = StyleSheet.create({
   // Stack wrapper for the read-only chips that may sit between the
   // saldo amount and the tiles row. `gap` controls inter-chip
   // spacing; `marginBottom` controls the gap to the tiles below.
+  //
+  // Layout horizontal con flexWrap: cuando hay 1-2 chips entran en
+  // una sola fila; 3 chips wrappean a 2 filas máximo. Antes estaban
+  // siempre stackeados verticalmente y sumaban mucha altura al hero
+  // (owner feedback 2026-06-08). `alignItems: center` mantiene
+  // cualquier diferencia de altura entre chips visualmente alineada.
   heroChipStack: {
-    alignItems: 'flex-start',
-    gap: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 6,
+    rowGap: 6,
     marginBottom: 14,
   },
   adjustedChip: {
