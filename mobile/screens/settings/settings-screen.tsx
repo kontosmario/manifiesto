@@ -961,6 +961,35 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
+            {/* 2b. RESERVA ACUMULADA — solo visible si hay reserva > 0.
+                Read-only: la única forma de tocar este monto es vía la
+                decisión "Guardar como reserva" del wrapped de cierre
+                de mes (Spec B). Surface acá para que la plata no
+                desaparezca visualmente del Settings. */}
+            {Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) > 0 ? (
+              <RiseView delay={220}>
+                <SettingsGroup title="Reserva acumulada">
+                  <View style={styles.reserveInner}>
+                    <Text
+                      style={[styles.reserveAmount, { color: theme.colors.text }]}
+                      maxFontSizeMultiplier={1.4}
+                    >
+                      {currencyFormatter.format(
+                        Number(
+                          dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0,
+                        ),
+                      )}
+                    </Text>
+                    <Text
+                      style={[styles.reserveSub, { color: theme.colors.textMuted }]}
+                    >
+                      Plata guardada del cierre de meses anteriores.
+                    </Text>
+                  </View>
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
+
             {/* 3. META DE AHORRO */}
             <RiseView delay={240}>
               <SettingsGroup title="Metas de ahorro">
@@ -1542,6 +1571,23 @@ const styles = StyleSheet.create({
   appearanceInner: {
     paddingHorizontal: 14,
     paddingVertical: 14,
+  },
+  // Read-only section that surfaces `family_finance.monthly_reserve_amount`.
+  // Big monto + sublabel; no trailing chevron porque el row no es
+  // tappable (la única forma de modificarlo es el wrapped de cierre).
+  reserveInner: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  reserveAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+  },
+  reserveSub: {
+    fontSize: 12,
   },
   versionFooter: {
     textAlign: 'center',

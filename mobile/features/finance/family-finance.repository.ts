@@ -64,19 +64,30 @@ export async function upsertFamilyFinance(
   const payload = validateFamilyFinanceInput(input)
   await writeFallbackFinance(familyId, payload)
 
+  // Build the upsert body, then strip `monthly_reserve_amount`: la
+  // UI no la edita y enviarla en cada upsert (con default 0) pisaría
+  // la reserva acumulada que escribe el RPC de cierre de mes.
+  const { monthly_reserve_amount: _omitReserve, ...storagePayload } =
+    financeInputToStoragePayload(input)
+  void _omitReserve
   const upsertBody: Record<string, unknown> = {
     family_id: familyId,
-    ...financeInputToStoragePayload(input),
+    ...storagePayload,
   }
 
+  // `select().single()` devuelve el row updated (con la reserva real
+  // tal como vive en DB) → lo usamos para que el caller pueda
+  // setQueryData con data fresh y evitar flashes de cache stale.
   const runUpsert = async (body: Record<string, unknown>) => {
-    const { error } = await supabase.from('family_finance').upsert(body, {
-      onConflict: 'family_id',
-    })
-    return error
+    const { data, error } = await supabase
+      .from('family_finance')
+      .upsert(body, { onConflict: 'family_id' })
+      .select('*')
+      .maybeSingle()
+    return { data, error }
   }
 
-  let upsertError = await runUpsert(upsertBody)
+  let { data: upsertData, error: upsertError } = await runUpsert(upsertBody)
   const optionalColumns: Array<
     | 'daily_budget_checkin_hour'
     | 'daily_budget_nudges_enabled'
@@ -107,7 +118,9 @@ export async function upsertFamilyFinance(
     }
 
     delete upsertBody[columnName]
-    upsertError = await runUpsert(upsertBody)
+    const retry = await runUpsert(upsertBody)
+    upsertError = retry.error
+    upsertData = retry.data
   }
 
   if (upsertError) {
@@ -118,5 +131,11 @@ export async function upsertFamilyFinance(
     return mapFamilyFinanceRecord(payload, 'fallback')
   }
 
+  // Preferimos el row real devuelto por el upsert: garantiza que
+  // campos no editables vía UI (e.g. `monthly_reserve_amount`)
+  // queden con su valor canónico de DB en el cache de React Query.
+  if (upsertData) {
+    return mapFamilyFinanceRecord(upsertData, 'supabase')
+  }
   return mapFamilyFinanceRecord(payload, 'supabase')
 }

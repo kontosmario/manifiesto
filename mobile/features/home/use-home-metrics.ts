@@ -99,6 +99,16 @@ export interface HomeHeroMetrics {
    * manual del user o por estado default).
    */
   acumulado: CycleAcumulado | null
+  /**
+   * Reserva acumulada del cierre de meses anteriores (Spec B —
+   * decisión "Guardar como reserva" en el wrapped). Lee directo
+   * `family_finance.monthly_reserve_amount` (numeric, viene como
+   * string vía PostgREST). Se surface en el hero como chip indigo
+   * read-only para que la plata no desaparezca visualmente, y en
+   * Settings como sección. 0 cuando todavía no hay ningún mes
+   * guardado como reserva.
+   */
+  monthlyReserveAmount: number
 }
 
 export interface HomeMonthSummary {
@@ -278,6 +288,14 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     // surfacing the projection (UI shows a placeholder until then).
     const projectionReliable = cycleDay >= 4
     const incomeConfigured = dashboard.monthlyIncome > 0
+    // PostgREST devuelve numeric como string → Number() defensivo.
+    // `normalizeFinancePayload` ya lo coerciona, pero acá lo dejamos
+    // explícito por si llega data desde otro camino (fallback / cache
+    // optimista) sin pasar por el normalize.
+    const monthlyReserveAmount = Math.max(
+      0,
+      Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) || 0,
+    )
 
     const hero: HomeHeroMetrics = {
       availableToday,
@@ -293,6 +311,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       incomeConfigured,
       monthlyIncome: dashboard.monthlyIncome,
       acumulado,
+      monthlyReserveAmount,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
@@ -357,6 +376,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.fixedExpensesMonthlyTotal,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
+    dashboard.familyFinanceQuery.data?.monthly_reserve_amount,
     cycleExtraIncome,
     expenses,
     comparisonQuery.data,

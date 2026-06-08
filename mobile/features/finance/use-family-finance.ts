@@ -44,8 +44,22 @@ export function useUpsertFamilyFinance(familyId?: string) {
       }
       return upsertFamilyFinance(familyId, input)
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: familyFinanceQueryKey(familyId) })
+    // Fix chip flash al confirmar cobro: el invalidate previo era
+    // async — durante el refetch, el cache mantenía data STALE
+    // (ej. cycle_starting_balance de un test con "acumular"), y el
+    // hero leía esos valores stale → chip peach "Ajustado" flasheaba
+    // brevemente antes de que el refetch completara.
+    //
+    // Ahora `upsertFamilyFinance` devuelve el row real escrito en DB
+    // (`.select().maybeSingle()`); lo metemos directo al cache vía
+    // setQueryData → el render inmediato ya lee data fresh. Aún así
+    // invalidamos queries DERIVADAS (cycle-acumulado) para que el
+    // hero refresque el acumulado del mes pasado si cambió.
+    onSuccess: (updatedFinance) => {
+      if (familyId) {
+        queryClient.setQueryData(familyFinanceQueryKey(familyId), updatedFinance)
+        void queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] })
+      }
     },
   })
 }

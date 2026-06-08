@@ -301,7 +301,7 @@ function HomeHeroCardImpl({
           />
         </RiseView>
 
-        {data.cycleAdjusted || savingsChip || data.acumulado ? (
+        {data.cycleAdjusted || savingsChip || data.acumulado || data.monthlyReserveAmount > 0 ? (
           // Read-only chip stack between the saldo amount and the
           // tiles row. Two captions can co-exist: "Ajustado/Acumulado"
           // (cycle override origin) y "Apartando ahorro" (savings).
@@ -417,6 +417,53 @@ function HomeHeroCardImpl({
                     numberOfLines={1}
                   >
                     {savingsChip.label}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : null}
+
+            {data.monthlyReserveAmount > 0 ? (
+              // Reserva acumulada del cierre de meses anteriores
+              // (Spec B — wrapped decisión "Guardar como reserva").
+              // Read-only: la única forma de tocar este monto es vía
+              // el wrapped. Lo surface acá para que la plata no
+              // desaparezca visualmente. Tono indigo/violeta distinto
+              // de los otros chips (peach=ajustado, lime=acumulado,
+              // mint=savings) para que se lea como métrica diferente.
+              // No hay token "indigo" en el palette del theme:
+              // hardcoded con switch theme.isDark.
+              <RiseView delay={160}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Tenés ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
+                  style={[
+                    styles.adjustedChip,
+                    theme.isDark
+                      ? {
+                          backgroundColor: 'rgba(165,180,252,0.18)',
+                          borderColor: 'rgba(165,180,252,0.42)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(99,102,241,0.14)',
+                          borderColor: 'rgba(99,102,241,0.40)',
+                        },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.adjustedChipDot,
+                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    •
+                  </Text>
+                  <Text
+                    style={[
+                      styles.adjustedChipText,
+                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    {`Reserva: ${formatMoney(data.monthlyReserveAmount)}`}
                   </Text>
                 </View>
               </RiseView>
