@@ -433,10 +433,10 @@ Adicionalmente, `getBiometricLoginState` consulta una flag persistente en AsyncS
 | Archivo | Propósito |
 |---|---|
 | [`auth-feedback-pill.tsx`](../../../mobile/components/auth/auth-feedback-pill.tsx) | Pill de feedback inline: `intent='error'` (rojo) o `'info'` (azul). Icono MaterialIcons + texto. Usado en login, signup, forgot-password, reset-password. |
-| [`auth-gradient-action-button.tsx`](../../../mobile/components/auth/auth-gradient-action-button.tsx) | Botón CTA con fondo degradado (via `authPalette.cta`). Props: `label`, `disabled`, `dense`, `onPress`. |
-| [`auth-input.tsx`](../../../mobile/components/auth/auth-input.tsx) | Input estilizado de auth con label flotante animado (Reanimated), border focus ring. Exportado como `AuthInput`. |
+| ~~`auth-gradient-action-button.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup). |
+| ~~`auth-input.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup). |
 | [`auth-launch-splash.tsx`](../../../mobile/components/auth/auth-launch-splash.tsx) | Splash de lanzamiento (cold start): misma composición visual que welcome (aurora + partículas + hero stack) — mismo pixel-layout para lograr transición shared-element cuando welcome monta debajo. 24 partículas. Props: `onComplete`, `persistent`, `reducedMotion`. |
-| [`auth-segmented-control.tsx`](../../../mobile/components/auth/auth-segmented-control.tsx) | Segmented control animado (spring slide) con indicador de fondo degradado. Usado en join-screen y en el segmented de auth. Props: `options`, `value`, `onChange`, `compact`, `dense`. |
+| ~~`auth-segmented-control.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup). |
 | [`auth-transition-splash.tsx`](../../../mobile/components/auth/auth-transition-splash.tsx) | Splash post-login (login → home bridge). Verde oscuro + 16 fireflies (CSS animations Reanimated 4, sin worklets). Dos modos: `showing/success-pending` (WarmFernLogo) / `error` (ErrorFallback con NetInfo probe en retry). |
 | [`fern-logo.tsx`](../../../mobile/components/auth/fern-logo.tsx) | SVG del helecho animado (draw-on animado, `animate` prop). Paletas: `dark`, `light`, `peach`, `mono-light`, `warm`. |
 | ~~`login-primitives.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — barrel huérfano sin consumidores (Bucket 2 de [09](09-candidatos-a-eliminar.md)). Los componentes re-exportados siguen vivos por import directo. |

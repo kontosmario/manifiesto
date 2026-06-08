@@ -336,16 +336,16 @@ Formulario modal con:
 | `control-mood-orb.tsx` | Orbe de mood del control | (no verificado) |
 | ~~`control-plan-section.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
 | `control-pressure-meter.tsx` | Medidor de presión del control | (no verificado) |
-| `control-primitives.tsx` | Primitivos visuales compartidos del control | (no verificado) |
+| ~~`control-primitives.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (SPRINT D cleanup) |
 | ~~`control-sections.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — barrel huérfano (0 imports) |
 | `control-signal-tile.tsx` | Tile de signal del asesor | (no verificado) |
 | ~~`control-today-section.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — hijo del barrel `control-sections` (0 refs) |
 | `control-visual-utils.ts` | Utilidades visuales del control | (no verificado) |
 | `control-visuals.tsx` | Componentes visuales del control | (no verificado) |
 | `cycle-balance-prompt-sheet.tsx` | `OnboardingAvailableSheet` + `SalaryConfirmationSheet`. Dos variantes mutuamente excluyentes del prompt de cobro. | `HomeDashboardSheets` |
-| `daily-budget-ring-chart.tsx` | Gráfico tipo ring del presupuesto diario | (no verificado) |
-| `daily-budget-ring.model.ts` | Modelo del ring del presupuesto diario | (no verificado) |
-| `daily-budget-ring.tsx` | Ring animado del presupuesto diario | (no verificado) |
+| ~~`daily-budget-ring-chart.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano transitivo tras quitar `daily-budget-ring.tsx` (SPRINT D) |
+| `daily-budget-ring.model.ts` | Modelo del ring del presupuesto diario (aún usado por tests) | (no verificado) |
+| ~~`daily-budget-ring.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (SPRINT D cleanup) |
 | `daily-budget-suggestion-card.tsx` | Card de sugerencia del presupuesto diario | (no verificado) |
 | `description-row.tsx` | Fila de descripción | (no verificado) |
 | `expense-editor-modal.tsx` | Modal para editar un gasto existente | (no verificado) |
@@ -357,7 +357,7 @@ Formulario modal con:
 | `expense-history-row.tsx` | Fila del historial de gastos | (no verificado) |
 | `expense-history-section-header.tsx` | Header de sección del historial | (no verificado) |
 | `expense-history-toolbar.tsx` | Toolbar del historial de gastos | (no verificado) |
-| `expense-intelligence-panel.tsx` | Panel de inteligencia de gastos | (no verificado) |
+| ~~`expense-intelligence-panel.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (huérfano confirmado en SPRINT D cleanup) |
 | `expense-intelligence-suggestion-card.tsx` | Card de sugerencia de inteligencia | (no verificado) |
 | `family-strip.tsx` | Strip horizontal de avatares familiares + `PaydayPillV2`. Max 4 avatares + overflow count. | `HomeDashboard` |
 | `greeting-header.tsx` | Saludo contextual por hora del día ("Buenos días", etc.) | `HomeHeader` |
@@ -375,7 +375,7 @@ Formulario modal con:
 | `home-next-fixed-helpers.ts` | Helpers para computar el próximo fijo del ciclo | `HomeDashboard` |
 | `home-top-category-helpers.ts` | Helpers para computar la top categoría del ciclo | `HomeDashboard` |
 | `meta-card.tsx` | Card de meta de ahorro: progreso + FloatView + `QuickAddSavingsSheet` | `HomeDashboard` |
-| `meta-empty-card.tsx` | Estado vacío de la meta (sin goal configurado) | `HomeDashboard` |
+| ~~`meta-empty-card.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (SPRINT D cleanup) |
 | ~~`mini-bars.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — 0 imports |
 | `month-summary-card.tsx` | Dos paneles side-by-side: Variables (top categoría chip) + Fijos (próximo fijo chip) | `HomeDashboard` |
 | `notes-row.tsx` | Fila de notas | (no verificado) |
@@ -530,8 +530,8 @@ El archivo relevante a este dominio en `components/ui/`:
 | `fixed-expense-repository.model.ts` | Mapper `asFixedExpense` |
 | `fixed-expense-repository.ts` | Repositorio Supabase: CRUD de fijos |
 | `fixed-expense-types.ts` | Tipos base: `FixedExpense`, `FixedExpenseFrequency`, `FixedExpenseKind` |
-| `fixed-expenses-screen-model.ts` | `buildFixedExpensesSections` (modelo de secciones — upstream/posible legacy de V1; en uso indirecto) |
-| `use-fixed-expense-editor-form.ts` | Hook del formulario del editor |
+| ~~`fixed-expenses-screen-model.ts`~~ | 🗑️ **Eliminado 2026-06-08** — confirmado huérfano (SPRINT D cleanup) |
+| ~~`use-fixed-expense-editor-form.ts`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup) |
 | `use-fixed-expense-payments.ts` | Hook `useFixedExpensePayments` (scoped al ciclo actual) |
 | `use-fixed-expenses.ts` | Hooks `useFixedExpenses`, `useCreateFixedExpense`, `useUpdateFixedExpense`, `useDeleteFixedExpense`, `useRecordFixedExpensePayment` |
 

@@ -81,7 +81,7 @@ Capa **polish + valor demostrable** integrada:
 | Coach Mode screen real en `/(app)/coach/[signalId]` (hero + constituents para super-signals + CTA primaria + empty state) | ✅ shipped | `app/(app)/coach/[signalId].tsx`, `coach-mode-screen.tsx` |
 | Stack registration de `coach/[signalId]` con presentación modal | ✅ shipped | `app-stack-shell.tsx` |
 | Forecast 7d sparkline SVG (pessimistic dashed / baseline / optimistic area + inflection dots + DoW labels) | ✅ shipped | `control-forecast-strip.tsx` (ex `forecast-sparkline.tsx`, eliminado 2026-05-22 como huérfano) |
-| `ControlForecastStrip` integrado en `expense-intelligence-panel.tsx` | ✅ shipped | `control-forecast-strip.tsx` |
+| `ControlForecastStrip` integrado en `expense-intelligence-panel.tsx` | ✅ shipped (**panel removido 2026-06-08 como huérfano** — strip subsiste en otros surfaces) | `control-forecast-strip.tsx` |
 | `forecast` field expuesto desde `useControlV2Data` | ✅ shipped | `use-control-v2-data.ts` |
 | `log_advisor_value` client wrapper (fire-and-forget, valida `valueSaved >= 0`) | ✅ shipped | `log-advisor-value.ts` |
 | Value capture: `quick-savings-contribution` success → `moved_to_savings` (1mo, no estimado) | ✅ shipped | dispatcher |

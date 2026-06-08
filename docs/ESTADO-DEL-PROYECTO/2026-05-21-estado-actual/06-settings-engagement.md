@@ -786,7 +786,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | ~~`mobile/components/settings/settings-sections.tsx`~~ | 🗑️ **Eliminado 2026-05-22** — barrel huérfano |
 | [`mobile/components/settings/category-editor-modal.tsx`](../../../mobile/components/settings/category-editor-modal.tsx) | Editor de categorías |
 | [`mobile/components/settings/fixed-expense-editor-chip-sections.tsx`](../../../mobile/components/settings/fixed-expense-editor-chip-sections.tsx) | Editor de gastos fijos — chips |
-| [`mobile/components/settings/fixed-expense-editor-sections.tsx`](../../../mobile/components/settings/fixed-expense-editor-sections.tsx) | Editor de gastos fijos — secciones |
+| ~~`mobile/components/settings/fixed-expense-editor-sections.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup) |
 | [`mobile/components/settings/fixed-expense-editor-value-rows.tsx`](../../../mobile/components/settings/fixed-expense-editor-value-rows.tsx) | Editor de gastos fijos — valor |
 | [`mobile/components/settings/sheets/delete-account-confirm-sheet.tsx`](../../../mobile/components/settings/sheets/delete-account-confirm-sheet.tsx) | Sheet confirmación borrar cuenta |
 | [`mobile/components/settings/sheets/destroy-family-confirm-sheet.tsx`](../../../mobile/components/settings/sheets/destroy-family-confirm-sheet.tsx) | Sheet confirmación eliminar hogar |
@@ -846,7 +846,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | [`mobile/features/family/use-my-family-role.ts`](../../../mobile/features/family/use-my-family-role.ts) | `useMyFamilyRole` |
 | [`mobile/features/family/family-dashboard-model.ts`](../../../mobile/features/family/family-dashboard-model.ts) | Modelo de dashboard familiar |
 | [`mobile/features/family/family-dashboard-monthly-history.ts`](../../../mobile/features/family/family-dashboard-monthly-history.ts) | Historial mensual del dashboard |
-| [`mobile/features/family/family-query-invalidation.ts`](../../../mobile/features/family/family-query-invalidation.ts) | Helpers de invalidación de queries |
+| ~~`mobile/features/family/family-query-invalidation.ts`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano (SPRINT D cleanup); ver `family-sync.ts` / `syncAllAfterMutation` |
 | [`mobile/features/savings-goals/savings-goal.model.ts`](../../../mobile/features/savings-goals/savings-goal.model.ts) | `SavingsGoal`, `SavingsGoalInput`, `validateSavingsGoalInput` |
 | [`mobile/features/savings-goals/savings-goal.repository.ts`](../../../mobile/features/savings-goals/savings-goal.repository.ts) | `fetchActiveSavingsGoal` |
 | [`mobile/features/savings-goals/use-savings-goal.ts`](../../../mobile/features/savings-goals/use-savings-goal.ts) | `useSavingsGoal` |
