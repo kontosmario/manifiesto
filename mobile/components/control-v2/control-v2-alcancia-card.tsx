@@ -6,6 +6,7 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
+import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
@@ -104,6 +105,7 @@ function ControlV2AlcanciaCardImpl({
   const freezeTokens = streakQuery.data?.freezeTokens ?? 0
 
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
 
   // Press scale 0.97 — la CTA es el único elemento interactivo del
@@ -164,14 +166,12 @@ function ControlV2AlcanciaCardImpl({
 
   const handleCtaPress = () => {
     if (!hasGoal) {
-      // No goal yet — point the user to settings/savings-goal config.
-      // The streak/cycle data is already there to seed a sensible
-      // first goal once they land on the form.
+      // No goal yet — open the inline wizard. Once the user completes
+      // the 4 steps, the savings-goal query invalidates and this card
+      // re-renders with the new goal so no further plumbing is needed
+      // here (the wizard's `onCreated` simply closes itself).
       void triggerHaptic('selection')
-      Alert.alert(
-        'Aún no tienes meta',
-        'Crea tu meta de ahorro desde Ajustes → Metas para empezar a usar la alcancía.',
-      )
+      setWizardOpen(true)
       return
     }
     void triggerHaptic('selection')
@@ -367,6 +367,15 @@ function ControlV2AlcanciaCardImpl({
         />
       ) : null}
 
+      {!hasGoal ? (
+        <CreateSavingsGoalWizardSheet
+          visible={wizardOpen}
+          familyId={familyId}
+          onCreated={() => setWizardOpen(false)}
+          onClose={() => setWizardOpen(false)}
+        />
+      ) : null}
+
     </RiseView>
   )
 }
@@ -403,6 +412,14 @@ function ReserveBlock({
   const reserveMutation = useApplyReserveDecision(familyId)
   const [sheetMode, setSheetMode] = useState<'cycle' | 'meta' | null>(null)
   const [draft, setDraft] = useState('')
+  // Wizard wiring: when the user taps "A una meta" without an existing
+  // goal, we open the create-goal wizard and remember how much they
+  // wanted to allocate from the reserve. After the goal is created we
+  // dispatch the reserve mutation against the brand-new id.
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [pendingReserveAfterCreate, setPendingReserveAfterCreate] = useState<
+    number | null
+  >(null)
 
   useEffect(() => {
     if (sheetMode !== null) {
@@ -420,15 +437,38 @@ function ReserveBlock({
   }
   const openMeta = () => {
     if (!goal) {
+      // No goal yet — open the wizard. Remember the full available
+      // reserve so we can apply it automatically after the create.
       void triggerHaptic('selection')
-      Alert.alert(
-        'Aún no tienes meta',
-        'Crea tu meta de ahorro desde Ajustes → Metas para poder aportar la reserva.',
-      )
+      setPendingReserveAfterCreate(monthlyReserveAmount)
+      setWizardOpen(true)
       return
     }
     void triggerHaptic('selection')
     setSheetMode('meta')
+  }
+
+  const handleWizardCreated = (newGoal: SavingsGoal) => {
+    setWizardOpen(false)
+    if (pendingReserveAfterCreate !== null && pendingReserveAfterCreate > 0) {
+      const amount = pendingReserveAfterCreate
+      setPendingReserveAfterCreate(null)
+      reserveMutation.mutate(
+        { amount, target: 'meta', metaGoalId: newGoal.id },
+        {
+          onSuccess: () => {
+            void triggerHaptic('success')
+          },
+          onError: (err) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No pudimos aplicar la reserva',
+              err instanceof Error ? err.message : 'Reintenta en un momento.',
+            )
+          },
+        },
+      )
+    }
   }
 
   const handleSubmit = () => {
@@ -549,6 +589,17 @@ function ReserveBlock({
         onClose={() => {
           if (reserveMutation.isPending) return
           setSheetMode(null)
+        }}
+      />
+
+      <CreateSavingsGoalWizardSheet
+        visible={wizardOpen}
+        familyId={familyId}
+        suggestedInitialAmount={pendingReserveAfterCreate ?? undefined}
+        onCreated={handleWizardCreated}
+        onClose={() => {
+          setWizardOpen(false)
+          setPendingReserveAfterCreate(null)
         }}
       />
     </>

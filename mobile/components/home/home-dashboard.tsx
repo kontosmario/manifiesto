@@ -14,7 +14,6 @@ import {
 } from '@/features/month-close/use-month-close-decision'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { MetaCard } from '@/components/home/meta-card'
-import { MetaEmptyCard } from '@/components/home/meta-empty-card'
 import {
   computeTopCategory,
   computeTopCategoryFallback,
@@ -869,11 +868,7 @@ export function HomeDashboard({
             suggestedAmount={cycleVault}
           />
         </TourTarget>
-      ) : (
-        // No tour step when the user hasn't configured a goal yet —
-        // explaining a card they don't have would be confusing.
-        <MetaEmptyCard />
-      )}
+      ) : null}
 
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
