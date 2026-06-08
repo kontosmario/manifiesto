@@ -118,9 +118,9 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const existingFinance = familyQuery.data
 
   // Mutations
-  const updateDisplayName = useUpdateDisplayName(userId)
-  const updateAvatar = useUpdateAvatarAnimal(userId)
-  const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined)
+  const updateDisplayName = useUpdateDisplayName(userId, state.familyId ?? undefined)
+  const updateAvatar = useUpdateAvatarAnimal(userId, state.familyId ?? undefined)
+  const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined, userId)
   const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '', userId)
   // Joiner finish: consume the single-use invite (creates the
   // membership + marks the code used). Replaces the legacy

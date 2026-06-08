@@ -7,6 +7,7 @@ import {
   fetchFamilyFinance,
   upsertFamilyFinance,
 } from '@/features/finance/family-finance.repository'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 export {
   buildFamilyFinanceInput,
@@ -34,7 +35,7 @@ export function useFamilyFinance(familyId?: string) {
   })
 }
 
-export function useUpsertFamilyFinance(familyId?: string) {
+export function useUpsertFamilyFinance(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -52,14 +53,23 @@ export function useUpsertFamilyFinance(familyId?: string) {
     //
     // Ahora `upsertFamilyFinance` devuelve el row real escrito en DB
     // (`.select().maybeSingle()`); lo metemos directo al cache vía
-    // setQueryData → el render inmediato ya lee data fresh. Aún así
-    // invalidamos queries DERIVADAS (cycle-acumulado) para que el
-    // hero refresque el acumulado del mes pasado si cambió.
+    // setQueryData → el render inmediato ya lee data fresh.
     onSuccess: (updatedFinance) => {
       if (familyId) {
         queryClient.setQueryData(familyFinanceQueryKey(familyId), updatedFinance)
-        void queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] })
       }
+    },
+    // Code review C2 (sprint A, 2026-06-08): finance afecta a Home,
+    // Control v2 y Gastos (chip "ajustado", proyecciones, presupuesto
+    // restante). Antes solo invalidábamos `cycle-acumulado`; ahora
+    // delegamos a `syncAllAfterMutation` con scope `income` (que cubre
+    // family-finance + control snapshots + home_snapshot + acumulado).
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['income'],
+      })
     },
   })
 }

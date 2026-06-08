@@ -57,13 +57,13 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
   const familyMembersDetailQuery = useFamilyMembersDetail(familyId)
 
   // Mutations.
-  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
+  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId, userId)
   const updateMyContributionMutation = useUpdateMyIncomeContribution(
     userId,
     familyId,
   )
-  const updateDisplayNameMutation = useUpdateDisplayName(userId)
-  const updateAvatarMutation = useUpdateAvatarAnimal(userId)
+  const updateDisplayNameMutation = useUpdateDisplayName(userId, familyId)
+  const updateAvatarMutation = useUpdateAvatarAnimal(userId, familyId)
 
   const myContribution = useMemo(() => {
     const me = (familyMembersDetailQuery.data ?? []).find(

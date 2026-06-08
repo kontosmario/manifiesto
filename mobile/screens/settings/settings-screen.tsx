@@ -137,14 +137,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // la meta existe pero está apagada, en vez de "Sin meta configurada".
   const savingsGoalQuery = useLatestSavingsGoal(familyId)
 
-  const updateDisplayNameMutation = useUpdateDisplayName(userId)
-  const updateAvatarMutation = useUpdateAvatarAnimal(userId)
+  const updateDisplayNameMutation = useUpdateDisplayName(userId, familyId)
+  const updateAvatarMutation = useUpdateAvatarAnimal(userId, familyId)
   const leaveFamilyMutation = useLeaveCurrentFamily(userId)
   const convertToSolo = useConvertToSolo(userId)
   const convertToFamily = useConvertToFamily(userId)
   const enablePushMutation = useEnablePushNotifications()
   const hasPushSubscriptionQuery = useHasPushSubscription(familyId, userId)
-  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
+  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId, userId)
   const familyMembersDetailQuery = useFamilyMembersDetail(familyId)
   const updateMyContributionMutation = useUpdateMyIncomeContribution(userId, familyId)
   const tourResets = useResetTourSeen()

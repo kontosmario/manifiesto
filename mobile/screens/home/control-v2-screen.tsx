@@ -92,7 +92,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
   // Control debe disparar el flujo de decisión sobre el sobrante si el
   // cycle no fue decidido. Si ya hay decisión persistida, replay normal.
-  const applyDecision = useApplyMonthCloseDecision(familyId)
+  const applyDecision = useApplyMonthCloseDecision(familyId, userId)
   const monthlyAccounting = useMonthlyAccounting(familyId)
   const savingsGoalQuery = useLatestSavingsGoal(familyId)
   const activeGoalForWrapped = useMemo(() => {
@@ -195,7 +195,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const expensesQuery = useExpenses(familyId)
   const dashboard = useFamilyDashboard(familyId)
   const streakQuery = useStreak(familyId, userId)
-  const upsertFamilyFinance = useUpsertFamilyFinance(familyId)
+  const upsertFamilyFinance = useUpsertFamilyFinance(familyId, userId)
   // Snapshot del home — su refetch re-seedea el cluster control
   // (control_intelligence, expenses, finance, etc.) en 1 round-trip.
   // Lo usa el pull-to-refresh.

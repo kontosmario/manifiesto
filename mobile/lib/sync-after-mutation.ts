@@ -16,6 +16,16 @@ import {
 } from '@/features/streaks/streak-query-keys'
 import { achievementsEarnedQueryKey } from '@/features/achievements/use-achievements'
 import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
+// Keys re-declaradas inline para evitar transitive imports pesados
+// (use-family-members.ts carga @/assets/avatars que pulla los SVG
+// components — incompatible con vitest env=node). Mantenemos los
+// shapes idénticos a la definición original.
+const categoriesQueryKey = (
+  familyId?: string,
+  scope: 'expense' | 'fixed_expense' = 'expense',
+) => ['categories', familyId, scope] as const
+const familyMembersKey = (familyId?: string) =>
+  ['family-members', familyId ?? null] as const
 
 export type SyncScope =
   | 'expenses'
@@ -25,6 +35,8 @@ export type SyncScope =
   | 'savings'
   | 'notifications'
   | 'wrapped'
+  | 'categories'
+  | 'profile'
 
 interface SyncArgs {
   familyId?: string
@@ -106,6 +118,12 @@ export async function syncAllAfterMutation(
   }
   if (familyId && has('income')) {
     keys.push(familyFinanceQueryKey(familyId))
+    // cycle-acumulado depende del cycle_starting_balance / salary
+    // anchor: cuando el usuario confirma cobro o ajusta salario, el
+    // hero re-lee este key para mostrar el "+\$X acumulado del mes
+    // anterior". Cubre tanto C2 (useUpsertFamilyFinance) como ingresos
+    // extra-cobro que ajustan la base del ciclo.
+    keys.push(['cycle-acumulado', familyId])
   }
 
   // ── Savings
@@ -125,6 +143,29 @@ export async function syncAllAfterMutation(
   // ── Wrapped — control intelligence ya cubre wrapped_seen_at vía homeSnapshot
   if (familyId && has('wrapped')) {
     keys.push(monthlyEditionsQueryKey(familyId))
+  }
+
+  // ── Categories — crear/renombrar/borrar afecta:
+  //   · `categoriesQueryKey` (cache base de la lista de categorías).
+  //   · `expenseQueryKeys.family` (los rows traen category_id; el render
+  //     puede mostrar el nombre nuevo o el color actualizado).
+  //   · `gastosEndpointKeys.categoriesFamily` (donut con counts).
+  //   · `gastosEndpointKeys.heroFamily` (top_categories del hero).
+  // Code review H5 (sprint A, 2026-06-08).
+  if (familyId && has('categories')) {
+    keys.push(categoriesQueryKey(familyId, 'expense'))
+    keys.push(categoriesQueryKey(familyId, 'fixed_expense'))
+    keys.push(expenseQueryKeys.family(familyId))
+    keys.push(gastosEndpointKeys.categoriesFamily(familyId))
+    keys.push(gastosEndpointKeys.heroFamily(familyId))
+  }
+
+  // ── Profile — cambios de avatar / display name aparecen en:
+  //   · `homeSnapshotQueryKey` (header del Home muestra avatar+nombre).
+  //   · `familyMembersKey` (family strip + family roster en Settings).
+  // Code review H6 (sprint A, 2026-06-08).
+  if (familyId && has('profile')) {
+    keys.push(familyMembersKey(familyId))
   }
 
   // ── Achievements — cualquier expense/fixed/payment puede unlock vía trigger

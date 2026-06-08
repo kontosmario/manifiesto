@@ -130,7 +130,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     () => incomeEventsQuery.data ?? [],
     [incomeEventsQuery.data],
   )
-  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId)
+  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId, userId)
   const deleteExpenseMutation = useDeleteExpense(familyId, userId)
   const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   // Numeric count drives the bell's count badge in the header. Re-renders
