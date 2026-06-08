@@ -234,16 +234,16 @@ export function buildFamilyDashboardSnapshot({
     hasCycleOverride && (cycleStartingBalanceOverride as number) < monthlyIncome
   const overrideProration = overrideIsDown ? remainingDaysFromToday / totalCycleDays : 1
   const effectiveCommitmentPressure = commitmentPressureInCurrentCycle * overrideProration
-  // El savings goal NO se prorratea — la meta es la meta. Si el user
-  // cobró menos este mes el target sigue siendo el target mensual
-  // completo (puede no alcanzar a llegar, pero eso es señal real, no
-  // un recorte artificial).
-  //
-  // Antes prorrateábamos savingsGoal por overrideProration, lo cual
-  // hacía que el chip mostrara "X de meta Y" (con X = goal prorated y
-  // Y = goal full) incluso sin ningún overspend — el user no entendía
-  // por qué aparecían dos números. Owner feedback iterado 2026-06-08.
-  const effectiveSavingsGoal = savingsGoal
+  // Savings goal RECOMPUTA al cobro real cuando override es DOWN:
+  // 20% del sueldo configurado (\$6.9M) sería \$1.4M, pero si el user
+  // cobró \$4M, el target del mes debería ser 20% de \$4M = \$800K — no
+  // un objetivo que ya nació inalcanzable. Para UP o sin override,
+  // se mantiene el savings_goal configurado (la meta es la meta;
+  // el extra del UP es bonus, no objetivo de ahorro mayor).
+  // Owner feedback iterado 2026-06-08.
+  const effectiveSavingsGoal = overrideIsDown
+    ? Math.max(0, Math.round(effectiveCycleIncome * (savingsGoalPercent / 100)))
+    : savingsGoal
   // Variable spend that "counts" toward this cycle's tracking. With
   // override on, the user's reported balance already accounts for
   // pre-today spending — so we only subtract spending from today
@@ -300,7 +300,11 @@ export function buildFamilyDashboardSnapshot({
     payCycle,
     remainingUntilPayday,
     salaryPaymentDay,
-    savingsGoal,
+    // savingsGoal expuesto al cliente = effective para el cycle:
+    // si override es DOWN, recalculado al cobro real con el percent
+    // configurado. Sino, igual al savings_goal stored. Esto alinea
+    // el chip ("Ahorrando \$X") con la realidad del ciclo en curso.
+    savingsGoal: effectiveSavingsGoal,
     savingsGoalPercent,
     savingsRemaining,
     savingsSpent,
