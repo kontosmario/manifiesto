@@ -343,9 +343,51 @@ function HomeHeroCardImpl({
                   </Text>
                 </View>
               </RiseView>
+            ) : data.cycleAdjusted && data.cycleBalanceDiff > 0 ? (
+              // Override UP — balance > sueldo. El user sumó plata
+              // al ciclo (reserva, cobro extra, etc.). Antes leía
+              // "Ajustado" (peach, implicaba correción down). Ahora
+              // chip indigo "+\$X sumado al mes" — positivo.
+              <RiseView delay={120}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Sumaste ${formatMoney(data.cycleBalanceDiff)} al saldo del mes`}
+                  style={[
+                    styles.adjustedChip,
+                    theme.isDark
+                      ? {
+                          backgroundColor: 'rgba(165,180,252,0.18)',
+                          borderColor: 'rgba(165,180,252,0.42)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(99,102,241,0.14)',
+                          borderColor: 'rgba(99,102,241,0.40)',
+                        },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.adjustedChipDot,
+                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    •
+                  </Text>
+                  <Text
+                    style={[
+                      styles.adjustedChipText,
+                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    {`+${formatMoney(data.cycleBalanceDiff)} sumado al mes`}
+                  </Text>
+                </View>
+              </RiseView>
             ) : data.cycleAdjusted ? (
-              // User-set override (sin acumulado): chip peach neutral
-              // que comunica "ajustaste manualmente el saldo del cycle".
+              // Override DOWN (o == 0) — balance < sueldo. El user
+              // ajustó hacia abajo (cobro menor al sueldo recurrente,
+              // quincena adelantada, etc.). Chip peach neutral que
+              // comunica "ajustaste manualmente el saldo del cycle".
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"

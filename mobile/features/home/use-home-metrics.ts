@@ -109,6 +109,21 @@ export interface HomeHeroMetrics {
    * guardado como reserva.
    */
   monthlyReserveAmount: number
+  /**
+   * Diferencia `current_cycle_starting_balance - monthly_income`
+   * cuando hay override activo (cycleAdjusted == true), 0 cuando no.
+   *
+   *   > 0 = balance subió respecto del sueldo (sumar reserva al mes,
+   *         cobro extra, acumular del mes pasado, etc). El hero
+   *         muestra chip indigo "+\$X sumado al mes" en vez del peach
+   *         "Ajustado para este mes" (que implicaba correción down).
+   *   < 0 = balance bajó respecto del sueldo (cobro menor de lo
+   *         esperado, e.g. quincena adelantada). El hero mantiene
+   *         el chip peach "Ajustado para este mes".
+   *   = 0 = balance == sueldo exacto (raro — equivalente al estado
+   *         default sin override).
+   */
+  cycleBalanceDiff: number
 }
 
 export interface HomeMonthSummary {
@@ -296,6 +311,15 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       0,
       Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) || 0,
     )
+    // Diff balance vs sueldo cuando hay override. Permite al hero
+    // diferenciar entre "ajustaste hacia abajo" (peach) y "sumaste
+    // plata" (indigo) — sin esto el chip leía "Ajustado para este
+    // mes" incluso después de sumar reserva al ciclo, lo cual
+    // confundía al user.
+    const cycleBalanceDiff =
+      dashboard.cycleStartingBalanceOverride !== null
+        ? (dashboard.cycleStartingBalanceOverride as number) - dashboard.monthlyIncome
+        : 0
 
     const hero: HomeHeroMetrics = {
       availableToday,
@@ -312,6 +336,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       monthlyIncome: dashboard.monthlyIncome,
       acumulado,
       monthlyReserveAmount,
+      cycleBalanceDiff,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
