@@ -2,10 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { categoriesQueryKey } from '@/features/categories/use-categories'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
-import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
-import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
 import { profileQueryKey } from '@/features/profile/use-profile'
-import { pushSubscriptionQueryKey } from '@/features/push/use-push-notifications'
 import { supabase } from '@/lib/supabase'
 import { familyQueryKey } from '@/features/family/use-family'
 import { familyMembersKey } from '@/features/family/use-family-members'
@@ -223,37 +220,26 @@ export function useLeaveCurrentFamily(userId?: string) {
 
       return pickRpcResult(data)
     },
-    onSuccess: async (result) => {
-      // The `leave_current_family` RPC now resets
-      // `onboarding_completed_at` atomically on the server (see
-      // migration 20260426162741), so we only need to invalidate the
-      // profile cache here so the local copy reflects that change
-      // and the route guard in `/(app)/onboarding.tsx` re-enters
-      // the wizard. `previously_onboarded` stays true on the server
-      // so the rejoin copy surfaces.
+    onSuccess: async (_result) => {
+      // The `leave_current_family` RPC resets `onboarding_completed_at`
+      // atomically on the server (migración 20260426162741); el client
+      // sólo invalida `profile` para que el route guard de
+      // `/(app)/onboarding.tsx` re-entre al wizard.
       if (userId) {
         await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
-        queryClient.removeQueries({ queryKey: categoriesQueryKey(result.family_id) }),
-        queryClient.removeQueries({ queryKey: expenseQueryKeys.family(result.family_id) }),
-        queryClient.removeQueries({ queryKey: expenseQueryKeys.recentFamily(result.family_id) }),
-        queryClient.removeQueries({ queryKey: expenseQueryKeys.total(result.family_id) }),
-        queryClient.removeQueries({
-          queryKey: expenseQueryKeys.periodTotalFamily(result.family_id),
-        }),
-        queryClient.removeQueries({
-          queryKey: expenseQueryKeys.monthlySpentFamily(result.family_id),
-        }),
-        queryClient.removeQueries({ queryKey: familyFinanceQueryKey(result.family_id) }),
-        queryClient.removeQueries({ queryKey: fixedExpenseQueryKeys.family(result.family_id) }),
-        queryClient.removeQueries({ queryKey: notificationQueryKeys.family(result.family_id) }),
-        queryClient.removeQueries({
-          queryKey: pushSubscriptionQueryKey(result.family_id, userId),
-        }),
-      ])
+      // Code review H7 (sprint A, 2026-06-08): el set previo de 9
+      // removeQueries dejaba caches huérfanos para home_snapshot,
+      // gastos-* RPCs, control snapshots, savings, streaks, family
+      // members, income, etc. Cualquier query con datos de la familia
+      // anterior podía surface durante el bootstrap de la nueva.
+      // Solución: purgar TODO el cache excepto `auth`, mismo predicate
+      // que usa `useAuthSession` en SIGN_OUT (que es el otro path
+      // similar). Más simple y seguro que listar key por key.
+      queryClient.removeQueries({
+        predicate: (q) => q.queryKey[0] !== 'auth',
+      })
     },
   })
 }
