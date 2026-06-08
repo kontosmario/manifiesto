@@ -91,7 +91,7 @@ export function BrandedPanel({
       ]}
     >
       <LinearGradient colors={gradientColors} end={{ x: 1, y: 1 }} start={{ x: 0, y: 0 }} style={StyleSheet.absoluteFill} />
-      <View style={[styles.panelDecor, { pointerEvents: 'none' }]}>
+      <View pointerEvents="none" style={styles.panelDecor}>
         <View
           style={[
             styles.panelGlow,

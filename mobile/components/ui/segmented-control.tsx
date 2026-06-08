@@ -91,12 +91,12 @@ export function SegmentedControl<T extends string>({
       ]}
     >
       <Animated.View
+        pointerEvents="none"
         style={[
           styles.pill,
           buildElevationStyle(theme, 'segmentedActive'),
           {
             backgroundColor: theme.colors.surface,
-            pointerEvents: 'none',
             width: pillStaticWidth,
           },
           pillStyle,

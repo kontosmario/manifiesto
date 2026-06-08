@@ -147,7 +147,7 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
   }
 
   return (
-    <View style={[styles.backdrop, { pointerEvents: 'none' }]}>
+    <View pointerEvents="none" style={styles.backdrop}>
       {variantGlows[variant].map((glow, index) => (
         <View
           key={`${variant}-${index}`}
