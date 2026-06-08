@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 export interface ApplyReserveInput {
   amount: number
@@ -17,11 +18,12 @@ export interface ApplyReserveInput {
  * Pure builder — separable del React layer para que vitest pueda
  * testear el shape (mutationFn + onSuccess invalidations) sin
  * `useMutation`. El hook abajo se limita a inyectar el QueryClient
- * y el familyId del context.
+ * y el familyId/userId del context.
  */
 export function buildApplyReserveMutation(
   queryClient: QueryClient,
   familyId?: string,
+  userId?: string,
 ): UseMutationOptions<void, Error, ApplyReserveInput, unknown> {
   return {
     mutationFn: async (input: ApplyReserveInput) => {
@@ -32,14 +34,25 @@ export function buildApplyReserveMutation(
       })
       if (error) throw error
     },
+    // Code review H2 (sprint A, 2026-06-08): la decisión de aplicar
+    // reserva impacta Home / Control / Gastos (reserva, savings,
+    // acumulado del ciclo). Antes invalidábamos solo 4 keys hardcoded;
+    // ahora delegamos a `syncAllAfterMutation` con scopes `savings` +
+    // `income` para cubrir control snapshots, family-finance, savings
+    // goals y cycle-acumulado de forma consistente con el resto del
+    // proyecto. Mantenemos un `home-snapshot` prefix-invalidate como
+    // backstop cuando no hay userId (tests, callers sin sesión).
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: familyFinanceQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: ['savings-goal', familyId] }),
         queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
-        // home-snapshot vive bajo userId, pero invalidar por prefijo
-        // refresca cualquier instancia activa sin riesgo.
         queryClient.invalidateQueries({ queryKey: ['home-snapshot'] }),
+        syncAllAfterMutation(queryClient, {
+          familyId,
+          userId,
+          scopes: ['savings', 'income'],
+        }),
       ])
     },
   }
@@ -58,8 +71,9 @@ export function buildApplyReserveMutation(
  *   · cycle-acumulado: el hero del Home consulta acá para mostrar
  *     contexto positivo cuando se sumó al cycle.
  *   · home-snapshot: el chip "Reserva" del Home se hidrata desde acá.
+ *   · syncAllAfterMutation: cubre control snapshots y otros derivados.
  */
-export function useApplyReserveDecision(familyId?: string) {
+export function useApplyReserveDecision(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
-  return useMutation(buildApplyReserveMutation(queryClient, familyId))
+  return useMutation(buildApplyReserveMutation(queryClient, familyId, userId))
 }

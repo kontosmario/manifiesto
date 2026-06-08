@@ -107,7 +107,7 @@ function ControlV2AlcanciaCardImpl({
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
-  const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
+  const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId, userId)
   // Mutation para reactivar una meta inactiva sin tener que ir a
   // Settings. Reusa upsert con todos los fields existentes + isActive=true.
   // Pasamos userId también: sin él, syncAllAfterMutation no invalida
@@ -499,7 +499,7 @@ function ReserveBlock({
     ? 'rgba(165,180,252,0.36)'
     : 'rgba(99,102,241,0.32)'
 
-  const reserveMutation = useApplyReserveDecision(familyId)
+  const reserveMutation = useApplyReserveDecision(familyId, userId)
   const [sheetMode, setSheetMode] = useState<'cycle' | 'meta' | null>(null)
   const [draft, setDraft] = useState('')
   // Wizard wiring: when the user taps "A una meta" without an existing
