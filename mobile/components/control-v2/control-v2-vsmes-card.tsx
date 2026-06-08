@@ -352,6 +352,20 @@ function ControlV2VsMesCardImpl({
               </Text>
             </View>
           ) : null}
+          {/* Scope disclaimer — la comparativa usa total_variable_spent
+              en ambos lados. Los fijos están planos mes a mes (alquiler,
+              luz, internet) y diluirían la señal del comportamiento real.
+              Antes el user no veía el matiz y podía leer el monto como
+              "total del mes". Owner feedback 2026-06-08. */}
+          <View style={styles.recapRow}>
+            <MaterialIcons name="info-outline" size={13} color={theme.colors.textMuted} />
+            <Text
+              style={[styles.recapText, { color: theme.colors.textMuted }]}
+              numberOfLines={2}
+            >
+              Compara solo gastos variables — los fijos no entran.
+            </Text>
+          </View>
         </View>
 
         {/* ── Ver el cierre del mes (Manifiesto Wrapped) ── */}
