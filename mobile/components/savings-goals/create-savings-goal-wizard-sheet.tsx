@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -267,7 +266,33 @@ export function CreateSavingsGoalWizardSheet({
   // ─── Sheet animation (mismo pattern que NumericEditSheet) ──────────
   const translateY = useSharedValue(screenHeight)
   const backdropOpacity = useSharedValue(0)
+  // Keyboard offset — cuando el teclado nativo aparece (tap al
+  // TextField del título), translate el sheet hacia arriba por la
+  // altura del teclado para que el input siga visible. Sin esto la
+  // KeyboardAvoidingView rompía el sizing del sheet (flex:1 colapsaba
+  // el sheet a content-based sin bounds → invisible).
+  const keyboardOffset = useSharedValue(0)
   const [mounted, setMounted] = useState(visible)
+
+  useEffect(() => {
+    if (!visible) return
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+      keyboardOffset.value = withTiming(-(e.endCoordinates.height ?? 0), {
+        duration: e.duration ?? 250,
+        easing: motionEasings.decelerate,
+      })
+    })
+    const hideSub = Keyboard.addListener('keyboardWillHide', (e) => {
+      keyboardOffset.value = withTiming(0, {
+        duration: e.duration ?? 200,
+        easing: motionEasings.decelerate,
+      })
+    })
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [visible, keyboardOffset])
 
   useEffect(() => {
     if (visible) {
@@ -299,7 +324,7 @@ export function CreateSavingsGoalWizardSheet({
   }, [visible, mounted, reduceMotion, screenHeight, translateY, backdropOpacity])
 
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+    transform: [{ translateY: translateY.value + keyboardOffset.value }],
   }))
 
   const backdropAnimatedStyle = useAnimatedStyle(() => ({
@@ -489,11 +514,6 @@ export function CreateSavingsGoalWizardSheet({
               },
             ]}
           >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={0}
-              style={styles.kbWrap}
-            >
             <View style={styles.handleArea}>
               <View
                 style={[
@@ -555,7 +575,6 @@ export function CreateSavingsGoalWizardSheet({
                 }
               />
             </View>
-            </KeyboardAvoidingView>
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -1190,12 +1209,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     minHeight: 44,
-  },
-  // KeyboardAvoidingView wrap — sube el sheet cuando el teclado
-  // nativo aparece (TextField del título en step 1) y evita que el
-  // input quede tapado.
-  kbWrap: {
-    flex: 1,
   },
   headerSide: {
     width: 36,
