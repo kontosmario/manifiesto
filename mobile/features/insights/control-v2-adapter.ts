@@ -15,6 +15,7 @@ import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
 import { emptyStates } from '@/lib/copy/states'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { DAY_MS } from '@/utils/time'
 
 /** One entry of the `category_breakdown` jsonb column.
@@ -255,7 +256,36 @@ export function buildControlDataFromSnapshot(
   // weekly×4.33, quarterly/3…) que **no** coincidía con la
   // presión real del ciclo y desalineaba el cupo entre Control y
   // Home. Ahora ambas vistas reportan el mismo número.
-  const ingresoMes = Math.max(0, finance.monthly_income ?? 0)
+  // Override del cycle starting balance — debe respetarse acá igual
+  // que en el dashboard de Home. Sin esto, Home reportaba un cupo
+  // distinto al de Control (caso típico: sumar reserva al mes).
+  // Owner feedback 2026-06-08.
+  //
+  //   ingresoMes / diasMes deben mirar:
+  //     · effectiveCycleIncome  = override balance cuando aplica
+  //     · effectiveCycleDays    = días restantes cuando hay override
+  //
+  // Mismo idiom que family-dashboard-model — sin replicar la freeze
+  // logic (Control no se entra durante el cobro pending, edge case
+  // mínimo). La comparación contra payCycle.start cubre el flow normal.
+  const monthlyIncomeRaw = Math.max(0, finance.monthly_income ?? 0)
+  const cycleAnchorKey = formatLocalDateKey(payCycle.start)
+  const storedAnchor = finance.current_cycle_anchor ?? null
+  const storedBalance = finance.current_cycle_starting_balance ?? null
+  const cycleAnchorMatches =
+    typeof storedAnchor === 'string' && storedAnchor === cycleAnchorKey
+  const cycleStartingBalanceOverride =
+    cycleAnchorMatches && typeof storedBalance === 'number' && storedBalance >= 0
+      ? storedBalance
+      : null
+  const hasCycleOverride = cycleStartingBalanceOverride !== null
+  const ingresoMes = hasCycleOverride
+    ? (cycleStartingBalanceOverride as number)
+    : monthlyIncomeRaw
+  const cupoDays = hasCycleOverride
+    ? Math.max(1, monthlyAccounting.daysRemaining)
+    : Math.max(1, diasMes)
+
   const commitmentSummary = computeFixedExpenseCycleSummary({
     items: fixedExpenses,
     expenses,
@@ -265,7 +295,7 @@ export function buildControlDataFromSnapshot(
   const fijosMes = commitmentSummary.pressureTotal
   const ahorroMes = Math.max(0, finance.savings_goal ?? 0)
   const libreMes = Math.max(0, ingresoMes - fijosMes - ahorroMes)
-  const cupoDiario = libreMes / Math.max(1, diasMes)
+  const cupoDiario = libreMes / cupoDays
   const fijosCobertura =
     ingresoMes > 0
       ? Math.ceil((fijosMes / ingresoMes) * diasMes)
