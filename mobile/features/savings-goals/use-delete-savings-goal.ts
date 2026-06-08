@@ -43,10 +43,12 @@ export function buildDeleteSavingsGoalMutation(
  *     disponible visible; al borrar la goal ese cálculo cambia.
  *   · home-snapshot: bundle del Home incluye savings goal data.
  *
- * NOTA: el `current_amount` ya acumulado NO se devuelve al disponible
- * vía esta mutación — la goal se borra "tal cual está". El UX del
- * Alert le aclara al user que su ahorro vuelve a su disponible
- * (porque deja de estar earmark en una meta), pero no hay refund RPC.
+ * NOTA: el `current_amount` ya acumulado NO se reembolsa a ningún
+ * lado vía esta mutación — la goal se borra "tal cual está" (hard
+ * delete del row). El monto que el user había acumulado en la meta
+ * queda registrado en el historial de aportes (savings_contributions)
+ * pero deja de aparecer como meta activa. El Alert del delete confirm
+ * lo aclara así, sin sugerir que la plata "vuelve" a ningún disponible.
  */
 export function useDeleteSavingsGoal(familyId?: string) {
   const queryClient = useQueryClient()

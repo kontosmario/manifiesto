@@ -175,7 +175,7 @@ function SavingsGoalViewer({ goal, familyId, onDeleted }: SavingsGoalViewerProps
   const handleDelete = () => {
     Alert.alert(
       'Eliminar meta',
-      `Vas a borrar tu meta de "${goal.title}". El monto ya ahorrado no se pierde — vuelve a tu disponible. ¿Continuar?`,
+      `Vas a borrar tu meta de "${goal.title}". El monto que llevabas ahorrado queda en tu historial pero ya no se mostrará como meta activa. ¿Continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {

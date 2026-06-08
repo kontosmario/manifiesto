@@ -475,11 +475,12 @@ function HomeHeroCardImpl({
               // (Spec B — wrapped decisión "Guardar como reserva").
               // Read-only: la única forma de tocar este monto es vía
               // el wrapped. Lo surface acá para que la plata no
-              // desaparezca visualmente. Tono indigo/violeta distinto
-              // de los otros chips (peach=ajustado, lime=acumulado,
-              // mint=savings) para que se lea como métrica diferente.
-              // No hay token "indigo" en el palette del theme:
-              // hardcoded con switch theme.isDark.
+              // Tono AMBER/GOLD (semánticamente "valor guardado/reserva"
+              // — wallet → gold reserve). Antes era indigo igual que el
+              // chip "+\$X al mes" → 2 chips indigo conviviendo se leían
+              // redundantes. Code review M6 finding (2026-06-08). Otros
+              // chips: peach=ajustado-down, lime=acumulado, mint=savings,
+              // indigo=sumado-al-mes-UP.
               <RiseView delay={160}>
                 <View
                   accessibilityRole="text"
@@ -488,29 +489,25 @@ function HomeHeroCardImpl({
                     styles.savingsChip,
                     theme.isDark
                       ? {
-                          backgroundColor: 'rgba(165,180,252,0.18)',
-                          borderColor: 'rgba(165,180,252,0.42)',
+                          backgroundColor: 'rgba(252,211,77,0.14)',
+                          borderColor: 'rgba(252,211,77,0.40)',
                         }
                       : {
-                          backgroundColor: 'rgba(99,102,241,0.14)',
-                          borderColor: 'rgba(99,102,241,0.40)',
+                          backgroundColor: 'rgba(180,83,9,0.10)',
+                          borderColor: 'rgba(180,83,9,0.36)',
                         },
                   ]}
                 >
-                  {/* Icon wallet — paralelo del piggy de savings: vibe
-                      friendly, monetary, distinto del savings para que
-                      se lea como métrica diferente. MaterialIcons (el
-                      app no usa MaterialCommunityIcons). */}
                   <MaterialIcons
                     name="account-balance-wallet"
                     size={13}
-                    color={theme.isDark ? '#A5B4FC' : '#4F46E5'}
+                    color={theme.isDark ? '#FCD34D' : '#B45309'}
                   />
                   <Text
                     style={[
                       styles.savingsChipText,
                       {
-                        color: theme.isDark ? '#A5B4FC' : '#4F46E5',
+                        color: theme.isDark ? '#FCD34D' : '#B45309',
                         fontVariant: ['tabular-nums'],
                       },
                     ]}
