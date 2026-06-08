@@ -26,10 +26,10 @@ export function ControlMoodOrb({ mood }: { mood: ControlMood }) {
       ]}
     >
       <View
+        pointerEvents="none"
         style={[
           styles.moodOrbGlow,
           {
-            pointerEvents: 'none',
             backgroundColor: toneColor,
           },
         ]}

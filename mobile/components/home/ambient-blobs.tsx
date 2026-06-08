@@ -74,7 +74,7 @@ export const AmbientBlobs = memo(function AmbientBlobs({ tone = 'aurora' }: Ambi
     : { color: theme.colors.auroraC, opacity: 0.35 }
 
   return (
-    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Animated.View style={[styles.blob, { top: -70, right: -50, width: 240, height: 240, backgroundColor: blobA.color, opacity: blobA.opacity }, aStyle]} />
       <Animated.View style={[styles.blob, { top: 440, left: -80, width: 240, height: 240, backgroundColor: blobB.color, opacity: blobB.opacity }, bStyle]} />
       <Animated.View style={[styles.blob, { top: 1000, right: -60, width: 260, height: 260, backgroundColor: blobC.color, opacity: blobC.opacity }, cStyle]} />

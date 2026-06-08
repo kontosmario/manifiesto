@@ -61,7 +61,8 @@ export function HeroAurora({ radius = 28 }: HeroAuroraProps) {
   return (
     <View
       onLayout={onLayout}
-      style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden', pointerEvents: 'none' }]}
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}
     >
       {skia && size ? (
         <SkiaAurora

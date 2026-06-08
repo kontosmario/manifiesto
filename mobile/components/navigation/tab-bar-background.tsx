@@ -25,7 +25,7 @@ export function TabBarBackground() {
   const useGlass = Platform.OS === 'ios'
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.tabBarBackground, { pointerEvents: 'none' }]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tabBarBackground]}>
       {useGlass ? (
         // iOS · Liquid Glass nativa. `systemChromeMaterialLight|Dark`
         // es el preset Apple para chrome (tab bars, nav bars). Intensity

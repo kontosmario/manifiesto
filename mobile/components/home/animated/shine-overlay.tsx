@@ -24,7 +24,7 @@ export function ShineOverlay({ width, height, tint = 'rgba(255,255,255,0.45)', d
   )
   const a = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }))
   return (
-    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', pointerEvents: 'none' }, style]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }, style]}>
       <Animated.View style={[{ width: width * 0.4, height }, a]}>
         <LinearGradient
           colors={['transparent', tint, 'transparent']}
