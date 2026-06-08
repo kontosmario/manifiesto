@@ -46,6 +46,11 @@ import { formatMoney, formatMoneyShort } from '@/utils/money'
 export interface CreateSavingsGoalWizardSheetProps {
   visible: boolean
   familyId: string
+  /** userId del owner — propagado a `useUpsertSavingsGoal` para que
+   *  `syncAllAfterMutation` invalide el `home_snapshot` (gated por
+   *  userId). Sin esto, la MetaCard del Home podía no aparecer
+   *  inmediatamente después del create hasta expirar el staleTime. */
+  userId?: string
   /** Pre-fill amount sugerido — usado cuando el user vino de "aportar X
    *  a meta", para que después del create la app pueda hacer el aporte
    *  automáticamente. El callback `onCreated` recibe el goal RAW del
@@ -121,6 +126,7 @@ const STEP_TITLES: Record<number, string> = {
 export function CreateSavingsGoalWizardSheet({
   visible,
   familyId,
+  userId,
   suggestedInitialAmount,
   onCreated,
   onClose,
@@ -130,7 +136,7 @@ export function CreateSavingsGoalWizardSheet({
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
 
-  const upsertMutation = useUpsertSavingsGoal(familyId)
+  const upsertMutation = useUpsertSavingsGoal(familyId, userId)
 
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState<1 | -1>(1)

@@ -23,9 +23,10 @@ import { currencyFormatter } from '@/utils/money'
 
 interface SavingsGoalScreenProps {
   familyId: string
+  userId?: string
 }
 
-export function SavingsGoalScreen({ familyId }: SavingsGoalScreenProps) {
+export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
   // Importante: useLatestSavingsGoal (no useSavingsGoal) — Settings
@@ -70,6 +71,7 @@ export function SavingsGoalScreen({ familyId }: SavingsGoalScreenProps) {
       <SavingsGoalViewer
         goal={goalQuery.data}
         familyId={familyId}
+        userId={userId}
         onDeleted={() => router.back()}
       />
     </Screen>
@@ -134,12 +136,18 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
 interface SavingsGoalViewerProps {
   goal: SavingsGoal
   familyId: string
+  userId?: string
   onDeleted: () => void
 }
 
-function SavingsGoalViewer({ goal, familyId, onDeleted }: SavingsGoalViewerProps) {
+function SavingsGoalViewer({
+  goal,
+  familyId,
+  userId,
+  onDeleted,
+}: SavingsGoalViewerProps) {
   const { theme } = useAppTheme()
-  const upsert = useUpsertSavingsGoal(familyId)
+  const upsert = useUpsertSavingsGoal(familyId, userId)
   const remove = useDeleteSavingsGoal(familyId)
 
   // ── Derived insight ──────────────────────────────────────────────

@@ -110,7 +110,11 @@ function ControlV2AlcanciaCardImpl({
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
   // Mutation para reactivar una meta inactiva sin tener que ir a
   // Settings. Reusa upsert con todos los fields existentes + isActive=true.
-  const upsertGoal = useUpsertSavingsGoal(familyId)
+  // Pasamos userId también: sin él, syncAllAfterMutation no invalida
+  // home_snapshot (gate `if (userId)`). Resultado: la MetaCard del
+  // Home podía no aparecer después de activar la meta desde acá hasta
+  // expirar el staleTime (60s) o force-quit. Code review v3 finding.
+  const upsertGoal = useUpsertSavingsGoal(familyId, userId)
 
   // Press scale 0.97 — la CTA es el único elemento interactivo del
   // card. Antes usaba `opacity: pressed ? 0.78 : ...` (lento fade
@@ -133,6 +137,7 @@ function ControlV2AlcanciaCardImpl({
       <ControlV2AlcanciaCardEmpty
         diasConGasto={diasConGasto}
         familyId={familyId}
+        userId={userId}
         goal={goal}
         monthlyReserveAmount={monthlyReserveAmount}
       />
@@ -428,6 +433,7 @@ function ControlV2AlcanciaCardImpl({
 
         <ReserveBlock
           familyId={familyId}
+          userId={userId}
           monthlyReserveAmount={monthlyReserveAmount}
           goal={goal}
         />
@@ -452,6 +458,7 @@ function ControlV2AlcanciaCardImpl({
         <CreateSavingsGoalWizardSheet
           visible={wizardOpen}
           familyId={familyId}
+          userId={userId}
           onCreated={() => setWizardOpen(false)}
           onClose={() => setWizardOpen(false)}
         />
@@ -472,12 +479,14 @@ function ControlV2AlcanciaCardImpl({
 // necesita gate extra.
 interface ReserveBlockProps {
   familyId: string
+  userId?: string
   monthlyReserveAmount: number
   goal: SavingsGoal | null
 }
 
 function ReserveBlock({
   familyId,
+  userId,
   monthlyReserveAmount,
   goal,
 }: ReserveBlockProps) {
@@ -687,6 +696,7 @@ function ReserveBlock({
       <CreateSavingsGoalWizardSheet
         visible={wizardOpen}
         familyId={familyId}
+        userId={userId}
         suggestedInitialAmount={pendingReserveAfterCreate ?? undefined}
         onCreated={handleWizardCreated}
         onClose={() => {
@@ -709,6 +719,7 @@ function ReserveBlock({
 interface ControlV2AlcanciaCardEmptyProps {
   diasConGasto: number
   familyId: string
+  userId?: string
   goal: SavingsGoal | null
   monthlyReserveAmount: number
 }
@@ -716,6 +727,7 @@ interface ControlV2AlcanciaCardEmptyProps {
 function ControlV2AlcanciaCardEmpty({
   diasConGasto,
   familyId,
+  userId,
   goal,
   monthlyReserveAmount,
 }: ControlV2AlcanciaCardEmptyProps) {
@@ -823,6 +835,7 @@ function ControlV2AlcanciaCardEmpty({
             lista. El ReserveBlock se auto-renderea nullable. */}
         <ReserveBlock
           familyId={familyId}
+          userId={userId}
           monthlyReserveAmount={monthlyReserveAmount}
           goal={goal}
         />
