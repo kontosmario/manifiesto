@@ -21,6 +21,7 @@ import {
 } from '@/features/expenses/expense-history'
 import { useExpenseHistoryFilters } from '@/features/expenses/expense-history-filters.store'
 import { useExpenses } from '@/features/expenses/use-expenses'
+import { useAuthSession } from '@/features/auth/use-auth-session'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { withAlpha } from '@/theme/color-utils'
@@ -37,9 +38,13 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   const headerPalette = buildScreenHeaderPalette(theme)
   const categoriesQuery = useCategories(familyId)
   const expensesQuery = useExpenses(familyId)
-  const createCategoryMutation = useCreateCategory(familyId)
-  const renameCategoryMutation = useRenameCategory(familyId)
-  const deleteCategoryMutation = useDeleteCategory(familyId)
+  // userId via sesión activa — habilita la invalidación de home_snapshot
+  // y control snapshots dentro de `syncAllAfterMutation` cuando se
+  // crea/renombra/borra una categoría.
+  const sessionUserId = useAuthSession().data?.user?.id
+  const createCategoryMutation = useCreateCategory(familyId, sessionUserId)
+  const renameCategoryMutation = useRenameCategory(familyId, sessionUserId)
+  const deleteCategoryMutation = useDeleteCategory(familyId, sessionUserId)
   const filters = useExpenseHistoryFilters(familyId)
   const categoriesData = categoriesQuery.data
   const categories = useMemo(() => categoriesData ?? [], [categoriesData])

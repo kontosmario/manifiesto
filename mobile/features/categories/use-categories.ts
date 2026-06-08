@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
-import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { supabase } from '@/lib/supabase'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 const CATEGORY_FALLBACK_COLORS = [
   '#89C8F7',
@@ -137,7 +137,7 @@ export function useFixedExpenseCategories(familyId?: string) {
   return useCategories(familyId, 'fixed_expense')
 }
 
-export function useCreateCategory(familyId?: string) {
+export function useCreateCategory(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -160,11 +160,17 @@ export function useCreateCategory(familyId?: string) {
         throw error
       }
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: categoriesQueryKey(familyId) }),
-        queryClient.invalidateQueries({ queryKey: expenseQueryKeys.family(familyId) }),
-      ])
+    // Code review H5 (sprint A, 2026-06-08): el set previo invalidaba
+    // sólo `categoriesQueryKey` + `expenseQueryKeys.family`, dejando
+    // stale el donut de Gastos (`gastos-categories`) y el hero
+    // (`top_categories`). Delegamos a `syncAllAfterMutation` con scope
+    // `categories` para mantener todas las vistas en sincronía.
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['categories'],
+      })
     },
   })
 }
@@ -174,7 +180,7 @@ interface RenameCategoryInput {
   name: string
 }
 
-export function useRenameCategory(familyId?: string) {
+export function useRenameCategory(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -198,13 +204,19 @@ export function useRenameCategory(familyId?: string) {
         throw error
       }
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: categoriesQueryKey(familyId) })
+    // Code review H5: rename impacta lista, gastos (chips muestran
+    // nombre nuevo) y gastos-snapshot (donut + hero).
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['categories'],
+      })
     },
   })
 }
 
-export function useDeleteCategory(familyId?: string) {
+export function useDeleteCategory(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -237,11 +249,13 @@ export function useDeleteCategory(familyId?: string) {
         throw error
       }
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: categoriesQueryKey(familyId) }),
-        queryClient.invalidateQueries({ queryKey: expenseQueryKeys.family(familyId) }),
-      ])
+    // Code review H5: delete impacta lista, gastos y donut/hero.
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['categories'],
+      })
     },
   })
 }
