@@ -14,7 +14,7 @@ import {
   SettingsSwitchRow,
 } from '@/components/settings/settings-grouped-list'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useDeleteSavingsGoal } from '@/features/savings-goals/use-delete-savings-goal'
 import { triggerHaptic } from '@/lib/haptics'
@@ -28,7 +28,11 @@ interface SavingsGoalScreenProps {
 export function SavingsGoalScreen({ familyId }: SavingsGoalScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
-  const goalQuery = useSavingsGoal(familyId)
+  // Importante: useLatestSavingsGoal (no useSavingsGoal) — Settings
+  // necesita VER el goal aunque esté desactivado. Con la versión que
+  // filtra por is_active, el toggle "off" hacía null al query → screen
+  // flippaba al EmptyState como si se hubiera eliminado.
+  const goalQuery = useLatestSavingsGoal(familyId)
 
   if (goalQuery.isLoading) {
     return (
@@ -279,12 +283,16 @@ function SavingsGoalViewer({ goal, familyId, onDeleted }: SavingsGoalViewerProps
       <RiseView delay={120}>
         <SettingsGroup
           title="Estado"
-          footer="Las metas inactivas se guardan pero no aparecen en Home."
+          footer={
+            goal.isActive
+              ? 'La meta aparece en Home y participa de tus aportes.'
+              : 'Inactiva — no aparece en Home pero los datos se conservan.'
+          }
         >
           <SettingsSwitchRow
-            icon="toggle-on"
+            icon="flag"
             isLast
-            label="Meta activa"
+            label="Meta"
             disabled={upsert.isPending}
             onValueChange={handleToggleActive}
             value={goal.isActive}

@@ -60,7 +60,7 @@ import {
   supportsRemotePushNotifications,
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { ALL_TOUR_KEYS, resetAllTours, TOUR_KEYS } from '@/features/tours'
 import { useResetTourSeen } from '@/features/tours/use-reset-tour-seen'
 import {
@@ -132,7 +132,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     ).length
   }, [memberStatsQuery.data, userId])
   const totalMembers = (memberStatsQuery.data ?? []).length
-  const savingsGoalQuery = useSavingsGoal(familyId)
+  // useLatestSavingsGoal (no useSavingsGoal): incluye inactivas. Así
+  // el subtitle refleja el estado real ("Desactivada · titulo") cuando
+  // la meta existe pero está apagada, en vez de "Sin meta configurada".
+  const savingsGoalQuery = useLatestSavingsGoal(familyId)
 
   const updateDisplayNameMutation = useUpdateDisplayName(userId)
   const updateAvatarMutation = useUpdateAvatarAnimal(userId)
@@ -778,7 +781,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         ? `${financeSnapshot.dailyBudgetBufferValue}% diario`
         : `${currencyFormatter.format(financeSnapshot.dailyBudgetBufferValue)}/día`
   const savingsGoalSubtitle = savingsGoalQuery.data
-    ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
+    ? savingsGoalQuery.data.isActive
+      ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
+      : `Inactiva · ${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title}`
     : 'Sin meta configurada'
   const pushValue = !supportsPushActivation
     ? 'Dev build'
@@ -999,7 +1004,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   helper={savingsGoalSubtitle}
                   icon="flag"
                   isLast
-                  label="Meta activa"
+                  label="Meta"
                   onPress={() => router.push('/(app)/savings-goal')}
                 />
               </SettingsGroup>

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { upsertSavingsGoal } from '@/features/savings-goals/savings-goal.repository'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
+import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
 import type {
   SavingsGoal,
   SavingsGoalInput,
@@ -59,6 +60,16 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
       }
       queryClient.setQueryData<SavingsGoal | null>(
         savingsGoalQueryKey(familyId),
+        // savingsGoalQueryKey (solo activos): si el nuevo state es
+        // inactive, removemos del cache de "active". Si está activo,
+        // optimistic update normal.
+        optimistic.isActive ? optimistic : null,
+      )
+      // savings-goal-latest siempre tiene la versión actual sin filtro
+      // — actualizar también optimisticamente para que Settings refleje
+      // el toggle inmediato sin esperar refetch.
+      queryClient.setQueryData<SavingsGoal | null>(
+        latestSavingsGoalQueryKey(familyId),
         optimistic,
       )
       return { previous }
@@ -66,6 +77,7 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
     onError: (_err, input, ctx) => {
       if (ctx?.previous !== undefined) {
         queryClient.setQueryData(savingsGoalQueryKey(familyId), ctx.previous)
+        queryClient.setQueryData(latestSavingsGoalQueryKey(familyId), ctx.previous)
       }
       toast.error('No se pudo guardar la meta.', {
         actionLabel: 'Reintentar',

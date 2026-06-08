@@ -4,6 +4,7 @@ import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-q
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
 import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
+import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
 import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
 import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 import { controlIntelligenceQueryKey } from '@/features/insights/control-v2-query-keys'
@@ -110,6 +111,10 @@ export async function syncAllAfterMutation(
   // ── Savings
   if (familyId && has('savings')) {
     keys.push(savingsGoalQueryKey(familyId))
+    // Latest goal — usado por Settings (incluye inactivas). Invalidar
+    // junto con la query de activas para que ambos consumers
+    // (Settings + Home/Control) reaccionen en sincronía.
+    keys.push(latestSavingsGoalQueryKey(familyId))
   }
 
   // ── Wrapped — control intelligence ya cubre wrapped_seen_at vía homeSnapshot
