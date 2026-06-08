@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -136,6 +139,8 @@ export function CreateSavingsGoalWizardSheet({
   const [targetMonths, setTargetMonths] = useState<number>(DEFAULT_MONTHS)
   const [customMonthsActive, setCustomMonthsActive] = useState(false)
   const [customMonthsText, setCustomMonthsText] = useState('')
+  const [customMonthsNumpadExpanded, setCustomMonthsNumpadExpanded] =
+    useState(false)
 
   // Reset state on visible false→true transition. Match NumericEditSheet's
   // pattern: don't reset while the sheet is closing (so the user sees
@@ -151,6 +156,7 @@ export function CreateSavingsGoalWizardSheet({
     setTargetMonths(DEFAULT_MONTHS)
     setCustomMonthsActive(false)
     setCustomMonthsText('')
+    setCustomMonthsNumpadExpanded(false)
   }, [visible])
 
   // Reset numpadExpanded al cambiar de step para que step 2 vuelva a
@@ -395,16 +401,29 @@ export function CreateSavingsGoalWizardSheet({
             targetMonths={targetMonths}
             customMonthsActive={customMonthsActive}
             customMonthsText={customMonthsText}
+            customMonthsNumpadExpanded={customMonthsNumpadExpanded}
+            reduceMotion={reduceMotion}
             onSelectPreset={(m) => {
               void triggerHaptic('selection')
               setCustomMonthsActive(false)
+              setCustomMonthsNumpadExpanded(false)
               setTargetMonths(m)
             }}
             onToggleCustom={() => {
               void triggerHaptic('selection')
               setCustomMonthsActive(true)
+              // Auto-expandir numpad al elegir custom — el flow
+              // natural es "tap custom → tipear monto", sin step extra.
+              setCustomMonthsNumpadExpanded(true)
+            }}
+            onExpandCustomNumpad={() => {
+              void triggerHaptic('selection')
+              setCustomMonthsNumpadExpanded(true)
             }}
             onChangeCustomText={setCustomMonthsText}
+            onCustomDone={() => {
+              setCustomMonthsNumpadExpanded(false)
+            }}
           />
         )
       case 4:
@@ -470,6 +489,11 @@ export function CreateSavingsGoalWizardSheet({
               },
             ]}
           >
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={0}
+              style={styles.kbWrap}
+            >
             <View style={styles.handleArea}>
               <View
                 style={[
@@ -531,6 +555,7 @@ export function CreateSavingsGoalWizardSheet({
                 }
               />
             </View>
+            </KeyboardAvoidingView>
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -585,52 +610,12 @@ function WizardHeader({
         ) : null}
       </View>
 
-      <View
-        style={styles.dotsRow}
-        accessibilityRole="progressbar"
-        accessibilityLabel={`Paso ${step} de ${total}`}
-      >
-        {Array.from({ length: total }).map((_, idx) => {
-          const isActive = idx + 1 === step
-          const isPast = idx + 1 < step
-          return (
-            <Animated.View
-              key={idx}
-              layout={LinearTransition.duration(220).easing(EXPO_OUT)}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    isActive || isPast
-                      ? theme.colors.primary
-                      : theme.colors.line,
-                  width: isActive ? 22 : 8,
-                  opacity: isPast ? 0.5 : 1,
-                },
-              ]}
-            />
-          )
-        })}
-      </View>
-
-      <View style={[styles.headerSide, styles.headerSideRight]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cerrar wizard"
-          disabled={closeDisabled}
-          onPress={onClose}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.headerIconButton,
-            {
-              backgroundColor: theme.colors.surfaceMuted,
-              opacity: closeDisabled ? 0.4 : pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons name="close" size={20} color={theme.colors.text} />
-        </Pressable>
-      </View>
+      {/* Indicadores de pasos (dots) + botón X close removidos a
+          pedido del owner: el header ahora es minimal — solo el
+          chevron back cuando aplica. Dismiss vía swipe + drag handle.
+          El step actual se comunica vía el eyebrow del body
+          ("PASO N DE 4"). */}
+      <View style={styles.headerSpacer} />
     </View>
   )
 }
@@ -658,7 +643,9 @@ function Step1Title({
         onChangeText={(v) => onChangeTitle(v.slice(0, MAX_TITLE))}
         placeholder="Ej: Viaje a Bariloche"
         autoCapitalize="sentences"
-        autoFocus
+        // autoFocus removido a propósito: el teclado nativo en iOS
+        // empujaba el sheet entero. Con KeyboardAvoidingView wrap +
+        // tap-to-focus el flow se siente más controlado y no flashea.
         accessibilityLabel="Nombre de la meta"
         helper={`${title.length}/${MAX_TITLE}`}
       />
@@ -673,7 +660,13 @@ function Step1Title({
         >
           ELEGÍ UN ÍCONO
         </Text>
-        <View style={styles.emojiGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.emojiScroll}
+          contentContainerStyle={styles.emojiScrollContent}
+          accessibilityLabel="Seleccionar ícono — desliza para ver más"
+        >
           {EMOJI_PALETTE.map((glyph) => {
             const isActive = glyph === selectedEmoji
             return (
@@ -703,7 +696,7 @@ function Step1Title({
               </Pressable>
             )
           })}
-        </View>
+        </ScrollView>
       </View>
     </View>
   )
@@ -854,20 +847,31 @@ interface Step3MonthsProps {
   targetMonths: number
   customMonthsActive: boolean
   customMonthsText: string
+  customMonthsNumpadExpanded: boolean
+  reduceMotion: boolean
   onSelectPreset: (months: number) => void
   onToggleCustom: () => void
+  onExpandCustomNumpad: () => void
   onChangeCustomText: (v: string) => void
+  onCustomDone: () => void
 }
 
 function Step3Months({
   targetMonths,
   customMonthsActive,
   customMonthsText,
+  customMonthsNumpadExpanded,
+  reduceMotion,
   onSelectPreset,
   onToggleCustom,
+  onExpandCustomNumpad,
   onChangeCustomText,
+  onCustomDone,
 }: Step3MonthsProps) {
   const { theme } = useAppTheme()
+  const customDigits = customMonthsText.replace(/[^\d]/g, '')
+  const customMonthsParsed = customDigits === '' ? 0 : parseInt(customDigits, 10)
+  const customPlaceholder = customMonthsParsed <= 0
   return (
     <View style={styles.step3Body}>
       <View style={styles.monthsGrid}>
@@ -896,16 +900,110 @@ function Step3Months({
       </View>
 
       {customMonthsActive ? (
-        <TextField
-          label="Plazo en meses"
-          value={customMonthsText}
-          onChangeText={onChangeCustomText}
-          keyboardType="number-pad"
-          inputMode="numeric"
-          placeholder="Ej: 18"
-          accessibilityLabel="Plazo personalizado en meses"
-          autoFocus
-        />
+        <>
+          {/* Display tappable — mismo pattern que el monto del step 2.
+              El user ve el plazo elegido y abre el numpad al tap.
+              Usamos el numpad custom de la app (no teclado nativo). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              customMonthsNumpadExpanded
+                ? `Plazo personalizado. Valor actual ${customMonthsParsed} meses`
+                : `Tocá para editar plazo personalizado. Valor actual ${customMonthsParsed} meses`
+            }
+            accessibilityState={{ expanded: customMonthsNumpadExpanded }}
+            onPress={() => {
+              if (!customMonthsNumpadExpanded) {
+                onExpandCustomNumpad()
+              }
+            }}
+            style={({ pressed }) => [
+              styles.displayCard,
+              {
+                backgroundColor: theme.colors.surfaceMuted,
+                borderColor: theme.colors.border,
+                opacity: pressed && !customMonthsNumpadExpanded ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                typography.eyebrow,
+                styles.displayEyebrow,
+                { color: theme.colors.textMuted },
+              ]}
+            >
+              PLAZO PERSONALIZADO
+            </Text>
+            <View style={styles.displayValueRow}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  typography.metricLarge,
+                  styles.displayValue,
+                  {
+                    color: customPlaceholder
+                      ? theme.colors.textSoft
+                      : theme.colors.text,
+                  },
+                ]}
+              >
+                {customPlaceholder
+                  ? 'Tocá para tipear'
+                  : `${customMonthsParsed} ${customMonthsParsed === 1 ? 'mes' : 'meses'}`}
+              </Text>
+              {!customMonthsNumpadExpanded ? (
+                <View
+                  style={[
+                    styles.displayEditChip,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="edit"
+                    size={14}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.displayEditChipText,
+                      { color: theme.colors.textMuted },
+                    ]}
+                  >
+                    Editar
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </Pressable>
+
+          {customMonthsNumpadExpanded ? (
+            <Animated.View
+              entering={
+                reduceMotion
+                  ? FadeIn.duration(120)
+                  : SlideInDown.duration(320).easing(EXPO_OUT)
+              }
+              exiting={
+                reduceMotion
+                  ? FadeOut.duration(120)
+                  : SlideOutDown.duration(220).easing(EXPO_OUT)
+              }
+            >
+              <NumpadGrid
+                rawValue={customMonthsText}
+                onChangeRawValue={onChangeCustomText}
+                onDone={onCustomDone}
+                hideDoneButton
+                maxIntegerDigits={3}
+                maxDecimalDigits={0}
+              />
+            </Animated.View>
+          ) : null}
+        </>
       ) : null}
     </View>
   )
@@ -1093,12 +1191,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     minHeight: 44,
   },
+  // KeyboardAvoidingView wrap — sube el sheet cuando el teclado
+  // nativo aparece (TextField del título en step 1) y evita que el
+  // input quede tapado.
+  kbWrap: {
+    flex: 1,
+  },
   headerSide: {
     width: 36,
     alignItems: 'flex-start',
   },
-  headerSideRight: {
-    alignItems: 'flex-end',
+  headerSpacer: {
+    flex: 1,
   },
   headerIconButton: {
     width: 36,
@@ -1106,17 +1210,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dotsRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  dot: {
-    height: 8,
-    borderRadius: 4,
   },
 
   // ── Step copy (eyebrow + title) ──
@@ -1143,14 +1236,20 @@ const styles = StyleSheet.create({
   emojiSection: {
     gap: 10,
   },
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  // Single-row horizontal scroll — pedido del owner. 12 emojis no
+  // entran en ancho de pantalla; ScrollView horizontal mantiene
+  // todos visibles deslizando lateral.
+  emojiScroll: {
+    flexGrow: 0,
+  },
+  emojiScrollContent: {
     gap: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
   },
   emojiCard: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
