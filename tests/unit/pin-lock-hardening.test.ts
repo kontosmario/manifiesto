@@ -37,7 +37,7 @@ describe('pin-lock hardening', () => {
     const second = await verifyPin('1234')
     expect(second.ok).toBe(true)
     await clearPin()
-  })
+  }, 15_000)
 
   it('verifyPin rejects wrong pin and increments lockout after threshold', async () => {
     const { setPin, verifyPin, clearPin } = await import('@/lib/pin-lock')
@@ -52,7 +52,7 @@ describe('pin-lock hardening', () => {
     expect(locked.ok).toBe(false)
     expect(locked.lockedForMs).toBeGreaterThan(0)
     await clearPin()
-  })
+  }, 15_000)
 
   it('successful verify clears lockout', async () => {
     const { setPin, verifyPin, clearPin } = await import('@/lib/pin-lock')

@@ -398,6 +398,7 @@ export function HomeDashboard({
       lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
     ) {
       lastShownDecisionIdRef.current = pendingDecision.monthlySummaryId
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- abre el sheet de decisión cuando hay pending; guard por ref evita re-disparos
       setDecisionSheetOpen(true)
     }
   }, [pendingDecision, splashIsHidden, pending, wrappedInFlight])

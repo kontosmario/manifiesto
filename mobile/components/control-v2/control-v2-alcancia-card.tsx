@@ -513,6 +513,7 @@ function ReserveBlock({
 
   useEffect(() => {
     if (sheetMode !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza el draft con el monto vigente cuando se abre el sheet; condicional y dependencia explícita evita loops
       setDraft(serializePrice(monthlyReserveAmount))
     }
   }, [sheetMode, monthlyReserveAmount])

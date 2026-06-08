@@ -162,7 +162,7 @@ interface BaseProps extends SharedProps {
 function CycleBalancePromptSheetBase({
   visible,
   monthlyIncome,
-  remainingDaysInCycle,
+  remainingDaysInCycle: _remainingDaysInCycle,
   isSaving,
   errorMessage,
   onClose,
