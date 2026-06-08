@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { supabase } from '@/lib/supabase'
 import { setCachedProfileDisplayName } from '@/lib/profile-display-name-cache'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 
 export interface Profile {
   id: string
@@ -91,7 +93,7 @@ export function useMyProfile(userId?: string) {
   })
 }
 
-export function useUpdateAvatarAnimal(userId?: string) {
+export function useUpdateAvatarAnimal(userId?: string, familyId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -111,13 +113,26 @@ export function useUpdateAvatarAnimal(userId?: string) {
 
       return slug
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+    // Code review H6 (sprint A, 2026-06-08): el avatar aparece en
+    // home_snapshot (header del Home) y en el family strip (roster
+    // por miembro). Antes invalidábamos sólo `profile`; ahora
+    // delegamos a `syncAllAfterMutation` con scope `profile` para
+    // refrescar también home_snapshot y family-members.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      if (userId) {
+        void queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) })
+      }
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['profile'],
+      })
     },
   })
 }
 
-export function useUpdateDisplayName(userId?: string) {
+export function useUpdateDisplayName(userId?: string, familyId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -150,15 +165,27 @@ export function useUpdateDisplayName(userId?: string) {
 
       return displayName
     },
-    onSuccess: async (displayName) => {
+    onSuccess: (displayName) => {
       if (userId) {
         setCachedProfileDisplayName(userId, displayName)
       }
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) }),
-        queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
-      ])
+    },
+    // Code review H6 (sprint A, 2026-06-08): el nombre se muestra en
+    // home_snapshot (header), expense rows (created_by_name) y family
+    // roster. Mantenemos el invalidate de `expenseQueryKeys.all` y
+    // sumamos profile + home_snapshot + family-members vía
+    // `syncAllAfterMutation` scope `profile`.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      void queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all })
+      if (userId) {
+        void queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) })
+      }
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['profile'],
+      })
     },
   })
 }
