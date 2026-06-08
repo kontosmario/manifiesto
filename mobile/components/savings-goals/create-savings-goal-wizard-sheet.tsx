@@ -1,11 +1,43 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native'
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  runOnJS,
+  SlideInDown,
+  SlideOutDown,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
-import { ModalCard } from '@/components/ui/modal-card'
+import { NumpadGrid } from '@/components/ui/numpad-grid'
 import { TextField } from '@/components/ui/text-field'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
+import { radii } from '@/theme/palette'
+import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 
@@ -27,8 +59,32 @@ const STEP_COUNT = 4
 const DEFAULT_EMOJI = '🎯'
 const MAX_TITLE = 40
 
+const EMOJI_PALETTE = [
+  '🎯', '✈️', '🏠', '🚗',
+  '🎓', '💍', '🌅', '💻',
+  '🎁', '🏖️', '📱', '💰',
+] as const
+
 const MONTH_OPTIONS = [3, 6, 12, 24] as const
 const DEFAULT_MONTHS = 12
+
+const DISMISS_DISTANCE = 100
+const DISMISS_VELOCITY = 650
+const EXPO_OUT = Easing.bezier(0.16, 1, 0.30, 1)
+
+const STEP_EYEBROWS: Record<number, string> = {
+  1: 'PASO 1 DE 4',
+  2: 'PASO 2 DE 4',
+  3: 'PASO 3 DE 4',
+  4: 'RESUMEN',
+}
+
+const STEP_TITLES: Record<number, string> = {
+  1: '¿Cómo se llama tu meta?',
+  2: '¿Cuánto necesitás juntar?',
+  3: '¿En cuánto tiempo querés llegar?',
+  4: 'Revisá los detalles',
+}
 
 /**
  * Wizard guiado para crear una meta de ahorro inline desde cualquier
@@ -36,14 +92,26 @@ const DEFAULT_MONTHS = 12
  * punto donde antes aparecía un Alert genérico "Aún no tienes meta".
  *
  * 4 pasos:
- *   1. Título (con emoji por defecto 🎯)
- *   2. Monto objetivo (TextField numérico)
+ *   1. Título + emoji picker (12 opciones, default 🎯)
+ *   2. Monto objetivo (display tappable + NumpadGrid on-demand)
  *   3. Plazo (chips quick-select 3/6/12/24 + custom)
  *   4. Summary + submit (Crear meta / Crear y aportar $N)
+ *
+ * Chrome compartido (todos los steps):
+ *   • Bottom-sheet Modal con drag handle + drag-to-dismiss
+ *   • Header: chevron-back (oculto en step 1) + progress dots + X close
+ *   • Footer: AppButton primary full-width (Continuar / Crear meta)
  *
  * Estado interno se resetea cuando `visible` pasa de false → true
  * (igual que NumericEditSheet) — así el wizard arranca limpio cada vez
  * sin que el caller tenga que pasar `key={...}`.
+ *
+ * Rediseño 2026-06-08: alinea el wizard con los patterns del app
+ *   • NumericEditSheet-style bottom sheet (no más ModalCard)
+ *   • Numpad on-demand en step 2 (mismo pattern que CycleBalancePromptSheet)
+ *   • Full-width primary CTA — "Atrás" se mueve al header como chevron
+ *   • Emoji picker grid en step 1
+ *   • Parallax fade entre steps (translateX 12 → 0, mismo curve que el wrapped)
  */
 export function CreateSavingsGoalWizardSheet({
   visible,
@@ -52,11 +120,19 @@ export function CreateSavingsGoalWizardSheet({
   onCreated,
   onClose,
 }: CreateSavingsGoalWizardSheetProps) {
+  const { theme } = useAppTheme()
+  const insets = useSafeAreaInsets()
+  const { height: screenHeight } = useWindowDimensions()
+  const reduceMotion = useReducedMotion()
+
   const upsertMutation = useUpsertSavingsGoal(familyId)
 
   const [step, setStep] = useState(1)
+  const [direction, setDirection] = useState<1 | -1>(1)
   const [title, setTitle] = useState('')
-  const [goalAmountText, setGoalAmountText] = useState('')
+  const [emoji, setEmoji] = useState<string>(DEFAULT_EMOJI)
+  const [goalAmountRaw, setGoalAmountRaw] = useState('')
+  const [numpadExpanded, setNumpadExpanded] = useState(false)
   const [targetMonths, setTargetMonths] = useState<number>(DEFAULT_MONTHS)
   const [customMonthsActive, setCustomMonthsActive] = useState(false)
   const [customMonthsText, setCustomMonthsText] = useState('')
@@ -67,17 +143,26 @@ export function CreateSavingsGoalWizardSheet({
   useEffect(() => {
     if (!visible) return
     setStep(1)
+    setDirection(1)
     setTitle('')
-    setGoalAmountText('')
+    setEmoji(DEFAULT_EMOJI)
+    setGoalAmountRaw('')
+    setNumpadExpanded(false)
     setTargetMonths(DEFAULT_MONTHS)
     setCustomMonthsActive(false)
     setCustomMonthsText('')
   }, [visible])
 
+  // Reset numpadExpanded al cambiar de step para que step 2 vuelva a
+  // arrancar colapsado si el user navega back-and-forth.
+  useEffect(() => {
+    if (step !== 2) setNumpadExpanded(false)
+  }, [step])
+
   const goalAmount = useMemo(() => {
-    const digits = goalAmountText.replace(/[^\d]/g, '')
+    const digits = goalAmountRaw.replace(/[^\d]/g, '')
     return digits === '' ? 0 : parseInt(digits, 10)
-  }, [goalAmountText])
+  }, [goalAmountRaw])
 
   const customMonths = useMemo(() => {
     const digits = customMonthsText.replace(/[^\d]/g, '')
@@ -107,22 +192,30 @@ export function CreateSavingsGoalWizardSheet({
     ? `Crear y aportar ${formatMoneyShort(suggestedApply)}`
     : 'Crear meta'
 
-  const goNext = () => {
-    void triggerHaptic('selection')
-    setStep((s) => Math.min(STEP_COUNT, s + 1))
-  }
-  const goBack = () => {
-    void triggerHaptic('selection')
-    setStep((s) => Math.max(1, s - 1))
-  }
+  const ctaLabel = step < STEP_COUNT ? 'Continuar' : submitLabel
+  const ctaDisabled =
+    (step === 1 && !canContinueStep1) ||
+    (step === 2 && !canContinueStep2) ||
+    (step === 3 && !canContinueStep3)
 
-  const handleSubmit = () => {
+  const goNext = useCallback(() => {
+    void triggerHaptic('selection')
+    setDirection(1)
+    setStep((s) => Math.min(STEP_COUNT, s + 1))
+  }, [])
+  const goBack = useCallback(() => {
+    void triggerHaptic('selection')
+    setDirection(-1)
+    setStep((s) => Math.max(1, s - 1))
+  }, [])
+
+  const handleSubmit = useCallback(() => {
     if (!canContinueStep1 || !canContinueStep2 || !canContinueStep3) return
     upsertMutation.mutate(
       {
         input: {
           title: titleTrimmed,
-          emoji: DEFAULT_EMOJI,
+          emoji,
           goalAmount,
           currentAmount: 0,
           targetMonths: effectiveMonths ?? null,
@@ -144,56 +237,160 @@ export function CreateSavingsGoalWizardSheet({
         },
       },
     )
-  }
+  }, [
+    canContinueStep1,
+    canContinueStep2,
+    canContinueStep3,
+    upsertMutation,
+    titleTrimmed,
+    emoji,
+    goalAmount,
+    effectiveMonths,
+    onCreated,
+  ])
 
-  const stepTitle =
-    step === 1
-      ? 'Crear meta de ahorro · Paso 1 de 4'
-      : step === 2
-        ? 'Crear meta de ahorro · Paso 2 de 4'
-        : step === 3
-          ? 'Crear meta de ahorro · Paso 3 de 4'
-          : 'Crear meta de ahorro · Resumen'
+  const handlePrimaryPress = useCallback(() => {
+    if (step < STEP_COUNT) {
+      if (ctaDisabled) return
+      goNext()
+      return
+    }
+    handleSubmit()
+  }, [step, ctaDisabled, goNext, handleSubmit])
 
-  const stepSubtitle =
-    step === 1
-      ? '¿Cómo le pondrías a tu meta?'
-      : step === 2
-        ? '¿Cuánto necesitás juntar?'
-        : step === 3
-          ? '¿En cuánto tiempo querés llegar?'
-          : 'Revisá los detalles antes de crearla.'
+  // ─── Sheet animation (mismo pattern que NumericEditSheet) ──────────
+  const translateY = useSharedValue(screenHeight)
+  const backdropOpacity = useSharedValue(0)
+  const [mounted, setMounted] = useState(visible)
 
-  return (
-    <ModalCard
-      visible={visible}
-      onClose={() => {
-        if (upsertMutation.isPending) return
-        onClose()
-      }}
-      title={stepTitle}
-      subtitle={stepSubtitle}
-    >
-      <View style={styles.body}>
-        <ProgressDots step={step} total={STEP_COUNT} />
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      translateY.value = reduceMotion ? 0 : withSpring(0, motionSprings.sheet)
+      backdropOpacity.value = reduceMotion
+        ? 1
+        : withTiming(1, { duration: motionDurations.standard })
+      return
+    }
+    if (!mounted) return
+    if (reduceMotion) {
+      translateY.value = screenHeight
+      backdropOpacity.value = 0
+      setMounted(false)
+      return
+    }
+    backdropOpacity.value = withTiming(0, { duration: motionDurations.standard })
+    translateY.value = withTiming(
+      screenHeight,
+      {
+        duration: motionDurations.deliberate,
+        easing: motionEasings.accelerate,
+      },
+      (finished) => {
+        if (finished) runOnJS(setMounted)(false)
+      },
+    )
+  }, [visible, mounted, reduceMotion, screenHeight, translateY, backdropOpacity])
 
-        {step === 1 ? (
+  const sheetAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }))
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }))
+
+  const handleDismiss = useCallback(() => {
+    if (upsertMutation.isPending) return
+    onClose()
+  }, [upsertMutation.isPending, onClose])
+
+  const handleDragDismissed = useCallback(() => {
+    setMounted(false)
+    onClose()
+  }, [onClose])
+
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(!upsertMutation.isPending)
+        .onUpdate((event) => {
+          'worklet'
+          if (event.translationY > 0) {
+            translateY.value = event.translationY
+            backdropOpacity.value = Math.max(
+              0.2,
+              1 - event.translationY / screenHeight,
+            )
+          }
+        })
+        .onEnd((event) => {
+          'worklet'
+          const shouldDismiss =
+            event.translationY > DISMISS_DISTANCE ||
+            event.velocityY > DISMISS_VELOCITY
+          if (shouldDismiss) {
+            backdropOpacity.value = withTiming(0, {
+              duration: motionDurations.quick,
+            })
+            translateY.value = withSpring(
+              screenHeight,
+              {
+                ...motionSprings.sheetDismiss,
+                velocity: Math.max(event.velocityY, 800),
+              },
+              (finished) => {
+                if (finished) runOnJS(handleDragDismissed)()
+              },
+            )
+          } else {
+            translateY.value = withSpring(0, motionSprings.sheet)
+            backdropOpacity.value = withTiming(1, {
+              duration: motionDurations.quick,
+            })
+          }
+        }),
+    [
+      translateY,
+      backdropOpacity,
+      screenHeight,
+      handleDragDismissed,
+      upsertMutation.isPending,
+    ],
+  )
+
+  // ─── Step body — keyed Animated.View para parallax + fade ──────────
+  const renderStepBody = () => {
+    switch (step) {
+      case 1:
+        return (
           <Step1Title
             title={title}
             onChangeTitle={setTitle}
-            emoji={DEFAULT_EMOJI}
+            selectedEmoji={emoji}
+            onSelectEmoji={(next) => {
+              void triggerHaptic('selection')
+              setEmoji(next)
+            }}
           />
-        ) : null}
-
-        {step === 2 ? (
+        )
+      case 2:
+        return (
           <Step2Amount
-            goalAmountText={goalAmountText}
-            onChangeAmount={setGoalAmountText}
             goalAmount={goalAmount}
+            goalAmountRaw={goalAmountRaw}
+            onChangeRawValue={setGoalAmountRaw}
+            numpadExpanded={numpadExpanded}
+            onExpandNumpad={() => setNumpadExpanded(true)}
+            reduceMotion={reduceMotion}
+            onDone={() => {
+              if (canContinueStep2) goNext()
+              else setNumpadExpanded(false)
+            }}
           />
-        ) : null}
-
-        {step === 3 ? (
+        )
+      case 3:
+        return (
           <Step3Months
             targetMonths={targetMonths}
             customMonthsActive={customMonthsActive}
@@ -209,183 +406,450 @@ export function CreateSavingsGoalWizardSheet({
             }}
             onChangeCustomText={setCustomMonthsText}
           />
-        ) : null}
-
-        {step === 4 ? (
+        )
+      case 4:
+        return (
           <StepSummary
-            emoji={DEFAULT_EMOJI}
+            emoji={emoji}
             title={titleTrimmed}
             goalAmount={goalAmount}
             months={effectiveMonths ?? 0}
             monthlyEstimate={monthlyEstimate}
             suggestedApply={suggestedApply}
           />
-        ) : null}
+        )
+      default:
+        return null
+    }
+  }
 
-        <View style={styles.footerRow}>
-          {step > 1 ? (
-            <AppButton
-              variant="ghost"
-              label="Atrás"
-              onPress={goBack}
-              disabled={upsertMutation.isPending}
-              fullWidth={false}
-            />
-          ) : null}
+  const stepEntering = useMemo(() => {
+    if (reduceMotion) return FadeIn.duration(120)
+    return FadeIn.duration(280)
+      .easing(EXPO_OUT)
+      .withInitialValues({
+        opacity: 0,
+        transform: [{ translateX: direction === 1 ? 12 : -12 }],
+      })
+  }, [reduceMotion, direction])
 
-          {step < STEP_COUNT ? (
-            <AppButton
-              variant="primary"
-              label="Continuar"
-              onPress={goNext}
-              disabled={
-                (step === 1 && !canContinueStep1) ||
-                (step === 2 && !canContinueStep2) ||
-                (step === 3 && !canContinueStep3)
-              }
-              accessibilityLabel={`Continuar al paso ${step + 1} de ${STEP_COUNT}`}
+  return (
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+    >
+      <GestureHandlerRootView style={styles.root}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}
+        >
+          <Pressable
+            accessibilityLabel="Cerrar wizard"
+            accessibilityRole="button"
+            onPress={handleDismiss}
+            style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
+          />
+        </Animated.View>
+
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            layout={
+              reduceMotion
+                ? undefined
+                : LinearTransition.duration(280).easing(EXPO_OUT)
+            }
+            style={[
+              styles.sheet,
+              sheetAnimatedStyle,
+              {
+                backgroundColor: theme.colors.surface,
+                paddingBottom: insets.bottom + 16,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.handleArea}>
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: theme.colors.borderStrong },
+                ]}
+              />
+            </View>
+
+            <WizardHeader
+              step={step}
+              total={STEP_COUNT}
+              onBack={goBack}
+              onClose={handleDismiss}
+              backDisabled={upsertMutation.isPending}
+              closeDisabled={upsertMutation.isPending}
             />
-          ) : (
-            <AppButton
-              variant="primary"
-              label={submitLabel}
-              loading={upsertMutation.isPending}
-              onPress={handleSubmit}
-              accessibilityLabel={
-                suggestedApply
-                  ? `Crear meta y aportar ${formatMoney(suggestedApply)}`
-                  : `Crear meta ${titleTrimmed}`
-              }
-            />
-          )}
-        </View>
-      </View>
-    </ModalCard>
+
+            <View style={styles.stepCopy}>
+              <Text
+                style={[
+                  typography.eyebrow,
+                  { color: theme.colors.textMuted },
+                ]}
+              >
+                {STEP_EYEBROWS[step]}
+              </Text>
+              <Text
+                style={[
+                  typography.titleMedium,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {STEP_TITLES[step]}
+              </Text>
+            </View>
+
+            <Animated.View
+              key={`step-${step}`}
+              entering={stepEntering}
+              style={styles.stepBodyWrap}
+            >
+              {renderStepBody()}
+            </Animated.View>
+
+            <View style={styles.ctaWrap}>
+              <AppButton
+                variant="primary"
+                label={ctaLabel}
+                onPress={handlePrimaryPress}
+                disabled={ctaDisabled}
+                loading={upsertMutation.isPending}
+                accessibilityLabel={
+                  step < STEP_COUNT
+                    ? `Continuar al paso ${step + 1} de ${STEP_COUNT}`
+                    : suggestedApply
+                      ? `Crear meta y aportar ${formatMoney(suggestedApply)}`
+                      : `Crear meta ${titleTrimmed || ''}`.trim()
+                }
+              />
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
+    </Modal>
   )
 }
 
-// ── Progress dots ────────────────────────────────────────────────────
-interface ProgressDotsProps {
+// ── Header (chevron back + dots + close) ─────────────────────────────
+interface WizardHeaderProps {
   step: number
   total: number
+  onBack: () => void
+  onClose: () => void
+  backDisabled?: boolean
+  closeDisabled?: boolean
 }
 
-function ProgressDots({ step, total }: ProgressDotsProps) {
+function WizardHeader({
+  step,
+  total,
+  onBack,
+  onClose,
+  backDisabled,
+  closeDisabled,
+}: WizardHeaderProps) {
   const { theme } = useAppTheme()
+  const canGoBack = step > 1
   return (
-    <View
-      style={styles.dotsRow}
-      accessibilityRole="progressbar"
-      accessibilityLabel={`Paso ${step} de ${total}`}
-    >
-      {Array.from({ length: total }).map((_, idx) => {
-        const active = idx + 1 <= step
-        return (
-          <View
-            key={idx}
-            style={[
-              styles.dot,
+    <View style={styles.header}>
+      <View style={styles.headerSide}>
+        {canGoBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Volver al paso anterior"
+            disabled={backDisabled}
+            onPress={onBack}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.headerIconButton,
               {
-                backgroundColor: active
-                  ? theme.colors.primary
-                  : theme.colors.line,
-                width: idx + 1 === step ? 22 : 8,
+                backgroundColor: theme.colors.surfaceMuted,
+                opacity: backDisabled ? 0.4 : pressed ? 0.7 : 1,
               },
             ]}
-          />
-        )
-      })}
+          >
+            <MaterialIcons
+              name="chevron-left"
+              size={22}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View
+        style={styles.dotsRow}
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Paso ${step} de ${total}`}
+      >
+        {Array.from({ length: total }).map((_, idx) => {
+          const isActive = idx + 1 === step
+          const isPast = idx + 1 < step
+          return (
+            <Animated.View
+              key={idx}
+              layout={LinearTransition.duration(220).easing(EXPO_OUT)}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor:
+                    isActive || isPast
+                      ? theme.colors.primary
+                      : theme.colors.line,
+                  width: isActive ? 22 : 8,
+                  opacity: isPast ? 0.5 : 1,
+                },
+              ]}
+            />
+          )
+        })}
+      </View>
+
+      <View style={[styles.headerSide, styles.headerSideRight]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar wizard"
+          disabled={closeDisabled}
+          onPress={onClose}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.headerIconButton,
+            {
+              backgroundColor: theme.colors.surfaceMuted,
+              opacity: closeDisabled ? 0.4 : pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <MaterialIcons name="close" size={20} color={theme.colors.text} />
+        </Pressable>
+      </View>
     </View>
   )
 }
 
-// ── Step 1 — Title ──────────────────────────────────────────────────
+// ── Step 1 — Title + emoji picker ────────────────────────────────────
 interface Step1TitleProps {
   title: string
   onChangeTitle: (v: string) => void
-  emoji: string
+  selectedEmoji: string
+  onSelectEmoji: (emoji: string) => void
 }
 
-function Step1Title({ title, onChangeTitle, emoji }: Step1TitleProps) {
+function Step1Title({
+  title,
+  onChangeTitle,
+  selectedEmoji,
+  onSelectEmoji,
+}: Step1TitleProps) {
   const { theme } = useAppTheme()
   return (
-    <View style={styles.stepBody}>
-      <View
-        style={[
-          styles.emojiBubble,
-          {
-            backgroundColor: theme.isDark
-              ? 'rgba(255,255,255,0.06)'
-              : 'rgba(15,42,30,0.05)',
-            borderColor: theme.colors.line,
-          },
-        ]}
-        accessibilityRole="image"
-        accessibilityLabel="Emoji de la meta"
-      >
-        <Text style={styles.emojiGlyph}>{emoji}</Text>
-      </View>
+    <View style={styles.step1Body}>
       <TextField
         label="Nombre de la meta"
         value={title}
         onChangeText={(v) => onChangeTitle(v.slice(0, MAX_TITLE))}
         placeholder="Ej: Viaje a Bariloche"
         autoCapitalize="sentences"
+        autoFocus
         accessibilityLabel="Nombre de la meta"
         helper={`${title.length}/${MAX_TITLE}`}
       />
+
+      <View
+        style={[styles.divider, { backgroundColor: theme.colors.line }]}
+      />
+
+      <View style={styles.emojiSection}>
+        <Text
+          style={[typography.eyebrow, { color: theme.colors.textMuted }]}
+        >
+          ELEGÍ UN ÍCONO
+        </Text>
+        <View style={styles.emojiGrid}>
+          {EMOJI_PALETTE.map((glyph) => {
+            const isActive = glyph === selectedEmoji
+            return (
+              <Pressable
+                key={glyph}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Ícono ${glyph}`}
+                onPress={() => onSelectEmoji(glyph)}
+                style={({ pressed }) => [
+                  styles.emojiCard,
+                  {
+                    backgroundColor: isActive
+                      ? theme.colors.primarySurface
+                      : theme.isDark
+                        ? 'rgba(255,255,255,0.04)'
+                        : 'rgba(15,42,30,0.04)',
+                    borderColor: isActive
+                      ? theme.colors.primary
+                      : theme.colors.line,
+                    borderWidth: isActive ? 2 : 1,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.emojiGlyph}>{glyph}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      </View>
     </View>
   )
 }
 
-// ── Step 2 — Amount ─────────────────────────────────────────────────
+// ── Step 2 — Amount (display + numpad on-demand) ─────────────────────
 interface Step2AmountProps {
-  goalAmountText: string
-  onChangeAmount: (v: string) => void
   goalAmount: number
+  goalAmountRaw: string
+  onChangeRawValue: (v: string) => void
+  numpadExpanded: boolean
+  onExpandNumpad: () => void
+  reduceMotion: boolean
+  onDone: () => void
 }
 
 function Step2Amount({
-  goalAmountText,
-  onChangeAmount,
   goalAmount,
+  goalAmountRaw,
+  onChangeRawValue,
+  numpadExpanded,
+  onExpandNumpad,
+  reduceMotion,
+  onDone,
 }: Step2AmountProps) {
   const { theme } = useAppTheme()
+  const isPlaceholder = goalAmount <= 0
   return (
-    <View style={styles.stepBody}>
-      <View
-        style={[
-          styles.amountPreview,
+    <View style={styles.step2Body}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          numpadExpanded
+            ? `Editar monto. Valor actual ${
+                goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
+              }`
+            : `Tocá para editar el monto. Valor actual ${
+                goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
+              }`
+        }
+        accessibilityState={{ expanded: numpadExpanded }}
+        onPress={() => {
+          if (!numpadExpanded) onExpandNumpad()
+        }}
+        style={({ pressed }) => [
+          styles.displayCard,
           {
-            backgroundColor: theme.isDark
-              ? 'rgba(255,255,255,0.04)'
-              : 'rgba(15,42,30,0.04)',
-            borderColor: theme.colors.line,
+            backgroundColor: theme.colors.surfaceMuted,
+            borderColor: theme.colors.border,
+            opacity: pressed && !numpadExpanded ? 0.85 : 1,
           },
         ]}
       >
-        <Text style={[styles.amountEyebrow, { color: theme.colors.textMuted }]}>
+        <Text
+          style={[
+            typography.eyebrow,
+            styles.displayEyebrow,
+            { color: theme.colors.textMuted },
+          ]}
+        >
           MONTO OBJETIVO
         </Text>
-        <Text style={[styles.amountValue, { color: theme.colors.text }]}>
-          {goalAmount > 0 ? formatMoney(goalAmount) : '$ 0'}
+        <View style={styles.displayValueRow}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling
+            maxFontSizeMultiplier={1.2}
+            style={[
+              typography.displayLarge,
+              styles.displayValue,
+              {
+                color: isPlaceholder
+                  ? theme.colors.textSoft
+                  : theme.colors.text,
+              },
+            ]}
+          >
+            {goalAmount > 0 ? formatMoney(goalAmount) : '$ 0'}
+          </Text>
+          {!numpadExpanded ? (
+            <View
+              style={[
+                styles.displayEditChip,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name="edit"
+                size={14}
+                color={theme.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.displayEditChipText,
+                  { color: theme.colors.textMuted },
+                ]}
+              >
+                Editar
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+
+      {!numpadExpanded ? (
+        <Text
+          style={[
+            styles.amountHelper,
+            { color: theme.colors.textMuted },
+          ]}
+        >
+          Tocá el monto para editarlo. Solo números enteros — sin centavos.
         </Text>
-      </View>
-      <TextField
-        label="¿Cuánto querés juntar?"
-        value={goalAmountText}
-        onChangeText={onChangeAmount}
-        keyboardType="number-pad"
-        inputMode="numeric"
-        placeholder="0"
-        accessibilityLabel="Monto objetivo de la meta"
-        helper="Solo números enteros — sin centavos."
-      />
+      ) : null}
+
+      {numpadExpanded ? (
+        <Animated.View
+          entering={
+            reduceMotion
+              ? FadeIn.duration(120)
+              : SlideInDown.duration(320).easing(EXPO_OUT)
+          }
+          exiting={
+            reduceMotion
+              ? FadeOut.duration(120)
+              : SlideOutDown.duration(220).easing(EXPO_OUT)
+          }
+        >
+          <NumpadGrid
+            rawValue={goalAmountRaw}
+            onChangeRawValue={onChangeRawValue}
+            onDone={onDone}
+            hideDoneButton
+            maxIntegerDigits={11}
+          />
+        </Animated.View>
+      ) : null}
     </View>
   )
 }
 
-// ── Step 3 — Months ─────────────────────────────────────────────────
+// ── Step 3 — Months ──────────────────────────────────────────────────
 interface Step3MonthsProps {
   targetMonths: number
   customMonthsActive: boolean
@@ -405,83 +869,32 @@ function Step3Months({
 }: Step3MonthsProps) {
   const { theme } = useAppTheme()
   return (
-    <View style={styles.stepBody}>
-      <View style={styles.chipsRow}>
+    <View style={styles.step3Body}>
+      <View style={styles.monthsGrid}>
         {MONTH_OPTIONS.map((m) => {
           const isActive = !customMonthsActive && targetMonths === m
           return (
-            <Pressable
+            <MonthChip
               key={m}
+              label={`${m} meses`}
+              isActive={isActive}
               onPress={() => onSelectPreset(m)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isActive }}
               accessibilityLabel={`${m} meses`}
-              style={({ pressed }) => [
-                styles.chip,
-                {
-                  backgroundColor: isActive
-                    ? theme.colors.primary
-                    : theme.isDark
-                      ? 'rgba(255,255,255,0.05)'
-                      : 'rgba(15,42,30,0.04)',
-                  borderColor: isActive ? theme.colors.primary : theme.colors.line,
-                  opacity: pressed ? 0.78 : 1,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  {
-                    color: isActive
-                      ? theme.isDark
-                        ? theme.colors.background
-                        : '#FFFFFF'
-                      : theme.colors.text,
-                  },
-                ]}
-              >
-                {m} meses
-              </Text>
-            </Pressable>
+              theme={theme}
+              style={styles.monthsGridItem}
+            />
           )
         })}
-        <Pressable
+        <MonthChip
+          label="Personalizado"
+          isActive={customMonthsActive}
           onPress={onToggleCustom}
-          accessibilityRole="button"
-          accessibilityState={{ selected: customMonthsActive }}
           accessibilityLabel="Plazo personalizado"
-          style={({ pressed }) => [
-            styles.chip,
-            {
-              backgroundColor: customMonthsActive
-                ? theme.colors.primary
-                : theme.isDark
-                  ? 'rgba(255,255,255,0.05)'
-                  : 'rgba(15,42,30,0.04)',
-              borderColor: customMonthsActive
-                ? theme.colors.primary
-                : theme.colors.line,
-              opacity: pressed ? 0.78 : 1,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.chipText,
-              {
-                color: customMonthsActive
-                  ? theme.isDark
-                    ? theme.colors.background
-                    : '#FFFFFF'
-                  : theme.colors.text,
-              },
-            ]}
-          >
-            Custom
-          </Text>
-        </Pressable>
+          theme={theme}
+          style={styles.monthsGridFullRow}
+        />
       </View>
+
       {customMonthsActive ? (
         <TextField
           label="Plazo en meses"
@@ -491,13 +904,69 @@ function Step3Months({
           inputMode="numeric"
           placeholder="Ej: 18"
           accessibilityLabel="Plazo personalizado en meses"
+          autoFocus
         />
       ) : null}
     </View>
   )
 }
 
-// ── Step 4 — Summary ────────────────────────────────────────────────
+interface MonthChipProps {
+  label: string
+  isActive: boolean
+  onPress: () => void
+  accessibilityLabel: string
+  theme: ReturnType<typeof useAppTheme>['theme']
+  style?: object
+}
+
+function MonthChip({
+  label,
+  isActive,
+  onPress,
+  accessibilityLabel,
+  theme,
+  style,
+}: MonthChipProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [
+        styles.monthChip,
+        style,
+        {
+          backgroundColor: isActive
+            ? theme.colors.primary
+            : theme.isDark
+              ? 'rgba(255,255,255,0.05)'
+              : 'rgba(15,42,30,0.04)',
+          borderColor: isActive ? theme.colors.primary : theme.colors.line,
+          opacity: pressed ? 0.78 : 1,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.monthChipText,
+          {
+            color: isActive
+              ? theme.isDark
+                ? theme.colors.background
+                : '#FFFFFF'
+              : theme.colors.text,
+          },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+// ── Step 4 — Summary ─────────────────────────────────────────────────
 interface StepSummaryProps {
   emoji: string
   title: string
@@ -520,173 +989,300 @@ function StepSummary({
     ? theme.colors.surfaceMuted
     : theme.colors.creamCard
   return (
-    <View style={styles.stepBody}>
+    <View style={styles.step4Body}>
       <View
         style={[
           styles.summaryCard,
           { backgroundColor: cardBg, borderColor: theme.colors.line },
         ]}
       >
-        <View style={styles.summaryHeaderRow}>
-          <Text style={styles.summaryEmoji}>{emoji}</Text>
-          <Text
-            style={[styles.summaryTitle, { color: theme.colors.text }]}
-            numberOfLines={2}
-          >
-            {title || 'Mi meta de ahorro'}
-          </Text>
-        </View>
-        <View
+        <Text style={styles.summaryEmoji}>{emoji}</Text>
+        <Text
           style={[
-            styles.summaryDivider,
-            { backgroundColor: theme.colors.line },
+            typography.sectionTitle,
+            styles.summaryTitle,
+            { color: theme.colors.text },
           ]}
-        />
-        <Text style={[styles.summaryDetail, { color: theme.colors.text }]}>
-          {formatMoney(goalAmount)} en {months} {months === 1 ? 'mes' : 'meses'}
+          numberOfLines={2}
+        >
+          {title || 'Mi meta de ahorro'}
+        </Text>
+        <Text
+          style={[
+            typography.displayLarge,
+            styles.summaryAmount,
+            { color: theme.colors.text },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {formatMoney(goalAmount)}
         </Text>
         <Text
           style={[styles.summarySub, { color: theme.colors.textMuted }]}
         >
-          ~ {formatMoney(monthlyEstimate)} por mes
+          Aportes mensuales de ~{formatMoney(monthlyEstimate)} · {months}{' '}
+          {months === 1 ? 'mes' : 'meses'}
         </Text>
-        {suggestedApply ? (
-          <View
+      </View>
+
+      {suggestedApply ? (
+        <View
+          style={[
+            styles.summaryApply,
+            {
+              backgroundColor: theme.isDark
+                ? 'rgba(122,216,163,0.16)'
+                : 'rgba(28,126,58,0.10)',
+              borderColor: theme.isDark
+                ? 'rgba(122,216,163,0.32)'
+                : 'rgba(28,126,58,0.26)',
+            },
+          ]}
+        >
+          <MaterialIcons
+            name="bolt"
+            size={16}
+            color={theme.colors.success}
+          />
+          <Text
             style={[
-              styles.summaryApply,
-              {
-                backgroundColor: theme.isDark
-                  ? 'rgba(122,216,163,0.16)'
-                  : 'rgba(28,126,58,0.10)',
-                borderColor: theme.isDark
-                  ? 'rgba(122,216,163,0.32)'
-                  : 'rgba(28,126,58,0.26)',
-              },
+              styles.summaryApplyText,
+              { color: theme.colors.success },
             ]}
           >
-            <Text style={[styles.summaryApplyText, { color: theme.colors.success }]}>
-              Aportaremos {formatMoney(suggestedApply)} apenas se cree.
-            </Text>
-          </View>
-        ) : null}
-      </View>
+            Aportaremos {formatMoney(suggestedApply)} apenas se cree.
+          </Text>
+        </View>
+      ) : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  body: {
-    gap: 14,
+  // ── Sheet chrome ──
+  root: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  dotsRow: {
+  backdrop: {
+    flex: 1,
+  },
+  sheet: {
+    borderTopLeftRadius: radii['2xl'],
+    borderTopRightRadius: radii['2xl'],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 0,
+  },
+  handleArea: {
+    paddingTop: 10,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: radii.pill,
+  },
+
+  // ── Header (chevron + dots + close) ──
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 44,
+  },
+  headerSide: {
+    width: 36,
+    alignItems: 'flex-start',
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
+  },
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    marginBottom: 2,
   },
   dot: {
     height: 8,
     borderRadius: 4,
   },
-  stepBody: {
-    gap: 14,
+
+  // ── Step copy (eyebrow + title) ──
+  stepCopy: {
+    paddingHorizontal: 20,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 14,
   },
-  emojiBubble: {
-    alignSelf: 'center',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 1,
+
+  // ── Step body wrap (animated parallax) ──
+  stepBodyWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+
+  // ── Step 1 — title + emoji picker ──
+  step1Body: {
+    gap: 16,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+  emojiSection: {
+    gap: 10,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  emojiCard: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emojiGlyph: {
-    fontSize: 36,
-    lineHeight: 42,
-  },
-  amountPreview: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    alignItems: 'flex-start',
-  },
-  amountEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-    marginBottom: 6,
-  },
-  amountValue: {
     fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.6,
+    lineHeight: 32,
   },
-  chipsRow: {
+
+  // ── Step 2 — display + numpad ──
+  step2Body: {
+    gap: 12,
+  },
+  displayCard: {
+    borderRadius: radii['2xl'],
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 6,
+  },
+  displayEyebrow: {
+    letterSpacing: 1.4,
+  },
+  displayValueRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  displayValue: {
+    flex: 1,
+    letterSpacing: -1.2,
+  },
+  displayEditChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
   },
-  chipText: {
-    fontSize: 13,
+  displayEditChipText: {
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.4,
   },
-  summaryCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 8,
+  amountHelper: {
+    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: '500',
   },
-  summaryHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  // ── Step 3 — months grid ──
+  step3Body: {
     gap: 12,
   },
-  summaryEmoji: {
-    fontSize: 28,
+  monthsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  summaryTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+  monthsGridItem: {
+    flexBasis: '48%',
+    flexGrow: 1,
   },
-  summaryDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 4,
+  monthsGridFullRow: {
+    flexBasis: '100%',
   },
-  summaryDetail: {
+  monthChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    minHeight: 56,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthChipText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.2,
   },
+
+  // ── Step 4 — summary ──
+  step4Body: {
+    gap: 12,
+  },
+  summaryCard: {
+    borderRadius: radii['2xl'],
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+    gap: 6,
+  },
+  summaryEmoji: {
+    fontSize: 48,
+    lineHeight: 56,
+    marginBottom: 4,
+  },
+  summaryTitle: {
+    textAlign: 'center',
+  },
+  summaryAmount: {
+    marginTop: 4,
+  },
   summarySub: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
   summaryApply: {
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: radii.lg,
     borderWidth: 1,
   },
   summaryApplyText: {
-    fontSize: 12,
+    flex: 1,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
-  footerRow: {
-    flexDirection: 'row',
-    gap: 10,
+
+  // ── CTA ──
+  ctaWrap: {
+    paddingHorizontal: 16,
     marginTop: 4,
   },
 })
