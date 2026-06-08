@@ -159,9 +159,12 @@ export function CreateSavingsGoalWizardSheet({
   }, [visible])
 
   // Reset numpadExpanded al cambiar de step para que step 2 vuelva a
-  // arrancar colapsado si el user navega back-and-forth.
+  // arrancar colapsado si el user navega back-and-forth. Y dismiss
+  // del teclado nativo SIEMPRE que cambie el step — sino el teclado
+  // del título queda abierto sobre el numpad del step 2.
   useEffect(() => {
     if (step !== 2) setNumpadExpanded(false)
+    Keyboard.dismiss()
   }, [step])
 
   const goalAmount = useMemo(() => {
@@ -216,6 +219,9 @@ export function CreateSavingsGoalWizardSheet({
 
   const handleSubmit = useCallback(() => {
     if (!canContinueStep1 || !canContinueStep2 || !canContinueStep3) return
+    // Dismiss teclado antes del submit — sino queda flotando durante
+    // el loading state y el flash de transición al cerrar el sheet.
+    Keyboard.dismiss()
     upsertMutation.mutate(
       {
         input: {
@@ -275,7 +281,18 @@ export function CreateSavingsGoalWizardSheet({
   const [mounted, setMounted] = useState(visible)
 
   useEffect(() => {
-    if (!visible) return
+    // CRITICAL: resetear el offset en CADA transición de visible —
+    // si el modal se cierra con el teclado abierto, el listener hide
+    // se desuscribe antes de que dispare → offset queda persistido.
+    // Al reabrir, el sheet renderea translateado por el offset viejo
+    // y aparece flotando en mitad de la pantalla (bug reportado).
+    keyboardOffset.value = 0
+    if (!visible) {
+      // Asegurar que el teclado no quede flotando si el user cierra
+      // con foco activo en el TextField. Dismiss explícito en JS thread.
+      Keyboard.dismiss()
+      return
+    }
     const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
       keyboardOffset.value = withTiming(-(e.endCoordinates.height ?? 0), {
         duration: e.duration ?? 250,
@@ -345,6 +362,14 @@ export function CreateSavingsGoalWizardSheet({
     () =>
       Gesture.Pan()
         .enabled(!upsertMutation.isPending)
+        .onBegin(() => {
+          // Dismiss del teclado al arrancar el drag — sino la suma
+          // de translateY (drag) + keyboardOffset (negativo por
+          // teclado) hace que el sheet salte de posición. Dismiss
+          // dispara el hide listener que anima keyboardOffset → 0
+          // de forma sincronizada con la animación del drag.
+          runOnJS(Keyboard.dismiss)()
+        })
         .onUpdate((event) => {
           'worklet'
           if (event.translationY > 0) {
