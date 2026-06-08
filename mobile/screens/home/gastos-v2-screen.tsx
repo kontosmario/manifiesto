@@ -292,16 +292,10 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     initialCategoryId,
   })
 
-  // Sonda para detectar el caso "frozen cycle pero hay expenses post-cobro":
-  // el user ve "Carga tu primer gasto" cuando en realidad sí tiene gastos
-  // — solo que están fuera del cycle visible (típicamente porque no
-  // confirmó cobro). Owner feedback 2026-06-08.
-  //
-  // Condición: el cycle visible está vacío pero useRecentExpenses devuelve
-  // ≥1 expense → hay gastos en DB que el filter no muestra. Antes
-  // gateábamos también con isSalaryPendingConfirmation pero quedaba muy
-  // restrictivo: bastaba con que el ciclo visible no incluyera todos los
-  // gastos para que el empty state engañoso saliera.
+  // Sonda para detectar el caso "DB tiene expenses pero el cycle visible
+  // está vacío" — típicamente porque el cycle se freezó esperando
+  // confirm cobro. Owner feedback 2026-06-08: el empty state engañoso
+  // ("Carga tu primer gasto") cuando ya hay gastos cargados.
   const recentExpensesQuery = useRecentExpenses(familyId, 3)
   const hasRecentExpensesOutsideCycle =
     (recentExpensesQuery.data?.length ?? 0) > 0
@@ -954,11 +948,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // the SectionList when `sections` is empty (no day groups passed).
   const emptyState = useMemo(() => {
     if (controller.expenses.length === 0) {
-      // Caso especial: cycle frozen pero hay expenses recientes en DB.
-      // El user vio "Carga tu primer gasto" cuando ya había cargado
-      // varios — los gastos quedaron atrapados fuera del cycle visible
-      // hasta que confirme el cobro. CTA navega al Home donde el sheet
-      // de "¿Cobraste?" auto-abre.
+      // Caso "DB tiene expenses pero cycle visible está vacío" — el user
+      // ve este variant en vez del onboarding "primer gasto" engañoso.
+      // El gate principal del isEmptyAccount ya valida que el branch
+      // del SectionList se monte cuando hasRecentExpensesOutsideCycle es
+      // true, así que esta condición acá es defensiva.
       if (hasRecentExpensesOutsideCycle) {
         return {
           kind: 'pending-confirm' as const,
@@ -1240,10 +1234,19 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // Empty account: ahora chequea movimientos totales (gastos + ingresos).
   // Si solo hay ingresos sin gastos, NO es empty — hay actividad real
   // que mostrar.
+  //
+  // !hasRecentExpensesOutsideCycle: si DB tiene expenses recientes pero
+  // están fuera del cycle visible (típicamente cycle frozen por falta
+  // de confirm cobro), NO somos un "first-run account". Renderear el
+  // onboarding GastosEmptyState mintiría diciendo "Carga tu primer
+  // gasto" cuando ya hay 3 cargados. Devolvemos false → renderea
+  // SectionList con el empty state contextual ("Tus gastos esperan al
+  // mes nuevo"). Owner feedback 2026-06-08.
   const isEmptyAccount =
     !controller.error &&
     controller.expenses.length === 0 &&
-    cycleIncomeEvents.length === 0
+    cycleIncomeEvents.length === 0 &&
+    !hasRecentExpensesOutsideCycle
   if (isEmptyAccount) {
     return (
       <Screen
