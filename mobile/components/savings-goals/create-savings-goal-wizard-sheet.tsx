@@ -69,6 +69,9 @@ const EMOJI_PALETTE = [
 
 const MONTH_OPTIONS = [3, 6, 12, 24] as const
 const DEFAULT_MONTHS = 12
+// 240 = 20 años. Más que eso → la meta deja de ser "objetivo a 20
+// años" y entra territorio de retirement planning, no del flow.
+const MAX_CUSTOM_MONTHS = 240
 
 const DISMISS_DISTANCE = 100
 const DISMISS_VELOCITY = 650
@@ -177,7 +180,7 @@ export function CreateSavingsGoalWizardSheet({
     if (digits === '') return null
     const value = parseInt(digits, 10)
     if (!Number.isFinite(value) || value <= 0) return null
-    return Math.min(240, value)
+    return Math.min(MAX_CUSTOM_MONTHS, value)
   }, [customMonthsText])
 
   const effectiveMonths = customMonthsActive ? customMonths : targetMonths
@@ -1043,6 +1046,22 @@ function Step3Months({
               />
             </Animated.View>
           ) : null}
+
+          {/* Helper text bajo el numpad. Antes el clamp a 240 era silencioso
+              (el `Math.min(240, value)` en el parent recortaba sin avisar)
+              → el user tipeaba 999 y veía 240 sin entender por qué. Ahora
+              mostramos la razón explícita y, en rango, una guía de copy. */}
+          <Text
+            style={[
+              typography.caption,
+              styles.customMonthsHelper,
+              { color: theme.colors.textMuted },
+            ]}
+          >
+            {customMonthsParsed > MAX_CUSTOM_MONTHS
+              ? `Máximo ${MAX_CUSTOM_MONTHS} meses (20 años) — valor ajustado.`
+              : 'Cuántos meses hasta llegar a la meta.'}
+          </Text>
         </>
       ) : null}
     </View>
@@ -1339,6 +1358,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.4,
+  },
+  customMonthsHelper: {
+    paddingHorizontal: 4,
+    marginTop: 10,
+    textAlign: 'center',
   },
   amountHelper: {
     paddingHorizontal: 4,

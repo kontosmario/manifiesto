@@ -172,10 +172,14 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     if (!payload) return
     const firstBg = scenes[0]?.background
     if (firstBg) prevSceneBgSv.value = firstBg
-    // Solo re-init cuando arranca un wrapped nuevo, no en cada cambio
-    // de scenes (que pasa al tap-ear option).
+    // Deps incluyen `theme.isDark` porque `buildScenes` rebuildea las
+    // escenas con esa flag — si el user switcha el tema mientras está
+    // abierto el wrapped, el bg base de la primera escena cambia y
+    // queremos que el SharedValue refleje el nuevo tono. NO incluimos
+    // `scenes` ni `leftoverSelected` (cambian al tap-ear option y
+    // dispararían un reset incorrecto del bg previo).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, prevSceneBgSv])
+  }, [payload, prevSceneBgSv, theme.isDark])
 
   // Transición a una escena nueva. Captura el bg previo en el shared
   // value, resetea sceneAlpha/translateX/bgProgress a sus initialValues
@@ -516,13 +520,6 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
       </Animated.View>
     </Animated.View>
   )
-}
-
-// Worklet-safe wrapper para llamar dismiss desde el callback de
-// withTiming (que corre en el UI thread).
-function runOnJSDismiss(fn: () => void) {
-  'worklet'
-  runOnJS(fn)()
 }
 
 // ── Progress bar segment ─────────────────────────────────────────────
@@ -972,6 +969,23 @@ function ClosingSceneRender({
     transform: [{ scale: amountPulse.value }],
   }))
 
+  // Memoize selection handlers para que las LeftoverOptionCard hijas
+  // no re-rendereen por una nueva fn ref en cada render del parent.
+  // El `disabled` de las cards se pasa explícito (no usamos `undefined`
+  // con `() => {}` no-op).
+  const handleSelectMeta = useCallback(
+    () => onSelectLeftover('meta'),
+    [onSelectLeftover],
+  )
+  const handleSelectAcumular = useCallback(
+    () => onSelectLeftover('acumular'),
+    [onSelectLeftover],
+  )
+  const handleSelectReserva = useCallback(
+    () => onSelectLeftover('reserva'),
+    [onSelectLeftover],
+  )
+
   return (
     <View style={closingStyles.stage}>
       {/* ── Sección histórica (siempre presente) ────────── */}
@@ -1065,7 +1079,7 @@ function ClosingSceneRender({
               selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
               disabled={Boolean(past) || !payload.activeGoal}
               readOnly={Boolean(past)}
-              onPress={past ? () => {} : () => onSelectLeftover('meta')}
+              onPress={handleSelectMeta}
               staggerIndex={0}
               stagger={hasPending && !reduced}
             />
@@ -1078,7 +1092,7 @@ function ClosingSceneRender({
               selected={past ? past.decision === 'acumular' : leftoverSelected === 'acumular'}
               disabled={Boolean(past)}
               readOnly={Boolean(past)}
-              onPress={past ? () => {} : () => onSelectLeftover('acumular')}
+              onPress={handleSelectAcumular}
               staggerIndex={1}
               stagger={hasPending && !reduced}
             />
@@ -1091,7 +1105,7 @@ function ClosingSceneRender({
               selected={past ? past.decision === 'reserva' : leftoverSelected === 'reserva'}
               disabled={Boolean(past)}
               readOnly={Boolean(past)}
-              onPress={past ? () => {} : () => onSelectLeftover('reserva')}
+              onPress={handleSelectReserva}
               staggerIndex={2}
               stagger={hasPending && !reduced}
             />
@@ -1204,7 +1218,10 @@ function LeftoverOptionCard({
         style={[press.animatedStyle, { opacity: baseOpacity }]}
       >
       <Pressable
-        onPress={readOnly ? () => {} : onPress}
+        // `disabled` ya bloquea taps; no necesitamos un no-op fn cuando
+        // está en readOnly. Mantener `onPress={onPress}` directo evita
+        // crear una nueva fn ref en cada render.
+        onPress={onPress}
         onPressIn={readOnly || disabled ? undefined : press.onPressIn}
         onPressOut={readOnly || disabled ? undefined : press.onPressOut}
         disabled={disabled || readOnly}
@@ -1361,15 +1378,17 @@ function CycleWrappedCta({
             decision: 'reserva',
           }
         }
-        // Confetti antes del await — celebra la confirmación
-        // inmediatamente sin esperar al round-trip RPC.
-        fireConfetti()
         await payload.onApplyLeftoverDecision(input)
+        // Confetti SOLO después del await exitoso. Si el RPC falla
+        // (red, validation), el caller muestra Alert.alert con el
+        // error y NO queremos que la celebración contradiga el mensaje.
+        fireConfetti()
         setApplyingLeftover(false)
         onDismiss()
       } catch {
         setApplyingLeftover(false)
         // Errores de RPC los maneja el caller (mutation onError).
+        // No disparamos confetti — el flow falló.
       }
       return
     }

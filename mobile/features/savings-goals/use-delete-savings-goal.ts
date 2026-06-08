@@ -1,7 +1,38 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+  type UseMutationOptions,
+} from '@tanstack/react-query'
 import { deleteSavingsGoal } from '@/features/savings-goals/savings-goal.repository'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
 import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
+
+/**
+ * Pure builder — separable del React layer para que vitest pueda
+ * testear el shape (mutationFn + onSuccess invalidations) sin
+ * `useMutation`.
+ */
+export function buildDeleteSavingsGoalMutation(
+  queryClient: QueryClient,
+  familyId?: string,
+): UseMutationOptions<void, Error, string, unknown> {
+  return {
+    mutationFn: async (goalId: string) => {
+      await deleteSavingsGoal(goalId)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: savingsGoalQueryKey(familyId) }),
+        // Latest goal — Settings consume esta key. Sin invalidar, el
+        // user borraba y la pantalla seguía mostrando el goal stale.
+        queryClient.invalidateQueries({ queryKey: latestSavingsGoalQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
+        queryClient.invalidateQueries({ queryKey: ['home-snapshot'] }),
+      ])
+    },
+  }
+}
 
 /**
  * Hard-delete a savings goal row.
@@ -19,19 +50,5 @@ import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-s
  */
 export function useDeleteSavingsGoal(familyId?: string) {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (goalId: string) => {
-      await deleteSavingsGoal(goalId)
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: savingsGoalQueryKey(familyId) }),
-        // Latest goal — Settings consume esta key. Sin invalidar, el
-        // user borraba y la pantalla seguía mostrando el goal stale.
-        queryClient.invalidateQueries({ queryKey: latestSavingsGoalQueryKey(familyId) }),
-        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['home-snapshot'] }),
-      ])
-    },
-  })
+  return useMutation(buildDeleteSavingsGoalMutation(queryClient, familyId))
 }

@@ -14,18 +14,81 @@ export const cycleAcumuladoQueryKey = (
   currentCycleAnchor?: string | null,
 ) => ['cycle-acumulado', familyId, currentCycleAnchor ?? null] as const
 
-interface AcumularRow {
-  monthly_summary_id: string
-  decided_at: string
-}
-
-interface SummaryRow {
-  id: string
+interface SummaryEmbed {
   period_label: string
   period_end: string
   monthly_income: number | string
   total_spent: number | string
   savings_delta: number | string
+}
+
+interface DecisionWithSummaryRow {
+  decided_at: string
+  monthly_summary: SummaryEmbed | SummaryEmbed[] | null
+}
+
+/**
+ * Pure fetcher exportado para testeo. Separa la query de la composición
+ * react-query. Devuelve `null` cuando no hay match o no se cumple el
+ * gating (sin familyId / anchor / decisión / sobrante > 0).
+ */
+export async function fetchCurrentCycleAcumulado(
+  familyId: string | undefined,
+  currentCycleAnchor: string | null | undefined,
+): Promise<CycleAcumulado | null> {
+  if (!familyId || !currentCycleAnchor) return null
+  // 1 query con embed implícito vía FK (month_close_decisions →
+  // monthly_summaries). Antes hacíamos 2 selects encadenados; el
+  // embed colapsa el round-trip en uno solo. Mantenemos el sort por
+  // decided_at y el limit(1) — la primera fila ya viene con su
+  // summary join-eado.
+  const { data, error } = await supabase
+    .from('month_close_decisions')
+    .select(`
+      decided_at,
+      monthly_summary:monthly_summaries(
+        period_label,
+        period_end,
+        monthly_income,
+        total_spent,
+        savings_delta
+      )
+    `)
+    .eq('family_id', familyId)
+    .eq('decision', 'acumular')
+    .order('decided_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  const row = data as DecisionWithSummaryRow | null
+  // PostgREST devuelve la relación many-to-one como objeto directo
+  // (no array), pero algunos typings inferidos la tratan como array.
+  // Normalizamos defensivamente.
+  const rawSummary = row?.monthly_summary
+  const summary = Array.isArray(rawSummary) ? (rawSummary[0] ?? null) : rawSummary ?? null
+  if (!summary) return null
+
+  // Match estricto: el anchor del current cycle debe coincidir con
+  // el `period_end` (= primer día del cycle siguiente) del summary
+  // origen. Si no matchea, esta decisión es vieja o pertenece a
+  // otro cycle y no aplica al saldo actual.
+  if (summary.period_end !== currentCycleAnchor) return null
+
+  // Reconstruimos el sobrante con la misma fórmula que usa
+  // useMonthCloseDecisionPending (clampeado >= 0). El RPC ya hizo
+  // su propia versión al persistir, pero no guardó el monto, así
+  // que lo derivamos del summary aquí.
+  const sobrante = Math.max(
+    0,
+    Number(summary.monthly_income ?? 0)
+      - Number(summary.total_spent ?? 0)
+      - Number(summary.savings_delta ?? 0),
+  )
+  if (sobrante <= 0) return null
+  return {
+    amount: sobrante,
+    periodLabel: summary.period_label,
+  }
 }
 
 /**
@@ -57,55 +120,7 @@ export function useCurrentCycleAcumulado(
     // son inmutables hasta que el cycle siguiente arranque y mute el
     // anchor (invalidando el cache key). Cache 5min mientras tanto.
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<CycleAcumulado | null> => {
-      if (!familyId || !currentCycleAnchor) return null
-      // 1) Decisión "acumular" más reciente de esta family. Como
-      // PostgREST no joina relaciones sin FK exposed, hacemos 2 selects
-      // (mismo patrón que useMonthCloseDecisionPending).
-      const { data: decisions, error: dErr } = await supabase
-        .from('month_close_decisions')
-        .select('monthly_summary_id, decided_at')
-        .eq('family_id', familyId)
-        .eq('decision', 'acumular')
-        .order('decided_at', { ascending: false })
-        .limit(1)
-      if (dErr) throw dErr
-      const decision = (decisions ?? [])[0] as AcumularRow | undefined
-      if (!decision) return null
-
-      // 2) Summary asociado para confirmar match con el anchor + extraer
-      // label/amount.
-      const { data: summaries, error: sErr } = await supabase
-        .from('monthly_summaries')
-        .select('id, period_label, period_end, monthly_income, total_spent, savings_delta')
-        .eq('id', decision.monthly_summary_id)
-        .limit(1)
-      if (sErr) throw sErr
-      const summary = (summaries ?? [])[0] as SummaryRow | undefined
-      if (!summary) return null
-
-      // Match estricto: el anchor del current cycle debe coincidir con
-      // el `period_end` (= primer día del cycle siguiente) del summary
-      // origen. Si no matchea, esta decisión es vieja o pertenece a
-      // otro cycle y no aplica al saldo actual.
-      if (summary.period_end !== currentCycleAnchor) return null
-
-      // Reconstruimos el sobrante con la misma fórmula que usa
-      // useMonthCloseDecisionPending (clampeado >= 0). El RPC ya hizo
-      // su propia versión al persistir, pero no guardó el monto, así
-      // que lo derivamos del summary aquí.
-      const sobrante = Math.max(
-        0,
-        Number(summary.monthly_income ?? 0)
-          - Number(summary.total_spent ?? 0)
-          - Number(summary.savings_delta ?? 0),
-      )
-      if (sobrante <= 0) return null
-      return {
-        amount: sobrante,
-        periodLabel: summary.period_label,
-      }
-    },
+    queryFn: () => fetchCurrentCycleAcumulado(familyId, currentCycleAnchor),
   })
 
   return query.data ?? null

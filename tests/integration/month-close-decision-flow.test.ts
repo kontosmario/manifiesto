@@ -82,13 +82,71 @@ describe('apply_month_close_decision V2 — E2E', () => {
     const admin = adminClient()
     const { data: ff } = await admin
       .from('family_finance')
-      .select('current_cycle_starting_balance, current_cycle_anchor')
+      .select('current_cycle_starting_balance, current_cycle_anchor, monthly_income')
       .eq('family_id', family.familyId)
       .single()
-    // sobrante = 1M - 700k - 0 = 300k
-    const row = ff as { current_cycle_starting_balance: number | string; current_cycle_anchor: string }
-    expect(Number(row.current_cycle_starting_balance)).toBe(300_000)
+    // Fix 20260607230000: coalesce(starting_balance, monthly_income) + sobrante.
+    // Como seedMinimalFamily setea monthly_income=1M y starting_balance arranca
+    // null, el resultado esperado es monthly_income (1M) + sobrante (300k).
+    const row = ff as {
+      current_cycle_starting_balance: number | string
+      current_cycle_anchor: string
+      monthly_income: number | string
+    }
+    expect(Number(row.current_cycle_starting_balance)).toBe(1_300_000)
     expect(row.current_cycle_anchor).toBe(ANCHOR)
+  })
+
+  it('preserves monthly_income when no override exists (regression for fix 20260607230000)', async () => {
+    // Test explícito del fix: el bug previo era coalesce(starting_balance, 0)
+    // que tiraba el sueldo cuando no había override. Ahora coalesce con
+    // monthly_income — verificamos sumando un monthly_income custom y un
+    // sobrante derivado del summary.
+    if (!reachable) return
+    const family = await seedMinimalFamily('', { monthlyIncome: 6_900_000 })
+    lastSeeded = family
+
+    const admin = adminClient()
+    const { data: summary, error: summaryErr } = await admin
+      .from('monthly_summaries')
+      .insert({
+        family_id: family.familyId,
+        period_start: '2026-05-01',
+        period_end: '2026-06-01',
+        period_label: 'Mayo 2026',
+        total_variable_spent: 4_700_000,
+        total_fixed_spent: 0,
+        total_spent: 4_700_000,
+        monthly_income: 6_900_000,
+        savings_goal_amount: 0,
+        savings_delta: 0,
+      })
+      .select('id')
+      .single()
+    if (summaryErr) throw summaryErr
+    const summaryId = (summary as { id: string }).id
+
+    const client = userClient(family.ownerAccessToken)
+    const { error } = await client.rpc('apply_month_close_decision', {
+      p_monthly_summary_id: summaryId,
+      p_decision: 'acumular',
+      p_new_cycle_anchor: '2026-06-01',
+    })
+    expect(error).toBeNull()
+
+    const { data: ff } = await admin
+      .from('family_finance')
+      .select('current_cycle_starting_balance')
+      .eq('family_id', family.familyId)
+      .single()
+    // sobrante = 6.9M - 4.7M - 0 = 2.2M
+    // expected = monthly_income (6.9M) + sobrante (2.2M) = 9.1M
+    expect(
+      Number(
+        (ff as { current_cycle_starting_balance: number | string })
+          .current_cycle_starting_balance,
+      ),
+    ).toBe(9_100_000)
   })
 
   it('acumular sin newCycleAnchor falla (validación en RPC)', async () => {

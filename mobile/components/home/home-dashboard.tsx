@@ -109,6 +109,18 @@ interface HomeDashboardProps {
   onMarkTapped?: () => void
 }
 
+/**
+ * Tiempo de espera entre confirm-cobro y wrapped fire. El trigger DB
+ * `trg_family_finance_salary_confirm` corre `try_close_previous_cycle`
+ * que crea el `monthly_summaries` row al confirmar el cobro. 700ms
+ * cubren: roundtrip al confirm + ejecución del trigger + propagación
+ * del refetch de `controlIntelligenceQueryKey` y `pendingDecision`.
+ * Si la red está particularmente lenta y el refetch trae stale, el
+ * código hace fallback al sheet standalone (ver `setWrappedInFlight`
+ * release paths abajo).
+ */
+const WRAPPED_TRIGGER_WAIT_MS = 700
+
 export function HomeDashboard({
   dashboard,
   recentExpenses,
@@ -421,16 +433,16 @@ export function HomeDashboard({
   //   - Skip si la summary no tiene gastos (ciclo vacío, no hay
   //     historia que contar).
   // El DB trigger `trg_family_finance_salary_confirm` cierra el ciclo
-  // sync con el upsert. Por eso esperamos 700ms (post-haptic) y luego
-  // invalidamos la cache + refetch para leer la summary fresca.
+  // sync con el upsert. Por eso esperamos un wait corto post-haptic y
+  // luego invalidamos la cache + refetch para leer la summary fresca.
   const fireWrappedForClosedCycle = useCallback(async () => {
     if (isOnboardingFlow) return
-    // Lock SINCRONO: evita que el sheet standalone se abra durante los
-    // 700ms de wait + refetch. Se libera en TODOS los early-return y
-    // al final del flujo, garantizando que el standalone funcione como
-    // fallback cuando wrapped no arranca.
+    // Lock SINCRONO: evita que el sheet standalone se abra durante el
+    // wait + refetch. Se libera en TODOS los early-return y al final
+    // del flujo, garantizando que el standalone funcione como fallback
+    // cuando wrapped no arranca.
     setWrappedInFlight(true)
-    await new Promise<void>((resolve) => setTimeout(resolve, 700))
+    await new Promise<void>((resolve) => setTimeout(resolve, WRAPPED_TRIGGER_WAIT_MS))
     await Promise.all([
       queryClient.refetchQueries({
         queryKey: controlIntelligenceQueryKey(familyId),
