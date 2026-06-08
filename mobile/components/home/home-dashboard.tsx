@@ -13,6 +13,7 @@ import {
   type ApplyDecisionInput,
 } from '@/features/month-close/use-month-close-decision'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { useAuthSession } from '@/features/auth/use-auth-session'
 import { MetaCard } from '@/components/home/meta-card'
 import {
   computeTopCategory,
@@ -163,7 +164,11 @@ export function HomeDashboard({
   // Spec B — month-close leftover decision. Detecta sobrante del mes
   // pasado y abre el sheet automáticamente cuando hay decisión pendiente.
   const pendingDecision = useMonthCloseDecisionPending(familyId)
-  const applyDecision = useApplyMonthCloseDecision(familyId)
+  // userId via auth session — necesario para que `syncAllAfterMutation`
+  // invalide home_snapshot / control snapshot / streaks tras la
+  // decisión (Code review H1, sprint A 2026-06-08).
+  const sessionUserId = useAuthSession().data?.user?.id
+  const applyDecision = useApplyMonthCloseDecision(familyId, sessionUserId)
 
   // Splash visibility — gate compartido entre el cycle balance prompt
   // y la decisión standalone para que NINGÚN sheet/modal aparezca

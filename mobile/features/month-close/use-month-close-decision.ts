@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 const SOBRANTE_THRESHOLD = 1000
 
@@ -105,7 +106,7 @@ export interface ApplyDecisionInput {
   newCycleAnchor?: string
 }
 
-export function useApplyMonthCloseDecision(familyId?: string) {
+export function useApplyMonthCloseDecision(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: ApplyDecisionInput) => {
@@ -117,17 +118,26 @@ export function useApplyMonthCloseDecision(familyId?: string) {
       })
       if (error) throw error
     },
-    onSuccess: async () => {
+    // Code review H1 (sprint A, 2026-06-08): la decisión de month-close
+    // puede mover plata a una savings goal, abrir un nuevo ciclo o
+    // tocar reserva. El set previo de 5 keys hardcoded omitía Home /
+    // Gastos / Control snapshots, lo que dejaba la UI stale tras
+    // decidir. `syncAllAfterMutation` con scopes `savings`+`income`
+    // cubre family-finance, savings goals, control snapshots y
+    // cycle-acumulado en un solo lugar.
+    onSettled: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['month-close-decision', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['family-finance', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['savings-goal', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['monthly-summaries', familyId] }),
-        // Hero del Home consulta ['cycle-acumulado', familyId, anchor]
-        // para mostrar contexto positivo cuando la decisión fue
-        // "acumular". Sin invalidar acá, el user que acaba de elegir
-        // acumular ve el chip "Ajustado" viejo hasta refresh manual.
-        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
+        queryClient.invalidateQueries({
+          queryKey: ['month-close-decision', familyId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['monthly-summaries', familyId],
+        }),
+        syncAllAfterMutation(queryClient, {
+          familyId,
+          userId,
+          scopes: ['savings', 'income'],
+        }),
       ])
     },
   })
