@@ -159,12 +159,12 @@ export function CreateSavingsGoalWizardSheet({
   }, [visible])
 
   // Reset numpadExpanded al cambiar de step para que step 2 vuelva a
-  // arrancar colapsado si el user navega back-and-forth. Y dismiss
-  // del teclado nativo SIEMPRE que cambie el step — sino el teclado
-  // del título queda abierto sobre el numpad del step 2.
+  // arrancar colapsado si el user navega back-and-forth.
+  // NO dismisseamos el teclado acá — el dismiss vive en goNext/goBack
+  // que se disparan por interacción explícita del user (no en el
+  // mount inicial donde step=1 by default).
   useEffect(() => {
     if (step !== 2) setNumpadExpanded(false)
-    Keyboard.dismiss()
   }, [step])
 
   const goalAmount = useMemo(() => {
@@ -208,11 +208,16 @@ export function CreateSavingsGoalWizardSheet({
 
   const goNext = useCallback(() => {
     void triggerHaptic('selection')
+    // Dismiss explícito al avanzar — si el user estaba escribiendo
+    // en el TextField, el teclado se cierra antes del cambio de step
+    // para no tapar el numpad del step 2.
+    Keyboard.dismiss()
     setDirection(1)
     setStep((s) => Math.min(STEP_COUNT, s + 1))
   }, [])
   const goBack = useCallback(() => {
     void triggerHaptic('selection')
+    Keyboard.dismiss()
     setDirection(-1)
     setStep((s) => Math.max(1, s - 1))
   }, [])
@@ -362,14 +367,11 @@ export function CreateSavingsGoalWizardSheet({
     () =>
       Gesture.Pan()
         .enabled(!upsertMutation.isPending)
-        .onBegin(() => {
-          // Dismiss del teclado al arrancar el drag — sino la suma
-          // de translateY (drag) + keyboardOffset (negativo por
-          // teclado) hace que el sheet salte de posición. Dismiss
-          // dispara el hide listener que anima keyboardOffset → 0
-          // de forma sincronizada con la animación del drag.
-          runOnJS(Keyboard.dismiss)()
-        })
+        // activeOffsetY garantiza que el gesture solo arranca cuando
+        // el user mueve ≥10px verticalmente. Sin esto, onBegin
+        // disparaba en CUALQUIER touch (incluido tap al input del
+        // título) → race entre dismiss + focus del TextField → crash.
+        .activeOffsetY(10)
         .onUpdate((event) => {
           'worklet'
           if (event.translationY > 0) {
