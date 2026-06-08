@@ -178,3 +178,35 @@ function getNestedSnapshot() {
 export function useHasNestedAdvisorHost(): boolean {
   return useSyncExternalStore(subscribeNested, getNestedSnapshot, getNestedSnapshot)
 }
+
+// ─── Mutual-exclusivity assertion ─────────────────────────────────
+//
+// Code review C4 (sprint A, 2026-06-08): el contrato del advisor host
+// es que SÓLO un host activo (top-level o nested) renderice los sheets
+// en un mismo punto en el tiempo. La gate `isActiveHost = isNested ||
+// !hasNested` ya implementa eso. Esta sección suma un contador en
+// memoria que cuenta cuántos hosts se consideran activos a la vez —
+// si en dev (__DEV__) hay más de 1, tiramos un assertion ruidoso para
+// pegar antes de shippear un regress que reintroduce el bug de
+// doble-mount silencioso.
+
+let activeHostCount = 0
+
+export function registerActiveAdvisorHost(): () => void {
+  activeHostCount += 1
+  if (__DEV__ && activeHostCount > 1) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[advisor-host] mutual exclusivity violated: ' +
+        `${activeHostCount} active hosts detected. Sólo uno debe estar ` +
+        'activo a la vez (top-level del shell o nested de Asistente). ' +
+        'Revisar el gate `isActiveHost` y los unmounts.',
+    )
+  }
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    activeHostCount = Math.max(0, activeHostCount - 1)
+  }
+}

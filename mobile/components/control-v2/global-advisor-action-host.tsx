@@ -9,6 +9,7 @@ import { AddFixedQuickSheet } from '@/components/control-v2/add-fixed-quick-shee
 import {
   claimNestedAdvisorHost,
   clearPendingAdvisorAction,
+  registerActiveAdvisorHost,
   useHasNestedAdvisorHost,
   usePendingAdvisorAction,
 } from '@/features/insights/advisor-action-coordinator'
@@ -88,6 +89,15 @@ export function GlobalAdvisorActionHost({
   }, [isNested])
 
   const isActiveHost = isNested || !hasNested
+
+  // Code review C4 (sprint A, 2026-06-08): dev-only assertion para
+  // que dos hosts activos al mismo tiempo (regress del gate
+  // `isActiveHost`) no pasen silenciosamente. La lógica de exclusión
+  // ya existe arriba; esta línea sólo agrega telemetría.
+  useEffect(() => {
+    if (!isActiveHost) return
+    return registerActiveAdvisorHost()
+  }, [isActiveHost])
 
   // ─── Data hooks (always mounted) ──────────────────────────────
   //
@@ -189,7 +199,7 @@ export function GlobalAdvisorActionHost({
   ])
 
   // ─── Savings contribution ─────────────────────────────────────
-  const addContributionMutation = useAddSavingsContribution(familyId)
+  const addContributionMutation = useAddSavingsContribution(familyId, userId)
 
   const savingsRequest =
     pending?.type === 'savings-contribution' ? pending : null
