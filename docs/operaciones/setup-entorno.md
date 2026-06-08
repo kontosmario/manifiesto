@@ -147,10 +147,43 @@ Notas:
 - El redirect path está hardcodeado en `mobile/features/auth/auth-flow.ts` (no configurable por env — hardening 2026-05-10).
 
 ## CI
-El workflow de verificación mobile vive en `.github/workflows/mobile-ci.yml` y corre:
+El workflow de verificación mobile vive en `.github/workflows/mobile-ci.yml`.
+
+Job `verify` (siempre corre):
 - `npm run lint`
 - `npm run typecheck`
+- `npm test` (unit tests Vitest)
+- guards (legacy spacing, forbidden copy, motion tokens)
+- `npx expo export --platform ios` (regression guard del bundle)
+- `deno test` en `supabase/functions/`
 
-> Los tests (Vitest + Playwright) existen pero **no corren en CI** — ver [el snapshot 07](../ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/07-backend-servicios-db.md).
+Job `integration-tests` / `integration-tests-pr`:
+- Levanta el stack local de Supabase con `supabase start --exclude studio,inbucket,imgproxy,edge-runtime,storage-api,realtime,pooler,vector` (sólo Postgres + GoTrue + PostgREST — boot ~2-3 min).
+- Aplica todas las migraciones de `supabase/migrations/` automáticamente.
+- Lee `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` desde `supabase status -o json` y los exporta al entorno.
+- Corre `npm run test:integration` (cubre RLS, month-close, retention purge, snapshots).
+- En PRs sólo corre cuando el diff toca `supabase/`, `tests/integration/`, `mobile/data/`, `mobile/features/**/data/`, el workflow, o el lockfile (paths filter via `dorny/paths-filter`).
+- En push a `main` siempre corre (defensa contra drift entre merges).
+- Timeout: 15 min.
 
-<!-- ✓ Contrastado contra código el 2026-05-22 -->
+Playwright (`npm run test:e2e`) no corre en CI todavía — pendiente decisión de costo (headless browser + viewport setup).
+
+### Correr integration tests local
+Requisitos:
+- Docker Desktop corriendo.
+- `supabase` CLI (ya instalada como dep del proyecto, accesible vía `npx supabase`).
+
+```bash
+npm run supabase:start          # levanta stack local
+npm run test:integration        # corre los 11 specs
+npm run supabase:stop           # apaga el stack
+```
+
+El setup file `tests/integration/_setup.ts` lee `.env.supabase` si existe; si no, los helpers extraen las JWTs locales vía `npx supabase status -o json`. Los tests skipean con `describe.skip` si el stack no es alcanzable (no fallan).
+
+### Qué pasa si fallan en CI
+- Job falla → bloquea el merge a `main` (requerido por branch protection).
+- Logs incluyen el output de `supabase start` y de cada spec.
+- Para reproducir local: alcanza con `npm run supabase:start && npm run test:integration`.
+
+<!-- ✓ Contrastado contra código el 2026-06-08 (sprint C — integration tests en CI) -->

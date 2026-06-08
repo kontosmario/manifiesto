@@ -67,3 +67,130 @@ jobs:
         working-directory: supabase/functions
         run: |
           deno test --allow-env --allow-net send-family-push notifications-orchestrator
+
+  # Integration tests run against a real local Supabase stack (Postgres + GoTrue +
+  # PostgREST) spun up via `supabase start`. The stack applies every migration
+  # under `supabase/migrations/`, so this job catches RLS regressions, RPC
+  # signature drift, and trigger bugs that unit tests can't see.
+  #
+  # Gated by a paths filter: only runs when backend, integration tests, the
+  # workflow itself, or shared mobile data layer changes — keeps CI fast on
+  # pure UI PRs. Boot takes ~2–3 min; suite ~30 s; total well under 10 min.
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Re-run on push to main even if the paths filter didn't match the diff —
+    # protects main against drift between merges that individually skipped this job.
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install
+        run: npm ci
+
+      - name: Start Supabase (db + auth + rest only)
+        # We don't need studio, inbucket, realtime, edge runtime, storage,
+        # imgproxy, or the pooler for these tests — excluding them shaves
+        # ~60 s off boot and avoids pulling images we never query.
+        run: |
+          supabase start \
+            --exclude studio,inbucket,imgproxy,edge-runtime,storage-api,realtime,pooler,vector
+
+      - name: Export Supabase keys
+        # `setup-cli` writes status to a known location. We read the local
+        # well-known JWTs out of `supabase status` so the test helpers don't
+        # have to shell out to npx supabase inside vitest forks.
+        run: |
+          status_json=$(supabase status -o json)
+          echo "SUPABASE_URL=$(echo "$status_json" | jq -r .API_URL)" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$(echo "$status_json" | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status_json" | jq -r .SERVICE_ROLE_KEY)" >> "$GITHUB_ENV"
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup || true
+
+  # Integration tests on PRs — only runs when the diff touches code that could
+  # plausibly break the backend contract. Keeps UI-only PRs fast (skips ~3 min
+  # of stack boot) while still gating risky changes.
+  integration-tests-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect relevant changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'supabase/migrations/**'
+              - 'supabase/functions/**'
+              - 'tests/integration/**'
+              - 'mobile/data/**'
+              - 'mobile/features/**/data/**'
+              - 'vitest.integration.config.ts'
+              - '.github/workflows/mobile-ci.yml'
+              - 'package.json'
+              - 'package-lock.json'
+
+      - name: Setup Node
+        if: steps.filter.outputs.backend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Supabase CLI
+        if: steps.filter.outputs.backend == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install
+        if: steps.filter.outputs.backend == 'true'
+        run: npm ci
+
+      - name: Start Supabase (db + auth + rest only)
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          supabase start \
+            --exclude studio,inbucket,imgproxy,edge-runtime,storage-api,realtime,pooler,vector
+
+      - name: Export Supabase keys
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          status_json=$(supabase status -o json)
+          echo "SUPABASE_URL=$(echo "$status_json" | jq -r .API_URL)" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$(echo "$status_json" | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status_json" | jq -r .SERVICE_ROLE_KEY)" >> "$GITHUB_ENV"
+
+      - name: Integration tests
+        if: steps.filter.outputs.backend == 'true'
+        run: npm run test:integration
+
+      - name: Skip notice
+        if: steps.filter.outputs.backend != 'true'
+        run: echo "No backend/integration-relevant changes — skipping integration suite."
+
+      - name: Stop Supabase
+        if: always() && steps.filter.outputs.backend == 'true'
+        run: supabase stop --no-backup || true
