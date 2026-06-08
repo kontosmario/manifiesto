@@ -18,7 +18,10 @@ import {
   mapFixedExpensePaymentRow,
   type FixedExpensePaymentRow,
 } from '@/features/fixed-expenses/fixed-expense-payment.model'
-import { fixedExpensePaymentsKey } from '@/features/fixed-expenses/use-fixed-expense-payments'
+import {
+  fixedExpenseIdsSignature,
+  fixedExpensePaymentsKey,
+} from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { categoriesQueryKey, type Category } from '@/features/categories/use-categories'
 import { familyMembersKey, type FamilyMemberRow } from '@/features/family/use-family-members'
 import {
@@ -380,11 +383,21 @@ function seedCaches(
   // case the hook keys never match and we skip the seed, fall back to
   // the consumer's own fetch.
   if (payload.payments_cycle_start && payload.payments_cycle_end) {
+    // Signature de fixed expense ids debe matchear con la que arma el
+    // consumer hook (`useFixedExpensePayments`). El consumer pasa
+    // `fixedExpenses.map(f => f.id)`; replicamos lo mismo acá usando
+    // los rows crudos del payload para que la key sea idéntica.
+    const idsSignature = fixedExpenseIdsSignature(
+      payload.fixed_expenses
+        .map((row) => (row as { id?: string }).id)
+        .filter((id): id is string => typeof id === 'string'),
+    )
     client.setQueryData(
       fixedExpensePaymentsKey(
         familyId,
         payload.payments_cycle_start,
         payload.payments_cycle_end,
+        idsSignature,
       ),
       (payload.fixed_expense_payments ?? []).map(mapFixedExpensePaymentRow),
     )
