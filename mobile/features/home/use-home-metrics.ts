@@ -8,6 +8,10 @@ import {
 import { useMonthlyExpenseComparison } from '@/features/home/use-monthly-expense-comparison'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
+import {
+  useCurrentCycleAcumulado,
+  type CycleAcumulado,
+} from '@/features/month-close/use-current-cycle-acumulado'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
@@ -80,6 +84,46 @@ export interface HomeHeroMetrics {
    * a setup CTA instead of "$0 disponible".
    */
   incomeConfigured: boolean
+  /**
+   * Sueldo mensual base — usado por el hero para mostrar el breakdown
+   * "$X sueldo · $Y acumulado de mayo" cuando `acumulado != null`.
+   * Siempre poblado (0 cuando `incomeConfigured === false`).
+   */
+  monthlyIncome: number
+  /**
+   * Cuando el `current_cycle_starting_balance` proviene de una decisión
+   * "acumular" del mes anterior, contiene el monto + label del periodo
+   * origen para mostrar contexto positivo ("+$2.2M acumulado de mayo")
+   * en lugar del chip neutral "Ajustado para este mes". `null` cuando
+   * el saldo del cycle no viene de un acumular (sea por override
+   * manual del user o por estado default).
+   */
+  acumulado: CycleAcumulado | null
+  /**
+   * Reserva acumulada del cierre de meses anteriores (Spec B —
+   * decisión "Guardar como reserva" en el wrapped). Lee directo
+   * `family_finance.monthly_reserve_amount` (numeric, viene como
+   * string vía PostgREST). Se surface en el hero como chip indigo
+   * read-only para que la plata no desaparezca visualmente, y en
+   * Settings como sección. 0 cuando todavía no hay ningún mes
+   * guardado como reserva.
+   */
+  monthlyReserveAmount: number
+  /**
+   * Diferencia `current_cycle_starting_balance - monthly_income`
+   * cuando hay override activo (cycleAdjusted == true), 0 cuando no.
+   *
+   *   > 0 = balance subió respecto del sueldo (sumar reserva al mes,
+   *         cobro extra, acumular del mes pasado, etc). El hero
+   *         muestra chip indigo "+\$X sumado al mes" en vez del peach
+   *         "Ajustado para este mes" (que implicaba correción down).
+   *   < 0 = balance bajó respecto del sueldo (cobro menor de lo
+   *         esperado, e.g. quincena adelantada). El hero mantiene
+   *         el chip peach "Ajustado para este mes".
+   *   = 0 = balance == sueldo exacto (raro — equivalente al estado
+   *         default sin override).
+   */
+  cycleBalanceDiff: number
 }
 
 export interface HomeMonthSummary {
@@ -133,6 +177,14 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     formatLocalDateKey(dashboard.monthlyAccounting.end),
   )
   const cycleExtraIncome = cycleIncomeQuery.data ?? 0
+  // Cuando el saldo del cycle viene de "acumular" del mes anterior,
+  // el hero muestra breakdown explícito + chip verde en lugar del
+  // chip neutral "Ajustado". El hook matchea la decisión vigente
+  // contra `current_cycle_anchor` (self-correcting al avanzar cycle).
+  const acumulado = useCurrentCycleAcumulado(
+    familyId,
+    dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+  )
 
   const today = dashboard.todayDate
   // Stabilise the `?? []` fallbacks so downstream memos don't bust
@@ -251,6 +303,23 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     // surfacing the projection (UI shows a placeholder until then).
     const projectionReliable = cycleDay >= 4
     const incomeConfigured = dashboard.monthlyIncome > 0
+    // PostgREST devuelve numeric como string → Number() defensivo.
+    // `normalizeFinancePayload` ya lo coerciona, pero acá lo dejamos
+    // explícito por si llega data desde otro camino (fallback / cache
+    // optimista) sin pasar por el normalize.
+    const monthlyReserveAmount = Math.max(
+      0,
+      Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) || 0,
+    )
+    // Diff balance vs sueldo cuando hay override. Permite al hero
+    // diferenciar entre "ajustaste hacia abajo" (peach) y "sumaste
+    // plata" (indigo) — sin esto el chip leía "Ajustado para este
+    // mes" incluso después de sumar reserva al ciclo, lo cual
+    // confundía al user.
+    const cycleBalanceDiff =
+      dashboard.cycleStartingBalanceOverride !== null
+        ? (dashboard.cycleStartingBalanceOverride as number) - dashboard.monthlyIncome
+        : 0
 
     const hero: HomeHeroMetrics = {
       availableToday,
@@ -264,6 +333,10 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       paydayDaysOverdue,
       projectionReliable,
       incomeConfigured,
+      monthlyIncome: dashboard.monthlyIncome,
+      acumulado,
+      monthlyReserveAmount,
+      cycleBalanceDiff,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
@@ -328,12 +401,14 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.fixedExpensesMonthlyTotal,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
+    dashboard.familyFinanceQuery.data?.monthly_reserve_amount,
     cycleExtraIncome,
     expenses,
     comparisonQuery.data,
     fijosSummary,
     savingsGoalQuery.data,
     dismissedHikes,
+    acumulado,
   ])
 }
 

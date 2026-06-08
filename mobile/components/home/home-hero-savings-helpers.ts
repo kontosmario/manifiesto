@@ -54,12 +54,15 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
 
   const remaining = Math.max(0, Math.min(target, Math.round(args.savingsRemaining)))
   const percent = Math.max(0, Math.round(args.savingsGoalPercent ?? 0))
-  const percentSuffix = percent > 0 ? ` · ${percent}%` : ''
+
+  // Copy compacto — labels cortos para que entren en el chip sin
+  // wraparound. El a11y mantiene la versión larga con contexto
+  // completo para screen readers.
 
   if (remaining <= 0) {
     return {
       kind: 'consumed',
-      label: 'Te comiste el ahorro de este mes',
+      label: 'Sin ahorro este mes',
       a11y: `Aviso: tus gastos consumieron los ${formatMoney(target)} de ahorro previstos para este mes.`,
     }
   }
@@ -67,14 +70,17 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
   if (remaining >= target) {
     return {
       kind: 'healthy',
-      label: `Apartando ${formatMoneyShort(target)}${percentSuffix}`,
+      label: `Ahorrando ${formatMoneyShort(target)}`,
       a11y: `Estás apartando ${formatMoney(target)} de ahorro este mes${percent > 0 ? `, equivalente al ${percent} por ciento del ingreso` : ''}.`,
     }
   }
 
+  // "X de meta Y" en vez de "X de Y" — la palabra "meta" ancla el
+  // segundo número como objetivo, sin esto el "1.1 de 1.4" leía como
+  // dos números sin relación obvia (owner feedback 2026-06-08).
   return {
     kind: 'partial',
-    label: `Apartando ${formatMoneyShort(remaining)} de ${formatMoneyShort(target)}${percentSuffix}`,
-    a11y: `Estás apartando ${formatMoney(remaining)} de ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
+    label: `${formatMoneyShort(remaining)} de meta ${formatMoneyShort(target)}`,
+    a11y: `Llevás apartados ${formatMoney(remaining)} de los ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
   }
 }

@@ -121,7 +121,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const updateDisplayName = useUpdateDisplayName(userId)
   const updateAvatar = useUpdateAvatarAnimal(userId)
   const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined)
-  const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '')
+  const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '', userId)
   // Joiner finish: consume the single-use invite (creates the
   // membership + marks the code used). Replaces the legacy
   // `useJoinFamily` which used the persistent `families.code`.

@@ -315,7 +315,10 @@ export function GlobalAdvisorActionHost({
   )
 
   // ─── Savings goal edit ─────────────────────────────────────────
-  const upsertGoalMutation = useUpsertSavingsGoal(familyId)
+  // userId pasa también para que syncAllAfterMutation invalide
+  // home_snapshot — sino MetaCard del Home podía quedar stale al
+  // editar la meta desde el advisor. Code review v3 M1 finding.
+  const upsertGoalMutation = useUpsertSavingsGoal(familyId, userId)
   const goalEditRequest =
     pending?.type === 'savings-goal-edit' ? pending : null
   const handleSubmitGoalEdit = useCallback(

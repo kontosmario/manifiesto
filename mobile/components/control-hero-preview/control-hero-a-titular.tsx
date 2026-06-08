@@ -83,11 +83,13 @@ export function ControlHeroTitular({ state }: Props) {
         </Text>
       </RiseRow>
 
-      <RiseRow delay={240}>
-        <Text style={[styles.secondary, { color: theme.colors.heroMuted }]}>
-          {msg.secondary}
-        </Text>
-      </RiseRow>
+      {msg.secondary ? (
+        <RiseRow delay={240}>
+          <Text style={[styles.secondary, { color: theme.colors.heroMuted }]}>
+            {msg.secondary}
+          </Text>
+        </RiseRow>
+      ) : null}
 
       <RiseRow delay={320}>
         <View style={styles.numberBlock}>
@@ -151,30 +153,8 @@ export function ControlHeroTitular({ state }: Props) {
         </View>
       </RiseRow>
 
-      {renderInsight(state) ? (
-        <RiseRow delay={480}>
-          <Text style={[styles.insight, { color: theme.colors.heroMuted2 }]} numberOfLines={1}>
-            {renderInsight(state)}
-          </Text>
-        </RiseRow>
-      ) : null}
     </LinearGradient>
   )
-}
-
-/**
- * Insight line · una sola pista state-aware que invita a explorar las
- * cards de detalle abajo. Editorial restraint: solo aparece cuando
- * agrega valor y NO cuando el state ya es urgente (no diluir).
- */
-function renderInsight(state: ControlHeroState): string | null {
-  if (state.alreadyExhausted) return null
-  if (state.alcanzaElMes === false) return null
-  const vault = state.vault ?? 0
-  if (vault >= state.cupoDiario) {
-    return `Acumulaste ${formatMoneyShort(vault)} este mes`
-  }
-  return null
 }
 
 function formatDeltaPct(pct: number): string {
@@ -326,13 +306,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.1,
     fontVariant: ['tabular-nums'],
-  },
-  insight: {
-    marginTop: 12,
-    fontSize: 11,
-    fontStyle: 'italic',
-    fontWeight: '500',
-    letterSpacing: 0.1,
   },
   eyebrow: {
     fontSize: 11,

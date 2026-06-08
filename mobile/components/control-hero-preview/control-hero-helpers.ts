@@ -9,8 +9,10 @@ import type { ControlHeroState } from './control-hero-states'
 export interface ControlMessage {
   /** Sentencia principal · ej "Vas $6.000 arriba del ritmo" */
   primary: string
-  /** Sentencia de soporte · ej "Frená el resto del día" */
-  secondary: string
+  /** Sentencia de soporte · ej "Frená el resto del día".
+   *  `null` cuando la rama positiva ya está cubierta por el primary +
+   *  LIBRE HOY + el chip de días al cobro abajo — no agregar ruido. */
+  secondary: string | null
   /** Tone para color encoding · lime / amber / peach */
   status: 'positive' | 'caution' | 'urgent'
   /** El número destacado · drive del CountUp hero */
@@ -44,25 +46,30 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
-  // 3. Crítico · delta muy negativo · gastaste mucho más del ritmo
-  if (state.delta < -state.cupoDiario * 0.5) {
+  // 3. Crítico · libreHoy muy negativo · pasaste MUCHO el cupo completo
+  // del día. Uso libreHoy (no delta pro-rated) para evitar falsos
+  // positivos a primera hora: ej. cargar $15K a las 00:27 daba delta
+  // = -$11K aunque libreHoy = +$168K (todo el día por delante).
+  if (state.libreHoy < -state.cupoDiario * 0.5) {
     return {
-      primary: `Vas ${formatMoneyCompact(Math.abs(state.delta))} arriba del ritmo.`,
-      secondary: 'Si seguís así, el cupo de hoy no alcanza.',
+      primary: `Vas ${formatMoneyCompact(Math.abs(state.libreHoy))} arriba del cupo.`,
+      secondary: 'Pasaste el cupo del día — corregí mañana.',
       status: 'urgent',
       primaryNumber: Math.abs(state.libreHoy),
-      primaryLabel: state.libreHoy < 0 ? 'POR ENCIMA HOY' : 'LIBRE HOY',
+      primaryLabel: 'POR ENCIMA HOY',
     }
   }
 
-  // 4. Caution · delta levemente negativo
-  if (!state.estaOk) {
+  // 4. Caution · libreHoy levemente negativo · sobrepasaste el cupo
+  // completo pero por poco. Mismo motivo: solo fires con overspend
+  // REAL (gastoHoy > cupoDiario), no con prorrateo de las primeras horas.
+  if (state.libreHoy < 0) {
     return {
-      primary: `Vas un poco arriba del ritmo.`,
-      secondary: `Te quedan ${formatMoneyCompact(Math.max(0, state.libreHoy))} para el resto del día.`,
+      primary: `Pasaste el cupo de hoy por ${formatMoneyCompact(Math.abs(state.libreHoy))}.`,
+      secondary: `Acomodá el ritmo para los días que quedan.`,
       status: 'caution',
-      primaryNumber: Math.max(0, state.libreHoy),
-      primaryLabel: 'LIBRE HOY',
+      primaryNumber: Math.abs(state.libreHoy),
+      primaryLabel: 'POR ENCIMA HOY',
     }
   }
 
@@ -85,21 +92,22 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
-  // 5. Adelantado · delta positivo amplio
-  if (state.delta > state.cupoDiario * 0.3) {
+  // 5. Adelantado · libreHoy alto. Sin secondary — la info "X días
+  // al cobro" ya vive en el chip dedicado debajo del hero numérico.
+  if (state.libreHoy > state.cupoDiario * 0.7) {
     return {
       primary: 'Vas adelantado.',
-      secondary: `Tenés margen extra: ${formatMoneyCompact(state.delta)} sobre el ritmo.`,
+      secondary: null,
       status: 'positive',
       primaryNumber: state.libreHoy,
       primaryLabel: 'LIBRE HOY',
     }
   }
 
-  // 6. Default positive · en línea con el prorrateo
+  // 6. Default positive · sin secondary (igual que rama 5).
   return {
     primary: 'Vas bien hoy.',
-    secondary: `${formatMoneyCompact(state.libreHoy)} para el resto del día · ${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
+    secondary: null,
     status: 'positive',
     primaryNumber: state.libreHoy,
     primaryLabel: 'LIBRE HOY',

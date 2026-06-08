@@ -21,6 +21,25 @@ export async function fetchActiveSavingsGoal(familyId: string): Promise<SavingsG
   return mapSavingsGoalRow(data as SavingsGoalRow)
 }
 
+/**
+ * Fetch del último goal de la familia, ACTIVO O INACTIVO. Usado por
+ * Settings (necesita ver el goal aunque esté desactivado para que el
+ * toggle no parezca borrarlo). Home / Control siguen usando
+ * `fetchActiveSavingsGoal` que filtra por is_active=true.
+ */
+export async function fetchLatestSavingsGoal(familyId: string): Promise<SavingsGoal | null> {
+  const { data, error } = await supabase
+    .from('savings_goals')
+    .select('*')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return mapSavingsGoalRow(data as SavingsGoalRow)
+}
+
 export async function upsertSavingsGoal(
   familyId: string,
   input: SavingsGoalInput,
@@ -42,4 +61,12 @@ export async function upsertSavingsGoal(
   const { data, error } = await request
   if (error) throw error
   return mapSavingsGoalRow(data as SavingsGoalRow)
+}
+
+export async function deleteSavingsGoal(goalId: string): Promise<void> {
+  const { error } = await supabase
+    .from('savings_goals')
+    .delete()
+    .eq('id', goalId)
+  if (error) throw error
 }

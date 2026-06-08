@@ -30,6 +30,14 @@ export interface FinanceStoragePayload {
   cycle_anchor_date: string | null
   /** Para cycle_type rolling, días por ciclo (14/7/N). NULL para monthly. */
   cycle_length_days: number | null
+  /**
+   * Plata acumulada del cierre de meses anteriores cuando el user
+   * eligió "Guardar como reserva" en el wrapped (Spec B). Solo se
+   * lee — el upsert NUNCA pisa esta columna (el RPC `record_month_close_decision`
+   * la bumpea atómicamente). Sumado en Home (chip indigo) y Settings
+   * (sección read-only) para que la plata no desaparezca visualmente.
+   */
+  monthly_reserve_amount: number
 }
 
 export interface FamilyFinance extends FinanceStoragePayload {
@@ -148,6 +156,7 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     cycle_type: 'monthly',
     cycle_anchor_date: null,
     cycle_length_days: null,
+    monthly_reserve_amount: 0,
   }
 }
 
@@ -232,6 +241,15 @@ export function normalizeFinancePayload(
       payload.cycle_length_days <= 365
         ? payload.cycle_length_days
         : null,
+    // PostgREST devuelve `numeric` como string — coerce defensivo
+    // (mismo pattern que current_cycle_starting_balance). Clamp >= 0
+    // porque el CHECK constraint de DB exige no-negativo.
+    monthly_reserve_amount: (() => {
+      const raw = payload?.monthly_reserve_amount
+      if (raw == null) return 0
+      const parsed = Number(raw)
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+    })(),
   }
 }
 
@@ -299,6 +317,13 @@ export function financeInputToStoragePayload(
     cycle_type: input.cycleType,
     cycle_anchor_date: input.cycleAnchorDate,
     cycle_length_days: input.cycleLengthDays,
+    // monthly_reserve_amount NUNCA viaja desde la UI hacia el upsert
+    // — solo lo escribe el RPC `record_month_close_decision` (Spec B).
+    // Si el upsert lo incluyera, sobrescribiría la reserva acumulada
+    // a 0 en cada save de cualquier otra config (sueldo, ahorro, etc).
+    // Lo dejamos en 0 acá para satisfacer el tipo, y el repository
+    // se asegura de NO incluir esta columna en el upsert body.
+    monthly_reserve_amount: 0,
   }
 }
 

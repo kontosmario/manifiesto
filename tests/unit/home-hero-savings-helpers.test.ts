@@ -26,12 +26,13 @@ describe('computeSavingsHeroChip', () => {
   it('builds a healthy chip when remaining >= target', () => {
     const out = computeSavingsHeroChip(baseArgs)
     expect(out?.kind).toBe('healthy')
-    expect(out?.label).toMatch(/Apartando/)
-    expect(out?.label).toMatch(/20%/)
+    expect(out?.label).toMatch(/Ahorrando/)
   })
 
-  it('omits the percent suffix when savingsGoalPercent is 0', () => {
-    const out = computeSavingsHeroChip({ ...baseArgs, savingsGoalPercent: 0 })
+  it('healthy label is compact (no percent suffix)', () => {
+    // Copy compacto post 2026-06-08: el % se removió de los labels
+    // para que entren sin wrap. Sigue presente en el a11y completo.
+    const out = computeSavingsHeroChip(baseArgs)
     expect(out?.label).not.toMatch(/%/)
   })
 
@@ -41,13 +42,14 @@ describe('computeSavingsHeroChip', () => {
       savingsRemaining: 320_000,
     })
     expect(out?.kind).toBe('partial')
-    expect(out?.label).toMatch(/de/)
+    // "X de meta Y" — la palabra "meta" ancla el segundo número.
+    expect(out?.label).toMatch(/de meta/)
   })
 
   it('builds a consumed chip when remaining hits 0', () => {
     const out = computeSavingsHeroChip({ ...baseArgs, savingsRemaining: 0 })
     expect(out?.kind).toBe('consumed')
-    expect(out?.label).toMatch(/Te comiste el ahorro/)
+    expect(out?.label).toMatch(/Sin ahorro/)
   })
 
   it('clamps remaining > target to healthy (defensive)', () => {
@@ -71,6 +73,7 @@ describe('computeSavingsHeroChip', () => {
       savingsGoalPercent: 19.6,
     })
     expect(out?.kind).toBe('partial')
-    expect(out?.label).toMatch(/20%/)
+    // % ya no aparece en el label compacto; sigue en el a11y.
+    expect(out?.a11y).toMatch(/20 por ciento/)
   })
 })

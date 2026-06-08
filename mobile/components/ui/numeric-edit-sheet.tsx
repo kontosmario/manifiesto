@@ -8,7 +8,13 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
   runOnJS,
+  SlideInDown,
+  SlideOutDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -21,6 +27,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
@@ -48,6 +55,15 @@ interface NumericEditSheetProps {
   /** When true, the numpad grid is rendered non-interactive (dimmed).
    *  Useful for modes that don't need numeric input (e.g. "none"). */
   numpadDisabled?: boolean
+  /**
+   * Cuando true, el numpad arranca colapsado (no se muestra) y solo
+   * aparece cuando el user tap-ea el display card. La idea es que el
+   * sheet primero invite al user a tomar una decisión (CTA del header),
+   * y el keypad de ajuste fino esté disponible bajo demanda — no
+   * compite por atención. Para flujos donde el usuario VIENE a editar
+   * un número específico (settings finance), default false.
+   */
+  numpadCollapsedByDefault?: boolean
 
   maxIntegerDigits?: number
   maxDecimalDigits?: number
@@ -94,6 +110,7 @@ export function NumericEditSheet({
   errorText,
   headerExtra,
   numpadDisabled = false,
+  numpadCollapsedByDefault = false,
   maxIntegerDigits,
   maxDecimalDigits,
   saveLabel = 'Guardar',
@@ -107,6 +124,21 @@ export function NumericEditSheet({
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
+  // Spec B (2026-06-07): numpad opcional bajo demanda. Cuando
+  // collapsedByDefault está activo, el sheet abre con el numpad oculto
+  // — la prop forza el comportamiento "primero la decisión CTA del
+  // header, después el ajuste fino". Tap al display lo expande.
+  // Reset cada vez que el sheet abre/cierra para no preservar
+  // expanded state entre sesiones.
+  const [numpadExpanded, setNumpadExpanded] = useState(
+    !numpadCollapsedByDefault,
+  )
+  useEffect(() => {
+    if (visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset al abrir
+      setNumpadExpanded(!numpadCollapsedByDefault)
+    }
+  }, [visible, numpadCollapsedByDefault])
 
   const translateY = useSharedValue(screenHeight)
   const backdropOpacity = useSharedValue(0)
@@ -222,6 +254,16 @@ export function NumericEditSheet({
 
         <GestureDetector gesture={panGesture}>
           <Animated.View
+            // layout: cuando aparece/desaparece el numpad por demand, la
+            // altura intrínseca del sheet cambia. LinearTransition con
+            // ease-out-expo smoothea ese resize en vez de saltar de golpe.
+            layout={
+              reduceMotion
+                ? undefined
+                : LinearTransition.duration(280).easing(
+                    Easing.bezier(0.16, 1, 0.30, 1),
+                  )
+            }
             style={[
               styles.sheet,
               sheetAnimatedStyle,
@@ -254,12 +296,26 @@ export function NumericEditSheet({
             ) : null}
 
             <View style={styles.displayWrap}>
-              <View
-                style={[
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  numpadExpanded
+                    ? `Editar monto. Valor actual ${displayText}`
+                    : `Tocá para editar el monto. Valor actual ${displayText}`
+                }
+                accessibilityState={{ expanded: numpadExpanded }}
+                disabled={numpadDisabled}
+                onPress={() => {
+                  if (!numpadExpanded) {
+                    setNumpadExpanded(true)
+                  }
+                }}
+                style={({ pressed }) => [
                   styles.displayCard,
                   {
                     backgroundColor: theme.colors.surfaceMuted,
                     borderColor: errorText ? theme.colors.danger : theme.colors.border,
+                    opacity: pressed && !numpadExpanded ? 0.85 : 1,
                   },
                 ]}
               >
@@ -274,22 +330,49 @@ export function NumericEditSheet({
                     {displayEyebrow}
                   </Text>
                 ) : null}
-                <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  allowFontScaling
-                  maxFontSizeMultiplier={1.2}
-                  style={[
-                    typography.hero,
-                    styles.displayValue,
-                    {
-                      color: isPlaceholder ? theme.colors.textSoft : theme.colors.text,
-                    },
-                  ]}
-                >
-                  {displayText}
-                </Text>
-              </View>
+                <View style={styles.displayValueRow}>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.2}
+                    style={[
+                      typography.hero,
+                      styles.displayValue,
+                      {
+                        color: isPlaceholder ? theme.colors.textSoft : theme.colors.text,
+                      },
+                    ]}
+                  >
+                    {displayText}
+                  </Text>
+                  {!numpadExpanded && !numpadDisabled ? (
+                    <View
+                      style={[
+                        styles.displayEditChip,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="edit"
+                        size={14}
+                        color={theme.colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.displayEditChipText,
+                          { color: theme.colors.textMuted },
+                        ]}
+                      >
+                        Editar
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
               {errorText ? (
                 <Text
                   style={[
@@ -331,19 +414,36 @@ export function NumericEditSheet({
               ) : null}
             </View>
 
-            <View
-              pointerEvents={numpadDisabled ? 'none' : 'auto'}
-              style={numpadDisabled ? styles.numpadDimmed : undefined}
-            >
-              <NumpadGrid
-                rawValue={rawValue}
-                onChangeRawValue={onChangeRawValue}
-                onDone={onSave}
-                hideDoneButton
-                maxIntegerDigits={maxIntegerDigits}
-                maxDecimalDigits={maxDecimalDigits}
-              />
-            </View>
+            {numpadExpanded ? (
+              <Animated.View
+                // Slide-up suave desde abajo + fade. Matchea el feel de
+                // un keyboard apareciendo. Curve ease-out-expo (la misma
+                // que usa el cycle wrapped) — natural y sin bounce.
+                entering={
+                  reduceMotion
+                    ? FadeIn.duration(120)
+                    : SlideInDown.duration(320)
+                        .easing(Easing.bezier(0.16, 1, 0.30, 1))
+                }
+                exiting={
+                  reduceMotion
+                    ? FadeOut.duration(120)
+                    : SlideOutDown.duration(220)
+                        .easing(Easing.bezier(0.16, 1, 0.30, 1))
+                }
+                pointerEvents={numpadDisabled ? 'none' : 'auto'}
+                style={numpadDisabled ? styles.numpadDimmed : undefined}
+              >
+                <NumpadGrid
+                  rawValue={rawValue}
+                  onChangeRawValue={onChangeRawValue}
+                  onDone={onSave}
+                  hideDoneButton
+                  maxIntegerDigits={maxIntegerDigits}
+                  maxDecimalDigits={maxDecimalDigits}
+                />
+              </Animated.View>
+            ) : null}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -395,8 +495,29 @@ const styles = StyleSheet.create({
   displayEyebrow: {
     letterSpacing: 1.4,
   },
+  displayValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
   displayValue: {
+    flex: 1,
     letterSpacing: -2,
+  },
+  displayEditChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  displayEditChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
   helperText: {
     paddingHorizontal: 4,

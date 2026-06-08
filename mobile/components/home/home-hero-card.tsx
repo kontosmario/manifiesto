@@ -301,14 +301,96 @@ function HomeHeroCardImpl({
           />
         </RiseView>
 
-        {data.cycleAdjusted || savingsChip ? (
+        {data.cycleAdjusted || savingsChip || data.acumulado || data.monthlyReserveAmount > 0 ? (
           // Read-only chip stack between the saldo amount and the
-          // tiles row. Two captions can co-exist: "Ajustado para este
-          // ciclo" (cycle override) and "Apartando ahorro" (savings).
+          // tiles row. Two captions can co-exist: "Ajustado/Acumulado"
+          // (cycle override origin) y "Apartando ahorro" (savings).
           // The wrapper owns the bottom spacing so adding/removing
           // either chip doesn't shift the tiles.
           <View style={styles.heroChipStack}>
-            {data.cycleAdjusted ? (
+            {data.acumulado ? (
+              // Acumulado del mes anterior — tono verde positivo.
+              // Reemplaza al chip neutral "Ajustado" cuando el override
+              // del cycle proviene de una decisión "acumular" (no de
+              // un ajuste manual del user). Semántica: celebrar plata
+              // que sobró, no advertir corrección.
+              <RiseView delay={120}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Tenés ${formatMoney(data.acumulado.amount)} acumulado del mes pasado.`}
+                  style={[
+                    styles.adjustedChip,
+                    theme.mode === 'dark'
+                      ? {
+                          backgroundColor: 'rgba(166,239,143,0.18)',
+                          borderColor: 'rgba(166,239,143,0.45)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(41,120,17,0.15)',
+                          borderColor: 'rgba(41,120,17,0.35)',
+                        },
+                  ]}
+                >
+                  {/* Icon trending-up: comunica "valor que viene
+                      arrastrando desde el mes anterior" — momentum
+                      positivo, on-brand para una métrica financiera. */}
+                  <MaterialIcons
+                    name="trending-up"
+                    size={13}
+                    color={theme.colors.primary}
+                  />
+                  <Text
+                    style={[styles.adjustedChipText, { color: theme.colors.primary }]}
+                  >
+                    {`+${formatMoneyShort(data.acumulado.amount)} de ${data.acumulado.periodLabel.toLowerCase()}`}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : data.cycleAdjusted && data.cycleBalanceDiff > 0 ? (
+              // Override UP — balance > sueldo. El user sumó plata
+              // al ciclo (reserva, cobro extra, etc.). Antes leía
+              // "Ajustado" (peach, implicaba correción down). Ahora
+              // chip indigo "+\$X sumado al mes" — positivo.
+              <RiseView delay={120}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Sumaste ${formatMoney(data.cycleBalanceDiff)} al saldo del mes`}
+                  style={[
+                    styles.adjustedChip,
+                    theme.isDark
+                      ? {
+                          backgroundColor: 'rgba(165,180,252,0.18)',
+                          borderColor: 'rgba(165,180,252,0.42)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(99,102,241,0.14)',
+                          borderColor: 'rgba(99,102,241,0.40)',
+                        },
+                  ]}
+                >
+                  {/* Icon add-circle: acción clara de "sumar/agregar"
+                      — el user sumó plata al cycle (típicamente
+                      reserva → mes, también aplica a cobro extra). */}
+                  <MaterialIcons
+                    name="add-circle"
+                    size={13}
+                    color={theme.isDark ? '#A5B4FC' : '#4F46E5'}
+                  />
+                  <Text
+                    style={[
+                      styles.adjustedChipText,
+                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                    ]}
+                  >
+                    {`+${formatMoneyShort(data.cycleBalanceDiff)} al mes`}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : data.cycleAdjusted ? (
+              // Override DOWN (o == 0) — balance < sueldo. El user
+              // ajustó hacia abajo (cobro menor al sueldo recurrente,
+              // quincena adelantada, etc.). Chip peach neutral que
+              // comunica "ajustaste manualmente el saldo del cycle".
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
@@ -321,15 +403,18 @@ function HomeHeroCardImpl({
                     },
                   ]}
                 >
-                  <Text
-                    style={[styles.adjustedChipDot, { color: theme.colors.heroAccent }]}
-                  >
-                    •
-                  </Text>
+                  {/* Icon tune: sliders/diales — comunica "ajuste
+                      manual" del saldo (correción hacia abajo: cobro
+                      menor al sueldo, quincena adelantada, etc.). */}
+                  <MaterialIcons
+                    name="tune"
+                    size={13}
+                    color={theme.colors.heroAccent}
+                  />
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
                   >
-                    Ajustado para este mes
+                    Saldo ajustado
                   </Text>
                 </View>
               </RiseView>
@@ -380,6 +465,56 @@ function HomeHeroCardImpl({
                     numberOfLines={1}
                   >
                     {savingsChip.label}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : null}
+
+            {data.monthlyReserveAmount > 0 ? (
+              // Reserva acumulada del cierre de meses anteriores
+              // (Spec B — wrapped decisión "Guardar como reserva").
+              // Read-only: la única forma de tocar este monto es vía
+              // el wrapped. Lo surface acá para que la plata no
+              // Tono AMBER/GOLD (semánticamente "valor guardado/reserva"
+              // — wallet → gold reserve). Antes era indigo igual que el
+              // chip "+\$X al mes" → 2 chips indigo conviviendo se leían
+              // redundantes. Code review M6 finding (2026-06-08). Otros
+              // chips: peach=ajustado-down, lime=acumulado, mint=savings,
+              // indigo=sumado-al-mes-UP.
+              <RiseView delay={160}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={`Tenés ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
+                  style={[
+                    styles.savingsChip,
+                    theme.isDark
+                      ? {
+                          backgroundColor: 'rgba(252,211,77,0.14)',
+                          borderColor: 'rgba(252,211,77,0.40)',
+                        }
+                      : {
+                          backgroundColor: 'rgba(180,83,9,0.10)',
+                          borderColor: 'rgba(180,83,9,0.36)',
+                        },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="account-balance-wallet"
+                    size={13}
+                    color={theme.isDark ? '#FCD34D' : '#B45309'}
+                  />
+                  <Text
+                    style={[
+                      styles.savingsChipText,
+                      {
+                        color: theme.isDark ? '#FCD34D' : '#B45309',
+                        fontVariant: ['tabular-nums'],
+                      },
+                    ]}
+                    maxFontSizeMultiplier={1.4}
+                    numberOfLines={1}
+                  >
+                    {`Reserva ${formatMoneyShort(data.monthlyReserveAmount)}`}
                   </Text>
                 </View>
               </RiseView>
@@ -621,9 +756,18 @@ const styles = StyleSheet.create({
   // Stack wrapper for the read-only chips that may sit between the
   // saldo amount and the tiles row. `gap` controls inter-chip
   // spacing; `marginBottom` controls the gap to the tiles below.
+  //
+  // Layout horizontal con flexWrap: cuando hay 1-2 chips entran en
+  // una sola fila; 3 chips wrappean a 2 filas máximo. Antes estaban
+  // siempre stackeados verticalmente y sumaban mucha altura al hero
+  // (owner feedback 2026-06-08). `alignItems: center` mantiene
+  // cualquier diferencia de altura entre chips visualmente alineada.
   heroChipStack: {
-    alignItems: 'flex-start',
-    gap: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 6,
+    rowGap: 6,
     marginBottom: 14,
   },
   adjustedChip: {
@@ -635,11 +779,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-  },
-  adjustedChipDot: {
-    fontSize: 14,
-    fontWeight: '900',
-    lineHeight: 14,
   },
   adjustedChipText: {
     fontSize: 11,

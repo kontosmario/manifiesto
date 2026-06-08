@@ -60,7 +60,7 @@ import {
   supportsRemotePushNotifications,
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
-import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { ALL_TOUR_KEYS, resetAllTours, TOUR_KEYS } from '@/features/tours'
 import { useResetTourSeen } from '@/features/tours/use-reset-tour-seen'
 import {
@@ -132,7 +132,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     ).length
   }, [memberStatsQuery.data, userId])
   const totalMembers = (memberStatsQuery.data ?? []).length
-  const savingsGoalQuery = useSavingsGoal(familyId)
+  // useLatestSavingsGoal (no useSavingsGoal): incluye inactivas. Así
+  // el subtitle refleja el estado real ("Desactivada · titulo") cuando
+  // la meta existe pero está apagada, en vez de "Sin meta configurada".
+  const savingsGoalQuery = useLatestSavingsGoal(familyId)
 
   const updateDisplayNameMutation = useUpdateDisplayName(userId)
   const updateAvatarMutation = useUpdateAvatarAnimal(userId)
@@ -778,7 +781,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         ? `${financeSnapshot.dailyBudgetBufferValue}% diario`
         : `${currencyFormatter.format(financeSnapshot.dailyBudgetBufferValue)}/día`
   const savingsGoalSubtitle = savingsGoalQuery.data
-    ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
+    ? savingsGoalQuery.data.isActive
+      ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
+      : `Inactiva · ${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title}`
     : 'Sin meta configurada'
   const pushValue = !supportsPushActivation
     ? 'Dev build'
@@ -961,6 +966,35 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
+            {/* 2b. RESERVA ACUMULADA — solo visible si hay reserva > 0.
+                Read-only: la única forma de tocar este monto es vía la
+                decisión "Guardar como reserva" del wrapped de cierre
+                de mes (Spec B). Surface acá para que la plata no
+                desaparezca visualmente del Settings. */}
+            {Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) > 0 ? (
+              <RiseView delay={220}>
+                <SettingsGroup title="Reserva acumulada">
+                  <View style={styles.reserveInner}>
+                    <Text
+                      style={[styles.reserveAmount, { color: theme.colors.text }]}
+                      maxFontSizeMultiplier={1.4}
+                    >
+                      {currencyFormatter.format(
+                        Number(
+                          dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0,
+                        ),
+                      )}
+                    </Text>
+                    <Text
+                      style={[styles.reserveSub, { color: theme.colors.textMuted }]}
+                    >
+                      Plata guardada del cierre de meses anteriores.
+                    </Text>
+                  </View>
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
+
             {/* 3. META DE AHORRO */}
             <RiseView delay={240}>
               <SettingsGroup title="Metas de ahorro">
@@ -970,7 +1004,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   helper={savingsGoalSubtitle}
                   icon="flag"
                   isLast
-                  label="Meta activa"
+                  label="Meta"
                   onPress={() => router.push('/(app)/savings-goal')}
                 />
               </SettingsGroup>
@@ -1542,6 +1576,23 @@ const styles = StyleSheet.create({
   appearanceInner: {
     paddingHorizontal: 14,
     paddingVertical: 14,
+  },
+  // Read-only section that surfaces `family_finance.monthly_reserve_amount`.
+  // Big monto + sublabel; no trailing chevron porque el row no es
+  // tappable (la única forma de modificarlo es el wrapped de cierre).
+  reserveInner: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  reserveAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+  },
+  reserveSub: {
+    fontSize: 12,
   },
   versionFooter: {
     textAlign: 'center',

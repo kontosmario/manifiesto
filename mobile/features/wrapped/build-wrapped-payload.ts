@@ -15,12 +15,29 @@ interface BuildArgs {
   /** earnedAt ISO timestamps de logros del usuario. Se cuenta cuántos
    *  caen dentro del rango [period_start, period_end). */
   achievementsEarnedAt: readonly string[]
+  /** Spec B — decisión pendiente sobre el saldo a favor (opcional). */
+  pendingLeftoverDecision?: CycleWrappedPayload['pendingLeftoverDecision']
+  /** Decisión ya tomada para este cycle (replay read-only). Mutuamente
+   *  exclusivo con `pendingLeftoverDecision` — si llegan los dos, el
+   *  modal prevalece `pastLeftoverDecision`. */
+  pastLeftoverDecision?: CycleWrappedPayload['pastLeftoverDecision']
+  /** Meta activa para la opción "A tu meta" (opcional). */
+  activeGoal?: CycleWrappedPayload['activeGoal']
+  /** YYYY-MM-DD del inicio del nuevo ciclo (opcional). */
+  nextCycleAnchor?: CycleWrappedPayload['nextCycleAnchor']
+  /** Callback async para aplicar la decisión vía RPC (opcional). */
+  onApplyLeftoverDecision?: CycleWrappedPayload['onApplyLeftoverDecision']
 }
 
 export function buildWrappedPayloadFromSummary({
   summary,
   categoryNameById,
   achievementsEarnedAt,
+  pendingLeftoverDecision,
+  pastLeftoverDecision,
+  activeGoal,
+  nextCycleAnchor,
+  onApplyLeftoverDecision,
 }: BuildArgs): CycleWrappedPayload {
   // Rango display: si el ciclo es calendario (1→1 del mes siguiente)
   // no mostramos rango porque el periodLabel ya alcanza.
@@ -72,6 +89,11 @@ export function buildWrappedPayloadFromSummary({
     topExpense,
     achievementsEarnedInCycle,
     mood: summary.mood ?? null,
+    pendingLeftoverDecision,
+    pastLeftoverDecision,
+    activeGoal,
+    nextCycleAnchor,
+    onApplyLeftoverDecision,
   }
 }
 

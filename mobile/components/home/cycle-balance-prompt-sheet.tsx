@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { usePressScale } from '@/hooks/use-press-scale'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   currencyFormatter,
@@ -133,7 +144,10 @@ export function SalaryConfirmationSheet(props: SharedProps) {
         chipSubtitle: 'Igual al sueldo recurrente',
         chipA11y: (formatted) =>
           `Cobré ${formatted}, igual al sueldo recurrente`,
-        chipTone: 'peach',
+        // 'brand' = primary forest green (calmo, on-brand, menos
+        // agresivo que el peach saturado). Feedback owner:
+        // "demasiado PEACH".
+        chipTone: 'brand',
       }}
     />
   )
@@ -190,65 +204,41 @@ function CycleBalancePromptSheetBase({
       displayPlaceholder="$ 0"
       maxIntegerDigits={11}
       maxDecimalDigits={2}
+      // Numpad arranca colapsado — la primary action acá es el quick
+      // confirm CTA del header. El numpad de ajuste fino aparece solo
+      // si el user tapea el display.
+      numpadCollapsedByDefault
       headerExtra={
         <View style={styles.headerStack}>
+          {/* Context line: nombre del sueldo configurado. El "días
+              restantes" se sacó porque cuando este sheet aparece el
+              cycle está FROZEN (cobro pendiente) y `remainingUntilPayday`
+              quedaba clampeado a 1 — confundía al user con un falso
+              countdown ("1 día restante") en vez de explicar que es el
+              momento de confirmar el nuevo cobro. */}
           <Text style={[styles.contextLine, { color: theme.colors.textMuted }]}>
             {copy.contextPrefixLabel}{' '}
             <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
               {currencyFormatter.format(monthlyIncome)}
             </Text>
-            {' · '}
-            <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-              {remainingDaysInCycle}
-            </Text>{' '}
-            {remainingDaysInCycle === 1 ? 'día restante' : 'días restantes'}
           </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.chipA11y(formatMoney(monthlyIncome))}
+          <QuickConfirmCta
+            label={copy.chipTitle}
+            sublabel={copy.chipSubtitle}
+            amount={formatMoney(monthlyIncome)}
+            tone={tone}
             disabled={isSaving}
+            a11yLabel={copy.chipA11y(formatMoney(monthlyIncome))}
             onPress={handleQuickConfirm}
-            style={({ pressed }) => [
-              styles.quickConfirm,
-              {
-                backgroundColor: tone.background,
-                borderColor: tone.border,
-                opacity: pressed && !isSaving ? 0.85 : 1,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.quickConfirmIcon,
-                { backgroundColor: tone.iconBg },
-              ]}
-            >
-              <MaterialIcons name="check" size={16} color={tone.iconFg} />
-            </View>
-            <ChipBody
-              title={copy.chipTitle}
-              subtitle={copy.chipSubtitle}
-              amount={formatMoney(monthlyIncome)}
-              titleColor={tone.titleColor}
-              subColor={theme.colors.textMuted}
-              amountColor={tone.titleColor}
-            />
-            <MaterialIcons
-              name="chevron-right"
-              size={20}
-              color={tone.titleColor}
-            />
-          </Pressable>
+          />
         </View>
       }
-      helper={
-        isValid
-          ? `~${currencyFormatter.format(
-              parsed / Math.max(remainingDaysInCycle, 1),
-            )} por día hasta fin de ciclo.`
-          : copy.helperEmpty
-      }
+      // Helper "$X por día hasta fin de ciclo" removido (2026-06-07):
+      // como `remainingDaysInCycle` está clampeado a 1 durante el cycle
+      // freeze, la división daba todo-el-sueldo-por-día — engañoso. El
+      // sheet ya tiene la decisión clara con el CTA primario; no hace
+      // falta agregar metric load.
       errorText={
         showError ? 'Tiene que ser mayor a cero.' : errorMessage ?? undefined
       }
@@ -264,34 +254,122 @@ function CycleBalancePromptSheetBase({
   )
 }
 
-interface ChipBodyProps {
-  title: string
-  subtitle: string
+interface QuickConfirmCtaProps {
+  label: string
+  sublabel: string
   amount: string
-  titleColor: string
-  subColor: string
-  amountColor: string
+  tone: ReturnType<typeof resolveTone>
+  disabled: boolean
+  a11yLabel: string
+  onPress: () => void
 }
 
-function ChipBody({
-  title,
-  subtitle,
+/**
+ * CTA primaria del sheet de cobro — rediseño jerárquico con
+ * animación idle.
+ *
+ * Iteración 2 (2026-06-07): el user pidió "mejor formato y estilo" +
+ * "alguna animacion". Esta versión cambia la jerarquía visual:
+ *   - Eyebrow chico arriba ("CONFIRMAR")
+ *   - Amount grande como hero (la decisión del user es el monto)
+ *   - Sublabel chico abajo (contexto)
+ *   - Arrow circle a la derecha con idle pulse (1 → 1.08 cada 2.4s,
+ *     respetando reduced-motion)
+ *   - Press scale 0.97 spring sobre todo
+ *
+ * Principios aplicados:
+ *   - impeccable: hierarchy via scale/weight (no flat); motion
+ *     respira/atrae sin distraer
+ *   - emil-design-eng: idle pulse decorative pero contenido; press
+ *     spring inmediato
+ *   - ui-ux-pro-max: touch target ≥44pt; affordance "tap to confirm"
+ *     reforzada por el pulse del arrow
+ */
+function QuickConfirmCta({
+  label,
+  sublabel,
   amount,
-  titleColor,
-  subColor,
-  amountColor,
-}: ChipBodyProps): ReactNode {
+  tone,
+  disabled,
+  a11yLabel,
+  onPress,
+}: QuickConfirmCtaProps) {
+  const press = usePressScale({ pressedScale: 0.97 })
+  const reducedMotion = useReducedMotion()
+  // Pulse SUTIL del card completo (scale 1 → 1.012 → 1, ~1.6s loop).
+  // El "respiración" en toda la tarjeta comunica "esto es interactivo"
+  // sin ser intrusivo. Combinado con press scale 0.97 vía Animated.View
+  // anidado — las transformaciones de scale en jerarquía se
+  // multiplican naturalmente.
+  const pulse = useSharedValue(1)
+
+  useEffect(() => {
+    if (reducedMotion || disabled) {
+      cancelAnimation(pulse)
+      pulse.value = 1
+      return
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.012, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    )
+    return () => {
+      cancelAnimation(pulse)
+    }
+  }, [reducedMotion, disabled, pulse])
+
+  const pulseAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }))
+
   return (
-    <View style={styles.quickConfirmText}>
-      <Text style={[styles.quickConfirmTitle, { color: titleColor }]}>
-        {title}
-      </Text>
-      <Text style={[styles.quickConfirmSub, { color: subColor }]}>
-        {subtitle}
-        {' · '}
-        <Text style={{ color: amountColor, fontWeight: '700' }}>{amount}</Text>
-      </Text>
-    </View>
+    // Outer wrapper: pulse breathing (idle). Inner wrapper: press
+    // scale. Nested → transforms multiplican.
+    <Animated.View style={[styles.ctaWrap, pulseAnimatedStyle]}>
+      <Animated.View style={press.animatedStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={a11yLabel}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onPress}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
+          style={[
+            styles.ctaPressable,
+            {
+              backgroundColor: tone.filled,
+              opacity: disabled ? 0.6 : 1,
+            },
+          ]}
+        >
+          <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
+            <MaterialIcons name="check-circle" size={22} color={tone.iconFg} />
+          </View>
+          <View style={styles.ctaTextWrap}>
+            <Text style={[styles.ctaEyebrow, { color: tone.textMutedOnFilled }]}>
+              {label.toUpperCase()}
+            </Text>
+            <Text
+              style={[styles.ctaAmount, { color: tone.textOnFilled }]}
+              numberOfLines={1}
+            >
+              {amount}
+            </Text>
+            <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
+              {sublabel}
+            </Text>
+          </View>
+          <View style={[styles.ctaArrow, { backgroundColor: tone.iconOverlay }]}>
+            <MaterialIcons name="arrow-forward" size={18} color={tone.iconFg} />
+          </View>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   )
 }
 
@@ -301,19 +379,41 @@ function resolveTone(
 ) {
   if (chipTone === 'peach') {
     return {
-      background: 'rgba(232,151,106,0.16)',
-      border: 'rgba(232,151,106,0.55)',
-      iconBg: '#E8976A',
+      // Filled solid CTA — el usuario lo lee como botón sin dudar.
+      filled: '#E8976A',
+      // Overlay sutil sobre el filled (para el icon circle y el arrow).
+      iconOverlay: 'rgba(255,255,255,0.22)',
       iconFg: '#FFFFFF',
-      titleColor: '#C25A3E',
+      textOnFilled: '#FFFFFF',
+      textMutedOnFilled: 'rgba(255,255,255,0.78)',
+      shadowColor: '#E8976A',
+    }
+  }
+  // Brand tone — primary del theme. Theme-aware para legibilidad:
+  //   • Light: primary = #297811 (forest deep) → text white (5.7:1 AA)
+  //   • Dark: primary = #A6EF8F (bright lime) → text FOREST DEEP
+  //     (#0F2E1F) en vez de near-black. Feedback owner: "me gustaria
+  //     un tono mas clarito acorde al darkmode, pero no negro oscuro".
+  //     #0F2E1F (forest, mismo que usa el wrapped) → 9.7:1 AAA
+  //     mantiene legibilidad y se siente brand, no pure black.
+  if (theme.isDark) {
+    return {
+      filled: theme.colors.primary, // #A6EF8F bright lime
+      // Overlay forest sutil sobre el lime claro (no near-black).
+      iconOverlay: 'rgba(15, 46, 31, 0.16)',
+      iconFg: '#0F2E1F',
+      textOnFilled: '#0F2E1F',
+      textMutedOnFilled: 'rgba(15, 46, 31, 0.70)',
+      shadowColor: theme.colors.primary,
     }
   }
   return {
-    background: theme.colors.primarySurface,
-    border: theme.colors.primary,
-    iconBg: theme.colors.primary,
+    filled: theme.colors.primary, // #297811 forest deep
+    iconOverlay: 'rgba(255,255,255,0.22)',
     iconFg: '#FFFFFF',
-    titleColor: theme.colors.primaryStrong,
+    textOnFilled: '#FFFFFF',
+    textMutedOnFilled: 'rgba(255,255,255,0.78)',
+    shadowColor: theme.colors.primary,
   }
 }
 
@@ -325,6 +425,61 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  // CTA wrapper: contiene la shadow para elevación (el Pressable
+  // adentro ya tiene el bg filled).
+  ctaWrap: {
+    borderRadius: radii.lg,
+    // boxShadow se interpreta como elevation en RN nuevo
+    // ('0px 6px 14px -4px rgba(0,0,0,0.28)') — flat sin sombra
+    // en plataformas sin support.
+    boxShadow: '0px 6px 14px -4px rgba(0,0,0,0.28)' as unknown as string,
+  },
+  ctaPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: radii.lg,
+    minHeight: 76,
+  },
+  ctaIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaTextWrap: {
+    flex: 1,
+    gap: 1,
+  },
+  ctaEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  ctaAmount: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  ctaSublabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  ctaArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ────────── Legacy chip styles (kept for back-compat if otros call-sites
+  // todavía referencian; no se usan en el rediseño actual) ──────────
   quickConfirm: {
     flexDirection: 'row',
     alignItems: 'center',

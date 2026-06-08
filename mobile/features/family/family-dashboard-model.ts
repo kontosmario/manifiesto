@@ -226,13 +226,24 @@ export function buildFamilyDashboardSnapshot({
   // With override active, the daily cap spreads the user's reported
   // balance across the remaining days only (matches engine output).
   const effectiveCycleDays = hasCycleOverride ? remainingDaysFromToday : totalCycleDays
-  const overrideProration = hasCycleOverride ? remainingDaysFromToday / totalCycleDays : 1
-  // Prorate fixed obligations and savings target to the remaining
-  // window. The user's reported balance is "what I have NOW", not
-  // "what I had at cycle start", so commitments/savings should
-  // reflect what's still owed/targeted from today onwards.
+  // Proration de fijos: cuando el override es DOWN (cobré menos que
+  // el sueldo recurrente), recortar las fijos a los días restantes
+  // tiene sentido (lo que YA pagué en los días anteriores ya pasó).
+  // Cuando es UP, no recortamos.
+  const overrideIsDown =
+    hasCycleOverride && (cycleStartingBalanceOverride as number) < monthlyIncome
+  const overrideProration = overrideIsDown ? remainingDaysFromToday / totalCycleDays : 1
   const effectiveCommitmentPressure = commitmentPressureInCurrentCycle * overrideProration
-  const effectiveSavingsGoal = savingsGoal * overrideProration
+  // Savings goal RECOMPUTA al cobro real cuando override es DOWN:
+  // 20% del sueldo configurado (\$6.9M) sería \$1.4M, pero si el user
+  // cobró \$4M, el target del mes debería ser 20% de \$4M = \$800K — no
+  // un objetivo que ya nació inalcanzable. Para UP o sin override,
+  // se mantiene el savings_goal configurado (la meta es la meta;
+  // el extra del UP es bonus, no objetivo de ahorro mayor).
+  // Owner feedback iterado 2026-06-08.
+  const effectiveSavingsGoal = overrideIsDown
+    ? Math.max(0, Math.round(effectiveCycleIncome * (savingsGoalPercent / 100)))
+    : savingsGoal
   // Variable spend that "counts" toward this cycle's tracking. With
   // override on, the user's reported balance already accounts for
   // pre-today spending — so we only subtract spending from today
@@ -289,7 +300,11 @@ export function buildFamilyDashboardSnapshot({
     payCycle,
     remainingUntilPayday,
     salaryPaymentDay,
-    savingsGoal,
+    // savingsGoal expuesto al cliente = effective para el cycle:
+    // si override es DOWN, recalculado al cobro real con el percent
+    // configurado. Sino, igual al savings_goal stored. Esto alinea
+    // el chip ("Ahorrando \$X") con la realidad del ciclo en curso.
+    savingsGoal: effectiveSavingsGoal,
     savingsGoalPercent,
     savingsRemaining,
     savingsSpent,
