@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -6,13 +6,21 @@ import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
+import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useStreak } from '@/features/streaks/use-streak'
+import { useApplyReserveDecision } from '@/features/month-close/use-apply-reserve'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { formatMoney, formatMoneyShort } from '@/utils/money'
+import {
+  formatMoney,
+  formatMoneyShort,
+  formatPriceInputValue,
+  parsePrice,
+  serializePrice,
+} from '@/utils/money'
 
 const MIN_DIAS = 3
 // La sugerencia de ahorro necesita gasto en varios días para no contar
@@ -45,6 +53,12 @@ interface ControlV2AlcanciaCardProps {
    *  días contarían como "bajo cupo"), así que se activa con
    *  ≥ MIN_SPEND_DAYS. */
   diasConGasto?: number
+  /** Reserva acumulada de cierres de mes anteriores (Spec B). Cuando
+   *  > 0 se renderea un bloque indigo dentro del card con CTAs para
+   *  moverla al ciclo actual o aportarla a la meta. Cuando vuelve a 0
+   *  (después de aplicar), las invalidaciones del hook descartan el
+   *  bloque automáticamente. */
+  monthlyReserveAmount?: number
 }
 
 /**
@@ -81,6 +95,7 @@ function ControlV2AlcanciaCardImpl({
   noSpendCount,
   diaActual = 999,
   diasConGasto = 999,
+  monthlyReserveAmount = 0,
 }: ControlV2AlcanciaCardProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
@@ -90,6 +105,70 @@ function ControlV2AlcanciaCardImpl({
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
+
+  // ── Reserva acumulada: estado + mutation ───────────────────────────
+  const reserveMutation = useApplyReserveDecision(familyId)
+  const [reserveSheetMode, setReserveSheetMode] = useState<
+    'cycle' | 'meta' | null
+  >(null)
+  const [reserveDraft, setReserveDraft] = useState('')
+
+  // Hydrate draft al abrir el sheet con el monto total disponible —
+  // el user puede backspace para parcializar. Reset al cerrar para no
+  // mostrar valores stale si la reserva cambió entre aperturas.
+  useEffect(() => {
+    if (reserveSheetMode !== null) {
+      setReserveDraft(serializePrice(monthlyReserveAmount))
+    }
+  }, [reserveSheetMode, monthlyReserveAmount])
+
+  const parsedReserve = useMemo(() => parsePrice(reserveDraft), [reserveDraft])
+  const isReserveDraftValid =
+    Number.isFinite(parsedReserve) &&
+    parsedReserve > 0 &&
+    parsedReserve <= monthlyReserveAmount
+
+  const openSumarSheet = () => {
+    void triggerHaptic('selection')
+    setReserveSheetMode('cycle')
+  }
+  const openMetaSheet = () => {
+    if (!goal) {
+      void triggerHaptic('selection')
+      Alert.alert(
+        'Aún no tienes meta',
+        'Crea tu meta de ahorro desde Ajustes → Metas para poder aportar la reserva.',
+      )
+      return
+    }
+    void triggerHaptic('selection')
+    setReserveSheetMode('meta')
+  }
+
+  const handleReserveSubmit = () => {
+    if (!isReserveDraftValid || !reserveSheetMode) return
+    reserveMutation.mutate(
+      {
+        amount: parsedReserve,
+        target: reserveSheetMode,
+        metaGoalId: reserveSheetMode === 'meta' ? goal?.id : undefined,
+      },
+      {
+        onSuccess: () => {
+          void triggerHaptic('success')
+          setReserveSheetMode(null)
+          setReserveDraft('')
+        },
+        onError: (err) => {
+          void triggerHaptic('error')
+          Alert.alert(
+            'No pudimos usar la reserva',
+            err instanceof Error ? err.message : 'Reintenta en un momento.',
+          )
+        },
+      },
+    )
+  }
   // Press scale 0.97 — la CTA es el único elemento interactivo del
   // card. Antes usaba `opacity: pressed ? 0.78 : ...` (lento fade
   // muerto). Spring scale + Animated.View es Emil-grade y tactile.
@@ -117,6 +196,15 @@ function ControlV2AlcanciaCardImpl({
   const muted = theme.colors.textMuted
   const text = theme.colors.text
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+
+  // Tono indigo — consistente con el chip "Reserva" del Home. Hardcoded
+  // a propósito (no se agregan tokens al palette: el bloque es un
+  // affordance local de un caso edge, no parte del sistema de color).
+  const reserveColor = isDark ? '#A5B4FC' : '#4F46E5'
+  const reserveBg = isDark ? 'rgba(165,180,252,0.14)' : 'rgba(99,102,241,0.10)'
+  const reserveBorder = isDark
+    ? 'rgba(165,180,252,0.36)'
+    : 'rgba(99,102,241,0.32)'
 
   const goalPct =
     goal != null
@@ -314,6 +402,83 @@ function ControlV2AlcanciaCardImpl({
             muted={muted}
           />
         </View>
+
+        {monthlyReserveAmount > 0 ? (
+          <View
+            style={[
+              styles.reserveSection,
+              { backgroundColor: reserveBg, borderColor: reserveBorder },
+            ]}
+          >
+            <View style={styles.reserveHeader}>
+              <View
+                style={[styles.reserveDot, { backgroundColor: reserveColor }]}
+              />
+              <Text
+                style={[styles.reserveLabel, { color: reserveColor }]}
+                numberOfLines={1}
+              >
+                RESERVA ACUMULADA
+              </Text>
+              <Text
+                style={[styles.reserveAmount, { color: text }]}
+                numberOfLines={1}
+              >
+                {formatMoney(monthlyReserveAmount)}
+              </Text>
+            </View>
+            <View style={styles.reserveActionsRow}>
+              <Pressable
+                onPress={openSumarSheet}
+                accessibilityRole="button"
+                accessibilityLabel="Sumar reserva al mes actual"
+                disabled={reserveMutation.isPending}
+                style={({ pressed }) => [
+                  styles.reserveAction,
+                  {
+                    backgroundColor: reserveBg,
+                    borderColor: reserveBorder,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="trending-up"
+                  size={14}
+                  color={reserveColor}
+                />
+                <Text
+                  style={[styles.reserveActionText, { color: reserveColor }]}
+                  numberOfLines={1}
+                >
+                  Sumar al mes
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={openMetaSheet}
+                accessibilityRole="button"
+                accessibilityLabel="Aportar reserva a tu meta de ahorro"
+                disabled={reserveMutation.isPending}
+                style={({ pressed }) => [
+                  styles.reserveAction,
+                  {
+                    backgroundColor: reserveBg,
+                    borderColor: reserveBorder,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                <MaterialIcons name="flag" size={14} color={reserveColor} />
+                <Text
+                  style={[styles.reserveActionText, { color: reserveColor }]}
+                  numberOfLines={1}
+                >
+                  A una meta
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       {hasGoal ? (
@@ -330,6 +495,34 @@ function ControlV2AlcanciaCardImpl({
           onSubmit={handleSheetSubmit}
         />
       ) : null}
+
+      <NumericEditSheet
+        visible={reserveSheetMode !== null}
+        title={
+          reserveSheetMode === 'cycle'
+            ? 'Sumar reserva al mes'
+            : 'Aportar reserva a tu meta'
+        }
+        subtitle={`Reserva disponible: ${formatMoney(monthlyReserveAmount)}`}
+        rawValue={reserveDraft}
+        onChangeRawValue={setReserveDraft}
+        formatDisplay={(raw) => formatPriceInputValue(raw, false)}
+        displayEyebrow="MONTO A USAR"
+        displayPlaceholder="$ 0"
+        maxIntegerDigits={11}
+        maxDecimalDigits={2}
+        numpadCollapsedByDefault
+        saveLabel={
+          reserveSheetMode === 'cycle' ? 'Sumar al mes' : 'Aportar a meta'
+        }
+        saveDisabled={!isReserveDraftValid}
+        isSaving={reserveMutation.isPending}
+        onSave={handleReserveSubmit}
+        onClose={() => {
+          if (reserveMutation.isPending) return
+          setReserveSheetMode(null)
+        }}
+      />
     </RiseView>
   )
 }
@@ -637,6 +830,56 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  // ── Reserve admin block (Spec B) ────────────────────────────
+  reserveSection: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  reserveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reserveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  reserveLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    flexShrink: 1,
+  },
+  reserveAmount: {
+    marginLeft: 'auto',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  reserveActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  reserveAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  reserveActionText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
 })
 
 // Memo: Alcancia tiene Pressables + Alert handler. Sin memo cada

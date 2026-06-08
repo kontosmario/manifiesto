@@ -557,6 +557,9 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   noSpendCount={view.noSpendCount}
                   diaActual={data.diaActual}
                   diasConGasto={view.diasConGasto}
+                  monthlyReserveAmount={
+                    financeQuery.data?.monthly_reserve_amount ?? 0
+                  }
                 />
               </ControlV2Anchor>
             </TourTarget>
