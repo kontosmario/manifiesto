@@ -43,3 +43,11 @@ export async function upsertSavingsGoal(
   if (error) throw error
   return mapSavingsGoalRow(data as SavingsGoalRow)
 }
+
+export async function deleteSavingsGoal(goalId: string): Promise<void> {
+  const { error } = await supabase
+    .from('savings_goals')
+    .delete()
+    .eq('id', goalId)
+  if (error) throw error
+}
