@@ -83,11 +83,13 @@ export function ControlHeroTitular({ state }: Props) {
         </Text>
       </RiseRow>
 
-      <RiseRow delay={240}>
-        <Text style={[styles.secondary, { color: theme.colors.heroMuted }]}>
-          {msg.secondary}
-        </Text>
-      </RiseRow>
+      {msg.secondary ? (
+        <RiseRow delay={240}>
+          <Text style={[styles.secondary, { color: theme.colors.heroMuted }]}>
+            {msg.secondary}
+          </Text>
+        </RiseRow>
+      ) : null}
 
       <RiseRow delay={320}>
         <View style={styles.numberBlock}>

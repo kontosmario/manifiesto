@@ -9,8 +9,10 @@ import type { ControlHeroState } from './control-hero-states'
 export interface ControlMessage {
   /** Sentencia principal · ej "Vas $6.000 arriba del ritmo" */
   primary: string
-  /** Sentencia de soporte · ej "Frená el resto del día" */
-  secondary: string
+  /** Sentencia de soporte · ej "Frená el resto del día".
+   *  `null` cuando la rama positiva ya está cubierta por el primary +
+   *  LIBRE HOY + el chip de días al cobro abajo — no agregar ruido. */
+  secondary: string | null
   /** Tone para color encoding · lime / amber / peach */
   status: 'positive' | 'caution' | 'urgent'
   /** El número destacado · drive del CountUp hero */
@@ -90,25 +92,22 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
-  // 5. Adelantado · libreHoy alto (gastoHoy bajo respecto del cupo
-  // diario completo). Antes usaba delta pro-rated por hora —
-  // engañoso en horas tempranas. Ahora usa libreHoy directo.
-  // Secondary NO repite el monto: el número grande ya dice
-  // "LIBRE HOY \$X" — duplicarlo abajo era ruido.
+  // 5. Adelantado · libreHoy alto. Sin secondary — la info "X días
+  // al cobro" ya vive en el chip dedicado debajo del hero numérico.
   if (state.libreHoy > state.cupoDiario * 0.7) {
     return {
       primary: 'Vas adelantado.',
-      secondary: `${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
+      secondary: null,
       status: 'positive',
       primaryNumber: state.libreHoy,
       primaryLabel: 'LIBRE HOY',
     }
   }
 
-  // 6. Default positive · en línea con el prorrateo
+  // 6. Default positive · sin secondary (igual que rama 5).
   return {
     primary: 'Vas bien hoy.',
-    secondary: `${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
+    secondary: null,
     status: 'positive',
     primaryNumber: state.libreHoy,
     primaryLabel: 'LIBRE HOY',
