@@ -17,6 +17,7 @@ import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
+import { useAuthSession } from '@/features/auth/use-auth-session'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -107,7 +108,10 @@ function MetaCardImpl({
 
   // Quick-add wiring.
   const [sheetOpen, setSheetOpen] = useState(false)
-  const addMutation = useAddSavingsContribution(goal.familyId)
+  // userId via auth session — habilita la invalidación de home_snapshot
+  // y control snapshots dentro de `syncAllAfterMutation`.
+  const sessionUserId = useAuthSession().data?.user?.id
+  const addMutation = useAddSavingsContribution(goal.familyId, sessionUserId)
   const handleQuickAddPress = () => {
     if (!enableQuickAdd) return
     void triggerHaptic('selection')

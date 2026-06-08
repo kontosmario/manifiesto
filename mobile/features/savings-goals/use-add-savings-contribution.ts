@@ -6,6 +6,7 @@ import {
   type SavingsGoalRow,
 } from '@/features/savings-goals/savings-goal.model'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 interface AddContributionInput {
   goalId: string
@@ -18,7 +19,10 @@ interface AddContributionInput {
  * devices, two taps in flight) cannot lose updates the way a
  * read-modify-write client flow could.
  */
-export function useAddSavingsContribution(familyId: string | undefined) {
+export function useAddSavingsContribution(
+  familyId: string | undefined,
+  userId?: string,
+) {
   const queryClient = useQueryClient()
 
   return useMutation<SavingsGoal, Error, AddContributionInput>({
@@ -31,8 +35,25 @@ export function useAddSavingsContribution(familyId: string | undefined) {
       if (!data) throw new Error('No se pudo registrar el aporte')
       return mapSavingsGoalRow(data as SavingsGoalRow)
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: savingsGoalQueryKey(familyId) })
+    onSuccess: (updated) => {
+      // Optimistic-seed la query activa con la goal recién actualizada;
+      // evita un blink mientras el invalidate refetcha.
+      if (familyId) {
+        queryClient.setQueryData(savingsGoalQueryKey(familyId), updated)
+      }
+    },
+    // Code review H3 (sprint A, 2026-06-08): un aporte mueve el chip
+    // de Home (savings card), Control v2 (alcancía + meta), y dispara
+    // cycle-acumulado si el aporte es del ciclo en curso. Antes
+    // invalidábamos solo `savingsGoalQueryKey`; ahora delegamos a
+    // `syncAllAfterMutation` con scope `savings` para que todas las
+    // vistas reaccionen en sincronía.
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['savings'],
+      })
     },
   })
 }
