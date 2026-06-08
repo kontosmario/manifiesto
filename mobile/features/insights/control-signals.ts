@@ -695,9 +695,16 @@ function buildEndOfCycleAcceleration(
 function buildRecoveryPath(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
-  if (args.view.delta >= 0) return null
+  // Gate por `libreHoy < 0` (sobregiro REAL: gastoHoy > cupoDiario
+  // completo del día), NO por `delta < 0` (pro-rated por hora). El
+  // delta pro-rated triggereaba SOBREGIRO falsos a primera hora del
+  // día: e.g. cargar \$15K a las 00:27 con cupo \$183K → libreHoy = $168K
+  // (bien) pero delta = -\$11.5K (mal) porque cupoHastaAhora a esa hora
+  // es solo \$3.4K. El user quedaba con "SOBREGIRO \$11K" cuando todavía
+  // tenía el día entero por delante. Owner feedback 2026-06-08.
+  if (args.view.libreHoy >= 0) return null
   if (args.diasRestantes <= 1) return null
-  const overspend = Math.abs(args.view.delta)
+  const overspend = Math.abs(args.view.libreHoy)
   const newCupo = args.cupoDiario - overspend / args.diasRestantes
   if (newCupo < args.cupoDiario * 0.4) {
     const framing = framingFor(args.persona ?? 'planner')
