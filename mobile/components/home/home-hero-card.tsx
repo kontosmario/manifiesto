@@ -342,7 +342,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.primary }]}
                   >
-                    {`+${formatMoney(data.acumulado.amount)} acumulado de ${data.acumulado.periodLabel.toLowerCase()}`}
+                    {`+${formatMoneyShort(data.acumulado.amount)} de ${data.acumulado.periodLabel.toLowerCase()}`}
                   </Text>
                 </View>
               </RiseView>
@@ -382,7 +382,7 @@ function HomeHeroCardImpl({
                       { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
                     ]}
                   >
-                    {`+${formatMoney(data.cycleBalanceDiff)} sumado al mes`}
+                    {`+${formatMoneyShort(data.cycleBalanceDiff)} al mes`}
                   </Text>
                 </View>
               </RiseView>
@@ -414,7 +414,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
                   >
-                    Ajustado para este mes
+                    Saldo ajustado
                   </Text>
                 </View>
               </RiseView>
@@ -517,7 +517,7 @@ function HomeHeroCardImpl({
                     maxFontSizeMultiplier={1.4}
                     numberOfLines={1}
                   >
-                    {`Reserva ${formatMoney(data.monthlyReserveAmount)}`}
+                    {`Reserva ${formatMoneyShort(data.monthlyReserveAmount)}`}
                   </Text>
                 </View>
               </RiseView>
