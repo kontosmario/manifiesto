@@ -92,13 +92,13 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
 
   // 5. Adelantado · libreHoy alto (gastoHoy bajo respecto del cupo
   // diario completo). Antes usaba delta pro-rated por hora —
-  // engañoso en horas tempranas (mismo trap que el SOBREGIRO falso
-  // pero en sentido positivo). Ahora usa libreHoy directo:
-  // "Vas adelantado" si gastoHoy <= 30% del cupo del día.
+  // engañoso en horas tempranas. Ahora usa libreHoy directo.
+  // Secondary NO repite el monto: el número grande ya dice
+  // "LIBRE HOY \$X" — duplicarlo abajo era ruido.
   if (state.libreHoy > state.cupoDiario * 0.7) {
     return {
       primary: 'Vas adelantado.',
-      secondary: `Te quedan ${formatMoneyCompact(state.libreHoy)} para hoy.`,
+      secondary: `${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
       status: 'positive',
       primaryNumber: state.libreHoy,
       primaryLabel: 'LIBRE HOY',
@@ -108,7 +108,7 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   // 6. Default positive · en línea con el prorrateo
   return {
     primary: 'Vas bien hoy.',
-    secondary: `${formatMoneyCompact(state.libreHoy)} para el resto del día · ${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
+    secondary: `${state.proximoSueldoEnDias} ${state.proximoSueldoEnDias === 1 ? 'día' : 'días'} al cobro.`,
     status: 'positive',
     primaryNumber: state.libreHoy,
     primaryLabel: 'LIBRE HOY',
