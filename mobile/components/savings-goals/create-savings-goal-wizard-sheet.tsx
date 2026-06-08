@@ -581,9 +581,28 @@ export function CreateSavingsGoalWizardSheet({
                   />
                 </Pressable>
               ) : (
-                // Spacer cuando no hay back — preserva alignment del
-                // bloque de texto a la derecha (no salta entre steps).
-                <View style={styles.stepHeaderBackSpacer} />
+                // Step 1: el slot del chevron lo ocupa un icono que
+                // representa la acción — bandera de meta. Comunica
+                // "estás creando una meta" desde el primer paso sin
+                // texto extra. Reusa el surfaceMuted bg para mantener
+                // el ritmo visual con el chevron de steps 2-4.
+                <View
+                  style={[
+                    styles.stepHeaderIcon,
+                    {
+                      backgroundColor: theme.colors.primarySurface,
+                      borderColor: theme.colors.primary,
+                    },
+                  ]}
+                  accessibilityRole="image"
+                  accessibilityLabel="Crear meta de ahorro"
+                >
+                  <MaterialIcons
+                    name="flag"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
+                </View>
               )}
 
               <View style={styles.stepHeaderTextCol}>
@@ -1227,6 +1246,17 @@ const styles = StyleSheet.create({
   stepHeaderBackSpacer: {
     width: 36,
     height: 36,
+  },
+  // Icon "meta" (bandera) en step 1 — mismas dimensiones que el
+  // chevron back, pero con border + tinte primary para destacarlo
+  // como elemento decorativo/contextual (no actionable).
+  stepHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   stepHeaderTextCol: {
     flex: 1,
