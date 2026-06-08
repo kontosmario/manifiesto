@@ -293,15 +293,17 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   })
 
   // Sonda para detectar el caso "frozen cycle pero hay expenses post-cobro":
-  // si el cycle activo está congelado (esperando confirm), el controller
-  // filtra por cycleStart → cycleEnd y los gastos recién agregados (con
-  // fecha posterior al cycleEnd) caen fuera del filtro. El user ve un
-  // empty state engañoso ("Carga tu primer gasto") cuando en realidad
-  // tiene gastos atrapados en el limbo. Owner feedback 2026-06-08.
-  const { isSalaryPendingConfirmation } = usePayCycle(familyId)
+  // el user ve "Carga tu primer gasto" cuando en realidad sí tiene gastos
+  // — solo que están fuera del cycle visible (típicamente porque no
+  // confirmó cobro). Owner feedback 2026-06-08.
+  //
+  // Condición: el cycle visible está vacío pero useRecentExpenses devuelve
+  // ≥1 expense → hay gastos en DB que el filter no muestra. Antes
+  // gateábamos también con isSalaryPendingConfirmation pero quedaba muy
+  // restrictivo: bastaba con que el ciclo visible no incluyera todos los
+  // gastos para que el empty state engañoso saliera.
   const recentExpensesQuery = useRecentExpenses(familyId, 3)
   const hasRecentExpensesOutsideCycle =
-    isSalaryPendingConfirmation &&
     (recentExpensesQuery.data?.length ?? 0) > 0
 
   // Income events del cycle visible — se intercalan con los gastos en
