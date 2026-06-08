@@ -437,7 +437,7 @@ function HomeHeroCardImpl({
                   accessibilityRole="text"
                   accessibilityLabel={`Tenés ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
                   style={[
-                    styles.adjustedChip,
+                    styles.savingsChip,
                     theme.isDark
                       ? {
                           backgroundColor: 'rgba(165,180,252,0.18)',
@@ -449,21 +449,27 @@ function HomeHeroCardImpl({
                         },
                   ]}
                 >
+                  {/* Icon wallet — paralelo del piggy de savings: vibe
+                      friendly, monetary, distinto del savings para que
+                      se lea como métrica diferente. MaterialIcons (el
+                      app no usa MaterialCommunityIcons). */}
+                  <MaterialIcons
+                    name="account-balance-wallet"
+                    size={13}
+                    color={theme.isDark ? '#A5B4FC' : '#4F46E5'}
+                  />
                   <Text
                     style={[
-                      styles.adjustedChipDot,
-                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                      styles.savingsChipText,
+                      {
+                        color: theme.isDark ? '#A5B4FC' : '#4F46E5',
+                        fontVariant: ['tabular-nums'],
+                      },
                     ]}
+                    maxFontSizeMultiplier={1.4}
+                    numberOfLines={1}
                   >
-                    •
-                  </Text>
-                  <Text
-                    style={[
-                      styles.adjustedChipText,
-                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
-                    ]}
-                  >
-                    {`Reserva: ${formatMoney(data.monthlyReserveAmount)}`}
+                    {`Reserva ${formatMoney(data.monthlyReserveAmount)}`}
                   </Text>
                 </View>
               </RiseView>
