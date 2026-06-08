@@ -392,15 +392,15 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
         {/* ── Header strip: back (cuando aplica) + brand + close ── */}
         <View style={styles.headerRow}>
-          {/* Back chevron — visible cuando estamos en la última escena
-              con decisión pendiente (las tap zones de navegación están
-              deshabilitadas en ese modo para que los OptionCards reciban
-              taps). Permite revisar las historias anteriores antes de
-              decidir. En otras escenas las tap zones manejan la
-              navegación, así que no hace falta el botón. */}
-          {sceneIndex > 0 &&
-          sceneIndex + 1 >= sceneCount &&
-          Boolean(payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision) ? (
+          {/* Back chevron — visible SIEMPRE en la última escena (no
+              solo cuando hay pending decision). Las tap zones se
+              deshabilitan en la última escena para que el CTA y los
+              OptionCards reciban taps; el chevron es la única manera
+              de retroceder de la última escena. Antes solo aparecía
+              con pending → en mes neutro (sin pending) el user no
+              podía volver atrás y al tocar el CTA caía sobre la tap
+              zone. */}
+          {sceneIndex > 0 && sceneIndex + 1 >= sceneCount ? (
             <Animated.View
               entering={
                 reduced
@@ -477,13 +477,18 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
         </View>
 
         {/* ── Tap zones (above content, below close) ─────────
-            En la última escena con decisión pendiente NO mostramos las
-            tap zones — los OptionCards deben recibir los taps directo
-            (sin que el wrapper de "siguiente/anterior escena" los
-            intercepte). El user maneja el flow con el CTA y el botón
-            de cerrar (X) sigue disponible. */}
-        {!(sceneIndex + 1 >= sceneCount &&
-          Boolean(payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision)) ? (
+            En la ÚLTIMA escena NO mostramos las tap zones (de cualquier
+            tipo: vanilla, pending, past). Razones:
+              - El CTA ("Empezar el próximo" / "Confirmar y empezar")
+                recibe los taps directo sin que el wrapper los intercepte.
+              - Los OptionCards (pending decision) reciben los taps directo.
+              - El chevron back del header reemplaza la tap zone
+                izquierda para retroceder al scene anterior.
+              - El close X cierra el modal.
+            Antes el gate dependía de pending decision → en mes neutro
+            las tap zones quedaban activas y tapaban el CTA (owner
+            feedback 2026-06-08). */}
+        {sceneIndex + 1 < sceneCount ? (
           <View style={styles.tapZones} pointerEvents="box-none">
             <Pressable
               onPress={handleTapLeft}
@@ -496,11 +501,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
               onPress={handleTapRight}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
-              accessibilityLabel={
-                sceneIndex + 1 >= sceneCount
-                  ? 'Cerrar resumen'
-                  : 'Escena siguiente'
-              }
+              accessibilityLabel="Escena siguiente"
               style={styles.tapZoneRight}
             />
           </View>
