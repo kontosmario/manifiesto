@@ -106,69 +106,6 @@ function ControlV2AlcanciaCardImpl({
   const [sheetOpen, setSheetOpen] = useState(false)
   const addMutation = useAddSavingsContribution(goal?.familyId ?? familyId)
 
-  // ── Reserva acumulada: estado + mutation ───────────────────────────
-  const reserveMutation = useApplyReserveDecision(familyId)
-  const [reserveSheetMode, setReserveSheetMode] = useState<
-    'cycle' | 'meta' | null
-  >(null)
-  const [reserveDraft, setReserveDraft] = useState('')
-
-  // Hydrate draft al abrir el sheet con el monto total disponible —
-  // el user puede backspace para parcializar. Reset al cerrar para no
-  // mostrar valores stale si la reserva cambió entre aperturas.
-  useEffect(() => {
-    if (reserveSheetMode !== null) {
-      setReserveDraft(serializePrice(monthlyReserveAmount))
-    }
-  }, [reserveSheetMode, monthlyReserveAmount])
-
-  const parsedReserve = useMemo(() => parsePrice(reserveDraft), [reserveDraft])
-  const isReserveDraftValid =
-    Number.isFinite(parsedReserve) &&
-    parsedReserve > 0 &&
-    parsedReserve <= monthlyReserveAmount
-
-  const openSumarSheet = () => {
-    void triggerHaptic('selection')
-    setReserveSheetMode('cycle')
-  }
-  const openMetaSheet = () => {
-    if (!goal) {
-      void triggerHaptic('selection')
-      Alert.alert(
-        'Aún no tienes meta',
-        'Crea tu meta de ahorro desde Ajustes → Metas para poder aportar la reserva.',
-      )
-      return
-    }
-    void triggerHaptic('selection')
-    setReserveSheetMode('meta')
-  }
-
-  const handleReserveSubmit = () => {
-    if (!isReserveDraftValid || !reserveSheetMode) return
-    reserveMutation.mutate(
-      {
-        amount: parsedReserve,
-        target: reserveSheetMode,
-        metaGoalId: reserveSheetMode === 'meta' ? goal?.id : undefined,
-      },
-      {
-        onSuccess: () => {
-          void triggerHaptic('success')
-          setReserveSheetMode(null)
-          setReserveDraft('')
-        },
-        onError: (err) => {
-          void triggerHaptic('error')
-          Alert.alert(
-            'No pudimos usar la reserva',
-            err instanceof Error ? err.message : 'Reintenta en un momento.',
-          )
-        },
-      },
-    )
-  }
   // Press scale 0.97 — la CTA es el único elemento interactivo del
   // card. Antes usaba `opacity: pressed ? 0.78 : ...` (lento fade
   // muerto). Spring scale + Animated.View es Emil-grade y tactile.
@@ -178,8 +115,22 @@ function ControlV2AlcanciaCardImpl({
   // gasto (los días sin registrar contarían como "ahorro"). Mostramos la
   // silueta real — eyebrow + número grande + 3 mini-tiles + CTA — pero
   // inerte, sin números, con el progreso hacia la activación.
+  //
+  // EXCEPCIÓN: si el user tiene reserva acumulada, la card debe
+  // permanecer FUNCIONAL para que pueda decidir qué hacer con esa
+  // plata — independientemente de que el vault no esté listo (vault
+  // depende de días con gasto; la reserva existe sí o sí en DB).
+  // El empty state recibe los props necesarios para hostear el
+  // ReserveBlock al fondo.
   if (diaActual < MIN_DIAS || diasConGasto < MIN_SPEND_DAYS) {
-    return <ControlV2AlcanciaCardEmpty diasConGasto={diasConGasto} />
+    return (
+      <ControlV2AlcanciaCardEmpty
+        diasConGasto={diasConGasto}
+        familyId={familyId}
+        goal={goal}
+        monthlyReserveAmount={monthlyReserveAmount}
+      />
+    )
   }
 
   // Tone tokens — alineados con la MetaCard así "alcancía" y "meta"
@@ -196,15 +147,6 @@ function ControlV2AlcanciaCardImpl({
   const muted = theme.colors.textMuted
   const text = theme.colors.text
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
-
-  // Tono indigo — consistente con el chip "Reserva" del Home. Hardcoded
-  // a propósito (no se agregan tokens al palette: el bloque es un
-  // affordance local de un caso edge, no parte del sistema de color).
-  const reserveColor = isDark ? '#A5B4FC' : '#4F46E5'
-  const reserveBg = isDark ? 'rgba(165,180,252,0.14)' : 'rgba(99,102,241,0.10)'
-  const reserveBorder = isDark
-    ? 'rgba(165,180,252,0.36)'
-    : 'rgba(99,102,241,0.32)'
 
   const goalPct =
     goal != null
@@ -403,82 +345,11 @@ function ControlV2AlcanciaCardImpl({
           />
         </View>
 
-        {monthlyReserveAmount > 0 ? (
-          <View
-            style={[
-              styles.reserveSection,
-              { backgroundColor: reserveBg, borderColor: reserveBorder },
-            ]}
-          >
-            <View style={styles.reserveHeader}>
-              <View
-                style={[styles.reserveDot, { backgroundColor: reserveColor }]}
-              />
-              <Text
-                style={[styles.reserveLabel, { color: reserveColor }]}
-                numberOfLines={1}
-              >
-                RESERVA ACUMULADA
-              </Text>
-              <Text
-                style={[styles.reserveAmount, { color: text }]}
-                numberOfLines={1}
-              >
-                {formatMoney(monthlyReserveAmount)}
-              </Text>
-            </View>
-            <View style={styles.reserveActionsRow}>
-              <Pressable
-                onPress={openSumarSheet}
-                accessibilityRole="button"
-                accessibilityLabel="Sumar reserva al mes actual"
-                disabled={reserveMutation.isPending}
-                style={({ pressed }) => [
-                  styles.reserveAction,
-                  {
-                    backgroundColor: reserveBg,
-                    borderColor: reserveBorder,
-                    opacity: pressed ? 0.78 : 1,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="trending-up"
-                  size={14}
-                  color={reserveColor}
-                />
-                <Text
-                  style={[styles.reserveActionText, { color: reserveColor }]}
-                  numberOfLines={1}
-                >
-                  Sumar al mes
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={openMetaSheet}
-                accessibilityRole="button"
-                accessibilityLabel="Aportar reserva a tu meta de ahorro"
-                disabled={reserveMutation.isPending}
-                style={({ pressed }) => [
-                  styles.reserveAction,
-                  {
-                    backgroundColor: reserveBg,
-                    borderColor: reserveBorder,
-                    opacity: pressed ? 0.78 : 1,
-                  },
-                ]}
-              >
-                <MaterialIcons name="flag" size={14} color={reserveColor} />
-                <Text
-                  style={[styles.reserveActionText, { color: reserveColor }]}
-                  numberOfLines={1}
-                >
-                  A una meta
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
+        <ReserveBlock
+          familyId={familyId}
+          monthlyReserveAmount={monthlyReserveAmount}
+          goal={goal}
+        />
       </View>
 
       {hasGoal ? (
@@ -496,34 +367,191 @@ function ControlV2AlcanciaCardImpl({
         />
       ) : null}
 
+    </RiseView>
+  )
+}
+
+// ── ReserveBlock — self-contained ────────────────────────────────────
+//
+// Bloque indigo + 2 CTAs + NumericEditSheet para administrar la
+// reserva acumulada. Extraído del Impl para poder reusarse en el
+// empty state (cuando no hay días suficientes para el vault pero SÍ
+// hay reserva en DB). Maneja su propio sheet state y mutation.
+//
+// Render nullable: si reserve <= 0 retorna null y el parent no
+// necesita gate extra.
+interface ReserveBlockProps {
+  familyId: string
+  monthlyReserveAmount: number
+  goal: SavingsGoal | null
+}
+
+function ReserveBlock({
+  familyId,
+  monthlyReserveAmount,
+  goal,
+}: ReserveBlockProps) {
+  const { theme } = useAppTheme()
+  const isDark = theme.isDark
+  const text = theme.colors.text
+  const reserveColor = isDark ? '#A5B4FC' : '#4F46E5'
+  const reserveBg = isDark ? 'rgba(165,180,252,0.14)' : 'rgba(99,102,241,0.10)'
+  const reserveBorder = isDark
+    ? 'rgba(165,180,252,0.36)'
+    : 'rgba(99,102,241,0.32)'
+
+  const reserveMutation = useApplyReserveDecision(familyId)
+  const [sheetMode, setSheetMode] = useState<'cycle' | 'meta' | null>(null)
+  const [draft, setDraft] = useState('')
+
+  useEffect(() => {
+    if (sheetMode !== null) {
+      setDraft(serializePrice(monthlyReserveAmount))
+    }
+  }, [sheetMode, monthlyReserveAmount])
+
+  const parsed = useMemo(() => parsePrice(draft), [draft])
+  const isValid =
+    Number.isFinite(parsed) && parsed > 0 && parsed <= monthlyReserveAmount
+
+  const openSumar = () => {
+    void triggerHaptic('selection')
+    setSheetMode('cycle')
+  }
+  const openMeta = () => {
+    if (!goal) {
+      void triggerHaptic('selection')
+      Alert.alert(
+        'Aún no tienes meta',
+        'Crea tu meta de ahorro desde Ajustes → Metas para poder aportar la reserva.',
+      )
+      return
+    }
+    void triggerHaptic('selection')
+    setSheetMode('meta')
+  }
+
+  const handleSubmit = () => {
+    if (!isValid || !sheetMode) return
+    reserveMutation.mutate(
+      {
+        amount: parsed,
+        target: sheetMode,
+        metaGoalId: sheetMode === 'meta' ? goal?.id : undefined,
+      },
+      {
+        onSuccess: () => {
+          void triggerHaptic('success')
+          setSheetMode(null)
+          setDraft('')
+        },
+        onError: (err) => {
+          void triggerHaptic('error')
+          Alert.alert(
+            'No pudimos usar la reserva',
+            err instanceof Error ? err.message : 'Reintenta en un momento.',
+          )
+        },
+      },
+    )
+  }
+
+  if (monthlyReserveAmount <= 0) return null
+
+  return (
+    <>
+      <View
+        style={[
+          styles.reserveSection,
+          { backgroundColor: reserveBg, borderColor: reserveBorder },
+        ]}
+      >
+        <View style={styles.reserveHeader}>
+          <View style={[styles.reserveDot, { backgroundColor: reserveColor }]} />
+          <Text
+            style={[styles.reserveLabel, { color: reserveColor }]}
+            numberOfLines={1}
+          >
+            RESERVA ACUMULADA
+          </Text>
+          <Text style={[styles.reserveAmount, { color: text }]} numberOfLines={1}>
+            {formatMoney(monthlyReserveAmount)}
+          </Text>
+        </View>
+        <View style={styles.reserveActionsRow}>
+          <Pressable
+            onPress={openSumar}
+            accessibilityRole="button"
+            accessibilityLabel="Sumar reserva al mes actual"
+            disabled={reserveMutation.isPending}
+            style={({ pressed }) => [
+              styles.reserveAction,
+              {
+                backgroundColor: reserveBg,
+                borderColor: reserveBorder,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <MaterialIcons name="trending-up" size={14} color={reserveColor} />
+            <Text
+              style={[styles.reserveActionText, { color: reserveColor }]}
+              numberOfLines={1}
+            >
+              Sumar al mes
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={openMeta}
+            accessibilityRole="button"
+            accessibilityLabel="Aportar reserva a tu meta de ahorro"
+            disabled={reserveMutation.isPending}
+            style={({ pressed }) => [
+              styles.reserveAction,
+              {
+                backgroundColor: reserveBg,
+                borderColor: reserveBorder,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <MaterialIcons name="flag" size={14} color={reserveColor} />
+            <Text
+              style={[styles.reserveActionText, { color: reserveColor }]}
+              numberOfLines={1}
+            >
+              A una meta
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       <NumericEditSheet
-        visible={reserveSheetMode !== null}
+        visible={sheetMode !== null}
         title={
-          reserveSheetMode === 'cycle'
+          sheetMode === 'cycle'
             ? 'Sumar reserva al mes'
             : 'Aportar reserva a tu meta'
         }
         subtitle={`Reserva disponible: ${formatMoney(monthlyReserveAmount)}`}
-        rawValue={reserveDraft}
-        onChangeRawValue={setReserveDraft}
+        rawValue={draft}
+        onChangeRawValue={setDraft}
         formatDisplay={(raw) => formatPriceInputValue(raw, false)}
         displayEyebrow="MONTO A USAR"
         displayPlaceholder="$ 0"
         maxIntegerDigits={11}
         maxDecimalDigits={2}
         numpadCollapsedByDefault
-        saveLabel={
-          reserveSheetMode === 'cycle' ? 'Sumar al mes' : 'Aportar a meta'
-        }
-        saveDisabled={!isReserveDraftValid}
+        saveLabel={sheetMode === 'cycle' ? 'Sumar al mes' : 'Aportar a meta'}
+        saveDisabled={!isValid}
         isSaving={reserveMutation.isPending}
-        onSave={handleReserveSubmit}
+        onSave={handleSubmit}
         onClose={() => {
           if (reserveMutation.isPending) return
-          setReserveSheetMode(null)
+          setSheetMode(null)
         }}
       />
-    </RiseView>
+    </>
   )
 }
 
@@ -535,7 +563,19 @@ function ControlV2AlcanciaCardImpl({
  * presionable). El pill dice "Pronto" en textMuted; el callout comunica
  * la activación + el progreso. Recesado (opacity 0.86), sin shimmer.
  */
-function ControlV2AlcanciaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+interface ControlV2AlcanciaCardEmptyProps {
+  diasConGasto: number
+  familyId: string
+  goal: SavingsGoal | null
+  monthlyReserveAmount: number
+}
+
+function ControlV2AlcanciaCardEmpty({
+  diasConGasto,
+  familyId,
+  goal,
+  monthlyReserveAmount,
+}: ControlV2AlcanciaCardEmptyProps) {
   const { theme } = useAppTheme()
   const isDark = theme.isDark
   const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
@@ -633,6 +673,16 @@ function ControlV2AlcanciaCardEmpty({ diasConGasto }: { diasConGasto: number }) 
             </Text>
           </View>
         </View>
+
+        {/* Reserva acumulada: vive FUERA del paywall de "días con gasto".
+            Si el user tiene plata en reserva, debe poder administrarla
+            independiente de que la sugerencia de vault aún no esté
+            lista. El ReserveBlock se auto-renderea nullable. */}
+        <ReserveBlock
+          familyId={familyId}
+          monthlyReserveAmount={monthlyReserveAmount}
+          goal={goal}
+        />
       </View>
     </RiseView>
   )
