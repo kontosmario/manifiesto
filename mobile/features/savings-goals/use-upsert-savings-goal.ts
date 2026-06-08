@@ -23,20 +23,35 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
     SavingsGoal,
     Error,
     MutationVars,
-    { previous: SavingsGoal | null | undefined } | undefined
+    {
+      previousActive: SavingsGoal | null | undefined
+      previousLatest: SavingsGoal | null | undefined
+    } | undefined
   >({
     mutationFn: ({ input, existingId }) =>
       upsertSavingsGoal(familyId, input, existingId),
+    // Code review H4 (sprint A, 2026-06-08): el onError previo aplicaba
+    // el mismo `previous` (snapshot de la query active-only) a las dos
+    // keys, lo que dejaba `latestSavingsGoalQueryKey` corrupta cuando
+    // su shape original incluía goals inactivas (Settings rollback
+    // perdía la goal inactiva). Snapshoteamos las DOS keys por
+    // separado y restauramos cada una a su valor previo.
     onMutate: async ({ input, existingId }) => {
-      await queryClient.cancelQueries({ queryKey: savingsGoalQueryKey(familyId) })
-      const previous = queryClient.getQueryData<SavingsGoal | null>(
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: savingsGoalQueryKey(familyId) }),
+        queryClient.cancelQueries({ queryKey: latestSavingsGoalQueryKey(familyId) }),
+      ])
+      const previousActive = queryClient.getQueryData<SavingsGoal | null>(
         savingsGoalQueryKey(familyId),
+      )
+      const previousLatest = queryClient.getQueryData<SavingsGoal | null>(
+        latestSavingsGoalQueryKey(familyId),
       )
       // Optimistic merge sobre la goal cacheada. Si no había goal, la
       // creamos provisoriamente con id tentativo. Cuando el server
       // responde, syncAll refetcha y reemplaza con el row real.
       const nowIso = new Date().toISOString()
-      const base: SavingsGoal = previous ?? {
+      const base: SavingsGoal = previousActive ?? previousLatest ?? {
         id: existingId ?? `temp-${Date.now()}`,
         familyId,
         title: '',
@@ -72,12 +87,17 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
         latestSavingsGoalQueryKey(familyId),
         optimistic,
       )
-      return { previous }
+      return { previousActive, previousLatest }
     },
     onError: (_err, input, ctx) => {
-      if (ctx?.previous !== undefined) {
-        queryClient.setQueryData(savingsGoalQueryKey(familyId), ctx.previous)
-        queryClient.setQueryData(latestSavingsGoalQueryKey(familyId), ctx.previous)
+      if (ctx?.previousActive !== undefined) {
+        queryClient.setQueryData(savingsGoalQueryKey(familyId), ctx.previousActive)
+      }
+      if (ctx?.previousLatest !== undefined) {
+        queryClient.setQueryData(
+          latestSavingsGoalQueryKey(familyId),
+          ctx.previousLatest,
+        )
       }
       toast.error('No se pudo guardar la meta.', {
         actionLabel: 'Reintentar',
