@@ -331,11 +331,14 @@ function HomeHeroCardImpl({
                         },
                   ]}
                 >
-                  <Text
-                    style={[styles.adjustedChipDot, { color: theme.colors.primary }]}
-                  >
-                    •
-                  </Text>
+                  {/* Icon trending-up: comunica "valor que viene
+                      arrastrando desde el mes anterior" — momentum
+                      positivo, on-brand para una métrica financiera. */}
+                  <MaterialIcons
+                    name="trending-up"
+                    size={13}
+                    color={theme.colors.primary}
+                  />
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.primary }]}
                   >
@@ -365,14 +368,14 @@ function HomeHeroCardImpl({
                         },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.adjustedChipDot,
-                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
-                    ]}
-                  >
-                    •
-                  </Text>
+                  {/* Icon add-circle: acción clara de "sumar/agregar"
+                      — el user sumó plata al cycle (típicamente
+                      reserva → mes, también aplica a cobro extra). */}
+                  <MaterialIcons
+                    name="add-circle"
+                    size={13}
+                    color={theme.isDark ? '#A5B4FC' : '#4F46E5'}
+                  />
                   <Text
                     style={[
                       styles.adjustedChipText,
@@ -400,11 +403,14 @@ function HomeHeroCardImpl({
                     },
                   ]}
                 >
-                  <Text
-                    style={[styles.adjustedChipDot, { color: theme.colors.heroAccent }]}
-                  >
-                    •
-                  </Text>
+                  {/* Icon tune: sliders/diales — comunica "ajuste
+                      manual" del saldo (correción hacia abajo: cobro
+                      menor al sueldo, quincena adelantada, etc.). */}
+                  <MaterialIcons
+                    name="tune"
+                    size={13}
+                    color={theme.colors.heroAccent}
+                  />
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
                   >
@@ -767,11 +773,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-  },
-  adjustedChipDot: {
-    fontSize: 14,
-    fontWeight: '900',
-    lineHeight: 14,
   },
   adjustedChipText: {
     fontSize: 11,
