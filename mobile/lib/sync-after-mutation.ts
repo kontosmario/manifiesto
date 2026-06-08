@@ -115,6 +115,11 @@ export async function syncAllAfterMutation(
     // junto con la query de activas para que ambos consumers
     // (Settings + Home/Control) reaccionen en sincronía.
     keys.push(latestSavingsGoalQueryKey(familyId))
+    // cycle-acumulado depende del goal (chip "+\$X acumulado de mayo"
+    // referencia el periodo origen vía monthly_summaries). Al
+    // desactivar/eliminar la meta, ese chip puede quedar stale si no
+    // invalidamos. Code review M1 finding (2026-06-08).
+    keys.push(['cycle-acumulado', familyId])
   }
 
   // ── Wrapped — control intelligence ya cubre wrapped_seen_at vía homeSnapshot
