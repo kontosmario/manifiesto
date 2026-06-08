@@ -90,11 +90,15 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
-  // 5. Adelantado · delta positivo amplio
-  if (state.delta > state.cupoDiario * 0.3) {
+  // 5. Adelantado · libreHoy alto (gastoHoy bajo respecto del cupo
+  // diario completo). Antes usaba delta pro-rated por hora —
+  // engañoso en horas tempranas (mismo trap que el SOBREGIRO falso
+  // pero en sentido positivo). Ahora usa libreHoy directo:
+  // "Vas adelantado" si gastoHoy <= 30% del cupo del día.
+  if (state.libreHoy > state.cupoDiario * 0.7) {
     return {
       primary: 'Vas adelantado.',
-      secondary: `Tenés margen extra: ${formatMoneyCompact(state.delta)} sobre el ritmo.`,
+      secondary: `Te quedan ${formatMoneyCompact(state.libreHoy)} para hoy.`,
       status: 'positive',
       primaryNumber: state.libreHoy,
       primaryLabel: 'LIBRE HOY',
