@@ -44,25 +44,30 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     }
   }
 
-  // 3. Crítico · delta muy negativo · gastaste mucho más del ritmo
-  if (state.delta < -state.cupoDiario * 0.5) {
+  // 3. Crítico · libreHoy muy negativo · pasaste MUCHO el cupo completo
+  // del día. Uso libreHoy (no delta pro-rated) para evitar falsos
+  // positivos a primera hora: ej. cargar $15K a las 00:27 daba delta
+  // = -$11K aunque libreHoy = +$168K (todo el día por delante).
+  if (state.libreHoy < -state.cupoDiario * 0.5) {
     return {
-      primary: `Vas ${formatMoneyCompact(Math.abs(state.delta))} arriba del ritmo.`,
-      secondary: 'Si seguís así, el cupo de hoy no alcanza.',
+      primary: `Vas ${formatMoneyCompact(Math.abs(state.libreHoy))} arriba del cupo.`,
+      secondary: 'Pasaste el cupo del día — corregí mañana.',
       status: 'urgent',
       primaryNumber: Math.abs(state.libreHoy),
-      primaryLabel: state.libreHoy < 0 ? 'POR ENCIMA HOY' : 'LIBRE HOY',
+      primaryLabel: 'POR ENCIMA HOY',
     }
   }
 
-  // 4. Caution · delta levemente negativo
-  if (!state.estaOk) {
+  // 4. Caution · libreHoy levemente negativo · sobrepasaste el cupo
+  // completo pero por poco. Mismo motivo: solo fires con overspend
+  // REAL (gastoHoy > cupoDiario), no con prorrateo de las primeras horas.
+  if (state.libreHoy < 0) {
     return {
-      primary: `Vas un poco arriba del ritmo.`,
-      secondary: `Te quedan ${formatMoneyCompact(Math.max(0, state.libreHoy))} para el resto del día.`,
+      primary: `Pasaste el cupo de hoy por ${formatMoneyCompact(Math.abs(state.libreHoy))}.`,
+      secondary: `Acomodá el ritmo para los días que quedan.`,
       status: 'caution',
-      primaryNumber: Math.max(0, state.libreHoy),
-      primaryLabel: 'LIBRE HOY',
+      primaryNumber: Math.abs(state.libreHoy),
+      primaryLabel: 'POR ENCIMA HOY',
     }
   }
 
