@@ -550,32 +550,60 @@ export function CreateSavingsGoalWizardSheet({
               />
             </View>
 
-            <WizardHeader
-              step={step}
-              total={STEP_COUNT}
-              onBack={goBack}
-              onClose={handleDismiss}
-              backDisabled={upsertMutation.isPending}
-              closeDisabled={upsertMutation.isPending}
-            />
+            {/* Chevron back + eyebrow/title en UNA SOLA FILA — a pedido
+                del owner. Chevron a la izquierda (vertically centered
+                con el bloque de texto), columna a la derecha con
+                eyebrow (PASO X DE X) arriba y título debajo. */}
+            <View style={styles.stepHeaderRow}>
+              {step > 1 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Volver al paso ${step - 1} de ${STEP_COUNT}`}
+                  onPress={goBack}
+                  disabled={upsertMutation.isPending}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.stepHeaderBack,
+                    {
+                      backgroundColor: theme.colors.surfaceMuted,
+                      opacity: upsertMutation.isPending
+                        ? 0.4
+                        : pressed
+                          ? 0.7
+                          : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="chevron-left"
+                    size={22}
+                    color={theme.colors.text}
+                  />
+                </Pressable>
+              ) : (
+                // Spacer cuando no hay back — preserva alignment del
+                // bloque de texto a la derecha (no salta entre steps).
+                <View style={styles.stepHeaderBackSpacer} />
+              )}
 
-            <View style={styles.stepCopy}>
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: theme.colors.textMuted },
-                ]}
-              >
-                {STEP_EYEBROWS[step]}
-              </Text>
-              <Text
-                style={[
-                  typography.titleMedium,
-                  { color: theme.colors.text },
-                ]}
-              >
-                {STEP_TITLES[step]}
-              </Text>
+              <View style={styles.stepHeaderTextCol}>
+                <Text
+                  style={[
+                    typography.eyebrow,
+                    { color: theme.colors.textMuted },
+                  ]}
+                >
+                  {STEP_EYEBROWS[step]}
+                </Text>
+                <Text
+                  style={[
+                    typography.titleMedium,
+                    { color: theme.colors.text },
+                  ]}
+                >
+                  {STEP_TITLES[step]}
+                </Text>
+              </View>
             </View>
 
             <Animated.View
@@ -609,62 +637,9 @@ export function CreateSavingsGoalWizardSheet({
   )
 }
 
-// ── Header (chevron back + dots + close) ─────────────────────────────
-interface WizardHeaderProps {
-  step: number
-  total: number
-  onBack: () => void
-  onClose: () => void
-  backDisabled?: boolean
-  closeDisabled?: boolean
-}
-
-function WizardHeader({
-  step,
-  total,
-  onBack,
-  onClose,
-  backDisabled,
-  closeDisabled,
-}: WizardHeaderProps) {
-  const { theme } = useAppTheme()
-  const canGoBack = step > 1
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerSide}>
-        {canGoBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Volver al paso anterior"
-            disabled={backDisabled}
-            onPress={onBack}
-            hitSlop={10}
-            style={({ pressed }) => [
-              styles.headerIconButton,
-              {
-                backgroundColor: theme.colors.surfaceMuted,
-                opacity: backDisabled ? 0.4 : pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="chevron-left"
-              size={22}
-              color={theme.colors.text}
-            />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* Indicadores de pasos (dots) + botón X close removidos a
-          pedido del owner: el header ahora es minimal — solo el
-          chevron back cuando aplica. Dismiss vía swipe + drag handle.
-          El step actual se comunica vía el eyebrow del body
-          ("PASO N DE 4"). */}
-      <View style={styles.headerSpacer} />
-    </View>
-  )
-}
+// WizardHeader removido: el chevron back se integró en la fila del
+// eyebrow + título (ver styles.stepHeaderRow arriba). Header chrome
+// minimal — solo el drag handle persiste. Dismiss vía swipe.
 
 // ── Step 1 — Title + emoji picker ────────────────────────────────────
 interface Step1TitleProps {
@@ -1229,35 +1204,33 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
 
-  // ── Header (chevron + dots + close) ──
-  header: {
+  // ── Step header row — chevron back + bloque (eyebrow + título)
+  //    integrados en una sola fila horizontal.
+  stepHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minHeight: 44,
+    gap: 12,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 14,
   },
-  headerSide: {
-    width: 36,
-    alignItems: 'flex-start',
-  },
-  headerSpacer: {
-    flex: 1,
-  },
-  headerIconButton: {
+  stepHeaderBack: {
     width: 36,
     height: 36,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // ── Step copy (eyebrow + title) ──
-  stepCopy: {
-    paddingHorizontal: 20,
-    gap: 6,
-    marginTop: 8,
-    marginBottom: 14,
+  // Spacer cuando step=1 (no hay chevron) — preserva el alignment
+  // del bloque de texto a la derecha; sin esto el texto saltaría
+  // hacia la izquierda cuando aparece/desaparece el chevron.
+  stepHeaderBackSpacer: {
+    width: 36,
+    height: 36,
+  },
+  stepHeaderTextCol: {
+    flex: 1,
+    gap: 4,
   },
 
   // ── Step body wrap (animated parallax) ──
