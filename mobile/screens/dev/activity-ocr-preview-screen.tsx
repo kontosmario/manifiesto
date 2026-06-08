@@ -62,7 +62,9 @@ export function ActivityOcrPreviewScreen() {
   }
 
   function handleCopy(label: string, payload: unknown) {
-    console.log(`[activity-ocr] ${label}`, JSON.stringify(payload, null, 2))
+    if (__DEV__) {
+      console.log(`[activity-ocr] ${label}`, JSON.stringify(payload, null, 2))
+    }
   }
 
   return (

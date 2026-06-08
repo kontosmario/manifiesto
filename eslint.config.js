@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
   {
-    ignores: ['node_modules', '.expo', 'dist', 'ios', 'android', 'legacy-web-src'],
+    ignores: ['node_modules', '.expo', 'dist', 'ios', 'android'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

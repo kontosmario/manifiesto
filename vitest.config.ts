@@ -24,7 +24,6 @@ export default defineConfig({
     exclude: [
       'dist/**',
       'ios/**',
-      'legacy-web-src/**',
       'node_modules/**',
     ],
     include: ['tests/**/*.test.ts'],
