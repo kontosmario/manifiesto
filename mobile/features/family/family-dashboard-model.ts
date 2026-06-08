@@ -226,7 +226,19 @@ export function buildFamilyDashboardSnapshot({
   // With override active, the daily cap spreads the user's reported
   // balance across the remaining days only (matches engine output).
   const effectiveCycleDays = hasCycleOverride ? remainingDaysFromToday : totalCycleDays
-  const overrideProration = hasCycleOverride ? remainingDaysFromToday / totalCycleDays : 1
+  // El proration de fijos/ahorro tiene sentido cuando el override es
+  // DOWN (el user reporta tener MENOS plata que el sueldo, e.g. cobré
+  // menos): "lo que aún queda por ahorrar / pagar en los días que
+  // restan del ciclo, dado lo que efectivamente entra". Pero cuando
+  // el override es UP (sumar reserva al mes, cobro extra), el user
+  // tiene MÁS plata, no menos — la meta de ahorro y los fijos siguen
+  // aplicando enteros. Sin esta condición el chip de savings entraba
+  // en estado "partial" engañoso (e.g. "\$1.1M de meta \$1.4M") aunque
+  // no se hubiera consumido nada del buffer, porque el target se
+  // recortaba por proración. Owner feedback 2026-06-08.
+  const overrideIsDown =
+    hasCycleOverride && (cycleStartingBalanceOverride as number) < monthlyIncome
+  const overrideProration = overrideIsDown ? remainingDaysFromToday / totalCycleDays : 1
   // Prorate fixed obligations and savings target to the remaining
   // window. The user's reported balance is "what I have NOW", not
   // "what I had at cycle start", so commitments/savings should
