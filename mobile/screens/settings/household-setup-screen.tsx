@@ -23,6 +23,7 @@ import {
   useFamilyFinance,
   useUpsertFamilyFinance,
 } from '@/features/finance/use-family-finance'
+import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   deriveSavingsGoalAmount,
   TARGET_ESSENTIALS_PERCENT,
@@ -127,7 +128,12 @@ function HouseholdSetupWizardContent({
 }: HouseholdSetupWizardContentProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
-  const upsertFinanceMutation = useUpsertFamilyFinance(familyId)
+  // userId hace falta para que `useUpsertFamilyFinance` pueda invalidar
+  // home_snapshot (root key) tras el upsert. Sin esto, los users veían
+  // valores stale en el hero hasta el próximo refetch manual. Code
+  // review screens-B3.
+  const sessionUserId = useAuthSession().data?.user?.id
+  const upsertFinanceMutation = useUpsertFamilyFinance(familyId, sessionUserId)
   const [currentStep, setCurrentStep] = useState(0)
   const [drafts, setDrafts] = useState(() => buildHouseholdSetupDraftState(initialSnapshot))
 

@@ -145,7 +145,7 @@ export function SignupScreen() {
 
   const canSubmit = useMemo(
     () =>
-      name.trim().length > 1 && email.includes('@') && password.length >= 6,
+      name.trim().length > 1 && email.includes('@') && password.length >= 8,
     [email, name, password.length],
   )
 

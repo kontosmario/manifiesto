@@ -139,8 +139,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 .delete()
                 .eq('user_id', userId)
               if (error) throw error
+              // Key shape real es `['advisor-interaction-stats', userId
+              // ?? null]` (ver use-interaction-stats). Pasar el userId
+              // hace el invalidate target-only en vez de prefix-match,
+              // que era el intent original. Code review screens-B6.
               queryClient.invalidateQueries({
-                queryKey: ['advisor-interaction-stats'],
+                queryKey: ['advisor-interaction-stats', userId ?? null],
               })
               Alert.alert('Listo', 'Tu historial fue borrado.')
             } catch {

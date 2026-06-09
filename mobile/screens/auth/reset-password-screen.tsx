@@ -33,6 +33,13 @@ export function ResetPasswordScreen() {
   const completeAuthCallback = useCompleteAuthCallback()
   const updatePassword = useUpdatePassword()
   const cancelledRef = useRef(false)
+  // El effect de exchange depende sólo del code; meter
+  // `completeAuthCallback` en deps re-disparaba el RPC en cada render
+  // porque la mutation object cambia de identidad. Code review screens-B1.
+  const mutateRef = useRef(completeAuthCallback)
+  useEffect(() => {
+    mutateRef.current = completeAuthCallback
+  })
 
   const code = typeof params.code === 'string' ? params.code : null
   const [stage, setStage] = useState<'exchanging' | 'form' | 'success' | 'error' | 'timeout'>(
@@ -55,7 +62,7 @@ export function ResetPasswordScreen() {
 
     const run = async () => {
       try {
-        await completeAuthCallback.mutateAsync({ code })
+        await mutateRef.current.mutateAsync({ code })
         if (cancelledRef.current) return
         clearTimeout(timeoutId)
         setStage('form')
@@ -72,10 +79,10 @@ export function ResetPasswordScreen() {
       cancelledRef.current = true
       clearTimeout(timeoutId)
     }
-  }, [code, completeAuthCallback])
+  }, [code])
 
   const passwordValid = useMemo(
-    () => password.length >= 6 && password === confirm,
+    () => password.length >= 8 && password === confirm,
     [password, confirm],
   )
 

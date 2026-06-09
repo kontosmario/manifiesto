@@ -37,23 +37,33 @@ export function PinUnlockScreen() {
       setValue(next)
       if (!isPinComplete(next)) return
       setChecking(true)
-      void verifyPin(next).then((result) => {
-        if (result.ok) {
-          void triggerHaptic('success')
-          markAppUnlocked()
-          router.replace('/')
-          return
-        }
-        if (result.lockedForMs > 0) {
-          const seconds = Math.ceil(result.lockedForMs / 1000)
-          setLockoutMessage(`Bloqueado ${seconds} seg`)
-        } else {
-          setLockoutMessage(null)
-        }
-        setErrorToken((t) => t + 1)
-        setValue('')
-        setChecking(false)
-      })
+      void verifyPin(next)
+        .then((result) => {
+          if (result.ok) {
+            void triggerHaptic('success')
+            markAppUnlocked()
+            router.replace('/')
+            return
+          }
+          if (result.lockedForMs > 0) {
+            const seconds = Math.ceil(result.lockedForMs / 1000)
+            setLockoutMessage(`Bloqueado ${seconds} seg`)
+          } else {
+            setLockoutMessage(null)
+          }
+          setErrorToken((t) => t + 1)
+          setValue('')
+          setChecking(false)
+        })
+        .catch(() => {
+          // verifyPin lee SecureStore + PBKDF2; en error (storage
+          // corrupto / hash inválido) el UI quedaba con `checking=true`
+          // para siempre. Reseteamos como si fuera intento fallido y
+          // dejamos que el user reintente. Code review screens-B4.
+          setErrorToken((t) => t + 1)
+          setValue('')
+          setChecking(false)
+        })
     },
     [checking, router],
   )

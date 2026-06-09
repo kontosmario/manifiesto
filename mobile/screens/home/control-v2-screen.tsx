@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 import type { ControlSectionAnchor as ControlSectionAnchorType } from '@/features/insights/control-action'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ControlV2AlcanciaCard } from '@/components/control-v2/control-v2-alcancia-card'
@@ -359,9 +360,14 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   })
 
   // Stamp the visit so the Control tab badge clears.
-  useEffect(() => {
-    markControlVisited()
-  }, [])
+  // useFocusEffect en lugar de useEffect — el usuario puede volver al
+  // tab desde otro screen sin que el screen se desmonte; con useEffect
+  // ([]) sólo stampaba la PRIMERA vez. Code review screens-B5.
+  useFocusEffect(
+    useCallback(() => {
+      markControlVisited()
+    }, []),
+  )
 
   // Honor `?section=...` deep-links from the Asistente screen — when
   // the user taps a CTA that resolves to `scroll-to-section`, the

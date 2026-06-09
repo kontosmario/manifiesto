@@ -23,6 +23,14 @@ export function AuthCallbackScreen() {
   const [retryToken, setRetryToken] = useState(0)
   const completeAuthCallback = useCompleteAuthCallback()
   const cancelledRef = useRef(false)
+  // Guardamos la mutation object en un ref para que el effect que dispara
+  // mutateAsync NO la incluya en sus deps — sino, cada render genera un
+  // nuevo object y el effect re-corre, disparando el RPC repetidas veces.
+  // Code review screens-B1.
+  const mutateRef = useRef(completeAuthCallback)
+  useEffect(() => {
+    mutateRef.current = completeAuthCallback
+  })
 
   // PKCE flow: only the `code` is honored. Implicit-flow tokens
   // (access_token / refresh_token in the URL) are no longer accepted
@@ -48,7 +56,7 @@ export function AuthCallbackScreen() {
 
     const run = async () => {
       try {
-        await completeAuthCallback.mutateAsync(payload)
+        await mutateRef.current.mutateAsync(payload)
 
         if (!cancelledRef.current) {
           clearTimeout(timeoutId)
@@ -69,7 +77,7 @@ export function AuthCallbackScreen() {
       cancelledRef.current = true
       clearTimeout(timeoutId)
     }
-  }, [completeAuthCallback, payload, retryToken, router])
+  }, [payload, retryToken, router])
 
   const handleRetry = useCallback(() => {
     setProcessing(true)
