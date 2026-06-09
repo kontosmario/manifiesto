@@ -30,8 +30,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "$EXPO_APPLE_ID",
-        "ascAppId": "$EXPO_ASC_APP_ID"
+        "ascAppId": "6776033487"
       }
     }
   }

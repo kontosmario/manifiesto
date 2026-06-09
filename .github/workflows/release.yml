@@ -131,10 +131,14 @@ jobs:
         # Sprint C / C6. Uses `--latest` to grab the IPA we just built.
         # ASC credentials come from secrets via env so they're never
         # written to a file or echoed.
+        # NOTE (2026-06-09): EXPO_APPLE_ID y EXPO_ASC_APP_ID se quitaron del
+        # env: porque `appleId` ya no está en eas.json (el ASC API key
+        # reemplaza el login con Apple ID) y `ascAppId` quedó hardcoded
+        # en eas.json (es identifier público, no secret). EAS lee las
+        # credenciales del ASC API key vía las 3 env vars de abajo +
+        # eas credentials configurado.
         if: ${{ steps.profile.outputs.name == 'production' && steps.asc_key.outputs.path != '' }}
         env:
-          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
-          EXPO_ASC_APP_ID: ${{ secrets.EXPO_ASC_APP_ID }}
           EXPO_ASC_API_KEY_PATH: ${{ steps.asc_key.outputs.path }}
           EXPO_ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
           EXPO_ASC_API_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
