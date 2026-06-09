@@ -33,16 +33,19 @@ docs/ESTADO-DEL-PROYECTO/
 
 ## 📌 Foto actual
 
-→ **[`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md)** — snapshot completo verificado contra commit `7962ea2`.
+→ **[`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md)** — snapshot inmediatamente actionable READY vs PENDIENTES post-ciclo de junio (CR v1+v2+v3 + Sprints A-D + Backlog + Spec B). HEAD `814925f`, 654/654 tests, 12 migrations remote-verified.
+
+→ **[`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md)** — snapshot exhaustivo pantalla-por-pantalla verificado contra commit `7962ea2`. Sigue siendo la foto canónica de sistemas/UI; el doc 2026-06-08 es el delta operacional encima.
 
 ## 🚀 Roadmap priorizado
 
-→ **[`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-priorizado.md)** — todos los pendientes del repo organizados por prioridad P0–P7, con effort, dependencias y sprint plan. Trigger: Apple Developer Program pago confirmado por owner (2026-05-31), que desbloquea todo el bloque iOS/store deferred desde 2026-05-11.
+→ **[`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-priorizado.md)** — todos los pendientes del repo organizados por prioridad P0–P7, con effort, dependencias y sprint plan. Trigger: Apple Developer Program pago confirmado por owner (2026-05-31), que desbloquea todo el bloque iOS/store deferred desde 2026-05-11. **Sección §14 al final lista lo hecho post-2026-05-31**.
 
 ## 📑 Trabajo cerrado reciente (notas fechadas)
 
 | Fecha | Doc | Cubre |
 |---|---|---|
+| 2026-06-08 | [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md) | **Master READY vs PENDIENTES post-ciclo de junio**. Features completos (Spec B + Reserva + Meta wizard + Wrapped integration), 3 rondas de CR (78+46+9 findings closed), 4 sprints (A-D), backlog tests (+113), 12 migrations remote-verified. Lista accionable de pendientes high/medium/low + decisiones owner. Estado camino a App Store |
 | 2026-06-08 | [`2026-06-08-codereview-hardening-completed.md`](2026-06-08-codereview-hardening-completed.md) | **Code review + hardening sprint** (2 rondas, ~124 findings cerrados). Sprint A (data layer, 10 commits, `syncAllAfterMutation` adoption en 12 hooks), Sprint B (SQL, 2 migrations, `is_family_member` excluye blocked), Sprint C (integration tests en CI), Sprint D (cleanup, 18 archivos huérfanos eliminados, `pointerEvents` migrado a prop). Backlog tests (+113). Fix-round mobile (5 commits: data-layer refinements, streak-sheet cleanup, screens hardening, lint config). Fix-round backend (1 commit: control-advisor schema fix, multi-family guard, docs assumption, blocked-member RLS test). 29 commits, 5 migrations, 654 tests verdes |
 | 2026-06-08 | [`2026-06-08-spec-b-leftover-decision-shipped.md`](2026-06-08-spec-b-leftover-decision-shipped.md) | **Spec B — month-close leftover decision** (meta/acumular/reserva/skip persistido en `month_close_decisions`) + **Reserva management** (RPC `apply_reserve_decision` con atomic WHERE-guard, ReserveBlock en Control v2) + **Meta wizard de 4 steps + Settings simplificación** (read-only + lifecycle, nuevo `useLatestSavingsGoal`). Integración inline en la closing scene del Wrapped (pending + past read-only). Fixes UX importantes: tap zones siempre ocultas en última escena del wrapped, bridge re-trigger guard 1.5s, chip stack horizontal del hero, chip Reserva amber/gold, MetaCard post-create (userId plumbing), empty state engañoso de gastos en cycle frozen. 3 rondas de code review todas cerradas. 75 commits, 8 migrations, 544/544 tests |
 | 2026-06-04 | [`2026-06-04-gastos-cronologia-fixes-shipped.md`](2026-06-04-gastos-cronologia-fixes-shipped.md) | Pulido del listado Gastos: fix today/yesterday at bottom (day-of-month sort bleed), income visualization aligned to expense row chrome via new `IncomeRow` (3 iteraciones), section header polish, animation re-fire fix, delete crash defensive guards — 6 commits. + Fix encadenado del badge de variación en Fijos (2 bugs: fórmula post-payment + cap del snapshot ocultaba pagos viejos), nuevo `useCommitmentExpenses` query dedicado — 2 commits |

@@ -1,5 +1,12 @@
 # Roadmap priorizado · 2026-05-31
 
+> ⚠️ **NOTA 2026-06-08**: este roadmap sigue siendo la fuente canónica del
+> camino a App Store, pero **el sprint de junio (CR v1+v2+v3 + Sprints A-D +
+> Backlog + Spec B) tachó varios items** que aparecían como pendientes acá.
+> Para foto consolidada READY vs PENDIENTES post-sprint ver
+> [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md).
+> Los items completados están marcados con ~~strikethrough~~ + ✅ inline.
+>
 > **Origen:** auditoría exhaustiva de toda la documentación del repo (82 docs en
 > `docs/`) + cross-check contra `git log` para descartar lo ya hecho.
 > **Trigger:** owner confirmó **Apple Developer Program pago** → se desbloquea
@@ -149,6 +156,12 @@ Fuente: [auditorias/real-value-suggestions/04-aso/](../auditorias/real-value-sug
 
 ### P1.B · Cambios de código
 
+> **Nota 2026-06-08**: el hardening de RLS para blocked members (cubriendo
+> 40+ policies vía redefinición de `is_family_member` + filtro inline en RPCs
+> de fixed-payment) está ✅ DONE (Sprint B, migrations
+> `20260608100000` y `20260608110000`). Cubierto por integration test
+> [`tests/integration/blocked-member-rls.test.ts`](../../tests/integration/blocked-member-rls.test.ts).
+
 | # | Item | Effort | Notas |
 |---|------|--------|-------|
 | P1.5 | **Captcha (Cloudflare Turnstile) en auth** | 15 m setup + 4 h wiring + build | Endpoints `/signup`, `/login`. Free tier alcanza. |
@@ -174,15 +187,15 @@ Fuente: [07-backend-servicios-db.md:650-652](2026-05-21-estado-actual/07-backend
 
 | # | Item | Effort | Notas |
 |---|------|--------|-------|
-| P2.1 | **Vitest + Playwright en CI pipeline** | 1 d | Hoy CI solo corre lint + typecheck. Tests existen (283 passing) pero no se ejecutan. Workflow GitHub Actions. |
+| ~~P2.1~~ | ~~**Vitest + Playwright en CI pipeline**~~ ✅ **DONE 2026-06-08** (Sprint C) | — | Workflow `mobile-ci.yml` ahora corre unit + integration con Supabase local. 654/654 tests verdes. Playwright/E2E queda para sprint aparte. |
 | P2.2 | **EAS Build automatizado en CI** | 1 d | `eas build --platform ios --profile production` on tag push. |
 | P2.3 | **TestFlight submission automatizado** | 4 h | `eas submit -p ios` post-build. Requiere App Store Connect API key. |
 | P2.4 | **OTA Updates (EAS Update) configurado** | 4 h | `eas update --channel production` para hotfixes JS sin re-submit. |
 | P2.5 | **Sentry sourcemap upload en CI** | 2 h | Post P4.1. Hook en EAS build. |
 | P2.6 | **Feature flags infra** | 1 d | Hoy hay flags hardcoded en `lib/feature-flags.ts`. Migrar a tabla `feature_flags` + RPC + cache cliente. Pattern básico. |
 | P2.7 | **Pre-commit scanner gitleaks upgrade** | 30 m | Doc: [pendientes-seguridad.md:129](../operaciones/pendientes-seguridad.md#L129). |
-| P2.8 | **Cleanup `legacy-web-src/`** | 30 m | Cosmético. Doc: [pendientes-seguridad.md:208](../operaciones/pendientes-seguridad.md#L208). |
-| P2.9 | **Cleanup dead code `components/home/control-*`** | 30 m | Doc: [03-home-control-fijos.md:692](2026-05-21-estado-actual/03-home-control-fijos.md#L692). |
+| ~~P2.8~~ | ~~**Cleanup `legacy-web-src/`**~~ ✅ **DONE 2026-06-08** (Sprint D, commit `97bdd74`) | — | Config refs purgados de vitest.config.ts + eslint.config.js |
+| ~~P2.9~~ | ~~**Cleanup dead code `components/home/control-*`**~~ ✅ **DONE 2026-06-08** (Sprint D, commit `7dc18f1` + `fc3a65d`) | — | 18 archivos huérfanos eliminados (~2138 LOC) + `daily-budget-ring.model` post-cleanup |
 
 **Subtotal P2:** 4-5 días.
 
@@ -191,6 +204,12 @@ Fuente: [07-backend-servicios-db.md:650-652](2026-05-21-estado-actual/07-backend
 ## 5 · P3 — Quality / testing pre-launch (8-10 días)
 
 Fuente: [auditorias/real-value-suggestions/05-quality-readiness/](../auditorias/real-value-suggestions/05-quality-readiness/).
+
+> **Nota 2026-06-08**: el backlog de tests del sprint de junio cubrió
+> wrapped / streaks / billing / notifications / fijos / query-keys
+> (+113 tests, baseline pasó de 544 a 654 verdes).
+> [`2026-06-08-codereview-hardening-completed.md`](2026-06-08-codereview-hardening-completed.md).
+> Los items P3 siguientes son los que **no** se cubrieron y siguen pendientes.
 
 | # | Item | Effort | Criticidad |
 |---|------|--------|------------|
@@ -421,3 +440,22 @@ Cuando se completen items:
 Cuando este doc se vuelva obsoleto, reemplazarlo con
 `docs/ESTADO-DEL-PROYECTO/<YYYY-MM-DD>-roadmap-priorizado.md` y marcar éste
 como histórico en el header.
+
+---
+
+## 14 · Hecho post-2026-05-31
+
+> Items del roadmap que se completaron entre 2026-05-31 y 2026-06-08.
+> Para detalle ver [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md)
+> y los docs fechados de junio.
+
+| Item | Completado | Doc / commits |
+|------|------------|---------------|
+| P2.1 — Vitest en CI (con Supabase local Docker) | 2026-06-08 (Sprint C) | [`2026-06-08-codereview-hardening-completed.md`](2026-06-08-codereview-hardening-completed.md) — workflow `mobile-ci.yml` |
+| P2.8 — Cleanup `legacy-web-src/` | 2026-06-08 (Sprint D) | commit `97bdd74` |
+| P2.9 — Cleanup dead code `components/home/control-*` | 2026-06-08 (Sprint D) | commits `7dc18f1` (18 archivos), `fc3a65d` (daily-budget-ring.model) |
+| Hardening RLS blocked members (cubre 40+ policies) | 2026-06-08 (Sprint B) | migrations `20260608100000`, `20260608110000` + integration test |
+| P3 — backlog parcial de tests (wrapped/streaks/billing/notifications/fijos/query-keys) | 2026-06-08 (Backlog) | +113 tests, baseline 544 → 654 |
+| P7.2 — OCR (decisión revisada: ML Kit en vez de Gemini) | 2026-06-03 | [`2026-06-03-activity-ocr-shipped.md`](2026-06-03-activity-ocr-shipped.md) |
+| Spec B — month-close leftover decision + Reserva + Meta wizard | 2026-06-08 | [`2026-06-08-spec-b-leftover-decision-shipped.md`](2026-06-08-spec-b-leftover-decision-shipped.md) |
+| Día sin gasto, Plans UI redesign, Gastos cronología fixes | 2026-06-01 / 02 / 04 | docs fechados respectivos |
