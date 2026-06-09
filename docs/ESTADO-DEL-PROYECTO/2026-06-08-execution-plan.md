@@ -115,7 +115,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A4 · Apple Sign-In screen + integration (1 d)
 
-- [ ] **TODO** · BLOCKED por Apple Dev capability (ya pago, solo falta enable)
+- [x] **DONE (code-complete)** — verificación end-to-end 2026-06-09. `expo-apple-authentication` integrado en `mobile/features/auth/social-sign-in.ts` (`signInWithApple` con identity token + supabase.auth.signInWithIdToken). Botón nativo en `login-screen.tsx:367+` y `signup-screen.tsx:278`. Wiring iOS-only completo. **Pendiente solo de Apple Dev capability enable + provisioning profile + EAS production build** para test end-to-end real.
 
 **Por qué**: si vas a usar email/password + social, Apple guideline pide Apple Sign-In también.
 
