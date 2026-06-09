@@ -23,7 +23,7 @@
 //   hook NO duplica ese mecanismo — sólo expone el `lockedForMs` que
 //   recibe del `verifyPin()` para que el sheet muestre el countdown.
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const REAUTH_SKIP_WINDOW_MS = 5 * 60 * 1000
 
@@ -78,7 +78,24 @@ interface UseRequireReauthResult {
  */
 export function useRequireReauth(): UseRequireReauthResult {
   const [pending, setPending] = useState<PendingReauth | null>(null)
+  const pendingRef = useRef<PendingReauth | null>(null)
   const lastVerifiedAtRef = useRef<number>(0)
+
+  // Mantener ref sincronizado con state para que el unmount cleanup
+  // pueda resolver sin causar setState post-unmount.
+  useEffect(() => {
+    pendingRef.current = pending
+  }, [pending])
+
+  // CR Sprint B #5: si el component unmonta con un pending reauth,
+  // resolvé como false (cancel) para que el caller no quede esperando
+  // el promise para siempre.
+  useEffect(() => {
+    return () => {
+      pendingRef.current?.resolve(false)
+      pendingRef.current = null
+    }
+  }, [])
 
   const requireReauth = useCallback((actionLabel: string): Promise<boolean> => {
     const now = Date.now()

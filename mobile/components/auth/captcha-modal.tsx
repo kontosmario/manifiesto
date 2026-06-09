@@ -18,7 +18,7 @@
 //   · 'cancel' / 'error' / 'expired' — null
 //   · cualquier otro string → es el token
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha'
 import {
   HCAPTCHA_BASE_URL,
@@ -41,8 +41,10 @@ interface ConfirmHcaptchaHandle {
   hide: () => void
 }
 
-export const CaptchaModal = forwardRef<unknown, CaptchaModalProps>(
-  function CaptchaModal({ visible, onComplete }, _ref) {
+// CR Sprint B #11: forwardRef + useImperativeHandle eliminados — el
+// componente no expone API imperativa al caller. El hook useCaptcha
+// maneja todo via props (visible + onComplete).
+export function CaptchaModal({ visible, onComplete }: CaptchaModalProps) {
     const { theme } = useAppTheme()
     const captchaRef = useRef<ConfirmHcaptchaHandle | null>(null)
     const onCompleteRef = useRef(onComplete)
@@ -81,8 +83,6 @@ export const CaptchaModal = forwardRef<unknown, CaptchaModalProps>(
       onCompleteRef.current(data)
     }
 
-    useImperativeHandle(_ref, () => ({}), [])
-
     if (!isCaptchaConfigured()) return null
 
     return (
@@ -98,5 +98,4 @@ export const CaptchaModal = forwardRef<unknown, CaptchaModalProps>(
         onMessage={handleMessage}
       />
     )
-  },
-)
+}

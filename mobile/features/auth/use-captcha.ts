@@ -18,7 +18,7 @@
 // flow es OK con bypass en dev, pasar `undefined` a Supabase y dejar
 // que pase. En producción la key SIEMPRE va a estar cargada.
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { isCaptchaConfigured } from '@/lib/captcha-config'
 
 interface PendingCaptcha {
@@ -56,6 +56,17 @@ export function useCaptcha(): UseCaptchaResult {
     const pending = pendingRef.current
     pendingRef.current = null
     pending?.resolve(token)
+  }, [])
+
+  // CR Sprint B #5: si el component unmonta con un pending captcha
+  // (deep-link, back-nav forzado), resolvé con null para que el
+  // await no quede colgado y el caller pueda destrabar su loading state.
+  useEffect(() => {
+    return () => {
+      const pending = pendingRef.current
+      pendingRef.current = null
+      pending?.resolve(null)
+    }
   }, [])
 
   return {

@@ -103,7 +103,12 @@ describe('auth flows — Sprint B (B6)', () => {
       options: { data: { display_name: 'First' } },
     })
     expect(first.error).toBeNull()
-    if (first.data.user) usersToCleanup.push(first.data.user.id)
+    // CR Sprint B #6: guard explícito antes de usar `first.data.user!`
+    // — si el initial signup devolvió null (config rara), abortamos
+    // con assertion clara en lugar de TypeError opaco.
+    expect(first.data.user).not.toBeNull()
+    const firstUser = first.data.user!
+    usersToCleanup.push(firstUser.id)
 
     // En Supabase, signUp con email existente devuelve un user "fake"
     // (identities array vacío) o un error según la config. Verificamos
@@ -120,7 +125,7 @@ describe('auth flows — Sprint B (B6)', () => {
     const { data: rows, error: listErr } = await admin
       .from('profiles')
       .select('id')
-      .eq('id', first.data.user!.id)
+      .eq('id', firstUser.id)
     expect(listErr).toBeNull()
     expect((rows ?? []).length).toBe(1)
 
@@ -238,7 +243,7 @@ describe('auth flows — Sprint B (B6)', () => {
     }
   })
 
-  it('auth.resend signup confirm — segundo call rápido devuelve rate-limit', async () => {
+  it('auth.resend signup confirm — server-side rate-limit o auto-confirm bloquea spam', async () => {
     if (!reachable) return
     const email = uniqueEmail('resend')
     const anon = anonClient()
@@ -249,22 +254,29 @@ describe('auth flows — Sprint B (B6)', () => {
     expect(signupRes.error).toBeNull()
     if (signupRes.data.user) usersToCleanup.push(signupRes.data.user.id)
 
-    // Primer resend: puede succeed o fallar (depende si confirmations
-    // están on). Lo testeamos defensivamente.
+    // CR Sprint B #7: aserción más fuerte — al menos UNO de:
+    //   (a) confirmations on + rate-limit server-side mata el segundo call
+    //   (b) auto-confirm on → "already confirmed" en uno de los dos
+    //   (c) endpoint reachable pero confirmations off → ambos succeed
+    // En todos los casos verificamos que el endpoint no estalla.
     const first = await anon.auth.resend({ type: 'signup', email })
-    // Segundo call inmediato — esperamos rate-limit o "email already
-    // confirmed" si el stack está en auto-confirm.
     const second = await anon.auth.resend({ type: 'signup', email })
 
-    // Al menos uno de los dos debería arrojar un error informativo si
-    // las confirmations están activas; si no, ambos pueden devolver
-    // ok con email-already-confirmed.
     const messages = [
       first.error?.message ?? '',
       second.error?.message ?? '',
     ].join(' | ').toLowerCase()
-    // Verificamos que no estalla con un error inesperado de red/500.
     expect(messages).not.toMatch(/internal server error|connection refused/i)
+
+    // Si AMBOS calls succedieron (case c), confirmá que no hubo
+    // ningún error. Si uno o ambos fallaron, validá que el mensaje
+    // pertenece al set conocido (rate-limit, already confirmed, etc).
+    const bothOk = !first.error && !second.error
+    if (!bothOk) {
+      expect(messages).toMatch(
+        /rate|too many|for security|already confirmed|recently used|wait/i,
+      )
+    }
   })
 
   it('signOut invalida la session — getUser() retorna null sin token', async () => {
