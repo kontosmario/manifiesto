@@ -32,7 +32,9 @@ import {
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
 import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
+import { useCaptcha } from '@/features/auth/use-captcha'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
+import { CaptchaModal } from '@/components/auth/captcha-modal'
 import { resolveAuthSubmitResolution } from '@/features/auth/auth-submit-flow'
 import { normalizeEmail } from '@/features/auth/auth-flow'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
@@ -82,6 +84,7 @@ export function SignupScreen() {
   const router = useRouter()
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
+  const captcha = useCaptcha()
   const resendConfirm = useResendConfirmEmail()
   // Destructured para que el useCallback de submitSignup pueda depender
   // sólo de la fn (estable via useCallback adentro del hook) en vez del
@@ -176,10 +179,29 @@ export function SignupScreen() {
     setErrorMessage(null)
     setInfoMessage(null)
     try {
+      // Captcha gate (sprint B · B3). Si está configurado, abrimos el
+      // widget y esperamos un token antes de hacer el signUp. Si no
+      // está configurado (env vacío), `request()` resuelve `null` y
+      // mandamos undefined a Supabase — el server lo ignora silently
+      // si el captcha tampoco está habilitado del lado backend.
+      let captchaToken: string | undefined
+      if (captcha.isConfigured) {
+        const token = await captcha.request()
+        if (!token) {
+          // Cancel / error / expired — no avanzamos.
+          setSubmitting(false)
+          await triggerHaptic('warning')
+          setErrorMessage('No pudimos verificar el captcha. Probá de nuevo.')
+          return
+        }
+        captchaToken = token
+      }
+
       const response = await passwordSignUp.mutateAsync({
         displayName: trimmedName,
         email: normalizedEmail,
         password: trimmedPassword,
+        captchaToken,
       })
 
       await triggerHaptic('success')
@@ -219,7 +241,7 @@ export function SignupScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [email, isSubmitting, name, password, passwordSignUp, router, startResendCooldown])
+  }, [captcha, email, isSubmitting, name, password, passwordSignUp, router, startResendCooldown])
 
   // Track availability so we can disable buttons cleanly when the
   // platform / config doesn't support a provider (e.g. Android shows
@@ -616,6 +638,7 @@ export function SignupScreen() {
           </FadeInUp>
         </View>
       </Screen>
+      <CaptchaModal visible={captcha.visible} onComplete={captcha.onComplete} />
     </RequireGuest>
   )
 }

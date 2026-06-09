@@ -12,6 +12,10 @@ interface SignInInput {
 
 interface SignUpInput extends SignInInput {
   displayName: string
+  /** hCaptcha token (sprint B · B3). `undefined` skipea — válido en dev
+   *  cuando no hay site key configurada y mientras el captcha aún no
+   *  esté habilitado en Supabase Dashboard. */
+  captchaToken?: string
 }
 
 interface CallbackPayload {
@@ -35,12 +39,23 @@ export function usePasswordSignIn() {
 
 export function usePasswordSignUp() {
   return useMutation({
-    mutationFn: async ({ displayName, email, password }: SignUpInput) => {
+    mutationFn: async ({
+      displayName,
+      email,
+      password,
+      captchaToken,
+    }: SignUpInput) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: getEmailRedirectTo(),
+          // Supabase Auth pasa `captchaToken` a hCaptcha server-side
+          // si captcha está habilitado en el Dashboard. Si está
+          // habilitado y NO mandamos token, devuelve 400 con
+          // `captcha_token_required`. Si NO está habilitado, ignora
+          // el campo silently — seguro de mandar.
+          captchaToken,
           data: {
             display_name: displayName,
           },
@@ -58,9 +73,16 @@ export function usePasswordSignUp() {
 
 export function usePasswordReset() {
   return useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
+    mutationFn: async ({
+      email,
+      captchaToken,
+    }: {
+      email: string
+      captchaToken?: string
+    }) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: getPasswordResetRedirectTo(),
+        captchaToken,
       })
       if (error) {
         throw error

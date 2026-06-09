@@ -8,6 +8,8 @@ import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { RequireGuest } from '@/components/guards'
 import { normalizeEmail } from '@/features/auth/auth-flow'
 import { usePasswordReset } from '@/features/auth/use-auth-actions'
+import { useCaptcha } from '@/features/auth/use-captcha'
+import { CaptchaModal } from '@/components/auth/captcha-modal'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -16,6 +18,7 @@ export function ForgotPasswordScreen() {
   const router = useRouter()
   const { theme } = useAppTheme()
   const passwordReset = usePasswordReset()
+  const captcha = useCaptcha()
   const [email, setEmail] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -29,14 +32,26 @@ export function ForgotPasswordScreen() {
     }
     setErrorMessage(null)
     try {
-      await passwordReset.mutateAsync({ email: normalized })
+      // Captcha gate (sprint B · B3). Mismo patrón que signup —
+      // skipea si no hay site key configurada.
+      let captchaToken: string | undefined
+      if (captcha.isConfigured) {
+        const token = await captcha.request()
+        if (!token) {
+          await triggerHaptic('warning')
+          setErrorMessage('No pudimos verificar el captcha. Probá de nuevo.')
+          return
+        }
+        captchaToken = token
+      }
+      await passwordReset.mutateAsync({ email: normalized, captchaToken })
       await triggerHaptic('success')
       setSentTo(normalized)
     } catch (error) {
       await triggerHaptic('error')
       setErrorMessage(getErrorMessage(error, 'No pudimos enviar el email.'))
     }
-  }, [email, passwordReset])
+  }, [captcha, email, passwordReset])
 
   if (sentTo) {
     return (
@@ -95,6 +110,7 @@ export function ForgotPasswordScreen() {
           />
         </View>
       </Screen>
+      <CaptchaModal visible={captcha.visible} onComplete={captcha.onComplete} />
     </RequireGuest>
   )
 }
