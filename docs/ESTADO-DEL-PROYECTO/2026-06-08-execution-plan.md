@@ -676,7 +676,7 @@ auth.users / profiles).
 
 ### D7 · Split `add-fijo-v2-screen.tsx` (1 d)
 
-- [ ] **TODO** · 1714 LOC
+- [x] **DONE** 2026-06-09 — screen 1714 → 391 LOC (orchestrator: monta hooks, calcula impact math, encadena create/update + record-payment). Steps separados en `mobile/components/fijos/add-fijo-parts/`: `step-header.tsx` (StepHeader + StepDots), `step1-form.tsx` (nombre + monto + categoría + frecuencia + cuotas card), `step2-summary.tsx` (resumen + impact + calendar + reminder + already-paid toggle), más sub-components atómicos `name-input.tsx`, `freq-tile.tsx`, `field.tsx`, `impact-card.tsx` (ImpactRow + HealthBadge + ImpactBar), `calendar-drop-impact.tsx`. Form validation hook NEW en `mobile/features/fixed-expenses/use-add-fijo-form.ts` (state machine + hydration + canContinue/canSubmit + missing-fields flags). Helpers NEW en `add-fijo-helpers.ts` (FREQ_OPTIONS, CUOTA_OPTIONS, QUICK_AMOUNTS, hexAlpha, buildNextDueOn). Tests 677/677 PASS. Typecheck PASS. Lint 0 errors. Bundle iOS PASS.
 
 **Plan**:
 - Steps a componentes separados
