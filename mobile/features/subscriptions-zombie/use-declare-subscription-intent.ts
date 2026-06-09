@@ -10,7 +10,9 @@ interface Variables {
   notes?: string
 }
 
-export function useDeclareSubscriptionIntent(familyId?: string) {
+// userId requerido — sin él, home_snapshot no invalida y el banner/hero
+// quedan stale. Mismo finding I1 que useResolveSubscriptionIntent.
+export function useDeclareSubscriptionIntent(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -31,6 +33,7 @@ export function useDeclareSubscriptionIntent(familyId?: string) {
         }),
         syncAllAfterMutation(queryClient, {
           familyId,
+          userId,
           scopes: ['fixed', 'fixedPayment'],
         }),
       ])

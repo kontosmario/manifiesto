@@ -120,23 +120,23 @@ export function useApplyMonthCloseDecision(familyId?: string, userId?: string) {
     },
     // Code review H1 (sprint A, 2026-06-08): la decisión de month-close
     // puede mover plata a una savings goal, abrir un nuevo ciclo o
-    // tocar reserva. El set previo de 5 keys hardcoded omitía Home /
-    // Gastos / Control snapshots, lo que dejaba la UI stale tras
-    // decidir. `syncAllAfterMutation` con scopes `savings`+`income`
-    // cubre family-finance, savings goals, control snapshots y
-    // cycle-acumulado en un solo lugar.
+    // tocar reserva. `syncAllAfterMutation` con scopes
+    // `savings`+`income`+`wrapped` cubre family-finance, savings goals,
+    // control snapshots, cycle-acumulado y monthly-editions del wrapped.
+    // CR v3 (2026-06-08): se agrega `wrapped` para alinear con doc
+    // canónico (`docs/arquitectura/sync-after-mutation-pattern.md`).
+    // El invalidate hardcoded a `['monthly-summaries', familyId]` se
+    // elimina — no hay useQuery que consuma ese key (verificado por
+    // grep); el dato vive en los snapshots y se invalida por scopes.
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['month-close-decision', familyId],
         }),
-        queryClient.invalidateQueries({
-          queryKey: ['monthly-summaries', familyId],
-        }),
         syncAllAfterMutation(queryClient, {
           familyId,
           userId,
-          scopes: ['savings', 'income'],
+          scopes: ['savings', 'income', 'wrapped'],
         }),
       ])
     },

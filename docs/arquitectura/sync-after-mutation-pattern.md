@@ -8,7 +8,7 @@ Antes del sprint 2026-06-08, cada hook de mutation invalidaba queries hardcoded 
 
 - `useUpsertFamilyFinance` invalidaba `cycle-acumulado` pero olvidaba `home_snapshot`.
 - `useUpsertSavingsGoal` invalidaba `savings-goal` pero no `home_snapshot` cuando el caller olvidaba pasar `userId`.
-- `useUpsertProfile` invalidaba `profile` pero no `home_snapshot` (avatar quedaba stale).
+- `useUpdateDisplayName` / `useUpdateAvatarAnimal` invalidaban `profile` pero no `home_snapshot` (nombre / avatar quedaba stale).
 
 Resultado: bugs recurrentes de "el dato cambió en DB pero la UI no se entera hasta refresh manual". El owner reportó el síntoma varias veces ("MetaCard no aparece post-create", "avatar viejo después de cambiar foto", "categoría renombrada no se refleja en donut").
 
@@ -155,8 +155,8 @@ export function useApplyReserveDecision(familyId?: string, userId?: string) {
 | `useDeclareSubscriptionIntent` | `mobile/features/subscriptions-zombie/use-declare-subscription-intent.ts` | `fixed`, `fixedPayment` |
 | `useResolveSubscriptionIntent` | `mobile/features/subscriptions-zombie/use-resolve-subscription-intent.ts` | `fixed`, `fixedPayment` |
 | `useUpdateExpense` / `useDeleteExpense` | `mobile/features/expenses/use-expenses.ts` | `expenses` |
-| `useUpsertProfile` | `mobile/features/profile/use-profile.ts` | `profile` |
-| `useUpsertCategory` | `mobile/features/categories/use-categories.ts` | `categories` |
+| `useUpdateDisplayName` / `useUpdateAvatarAnimal` | `mobile/features/profile/use-profile.ts` | `profile` |
+| `useCreateCategory` / `useRenameCategory` / `useDeleteCategory` | `mobile/features/categories/use-categories.ts` | `categories` |
 | `useConfirmImport` | `mobile/features/import-review/use-confirm-import.ts` | `expenses` |
 | `useMarkCycleWrappedSeen` | `mobile/features/wrapped/use-mark-cycle-wrapped-seen.ts` | `wrapped` |
 | `useDeclareSubscriptionIntent` / fixed-expenses ops | `mobile/features/fixed-expenses/use-fixed-expenses.ts` | `fixed` / `fixedPayment` |

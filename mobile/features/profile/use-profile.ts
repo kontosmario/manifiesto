@@ -3,7 +3,6 @@ import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { supabase } from '@/lib/supabase'
 import { setCachedProfileDisplayName } from '@/lib/profile-display-name-cache'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
-import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 
 export interface Profile {
   id: string
@@ -115,14 +114,10 @@ export function useUpdateAvatarAnimal(userId?: string, familyId?: string) {
     },
     // Code review H6 (sprint A, 2026-06-08): el avatar aparece en
     // home_snapshot (header del Home) y en el family strip (roster
-    // por miembro). Antes invalidábamos sólo `profile`; ahora
-    // delegamos a `syncAllAfterMutation` con scope `profile` para
-    // refrescar también home_snapshot y family-members.
+    // por miembro). `syncAllAfterMutation` con scope `profile` cubre
+    // tanto profile, family-members como home_snapshot — no hace falta
+    // duplicar invalidates aparte (CR v3 M1).
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
-      if (userId) {
-        void queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) })
-      }
       void syncAllAfterMutation(queryClient, {
         familyId,
         userId,
@@ -172,15 +167,13 @@ export function useUpdateDisplayName(userId?: string, familyId?: string) {
     },
     // Code review H6 (sprint A, 2026-06-08): el nombre se muestra en
     // home_snapshot (header), expense rows (created_by_name) y family
-    // roster. Mantenemos el invalidate de `expenseQueryKeys.all` y
-    // sumamos profile + home_snapshot + family-members vía
-    // `syncAllAfterMutation` scope `profile`.
+    // roster. `syncAllAfterMutation` con scope `profile` cubre profile,
+    // family-members y home_snapshot. Mantenemos sólo
+    // `expenseQueryKeys.all` aparte porque la lista de gastos
+    // renderea el display_name del autor en cada row — no es parte
+    // de los scopes del helper (CR v3 M1: dedup invalidates).
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all })
-      if (userId) {
-        void queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) })
-      }
       void syncAllAfterMutation(queryClient, {
         familyId,
         userId,

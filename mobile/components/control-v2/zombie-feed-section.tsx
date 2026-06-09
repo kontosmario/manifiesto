@@ -27,8 +27,8 @@ interface Props {
 export function ZombieFeedSection({ familyId, userId }: Props) {
   const { data, raw } = useSubscriptionAuditFeed(familyId)
   const recordAudit = useRecordSubscriptionAudit(familyId)
-  const declareIntent = useDeclareSubscriptionIntent(familyId)
-  const resolveIntent = useResolveSubscriptionIntent(familyId)
+  const declareIntent = useDeclareSubscriptionIntent(familyId, userId ?? undefined)
+  const resolveIntent = useResolveSubscriptionIntent(familyId, userId ?? undefined)
 
   const fijosById = useMemo(() => {
     const map = new Map<string, NonNullable<typeof raw>['fixedExpenses'][number]>()

@@ -10,7 +10,10 @@ interface Variables {
   newAmount?: number
 }
 
-export function useResolveSubscriptionIntent(familyId?: string) {
+// userId requerido para que syncAllAfterMutation invalide home_snapshot —
+// sin él, el banner del Home / hero quedan stale post-resolución porque el
+// snapshot embebe fixed_expenses. CR v3 finding I1 (2026-06-08).
+export function useResolveSubscriptionIntent(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -31,6 +34,7 @@ export function useResolveSubscriptionIntent(familyId?: string) {
         }),
         syncAllAfterMutation(queryClient, {
           familyId,
+          userId,
           scopes: ['fixed', 'fixedPayment'],
         }),
       ])
