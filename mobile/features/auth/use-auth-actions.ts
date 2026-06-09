@@ -56,23 +56,6 @@ export function usePasswordSignUp() {
   })
 }
 
-export function useResendSignupEmail() {
-  return useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: getEmailRedirectTo(),
-        },
-      })
-      if (error) {
-        throw error
-      }
-    },
-  })
-}
-
 export function usePasswordReset() {
   return useMutation({
     mutationFn: async ({ email }: { email: string }) => {

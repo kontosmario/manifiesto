@@ -39,6 +39,7 @@ import {
   isAppleSignInAvailable,
   signInWithApple,
 } from '@/features/auth/social-sign-in'
+import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
 import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { authenticateBiometricAccess } from '@/lib/biometric-auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -391,6 +392,30 @@ export function LoginScreen() {
   }, [])
   const [appleSigningIn, setAppleSigningIn] = useState(false)
   const [appleError, setAppleError] = useState<string | null>(null)
+
+  // Detector + resend para el caso "el user intenta entrar antes de
+  // confirmar su email". Supabase tira un error con `message`
+  // "Email not confirmed" — lo capturamos via `errorMessage` (que el
+  // controller poblá con `getErrorMessage`) y mostramos un banner
+  // inline con CTA de reenvío. El cooldown / rate-limit los maneja el
+  // hook compartido (3 envíos / 5min + 60s cooldown).
+  const resendConfirm = useResendConfirmEmail()
+  const showUnconfirmedBanner =
+    !!errorMessage &&
+    /email not confirmed|email_not_confirmed/i.test(errorMessage) &&
+    !!email &&
+    email.includes('@')
+  const handleResendUnconfirmed = useCallback(async () => {
+    if (!email || !email.includes('@')) return
+    if (resendConfirm.secondsUntilRetry > 0) return
+    await resendConfirm.resend(email)
+    if (!resendConfirm.error) {
+      void triggerHaptic('success')
+      actions.setInfoMessage('Te reenviamos el email de confirmación.')
+    } else {
+      void triggerHaptic('warning')
+    }
+  }, [actions, email, resendConfirm])
   const handleAppleSignIn = useCallback(async () => {
     if (appleSigningIn || isBusy) return
     void triggerHaptic('selection')
@@ -633,6 +658,16 @@ export function LoginScreen() {
                   passwordRef={passwordInputRef}
                   colors={theme.colors}
                 />
+                {showUnconfirmedBanner ? (
+                  <UnconfirmedEmailBanner
+                    busy={resendConfirm.isPending}
+                    rateLimited={resendConfirm.rateLimited}
+                    cooldownSeconds={resendConfirm.secondsUntilRetry}
+                    error={resendConfirm.error}
+                    onResend={() => void handleResendUnconfirmed()}
+                    colors={theme.colors}
+                  />
+                ) : null}
                 {appleAvailable ? (
                   <AppleSignInRow
                     busy={appleSigningIn}
@@ -1200,7 +1235,107 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  unconfirmedBanner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
+  },
+  unconfirmedTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  unconfirmedBody: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  unconfirmedCta: {
+    marginTop: 4,
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  unconfirmedCtaLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  unconfirmedError: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
 })
+
+interface UnconfirmedEmailBannerProps {
+  busy: boolean
+  rateLimited: boolean
+  cooldownSeconds: number
+  error: string | null
+  onResend: () => void
+  colors: ThemeColors
+}
+
+function UnconfirmedEmailBanner({
+  busy,
+  rateLimited,
+  cooldownSeconds,
+  error,
+  onResend,
+  colors,
+}: UnconfirmedEmailBannerProps) {
+  const disabled = busy || rateLimited || cooldownSeconds > 0
+  const label = busy
+    ? 'Reenviando…'
+    : rateLimited
+      ? 'Reintentá en unos minutos'
+      : cooldownSeconds > 0
+        ? `Reenviar en ${cooldownSeconds}s`
+        : 'Reenviar email'
+  return (
+    <View
+      style={[
+        styles.unconfirmedBanner,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.line },
+      ]}
+    >
+      <Text style={[styles.unconfirmedTitle, { color: colors.text }]}>
+        Confirmá tu email para entrar
+      </Text>
+      <Text style={[styles.unconfirmedBody, { color: colors.textSoft }]}>
+        Te mandamos un link cuando creaste la cuenta. Si no lo ves, revisá
+        spam o pedí uno nuevo.
+      </Text>
+      <Pressable
+        accessibilityLabel="Reenviar email de confirmación"
+        accessibilityRole="button"
+        disabled={disabled}
+        onPress={onResend}
+        style={({ pressed }) => [
+          styles.unconfirmedCta,
+          {
+            backgroundColor: disabled ? colors.surfaceMuted : DARK_GREEN,
+            opacity: pressed && !disabled ? 0.9 : 1,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.unconfirmedCtaLabel,
+            { color: disabled ? colors.textSoft : CREAM },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+      {error ? (
+        <Text style={[styles.unconfirmedError, { color: colors.danger }]}>
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
 
 interface AppleSignInRowProps {
   busy: boolean

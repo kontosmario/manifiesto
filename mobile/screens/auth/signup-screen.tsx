@@ -31,7 +31,8 @@ import {
   signInWithGoogle,
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
-import { usePasswordSignUp, useResendSignupEmail } from '@/features/auth/use-auth-actions'
+import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
+import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
 import { resolveAuthSubmitResolution } from '@/features/auth/auth-submit-flow'
 import { normalizeEmail } from '@/features/auth/auth-flow'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
@@ -70,8 +71,6 @@ const BRAND_CREAM_ON_GREEN = authTokens.surfaceCream
  * confirmation info or handing off to `/(app)/onboarding` (the 5-step
  * wizard, which covers family + profile in step 3+).
  */
-const RESEND_COOLDOWN_MS = 60_000
-
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@')
   if (!local || !domain) return email
@@ -83,7 +82,7 @@ export function SignupScreen() {
   const router = useRouter()
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
-  const resendSignupEmail = useResendSignupEmail()
+  const resendConfirm = useResendConfirmEmail()
   const { theme } = useAppTheme()
 
   const [name, setName] = useState('')
@@ -96,44 +95,30 @@ export function SignupScreen() {
   // resolveAuthSubmitResolution decide "email-confirmation" (Supabase
   // requiere verificar el mail antes de tener sesión).
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null)
-  const [resendAvailableAt, setResendAvailableAt] = useState<number>(0)
-  const [now, setNow] = useState(() => Date.now())
 
-  // Tick mientras el cooldown está activo, para refrescar el contador
-  // visible en el botón de reenvío.
-  useEffect(() => {
-    if (!confirmationEmail) return
-    if (resendAvailableAt <= now) return
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [confirmationEmail, now, resendAvailableAt])
-
-  const resendCooldownSeconds = Math.max(
-    0,
-    Math.ceil((resendAvailableAt - now) / 1000),
-  )
+  const resendCooldownSeconds = resendConfirm.secondsUntilRetry
 
   const handleResendConfirmation = useCallback(async () => {
     if (!confirmationEmail) return
     if (resendCooldownSeconds > 0) return
     setErrorMessage(null)
-    try {
-      await resendSignupEmail.mutateAsync({ email: confirmationEmail })
-      setInfoMessage('Te reenviamos el email. Revisá también spam.')
-      setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS)
-      await triggerHaptic('success')
-    } catch (error) {
+    const previousError = resendConfirm.error
+    await resendConfirm.resend(confirmationEmail)
+    // El hook expone `error` reactivo; si cambió detectamos fallo.
+    if (resendConfirm.error && resendConfirm.error !== previousError) {
       await triggerHaptic('error')
-      setErrorMessage(getErrorMessage(error, 'No pudimos reenviar el email.'))
+      setErrorMessage(resendConfirm.error)
+      return
     }
-  }, [confirmationEmail, resendCooldownSeconds, resendSignupEmail])
+    setInfoMessage('Te reenviamos el email. Revisá también spam.')
+    await triggerHaptic('success')
+  }, [confirmationEmail, resendCooldownSeconds, resendConfirm])
 
   const handleChangeEmail = useCallback(() => {
     // Clear any lingering splash from the prior submit/confirmation
     // attempt so the form re-appears cleanly.
     hideAuthTransitionSplash()
     setConfirmationEmail(null)
-    setResendAvailableAt(0)
     setInfoMessage(null)
     setEmail('')
     emailRef.current?.focus?.()
@@ -203,7 +188,10 @@ export function SignupScreen() {
       if (resolution.type === 'email-confirmation') {
         setInfoMessage(resolution.infoMessage)
         setConfirmationEmail(normalizedEmail)
-        setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS)
+        // El email ya salió como parte del signUp; no disparamos un
+        // segundo envío. Sólo arrancamos el cooldown visible para
+        // que el botón "Reenviar" arranque deshabilitado los próximos 60s.
+        resendConfirm.startCooldown()
         return
       }
 
@@ -463,7 +451,11 @@ export function SignupScreen() {
                   <Pressable
                     accessibilityLabel="Reenviar email de confirmación"
                     accessibilityRole="button"
-                    disabled={resendCooldownSeconds > 0 || resendSignupEmail.isPending}
+                    disabled={
+                      resendCooldownSeconds > 0 ||
+                      resendConfirm.isPending ||
+                      resendConfirm.rateLimited
+                    }
                     onPress={() => void handleResendConfirmation()}
                     style={({ pressed }) => [
                       styles.confirmationPrimary,
@@ -487,11 +479,13 @@ export function SignupScreen() {
                         },
                       ]}
                     >
-                      {resendSignupEmail.isPending
+                      {resendConfirm.isPending
                         ? 'Enviando…'
-                        : resendCooldownSeconds > 0
-                          ? `Reenviar en ${resendCooldownSeconds}s`
-                          : 'Reenviar email'}
+                        : resendConfirm.rateLimited
+                          ? 'Reintentá en unos minutos'
+                          : resendCooldownSeconds > 0
+                            ? `Reenviar en ${resendCooldownSeconds}s`
+                            : 'Reenviar email'}
                     </Text>
                   </Pressable>
                   <Pressable
