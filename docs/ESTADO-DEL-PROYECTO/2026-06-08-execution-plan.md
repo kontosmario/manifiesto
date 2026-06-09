@@ -138,19 +138,22 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A5 · Permission priming sheets (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** `6ba92df` 2026-06-09 (sheet + cooldown + biometric integration) + `4051d3d` 2026-06-09 (notifs integration en onboarding-success).
 
 **Por qué**: pre-prompts con explicación boostean aceptación de 35% → 70% típico.
 
 **Files**:
 - NEW `mobile/components/permissions/permission-prime-sheet.tsx`
-- MOD `mobile/screens/home/onboarding-screen.tsx` (notifs priming antes del modal nativo)
-- MOD `mobile/screens/auth/biometric-setup-screen.tsx` (FaceID priming)
+- NEW `mobile/lib/permission-prime-cooldown.ts` (helper SecureStore-backed)
+- MOD `mobile/screens/home/onboarding-success-screen.tsx` (notifs priming antes del modal nativo, ANTES de navegar al Home)
+- MOD `mobile/screens/auth/biometric-setup-screen.tsx` (FaceID priming antes de `activateBiometricForSession`)
 
 **Acceptance**:
-- [ ] Antes del modal nativo de Notifications, muestra un sheet con: ícono + 3 razones + CTA "Permitir"
-- [ ] Mismo patrón para FaceID
-- [ ] Si el user dice no, ofrece "Más tarde" (no insiste por 7 días)
+- [x] Antes del modal nativo de Notifications, muestra un sheet con: ícono + 3 razones + CTA "Permitir"
+- [x] Mismo patrón para FaceID
+- [x] Si el user dice no, ofrece "Más tarde" (no insiste por 7 días)
+
+**Notas implementación**: el priming de notifs se enchufó en `onboarding-success-screen` en vez de `onboarding-screen` porque el flow real de notifs vive ahí (entre la última paso del wizard y Home). El wizard mismo nunca pedía notifs.
 
 ---
 
@@ -173,41 +176,45 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A7 · Push iOS production wiring — mobile side (1 d)
 
-- [ ] **TODO** · BLOCKED parcial por APNs key
+- [x] **DONE** `4051d3d` 2026-06-09 — code listo. End-to-end test pendiente solo de APNs key.
 
 **Por qué**: el código que registra el token + maneja notificaciones debe estar listo para test pre-submit.
 
 **Files**:
-- INSTALL `expo-notifications` (probablemente ya está)
-- MOD `mobile/lib/push-notifications.ts` (setup en mount, request token)
-- NEW `mobile/features/push/use-register-push-token.ts` (RPC al backend para guardar el token)
-- MOD `app.json` (plugin + ios.config.usesNonExemptEncryption: false)
+- NEW `mobile/lib/push-notifications.ts` (facade: requestNotificationPermissions / setupPushNotifications / tearDownPushNotifications)
+- NEW `mobile/features/push/use-register-push-token.ts` (hook side-effect que upserta el token en mount)
+- MOD `mobile/components/root/app-stack-shell.tsx` (monta el hook)
+- MOD `mobile/features/auth/logout.ts` (tear-down del token en logout)
+- MOD `app.config.ts` (`ios.config.usesNonExemptEncryption: false`)
 
 **Acceptance**:
-- [ ] Al firstmounst del app post-login, pide permiso de notifs (después del priming de A5)
-- [ ] Si aceptó, obtiene Expo push token + lo guarda en `push_subscriptions` via RPC `register_push_subscription`
-- [ ] Re-registra el token si cambia (Expo lo rota)
-- [ ] Handle de notification tap: navega a route correspondiente (deep link parse)
-- [ ] Cleanup en logout
+- [x] Al firstmount del app post-login, pide permiso de notifs (después del priming de A5)
+- [x] Si aceptó, obtiene Expo push token + lo guarda en `push_subscriptions` (upsert por user_id+endpoint, mismo shape que el toggle manual de Settings)
+- [x] Re-registra el token si cambia (`useRegisterPushToken` corre cada mount; el upsert es idempotente)
+- [x] Handle de notification tap: navega a route correspondiente (deep link parse) — ya estaba via `NotificationRouterBridge`, no se tocó
+- [x] Cleanup en logout
 
-**Notas**: end-to-end test solo posible cuando A8 esté + APNs key activa.
+**Notas**: end-to-end test solo posible cuando A8 esté + APNs key activa. Decisión: no usamos RPC `register_push_subscription` (no existía y no aporta sobre el upsert directo); reusamos el path del toggle manual existente.
 
 ---
 
 ### A8 · Push token registration → Edge Function APNs (0.5 d)
 
-- [ ] **TODO** · BLOCKED por APNs key
+- [x] **DONE** (verify-only, no code change) 2026-06-09 — el edge function ya estaba completo. Decisión documentada: Expo Push API como proxy en vez de APNs directo.
 
 **Por qué**: el edge function `send-family-push` existe pero hay que verificar/completar el firmado con APNs.
 
 **Files**:
-- VERIFY `supabase/functions/send-family-push/index.ts` (firma JWT para APNs)
-- POSSIBLY NEW migration: `push_subscriptions` table updates si faltan columns (apns_token, last_seen_at)
+- VERIFIED `supabase/functions/send-family-push/index.ts` — usa **Expo Push API** (`https://exp.host/--/api/v2/push/send`) que proxea a APNs por nosotros. No requiere `.p8` key ni JWT signing del lado nuestro.
+
+**Migration**: no hace falta. La tabla `push_subscriptions` ya tiene `last_used_at` (migración `20260512090000`); el upsert del path nuevo de A7 actualiza esa columna en cada login. No agregamos `apns_token` ni `device_id` porque mientras usemos Expo Push, alcanza con `endpoint` (el Expo token mismo es la identidad del device).
 
 **Acceptance**:
-- [ ] Edge function acepta `{user_ids: string[], notification: {title, body, data}}` y envía a APNs producción
-- [ ] Manejo de errores APNs (token inválido → eliminar de DB)
-- [ ] Logs estructurados para debug
+- [x] Edge function acepta `{familyId, title, body, kind, url}` (path original) y `{messages: ExpoPushMessage[]}` (path batch para notifications-orchestrator). Envío a Expo Push API que entrega a APNs producción.
+- [x] Manejo de errores: si Expo devuelve `DeviceNotRegistered`, llama `removeSubscription` y elimina la fila de `push_subscriptions`.
+- [x] Logs estructurados: `console.log` con `{sent, failed, removed}` por batch.
+
+**Decisión Expo Push vs APNs directo**: por ahora usamos Expo Push como proxy — más simple (no necesitamos cargar la `.p8` key ni implementar JWT signing en el edge function). Migrar a APNs directo cuando: (a) el owner cargue la `.p8` key, y (b) decidamos cortar la dependencia de Expo (relevante si llegamos a >100k notifs/día, donde el rate-limit de Expo Push empieza a doler). Costo de migrar: ~0.5 d porque la estructura del edge function ya está, sólo cambia el call a Expo por un firmado APNs.
 
 ---
 
