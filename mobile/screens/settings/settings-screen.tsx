@@ -1439,7 +1439,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   icon="delete-forever"
                   isLast
                   label="Eliminar cuenta"
-                  onPress={() => setDeleteAccountSheetOpen(true)}
+                  // La pantalla dedicada `delete-account` contiene el
+                  // disclaimer extendido + el step de re-auth (PIN /
+                  // biometría) que antes vivían en el sheet. El sheet
+                  // legacy queda como fallback para callers internos.
+                  onPress={() => router.push('/(app)/settings/delete-account')}
                 />
               </SettingsGroup>
             </RiseView>
