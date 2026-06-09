@@ -66,10 +66,10 @@ interface FixedExpenseRow {
 
 interface SavingsGoalRow {
   id: string
-  name: string
-  target_amount: number
+  title: string
+  goal_amount: number
   current_amount: number
-  target_date: string | null
+  target_months: number | null
 }
 
 interface FamilyContext {
@@ -224,15 +224,17 @@ async function loadFamilyContext(
     .limit(3)
   const monthlySummaries = (summariesRes.data ?? []) as MonthlySummaryRow[]
 
-  // Top 5 categories this cycle
+  // Top 5 categories this cycle.
+  // NOTE (CR v2 C1): la tabla `expenses` usa `price` y `created_at`
+  // (no `amount`/`occurred_at`). Ver migration 20260413154000_mobile_baseline.sql.
   const expensesRes = await admin
     .from('expenses')
-    .select('amount, category_id, categories:category_id(name)')
+    .select('price, category_id, categories:category_id(name)')
     .eq('family_id', familyId)
-    .gte('occurred_at', cycleStart)
-    .lte('occurred_at', cycleEnd)
+    .gte('created_at', cycleStart)
+    .lte('created_at', cycleEnd + 'T23:59:59.999Z')
   type ExpenseRow = {
-    amount: number | string
+    price: number | string
     category_id: string | null
     categories?: { name?: string | null } | null
   }
@@ -241,7 +243,7 @@ async function loadFamilyContext(
   for (const row of expenseRows) {
     const catId = row.category_id ?? 'uncategorized'
     const catName = row.categories?.name ?? 'Sin categoría'
-    const amt = Number(row.amount) || 0
+    const amt = Number(row.price) || 0
     const existing = aggMap.get(catId)
     if (existing) {
       existing.total += amt
@@ -255,18 +257,23 @@ async function loadFamilyContext(
     .slice(0, 5)
     .map((row) => ({ ...row, total: Math.round(row.total) }))
 
-  // Fixed expenses — pending in next 14 days
+  // Fixed expenses — pending in next 14 days.
+  // NOTE (CR v2 C1): la tabla `fixed_expenses` usa `status` (no `active`),
+  // `category_id` (no `category`). El nombre legible de la categoría se
+  // resuelve vía join con `categories`. Ver migration
+  // 20260419193000_expand_fixed_expenses_to_commitments.sql.
   const fixedRes = await admin
     .from('fixed_expenses')
-    .select('id, name, amount, day_of_month, category, active')
+    .select('id, name, amount, day_of_month, category_id, categories:category_id(name), status')
     .eq('family_id', familyId)
-    .eq('active', true)
+    .eq('status', 'active')
   type FixedRow = {
     id: string
     name: string
     amount: number | string
     day_of_month: number | null
-    category: string | null
+    category_id: string | null
+    categories?: { name?: string | null } | null
   }
   const allFixed = (fixedRes.data ?? []) as FixedRow[]
   const fijosMes = allFixed.reduce((sum, fe) => sum + (Number(fe.amount) || 0), 0)
@@ -285,7 +292,7 @@ async function loadFamilyContext(
         amount: Math.round(Number(fe.amount) || 0),
         day_of_month: fe.day_of_month,
         next_due_date: candidateISO,
-        category: fe.category,
+        category: fe.categories?.name ?? null,
       })
     }
   }
@@ -293,22 +300,25 @@ async function loadFamilyContext(
     (a.next_due_date ?? '').localeCompare(b.next_due_date ?? ''),
   )
 
-  // Active savings goal
+  // Active savings goal.
+  // NOTE (CR v2 C1): la tabla `savings_goals` usa `title`, `goal_amount`,
+  // `target_months`, `is_active` (no `name`/`target_amount`/`target_date`/`active`).
+  // Ver migration 20260422235900_home_redesign_savings_goals_and_fixed_payments.sql.
   const goalRes = await admin
     .from('savings_goals')
-    .select('id, name, target_amount, current_amount, target_date, active')
+    .select('id, title, goal_amount, current_amount, target_months, is_active')
     .eq('family_id', familyId)
-    .eq('active', true)
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
   const activeSavingsGoal: SavingsGoalRow | null = goalRes.data
     ? {
         id: goalRes.data.id as string,
-        name: goalRes.data.name as string,
-        target_amount: Number(goalRes.data.target_amount) || 0,
+        title: goalRes.data.title as string,
+        goal_amount: Number(goalRes.data.goal_amount) || 0,
         current_amount: Number(goalRes.data.current_amount) || 0,
-        target_date: (goalRes.data.target_date as string | null) ?? null,
+        target_months: (goalRes.data.target_months as number | null) ?? null,
       }
     : null
 
