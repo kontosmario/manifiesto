@@ -346,6 +346,13 @@ export function AppStackShell() {
             fullScreenGestureEnabled: false,
           }}
         />
+        <Stack.Screen
+          name="settings/about"
+          options={{
+            freezeOnBlur: true,
+            fullScreenGestureEnabled: false,
+          }}
+        />
       </Stack>
     </>
   )

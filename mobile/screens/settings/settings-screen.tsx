@@ -1410,6 +1410,21 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
+            {/* 9b. ACERCA DE — versión, info legal y soporte. La
+                pantalla dedicada centraliza el footer "Hecho con ♥",
+                la versión y el contacto que antes estaban dispersos. */}
+            <RiseView delay={320}>
+              <SettingsGroup title="Información">
+                <SettingsRow
+                  helper="Versión, política de privacidad, términos y soporte."
+                  icon="info-outline"
+                  isLast
+                  label="Acerca de"
+                  onPress={() => router.push('/(app)/settings/about')}
+                />
+              </SettingsGroup>
+            </RiseView>
+
             {/* 10. CUENTA */}
             <RiseView delay={320}>
               <SettingsGroup title="Cuenta">
