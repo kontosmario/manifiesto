@@ -83,6 +83,10 @@ export function SignupScreen() {
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
   const resendConfirm = useResendConfirmEmail()
+  // Destructured para que el useCallback de submitSignup pueda depender
+  // sólo de la fn (estable via useCallback adentro del hook) en vez del
+  // object completo, que cambia de identidad por render. CR Sprint A #5.
+  const startResendCooldown = resendConfirm.startCooldown
   const { theme } = useAppTheme()
 
   const [name, setName] = useState('')
@@ -191,7 +195,7 @@ export function SignupScreen() {
         // El email ya salió como parte del signUp; no disparamos un
         // segundo envío. Sólo arrancamos el cooldown visible para
         // que el botón "Reenviar" arranque deshabilitado los próximos 60s.
-        resendConfirm.startCooldown()
+        startResendCooldown()
         return
       }
 
@@ -215,7 +219,7 @@ export function SignupScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [email, isSubmitting, name, password, passwordSignUp, router])
+  }, [email, isSubmitting, name, password, passwordSignUp, router, startResendCooldown])
 
   // Track availability so we can disable buttons cleanly when the
   // platform / config doesn't support a provider (e.g. Android shows

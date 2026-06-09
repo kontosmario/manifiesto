@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { getEmailRedirectTo } from '@/features/auth/auth-flow'
@@ -14,14 +14,25 @@ import { getEmailRedirectTo } from '@/features/auth/auth-flow'
  *      complementa el rate-limit de Supabase Auth — útil para evitar
  *      que un usuario martille el botón si el countdown UI fallara.
  *
- * El estado del rate limit vive sólo en memoria; cierra app y resetea.
- * Si el usuario quiere abusar de verdad, Supabase ya tiene su propio
- * límite server-side (1 email por minuto por dirección).
+ * El estado del rate limit vive a NIVEL MÓDULO (no por instancia del
+ * hook) — CR Sprint A finding #4. Antes era `useRef` y se reseteaba al
+ * unmount → usuario navegando signup ↔ forgot-password evadía el límite.
+ * Ahora persiste durante toda la vida del app process. Si cierra el app,
+ * resetea (Supabase server-side rate-limit toma la posta).
  */
 
 const DEFAULT_COOLDOWN_MS = 60_000
 const RATE_LIMIT_WINDOW_MS = 5 * 60_000
 const MAX_SENDS_PER_WINDOW = 3
+
+// Singleton al módulo — sobrevive remounts del hook. Ver doc-comment.
+const sendTimestamps: number[] = []
+function purgeOldSendTimestamps(): void {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS
+  for (let i = sendTimestamps.length - 1; i >= 0; i--) {
+    if (sendTimestamps[i]! <= cutoff) sendTimestamps.splice(i, 1)
+  }
+}
 
 export interface UseResendConfirmEmailResult {
   resend: (email: string) => Promise<void>
@@ -48,7 +59,6 @@ export function useResendConfirmEmail(
 ): UseResendConfirmEmailResult {
   const cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS
 
-  const sendTimestampsRef = useRef<number[]>([])
   const [cooldownUntil, setCooldownUntil] = useState<number>(0)
   const [now, setNow] = useState(() => Date.now())
   const [error, setError] = useState<string | null>(null)
@@ -61,13 +71,6 @@ export function useResendConfirmEmail(
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [cooldownUntil, now])
-
-  const purgeOldTimestamps = useCallback(() => {
-    const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS
-    sendTimestampsRef.current = sendTimestampsRef.current.filter(
-      (ts) => ts > cutoff,
-    )
-  }, [])
 
   const mutation = useMutation({
     mutationFn: async ({ email }: { email: string }) => {
@@ -91,8 +94,8 @@ export function useResendConfirmEmail(
       if (cooldownUntil > nowMs) {
         return
       }
-      purgeOldTimestamps()
-      if (sendTimestampsRef.current.length >= MAX_SENDS_PER_WINDOW) {
+      purgeOldSendTimestamps()
+      if (sendTimestamps.length >= MAX_SENDS_PER_WINDOW) {
         setError(
           'Esperá unos minutos antes de pedir otro email. Ya enviamos varios.',
         )
@@ -100,7 +103,7 @@ export function useResendConfirmEmail(
       }
       try {
         await mutation.mutateAsync({ email })
-        sendTimestampsRef.current = [...sendTimestampsRef.current, Date.now()]
+        sendTimestamps.push(Date.now())
         setCooldownUntil(Date.now() + cooldownMs)
         setNow(Date.now())
       } catch (err) {
@@ -111,7 +114,7 @@ export function useResendConfirmEmail(
         )
       }
     },
-    [cooldownMs, cooldownUntil, mutation, purgeOldTimestamps],
+    [cooldownMs, cooldownUntil, mutation],
   )
 
   const startCooldown = useCallback(() => {
@@ -120,8 +123,8 @@ export function useResendConfirmEmail(
   }, [cooldownMs])
 
   const secondsUntilRetry = Math.max(0, Math.ceil((cooldownUntil - now) / 1000))
-  purgeOldTimestamps()
-  const rateLimited = sendTimestampsRef.current.length >= MAX_SENDS_PER_WINDOW
+  purgeOldSendTimestamps()
+  const rateLimited = sendTimestamps.length >= MAX_SENDS_PER_WINDOW
 
   return {
     resend,

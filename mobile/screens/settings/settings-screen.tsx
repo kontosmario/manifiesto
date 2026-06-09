@@ -17,7 +17,6 @@ import {
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
-import { DeleteAccountConfirmSheet } from '@/components/settings/sheets/delete-account-confirm-sheet'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { buildPreviewReviewState } from '@/features/import-review/preview-mock-state'
 import type { ReviewState } from '@/features/import-review/types'
@@ -33,7 +32,6 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
-import { useRequestAccountDeletion } from '@/features/auth/use-delete-account'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
   useConvertToFamily,
@@ -207,14 +205,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
-  const [deleteAccountSheetOpen, setDeleteAccountSheetOpen] = useState(false)
   // Preview state lives here so the dates are regenerated relative to
   // "today" each time the user opens the preview, not snapshotted at
   // mount. `null` while closed so the sheet doesn't render with stale
   // rows from a previous open.
   const [importPreviewState, setImportPreviewState] =
     useState<ReviewState | null>(null)
-  const requestAccountDeletion = useRequestAccountDeletion()
 
   // Motion preference — drives `useReducedMotion()` for every consumer
   // of `useLoopAnimation` / `useUnboundedLoopAnimation`. Users can
@@ -645,27 +641,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     ])
   }, [router, showError])
 
-  const handleConfirmDeleteAccount = useCallback(() => {
-    requestAccountDeletion.mutate(undefined, {
-      onSuccess: () => {
-        void triggerHaptic('success')
-        // El RPC ya marcó la cuenta; sacamos al usuario inmediatamente
-        // para que la sesión no tenga acceso post-confirmación.
-        void logoutSession({
-          onError: (error) => void showError(error, 'No se pudo cerrar sesión.'),
-          onSuccess: () => {
-            setDeleteAccountSheetOpen(false)
-            router.replace('/')
-          },
-        })
-      },
-      onError: (error) => {
-        void showError(error, 'No pudimos programar la baja de tu cuenta.')
-      },
-    })
-  }, [requestAccountDeletion, router, showError])
-
-  const handleOpenSupport = useCallback(() => {
+const handleOpenSupport = useCallback(() => {
     const url = buildSupportMailto({
       appVersion: Constants.expoConfig?.version ?? null,
       buildNumber: Application.nativeBuildVersion,
@@ -1526,17 +1502,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         otherActiveMembers={otherActiveMembers}
         visible={destroyFamilySheetOpen}
       />
-      <DeleteAccountConfirmSheet
-        isOwnerWithMembers={isOwner && otherActiveMembers > 0}
-        isSubmitting={requestAccountDeletion.isPending}
-        onCancel={() => {
-          if (requestAccountDeletion.isPending) return
-          setDeleteAccountSheetOpen(false)
-        }}
-        onConfirm={handleConfirmDeleteAccount}
-        visible={deleteAccountSheetOpen}
-      />
-      <ImportReviewSheet
+<ImportReviewSheet
         visible={importPreviewState !== null}
         initialState={importPreviewState}
         familyId={familyId}

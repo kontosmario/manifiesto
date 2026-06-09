@@ -10,17 +10,25 @@ import { supabase } from '@/lib/supabase'
  *   3. Borra las push_subscriptions del usuario para que durante la
  *      gracia no le sigan llegando notificaciones.
  *
+ * **Idempotente** (CR Sprint A finding #2): si ya hay una baja agendada,
+ * la RPC devuelve el timestamp existente sin extenderlo. El cliente
+ * tampoco retrae fallos de red (`retry: false`) — un fallo se reporta
+ * al user, no queda pendiente en background.
+ *
  * El procesado final (borrado del `auth.users` row → cascade a todo el
  * esquema public) corre en background (cron + edge function con
  * service-role) cuando la gracia vence.
  *
  * Después de éxito, el caller hace signOut para sacar al usuario de la
- * app inmediatamente — el flag deletion_scheduled_at se mantiene en el
- * profile y bloquea futuros logins porque la cuenta queda "en proceso
- * de eliminación".
+ * app inmediatamente. NOTA: la sesión Supabase puede re-emitir un JWT
+ * si el user re-loguea durante el grace; el flag
+ * `deletion_scheduled_at` queda en el profile pero NO bloquea
+ * automáticamente el login. Si el user vuelve a loguearse, exponemos
+ * el banner de cancel desde el welcome/login (TODO seguimiento).
  */
 export function useRequestAccountDeletion() {
   return useMutation({
+    retry: false,
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('request_account_deletion')
       if (error) {
