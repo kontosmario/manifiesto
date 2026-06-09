@@ -621,7 +621,7 @@ auth.users / profiles).
 
 ### D1 · Split `gastos-v2-screen.tsx` (1 d)
 
-- [ ] **TODO** · 1800 LOC
+- [x] **DONE** 2026-06-09 — screen 1800 → 1058 LOC (orchestrator + JSX de los 3 branches: hard-error, empty-account, normal SectionList). Sub-components NEW en `mobile/components/gastos/`: `clear-filters-button.tsx`, `empty-action-button.tsx`, `gastos-movement-row.tsx`, `gastos-section-header.tsx`, `gastos-list-header.tsx`. Helpers NEW en `mobile/features/gastos/`: `gastos-helpers.ts` (types `MovementItem` + `MovimientosSection` + 9 pure helpers), `build-sections.ts` (merge día-con-solo-income + sort cronológico), `build-gastos-empty-state.ts` (4 variants). Tests 677/677 PASS. Bundle iOS PASS. Typecheck PASS. Lint 0 errors.
 
 **Plan**:
 - Mover sub-components inline → `mobile/components/gastos/` (ClearFiltersButton, EmptyActionButton, NameInput, FreqTile)
