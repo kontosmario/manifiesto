@@ -115,8 +115,8 @@ Todos son **owner actions**, no requieren código:
 
 | # | Item | Effort | Notas |
 |---|------|--------|-------|
-| H1 | **Privacy Policy + Terms redactados y hosteados** | 1-2 sem legal / 1 d template | DNS `manifiesto.app` + GitHub Pages o equivalente. Después: actualizar `mobile/lib/legal-urls.ts` con URLs reales (3 constants → los rows del About screen aparecen automáticamente) |
-| H2 | **Crear inbox `soporte@manifiesto.app`** | 30 min | Forwarding al email principal alcanza. Update también `SUPPORT_EMAIL` en `legal-urls.ts` |
+| H1 | **Privacy Policy + Terms redactados y hosteados** | 1 d template / 1-2 sem si va a lawyer review | Dominio `manifiestoapp.com` comprado 2026-06-09 vía Cloudflare Registrar. Pendiente: GitHub Pages setup + redacción + DNS + actualizar `mobile/lib/legal-urls.ts` (ya pre-wireado para apuntar al dominio) |
+| H2 | **Email forwarding `soporte@manifiestoapp.com` → gmail** | 5 min | Cloudflare Email Routing (free). Permite responder desde gmail con "Send As" si se configura SMTP |
 | H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado |
 | H4 | **Privacy Nutrition labels** | 30 min | App Store Connect → app → Privacidad. Cuestionario sobre qué datos colectamos. Para Manifiesto: email (auth), nombre (display), datos financieros (encrypted local + Supabase). |
 | H5 | **Listing copy** (descripción es-MX, keywords, qué hay nuevo) | 2-4 h | App Store Connect → app → Distribución → Versión 1.0. Hay placeholder pero requiere copy final |

@@ -170,7 +170,7 @@ Solo faltan **owner actions de contenido** (no más Apple Developer setup):
 
 | # | Item | Effort | Notas |
 |---|---|---|---|
-| 1 | Privacy Policy + Terms hosteados | 1 d | DNS `manifiesto.app` + GitHub Pages o equivalente |
+| 1 | Privacy Policy + Terms hosteados | 1 d | Dominio `manifiestoapp.com` comprado 2026-06-09 vía Cloudflare Registrar. Setup GitHub Pages + DNS + redacción de docs |
 | 2 | URLs en `mobile/lib/legal-urls.ts` | 5 min | Reemplazar placeholders con URLs reales |
 | 3 | Screenshots (6.7" + 5.5" iPhone) | 1-2 d | Self-made o contratado USD 100-300 |
 | 4 | App Preview video | 1 d (opcional) | Boost del conversion rate en App Store |

@@ -76,11 +76,11 @@ if (hasWebPushConfig) {
 // Function is invoked from the mobile app (which doesn't read CORS)
 // and from server-side notification orchestrator (which doesn't
 // either). The only browser-origin caller is the web-push subscribe
-// path on manifiesto.app. Echo back exactly the matched origin so
+// path on manifiestoapp.com. Echo back exactly the matched origin so
 // credentials can be set if needed in the future.
 const ALLOWED_ORIGINS = new Set([
-  'https://manifiesto.app',
-  'https://www.manifiesto.app',
+  'https://manifiestoapp.com',
+  'https://www.manifiestoapp.com',
 ])
 
 function corsHeadersFor(origin: string | null): Record<string, string> {

@@ -5,16 +5,16 @@
  * dominio o el inbox, se actualiza acá y se propaga a welcome, signup,
  * settings y la Delete Account confirmation sheet.
  *
- * Las URLs apuntan a `manifiesto.app` (dominio del producto). Confirmar
- * que esos paths estén publicados antes de mandar build a App Review —
- * Apple revisa que la URL de Privacy declarada en App Store Connect
- * abra una página válida.
+ * Las URLs apuntan a `manifiestoapp.com` (dominio del producto comprado
+ * 2026-06-09 vía Cloudflare Registrar). Confirmar que esos paths estén
+ * publicados antes de mandar build a App Review — Apple revisa que la
+ * URL de Privacy declarada en App Store Connect abra una página válida.
  */
 
-export const PRIVACY_POLICY_URL = 'https://manifiesto.app/privacy'
-export const TERMS_OF_SERVICE_URL = 'https://manifiesto.app/terms'
+export const PRIVACY_POLICY_URL = 'https://manifiestoapp.com/privacy'
+export const TERMS_OF_SERVICE_URL = 'https://manifiestoapp.com/terms'
 
-export const SUPPORT_EMAIL = 'soporte@manifiesto.app'
+export const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
 
 /**
  * Construye el `mailto:` con subject + body pre-poblados para

@@ -103,8 +103,8 @@ const anthropicApiKey = env?.get('ANTHROPIC_API_KEY') ?? ''
 // site. Mobile callers don't read CORS at all, so this is purely
 // defense-in-depth against browser-origin abuse.
 const ALLOWED_ORIGINS = new Set([
-  'https://manifiesto.app',
-  'https://www.manifiesto.app',
+  'https://manifiestoapp.com',
+  'https://www.manifiestoapp.com',
 ])
 
 function corsHeadersFor(origin: string | null): Record<string, string> {
