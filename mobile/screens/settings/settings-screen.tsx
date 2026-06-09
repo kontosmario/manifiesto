@@ -17,6 +17,7 @@ import {
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
+import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { buildPreviewReviewState } from '@/features/import-review/preview-mock-state'
 import type { ReviewState } from '@/features/import-review/types'
@@ -32,6 +33,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useRequireReauth } from '@/features/auth/use-require-reauth'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
   useConvertToFamily,
@@ -138,6 +140,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const updateDisplayNameMutation = useUpdateDisplayName(userId, familyId)
   const updateAvatarMutation = useUpdateAvatarAnimal(userId, familyId)
   const leaveFamilyMutation = useLeaveCurrentFamily(userId)
+  const leaveFamilyReauth = useRequireReauth()
   const convertToSolo = useConvertToSolo(userId)
   const convertToFamily = useConvertToFamily(userId)
   const enablePushMutation = useEnablePushNotifications()
@@ -557,7 +560,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // family data to destroy beyond their own membership.
   const isOwnerDestroyFlow = isOwner && otherActiveMembers > 0
 
-  const runLeaveFamily = useCallback(() => {
+  // `runLeaveFamily` ejecuta la mutation. Antes de disparar pedimos un
+  // re-auth (PIN o biometría) — salir de un hogar familiar es
+  // destructivo y queremos que un dispositivo desbloqueado no pueda
+  // hacerlo con un solo tap (Sprint B · B1). El skip-window de 5min
+  // del hook evita doble fricción si el user ya re-autenticó hace poco.
+  const runLeaveFamily = useCallback(async () => {
+    const ok = await leaveFamilyReauth.requireReauth('Salir del hogar')
+    if (!ok) return
     leaveFamilyMutation.mutate(undefined, {
       onError: (error: unknown) => {
         void showError(error, 'No se pudo desvincular la cuenta del grupo.')
@@ -568,7 +578,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         router.replace('/(app)/onboarding')
       },
     })
-  }, [leaveFamilyMutation, router, showError])
+  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError])
 
   const handleConfirmLeave = useCallback(() => {
     if (isOwnerDestroyFlow) {
@@ -584,7 +594,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         {
           style: 'destructive',
           text: 'Salir',
-          onPress: runLeaveFamily,
+          onPress: () => void runLeaveFamily(),
         },
       ],
     )
@@ -1498,9 +1508,15 @@ const handleOpenSupport = useCallback(() => {
           if (leaveFamilyMutation.isPending) return
           setDestroyFamilySheetOpen(false)
         }}
-        onConfirm={runLeaveFamily}
+        onConfirm={() => void runLeaveFamily()}
         otherActiveMembers={otherActiveMembers}
         visible={destroyFamilySheetOpen}
+      />
+      <RequireReauthSheet
+        visible={leaveFamilyReauth.isVisible}
+        actionLabel={leaveFamilyReauth.actionLabel}
+        onConfirmed={leaveFamilyReauth.onConfirmed}
+        onCancel={leaveFamilyReauth.onCancel}
       />
 <ImportReviewSheet
         visible={importPreviewState !== null}

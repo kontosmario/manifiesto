@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
@@ -17,6 +18,7 @@ import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useDeleteSavingsGoal } from '@/features/savings-goals/use-delete-savings-goal'
+import { useRequireReauth } from '@/features/auth/use-require-reauth'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
@@ -149,6 +151,7 @@ function SavingsGoalViewer({
   const { theme } = useAppTheme()
   const upsert = useUpsertSavingsGoal(familyId, userId)
   const remove = useDeleteSavingsGoal(familyId, userId)
+  const reauth = useRequireReauth()
 
   // ── Derived insight ──────────────────────────────────────────────
   const goalAmount = goal.goalAmount
@@ -180,7 +183,27 @@ function SavingsGoalViewer({
   }
 
   // ── Delete with confirm ──────────────────────────────────────────
+  // Si el goal tiene `current_amount > 0`, el usuario tiene ahorro
+  // efectivo asignado a la meta. Antes de borrar pedimos un re-auth
+  // para que un dispositivo desbloqueado no pueda destruir el
+  // historial de ahorro con un solo tap (Sprint B · B1). Si el monto
+  // es 0, el flow es low-stakes y mantenemos el Alert simple.
+  const proceedDelete = async () => {
+    try {
+      await remove.mutateAsync(goal.id)
+      void triggerHaptic('success')
+      onDeleted()
+    } catch (err) {
+      void triggerHaptic('error')
+      Alert.alert(
+        'No pudimos eliminar',
+        err instanceof Error ? err.message : 'Intentá de nuevo.',
+      )
+    }
+  }
+
   const handleDelete = () => {
+    const needsReauth = currentAmount > 0
     Alert.alert(
       'Eliminar meta',
       `Vas a borrar tu meta de "${goal.title}". El monto que llevabas ahorrado queda en tu historial pero ya no se mostrará como meta activa. ¿Continuar?`,
@@ -190,17 +213,11 @@ function SavingsGoalViewer({
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await remove.mutateAsync(goal.id)
-              void triggerHaptic('success')
-              onDeleted()
-            } catch (err) {
-              void triggerHaptic('error')
-              Alert.alert(
-                'No pudimos eliminar',
-                err instanceof Error ? err.message : 'Intentá de nuevo.',
-              )
+            if (needsReauth) {
+              const ok = await reauth.requireReauth('Eliminar meta')
+              if (!ok) return
             }
+            await proceedDelete()
           },
         },
       ],
@@ -321,6 +338,14 @@ function SavingsGoalViewer({
           />
         </SettingsGroup>
       </RiseView>
+
+      {/* Re-auth sheet — solo se dispara cuando current_amount > 0. */}
+      <RequireReauthSheet
+        visible={reauth.isVisible}
+        actionLabel={reauth.actionLabel}
+        onConfirmed={reauth.onConfirmed}
+        onCancel={reauth.onCancel}
+      />
     </View>
   )
 }

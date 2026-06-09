@@ -1,0 +1,366 @@
+// Bottom sheet that re-authenticates the user before a destructive
+// action (eliminar cuenta, salir del hogar, eliminar meta con monto).
+// Sprint B · B1.
+//
+// Why one reusable sheet (vs. inline-coded prompts per caller):
+//   Antes cada flow tenía su propia UI custom (delete-account-screen
+//   tiene la suya bien hecha, pero leave-family y delete-savings-goal
+//   no tenían NINGUNA verificación adicional más allá del Alert).
+//   Centralizamos para que CADA destructive action quede gateada con
+//   la misma UX y, si en el futuro endurecemos el flow (e.g. password
+//   re-prompt), lo cambiamos en un solo lugar.
+//
+// Auth-method precedence:
+//   biometric > PIN > none
+//   · Biometric: si el user tiene Face ID/Touch ID + saved credentials
+//     o flag enabled, el sheet dispara el prompt nativo on mount y, si
+//     éxito, llama `onConfirmed` inmediatamente.
+//   · PIN: si no hay biometric o si la biometría falló, mostramos
+//     PinPad. `verifyPin()` maneja el lockout exponencial; el sheet
+//     refleja el countdown visualmente.
+//   · None: si el user no tiene ninguno de los dos, mostramos un mensaje
+//     pidiendo configurar PIN/biometric desde Settings con CTA directo.
+//     Si igualmente el user quiere proseguir (override), CTA "Continuar
+//     sin verificación" — esto es solo opt-in en runtime de DEV/dev-
+//     client; en producción nunca se ofrece (consideramos el reauth
+//     mandatorio si hay algún signal de PIN/biometric configurable).
+
+import { useCallback, useEffect, useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import * as LocalAuthentication from 'expo-local-authentication'
+import { useRouter } from 'expo-router'
+import { AppButton } from '@/components/ui/button'
+import { ModalCard } from '@/components/ui/modal-card'
+import { PinPad } from '@/components/auth/pin-pad'
+import { isPinComplete } from '@/components/auth/pin-pad-model'
+import {
+  authenticateBiometricAccess,
+  getBiometricLoginState,
+  type BiometricLoginState,
+} from '@/lib/biometric-auth'
+import { getPinLockState, verifyPin } from '@/lib/pin-lock'
+import { triggerHaptic } from '@/lib/haptics'
+import { useAppTheme } from '@/theme/theme-provider'
+
+interface RequireReauthSheetProps {
+  visible: boolean
+  actionLabel: string
+  onConfirmed: () => void
+  onCancel: () => void
+}
+
+type AuthMethod = 'biometric' | 'pin' | 'none' | 'loading'
+
+export function RequireReauthSheet({
+  visible,
+  actionLabel,
+  onConfirmed,
+  onCancel,
+}: RequireReauthSheetProps) {
+  const { theme } = useAppTheme()
+  const router = useRouter()
+
+  const [method, setMethod] = useState<AuthMethod>('loading')
+  const [biometricState, setBiometricState] =
+    useState<BiometricLoginState | null>(null)
+  const [pinValue, setPinValue] = useState('')
+  const [pinErrorToken, setPinErrorToken] = useState(0)
+  const [pinLockoutMessage, setPinLockoutMessage] = useState<string | null>(null)
+  const [isChecking, setChecking] = useState(false)
+  const [biometricFailed, setBiometricFailed] = useState(false)
+
+  // Reset internal state every time the sheet becomes visible. The
+  // sheet may be reused across multiple destructive actions in the same
+  // mount tree (delete savings → later eliminar cuenta) and we don't
+  // want a previous error/state leaking over.
+  useEffect(() => {
+    if (!visible) {
+      setPinValue('')
+      setPinErrorToken(0)
+      setPinLockoutMessage(null)
+      setChecking(false)
+      setBiometricFailed(false)
+      setMethod('loading')
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [pinState, bioState] = await Promise.all([
+        getPinLockState(),
+        getBiometricLoginState(),
+      ])
+      if (cancelled) return
+      setBiometricState(bioState)
+      // Biometric tiene precedencia: es la UX más fluida y respaldada
+      // por OS. PIN es el fallback determinista. Si NINGUNO está
+      // configurado, mostramos el placeholder "configurá primero".
+      if (bioState.isAvailable) {
+        setMethod('biometric')
+        void runBiometric(bioState)
+      } else if (pinState.isSet) {
+        setMethod('pin')
+        if (pinState.lockedForMs > 0) {
+          setPinLockoutMessage(
+            `Bloqueado ${Math.ceil(pinState.lockedForMs / 1000)} seg`,
+          )
+        }
+      } else {
+        setMethod('none')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // runBiometric depende de onConfirmed pero queremos correr ESTE
+    // effect solo cuando `visible` cambia. La función está definida más
+    // abajo con su propia clausura estable a través de `useCallback`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
+
+  const runBiometric = useCallback(
+    async (_state: BiometricLoginState) => {
+      if (isChecking) return
+      setChecking(true)
+      try {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync()
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync()
+        if (!hasHardware || !isEnrolled) {
+          setChecking(false)
+          setBiometricFailed(true)
+          // Cae a PIN si está configurado.
+          const pinState = await getPinLockState()
+          setMethod(pinState.isSet ? 'pin' : 'none')
+          return
+        }
+        const result = await authenticateBiometricAccess({
+          promptMessage: `Confirmá: ${actionLabel.toLowerCase()}`,
+        })
+        if (result.success) {
+          void triggerHaptic('success')
+          setChecking(false)
+          onConfirmed()
+          return
+        }
+        // User canceló o falló — ofrecemos retry o fallback a PIN.
+        setChecking(false)
+        setBiometricFailed(true)
+        const pinState = await getPinLockState()
+        if (pinState.isSet) setMethod('pin')
+      } catch {
+        setChecking(false)
+        setBiometricFailed(true)
+      }
+    },
+    [actionLabel, isChecking, onConfirmed],
+  )
+
+  const handlePinChange = useCallback(
+    (next: string) => {
+      if (isChecking) return
+      setPinValue(next)
+      if (!isPinComplete(next)) return
+      setChecking(true)
+      void verifyPin(next)
+        .then((result) => {
+          if (result.ok) {
+            void triggerHaptic('success')
+            setChecking(false)
+            setPinValue('')
+            onConfirmed()
+            return
+          }
+          if (result.lockedForMs > 0) {
+            const seconds = Math.ceil(result.lockedForMs / 1000)
+            setPinLockoutMessage(`Bloqueado ${seconds} seg`)
+          } else {
+            setPinLockoutMessage(null)
+          }
+          setPinErrorToken((t) => t + 1)
+          setPinValue('')
+          setChecking(false)
+        })
+        .catch(() => {
+          setPinErrorToken((t) => t + 1)
+          setPinValue('')
+          setChecking(false)
+        })
+    },
+    [isChecking, onConfirmed],
+  )
+
+  const handleGoToSettings = useCallback(() => {
+    onCancel()
+    // Settings root (desde ahí el user encuentra PIN setup / biometric).
+    router.push('/(app)/settings')
+  }, [onCancel, router])
+
+  const handleRetryBiometric = useCallback(() => {
+    if (!biometricState) return
+    setBiometricFailed(false)
+    void runBiometric(biometricState)
+  }, [biometricState, runBiometric])
+
+  return (
+    <ModalCard
+      visible={visible}
+      title="Confirmá tu identidad"
+      subtitle={`Vamos a ${actionLabel.toLowerCase()}. Pedimos una verificación rápida.`}
+      onClose={onCancel}
+    >
+      {method === 'loading' ? (
+        <View style={styles.placeholder}>
+          <Text style={[styles.placeholderText, { color: theme.colors.textMuted }]}>
+            Cargando opciones de verificación…
+          </Text>
+        </View>
+      ) : null}
+
+      {method === 'biometric' ? (
+        <View style={styles.biometricBlock}>
+          <MaterialIcons
+            color={theme.colors.primaryStrong}
+            name="fingerprint"
+            size={48}
+            style={{ alignSelf: 'center' }}
+          />
+          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+            Confirmá con {biometricState?.label ?? 'biometría'}
+          </Text>
+          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+            {biometricFailed
+              ? 'Si no apareció el prompt o cancelaste, tocá "Reintentar".'
+              : 'Si no apareció el prompt, tocá "Reintentar".'}
+          </Text>
+          <View style={styles.actionsRow}>
+            <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />
+            <AppButton
+              disabled={isChecking}
+              label="Reintentar"
+              loading={isChecking}
+              onPress={handleRetryBiometric}
+              variant="primary"
+            />
+          </View>
+        </View>
+      ) : null}
+
+      {method === 'pin' ? (
+        <View style={styles.pinBlock}>
+          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+            Ingresá tu PIN
+          </Text>
+          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+            Pedimos tu PIN como última verificación antes de continuar.
+          </Text>
+          <View style={styles.pinPadWrap}>
+            <PinPad
+              errorToken={pinErrorToken}
+              onChange={handlePinChange}
+              value={pinValue}
+            />
+            {pinLockoutMessage ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[styles.lockoutText, { color: theme.colors.danger }]}
+              >
+                {pinLockoutMessage}
+              </Text>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCancel}
+            style={({ pressed }) => [
+              styles.cancelLink,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={[styles.cancelLinkText, { color: theme.colors.textMuted }]}>
+              Cancelar
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {method === 'none' ? (
+        <View style={styles.placeholder}>
+          <MaterialIcons
+            color={theme.colors.warning}
+            name="lock-outline"
+            size={36}
+            style={{ alignSelf: 'center' }}
+          />
+          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+            Configurá un PIN o biometría
+          </Text>
+          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+            Para confirmar acciones importantes necesitamos verificar tu
+            identidad. Activá un PIN o Face ID desde Ajustes y volvé.
+          </Text>
+          <View style={styles.actionsRow}>
+            <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />
+            <AppButton
+              label="Ir a Ajustes"
+              onPress={handleGoToSettings}
+              variant="primary"
+            />
+          </View>
+        </View>
+      ) : null}
+    </ModalCard>
+  )
+}
+
+const styles = StyleSheet.create({
+  placeholder: {
+    gap: 12,
+    paddingVertical: 8,
+  },
+  placeholderText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  biometricBlock: {
+    gap: 12,
+    paddingVertical: 8,
+  },
+  biometricTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  helperText: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  pinBlock: {
+    gap: 12,
+    paddingVertical: 8,
+  },
+  pinPadWrap: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  lockoutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  cancelLink: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+})
