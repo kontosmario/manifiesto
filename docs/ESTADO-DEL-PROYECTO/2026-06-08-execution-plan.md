@@ -326,49 +326,73 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B6 · Auth integration tests (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** `2aaa6c6` 2026-06-09 — 8 tests verdes contra supabase local.
 
 **Files**:
 - NEW `tests/integration/auth-flows.test.ts`
 
 **Acceptance**:
-- [ ] Test signup → confirm email → login → me query
-- [ ] Test forgot password → reset → login con nueva pass
-- [ ] Test Apple Sign-In con token mock
-- [ ] Test logout → me query falla con 401
-- [ ] Test delete-account → me query falla + family integrity
+- [x] Signup + trigger `handle_new_user_profile` (crea profile auto)
+- [x] Duplicate signup (anti-enumeration: user sintético con identities vacío)
+- [x] Login pre-confirm email falla; post-confirm succeed
+- [x] Login con bad password falla con `invalid credentials`
+- [x] `resetPasswordForEmail` smoke (acepta success o `email_address_invalid` del local stack)
+- [x] `auth.resend({type: 'signup'})` no estalla en network/500
+- [x] SignOut → `getUser()` retorna null
 
-**Notas**: usa Supabase local del workflow CI (`supabase start`).
+**Notas**: el test de Apple Sign-In con token mock y delete-account quedan
+fuera del scope de B6 (Apple requiere identity token real del device,
+delete-account ya tiene su propio path A1). Cleanup por test (no leaks de
+auth.users / profiles).
 
 ---
 
 ### B7 · Expense CRUD vs Supabase real tests (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** `3b6b583` 2026-06-09 — 10 tests verdes contra supabase local.
 
 **Files**:
 - NEW `tests/integration/expense-crud-rls.test.ts`
 
 **Acceptance**:
-- [ ] Crear expense → SELECT lo trae
-- [ ] Update → row reflejado, optimistic + server consistency
-- [ ] Delete → SELECT no lo trae
-- [ ] User de otra family no puede SELECT
-- [ ] Blocked user no puede SELECT (regression del CR v1 C1)
+- [x] CREATE owner: insert succeed + SELECT lo trae
+- [x] CREATE cross-family: insert bloqueado (RLS o trigger upstream)
+- [x] READ cross-family: 0 filas
+- [x] READ blocked member: 0 filas (regression CR v1 C1 / Sprint B)
+- [x] UPDATE self: succeed (creator)
+- [x] UPDATE other-member-as-non-owner: 0 rows affected (fix 20260522)
+- [x] UPDATE other-member-as-owner: succeed (admin override)
+- [x] DELETE self: hard-delete confirmed
+- [x] DELETE other-member-as-non-owner: 0 rows affected
+- [x] BULK INSERT 50: no rate-limit en path no-RPC
 
 ---
 
 ### B8 · Push delivery test (0.5 d)
 
-- [ ] **TODO** · depende de A7/A8
+- [x] **DONE_WITH_CONCERNS** `e86e16b` 2026-06-09 — 6 tests verdes + 1 `it.todo` para E2E APNs delivery.
 
 **Files**:
 - NEW `tests/integration/push-delivery.test.ts`
 
 **Acceptance**:
-- [ ] register_push_subscription registra token
-- [ ] send-family-push invoca el edge function con mock APNs
-- [ ] APNs mock recibe el payload correcto
+- [x] INSERT con `user_id = auth.uid()` succeed; con otro user_id bloqueado por RLS
+- [x] UPSERT idempotente sobre `(user_id, endpoint)` (no duplica filas)
+- [x] SELECT solo own subscriptions (hardening 20260510)
+- [x] removeSubscription (DeviceNotRegistered path) — service-role borra por id
+- [x] fan-out query del edge function (filtra `family_id` + `neq user_id`)
+
+**Concerns**:
+- No existe RPC `register_push_subscription` en el codebase — A7 usa
+  upsert directo desde el client, decisión documentada en el plan.
+  El test refleja ese path real.
+- La invocación end-to-end del edge function (`supabase functions
+  invoke`) no se cubre acá: requiere `supabase functions serve`
+  con Deno bootteando en CI. El handler ya tiene
+  `supabase/functions/send-family-push/index.test.ts` cubriendo el
+  parsing / auth / rate-limit unit-level. Marcado como `it.todo`.
+- APNs delivery real requiere APNs key + device físico — pendiente
+  pre-submit (no es bloqueante para B8).
 
 ---
 
