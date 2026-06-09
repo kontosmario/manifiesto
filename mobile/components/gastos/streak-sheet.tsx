@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Dimensions,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native'
 import Animated, {
+  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -86,13 +87,39 @@ export function StreakSheet({
   // snap-shut the sheet (RN <Modal> unmounts the moment its `visible`
   // prop flips to false).
   const [mounted, setMounted] = useState(visible)
+  // Guard contra runOnJS(setMounted)(false) callbacks tras unmount.
+  // El callback de withTiming corre en el UI thread; si el componente
+  // se desmonta entre el inicio del fade-out y el callback, llamar
+  // setState en un componente unmounted dispara warnings y, peor, puede
+  // pisar state de un próximo mount de la misma instancia.
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  const safeSetMounted = (value: boolean) => {
+    if (!isMountedRef.current) return
+    setMounted(value)
+  }
 
   useEffect(() => {
     if (visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- monta el sheet al abrir; ref guard previene re-disparos
       setMounted(true)
       translateY.value = withSpring(0, motionSprings.sheet)
       backdropOpacity.value = withTiming(1, { duration: motionDurations.standard })
-      return
+      return () => {
+        // Cleanup: cancelar animations en vuelo si el effect re-corre
+        // (visible flipped) o el componente se desmonta. Sin esto, una
+        // withSpring/withTiming pendiente sigue resolviendo en el UI
+        // thread y puede llamar runOnJS(setMounted) en un componente
+        // desmontado (warning + race).
+        cancelAnimation(translateY)
+        cancelAnimation(backdropOpacity)
+      }
     }
     if (!mounted) return
     backdropOpacity.value = withTiming(0, { duration: motionDurations.standard })
@@ -103,9 +130,13 @@ export function StreakSheet({
         easing: motionEasings.accelerate,
       },
       (finished) => {
-        if (finished) runOnJS(setMounted)(false)
+        if (finished) runOnJS(safeSetMounted)(false)
       },
     )
+    return () => {
+      cancelAnimation(translateY)
+      cancelAnimation(backdropOpacity)
+    }
   }, [visible, mounted, translateY, backdropOpacity])
 
   const handleMarkNoExpense = () => {
@@ -172,33 +203,48 @@ export function StreakSheet({
     opacity: backdropOpacity.value,
   }))
 
-  const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      'worklet'
-      if (event.translationY > 0) {
-        translateY.value = event.translationY
-        backdropOpacity.value = Math.max(
-          0.2,
-          1 - event.translationY / SCREEN_H,
-        )
-      }
-    })
-    .onEnd((event) => {
-      'worklet'
-      const shouldDismiss =
-        event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY
-      if (shouldDismiss) {
-        translateY.value = withSpring(SCREEN_H, {
-          ...motionSprings.sheetDismiss,
-          velocity: Math.max(event.velocityY, 800),
+  // Memoizar el Gesture descriptor — sin esto, cada render rebuildea el
+  // objeto y GestureDetector tiene que re-attachearlo en el UI thread.
+  // `.enabled(visible)` lo apaga durante el slide-out (mounted=true,
+  // visible=false) y evita que un swipe en ese frame muerto re-arranque
+  // animaciones contra un componente que está por desmontar.
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(visible)
+        .onUpdate((event) => {
+          'worklet'
+          if (event.translationY > 0) {
+            translateY.value = event.translationY
+            backdropOpacity.value = Math.max(
+              0.2,
+              1 - event.translationY / SCREEN_H,
+            )
+          }
         })
-        backdropOpacity.value = withTiming(0, { duration: motionDurations.quick })
-        runOnJS(onClose)()
-      } else {
-        translateY.value = withSpring(0, motionSprings.sheet)
-        backdropOpacity.value = withTiming(1, { duration: motionDurations.quick })
-      }
-    })
+        .onEnd((event) => {
+          'worklet'
+          const shouldDismiss =
+            event.translationY > DISMISS_DISTANCE ||
+            event.velocityY > DISMISS_VELOCITY
+          if (shouldDismiss) {
+            translateY.value = withSpring(SCREEN_H, {
+              ...motionSprings.sheetDismiss,
+              velocity: Math.max(event.velocityY, 800),
+            })
+            backdropOpacity.value = withTiming(0, {
+              duration: motionDurations.quick,
+            })
+            runOnJS(onClose)()
+          } else {
+            translateY.value = withSpring(0, motionSprings.sheet)
+            backdropOpacity.value = withTiming(1, {
+              duration: motionDurations.quick,
+            })
+          }
+        }),
+    [visible, translateY, backdropOpacity, onClose],
+  )
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>

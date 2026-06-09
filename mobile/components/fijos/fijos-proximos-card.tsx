@@ -441,13 +441,17 @@ function UpcomingMarquee({
         .onEnd(() => {
           'worklet'
           // Re-activa el loop — la animación continúa desde
-          // `elapsed.value` actual (NO desde 0). Sin salto.
-          if (!reduced) runOnJS(setFrameActive)(true)
+          // `elapsed.value` actual (NO desde 0). Sin salto. Guard
+          // setWidth > 0 evita re-activar el frame loop antes de que
+          // onLayout corra (sino la animación divide por 0 → NaN en
+          // los siguientes frames). Code review UI-H3.
+          if (!reduced && setWidth > 0) runOnJS(setFrameActive)(true)
         })
         .onFinalize(() => {
           'worklet'
-          // Fallback: por si el gesture es cancelado sin onEnd.
-          if (!reduced) runOnJS(setFrameActive)(true)
+          // Fallback: por si el gesture es cancelado sin onEnd. Mismo
+          // guard que onEnd para evitar NaN en el loop.
+          if (!reduced && setWidth > 0) runOnJS(setFrameActive)(true)
         }),
     [dragStart, elapsed, setWidth, reduced, setFrameActive],
   )
