@@ -1,9 +1,11 @@
-# Estado del proyecto · 2026-06-08
+# Estado del proyecto · 2026-06-08 (actualizado 2026-06-09)
 
 > **Snapshot inmediatamente actionable**: qué está READY (mergeable / shippeable hoy) vs qué queda PENDIENTE.
 >
-> **HEAD**: `814925f fix(cr-v3): findings de la skill-driven code review (3rd pass)`.
-> Branch `main`, 34 commits adelante de `origin/main` (sin push pendiente bloqueante — el push lo decide el owner).
+> **HEAD (2026-06-09 EOD)**: post wizard Apple Developer. Build production 1.0.0 (1) en TestFlight, instalado en device del owner.
+> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup completos. 0 deuda técnica de código para shippeo. Solo pending: contenido del owner para App Store submit (legal, screenshots, listing).
+>
+> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES). Todo lo que está ahí es owner content, no requiere desarrollo.
 >
 > **Foto canónica de pantallas/sistemas**: sigue siendo [`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md). Este doc es el *delta y plan*, no reemplaza la foto exhaustiva — sólo la complementa para el período post-2026-05-21.
 
@@ -11,7 +13,19 @@
 
 ## 0 · TL;DR
 
-Producto feature-complete (desde 2026-05-09) **+ 1 mes de hardening + Spec B mergeado**. Pasamos por **3 rondas de code review** (78 + 46 + 9 findings, todos cerrados), 4 sprints (data layer / SQL / CI / cleanup), un backlog de tests (+113) y un ciclo de bugfixes Wrapped/UX. Tests verdes 654/654, lint 0, typecheck clean, bundle iOS OK, 12 migrations aplicadas y verificadas en remote desde el 5 de junio. **No quedan bloqueantes técnicos para empezar la sprint a App Store** — el bloqueo restante es **legal + assets de tienda + push iOS production wiring**, todo P0 del roadmap del 2026-05-31.
+Producto feature-complete (desde 2026-05-09) **+ Sprints A→D shippeados + 4 CR rounds cerrados + Apple Developer setup completo + build en TestFlight**.
+
+| Métrica | Valor (2026-06-09 EOD) |
+|---|---|
+| Tests unit | **677/677** ✅ |
+| Tests integration | **24 nuevos + 1 todo**, verde local |
+| Lint errors | **0** |
+| Typecheck | clean |
+| Migrations aplicadas remote | **22** (las últimas 9 del wizard + sprints A-D) |
+| Build production en TestFlight | ✅ 1.0.0 (1) instalado en device |
+| Deuda técnica de código | **0** para shippeo a App Store |
+
+**🚀 Camino crítico al App Store**: solo restan **owner actions de contenido** (Privacy Policy hosting, screenshots, listing copy, age rating, privacy nutrition). Ningún item de código bloquea. Ver sección 2.
 
 ---
 
@@ -89,29 +103,39 @@ Aplicadas y verificadas contra remote production. No quedan migrations sin aplic
 
 ---
 
-## 2 · PENDIENTES
+## 2 · PENDIENTES (actualizado 2026-06-09 post wizard Apple Dev)
 
-### 2.1 · High priority — siguiente sprint útil
+> **🎉 Cambio mayor 2026-06-09**: Apple Developer setup completo + EAS + GitHub Secrets wireados + build 1.0.0 (1) en TestFlight, instalado en device. Ver [milestone doc](2026-06-09-apple-dev-setup-completed.md).
+>
+> **Resultado**: el grueso de los items "blocked by Apple Dev" están desbloqueados. Lo único que queda es **contenido del owner** (legal, screenshots, listing copy) — ninguna deuda técnica de código.
 
-| # | Item | Effort | Notas |
-|---|------|--------|-------|
-| H1 | **P0 App Store completo** (delete-account UI, Apple Sign-In login, password reset, email confirm resend, permission priming, legal hosting + wiring, version/about, support link, push iOS production, screenshots, listing copy, privacy nutrition, age rating) | 3-4 semanas | Roadmap completo en [`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-priorizado.md) §2. **Ningún item de P0 se trabajó en el ciclo de junio** — el sprint fue de hardening del producto, no de compliance |
-| H2 | **APNs key + entitlements + token registration backend → APNs** (P0.13-15) | 1.5 d total | Doc fuente: [`push-notifications-ios-setup.md`](../operaciones/push-notifications-ios-setup.md). Bloqueado por Apple Dev (ya pago) |
-| H3 | **Privacy Policy + Terms redactados y hosteados** + first-launch disclosure (P0.7-10) | 1-2 sem legal / 1 d template | Owner action: redacción o contratación |
+### 2.1 · High priority — Owner content para Apple submit
 
-### 2.2 · Medium priority — tech debt / mejoras
+Todos son **owner actions**, no requieren código:
 
 | # | Item | Effort | Notas |
 |---|------|--------|-------|
-| M1 | **`useUpdateExpense` / `useDeleteExpense` migrar a `syncAllAfterMutation` full** | 1 d | Hoy patchean directo + invalidate parcial — funcional, pero alinear al patrón completo simplificaría adds futuras. Listado como pendiente en [`2026-06-08-codereview-hardening-completed.md:371`](2026-06-08-codereview-hardening-completed.md#L371) |
-| M2 | **Test guard para scopes de `syncAllAfterMutation`** | 4 h | Test que falle si un scope nuevo no incluye `homeSnapshotQueryKey` — guard contra el bug histórico de "MetaCard no aparece post-create" |
-| M3 | **E2E (Playwright) en CI** | 1-2 d | Hoy sólo unit + integration. El costo de headless browser amerita planning aparte |
-| M4 | **Drenar `motion-tokens-baseline.json`** | 1 d | 22 violations across 10 files — migrar callsites a tokens o agregar `@motion-allow` inline |
-| M5 | **P1 hardening backend pre-prod** (password policy 10c, HIBP, network restrictions, captcha, re-auth destructive, rate limiting RPCs, service-role audit, `audit_log` / `invitations` / `devices` tables) | 6-8 d | Roadmap §3. Mayoría son toggles Supabase de 30 s. Captcha + rate limiting son los más serios |
-| M6 | **P3 testing pre-launch** (auth integration, expense CRUD vs Supabase, fixed lifecycle, push delivery, VoiceOver accessibility, visual regression, perf baseline) | 8-10 d | Roadmap §5. Paralelizable con P0 |
-| M7 | ~~P2 DevEx / EAS automation~~ → **DONE 2026-06-09** (Sprint C completo: EAS release + TestFlight + OTA + feature flags + gitleaks). Sentry sourcemap → SKIPPED (decisión owner) | — | Sprint C entregó 12/13 items; C8 Sentry skipped sin pendientes técnicos |
+| H1 | **Privacy Policy + Terms redactados y hosteados** | 1-2 sem legal / 1 d template | DNS `manifiesto.app` + GitHub Pages o equivalente. Después: actualizar `mobile/lib/legal-urls.ts` con URLs reales (3 constants → los rows del About screen aparecen automáticamente) |
+| H2 | **Crear inbox `soporte@manifiesto.app`** | 30 min | Forwarding al email principal alcanza. Update también `SUPPORT_EMAIL` en `legal-urls.ts` |
+| H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado |
+| H4 | **Privacy Nutrition labels** | 30 min | App Store Connect → app → Privacidad. Cuestionario sobre qué datos colectamos. Para Manifiesto: email (auth), nombre (display), datos financieros (encrypted local + Supabase). |
+| H5 | **Listing copy** (descripción es-MX, keywords, qué hay nuevo) | 2-4 h | App Store Connect → app → Distribución → Versión 1.0. Hay placeholder pero requiere copy final |
+| H6 | **Age rating survey** | 10 min | App Store Connect → app → Información de la app. Manifiesto = 4+ (sin contenido sensible) |
+| H7 | **App Preview video** (opcional) | 1 d | Boost del conversion rate en App Store. Si no, usar solo screenshots |
+| H8 | **Submit for Review** + esperar Apple (~1-3 días) | 1 click → wait | Una vez todo lo anterior listo |
 
-### 2.3 · Low priority / opcional
+### 2.2 · Medium priority — Tech debt residual
+
+> **Nota**: las antiguas categorías M1-M7 ya están DONE. Los items que quedan son de baja urgencia.
+
+| # | Item | Effort | Notas |
+|---|------|--------|-------|
+| M1 | **C13 perf baseline FPS table** | 1 h | Procedure documentado en `docs/operaciones/perf-baseline.md` — falta correr Instruments en device físico (ahora desbloqueado con TestFlight) |
+| M2 | **C11 manual VoiceOver pass** | 2 h | Audit estático completo en `docs/sistemas/accessibility-checklist.md`. Pass manual en device físico desbloqueado con TestFlight |
+| M3 | **C12 Storybook + Chromatic** | 2-3 d | Plan en `docs/operaciones/visual-regression.md`. Deferred hasta post-D refactor (cumplido). Activar si valor visual regression supera setup cost |
+| M4 | **Cleanup secrets deprecados** (`EXPO_APPLE_ID`, `EXPO_ASC_APP_ID`) | 5 min | Se pueden borrar de GitHub Secrets — ya no se leen. Sin urgencia, no causan daño activo |
+
+### 2.3 · Low priority / opcional (sin cambios)
 
 | # | Item | Notas |
 |---|------|-------|
@@ -121,15 +145,16 @@ Aplicadas y verificadas contra remote production. No quedan migrations sin aplic
 | L4 | **Verificar usuario test `aye.tello18@gmail.com`** | 1 minuto query manual ([`pendientes-seguridad.md:109`](../operaciones/pendientes-seguridad.md#L109)) |
 | L5 | **Android prebuild + AndroidManifest audit** | Pre-Play Store |
 | L6 | **Gift subscription IAP** + **Win-back flow** | Bucket B monetización, post P5 |
+| L7 | **Registrar UDIDs + setup preview profile** | Solo si querés builds ad-hoc para testers sin TestFlight. Hoy TestFlight cubre el caso |
 
-### 2.4 · Deferred decisions (owner debe decidir)
+### 2.4 · Deferred decisions (owner)
 
 | # | Decisión | Bloquea | Notas |
 |---|----------|---------|-------|
-| D1 | **Monetización en v1.0 o v1.1?** | P5 (paywalls + RevenueCat) | UI ya está rediseñada (2026-06-02). Falta sólo SDK + persistencia. Si va en v1.0 bloquea el submit |
-| D2 | ~~Sentry + PostHog antes o después de submit?~~ → **DECIDIDO 2026-06-09: no por ahora.** Sentry skipeado. PostHog queda como D2.b (más tarde) | — | Sentry → `[-] SKIPPED` en execution plan (C8). Re-evaluar cuando >1000 MAU o primer crash sin repro |
-| D3 | **Owner actions blocked por owner** | varios P0 | Redactar/contratar Privacy/Terms, habilitar GitHub Pages + DNS `manifiesto.app`, crear inbox `soporte@manifiesto.app`, contratar/self-make screenshots + App Preview video |
-| D4 | **Push origin/main vs PR review** | publicar el ciclo | 34 commits ahead — owner decide cómo se publica (push directo, PR de catch-up, o squash) |
+| D1 | **Monetización en v1.0 o v1.1?** | P5 (paywalls + RevenueCat) | UI ya rediseñada. Decisión clave: si va en v1.0 → +1 sem de SDK integration. Si v1.1 → submit más rápido pero sin revenue desde día 1 |
+| D2 | ~~Sentry + PostHog~~ → **DECIDIDO 2026-06-09: no por ahora** | — | Re-evaluar cuando >1000 MAU |
+| D3 | ~~Apple Dev + APNs + ASC~~ → **DONE 2026-06-09 wizard** | — | Ver [milestone doc](2026-06-09-apple-dev-setup-completed.md) |
+| D4 | **Push origin/main vs PR review** | — | RESUELTO: pusheamos directo a main durante el ciclo. Si querés PR-review en próximas releases, hay que crear protection rule |
 
 ---
 

@@ -4,9 +4,11 @@
 >
 > **Source of truth**: este doc reemplaza la sección "Pendientes" de [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md) para los items de código. Cuando un item se marca DONE, agregá el commit SHA + fecha al lado.
 >
-> **Última actualización**: 2026-06-08
+> **Última actualización**: 2026-06-09 (post wizard Apple Developer setup)
 >
 > **HEAD al armar el plan**: `99ed0db` — 35 commits ahead de `origin/main`.
+>
+> **2026-06-09 update**: Apple Developer setup completo + EAS + GitHub Secrets wireados + build 1.0.0 (1) en TestFlight. A4/A7/A8/C5/C6/C7 ahora son **VERIFIED end-to-end**. Detalles en [milestone doc](2026-06-09-apple-dev-setup-completed.md).
 
 ---
 
@@ -115,7 +117,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A4 · Apple Sign-In screen + integration (1 d)
 
-- [x] **DONE (code-complete)** — verificación end-to-end 2026-06-09. `expo-apple-authentication` integrado en `mobile/features/auth/social-sign-in.ts` (`signInWithApple` con identity token + supabase.auth.signInWithIdToken). Botón nativo en `login-screen.tsx:367+` y `signup-screen.tsx:278`. Wiring iOS-only completo. **Pendiente solo de Apple Dev capability enable + provisioning profile + EAS production build** para test end-to-end real.
+- [x] **DONE + VERIFIED 2026-06-09** — `expo-apple-authentication` integrado en `mobile/features/auth/social-sign-in.ts` (`signInWithApple` con identity token + supabase.auth.signInWithIdToken). Botón nativo en `login-screen.tsx:367+` y `signup-screen.tsx:278`. Wiring iOS-only completo. **Sign in with Apple capability habilitada** en Apple Developer (App ID `com.manifiesto.mobile.ZKYQF7UNYA`). Build production 1.0.0 (1) llegó a TestFlight 2026-06-09 → testeable end-to-end en device. Ver [milestone doc](2026-06-09-apple-dev-setup-completed.md).
 
 **Por qué**: si vas a usar email/password + social, Apple guideline pide Apple Sign-In también.
 
@@ -161,6 +163,8 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 - [x] **DONE** `635eeda` 2026-06-09 — pantalla `/(app)/settings/about` con hero (versión + build), grupo "Información legal" (Privacy/Terms, oculta filas si su URL en `legal-urls.ts` está vacía), grupo "Soporte" con mailto pre-poblado vía `buildSupportMailto`, footer "Hecho con ♥ en Argentina". Settings ahora linkea con un row "Acerca de" al final.
 
+> ⚠️ **Pendiente owner action** (2026-06-09 post-build): completar URLs reales en `mobile/lib/legal-urls.ts`. Hoy están vacías → los rows Privacy/Terms se ocultan silenciosamente. Cuando el owner hoste Privacy Policy + Terms (item del [milestone doc](2026-06-09-apple-dev-setup-completed.md) → "Lo que falta para shippear v1.0"), actualizar las 3 constants y los rows aparecen automáticamente.
+
 **Por qué**: App Store listing requiere link a privacy + support email.
 
 **Files**:
@@ -176,7 +180,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A7 · Push iOS production wiring — mobile side (1 d)
 
-- [x] **DONE** `4051d3d` 2026-06-09 — code listo. End-to-end test pendiente solo de APNs key.
+- [x] **DONE + VERIFIED 2026-06-09** `4051d3d` — code listo. APNs key (`J3525JQHM2`) generada y wireada en EAS (`eas credentials` → Push Notifications). Build production 1.0.0 (1) en TestFlight con push entitlements activos. Ver [milestone doc](2026-06-09-apple-dev-setup-completed.md).
 
 **Por qué**: el código que registra el token + maneja notificaciones debe estar listo para test pre-submit.
 
@@ -461,11 +465,13 @@ auth.users / profiles).
 
 ### C5 · EAS build automatizado (1 d)
 
-- [x] **DONE** (Sprint C — SHA pendiente) — `.github/workflows/release.yml` creado. Trigger: tag `v*` + `workflow_dispatch`. Steps: setup node + EAS CLI (`expo/expo-github-action@v8`) → `eas build --platform ios --profile production --non-interactive --wait`. Notificación final: marker en log + Slack webhook opcional si `SLACK_RELEASE_WEBHOOK` está configurado.
+- [x] **DONE + VERIFIED 2026-06-09** — workflow `.github/workflows/release.yml`. Trigger: tag `v*` + `workflow_dispatch`. Steps: setup node + EAS CLI → `eas build --platform ios --profile production --non-interactive --wait`. **Verificado end-to-end 2026-06-09**: build production 1.0.0 (1) construido en EAS cloud en ~16 min y subido a App Store Connect. Ver [milestone doc](2026-06-09-apple-dev-setup-completed.md).
 
-**Secrets requeridos** (owner debe agregar en GitHub → Settings → Secrets → Actions):
-- `EXPO_TOKEN` (con permisos build + submit + update)
-- `SLACK_RELEASE_WEBHOOK` (opcional)
+**Secrets configurados en GitHub** (2026-06-09):
+- ✅ `EXPO_TOKEN`
+- ⚪ `SLACK_RELEASE_WEBHOOK` (opcional, no configurado)
+
+**Fix durante dry-run** (commit `ce9caa6`): removido `autoIncrement: true` del profile production en `eas.json` porque no es compatible con `app.config.ts` dinámico. Bumps de version se hacen manualmente.
 
 **Files**:
 - NEW `.github/workflows/release.yml` — triggered en tag `v*`
@@ -479,11 +485,19 @@ auth.users / profiles).
 
 ### C6 · TestFlight submission script (0.5 d)
 
-- [x] **DONE** (Sprint C — SHA pendiente) · construído sobre C5 — step `EAS submit to TestFlight` agregado a `release.yml`. La `.p8` ASC API key se materializa desde `ASC_API_KEY_P8_BASE64` (secret) a `.asc/AuthKey.p8` solo durante el run (cleanup en `always`). Si la secret no está, el build IPA se completa pero el submit se skipea (graceful degradation — owner sube manual desde EAS dashboard).
+- [x] **DONE + VERIFIED 2026-06-09** · construído sobre C5 — step `EAS submit to TestFlight` en `release.yml`. La `.p8` ASC API key se materializa desde `ASC_API_KEY_P8_BASE64` (secret) a `.asc/AuthKey.p8` solo durante el run (cleanup en `always`). **Verificado**: build 1.0.0 (1) auto-submited a TestFlight 2026-06-09, instalable en device del owner.
 
-**Secrets requeridos**:
-- `EXPO_APPLE_ID`, `EXPO_ASC_APP_ID` (también referenciadas por `eas.json`)
-- `ASC_API_KEY_ID`, `ASC_API_KEY_ISSUER_ID`, `ASC_API_KEY_P8_BASE64`
+**Fix durante dry-run** (commit `0ae9081`): el syntax `$VAR` para env vars NO funciona en la sección `submit` del `eas.json` (solo en `build`). Solución:
+- Removido `appleId` de `eas.json` (no es necesario con ASC API key).
+- Hardcodeado `ascAppId: "6776033487"` (identifier público).
+- Cleanup de `EXPO_APPLE_ID`/`EXPO_ASC_APP_ID` del env: del submit step.
+
+**Secrets configurados en GitHub** (2026-06-09):
+- ✅ `ASC_API_KEY_ID` (`HUNBRN89BT`)
+- ✅ `ASC_API_KEY_ISSUER_ID` (`e2ab69f2-ac94-482a-8e66-7a89f9a3cca4`)
+- ✅ `ASC_API_KEY_P8_BASE64`
+- ⚠️ `EXPO_APPLE_ID` (`kontosmario@gmail.com`) — deprecado pero presente, ya no se lee
+- ⚠️ `EXPO_ASC_APP_ID` (`6776033487`) — deprecado pero presente, hardcoded en `eas.json`
 
 **Files**:
 - MOD `.github/workflows/release.yml` agregar step `eas submit`
@@ -496,7 +510,7 @@ auth.users / profiles).
 
 ### C7 · OTA Updates (EAS Update) wiring (1 d)
 
-- [x] **DONE** (Sprint C — SHA pendiente) — `expo-updates@~29.0.18` instalado. `app.config.ts` configurado con `runtimeVersion: { policy: 'sdkVersion' }` + `updates.url: 'https://u.expo.dev/<projectId>'` + `fallbackToCacheTimeout: 0`. `eas.json` builds ahora declaran `channel` (development/preview/production). Workflow nuevo `.github/workflows/ota-update.yml` corre en push a main + dispatch: skipea si la diff toca `ios/`, `android/`, `app.config.ts`, `eas.json`, `package.json`, `package-lock.json` (vía `dorny/paths-filter@v3`). Cada push de JS-only ⇒ `eas update --branch production --message "<commit subject>"`.
+- [x] **DONE + ACTIVE 2026-06-09** — `expo-updates@~29.0.18` instalado. `app.config.ts` configurado con `runtimeVersion: { policy: 'sdkVersion' }` + `updates.url: 'https://u.expo.dev/54449767-9236-4734-972a-e561debd1360'`. Workflow `.github/workflows/ota-update.yml` corre en push a main (skip si toca código nativo). **Verificado en build production 2026-06-09**: el log de submit reportó `✓ Created update channel "production" and branch "production" on @markon07/manifiesto project`. Próximos push JS-only a main van a disparar OTA automáticamente.
 
 **Files**:
 - INSTALL `expo-updates` ✓
