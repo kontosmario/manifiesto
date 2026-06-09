@@ -274,6 +274,55 @@ function patchPaginatedPrepend(
 }
 
 /**
+ * Patch a row inside every paginated InfiniteData page + every for-day
+ * cache that contains it. Used in optimistic update so los gastos v2
+ * surfaces (Home + Gastos list) reflejen el cambio sin esperar al
+ * refetch del onSettled. Si el id no existe en un cache, lo deja como
+ * estaba. Code review M5 mobile FIX-ROUND.
+ */
+function patchPaginatedUpdate(
+  qc: QueryClient,
+  familyId: string,
+  expenseId: string,
+  patch: { description: string; notes: string | null; price: number },
+): void {
+  for (const [key] of qc.getQueriesData<InfiniteData<GastosExpensesPage>>({
+    queryKey: gastosEndpointKeys.paginatedFamily(familyId),
+  })) {
+    qc.setQueryData<InfiniteData<GastosExpensesPage> | undefined>(
+      key,
+      (current) => {
+        if (!current || !Array.isArray(current.pages)) return current
+        return {
+          ...current,
+          pages: current.pages.map((p) => ({
+            ...p,
+            expenses: Array.isArray(p?.expenses)
+              ? p.expenses.map((e) =>
+                  e.id === expenseId ? { ...e, ...patch } : e,
+                )
+              : [],
+          })),
+        }
+      },
+    )
+  }
+  for (const [key] of qc.getQueriesData<GastosExpenseRow[]>({
+    queryKey: gastosEndpointKeys.forDayFamily(familyId),
+  })) {
+    qc.setQueryData<GastosExpenseRow[] | undefined>(
+      key,
+      (current) => {
+        if (!Array.isArray(current)) return current
+        return current.map((e) =>
+          e.id === expenseId ? { ...e, ...patch } : e,
+        )
+      },
+    )
+  }
+}
+
+/**
  * Remove a row from every paginated InfiniteData page + every for-day
  * cache that contains it. Used in optimistic delete.
  */
@@ -529,6 +578,15 @@ export function useUpdateExpense(familyId?: string, userId?: string) {
         expenseQueryKeys.recent(familyId, 3),
         patch,
       )
+
+      // Gastos v2 caches (paginated + for-day): patcheamos in-place
+      // para que la edición se refleje inmediatamente en Home/Gastos
+      // sin esperar el refetch. Code review M5 mobile FIX-ROUND.
+      patchPaginatedUpdate(queryClient, familyId, expenseId, {
+        description,
+        notes: notes ?? null,
+        price,
+      })
 
       return { previous }
     },

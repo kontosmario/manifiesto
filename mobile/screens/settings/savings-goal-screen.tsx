@@ -148,7 +148,7 @@ function SavingsGoalViewer({
 }: SavingsGoalViewerProps) {
   const { theme } = useAppTheme()
   const upsert = useUpsertSavingsGoal(familyId, userId)
-  const remove = useDeleteSavingsGoal(familyId)
+  const remove = useDeleteSavingsGoal(familyId, userId)
 
   // ── Derived insight ──────────────────────────────────────────────
   const goalAmount = goal.goalAmount

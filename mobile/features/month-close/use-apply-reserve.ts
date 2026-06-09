@@ -5,7 +5,6 @@ import {
   type UseMutationOptions,
 } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { familyFinanceQueryKey } from '@/features/finance/use-family-finance'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 export interface ApplyReserveInput {
@@ -34,26 +33,24 @@ export function buildApplyReserveMutation(
       })
       if (error) throw error
     },
-    // Code review H2 (sprint A, 2026-06-08): la decisión de aplicar
-    // reserva impacta Home / Control / Gastos (reserva, savings,
-    // acumulado del ciclo). Antes invalidábamos solo 4 keys hardcoded;
-    // ahora delegamos a `syncAllAfterMutation` con scopes `savings` +
-    // `income` para cubrir control snapshots, family-finance, savings
-    // goals y cycle-acumulado de forma consistente con el resto del
-    // proyecto. Mantenemos un `home-snapshot` prefix-invalidate como
-    // backstop cuando no hay userId (tests, callers sin sesión).
+    // Code review M1 (sprint mobile FIX-ROUND, 2026-06-08): las 4
+    // invalidaciones hardcoded (family-finance, savings-goal,
+    // cycle-acumulado, home-snapshot) están totalmente cubiertas por
+    // `syncAllAfterMutation` cuando hay userId, vía scopes 'savings'
+    // (savings-goal + latest + cycle-acumulado) + 'income'
+    // (family-finance + cycle-acumulado) + el invalidate global de
+    // homeSnapshotQueryKey(userId). Mantenemos un fallback explícito
+    // para callers sin userId (tests, contextos sin sesión).
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: familyFinanceQueryKey(familyId) }),
-        queryClient.invalidateQueries({ queryKey: ['savings-goal', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['home-snapshot'] }),
-        syncAllAfterMutation(queryClient, {
-          familyId,
-          userId,
-          scopes: ['savings', 'income'],
-        }),
-      ])
+      await syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['savings', 'income'],
+      })
+      if (!userId) {
+        // Backstop: syncAll no invalida home-snapshot sin userId.
+        await queryClient.invalidateQueries({ queryKey: ['home-snapshot'] })
+      }
     },
   }
 }

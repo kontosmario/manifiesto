@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { subscriptionsZombieQueryKeys } from './query-keys'
 import type { IntentResolution } from './types'
 
@@ -29,8 +29,9 @@ export function useResolveSubscriptionIntent(familyId?: string) {
         queryClient.invalidateQueries({
           queryKey: subscriptionsZombieQueryKeys.feed(familyId),
         }),
-        queryClient.invalidateQueries({
-          queryKey: fixedExpenseQueryKeys.family(familyId),
+        syncAllAfterMutation(queryClient, {
+          familyId,
+          scopes: ['fixed', 'fixedPayment'],
         }),
       ])
     },

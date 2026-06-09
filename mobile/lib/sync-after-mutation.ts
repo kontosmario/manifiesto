@@ -158,14 +158,26 @@ export async function syncAllAfterMutation(
     keys.push(expenseQueryKeys.family(familyId))
     keys.push(gastosEndpointKeys.categoriesFamily(familyId))
     keys.push(gastosEndpointKeys.heroFamily(familyId))
+    // Control v2 snapshots y gastos_snapshot también referencian
+    // category_id / nombre. Code review M3 mobile FIX-ROUND.
+    keys.push(['gastos-snapshot', familyId])
+    keys.push(controlIntelligenceQueryKey(familyId))
+    if (userId) {
+      keys.push(controlSnapshotKey(userId))
+    }
   }
 
   // ── Profile — cambios de avatar / display name aparecen en:
   //   · `homeSnapshotQueryKey` (header del Home muestra avatar+nombre).
   //   · `familyMembersKey` (family strip + family roster en Settings).
-  // Code review H6 (sprint A, 2026-06-08).
+  //   · `['profile', userId]` (Settings + onboarding leen acá la fuente
+  //     primaria de display_name / avatar_url; sin invalidate quedan
+  //     stale tras un upsert). Code review M2 mobile FIX-ROUND.
   if (familyId && has('profile')) {
     keys.push(familyMembersKey(familyId))
+  }
+  if (userId && has('profile')) {
+    keys.push(['profile', userId])
   }
 
   // ── Achievements — cualquier expense/fixed/payment puede unlock vía trigger

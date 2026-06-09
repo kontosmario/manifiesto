@@ -7,6 +7,14 @@ vi.mock('@/features/savings-goals/savings-goal.repository', () => ({
   deleteSavingsGoal: (...args: unknown[]) => deleteSavingsGoalMock(...args),
 }))
 
+// El builder ahora delega en `syncAllAfterMutation`, que importa
+// `controlSnapshotKey` desde `use-control-snapshot.ts` — ese file pulla
+// `@/lib/supabase`, que importa `react-native` (AppState/Platform) y
+// rompe vitest env=node. Mockamos supabase a un stub vacío para que la
+// cadena de imports compile sin tocar RN. Mismo patrón que
+// `use-apply-reserve.test.ts`.
+vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+
 import {
   buildDeleteSavingsGoalMutation,
 } from '@/features/savings-goals/use-delete-savings-goal'

@@ -5,31 +5,38 @@ import {
   type UseMutationOptions,
 } from '@tanstack/react-query'
 import { deleteSavingsGoal } from '@/features/savings-goals/savings-goal.repository'
-import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
-import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 /**
  * Pure builder — separable del React layer para que vitest pueda
  * testear el shape (mutationFn + onSuccess invalidations) sin
  * `useMutation`.
+ *
+ * Code review Cross-M3 mobile FIX-ROUND: las 4 invalidaciones
+ * hardcoded (savings-goal, savings-goal-latest, cycle-acumulado,
+ * home-snapshot) están totalmente cubiertas por `syncAllAfterMutation`
+ * con scope 'savings' + el invalidate global de homeSnapshotQueryKey
+ * cuando hay userId. Para callers sin userId (tests, callers legacy)
+ * mantenemos un fallback explícito que prefija ['home-snapshot'].
  */
 export function buildDeleteSavingsGoalMutation(
   queryClient: QueryClient,
   familyId?: string,
+  userId?: string,
 ): UseMutationOptions<void, Error, string, unknown> {
   return {
     mutationFn: async (goalId: string) => {
       await deleteSavingsGoal(goalId)
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: savingsGoalQueryKey(familyId) }),
-        // Latest goal — Settings consume esta key. Sin invalidar, el
-        // user borraba y la pantalla seguía mostrando el goal stale.
-        queryClient.invalidateQueries({ queryKey: latestSavingsGoalQueryKey(familyId) }),
-        queryClient.invalidateQueries({ queryKey: ['cycle-acumulado', familyId] }),
-        queryClient.invalidateQueries({ queryKey: ['home-snapshot'] }),
-      ])
+      await syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['savings'],
+      })
+      if (!userId) {
+        await queryClient.invalidateQueries({ queryKey: ['home-snapshot'] })
+      }
     },
   }
 }
@@ -50,7 +57,9 @@ export function buildDeleteSavingsGoalMutation(
  * pero deja de aparecer como meta activa. El Alert del delete confirm
  * lo aclara así, sin sugerir que la plata "vuelve" a ningún disponible.
  */
-export function useDeleteSavingsGoal(familyId?: string) {
+export function useDeleteSavingsGoal(familyId?: string, userId?: string) {
   const queryClient = useQueryClient()
-  return useMutation(buildDeleteSavingsGoalMutation(queryClient, familyId))
+  return useMutation(
+    buildDeleteSavingsGoalMutation(queryClient, familyId, userId),
+  )
 }

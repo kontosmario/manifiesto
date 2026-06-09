@@ -6,6 +6,7 @@ import {
   type SavingsGoalRow,
 } from '@/features/savings-goals/savings-goal.model'
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
+import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 interface AddContributionInput {
@@ -36,10 +37,13 @@ export function useAddSavingsContribution(
       return mapSavingsGoalRow(data as SavingsGoalRow)
     },
     onSuccess: (updated) => {
-      // Optimistic-seed la query activa con la goal recién actualizada;
-      // evita un blink mientras el invalidate refetcha.
+      // Optimistic-seed la query activa Y la latest con la goal recién
+      // actualizada; evita un blink mientras el invalidate refetcha.
+      // Code review M6 mobile FIX-ROUND: latest también la consume
+      // Settings (incluye inactivas) y quedaba stale hasta el refetch.
       if (familyId) {
         queryClient.setQueryData(savingsGoalQueryKey(familyId), updated)
+        queryClient.setQueryData(latestSavingsGoalQueryKey(familyId), updated)
       }
     },
     // Code review H3 (sprint A, 2026-06-08): un aporte mueve el chip
