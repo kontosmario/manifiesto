@@ -402,29 +402,29 @@ auth.users / profiles).
 
 ### C1 · `useUpdateExpense` / `useDeleteExpense` → `syncAllAfterMutation` full (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — verificado 2026-06-09. Ambos hooks ya estaban alineados al patrón antes de C1 (sprint anterior los migró). Tarea funcional fue no-op; valor entregado: documentar que el scope `expenses` cubre TODOS los keys que se invalidaban a mano antes.
 
 **Files**:
-- MOD `mobile/features/expenses/use-expenses.ts` (líneas ~494-558 update, ~560-620 delete)
-- MOD `mobile/lib/sync-after-mutation.ts` (verificar scope `expenses` cubre los keys necesarios)
+- VERIFY `mobile/features/expenses/use-expenses.ts` — ambos hooks usan `syncAllAfterMutation({scopes:['expenses']})` en `onSettled`, sin invalidates hardcoded
+- VERIFY `mobile/lib/sync-after-mutation.ts` — scope `expenses` cubre family, recentFamily, total, periodTotalFamily, monthlySpentFamily, gastosEndpointKeys.{hero,calendar,categories,paginated,forDay}Family, gastos-snapshot prefix, controlIntelligenceQueryKey, homeSnapshotQueryKey
 
 **Acceptance**:
-- [ ] Update/delete preservan optimistic patch (paginated + for-day + recent) en `onMutate`
-- [ ] `onSettled` llama `syncAllAfterMutation({scopes: ['expenses']})` en lugar de invalidates hardcoded
-- [ ] Tests 654+ siguen pasando
+- [x] Update/delete preservan optimistic patches (`patchPaginatedUpdate` / `patchPaginatedRemove` + snapshot list patches en `onMutate`)
+- [x] `onSettled` llama `syncAllAfterMutation({scopes: ['expenses']})` (no hay invalidates hardcoded)
+- [x] Tests 660 → 677 pasando
 
 ---
 
 ### C2 · Test guard `syncAllAfterMutation` scopes (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — `tests/unit/sync-after-mutation-guard.test.ts` con 12 tests: 9 scopes individuales (`it.each(ALL_SCOPES)`) + 3 invariants (scopes vacío no-op, sin userId no incluye home-snapshot, dedup de scopes repetidos). Mock `@/lib/supabase` para soportar vitest env=node, mismo patrón que `use-delete-savings-goal.test.ts`.
 
 **Files**:
 - NEW `tests/unit/sync-after-mutation-guard.test.ts`
 
 **Acceptance**:
-- [ ] Test que itera por cada scope de `SyncScope` y verifica que `homeSnapshotQueryKey(userId)` está en el set resultante (cuando `userId` está)
-- [ ] Falla loud con nombre del scope si alguno no lo incluye
+- [x] Test que itera por cada scope de `SyncScope` y verifica que `homeSnapshotQueryKey(userId)` está en el set resultante (cuando `userId` está)
+- [x] Falla loud con nombre del scope si alguno no lo incluye (mensaje del throw incluye scope name + keys actuales)
 
 ---
 
@@ -445,15 +445,17 @@ auth.users / profiles).
 
 ### C4 · Drenar `motion-tokens-baseline.json` (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — drenado de 22 (baseline) + 8 regresiones nuevas (30 total) → 0. Estrategia: (a) migración a tokens existentes (`motionDurations.standard/enterStack/deliberate/slow`, `decorativeDurations.pulse`) cuando matcheaba, (b) nuevo token `motionDurations.shakeStep = 50` para shake sequences (pin-pad), (c) `@motion-allow: <razón>` inline en one-offs designer-tuned (entrance curves de wrapped/control-hero, pulsos decorativos calibrados). `counts: {}` en baseline; cualquier file que vuelva a aparecer = regresión que bloquea CI.
 
 **Files**:
-- 22 violations across 10 files — `npm run guard:motion-tokens` los lista
-- MOD callsites a usar tokens de `mobile/lib/motion.ts` o agregar `@motion-allow` inline justificando
+- MOD 9 files (pin-pad, fijo-category-groups, fijos-scheduled-banner, fijos-hero-card, achievements-gallery, fijos-proximos-card, fijo-row, control-hero-a-titular, cycle-wrapped-modal, cycle-balance-prompt-sheet, achievement-unlock-modal)
+- MOD `mobile/lib/motion/tokens.ts` (+ `shakeStep: 50`)
+- MOD `tests/unit/motion-tokens.test.ts` (cubre el nuevo token)
+- MOD `scripts/motion-tokens-baseline.json` → `counts: {}`
 
 **Acceptance**:
-- [ ] `motion-tokens-baseline.json` queda vacío o con justificaciones inline
-- [ ] Guard CI clean sin baseline
+- [x] `motion-tokens-baseline.json` vacío
+- [x] `npm run guard:motion-tokens` clean (0 violations, sin baseline)
 
 ---
 
