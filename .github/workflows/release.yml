@@ -76,21 +76,38 @@ jobs:
         id: profile
         # On a tag push we always build `production`. On manual dispatch
         # the user picks via the input.
+        # CR Sprint C #6: validar contra allowlist explícita para evitar
+        # shell-injection si `gh workflow run` recibe un valor arbitrario
+        # (la `choice` input solo gobierna la UI, no la CLI). El profile
+        # se pasa como argumento sin quotear más abajo, así que el
+        # allowlist es defense-in-depth real.
+        env:
+          INPUT_PROFILE: ${{ github.event.inputs.profile }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ github.event.inputs.profile }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$INPUT_PROFILE" in
+              production|preview) PROFILE="$INPUT_PROFILE" ;;
+              *) echo "::error::Invalid profile: $INPUT_PROFILE"; exit 1 ;;
+            esac
           else
-            echo "name=production" >> "$GITHUB_OUTPUT"
+            PROFILE="production"
           fi
+          echo "name=$PROFILE" >> "$GITHUB_OUTPUT"
 
       - name: EAS build (iOS)
         # `--wait` blocks until the build finishes — we want the workflow
         # to surface build failures directly instead of greenlighting on
         # "build queued". `--non-interactive` is required in CI.
+        # CR Sprint C #4: documentar que `preview` builds skipean submit
+        # — el step "EAS submit to TestFlight" abajo solo corre cuando
+        # `profile == 'production'`.
+        env:
+          PROFILE: ${{ steps.profile.outputs.name }}
         run: |
           eas build \
             --platform ios \
-            --profile ${{ steps.profile.outputs.name }} \
+            --profile "$PROFILE" \
             --non-interactive \
             --wait
 
@@ -128,23 +145,32 @@ jobs:
             --non-interactive
 
       - name: Cleanup ASC key
-        if: always() && steps.asc_key.outputs.path != ''
-        run: rm -rf .asc
+        # CR Sprint C #1: incondicional. Si Decode falló mid-flight
+        # (e.g. chmod returned non-zero después del `base64 -d`), el
+        # output `path` queda vacío pero `.asc/AuthKey.p8` ya existe.
+        # rm -rf con `|| true` no falla si no hay nada para borrar.
+        if: always()
+        run: rm -rf .asc 2>/dev/null || true
 
       - name: Notify completion
         # TODO(owner): pick Slack / Discord / GitHub issue / email and
         # wire the webhook here. Until then we just leave a marker in
         # the workflow log + post a comment on the tag if it exists.
+        # CR Sprint C #2: webhook URL inyectada via `env:` en vez de
+        # template substitution directa. Si alguien agrega `set -x`
+        # para debug, masking se aplica antes (env vars son scrubeadas)
+        # en vez de quedar interpolada en el comando expandido.
         if: always()
         env:
           STATUS: ${{ job.status }}
           TAG: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_RELEASE_WEBHOOK }}
         run: |
           echo "::notice::Release ${TAG} finished with status ${STATUS}. Run: ${RUN_URL}"
           # When a Slack webhook secret is configured, post there too.
-          if [ -n "${{ secrets.SLACK_RELEASE_WEBHOOK }}" ]; then
+          if [ -n "$SLACK_WEBHOOK" ]; then
             curl -sS -X POST -H 'Content-Type: application/json' \
               --data "{\"text\":\":rocket: Manifiesto release ${TAG} — ${STATUS}\n${RUN_URL}\"}" \
-              "${{ secrets.SLACK_RELEASE_WEBHOOK }}" || true
+              "$SLACK_WEBHOOK" || true
           fi
