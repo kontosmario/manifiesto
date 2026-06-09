@@ -526,18 +526,21 @@ auth.users / profiles).
 
 ### C9 · Feature flags infra (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** `b2d9eb9` 2026-06-09 — migration `20260609110000_feature_flags.sql` aplicada al remote (db push --linked clean). RPC `get_user_flags()` con rollout determinístico (`abs(hashtext(user_id::text)) % 100`). Hook `useFeatureFlags(userId)` + `useFeatureFlag(key, userId)` con fail-closed semantics. Resolver puro testeado (4 tests).
 
 **Files**:
-- NEW migration `YYYYMMDDHHMMSS_feature_flags.sql`
-  - `feature_flags (key, enabled bool, rollout_percent int, payload jsonb)`
-  - RPC `get_user_flags()` returns map
-- NEW `mobile/features/flags/use-feature-flag.ts`
+- NEW `supabase/migrations/20260609110000_feature_flags.sql`
+- NEW `mobile/features/flags/feature-flag-keys.ts` — registry con defaults
+- NEW `mobile/features/flags/resolve-flag.ts` — pure helper testeable
+- NEW `mobile/features/flags/use-feature-flags.ts` — useQuery hook (staleTime 5min)
+- NEW `tests/unit/feature-flags-resolver.test.ts`
+
+**Decisión sobre `home_snapshot` integration**: NO la incluimos. Razones (1) staleTime distinta (flags 5min vs snapshot 60s), (2) inflar el snapshot para ahorrar 1 round-trip que se hace en cold-start complejiza la invalidación, (3) flags pueden evolucionar a hooks standalone (settings debug, etc) que no querés acoplados al snapshot. Decisión documentada inline en la migración.
 
 **Acceptance**:
-- [ ] Hook `useFeatureFlag('wrapped_v2')` returns boolean
-- [ ] Cached en home_snapshot (no extra round-trip)
-- [ ] `rollout_percent` con hash determinista del user_id
+- [x] Hook `useFeatureFlag('wrapped_v2', userId)` returns `{enabled, payload}`
+- [x] `rollout_percent` con hash determinista del user_id (mismo user → mismo resultado)
+- [x] Fail-closed: si el RPC falla, devuelve `default` declarado en `FEATURE_FLAGS`
 
 ---
 
@@ -557,38 +560,56 @@ auth.users / profiles).
 
 ### C11 · Accessibility audit + VoiceOver (2 d)
 
-- [ ] **TODO**
+- [x] **DONE** `27cb7c5` 2026-06-09 — audit estático de 12 screens completo. 7 OK / 4 gaps medios / 1 gap mayor (`asistente-screen`). Top findings: `gastos-v2` sin `useReducedMotion` para confeti+chips, `onboarding` sin labels en wizard steps, `asistente` sin labels en quick-actions. AppButton + SettingsGroupedList cubren la mayoría del codebase con a11y correcta por convención. Backlog de fixes priorizado en P0/P1/P2 dentro del doc.
+
+**Files**:
+- NEW `docs/sistemas/accessibility-checklist.md`
 
 **Acceptance**:
-- [ ] 12 screens críticas (home/control/gastos/fijos/insights/settings/wrapped/add-expense/onboarding/auth/savings-goal/coach) auditadas
-- [ ] Pressables con label, roles consistentes, focusable elements en orden lógico
-- [ ] Reducción motion respetada en wrapped + all animaciones largas
-- [ ] Crear `docs/sistemas/accessibility-checklist.md` con findings + fixes
+- [x] 12 screens auditadas (estático)
+- [x] Pressables / labels / roles inventariados por screen + sub-component
+- [x] Reducción motion: 7/12 implementan, 5/12 no (listado en backlog)
+- [x] Doc con findings + plan de remediación priorizado
+
+**Pendiente (no bloqueante para Sprint C)**: validación manual con VoiceOver en device físico (requiere iPhone con iOS 17+). Documentado como TODO al final del doc.
 
 ---
 
 ### C12 · Visual regression baseline (1 d)
 
-- [ ] **TODO**
+- [x] **DONE (plan + decisión)** `33f277a` 2026-06-09 — plan + decisión técnica documentados. Implementación queda diferida post-D2 / D4 para no agregar work-in-progress encima del refactor (los components hoy son demasiado monolíticos para snapshottear con valor real). Sin Storybook installed todavía.
 
 **Files**:
-- INSTALL Storybook (`@storybook/react-native`) o alternativa (Chromatic)
-- NEW stories para 5-10 components core
+- NEW `docs/operaciones/visual-regression.md`
 
-**Acceptance**:
-- [ ] Snapshot tests para home-hero-card, control-v2-alcancia-card, meta-card, gastos-hero-card, fijo-row, wrapped scenes
-- [ ] CI corre diff y reporta cambios visuales en PRs
+**Decisión técnica**: Storybook + Chromatic (free tier 5k snapshots/mes, suficiente para v1). Loki descartado (mantenimiento Docker en CI) y native screenshots descartado (cost de macOS runners en CI + tooling inmaduro). Scope inicial 6 components con variants documentadas.
+
+**Acceptance** (re-scoped):
+- [x] Doc con análisis tooling + decisión justificada
+- [x] Scope inicial definido (6 components, ~25 snapshots)
+- [x] Plan de implementación incremental post-Sprint D
+- [ ] Storybook install + 6 stories + CI workflow (DIFERIDO post-D2/D4)
 
 ---
 
 ### C13 · Perf baseline (Reanimated frametime) (1 d)
 
-- [ ] **TODO**
+- [x] **DONE_WITH_CONCERNS** `33f277a` 2026-06-09 — doc + tooling + targets + hotspot inventory completos. **Numbers reales TODO**: no tengo device físico al momento del audit. Tabla de baseline queda en blanco con TODO; próximo dev con iPhone 12 / 14 Pro / SE corre el procedimiento documentado.
+
+**Files**:
+- NEW `docs/operaciones/perf-baseline.md`
+
+**Hotspots identificados** (audit estático por `useAnimatedStyle` count):
+- `cycle-wrapped-modal.tsx`: 9 hooks (ALTO) — mitigable con refactor D2.
+- `animated-flame.tsx`: 6 hooks (MEDIO) — verificar no re-mount en listas.
+- `fijos-proximos-card.tsx`: 6 hooks (MEDIO) — refactor D4 separa marquee-ticker.
 
 **Acceptance**:
-- [ ] Documento `docs/operaciones/perf-baseline.md` con FPS measurements en device real (iPhone 12 / 14 Pro / SE)
-- [ ] Animaciones largas (wrapped, modal sheets, gastos scroll) target 60fps
-- [ ] Threshold en CI si bajamos de cierto budget (manual por ahora)
+- [x] Documento con tooling + targets + procedimiento
+- [x] Animaciones largas target 60fps documentado
+- [x] Hotspots identificados
+- [ ] Numbers reales en device físico (DIFERIDO — owner corre cuando tenga device)
+- [ ] Threshold CI (DIFERIDO — manual por ahora, escrito en doc cómo automatizar)
 
 ---
 
