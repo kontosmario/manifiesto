@@ -54,7 +54,7 @@ const config: ExpoConfig = {
     // Sign in with Apple — requires the iOS entitlement which the
     // plugin wires up automatically. Apple Developer Portal must
     // also have "Sign In with Apple" capability enabled for this
-    // app's bundle id (com.manifiesto.mobile).
+    // app's bundle id (com.manifiesto.mobile.ZKYQF7UNYA).
     'expo-apple-authentication',
     // Google plugin — only included when EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
     // is set. Filtered out below.
@@ -76,7 +76,13 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.manifiesto.mobile',
+    // El sufijo del Team ID en el bundle id es el resultado de un auto-
+    // provisioning de Apple Developer al crear el App ID. Apple no permite
+    // modificar el Bundle ID una vez registrado y borrarlo está bloqueado
+    // por la entrada de App Store Connect. Como el bundle id es invisible
+    // al usuario (solo Apple/EAS lo ven), lo aceptamos así para evitar
+    // un eventual cooldown de 30+ días sobre `com.manifiesto.mobile`.
+    bundleIdentifier: 'com.manifiesto.mobile.ZKYQF7UNYA',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
