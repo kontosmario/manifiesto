@@ -224,17 +224,19 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B1 · Re-auth on destructive actions (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** `e498ac4` 2026-06-09 — sheet reusable + hook + integration en leave-family + delete-savings-goal (con monto > 0). Delete-account ya tenía su propio flow custom (más completo) y se mantiene como está.
 
 **Files**:
-- NEW `mobile/components/auth/require-reauth-sheet.tsx`
-- NEW `mobile/features/auth/use-require-reauth.ts` (verifica pin/biometric/password)
-- MOD callers de delete-account, leave-family, delete-savings-goal (con `current_amount > 0`)
+- NEW `mobile/components/auth/require-reauth-sheet.tsx` — bottom sheet con PIN pad + biometric fallback (biometric > PIN > "configurá uno desde Settings")
+- NEW `mobile/features/auth/use-require-reauth.ts` — hook promise-resolver con skip-window de 5min in-memory (`useRef`)
+- MOD `mobile/screens/settings/savings-goal-screen.tsx` — gate antes de delete cuando `current_amount > 0`
+- MOD `mobile/screens/settings/settings-screen.tsx` — gate antes de `useLeaveCurrentFamily.mutate` (tanto destroy-flow del owner como leave normal del member)
+- Delete-account-screen: NO se modificó (su flow custom propio cubre lo mismo: typed-phrase + PIN/biometric obligatorio).
 
 **Acceptance**:
-- [ ] Acción destructiva → sheet "Confirmá tu identidad" → pin/biometric prompt
-- [ ] Solo dispara si la última reauth fue hace > 5 min
-- [ ] Falla 3 veces → bloqueo 30s
+- [x] Acción destructiva → sheet "Confirmá tu identidad" → pin/biometric prompt
+- [x] Skip-window de 5min en `useRef` (in-memory; per-session, no across cold-starts — esto es deliberado: el threat model es shoulder-surfing, no recovery de un dispositivo dormido).
+- [x] Falla 3 veces → reusa el lockout exponencial de `verifyPin()` en `pin-lock.ts` (30s/1m/2m/4m/8m). El sheet muestra `Bloqueado Xs` con `accessibilityLiveRegion="polite"`.
 
 ---
 
@@ -262,17 +264,27 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B3 · Captcha integration signup / reset (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE (code-complete, pending owner: site key + Supabase enable)** `917f019` 2026-06-09 — hCaptcha integrado vía `@hcaptcha/react-native-hcaptcha@4.0.0` (compatible con Expo SDK 54, requiere `react-native-webview` + `prop-types` que ya se sumaron). En dev sin `EXPO_PUBLIC_HCAPTCHA_SITE_KEY` el captcha se SKIPEA con `console.warn` visible — listo para producción cuando el owner cargue la key.
 
 **Files**:
-- INSTALL `@hcaptcha/react-native-hcaptcha`
-- MOD `mobile/screens/auth/signup-screen.tsx`, `forgot-password-screen.tsx`
-- ENABLE Supabase Auth captcha en dashboard (config-only)
+- INSTALL `@hcaptcha/react-native-hcaptcha` (4.0.0), `react-native-webview` (~13.16.1), `prop-types` (15.x — peer del wrapper)
+- NEW `mobile/lib/captcha-config.ts` — site key + base URL + helper `isCaptchaConfigured()`
+- NEW `mobile/components/auth/captcha-modal.tsx` — wrapper alrededor del `ConfirmHcaptcha` default export (imperative show/hide via ref)
+- NEW `mobile/features/auth/use-captcha.ts` — hook promise-resolver `request(): Promise<string | null>`
+- MOD `mobile/features/auth/use-auth-actions.ts` — `usePasswordSignUp` y `usePasswordReset` aceptan `captchaToken?: string`
+- MOD `mobile/screens/auth/signup-screen.tsx` — `await captcha.request()` antes del `signUp`; aborta si cancel
+- MOD `mobile/screens/auth/forgot-password-screen.tsx` — mismo flow antes del `resetPasswordForEmail`
+
+**Owner pendiente (no code)**:
+1. Crear site en https://dashboard.hcaptcha.com → copiar site key
+2. Cargar en EAS: `eas secret:create --scope project --name EXPO_PUBLIC_HCAPTCHA_SITE_KEY --value <key>`
+3. Supabase Dashboard → Auth → Settings → Bot and Abuse Protection → Enable hCaptcha → pegar la SECRET key
 
 **Acceptance**:
-- [ ] Captcha visible en signup + forgot password
-- [ ] Token va al supabase.auth.signUp({captchaToken})
-- [ ] Si falla, no avanza
+- [x] Captcha visible en signup + forgot password (cuando hay site key)
+- [x] Token va a `supabase.auth.signUp({options: {captchaToken}})` y `resetPasswordForEmail(email, {captchaToken})`
+- [x] Si falla (cancel/error/expired), no avanza el flow (muestra "No pudimos verificar el captcha. Probá de nuevo.")
+- [x] Sin site key (dev), captcha se skipea con `console.warn` en `__DEV__`
 
 ---
 
