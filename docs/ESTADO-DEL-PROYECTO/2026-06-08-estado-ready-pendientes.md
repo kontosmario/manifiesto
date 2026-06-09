@@ -109,7 +109,7 @@ Aplicadas y verificadas contra remote production. No quedan migrations sin aplic
 | M4 | **Drenar `motion-tokens-baseline.json`** | 1 d | 22 violations across 10 files — migrar callsites a tokens o agregar `@motion-allow` inline |
 | M5 | **P1 hardening backend pre-prod** (password policy 10c, HIBP, network restrictions, captcha, re-auth destructive, rate limiting RPCs, service-role audit, `audit_log` / `invitations` / `devices` tables) | 6-8 d | Roadmap §3. Mayoría son toggles Supabase de 30 s. Captcha + rate limiting son los más serios |
 | M6 | **P3 testing pre-launch** (auth integration, expense CRUD vs Supabase, fixed lifecycle, push delivery, VoiceOver accessibility, visual regression, perf baseline) | 8-10 d | Roadmap §5. Paralelizable con P0 |
-| M7 | **P2 DevEx / EAS automation** (EAS build automatizado, TestFlight submission, OTA Updates, Sentry sourcemap, feature flags infra, gitleaks upgrade) | 4-5 d | Roadmap §4. P2.8 (cleanup `legacy-web-src/`) y P2.9 (cleanup `control-*`) ya se hicieron en Sprint D ✅ |
+| M7 | ~~P2 DevEx / EAS automation~~ → **DONE 2026-06-09** (Sprint C completo: EAS release + TestFlight + OTA + feature flags + gitleaks). Sentry sourcemap → SKIPPED (decisión owner) | — | Sprint C entregó 12/13 items; C8 Sentry skipped sin pendientes técnicos |
 
 ### 2.3 · Low priority / opcional
 
@@ -127,7 +127,7 @@ Aplicadas y verificadas contra remote production. No quedan migrations sin aplic
 | # | Decisión | Bloquea | Notas |
 |---|----------|---------|-------|
 | D1 | **Monetización en v1.0 o v1.1?** | P5 (paywalls + RevenueCat) | UI ya está rediseñada (2026-06-02). Falta sólo SDK + persistencia. Si va en v1.0 bloquea el submit |
-| D2 | **Sentry + PostHog antes o después de submit?** | P4 (observability) | USD 26/mes + USD 0-200/mes. Recomendado antes para baseline de telemetría real |
+| D2 | ~~Sentry + PostHog antes o después de submit?~~ → **DECIDIDO 2026-06-09: no por ahora.** Sentry skipeado. PostHog queda como D2.b (más tarde) | — | Sentry → `[-] SKIPPED` en execution plan (C8). Re-evaluar cuando >1000 MAU o primer crash sin repro |
 | D3 | **Owner actions blocked por owner** | varios P0 | Redactar/contratar Privacy/Terms, habilitar GitHub Pages + DNS `manifiesto.app`, crear inbox `soporte@manifiesto.app`, contratar/self-make screenshots + App Preview video |
 | D4 | **Push origin/main vs PR review** | publicar el ciclo | 34 commits ahead — owner decide cómo se publica (push directo, PR de catch-up, o squash) |
 
@@ -141,7 +141,7 @@ Roadmap fuente: [`2026-05-31-roadmap-priorizado.md`](2026-05-31-roadmap-prioriza
 |--------|-----------------|----------------------|
 | **P0** Compliance + assets + push iOS | 3-4 sem | 🟡 **0% hecho** — sprint de junio fue hardening, no compliance |
 | **P1** Hardening backend pre-prod | 1-2 sem | 🟡 **30% hecho** — RLS hardening (`is_family_member` + fixed-payment) ya está, falta captcha / rate limiting / re-auth destructive / schema tables |
-| **P2** DevEx + CI + EAS | 1 sem | 🟡 **40% hecho** — P2.1 (vitest en CI) ✅, P2.8/P2.9 (cleanups) ✅. Falta EAS automation + Sentry sourcemap + feature flags + gitleaks |
+| **P2** DevEx + CI + EAS | — | ✅ **DONE 2026-06-09** (Sprint C, 12/13 items). Sentry sourcemap SKIPPED — decisión owner |
 | **P3** Quality / testing pre-launch | 8-10 d | 🟡 **20% hecho** — backlog de tests (+113) cubrió wrapped / streaks / billing / notifications / fijos / query-keys. Falta auth integration, expense CRUD vs Supabase, accessibility, visual regression, perf baseline |
 | **P4** Observability | 1 sem | 🔴 0% hecho — owner decision pendiente |
 | **P5** Monetización | 6-8 d | 🟡 UI lista, SDK + persistencia + paywall sheets pendientes — owner decision |

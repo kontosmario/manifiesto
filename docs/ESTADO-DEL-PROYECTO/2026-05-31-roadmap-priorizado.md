@@ -40,7 +40,7 @@ puñado de toggles backend**.
 | **P1** | Hardening backend pre-prod | 1-2 sem | Recomendado |
 | **P2** | DevEx + CI + EAS automation | 1 sem | No, acelera iteración |
 | **P3** | Quality / testing pre-launch | 8-10 d | No, baja riesgo de regresión |
-| **P4** | Observability (Sentry + PostHog) | 1 sem | No, decisión owner |
+| **P4** | Observability (~~Sentry~~ SKIPPED + PostHog deferred) | reducido | Sentry skipped 2026-06-09 — re-evaluar cuando volumen lo justifique |
 | **P5** | Monetización (RevenueCat + paywalls) | 6-8 d | No, decisión owner |
 | **P6** | Features iOS desbloqueadas (Widget, Live Activity, AASA) | 2-3 sem | No |
 | **P7** | Backlog largo (AI coach, OCR, i18n, etc.) | varios | No |
@@ -191,7 +191,7 @@ Fuente: [07-backend-servicios-db.md:650-652](2026-05-21-estado-actual/07-backend
 | P2.2 | **EAS Build automatizado en CI** | 1 d | `eas build --platform ios --profile production` on tag push. |
 | P2.3 | **TestFlight submission automatizado** | 4 h | `eas submit -p ios` post-build. Requiere App Store Connect API key. |
 | P2.4 | **OTA Updates (EAS Update) configurado** | 4 h | `eas update --channel production` para hotfixes JS sin re-submit. |
-| P2.5 | **Sentry sourcemap upload en CI** | 2 h | Post P4.1. Hook en EAS build. |
+| P2.5 | ~~Sentry sourcemap upload en CI~~ → **SKIPPED 2026-06-09** | — | Decisión owner: sin Sentry por ahora. Ver Sprint C C8 en execution plan. |
 | P2.6 | **Feature flags infra** | 1 d | Hoy hay flags hardcoded en `lib/feature-flags.ts`. Migrar a tabla `feature_flags` + RPC + cache cliente. Pattern básico. |
 | P2.7 | **Pre-commit scanner gitleaks upgrade** | 30 m | Doc: [pendientes-seguridad.md:129](../operaciones/pendientes-seguridad.md#L129). |
 | ~~P2.8~~ | ~~**Cleanup `legacy-web-src/`**~~ ✅ **DONE 2026-06-08** (Sprint D, commit `97bdd74`) | — | Config refs purgados de vitest.config.ts + eslint.config.js |
@@ -232,7 +232,7 @@ Fuente: [auditorias/real-value-suggestions/05-quality-readiness/](../auditorias/
 
 | # | Item | Effort | Costo | Notas |
 |---|------|--------|-------|-------|
-| P4.1 | **Sentry crash reporting** | 4 h | USD 26/mes (5K events free) | `@sentry/react-native` + EAS hook + sourcemap upload (ver P2.5). |
+| P4.1 | ~~Sentry crash reporting~~ → **SKIPPED 2026-06-09** | — | — | Decisión owner: sin Sentry por ahora. Re-evaluar cuando >1000 MAU o primer crash de prod sin repro. Telemetría operacional cubierta por `audit_log` (B4) + console.error en dev. |
 | P4.2 | **PostHog analytics externo** | 1 d | USD 0-200/mes (1M events free) | Reemplaza `home_telemetry` interno por algo escalable. |
 | P4.3 | **Typed event taxonomy** | 1 d | — | Antes de wiring P4.2 definir 20-30 events canónicos: `expense_created`, `fijo_paid`, `wrapped_completed`, etc. |
 | P4.4 | **Backend RPC latency tracking** | 4 h | — | Wrapper de Supabase client que reporta `p50/p95` a PostHog. |
@@ -337,7 +337,7 @@ Cosas que requieren **acción del owner** y bloquean items de P0:
 | OWN.5 | **Screenshots design** (self o contratado) | P0.16-18 | 2-3 d self / contratar | USD 200-500 |
 | OWN.6 | **App Preview video** (self o contratado) | P0.18 | 1-2 d self / contratar | USD 100-300 |
 | OWN.7 | **Decisión: ¿Monetización en v1.0 o v1.1?** | P5 | conversación | — |
-| OWN.8 | **Decisión: ¿Sentry + PostHog antes o después de submit?** | P4 | conversación | — |
+| OWN.8 | ~~Decisión: ¿Sentry + PostHog antes o después de submit?~~ → **DECIDIDO 2026-06-09**: Sentry NO. PostHog deferred. | — | hecho | — |
 
 ---
 

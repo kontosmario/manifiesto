@@ -511,18 +511,11 @@ auth.users / profiles).
 
 ---
 
-### C8 · Sentry sourcemap upload (0.5 d)
+### C8 · Sentry sourcemap upload — SKIPPED 2026-06-09
 
-- [ ] **TODO** · depende de owner decisión Sentry (D2 del estado-actual)
+- [-] **SKIPPED** — decisión owner (2026-06-09): no incorporamos Sentry por ahora. Razones: (1) base de usuarios actual es chica y el equipo está en modo iteración → un crash report viene típicamente con repro del propio user; (2) el costo recurrente + setup de SDK + workflow de sourcemaps no se justifica sin volumen; (3) si en el futuro hace falta, Sentry/Bugsnag/Crashlytics se integran en ~0.5d sin deuda técnica adicional (no hay nada que migrar). Telemetría operacional sigue cubierta por `audit_log` (B4) + console.error en dev + logs de release.yml.
 
-**Files**:
-- INSTALL `@sentry/react-native`
-- NEW script `scripts/upload-sourcemaps.sh`
-- MOD release workflow
-
-**Acceptance**:
-- [ ] Build production → sourcemaps subidos a Sentry
-- [ ] Stack traces de prod muestran filenames originales
+**Re-evaluar cuando**: (a) crossing >1000 MAU, (b) primer crash de prod sin repro, o (c) la primera review pública en App Store flagee un crash que no podamos reproducir.
 
 ---
 
