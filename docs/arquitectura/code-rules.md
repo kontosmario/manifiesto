@@ -166,11 +166,13 @@ Reglas:
 - Si la query depende de una variable, esa variable debe estar en el `queryKey`.
 - Las invalidaciones ocurren en callbacks de mutation o en helpers centralizados.
 - Las screens no deben llamar Supabase directamente; usan hooks de feature.
+- **Default obligatorio**: hooks de mutation usan `syncAllAfterMutation` en `onSettled` para invalidar el grafo de scopes afectado. Ver [`docs/arquitectura/sync-after-mutation-pattern.md`](./sync-after-mutation-pattern.md). Bajar a invalidate manual sólo con razón (patches de cache para snappy UI en `onMutate`, realtime listeners que ya saben qué cambió).
 
 Recomendaciones:
 - Definir `queryKey` factories por feature.
 - Usar `select` o engines puros para adaptar datos.
-- No invalidar "todo"; invalidar granularmente.
+- No invalidar "todo"; invalidar granularmente — y para mutations cross-cutting, usar el helper que ya tiene el grafo declarado.
+- Si una mutation puede afectar lo que el home muestra, plumbear `userId` al hook para que el helper invalide `homeSnapshotQueryKey`.
 
 ---
 

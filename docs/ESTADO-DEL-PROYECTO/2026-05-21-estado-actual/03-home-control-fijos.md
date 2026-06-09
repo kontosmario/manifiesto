@@ -344,7 +344,7 @@ Formulario modal con:
 | `control-visuals.tsx` | Componentes visuales del control | (no verificado) |
 | `cycle-balance-prompt-sheet.tsx` | `OnboardingAvailableSheet` + `SalaryConfirmationSheet`. Dos variantes mutuamente excluyentes del prompt de cobro. | `HomeDashboardSheets` |
 | ~~`daily-budget-ring-chart.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — huérfano transitivo tras quitar `daily-budget-ring.tsx` (SPRINT D) |
-| `daily-budget-ring.model.ts` | Modelo del ring del presupuesto diario (aún usado por tests) | (no verificado) |
+| ~~`daily-budget-ring.model.ts`~~ | 🗑️ **Eliminado 2026-06-08** — quedó huérfano tras delete del ring + test sin importadores (cleanup post-SPRINT D) |
 | ~~`daily-budget-ring.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (SPRINT D cleanup) |
 | `daily-budget-suggestion-card.tsx` | Card de sugerencia del presupuesto diario | (no verificado) |
 | `description-row.tsx` | Fila de descripción | (no verificado) |

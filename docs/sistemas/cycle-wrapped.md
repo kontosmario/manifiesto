@@ -76,6 +76,7 @@ resultando en el flujo completo de 5 escenas.
 - Auto-advance 4500ms por escena con progress bar linear top
 - X superior derecha = dismiss directo
 - Hint adaptativo: "Mantené presionado para pausar" / "En pausa. Soltá para seguir."
+- **Última escena (todos los modos)**: tap zones se ocultan SIEMPRE — el CTA/OptionCards reciben los taps directo, sin que el wrapper los intercepte. El chevron-back del header (visible siempre en última escena) reemplaza la tap zone izquierda para retroceder. Antes el gate dependía de pending decision → en mes neutro las tap zones quedaban activas y se comían el CTA "Empezar el próximo" (commit `7bfec8e`).
 
 ### Motion
 - Scrim fade 420ms ease-out-expo
@@ -83,8 +84,69 @@ resultando en el flujo completo de 5 escenas.
 - Progress bar linear 4500ms
 - CountUpText en hero numbers (Verdict 1800ms)
 - Press feedback `scale(0.97)` en CTA
-- Confetti solo en escena 2 si `savingsDelta > 0`
+- Confetti en escena 2 si `savingsDelta > 0` (verdict positivo)
+- Confetti extra **post-await** al confirmar decisión Spec B real (`meta` / `acumular` / `reserva`) — NO antes del await (M2 del code review). Skip en flow vanilla "Empezar el próximo" y en past mode (read-only).
 - `useReducedMotion`: no transitions, no auto-advance, CountUp instant, swipe manual
+
+## Spec B integration — leftover decision en la closing scene
+
+Ver [`month-close-decision.md`](month-close-decision.md) para el modelo y RPC. Acá: cómo se integra en el wrapped.
+
+El payload extiende con 4 fields opcionales (mutuamente exclusivos entre pending y past):
+
+```ts
+pendingLeftoverDecision?: { monthlySummaryId: string; sobrante: number }
+activeGoal?: { id: string; title: string; emoji: string } | null
+nextCycleAnchor?: string  // YYYY-MM-DD del inicio del nuevo cycle
+onApplyLeftoverDecision?: (input: ApplyDecisionInput) => Promise<void>
+
+pastLeftoverDecision?: {
+  decision: 'meta' | 'acumular' | 'reserva' | 'skip'
+  sobrante: number
+  metaGoalTitle?: string | null
+  decidedAt: string
+}
+```
+
+### Modo pending — decisión inline en la closing scene
+
+Cuando viene `pendingLeftoverDecision` + `onApplyLeftoverDecision`:
+
+- La sección "EL PRÓXIMO ARRANCA HOY" (siempre presente) se compacta para hacer lugar a la sección Spec B.
+- Sección Spec B: eyebrow "Y TE SOBRARON", amount con pulse animado loop 1→1.015→1 cada 2.5s, subtítulo "¿Qué hacés con esto?", stack de 3 `LeftoverOptionCard`.
+- OptionCards (stagger entrance 70ms entre cards, 260ms ease-out-expo):
+  - "A una meta" / "Sumar a {goalTitle}" — disabled si no hay `activeGoal`
+  - "Sumar al mes actual"
+  - "Guardar como reserva"
+- Tap selecciona — selected state interpolado (border, bg, glow).
+- CTA del footer cambia a "Confirmar y empezar" — disabled hasta que haya selección.
+- **Auto-advance**: deshabilitado en la última escena con pending. El timer no arranca; el user tiene que tomar la decisión con el CTA (cerrar solo por timer sacaría la oportunidad).
+- Al confirmar: `await onApplyLeftoverDecision(input)` → confetti dispara DESPUÉS del await exitoso → `onDismiss()`.
+
+### Modo past — replay read-only
+
+Cuando viene `pastLeftoverDecision` (y no `pending`):
+
+- Sección Spec B con eyebrow "YA DECIDISTE", amount sin pulse, sin subtítulo "¿qué hacés?".
+- Las 3 OptionCards renderean con la elegida marcada (`selected: true`, `readOnly: true`) y las otras inertes.
+- Subtítulos contextuales: "Aporte realizado" / "Hecho" / "Guardado" en la opción elegida.
+- Hint debajo: "Decidiste el {fecha}".
+- CTA vanilla "Empezar el próximo" (no aplica nada — sólo dismiss).
+- `skip` no se visualiza como past (no es interesante mostrar "decidiste saltarlo") — fallback a closing scene vanilla.
+
+### Mutua exclusión
+
+`pending` y `past` son mutuamente exclusivos en spec. Si por bug llegan los dos, `past` gana (mostrar read-only es safer que dejar al user re-decidir un mes ya cerrado).
+
+### Replay desde Control v2
+
+La card "vs mes anterior" de Control v2 ofrece "Reproducir cierre" — invoca `triggerCycleWrapped` con el payload del summary apuntado. Si ese cycle ya tiene decisión persistida, el payload incluye `pastLeftoverDecision` → wrapped entra en modo read-only (commit `ec1783c`).
+
+## Bridge re-trigger guard
+
+[`mobile/components/bridges/cycle-wrapped-bridge.tsx`](../../mobile/components/bridges/cycle-wrapped-bridge.tsx). Owner reportó que el wrapped se "reiniciaba" al cerrar con "Empezar el próximo" en mes neutro. Causa indeterminada — algún re-render del home dashboard dispara `triggerCycleWrapped` dos veces dentro de ms. El primer payload se renderea, el user dismisses, y el segundo arrives → `setActive(newPayload)` → modal se re-abre con scenes reset.
+
+Fix pragmático: el bridge rechaza nuevos payloads dentro de `REOPEN_GUARD_MS = 1500` desde el último `onDismiss`. Suficiente para cubrir el doble-fire sin romper el flow legítimo (el replay manual desde Control v2 requiere ≥2 segundos de interacción).
 
 ## Gates
 
@@ -122,4 +184,4 @@ El path es idéntico al de prod: `triggerCycleWrapped(payload)` → mismo Bridge
 3. **Daily streak inside cycle**: los `daily_totals` permiten armar un mini-bar-chart de gastos por día. Útil pero alarga el modal — evaluar con users primero.
 4. **Compartir wrapped**: snapshot a imagen + share sheet ("mirá cómo cerré mi ciclo"). Solo si owner quiere superficie social.
 
-<!-- ✓ Sincronizado contra código el 2026-05-22 -->
+<!-- ✓ Sincronizado contra código el 2026-06-08 (Spec B integration + bridge guard + tap zones fix) -->
