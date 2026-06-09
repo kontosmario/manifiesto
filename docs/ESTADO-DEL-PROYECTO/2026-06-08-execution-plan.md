@@ -240,7 +240,10 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B2 · Rate limiting RPCs sensibles (1 d)
 
-- [ ] **TODO**
+- [x] **DONE (code-complete, pending `db push --linked`)** 2026-06-09 — migrations creadas:
+  - `20260609010000_rpc_rate_limit.sql` — tabla + `check_rate_limit()` helper (sliding window)
+  - `20260609020000_apply_rate_limit_to_rpcs.sql` — aplica límites a las 3 RPCs sensibles
+  - `20260609030000_rpc_rate_limit_purge_cron.sql` — cron diario (03:00 UTC / 00:00 AR) que borra rows > 24h
 
 **Files**:
 - NEW migration: `YYYYMMDDHHMMSS_rpc_rate_limit.sql`
@@ -275,7 +278,10 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B4 · Tablas `audit_log` / `invitations` / `devices` (1 d)
 
-- [ ] **TODO**
+- [x] **DONE (code-complete, pending `db push --linked`)** 2026-06-09 — migration `20260609040000_audit_log_invitations_devices.sql`:
+  - `audit_log` con RLS (owner-can-read) + 3 indexes (user/family/action × at desc)
+  - `family_invites` extendida con `revoked_at`, `max_uses`, `times_used` (RPCs siguen single-use; multi-use queda como capability latente)
+  - `devices` con RLS owner-full-access + index `(user_id, last_seen desc)`. Tabla parking — no se popula desde mobile aún.
 
 **Files**:
 - NEW migration: `YYYYMMDDHHMMSS_audit_invitations_devices.sql`
@@ -292,7 +298,10 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### B5 · Service-role audit log automatic (0.5 d)
 
-- [ ] **TODO** · depende de B4
+- [x] **DONE (code-complete, pending `db push --linked`)** 2026-06-09 — migration `20260609050000_service_role_audit_triggers.sql`:
+  - Función `audit_service_role_write()` que detecta `auth.role() = 'service_role'` y loggea a `audit_log` (defensive: nunca bloquea el write original si el log falla).
+  - Triggers AFTER INSERT/UPDATE/DELETE en 6 tablas críticas: `family_finance`, `savings_goals`, `expenses`, `family_members`, `month_close_decisions`, `monthly_summaries`.
+  - ID extraction via `to_jsonb(NEW)->>'id'` para tablas sin columna `id` (family_finance, family_members) — target_id queda null + payload identifica por family_id/user_id.
 
 **Files**:
 - MOD migration de B4: agregar triggers en tablas críticas que loggean cuando `auth.role() = 'service_role'`
