@@ -1,0 +1,61 @@
+# Custom gitleaks ruleset — Sprint C / C10.
+#
+# Extends the default ruleset (we keep the upstream rules via `[extend]`)
+# with Manifiesto-specific patterns: Supabase JWTs (anon + service_role)
+# and our own SecureStore key prefixes.
+#
+# Run locally:
+#   gitleaks detect --config .gitleaks.toml --no-banner --redact
+#
+# CI integration: see `.github/workflows/mobile-ci.yml` (job `gitleaks`).
+
+title = "Manifiesto gitleaks ruleset"
+
+[extend]
+useDefault = true
+
+# Supabase JWTs — both `anon` and `service_role` keys use the same JWT shape
+# with the HS256 header fingerprint. The header segment is deterministic for
+# JWTs minted by Supabase (`{"alg":"HS256","typ":"JWT"}` base64-encoded).
+[[rules]]
+id = "supabase-jwt"
+description = "Supabase JWT (anon or service_role key)"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+tags = ["key", "supabase"]
+
+# Newer Supabase keys follow the `sb_secret_*` / `sb_publishable_*` prefix
+# (introduced 2025). Catch both.
+[[rules]]
+id = "supabase-sb-secret"
+description = "Supabase sb_secret_* key"
+regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
+tags = ["key", "supabase"]
+
+[[rules]]
+id = "supabase-sb-publishable"
+description = "Supabase sb_publishable_* key"
+regex = '''sb_publishable_[A-Za-z0-9_-]{20,}'''
+tags = ["key", "supabase"]
+
+# Expo access token — used in CI for EAS Build / Submit / Update.
+[[rules]]
+id = "expo-access-token"
+description = "Expo access token"
+regex = '''(?i)expo[_-]?(?:access[_-]?)?token['"\s:=]+[A-Za-z0-9_-]{32,}'''
+tags = ["key", "expo"]
+
+# Allowlist — paths and contexts where matches are expected and OK.
+[allowlist]
+description = "Files where Supabase JWTs are expected (sample / example only)"
+paths = [
+  '''\.env\.supabase\.example$''',
+  '''docs/.*\.md$''',
+  '''tests/.*\.(ts|tsx|js)$''',
+  '''scripts/create-test-account\.mjs$''',
+]
+# Ignore literal placeholders we use in docs/templates.
+regexes = [
+  '''YOUR_SUPABASE_ANON_KEY''',
+  '''YOUR_SUPABASE_SERVICE_ROLE_KEY''',
+  '''<your-(anon|service-role)-key>''',
+]

@@ -194,3 +194,122 @@ jobs:
       - name: Stop Supabase
         if: always() && steps.filter.outputs.backend == 'true'
         run: supabase stop --no-backup || true
+
+  # gitleaks — secret scanning. Custom ruleset at `.gitleaks.toml` adds
+  # Supabase JWT (anon + service_role), `sb_secret_*` / `sb_publishable_*`
+  # prefixes, and Expo access tokens on top of the default ruleset.
+  # Fails the job on any unexpected match so leaked credentials never land
+  # on `main`. See `docs/operaciones/runbook-backend-hardening.md` for the
+  # response playbook when a leak is caught.
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so gitleaks scans every commit on PRs and on push.
+          # `0` is required for the action's `git log` traversal.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Surface scanned secrets only in the action log, not the PR
+          # comment — redacted output keeps incident response auditable
+          # without leaking the value a second time.
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+          GITLEAKS_NOTIFY_USER_LIST: ''
+
+  # E2E — Playwright smoke tests against the Expo web export. Sprint C / C3.
+  #
+  # Strategy: instead of booting the Expo dev server inside CI (slow, flaky
+  # under cold Metro), we build the web export once with `expo export
+  # --platform web`, serve the static output, and point Playwright at it.
+  # This matches what users get in prod for the web bundle and dramatically
+  # cuts the boot time vs `expo start --web`.
+  #
+  # Trigger: only on `push` to main + manual dispatch. PRs skip this job
+  # to keep PR CI snappy — the smoke suite is mostly a "did the bundle
+  # boot without runtime errors" check, and the bundle step in `verify`
+  # already catches build regressions.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browsers
+        # Only chromium — we don't run cross-browser yet. `--with-deps`
+        # pulls the system libs (libnss3, libxkbcommon, etc) Playwright
+        # needs on ubuntu-latest.
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Expo web export
+        # Static output lands in `dist/`. We don't dump sourcemaps in CI
+        # — the smoke tests only assert on runtime behavior, not symbol
+        # resolution.
+        run: npx expo export --platform web --output-dir dist --dump-sourcemap=false
+
+      - name: Serve static bundle
+        # `npx serve` on port 8081 matches the `baseURL` in
+        # `playwright.config.ts`. `--single` rewrites unknown routes to
+        # `index.html` so the expo-router client-side router can handle
+        # them (otherwise `/login`, `/home` etc 404 on hard reload).
+        # Run in background; the next step polls for readiness.
+        run: |
+          npx serve dist --listen 8081 --single &
+          echo "SERVE_PID=$!" >> "$GITHUB_ENV"
+          # Wait for the server to actually accept connections before
+          # handing off to Playwright. `serve` boots in <2s typically,
+          # but CI runners are noisy.
+          for i in {1..30}; do
+            if curl -sf http://localhost:8081 >/dev/null; then
+              echo "Static server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Static server failed to come up after 30s"
+          exit 1
+
+      - name: Run Playwright tests
+        # `reuseExistingServer: true` in `playwright.config.ts` means
+        # Playwright will pick up the already-running `serve` process
+        # rather than booting `expo start --web` itself.
+        env:
+          CI: '1'
+          PLAYWRIGHT_BASE_URL: http://localhost:8081
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -n "${SERVE_PID:-}" ]; then
+            kill "$SERVE_PID" 2>/dev/null || true
+          fi

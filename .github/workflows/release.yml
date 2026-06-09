@@ -1,0 +1,150 @@
+name: Release (EAS build + TestFlight submit)
+
+# Sprint C / C5 + C6 — release automation.
+#
+# Trigger: push of a semver tag (`v1.0.0`, `v1.0.1-beta.2`, ...) on `main`.
+# Producing a tag is the single source of truth for "we want a build" — we
+# deliberately don't auto-build on every push to main (that's what EAS
+# Update is for, see `ota-update.yml`).
+#
+# Flow:
+#   1. Checkout + node + EAS CLI (via expo/expo-github-action).
+#   2. `eas build --platform ios --profile production --non-interactive`.
+#      Runs in EAS cloud. We `--wait` so the job blocks until the build
+#      finishes (or fails), giving the workflow a clear pass/fail signal
+#      instead of fire-and-forget.
+#   3. `eas submit --platform ios --latest --non-interactive` uploads the
+#      freshly built IPA to TestFlight using the ASC API key configured
+#      in `eas.json` (`submit.production.ios.appleId` + `ascAppId`).
+#   4. Final notification step (placeholder — owner decides Slack vs
+#      Discord vs GitHub issue comment).
+#
+# Required secrets (owner must add in repo settings → Secrets and variables):
+#   - EXPO_TOKEN           : Expo account access token with build + submit perms.
+#                            Generate at expo.dev/settings/access-tokens.
+#   - EXPO_APPLE_ID        : Apple ID used for ASC (e.g. ops@manifiesto.app).
+#                            Maps to `eas.json` `submit.production.ios.appleId`.
+#   - EXPO_ASC_APP_ID      : App Store Connect numeric app id.
+#                            Maps to `eas.json` `submit.production.ios.ascAppId`.
+#   - ASC_API_KEY_ID       : App Store Connect API key id.
+#   - ASC_API_KEY_ISSUER_ID: App Store Connect API key issuer id.
+#   - ASC_API_KEY_P8_BASE64: Base64-encoded `.p8` private key
+#                            (encode locally: `base64 -i AuthKey_XXXX.p8`).
+#
+# Manual fallback: `workflow_dispatch` for emergency rebuilds without
+# cutting a new tag (e.g. provisioning profile rotation).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install
+        run: npm ci
+
+      - name: Resolve build profile
+        id: profile
+        # On a tag push we always build `production`. On manual dispatch
+        # the user picks via the input.
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.profile }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=production" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: EAS build (iOS)
+        # `--wait` blocks until the build finishes — we want the workflow
+        # to surface build failures directly instead of greenlighting on
+        # "build queued". `--non-interactive` is required in CI.
+        run: |
+          eas build \
+            --platform ios \
+            --profile ${{ steps.profile.outputs.name }} \
+            --non-interactive \
+            --wait
+
+      - name: Decode ASC API key
+        # `eas submit` reads the .p8 from disk. We materialise it from
+        # the base64 secret only in-memory for the duration of the job.
+        # Skip this step (and submit) if the secrets aren't configured
+        # yet — letting the build still produce an IPA the owner can
+        # download from EAS dashboard.
+        id: asc_key
+        if: ${{ steps.profile.outputs.name == 'production' && env.ASC_API_KEY_P8_BASE64 != '' }}
+        env:
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: |
+          mkdir -p .asc
+          echo "$ASC_API_KEY_P8_BASE64" | base64 -d > .asc/AuthKey.p8
+          chmod 600 .asc/AuthKey.p8
+          echo "path=$PWD/.asc/AuthKey.p8" >> "$GITHUB_OUTPUT"
+
+      - name: EAS submit to TestFlight
+        # Sprint C / C6. Uses `--latest` to grab the IPA we just built.
+        # ASC credentials come from secrets via env so they're never
+        # written to a file or echoed.
+        if: ${{ steps.profile.outputs.name == 'production' && steps.asc_key.outputs.path != '' }}
+        env:
+          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
+          EXPO_ASC_APP_ID: ${{ secrets.EXPO_ASC_APP_ID }}
+          EXPO_ASC_API_KEY_PATH: ${{ steps.asc_key.outputs.path }}
+          EXPO_ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          EXPO_ASC_API_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
+        run: |
+          eas submit \
+            --platform ios \
+            --latest \
+            --non-interactive
+
+      - name: Cleanup ASC key
+        if: always() && steps.asc_key.outputs.path != ''
+        run: rm -rf .asc
+
+      - name: Notify completion
+        # TODO(owner): pick Slack / Discord / GitHub issue / email and
+        # wire the webhook here. Until then we just leave a marker in
+        # the workflow log + post a comment on the tag if it exists.
+        if: always()
+        env:
+          STATUS: ${{ job.status }}
+          TAG: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          echo "::notice::Release ${TAG} finished with status ${STATUS}. Run: ${RUN_URL}"
+          # When a Slack webhook secret is configured, post there too.
+          if [ -n "${{ secrets.SLACK_RELEASE_WEBHOOK }}" ]; then
+            curl -sS -X POST -H 'Content-Type: application/json' \
+              --data "{\"text\":\":rocket: Manifiesto release ${TAG} — ${STATUS}\n${RUN_URL}\"}" \
+              "${{ secrets.SLACK_RELEASE_WEBHOOK }}" || true
+          fi

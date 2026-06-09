@@ -75,6 +75,7 @@
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
+    "expo-updates": "~29.0.18",
     "js-sha256": "^0.11.1",
     "prop-types": "^15.8.1",
     "react": "19.1.0",

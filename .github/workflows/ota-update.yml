@@ -1,0 +1,123 @@
+name: OTA Update (EAS Update)
+
+# Sprint C / C7 — OTA pipeline.
+#
+# Ships a JS / asset bundle to the `production` EAS Update channel on every
+# push to `main`, *unless* the diff touches native code. Native changes
+# require a new TestFlight build (see `release.yml`) — pushing them via
+# OTA would silently break runtime version matching and we'd serve a
+# bundle no installed binary can load.
+#
+# Native-skip detection: any change under `ios/`, `android/`, `app.config.ts`,
+# `eas.json`, or `package.json` / `package-lock.json` (which may pull in
+# new native deps) triggers a no-op. The owner cuts a new tag instead.
+#
+# Required secrets:
+#   - EXPO_TOKEN : Expo access token with `Update` permission. Same token
+#                  that `release.yml` uses for `eas build`. Generate at
+#                  https://expo.dev/settings/access-tokens.
+#
+# Manual fallback: `workflow_dispatch` lets the owner force-publish on
+# demand (e.g. to roll out a hotfix from a release branch).
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'EAS Update branch (channel)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+      message:
+        description: 'Update message (defaults to commit subject)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need at least 2 commits so `paths-filter` can diff against the
+          # previous commit. `fetch-depth: 0` is safer on force-push edge
+          # cases but slower; 2 covers the normal case.
+          fetch-depth: 2
+
+      - name: Detect native changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Don't skip just because a doc-only commit happens to touch
+          # package.json (lockfile bumps from `npm install` count as
+          # native risk — too easy for a new native dep to sneak in).
+          filters: |
+            native:
+              - 'ios/**'
+              - 'android/**'
+              - 'app.config.ts'
+              - 'app.json'
+              - 'eas.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ota-update.yml'
+
+      - name: Skip notice (native change detected)
+        if: steps.filter.outputs.native == 'true' && github.event_name == 'push'
+        run: |
+          echo "::notice::Native / config change detected — skipping OTA. Cut a tag (vX.Y.Z) to ship a new TestFlight build."
+
+      - name: Setup Node
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup EAS
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        run: npm ci
+
+      - name: Resolve branch + message
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        id: meta
+        env:
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          INPUT_MESSAGE: ${{ github.event.inputs.message }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          BRANCH="${INPUT_BRANCH:-production}"
+          # Default message: first line of the head commit. Fallback to
+          # the SHA for dispatch runs with no commit context.
+          MSG="${INPUT_MESSAGE}"
+          if [ -z "$MSG" ]; then
+            MSG="$(echo "$COMMIT_MSG" | head -n1)"
+          fi
+          if [ -z "$MSG" ]; then
+            MSG="OTA ${GITHUB_SHA::7}"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "message=$MSG" >> "$GITHUB_OUTPUT"
+
+      - name: EAS Update
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          eas update \
+            --branch "${{ steps.meta.outputs.branch }}" \
+            --message "${{ steps.meta.outputs.message }}" \
+            --non-interactive

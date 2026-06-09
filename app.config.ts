@@ -25,12 +25,26 @@ const config: ExpoConfig = {
   scheme: 'manifiesto',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
+  // OTA — Sprint C / C7. The EAS Update channel maps to the build
+  // profile (see `eas.json`): production builds subscribe to the
+  // `production` channel by default. Runtime version pinned to the
+  // installed SDK so a JS-only update never lands on an incompatible
+  // native shell — bumping SDK 54 → 55 forces a new TestFlight build,
+  // not a silent OTA. The fallback timeout is 0 so cold starts never
+  // block on the network: if the manifest fetch is slow, we render
+  // the cached bundle and download the new one for next launch.
+  runtimeVersion: { policy: 'sdkVersion' },
+  updates: {
+    url: 'https://u.expo.dev/54449767-9236-4734-972a-e561debd1360',
+    fallbackToCacheTimeout: 0,
+  },
   plugins: [
     'expo-router',
     'expo-notifications',
     'expo-sqlite',
     'expo-asset',
     'expo-secure-store',
+    'expo-updates',
     [
       'expo-local-authentication',
       {

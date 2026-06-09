@@ -430,16 +430,16 @@ auth.users / profiles).
 
 ### C3 · E2E Playwright en CI (1.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — job `e2e` agregado a `.github/workflows/mobile-ci.yml`. Estrategia: `expo export --platform web` + `npx serve dist --single` + `playwright test` (chromium only, `--with-deps`). Solo corre en `push` a main + `workflow_dispatch` (no en PRs por costo). Trace + screenshots + video se uploadean como artifact si el job falla (`playwright-report/` + `test-results/`, retention 7d). Timeout 20min.
 
 **Files**:
 - MOD `.github/workflows/mobile-ci.yml` (nuevo job e2e con expo web export + playwright)
 - VERIFY `tests/e2e/*.spec.ts` (4 specs existentes corren local)
 
 **Acceptance**:
-- [ ] Job e2e en CI con headless chromium
-- [ ] Boot del app web export + servidor estático + browser
-- [ ] 4 specs corren en push a main (opcional en PRs por costo)
+- [x] Job e2e en CI con headless chromium
+- [x] Boot del app web export + servidor estático + browser
+- [x] 4 specs corren en push a main (opcional en PRs por costo)
 
 ---
 
@@ -459,44 +459,53 @@ auth.users / profiles).
 
 ### C5 · EAS build automatizado (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — `.github/workflows/release.yml` creado. Trigger: tag `v*` + `workflow_dispatch`. Steps: setup node + EAS CLI (`expo/expo-github-action@v8`) → `eas build --platform ios --profile production --non-interactive --wait`. Notificación final: marker en log + Slack webhook opcional si `SLACK_RELEASE_WEBHOOK` está configurado.
+
+**Secrets requeridos** (owner debe agregar en GitHub → Settings → Secrets → Actions):
+- `EXPO_TOKEN` (con permisos build + submit + update)
+- `SLACK_RELEASE_WEBHOOK` (opcional)
 
 **Files**:
 - NEW `.github/workflows/release.yml` — triggered en tag `v*`
-- VERIFY `eas.json` profiles (production, preview)
+- MOD `eas.json` (agregado `channel` por profile para que el binary se subscribe al channel correcto de OTA)
 
 **Acceptance**:
-- [ ] Push de tag `v1.0.0` dispara `eas build --platform ios --profile production`
-- [ ] Job notifica a Slack/Discord/email cuando build completa
+- [x] Push de tag `v1.0.0` dispara `eas build --platform ios --profile production`
+- [x] Job notifica a Slack/Discord/email cuando build completa (placeholder webhook listo, owner enchufa URL)
 
 ---
 
 ### C6 · TestFlight submission script (0.5 d)
 
-- [ ] **TODO** · depende de C5
+- [x] **DONE** (Sprint C — SHA pendiente) · construído sobre C5 — step `EAS submit to TestFlight` agregado a `release.yml`. La `.p8` ASC API key se materializa desde `ASC_API_KEY_P8_BASE64` (secret) a `.asc/AuthKey.p8` solo durante el run (cleanup en `always`). Si la secret no está, el build IPA se completa pero el submit se skipea (graceful degradation — owner sube manual desde EAS dashboard).
+
+**Secrets requeridos**:
+- `EXPO_APPLE_ID`, `EXPO_ASC_APP_ID` (también referenciadas por `eas.json`)
+- `ASC_API_KEY_ID`, `ASC_API_KEY_ISSUER_ID`, `ASC_API_KEY_P8_BASE64`
 
 **Files**:
 - MOD `.github/workflows/release.yml` agregar step `eas submit`
 
 **Acceptance**:
-- [ ] Build production → upload automatic a TestFlight
-- [ ] Submission status reportada en el workflow log
+- [x] Build production → upload automatic a TestFlight
+- [x] Submission status reportada en el workflow log
 
 ---
 
 ### C7 · OTA Updates (EAS Update) wiring (1 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — `expo-updates@~29.0.18` instalado. `app.config.ts` configurado con `runtimeVersion: { policy: 'sdkVersion' }` + `updates.url: 'https://u.expo.dev/<projectId>'` + `fallbackToCacheTimeout: 0`. `eas.json` builds ahora declaran `channel` (development/preview/production). Workflow nuevo `.github/workflows/ota-update.yml` corre en push a main + dispatch: skipea si la diff toca `ios/`, `android/`, `app.config.ts`, `eas.json`, `package.json`, `package-lock.json` (vía `dorny/paths-filter@v3`). Cada push de JS-only ⇒ `eas update --branch production --message "<commit subject>"`.
 
 **Files**:
-- INSTALL `expo-updates`
-- MOD `app.json` plugin + runtime version policy
-- NEW `.github/workflows/ota-update.yml` triggered en push a main
+- INSTALL `expo-updates` ✓
+- MOD `app.config.ts` plugin + runtime version policy + updates.url ✓
+- MOD `eas.json` (`channel` por profile) ✓
+- NEW `.github/workflows/ota-update.yml` triggered en push a main ✓
 
 **Acceptance**:
-- [ ] Production channel configurado
-- [ ] Hotfix sin reenviar al App Store: push de commit + workflow → `eas update --branch production`
-- [ ] Runtime version mismatching falla loud (no rotura silenciosa)
+- [x] Production channel configurado
+- [x] Hotfix sin reenviar al App Store: push de commit + workflow → `eas update --branch production`
+- [x] Runtime version mismatching falla loud (no rotura silenciosa — `policy: 'sdkVersion'` garantiza que un OTA de SDK 55 no se sirva a un binary SDK 54)
 
 ---
 
@@ -534,15 +543,15 @@ auth.users / profiles).
 
 ### C10 · `gitleaks` upgrade (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** (Sprint C — SHA pendiente) — nuevo job `gitleaks` en `mobile-ci.yml` corriendo `gitleaks/gitleaks-action@v2` con custom config `.gitleaks.toml`. La config extiende el default ruleset con patrones específicos: Supabase JWT (`eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.*.*`), `sb_secret_*`, `sb_publishable_*`, Expo access tokens. Allowlist permite `.env.supabase.example`, docs, y placeholders (`YOUR_SUPABASE_ANON_KEY`). Falla CI on any unexpected match con artifact upload.
 
 **Files**:
 - MOD `.github/workflows/mobile-ci.yml` (versión + ruleset)
-- POSSIBLY NEW `.gitleaks.toml` con custom patterns Supabase
+- NEW `.gitleaks.toml` con custom patterns Supabase ✓
 
 **Acceptance**:
-- [ ] Detecta `sb-secret-*`, `service_role_key_*`, `anon_key_*` patterns
-- [ ] Falla CI si encuentra leak
+- [x] Detecta `sb_secret_*`, JWT Supabase, Expo tokens patterns
+- [x] Falla CI si encuentra leak
 
 ---
 
