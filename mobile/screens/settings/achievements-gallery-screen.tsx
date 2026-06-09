@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { motionDurations } from '@/lib/motion'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
@@ -176,7 +177,7 @@ function ProgressHero({ earnedCount, totalCount, items }: ProgressHeroProps) {
   const dotsStyle = useAnimatedStyle(() => ({ opacity: dotsOpacity.value }))
   useEffect(() => {
     dotsOpacity.value = withTiming(1, {
-      duration: 480,
+      duration: motionDurations.slow,
       easing: Easing.bezier(0.16, 1, 0.30, 1),
     })
   }, [dotsOpacity])

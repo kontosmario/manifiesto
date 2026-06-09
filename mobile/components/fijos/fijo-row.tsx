@@ -924,6 +924,7 @@ function InlinePayButton({
     if (status === 'overdue' && !reduceMotion) {
       pulse.value = 0
       pulse.value = withRepeat(
+        // @motion-allow: 1500ms overdue pulse — calibrado para que la respiración sea perceptible sin ser intrusiva. Entre decorativeDurations.pulse (1200) y pulseSlow (2400) por diseño.
         withTiming(1, {
           duration: 1500,
           easing: Easing.bezier(0.4, 0, 0.6, 1),

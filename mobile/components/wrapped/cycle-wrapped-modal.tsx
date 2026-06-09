@@ -27,6 +27,7 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations } from '@/lib/motion'
 import { currencyFormatter, formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
@@ -154,6 +155,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     if (reduced) {
       enter.value = 1
     } else {
+      // @motion-allow: 420ms wrapped scene entrance — designer-tuned para el deck cinemático del wrapped; entre standard (240) y slow (480), matches el feel del source-of-truth deck.
       enter.value = withTiming(1, { duration: 420, easing: EXPO_OUT })
     }
     // CRITICAL: deps == solo lo que define una NUEVA sesión de wrapped.
@@ -949,10 +951,12 @@ function ClosingSceneRender({
     }
     amountPulse.value = withRepeat(
       withSequence(
+        // @motion-allow: 1250ms amount idle pulse (cycle 2.5s) — calm-urgent breathing del monto pendiente; entre decorativeDurations.pulse (1200) y pulseSlow (2400) por diseño.
         withTiming(1.015, {
           duration: 1250,
           easing: Easing.inOut(Easing.quad),
         }),
+        // @motion-allow: 1250ms — paired with the up-phase above.
         withTiming(1, {
           duration: 1250,
           easing: Easing.inOut(Easing.quad),
@@ -1163,7 +1167,7 @@ function LeftoverOptionCard({
   const selectedProgress = useSharedValue(selected ? 1 : 0)
   useEffect(() => {
     selectedProgress.value = withTiming(selected ? 1 : 0, {
-      duration: 240,
+      duration: motionDurations.standard,
       easing: EXPO_OUT,
     })
   }, [selected, selectedProgress])
@@ -1301,7 +1305,7 @@ function CycleWrappedCta({
   const enabledProgress = useSharedValue(disabled ? 0 : 1)
   useEffect(() => {
     enabledProgress.value = withTiming(disabled ? 0 : 1, {
-      duration: 280,
+      duration: motionDurations.enterStack,
       easing: EXPO_OUT,
     })
   }, [disabled, enabledProgress])
@@ -1319,7 +1323,9 @@ function CycleWrappedCta({
     }
     idlePulse.value = withRepeat(
       withSequence(
+        // @motion-allow: 900ms CTA idle pulse (cycle 1.8s) — matches el cobro CTA del home; calm "alive" breathing sin distraer del contenido del wrapped.
         withTiming(1.012, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        // @motion-allow: 900ms — paired with the up-phase above.
         withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,

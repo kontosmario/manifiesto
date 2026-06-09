@@ -91,6 +91,7 @@ export function AchievementUnlockModal({
     }
     t.value = 0
     iconScale.value = 0.85
+    // @motion-allow: 380ms card entrance — designer-tuned para el unlock celebrate; entre standard (240) y slow (480), curva ease-out-expo da el "land" pop.
     t.value = withTiming(1, {
       duration: 380,
       easing: Easing.bezier(0.16, 1, 0.30, 1),

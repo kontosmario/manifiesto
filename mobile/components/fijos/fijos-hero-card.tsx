@@ -19,7 +19,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
-import { motionEasings } from '@/lib/motion/tokens'
+import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 
 interface FijosHeroCardProps {
   mes?: string
@@ -111,9 +111,10 @@ function FijosHeroCardImpl({
     }
     urgencyPulse.value = withRepeat(
       withSequence(
-        // @motion-allow: 2400ms calm-urgent pulse — lento, ambient, no flashing
-        withTiming(1, { duration: 1200, easing: motionEasings.warm }),
-        withTiming(0, { duration: 1200, easing: motionEasings.warm }),
+        // 2 × pulse (1.2s c/u) = 2.4s full cycle calm-urgent — lento,
+        // ambient, no flashing. Usa `decorativeDurations.pulse` (1200ms).
+        withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
+        withTiming(0, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
       ),
       -1,
       false,

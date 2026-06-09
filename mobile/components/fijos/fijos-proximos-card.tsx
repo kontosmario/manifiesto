@@ -34,7 +34,7 @@ import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { motionEasings } from '@/lib/motion/tokens'
+import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -317,6 +317,7 @@ function UrgentHeaderDot({ color }: { color: string }) {
   useEffect(() => {
     if (reduced) return
     pulse.value = withRepeat(
+      // @motion-allow: 700ms breath cycle — pulso ambient sutil para urgent header dot. Fuera del rango UI (max 480ms) y más rápido que decorativeDurations.pulse (1200) por diseño.
       withTiming(1, { duration: 700, easing: motionEasings.warm }),
       -1,
       true, // reverse = respiración
@@ -642,8 +643,8 @@ function HikeAlertRow({
 
   useEffect(() => {
     if (reduced) return
-    opacity.value = withDelay(delay, withTiming(1, { duration: 280, easing: ENTER }))
-    y.value = withDelay(delay, withTiming(0, { duration: 280, easing: ENTER }))
+    opacity.value = withDelay(delay, withTiming(1, { duration: motionDurations.enterStack, easing: ENTER }))
+    y.value = withDelay(delay, withTiming(0, { duration: motionDurations.enterStack, easing: ENTER }))
     return () => {
       cancelAnimation(opacity)
       cancelAnimation(y)
@@ -729,8 +730,8 @@ function SignalRow({
 
   useEffect(() => {
     if (reduced) return
-    opacity.value = withDelay(delay, withTiming(1, { duration: 280, easing: ENTER }))
-    y.value = withDelay(delay, withTiming(0, { duration: 280, easing: ENTER }))
+    opacity.value = withDelay(delay, withTiming(1, { duration: motionDurations.enterStack, easing: ENTER }))
+    y.value = withDelay(delay, withTiming(0, { duration: motionDurations.enterStack, easing: ENTER }))
     return () => {
       cancelAnimation(opacity)
       cancelAnimation(y)
@@ -801,8 +802,9 @@ function RuleScale({ color, delay }: { color: string; delay: number }) {
   const opacity = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {
     if (reduced) return
+    // @motion-allow: 460ms — entrance scale on rule-scale glyph; deliberately longer than `slow` (480 visually too long for narrow band; 460 lands the "draw" feel without dragging). Designer-tuned.
     scale.value = withDelay(delay, withTiming(1, { duration: 460, easing: ENTER }))
-    opacity.value = withDelay(delay, withTiming(1, { duration: 280, easing: ENTER }))
+    opacity.value = withDelay(delay, withTiming(1, { duration: motionDurations.enterStack, easing: ENTER }))
     return () => {
       cancelAnimation(scale)
       cancelAnimation(opacity)

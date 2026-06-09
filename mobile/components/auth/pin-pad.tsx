@@ -9,6 +9,7 @@ import Animated, {
 import { MaterialIcons } from '@expo/vector-icons'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 import { PIN_LENGTH, appendPinDigit, backspacePin } from './pin-pad-model'
 
@@ -29,10 +30,10 @@ export function PinPad({ value, onChange, errorToken = 0 }: PinPadProps) {
     if (errorToken === 0) return
     void triggerHaptic('error')
     shake.value = withSequence(
-      withTiming(-8, { duration: 50 }),
-      withTiming(8, { duration: 50 }),
-      withTiming(-6, { duration: 50 }),
-      withTiming(0, { duration: 50 }),
+      withTiming(-8, { duration: motionDurations.shakeStep }),
+      withTiming(8, { duration: motionDurations.shakeStep }),
+      withTiming(-6, { duration: motionDurations.shakeStep }),
+      withTiming(0, { duration: motionDurations.shakeStep }),
     )
   }, [errorToken, shake])
 

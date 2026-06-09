@@ -12,6 +12,7 @@ import Animated, {
 import { MaterialIcons } from '@expo/vector-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijosScheduledBannerProps {
@@ -60,7 +61,7 @@ export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
       rotation.value = expanded ? 0 : 180
     } else {
       rotation.value = withTiming(expanded ? 0 : 180, {
-        duration: 240,
+        duration: motionDurations.standard,
         easing: Easing.bezier(0.16, 1, 0.3, 1),
       })
     }

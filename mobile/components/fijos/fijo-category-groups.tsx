@@ -15,7 +15,7 @@ import { FijoRow } from '@/components/fijos/fijo-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { motionStagger } from '@/lib/motion'
+import { motionDurations, motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -212,7 +212,7 @@ function Chevron({ color, expanded }: { color: string; expanded: boolean }) {
   const rotation = useSharedValue(expanded ? 180 : 0)
   useEffect(() => {
     rotation.value = withTiming(expanded ? 180 : 0, {
-      duration: 240,
+      duration: motionDurations.standard,
       easing: Easing.bezier(0.16, 1, 0.30, 1),
     })
   }, [expanded, rotation])

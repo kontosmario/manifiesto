@@ -25,6 +25,10 @@ describe('motion tokens', () => {
     expect(motionDurations.exitTab).toBe(140)
   })
 
+  it('exposes shakeStep for error-feedback shake sequences', () => {
+    expect(motionDurations.shakeStep).toBe(50)
+  })
+
   it('keeps every navigation exit shorter than its corresponding enter', () => {
     // Locks in the "exit-faster-than-enter" UX rule for nav transitions.
     expect(motionDurations.exitStack).toBeLessThan(motionDurations.enterStack)

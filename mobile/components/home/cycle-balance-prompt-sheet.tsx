@@ -311,7 +311,9 @@ function QuickConfirmCta({
     }
     pulse.value = withRepeat(
       withSequence(
+        // @motion-allow: 800ms idle CTA pulse (cycle 1.6s total) — calibrado para llamar atención sin distraer; entre decorativeDurations.shimmer (1400) y pulse (1200) por diseño.
         withTiming(1.012, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+        // @motion-allow: 800ms — paired with the up-phase above.
         withTiming(1, { duration: 800, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,

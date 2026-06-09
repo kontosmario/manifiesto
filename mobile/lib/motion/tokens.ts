@@ -19,6 +19,11 @@ export const motionDurations = {
   exitTab:    140,    // tab content sale antes de que entre el siguiente
   scrimIn:    280,
   scrimOut:   200,
+  // Shake step — used in error-feedback shake sequences (pin pad,
+  // form validation). 4 × 50ms ≈ 200ms total feedback con magnitud
+  // decreciente da el "no" tactile sin sentirse pesado. Si se necesita
+  // un valor distinto, agregar otro token en lugar de hard-codear.
+  shakeStep:  50,
 } as const
 
 export type MotionDurationKey = keyof typeof motionDurations

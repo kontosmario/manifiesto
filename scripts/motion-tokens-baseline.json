@@ -1,18 +1,8 @@
 {
   "_comment": "Per-file violation counts for files allowed to ship inline spring/timing configs while the migration to motion tokens is underway. NEW files cannot appear here without explicit review, AND existing files cannot grow beyond their baseline count (the guard treats current count > baseline as a regression and fails CI). Goal is to drain this list — each PR migrating callsites should bump the count down toward 0, and when a file hits 0 it should be removed from this baseline.",
   "_format": "counts (count-based, regression-detecting). Legacy `allowlist` array still supported but treated as Infinity cap and should be migrated to `counts`.",
-  "_2026_05_31_note": "P0 hardening (2026-05-31 code review) populated this baseline to wire the guard into CI. Each file uses designer-tuned durations that drifted from motionDurations/decorativeDurations after the 2026-05-03 clean state. P1 ticket: drain this list — each callsite should either migrate to a token or add an inline `// @motion-allow: <reason>` comment.",
-  "_totalViolationsAtBaseline": 22,
-  "counts": {
-    "mobile/components/achievements/achievement-unlock-modal.tsx": 1,
-    "mobile/components/auth/pin-pad.tsx": 4,
-    "mobile/components/control-hero-preview/control-hero-a-titular.tsx": 4,
-    "mobile/components/fijos/fijo-category-groups.tsx": 1,
-    "mobile/components/fijos/fijo-row.tsx": 1,
-    "mobile/components/fijos/fijos-hero-card.tsx": 1,
-    "mobile/components/fijos/fijos-proximos-card.tsx": 7,
-    "mobile/components/fijos/fijos-scheduled-banner.tsx": 1,
-    "mobile/components/wrapped/cycle-wrapped-modal.tsx": 1,
-    "mobile/screens/settings/achievements-gallery-screen.tsx": 1
-  }
+  "_2026_05_31_note": "P0 hardening (2026-05-31 code review) populated this baseline to wire the guard into CI. Each file uses designer-tuned durations that drifted from motionDurations/decorativeDurations after the 2026-05-03 clean state.",
+  "_2026_06_09_drained": "Sprint C4 (2026-06-09): drenado a 0. Las 30 violations originales fueron resueltas vía (a) migración a motionDurations/decorativeDurations existentes, (b) un token nuevo `motionDurations.shakeStep = 50` para shake sequences, o (c) `@motion-allow: <razón>` inline en one-offs designer-tuned (entrance curves del wrapped/control-hero, pulsos decorativos calibrados). Cualquier file que vuelva a aparecer acá es regresión.",
+  "_totalViolationsAtBaseline": 0,
+  "counts": {}
 }

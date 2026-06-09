@@ -13,7 +13,7 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { motionEasings } from '@/lib/motion/tokens'
+import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -232,7 +232,9 @@ function RiseRow({ delay, children }: { delay: number; children: React.ReactNode
   const opacity = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {
     if (reduced) return
+    // @motion-allow: 460ms RiseRow entrance — designer-tuned para hero preview; matches el feel del control-hero source-of-truth deck. Entre standard (240) y slow (480).
     y.value = withDelay(delay, withTiming(0, { duration: 460, easing: ENTER }))
+    // @motion-allow: 460ms — paired with the y above to ride the same curve.
     opacity.value = withDelay(delay, withTiming(1, { duration: 460, easing: ENTER }))
     return () => {
       cancelAnimation(y)
@@ -252,8 +254,9 @@ function RuleScale({ color, delay }: { color: string; delay: number }) {
   const opacity = useSharedValue(reduced ? 1 : 0)
   useEffect(() => {
     if (reduced) return
+    // @motion-allow: 540ms RuleScale draw — el trazo del rule debe ser apenas más lento que la opacity para que se "dibuje" antes de aparecer del todo.
     scale.value = withDelay(delay, withTiming(1, { duration: 540, easing: ENTER }))
-    opacity.value = withDelay(delay, withTiming(1, { duration: 320, easing: ENTER }))
+    opacity.value = withDelay(delay, withTiming(1, { duration: motionDurations.deliberate, easing: ENTER }))
     return () => {
       cancelAnimation(scale)
       cancelAnimation(opacity)
