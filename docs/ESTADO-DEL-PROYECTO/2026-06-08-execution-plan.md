@@ -621,7 +621,7 @@ auth.users / profiles).
 
 ### D1 · Split `gastos-v2-screen.tsx` (1 d)
 
-- [x] **DONE** 2026-06-09 — screen 1800 → 1058 LOC (orchestrator + JSX de los 3 branches: hard-error, empty-account, normal SectionList). Sub-components NEW en `mobile/components/gastos/`: `clear-filters-button.tsx`, `empty-action-button.tsx`, `gastos-movement-row.tsx`, `gastos-section-header.tsx`, `gastos-list-header.tsx`. Helpers NEW en `mobile/features/gastos/`: `gastos-helpers.ts` (types `MovementItem` + `MovimientosSection` + 9 pure helpers), `build-sections.ts` (merge día-con-solo-income + sort cronológico), `build-gastos-empty-state.ts` (4 variants). Tests 677/677 PASS. Bundle iOS PASS. Typecheck PASS. Lint 0 errors.
+- [x] **DONE** `9384f9a` 2026-06-09 — screen 1800 → 1058 LOC (orchestrator + JSX de los 3 branches: hard-error, empty-account, normal SectionList). Sub-components NEW en `mobile/components/gastos/`: `clear-filters-button.tsx`, `empty-action-button.tsx`, `gastos-movement-row.tsx`, `gastos-section-header.tsx`, `gastos-list-header.tsx`. Helpers NEW en `mobile/features/gastos/`: `gastos-helpers.ts` (types `MovementItem` + `MovimientosSection` + 9 pure helpers), `build-sections.ts` (merge día-con-solo-income + sort cronológico), `build-gastos-empty-state.ts` (4 variants). Tests 677/677 PASS. Bundle iOS PASS. Typecheck PASS. Lint 0 errors.
 
 **Plan**:
 - Mover sub-components inline → `mobile/components/gastos/` (ClearFiltersButton, EmptyActionButton, NameInput, FreqTile)
@@ -643,7 +643,7 @@ auth.users / profiles).
 
 ### D3 · Split `create-savings-goal-wizard-sheet.tsx` (1 d)
 
-- [ ] **TODO** · 1460 LOC
+- [x] **DONE_WITH_CONCERNS** `a94bf16` 2026-06-09 — sheet 1460 → 574 LOC (sobre target ≤400). Steps a `wizard-steps/`: `step-1-title-emoji.tsx` (127), `step-2-amount.tsx` (200), `step-3-months.tsx` (332, sobre ≤300 por display+numpad duplicado para custom-months), `step-4-summary.tsx` (144), `wizard-step-header.tsx` (115). Keyboard offset effect extraído a `lib/use-keyboard-offset.ts` (49 LOC, reusable). Tests 677/677 PASS, typecheck clean, lint 0 errors. Concerns: orchestrator ~575 (cerca de target pero no debajo) y step-3 ~332 (display tappable + numpad para custom plazo es coupling intrínseco al flow — no se puede separar sin pasar 6+ props extra al sub-componente del custom).
 
 **Plan**:
 - Step1Title, Step2Amount, Step3Months, Step4Summary cada uno a su archivo
@@ -676,7 +676,7 @@ auth.users / profiles).
 
 ### D6 · Split `streak-sheet.tsx` (0.5 d)
 
-- [ ] **TODO** · 1073 LOC
+- [x] **DONE_WITH_CONCERNS** `18ff94d` 2026-06-09 — sheet 1073 → 426 LOC (26 over target ≤400). Parts a `streak-sheet-parts/`: `streak-sheet-tone.ts` (91, getStatusTone + getAtRiskTone), `sheet-hero.tsx` (207, SheetHero + ShieldChip), `level-progress.tsx` (45), `week-activity.tsx` (108), `motivational-card.tsx` (285, agrupa ShieldNotice/ConsequenceCard/RecoveryCard/MotivationalCard/PersonalStats/FreezeInfo — todas info-cards de la misma familia), `action-ctas.tsx` (129, PrimaryStatusCta + SecondaryCta + CtaStack). Sprint A fixes preservados 1:1 (panGesture useMemo + `.enabled(visible)`, cancelAnimation cleanup, isMountedRef guard). Lint clean, 677/677 tests verdes, typecheck clean. Concern: orchestrator 426 LOC — los 26 LOC over target vienen del bloque Alert.alert handlers (40+ LOC para mark/unmark no-expense) que no extraje porque dependen de mutations + UI state acopladas al orchestrator.
 
 **Plan**:
 - SheetHero, LevelProgress, WeekActivity, MotivationalCard cada uno a su archivo
