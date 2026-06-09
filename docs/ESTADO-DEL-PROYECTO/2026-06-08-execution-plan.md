@@ -44,7 +44,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A1 · Delete-account UI flow (1 d)
 
-- [x] **DONE** (pendiente SHA) — pantalla dedicada `/(app)/settings/delete-account` con disclaimer, typed "ELIMINAR" case-sensitive, re-auth PIN o biometría antes de la RPC. Reutiliza el shipped soft-delete RPC `request_account_deletion` (gracia 30d + cron processor en `20260517000000_account_deletion.sql` + `20260518000000_account_deletion_processor.sql`). El sheet legacy queda como backup. Ver "Concerns" abajo.
+- [x] **DONE** `bc322e6` 2026-06-09 — pantalla dedicada `/(app)/settings/delete-account` con disclaimer, typed "ELIMINAR" case-sensitive, re-auth PIN o biometría antes de la RPC. Reutiliza el shipped soft-delete RPC `request_account_deletion` (gracia 30d + cron processor en `20260517000000_account_deletion.sql` + `20260518000000_account_deletion_processor.sql`). El sheet legacy queda como backup.
 
 **Por qué**: Apple guideline 5.1.1(v) — submission requirement.
 
@@ -156,7 +156,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A6 · Version / About / Support screen (0.5 d)
 
-- [x] **DONE** (pendiente SHA) — pantalla `/(app)/settings/about` con hero (versión + build), grupo "Información legal" (Privacy/Terms, oculta filas si su URL en `legal-urls.ts` está vacía), grupo "Soporte" con mailto pre-poblado vía `buildSupportMailto`, footer "Hecho con ♥ en Argentina". Settings ahora linkea con un row "Acerca de" al final.
+- [x] **DONE** `635eeda` 2026-06-09 — pantalla `/(app)/settings/about` con hero (versión + build), grupo "Información legal" (Privacy/Terms, oculta filas si su URL en `legal-urls.ts` está vacía), grupo "Soporte" con mailto pre-poblado vía `buildSupportMailto`, footer "Hecho con ♥ en Argentina". Settings ahora linkea con un row "Acerca de" al final.
 
 **Por qué**: App Store listing requiere link a privacy + support email.
 
