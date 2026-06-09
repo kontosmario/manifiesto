@@ -62,6 +62,17 @@ export async function logoutSession(input: {
   if (userId) {
     await clearBiometricSetupShown(userId)
   }
+  // Borrar el token Expo Push del backend para que un device
+  // compartido no siga recibiendo push del usuario que se desloguea.
+  // best-effort: si falla, no bloqueamos el logout.
+  if (userId) {
+    const { tearDownPushNotifications } = await import('@/lib/push-notifications')
+    try {
+      await tearDownPushNotifications(userId)
+    } catch {
+      // best-effort
+    }
+  }
   // Re-arm the app-lock gate so the next session (if a different
   // user signs in on the same device, or the same user signs back
   // in) goes through the biometric re-confirmation again.

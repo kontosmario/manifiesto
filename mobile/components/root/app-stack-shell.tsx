@@ -15,6 +15,7 @@ import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sy
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
+import { useRegisterPushToken } from '@/features/push/use-register-push-token'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import {
   getIsAuthTransitionSplashVisible,
@@ -99,6 +100,13 @@ export function AppStackShell() {
     familyId: snapshot.data?.family?.familyId ?? null,
     userId: userId ?? null,
   })
+
+  // Auto-registrar el token Expo Push del device cuando hay session
+  // activa y el OS permission ya fue concedido. No-op si:
+  //   - Build no soporta push (web, Expo Go, simulador)
+  //   - El user nunca aceptó el permiso (el priming/Settings lo manejan)
+  // Re-corre cuando cambia familyId para llevar la columna al día.
+  useRegisterPushToken(userId ?? null, snapshot.data?.family?.familyId ?? null)
 
   // Bridge home_snapshot errors to the auth transition splash so the
   // user sees a "no internet" fallback instead of the splash hanging

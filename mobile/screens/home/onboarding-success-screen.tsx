@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
@@ -7,11 +7,18 @@ import { RequireAuth } from '@/components/guards'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug } from '@/assets/avatars'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { PermissionPrimeSheet } from '@/components/permissions/permission-prime-sheet'
 import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { onboardingSuccessCopy } from '@/features/onboarding/success-copy'
+import { requestNotificationPermissions } from '@/lib/push-notifications'
 import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
+import {
+  markPrimeDismissed,
+  shouldPrimePermission,
+} from '@/lib/permission-prime-cooldown'
+import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import { authTokens } from '@/theme/palette'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
@@ -65,10 +72,54 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
     ? profile.avatar_animal
     : null
 
-  const handleContinue = useCallback(() => {
-    void triggerHaptic('selection')
+  // Priming sheet — pre-prompt de notifs. Sólo lo abrimos si:
+  //   1. La build soporta push (canUseNativePushNotifications)
+  //   2. El cooldown está vencido (nunca se dismisseó, o pasó >7d).
+  // Cuando el user tap "Continuar":
+  //   - Si entra al sheet → Allow llama el prompt nativo y navega.
+  //   - Si entra al sheet → Dismiss marca cooldown y navega.
+  //   - Si no entra al sheet → navega directo (cooldown activo o
+  //     build sin push).
+  const [primeVisible, setPrimeVisible] = useState(false)
+
+  const navigateHome = useCallback(() => {
     router.replace('/(app)/(tabs)/home')
   }, [router])
+
+  const handleContinue = useCallback(async () => {
+    void triggerHaptic('selection')
+    if (!canUseNativePushNotifications) {
+      navigateHome()
+      return
+    }
+    const shouldPrime = await shouldPrimePermission('notifications')
+    if (!shouldPrime) {
+      navigateHome()
+      return
+    }
+    setPrimeVisible(true)
+  }, [navigateHome])
+
+  const handlePrimeAllow = useCallback(async () => {
+    setPrimeVisible(false)
+    // Disparamos el prompt nativo. El token se va a registrar más
+    // tarde (next mount) vía `setupPushNotifications` en el shell —
+    // acá sólo nos interesa el flujo de permiso. Si el user rechaza
+    // o no responde, no bloqueamos la navegación a Home.
+    try {
+      await requestNotificationPermissions()
+    } catch {
+      // Cualquier error en el prompt nativo lo tragamos: el usuario
+      // ya verá el banner "Activar push" en Ajustes si quiso.
+    }
+    navigateHome()
+  }, [navigateHome])
+
+  const handlePrimeDismiss = useCallback(async () => {
+    setPrimeVisible(false)
+    await markPrimeDismissed('notifications')
+    navigateHome()
+  }, [navigateHome])
 
   return (
     <View style={[styles.root, { backgroundColor: CREAM }]}>
@@ -117,7 +168,9 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
           accessibilityRole="button"
           accessibilityLabel={copy.ctaLabel}
           hitSlop={DEFAULT_HIT_SLOP}
-          onPress={handleContinue}
+          onPress={() => {
+            void handleContinue()
+          }}
           style={({ pressed }) => [
             styles.cta,
             { backgroundColor: DARK_GREEN, opacity: pressed ? 0.92 : 1 },
@@ -126,6 +179,17 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
           <Text style={styles.ctaLabel}>{copy.ctaLabel}</Text>
         </Pressable>
       </RiseView>
+
+      <PermissionPrimeSheet
+        visible={primeVisible}
+        type="notifications"
+        onAllow={() => {
+          void handlePrimeAllow()
+        }}
+        onDismiss={() => {
+          void handlePrimeDismiss()
+        }}
+      />
     </View>
   )
 }

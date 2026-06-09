@@ -75,6 +75,15 @@ const config: ExpoConfig = {
       tinted: './assets/brand/ios-icon-tinted.png',
     },
     usesAppleSignIn: true,
+    // App Store compliance — declaramos que sólo usamos crypto
+    // estándar de Apple (HTTPS via URLSession, Keychain, etc) y NO
+    // implementamos crypto propia. Esto evita el questionnaire de
+    // export compliance en cada submission. Si en algún momento
+    // empezamos a usar libs como libsodium o implementación propia
+    // de AES, hay que sacar esta línea y completar el formulario.
+    config: {
+      usesNonExemptEncryption: false,
+    },
   },
   android: {
     package: 'com.manifiesto.mobile',

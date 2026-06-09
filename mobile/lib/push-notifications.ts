@@ -1,0 +1,215 @@
+import { Platform } from 'react-native'
+import * as Device from 'expo-device'
+import Constants from 'expo-constants'
+import { canUseNativePushNotifications } from '@/lib/runtime-environment'
+import { supabase } from '@/lib/supabase'
+
+/**
+ * Lightweight facade sobre `expo-notifications` para el setup
+ * automático de push tras el login. Mantiene la separación clara:
+ *
+ *   - `requestNotificationPermissions()`: dispara el prompt nativo
+ *     iOS (idempotente — re-llamar después de un grant no hace nada).
+ *     Lo usa el priming sheet de onboarding-success-screen.
+ *
+ *   - `setupPushNotifications(userId, familyId)`: una vez por
+ *     mount post-login, intenta registrar el token Expo Push en
+ *     `push_subscriptions` (upsert por user_id+endpoint). Si el
+ *     permiso no fue concedido, se vuelve no-op silencioso.
+ *
+ *   - `tearDownPushNotifications(userId)`: borra los tokens del
+ *     usuario del backend. Lo usa el logout flow para que un device
+ *     compartido no siga recibiendo push del usuario anterior.
+ *
+ * Por qué este archivo y no extender `use-push-notifications.ts`:
+ *   - El hook existente es para el toggle manual en Settings (mutation
+ *     con UI feedback). El setup automático es un side-effect del
+ *     shell — no necesita estado React Query.
+ *   - Mantenemos el flujo nuevo aislado para poder versionar la API
+ *     sin tocar el hook que ya está battle-tested.
+ *
+ * Decisión Expo Push vs APNs directo: por ahora usamos Expo Push API
+ * como proxy (`exp.host/--/api/v2/push/send`) — más simple, no
+ * requiere APNs auth key + JWT signing. Migrar a APNs directo cuando
+ * el owner cargue la `.p8` key + decida quitar la dependencia Expo
+ * (relevante si llegamos a >100k notifs/día, donde el rate-limit de
+ * Expo empieza a doler).
+ */
+
+const EXPO_PUSH_TOKEN_REGEX =
+  /^(?:Exponent|Expo)PushToken\[[^\]]+\]$/
+
+export interface PermissionRequestResult {
+  granted: boolean
+  /**
+   * `true` cuando el OS bloquea futuros prompts (el user ya denegó
+   * antes). En ese caso, la única salida es Ajustes del sistema.
+   */
+  canAskAgain: boolean
+}
+
+/**
+ * Pide el permiso nativo de notifs (no-op si ya estaba concedido).
+ * Devuelve `granted: false` en cualquier escenario "no se puede": web,
+ * Expo Go, simulador, build sin entitlement aps-environment.
+ */
+export async function requestNotificationPermissions(): Promise<PermissionRequestResult> {
+  if (!canUseNativePushNotifications) {
+    return { granted: false, canAskAgain: false }
+  }
+  if (!Device.isDevice) {
+    return { granted: false, canAskAgain: false }
+  }
+
+  const Notifications = await import('expo-notifications')
+  const existing = await Notifications.getPermissionsAsync()
+  if (existing.status === 'granted') {
+    return { granted: true, canAskAgain: existing.canAskAgain ?? true }
+  }
+  if (existing.status === 'denied' && existing.canAskAgain === false) {
+    return { granted: false, canAskAgain: false }
+  }
+
+  const request = await Notifications.requestPermissionsAsync()
+  return {
+    granted: request.status === 'granted',
+    canAskAgain: request.canAskAgain ?? false,
+  }
+}
+
+async function fetchExpoPushToken(): Promise<string | null> {
+  if (!canUseNativePushNotifications || !Device.isDevice) return null
+
+  const Notifications = await import('expo-notifications')
+
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId ??
+    null
+
+  if (!projectId) {
+    return null
+  }
+
+  try {
+    const response = await Notifications.getExpoPushTokenAsync({ projectId })
+    return response.data ?? null
+  } catch {
+    // El error más común acá es `aps-environment entitlement missing`
+    // en builds sideloaded sin Apple Dev firma. El path automático
+    // tiene que tragar el error: el toggle manual de Settings ya
+    // expone el error vía mutation a la UI.
+    return null
+  }
+}
+
+interface SetupOptions {
+  userId: string
+  /**
+   * Cuando esté disponible, lo guardamos junto al token para que el
+   * edge function pueda filtrar por familia sin un join extra.
+   * Si llegó antes que la familia, el token se re-upserta cuando
+   * `setupPushNotifications` corra de nuevo (cada mount).
+   */
+  familyId?: string | null
+}
+
+export interface SetupResult {
+  status: 'ok' | 'no-permission' | 'no-token' | 'not-supported' | 'error'
+  token?: string
+}
+
+/**
+ * Llamar UNA vez por mount post-login. Si el permiso ya estaba
+ * concedido, registra el token en backend (upsert idempotente). Si
+ * no hay permiso, no fuerza el prompt — el priming de onboarding-
+ * success-screen ya lo manejó (o lo hará en una próxima sesión).
+ */
+export async function setupPushNotifications({
+  userId,
+  familyId,
+}: SetupOptions): Promise<SetupResult> {
+  if (!canUseNativePushNotifications) {
+    return { status: 'not-supported' }
+  }
+  if (!Device.isDevice) {
+    return { status: 'not-supported' }
+  }
+  if (!userId) {
+    return { status: 'error' }
+  }
+  // `push_subscriptions.family_id` es NOT NULL en el esquema actual.
+  // Si todavía no hay familia (usuario recién signupeado, sin
+  // onboarding), salimos sin registrar y reintentamos cuando el
+  // shell observe el familyId en un próximo render.
+  if (!familyId) {
+    return { status: 'no-token' }
+  }
+
+  const Notifications = await import('expo-notifications')
+  const existing = await Notifications.getPermissionsAsync()
+  if (existing.status !== 'granted') {
+    return { status: 'no-permission' }
+  }
+
+  if (Platform.OS === 'android') {
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+      })
+    } catch {
+      // best-effort
+    }
+  }
+
+  const token = await fetchExpoPushToken()
+  if (!token || !EXPO_PUSH_TOKEN_REGEX.test(token)) {
+    return { status: 'no-token' }
+  }
+
+  // Upsert al backend. Usamos el mismo shape que el hook existente
+  // (`useEnablePushNotifications`) para que la fila se comparta y no
+  // se dupliquen filas con shape distinto.
+  try {
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      {
+        family_id: familyId ?? null,
+        user_id: userId,
+        provider: 'expo',
+        endpoint: token,
+        p256dh: 'expo',
+        auth: 'expo',
+        user_agent: `${Platform.OS}/${Device.osVersion ?? 'unknown'}`,
+        last_used_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'user_id,endpoint',
+      },
+    )
+    if (error) {
+      return { status: 'error' }
+    }
+    return { status: 'ok', token }
+  } catch {
+    return { status: 'error' }
+  }
+}
+
+/**
+ * Borra los tokens del usuario en el backend. Usado en logout para
+ * que un device compartido no siga recibiendo push del user anterior.
+ * Silencioso ante errores (el logout no debe fallar por esto).
+ */
+export async function tearDownPushNotifications(userId: string): Promise<void> {
+  if (!userId) return
+  try {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('provider', 'expo')
+  } catch {
+    // best-effort
+  }
+}
