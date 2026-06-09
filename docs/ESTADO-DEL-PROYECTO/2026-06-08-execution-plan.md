@@ -654,23 +654,13 @@ auth.users / profiles).
 
 ### D4 · Split `fijo-row.tsx` + `fijos-proximos-card.tsx` (1 d)
 
-- [ ] **TODO** · 1421 + 1051 LOC
-
-**Plan**:
-- InlinePayButton → `mobile/components/fijos/inline-pay-button.tsx`
-- HikeAlertRow, SignalRow, MarqueeTicket → componentes separados
-- Target: rows ≤ 600 LOC, card ≤ 400 LOC
+- [x] **DONE** `bfbe724` 2026-06-09 — `fijo-row.tsx` 1422 → 482 LOC (≤600 target); `fijos-proximos-card.tsx` 1057 → 297 LOC (≤500 target). Parts en `fijo-row-parts/`: inline-pay-button (160, halo pulse de overdue + ref-guard preservados 1:1), trend-badge (69), info-line (48), fijo-row-placeholder (96), fijo-row-detail-panel (324, expand panel con stats hero + tendencia + este pago + historial + actions), fijo-row-helpers (136, capitalize/monthOfLabel/trendCopy*/nextDueLabel/frequencyLabel/hexAlpha), fijo-row-styling (168, computeStatusOverlay + computeAccent + computeDetail). Parts en `fijos-proximos-parts/`: upcoming-marquee (204, `setActive(true)` GUARD `setWidth > 0` del CR v2 preservado en onEnd/onFinalize), marquee-ticket (157, exports TICKET_WIDTH/TICKET_GAP), alert-rows (240, HikeAlertRow + SignalRow), rule-scale (58), urgent-header-dot (53), fijos-proximos-empty (107). Tests 677/677, typecheck clean.
 
 ---
 
 ### D5 · Split `control-v2-alcancia-card.tsx` (0.5 d)
 
-- [ ] **TODO** · 1093 LOC
-
-**Plan**:
-- ReserveBlock → `mobile/components/control-v2/reserve-block.tsx`
-- StatTile → componente compartido en `ui/`
-- ControlV2AlcanciaCardEmpty → archivo propio
+- [x] **DONE** `62ef6bc` 2026-06-09 — `control-v2-alcancia-card.tsx` 1094 → 560 LOC. Parts: `control-v2/alcancia-parts/reserve-block.tsx` (312, self-contained con mutation + sheet state + wizard wiring), `control-v2/alcancia-parts/control-v2-alcancia-card-empty.tsx` (271, empty silueta + ReserveBlock al pie), `ui/stat-tile.tsx` (85, genérico reusable para grids de 3 stats). Sprint A fix de activar meta inactiva inline (`hasInactiveGoal` branch) preservado 1:1 + tap zones / pan gesture del CR Sprint B intactos. Tests 677/677, typecheck clean, lint 0 errors, expo export PASS.
 
 ---
 
