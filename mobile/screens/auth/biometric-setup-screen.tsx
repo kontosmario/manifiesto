@@ -5,6 +5,7 @@ import { Redirect, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { PermissionPrimeSheet } from '@/components/permissions/permission-prime-sheet'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   activateBiometricForSession,
@@ -17,6 +18,10 @@ import {
 } from '@/lib/biometric-auth'
 import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
+import {
+  markPrimeDismissed,
+  shouldPrimePermission,
+} from '@/lib/permission-prime-cooldown'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
@@ -67,6 +72,11 @@ function BiometricSetupBody({
 
   const [biometric, setBiometric] = useState<BiometricLoginState | null>(null)
   const [isWorking, setWorking] = useState(false)
+  // Priming sheet — pre-prompt antes del modal nativo de biometric.
+  // Si el cooldown ya expiró (o nunca se mostró), arrancamos en true
+  // cuando el user tapea "Activar". Si el cooldown está activo
+  // (dismissed hace <7d), saltamos directo al prompt nativo.
+  const [primeVisible, setPrimeVisible] = useState(false)
 
   // Hide the auth transition splash once this screen has rendered
   // (same pattern as onboarding-success-screen).
@@ -89,7 +99,10 @@ function BiometricSetupBody({
     router.replace('/(app)/onboarding')
   }, [router, userId])
 
-  const handleActivate = useCallback(async () => {
+  // Llamada "real" al activador biometric. Separada de `handleActivate`
+  // para poder dispararla tanto desde el botón directo (cooldown
+  // activo, sin priming) como desde el "Permitir" del priming sheet.
+  const runActivateFlow = useCallback(async () => {
     if (isWorking) return
     setWorking(true)
     try {
@@ -104,6 +117,37 @@ function BiometricSetupBody({
       setWorking(false)
     }
   }, [advanceToOnboarding, email, isWorking])
+
+  const handleActivate = useCallback(async () => {
+    if (isWorking) return
+    // Si todavía no le mostramos el priming (o pasaron 7d desde que
+    // tapeó "Más tarde"), abrimos el sheet primero. El prompt nativo
+    // solo se dispara cuando el user tap "Permitir" en nuestro sheet.
+    const shouldPrime = await shouldPrimePermission('biometric')
+    if (shouldPrime) {
+      setPrimeVisible(true)
+      return
+    }
+    await runActivateFlow()
+  }, [isWorking, runActivateFlow])
+
+  const handlePrimeAllow = useCallback(async () => {
+    setPrimeVisible(false)
+    // No marcamos cooldown — el user dijo SI a nuestro sheet, queda en
+    // manos del prompt nativo del OS si termina activado o no. Si más
+    // adelante quiere intentar otra vez, no le bloqueamos el priming.
+    await runActivateFlow()
+  }, [runActivateFlow])
+
+  const handlePrimeDismiss = useCallback(async () => {
+    setPrimeVisible(false)
+    await markPrimeDismissed('biometric')
+    void triggerHaptic('selection')
+    // Tratamos "Más tarde" del priming como skip: el user explícitamente
+    // dijo no quiero activar ahora, así que avanzamos al onboarding.
+    await markBiometricSetupShown(userId)
+    router.replace('/(app)/onboarding')
+  }, [router, userId])
 
   const handleSkip = useCallback(async () => {
     if (isWorking) return
@@ -261,6 +305,18 @@ function BiometricSetupBody({
           </RiseView>
         </View>
       )}
+
+      <PermissionPrimeSheet
+        visible={primeVisible}
+        type="biometric"
+        biometricLabel={label}
+        onAllow={() => {
+          void handlePrimeAllow()
+        }}
+        onDismiss={() => {
+          void handlePrimeDismiss()
+        }}
+      />
     </View>
   )
 }
