@@ -88,7 +88,10 @@ export function buildVerdictScene(
     ctaBg: tone.ctaBg,
     ctaFg: tone.ctaFg,
     confetti: payload.savingsDelta > 0,
-    confettiSceneIdx: 1, // segunda escena
+    // CR Sprint D Minor #1: NO hardcodear el índice — el caller
+    // resuelve via `scenes.findIndex(s => s.id === 'verdict')` para
+    // robustez ante reordering futuros. Dejamos el flag por compat.
+    confettiSceneIdx: undefined,
     render: ({ reduced }) => {
       const heroAmount = Math.abs(payload.savingsDelta)
       // Halo cream sutil detrás del hero — crea "respiración" entre la

@@ -52,6 +52,19 @@ interface AddFijoV2ScreenProps {
   prefillDescription?: string
 }
 
+/**
+ * Add / edit fixed expense screen. Modes:
+ *   · CREATE (no `fixedExpenseId`): form arranca en blanco. `prefillAmount`
+ *     y `prefillDescription` seedean los campos si vienen (típicamente
+ *     desde el Asistente cuando detecta una subscription).
+ *   · EDIT (`fixedExpenseId` provided): carga el row existente vía
+ *     `useFixedExpense` y submits via `useUpdateFixedExpense`. Los
+ *     prefill props se IGNORAN en este mode (la fuente de verdad es la
+ *     row hidratada, no el query param).
+ *
+ * State + validation viven en `useAddFijoForm` (Sprint D D7 split).
+ * Steps en `mobile/components/fijos/add-fijo-parts/`.
+ */
 export function AddFijoV2Screen({
   familyId,
   fixedExpenseId,

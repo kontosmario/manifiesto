@@ -73,6 +73,12 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // real (meta/acumular/reserva). NO en flow vanilla "Empezar el
   // próximo" ni en past mode (read-only).
   const [confettiToken, setConfettiToken] = useState(0)
+  // CR Sprint D Minor #3: memoizado para evitar identity churn en cada
+  // render del modal — el CTA tiene `fireConfetti` en handlePress deps,
+  // sin memo causaba re-creation del Pressable closure por frame.
+  const fireConfettiCallback = useCallback(() => {
+    setConfettiToken((t) => t + 1)
+  }, [])
 
   const handleSelectLeftover = useCallback((next: LeftoverOption) => {
     void triggerHaptic('selection')
@@ -87,6 +93,13 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     [payload, theme.isDark, leftoverSelected, handleSelectLeftover],
   )
   const sceneCount = scenes.length
+  // CR Sprint D Minor #1: derive el índice del verdict desde el array
+  // en lugar de hardcodear `confettiSceneIdx: 1` en verdict-scene.ts.
+  // Robusto ante reordering o conditional skip de scenes futuros.
+  const verdictSceneIdx = useMemo(
+    () => scenes.findIndex((s) => s.id === 'verdict'),
+    [scenes],
+  )
 
   // Master entrance driver: scrim + first scene fade-in.
   const enter = useSharedValue(0)
@@ -447,7 +460,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
               applyingLeftover={applyingLeftover}
               setApplyingLeftover={setApplyingLeftover}
               onDismiss={onDismiss}
-              fireConfetti={() => setConfettiToken((t) => t + 1)}
+              fireConfetti={fireConfettiCallback}
               ctaBg={scene.ctaBg}
               ctaFg={scene.ctaFg}
               reduced={reduced}
@@ -492,7 +505,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
 
         {/* Confetti solo en el veredicto positivo */}
         {scene.confetti ? (
-          <ConfettiBurst pulseToken={sceneIndex === scene.confettiSceneIdx ? 1 : 0} originY={200} />
+          <ConfettiBurst pulseToken={sceneIndex === verdictSceneIdx ? 1 : 0} originY={200} />
         ) : null}
 
         {/* Confetti al confirmar decisión de leftover real (meta /

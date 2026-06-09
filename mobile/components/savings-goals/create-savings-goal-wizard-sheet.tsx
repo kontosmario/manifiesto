@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import Animated, {
-  Easing,
   FadeIn,
   LinearTransition,
   runOnJS,
@@ -68,7 +67,9 @@ const DEFAULT_EMOJI = '🎯'
 
 const DISMISS_DISTANCE = 100
 const DISMISS_VELOCITY = 650
-const EXPO_OUT = Easing.bezier(0.16, 1, 0.30, 1)
+// CR Sprint D Minor #2: reuso del token central `motionEasings.enterSmooth`
+// (misma curva). Antes se redeclaraba aquí + en 3 step files.
+const EXPO_OUT = motionEasings.enterSmooth
 
 const STEP_EYEBROWS: Record<number, string> = {
   1: 'PASO 1 DE 4',

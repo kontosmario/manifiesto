@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
-  Easing,
   FadeIn,
   FadeOut,
   SlideInDown,
@@ -8,11 +7,13 @@ import Animated, {
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
+import { motionEasings } from '@/lib/motion/tokens'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
-const EXPO_OUT = Easing.bezier(0.16, 1, 0.30, 1)
+// CR Sprint D Minor #2: reuso del token central (misma curva que EXPO_OUT).
+const EXPO_OUT = motionEasings.enterSmooth
 
 export const MONTH_OPTIONS = [3, 6, 12, 24] as const
 export const DEFAULT_MONTHS = 12
