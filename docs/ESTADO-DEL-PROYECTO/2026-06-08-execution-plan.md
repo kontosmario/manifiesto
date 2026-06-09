@@ -1,0 +1,692 @@
+# Execution Plan · Code-only Pendientes
+
+> **Plan vivo y actualizable** — todos los items que dependen 100% de código (no de 3rd-parties / legal / Apple Dev / owner decisions). Tachalo a medida que avanzás.
+>
+> **Source of truth**: este doc reemplaza la sección "Pendientes" de [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md) para los items de código. Cuando un item se marca DONE, agregá el commit SHA + fecha al lado.
+>
+> **Última actualización**: 2026-06-08
+>
+> **HEAD al armar el plan**: `99ed0db` — 35 commits ahead de `origin/main`.
+
+---
+
+## 0 · Cómo usar este doc
+
+### Estados
+
+| Estado | Símbolo | Significado |
+|---|---|---|
+| TODO | `- [ ]` | Sin empezar |
+| WIP | `- [~]` | En progreso (agregá tu nombre/branch) |
+| DONE | `- [x]` | Completado (agregá SHA + fecha) |
+| BLOCKED | `- [!]` | Esperando dependencia (anotá cuál) |
+| SKIPPED | `- [-]` | Decidido no hacer (anotá razón) |
+
+### Convenciones de update
+
+1. **Antes de empezar un item**: cambiar a `WIP` + agregar tu branch entre paréntesis.
+2. **Al cerrar**: marcar DONE + agregar commit SHA + fecha (`✅ a1b2c3d 2026-06-10`).
+3. **Si surge un blocker**: marcar BLOCKED + describir qué falta.
+4. **Si encontrás un sub-item nuevo durante el trabajo**: agregalo abajo del item padre como sub-bullet.
+5. **Si descubrís que un item no aplica**: SKIPPED + razón. No lo borres — el ledger histórico importa.
+
+### Orden recomendado
+
+**Sprint A → B → C → D**. Backlog (P5) lo agarrás cuando se desbloquee la decisión del owner correspondiente.
+
+Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App Store CODE — todo lo que se puede preparar mientras llega Apple Dev / legal hosting).
+
+---
+
+## 1 · Sprint A — P1 App Store CODE (~5.5 días)
+
+> **Objetivo**: dejar todo el código mobile + backend listo para que cuando llegue la APNs key + Privacy/Terms hosting + listing assets, sea solo wiring final.
+
+### A1 · Delete-account UI flow (1 d)
+
+- [ ] **TODO**
+
+**Por qué**: Apple guideline 5.1.1(v) — submission requirement.
+
+**Files**:
+- NEW `mobile/screens/settings/delete-account-screen.tsx`
+- NEW `mobile/features/account/use-delete-account.ts`
+- NEW migration: `supabase/migrations/YYYYMMDDHHMMSS_delete_my_account_rpc.sql`
+- MOD `mobile/screens/settings/settings-screen.tsx` (link a la screen)
+- MOD `app/(app)/settings/delete-account.tsx` (route)
+
+**Acceptance**:
+- [ ] Settings → "Eliminar cuenta" abre screen con disclaimer
+- [ ] 2 confirmaciones (typed "ELIMINAR" + biometric/pin)
+- [ ] RPC `delete_my_account()` `SECURITY DEFINER` borra: profile, family_members (donde user_id), savings_goals (donde created_by), push_subscriptions, telemetry rows. Mantiene expenses con `created_by = null` (preservar historia familiar).
+- [ ] Sign-out automático post-RPC + redirect a welcome
+- [ ] Migration con `revoke/grant` patrón
+
+**Notas**: la RPC debe ser idempotente. Si el user está en family con otros members, NO borra family (solo se va). Si es el único member, marca `family.archived_at = now()`.
+
+---
+
+### A2 · Password reset UI flow (0.5 d)
+
+- [ ] **TODO**
+
+**Por qué**: el backend está (Supabase Auth `resetPasswordForEmail`); falta el flow visual completo.
+
+**Files**:
+- EXISTS `mobile/screens/auth/reset-password-screen.tsx` — verificar que esté wireado correctamente
+- EXISTS `mobile/screens/auth/forgot-password-screen.tsx`
+- MOD verificar deep link `app.json` para `manifiesto://reset-password?token=`
+
+**Acceptance**:
+- [ ] Login → "Olvidé mi contraseña" → email input → "Te mandamos un mail"
+- [ ] Link del email abre app en `/reset-password?token=...`
+- [ ] Form pide nueva contraseña (validación 8+ chars — ya alineado en CR v2)
+- [ ] Submit → sign-in automático con la nueva pass
+- [ ] Error handling: token expirado / inválido
+
+**Notas**: muchas piezas están — verificá end-to-end con un email real (no mock). Si falta wiring de deep link → priorizar eso.
+
+---
+
+### A3 · Email confirm resend (0.5 d)
+
+- [ ] **TODO**
+
+**Por qué**: si el user no recibe email tras signup, hoy queda atascado.
+
+**Files**:
+- MOD `mobile/screens/auth/signup-screen.tsx` (banner post-signup)
+- MOD `mobile/screens/auth/login-screen.tsx` (banner si `email_confirmed_at = null`)
+- NEW `mobile/features/auth/use-resend-confirm-email.ts` (wrapper de `supabase.auth.resend({type: 'signup'})`)
+
+**Acceptance**:
+- [ ] Post-signup screen muestra "¿No te llegó? Reenviar" con cooldown 60s
+- [ ] Login con email no confirmado muestra banner + reenvío
+- [ ] Rate limit client-side: 3 reenvíos / 5min
+
+---
+
+### A4 · Apple Sign-In screen + integration (1 d)
+
+- [ ] **TODO** · BLOCKED por Apple Dev capability (ya pago, solo falta enable)
+
+**Por qué**: si vas a usar email/password + social, Apple guideline pide Apple Sign-In también.
+
+**Files**:
+- INSTALL `expo-apple-authentication`
+- MOD `app.json` plugin + entitlement
+- MOD `mobile/screens/auth/login-screen.tsx` + `signup-screen.tsx` (botón)
+- NEW `mobile/features/auth/use-sign-in-with-apple.ts`
+
+**Acceptance**:
+- [ ] Botón "Continuar con Apple" en login + signup
+- [ ] Flow nativo iOS abre, retorna identity token
+- [ ] `supabase.auth.signInWithIdToken({provider: 'apple', token})` autentica
+- [ ] Email + name del token se guardan en `profile` (Apple solo los manda la primera vez)
+- [ ] Funciona en dev client + EAS build
+
+**Notas**: capability requires Apple Developer Program. Código se puede escribir + commitear ahora; testeable solo después del enable + EAS build.
+
+---
+
+### A5 · Permission priming sheets (0.5 d)
+
+- [ ] **TODO**
+
+**Por qué**: pre-prompts con explicación boostean aceptación de 35% → 70% típico.
+
+**Files**:
+- NEW `mobile/components/permissions/permission-prime-sheet.tsx`
+- MOD `mobile/screens/home/onboarding-screen.tsx` (notifs priming antes del modal nativo)
+- MOD `mobile/screens/auth/biometric-setup-screen.tsx` (FaceID priming)
+
+**Acceptance**:
+- [ ] Antes del modal nativo de Notifications, muestra un sheet con: ícono + 3 razones + CTA "Permitir"
+- [ ] Mismo patrón para FaceID
+- [ ] Si el user dice no, ofrece "Más tarde" (no insiste por 7 días)
+
+---
+
+### A6 · Version / About / Support screen (0.5 d)
+
+- [ ] **TODO**
+
+**Por qué**: App Store listing requiere link a privacy + support email.
+
+**Files**:
+- NEW `mobile/screens/settings/about-screen.tsx`
+- MOD `mobile/screens/settings/settings-screen.tsx` (link)
+- USE `expo-application` para `Application.nativeApplicationVersion` + `nativeBuildVersion`
+
+**Acceptance**:
+- [ ] Settings → "Acerca de" muestra: logo, version (1.0.0), build number, "Política de privacidad" (link a URL hosteada — owner pendiente), "Términos" (link), "Soporte" (mailto: pendiente owner email), "Hecho con ♥ en Argentina"
+- [ ] Si las URLs están vacías (owner aún no las puso), oculta esos rows
+
+---
+
+### A7 · Push iOS production wiring — mobile side (1 d)
+
+- [ ] **TODO** · BLOCKED parcial por APNs key
+
+**Por qué**: el código que registra el token + maneja notificaciones debe estar listo para test pre-submit.
+
+**Files**:
+- INSTALL `expo-notifications` (probablemente ya está)
+- MOD `mobile/lib/push-notifications.ts` (setup en mount, request token)
+- NEW `mobile/features/push/use-register-push-token.ts` (RPC al backend para guardar el token)
+- MOD `app.json` (plugin + ios.config.usesNonExemptEncryption: false)
+
+**Acceptance**:
+- [ ] Al firstmounst del app post-login, pide permiso de notifs (después del priming de A5)
+- [ ] Si aceptó, obtiene Expo push token + lo guarda en `push_subscriptions` via RPC `register_push_subscription`
+- [ ] Re-registra el token si cambia (Expo lo rota)
+- [ ] Handle de notification tap: navega a route correspondiente (deep link parse)
+- [ ] Cleanup en logout
+
+**Notas**: end-to-end test solo posible cuando A8 esté + APNs key activa.
+
+---
+
+### A8 · Push token registration → Edge Function APNs (0.5 d)
+
+- [ ] **TODO** · BLOCKED por APNs key
+
+**Por qué**: el edge function `send-family-push` existe pero hay que verificar/completar el firmado con APNs.
+
+**Files**:
+- VERIFY `supabase/functions/send-family-push/index.ts` (firma JWT para APNs)
+- POSSIBLY NEW migration: `push_subscriptions` table updates si faltan columns (apns_token, last_seen_at)
+
+**Acceptance**:
+- [ ] Edge function acepta `{user_ids: string[], notification: {title, body, data}}` y envía a APNs producción
+- [ ] Manejo de errores APNs (token inválido → eliminar de DB)
+- [ ] Logs estructurados para debug
+
+---
+
+## 2 · Sprint B — P2 hardening pre-prod (~6 días)
+
+> **Objetivo**: cerrar los hardening items de [P1 del roadmap original](2026-05-31-roadmap-priorizado.md) que dependen de código.
+
+### B1 · Re-auth on destructive actions (0.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW `mobile/components/auth/require-reauth-sheet.tsx`
+- NEW `mobile/features/auth/use-require-reauth.ts` (verifica pin/biometric/password)
+- MOD callers de delete-account, leave-family, delete-savings-goal (con `current_amount > 0`)
+
+**Acceptance**:
+- [ ] Acción destructiva → sheet "Confirmá tu identidad" → pin/biometric prompt
+- [ ] Solo dispara si la última reauth fue hace > 5 min
+- [ ] Falla 3 veces → bloqueo 30s
+
+---
+
+### B2 · Rate limiting RPCs sensibles (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW migration: `YYYYMMDDHHMMSS_rpc_rate_limit.sql`
+  - tabla `rpc_rate_limit (user_id, rpc_name, count, window_start)` con PK compuesto
+  - function `check_rate_limit(p_rpc text, p_max int, p_window_sec int)` SECURITY DEFINER
+- MOD `apply_month_close_decision`, `apply_reserve_decision`, `consume_family_invite` (call `check_rate_limit` al inicio)
+
+**Acceptance**:
+- [ ] `apply_month_close_decision`: máx 5 calls / hour por user (suficiente para retries legítimos)
+- [ ] `apply_reserve_decision`: máx 10 / hour
+- [ ] `consume_family_invite`: máx 3 / día (anti-bruteforce de codes)
+- [ ] RAISE descriptivo: "rate limit exceeded, retry after Xm"
+- [ ] Cron diario que purge rows > 24h
+
+---
+
+### B3 · Captcha integration signup / reset (0.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- INSTALL `@hcaptcha/react-native-hcaptcha`
+- MOD `mobile/screens/auth/signup-screen.tsx`, `forgot-password-screen.tsx`
+- ENABLE Supabase Auth captcha en dashboard (config-only)
+
+**Acceptance**:
+- [ ] Captcha visible en signup + forgot password
+- [ ] Token va al supabase.auth.signUp({captchaToken})
+- [ ] Si falla, no avanza
+
+---
+
+### B4 · Tablas `audit_log` / `invitations` / `devices` (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW migration: `YYYYMMDDHHMMSS_audit_invitations_devices.sql`
+  - `audit_log (id, user_id, family_id, action, target_table, target_id, payload jsonb, ip, ua, at)`
+  - `invitations` ya existe parcial — agregar columnas faltantes (revoked_at, max_uses)
+  - `devices (user_id, device_id, platform, last_seen, last_ip, push_token)` — track de sesiones activas
+
+**Acceptance**:
+- [ ] RLS: user lee solo sus own rows
+- [ ] Indexes en (user_id, at desc) para queries
+- [ ] Triggers que loggean a `audit_log` desde service-role calls
+
+---
+
+### B5 · Service-role audit log automatic (0.5 d)
+
+- [ ] **TODO** · depende de B4
+
+**Files**:
+- MOD migration de B4: agregar triggers en tablas críticas que loggean cuando `auth.role() = 'service_role'`
+
+**Acceptance**:
+- [ ] Cualquier mutation via service-role queda registrada en audit_log
+- [ ] Edge functions usan rol estándar de SR audit
+
+---
+
+### B6 · Auth integration tests (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW `tests/integration/auth-flows.test.ts`
+
+**Acceptance**:
+- [ ] Test signup → confirm email → login → me query
+- [ ] Test forgot password → reset → login con nueva pass
+- [ ] Test Apple Sign-In con token mock
+- [ ] Test logout → me query falla con 401
+- [ ] Test delete-account → me query falla + family integrity
+
+**Notas**: usa Supabase local del workflow CI (`supabase start`).
+
+---
+
+### B7 · Expense CRUD vs Supabase real tests (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW `tests/integration/expense-crud-rls.test.ts`
+
+**Acceptance**:
+- [ ] Crear expense → SELECT lo trae
+- [ ] Update → row reflejado, optimistic + server consistency
+- [ ] Delete → SELECT no lo trae
+- [ ] User de otra family no puede SELECT
+- [ ] Blocked user no puede SELECT (regression del CR v1 C1)
+
+---
+
+### B8 · Push delivery test (0.5 d)
+
+- [ ] **TODO** · depende de A7/A8
+
+**Files**:
+- NEW `tests/integration/push-delivery.test.ts`
+
+**Acceptance**:
+- [ ] register_push_subscription registra token
+- [ ] send-family-push invoca el edge function con mock APNs
+- [ ] APNs mock recibe el payload correcto
+
+---
+
+## 3 · Sprint C — P3 Code quality / DX (~12 días)
+
+> **Objetivo**: deuda de mantenibilidad + infra de release automation.
+
+### C1 · `useUpdateExpense` / `useDeleteExpense` → `syncAllAfterMutation` full (0.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- MOD `mobile/features/expenses/use-expenses.ts` (líneas ~494-558 update, ~560-620 delete)
+- MOD `mobile/lib/sync-after-mutation.ts` (verificar scope `expenses` cubre los keys necesarios)
+
+**Acceptance**:
+- [ ] Update/delete preservan optimistic patch (paginated + for-day + recent) en `onMutate`
+- [ ] `onSettled` llama `syncAllAfterMutation({scopes: ['expenses']})` en lugar de invalidates hardcoded
+- [ ] Tests 654+ siguen pasando
+
+---
+
+### C2 · Test guard `syncAllAfterMutation` scopes (0.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW `tests/unit/sync-after-mutation-guard.test.ts`
+
+**Acceptance**:
+- [ ] Test que itera por cada scope de `SyncScope` y verifica que `homeSnapshotQueryKey(userId)` está en el set resultante (cuando `userId` está)
+- [ ] Falla loud con nombre del scope si alguno no lo incluye
+
+---
+
+### C3 · E2E Playwright en CI (1.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- MOD `.github/workflows/mobile-ci.yml` (nuevo job e2e con expo web export + playwright)
+- VERIFY `tests/e2e/*.spec.ts` (4 specs existentes corren local)
+
+**Acceptance**:
+- [ ] Job e2e en CI con headless chromium
+- [ ] Boot del app web export + servidor estático + browser
+- [ ] 4 specs corren en push a main (opcional en PRs por costo)
+
+---
+
+### C4 · Drenar `motion-tokens-baseline.json` (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- 22 violations across 10 files — `npm run guard:motion-tokens` los lista
+- MOD callsites a usar tokens de `mobile/lib/motion.ts` o agregar `@motion-allow` inline justificando
+
+**Acceptance**:
+- [ ] `motion-tokens-baseline.json` queda vacío o con justificaciones inline
+- [ ] Guard CI clean sin baseline
+
+---
+
+### C5 · EAS build automatizado (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW `.github/workflows/release.yml` — triggered en tag `v*`
+- VERIFY `eas.json` profiles (production, preview)
+
+**Acceptance**:
+- [ ] Push de tag `v1.0.0` dispara `eas build --platform ios --profile production`
+- [ ] Job notifica a Slack/Discord/email cuando build completa
+
+---
+
+### C6 · TestFlight submission script (0.5 d)
+
+- [ ] **TODO** · depende de C5
+
+**Files**:
+- MOD `.github/workflows/release.yml` agregar step `eas submit`
+
+**Acceptance**:
+- [ ] Build production → upload automatic a TestFlight
+- [ ] Submission status reportada en el workflow log
+
+---
+
+### C7 · OTA Updates (EAS Update) wiring (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- INSTALL `expo-updates`
+- MOD `app.json` plugin + runtime version policy
+- NEW `.github/workflows/ota-update.yml` triggered en push a main
+
+**Acceptance**:
+- [ ] Production channel configurado
+- [ ] Hotfix sin reenviar al App Store: push de commit + workflow → `eas update --branch production`
+- [ ] Runtime version mismatching falla loud (no rotura silenciosa)
+
+---
+
+### C8 · Sentry sourcemap upload (0.5 d)
+
+- [ ] **TODO** · depende de owner decisión Sentry (D2 del estado-actual)
+
+**Files**:
+- INSTALL `@sentry/react-native`
+- NEW script `scripts/upload-sourcemaps.sh`
+- MOD release workflow
+
+**Acceptance**:
+- [ ] Build production → sourcemaps subidos a Sentry
+- [ ] Stack traces de prod muestran filenames originales
+
+---
+
+### C9 · Feature flags infra (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- NEW migration `YYYYMMDDHHMMSS_feature_flags.sql`
+  - `feature_flags (key, enabled bool, rollout_percent int, payload jsonb)`
+  - RPC `get_user_flags()` returns map
+- NEW `mobile/features/flags/use-feature-flag.ts`
+
+**Acceptance**:
+- [ ] Hook `useFeatureFlag('wrapped_v2')` returns boolean
+- [ ] Cached en home_snapshot (no extra round-trip)
+- [ ] `rollout_percent` con hash determinista del user_id
+
+---
+
+### C10 · `gitleaks` upgrade (0.5 d)
+
+- [ ] **TODO**
+
+**Files**:
+- MOD `.github/workflows/mobile-ci.yml` (versión + ruleset)
+- POSSIBLY NEW `.gitleaks.toml` con custom patterns Supabase
+
+**Acceptance**:
+- [ ] Detecta `sb-secret-*`, `service_role_key_*`, `anon_key_*` patterns
+- [ ] Falla CI si encuentra leak
+
+---
+
+### C11 · Accessibility audit + VoiceOver (2 d)
+
+- [ ] **TODO**
+
+**Acceptance**:
+- [ ] 12 screens críticas (home/control/gastos/fijos/insights/settings/wrapped/add-expense/onboarding/auth/savings-goal/coach) auditadas
+- [ ] Pressables con label, roles consistentes, focusable elements en orden lógico
+- [ ] Reducción motion respetada en wrapped + all animaciones largas
+- [ ] Crear `docs/sistemas/accessibility-checklist.md` con findings + fixes
+
+---
+
+### C12 · Visual regression baseline (1 d)
+
+- [ ] **TODO**
+
+**Files**:
+- INSTALL Storybook (`@storybook/react-native`) o alternativa (Chromatic)
+- NEW stories para 5-10 components core
+
+**Acceptance**:
+- [ ] Snapshot tests para home-hero-card, control-v2-alcancia-card, meta-card, gastos-hero-card, fijo-row, wrapped scenes
+- [ ] CI corre diff y reporta cambios visuales en PRs
+
+---
+
+### C13 · Perf baseline (Reanimated frametime) (1 d)
+
+- [ ] **TODO**
+
+**Acceptance**:
+- [ ] Documento `docs/operaciones/perf-baseline.md` con FPS measurements en device real (iPhone 12 / 14 Pro / SE)
+- [ ] Animaciones largas (wrapped, modal sheets, gastos scroll) target 60fps
+- [ ] Threshold en CI si bajamos de cierto budget (manual por ahora)
+
+---
+
+## 4 · Sprint D — P4 Refactor mantenibilidad (~6 días)
+
+> **Objetivo**: bajar 7 archivos de >1000 LOC para que el siguiente feature work no se trabe en files imposibles de mantener.
+
+### D1 · Split `gastos-v2-screen.tsx` (1 d)
+
+- [ ] **TODO** · 1800 LOC
+
+**Plan**:
+- Mover sub-components inline → `mobile/components/gastos/` (ClearFiltersButton, EmptyActionButton, NameInput, FreqTile)
+- Mover helpers → `mobile/features/gastos/gastos-helpers.ts` (incomeHappenedAtMs, getMondayFirstOffset, stepCycleDay, getCycleNavBounds, composeRowA11yLabel)
+- Target: screen file ≤ 600 LOC
+
+---
+
+### D2 · Split `cycle-wrapped-modal.tsx` (1 d)
+
+- [ ] **TODO** · 1862 LOC
+
+**Plan**:
+- Cada scene → su propio file (`scenes/cover.tsx`, `scenes/verdict.tsx`, etc.)
+- Builders puros separados (`build-scenes.ts`)
+- Target: modal file ≤ 500 LOC
+
+---
+
+### D3 · Split `create-savings-goal-wizard-sheet.tsx` (1 d)
+
+- [ ] **TODO** · 1460 LOC
+
+**Plan**:
+- Step1Title, Step2Amount, Step3Months, Step4Summary cada uno a su archivo
+- Keyboard handling hook (`use-keyboard-offset.ts`)
+- Target: sheet file ≤ 400 LOC
+
+---
+
+### D4 · Split `fijo-row.tsx` + `fijos-proximos-card.tsx` (1 d)
+
+- [ ] **TODO** · 1421 + 1051 LOC
+
+**Plan**:
+- InlinePayButton → `mobile/components/fijos/inline-pay-button.tsx`
+- HikeAlertRow, SignalRow, MarqueeTicket → componentes separados
+- Target: rows ≤ 600 LOC, card ≤ 400 LOC
+
+---
+
+### D5 · Split `control-v2-alcancia-card.tsx` (0.5 d)
+
+- [ ] **TODO** · 1093 LOC
+
+**Plan**:
+- ReserveBlock → `mobile/components/control-v2/reserve-block.tsx`
+- StatTile → componente compartido en `ui/`
+- ControlV2AlcanciaCardEmpty → archivo propio
+
+---
+
+### D6 · Split `streak-sheet.tsx` (0.5 d)
+
+- [ ] **TODO** · 1073 LOC
+
+**Plan**:
+- SheetHero, LevelProgress, WeekActivity, MotivationalCard cada uno a su archivo
+- Target: sheet ≤ 400 LOC
+
+---
+
+### D7 · Split `add-fijo-v2-screen.tsx` (1 d)
+
+- [ ] **TODO** · 1714 LOC
+
+**Plan**:
+- Steps a componentes separados
+- Form validation hook reutilizable
+
+---
+
+## 5 · Backlog · P5 Long-term (~15 días total)
+
+> **Cuando se desbloquee la decisión del owner correspondiente.**
+
+### P5.1 · AI Coach LLM (Claude augmentation) (5 d)
+
+- [ ] **TODO** · gate: ≥500 MAU + owner decision sobre LLM costs
+
+Reemplazar control-advisor heurístico con Claude API. Edge function existente ya tiene wiring base — falta el switch + prompt engineering + telemetry. Plan en [`asistente-llm-augmentation-notes.md`](../sistemas/asistente-llm-augmentation-notes.md).
+
+---
+
+### P5.2 · Android prebuild + AndroidManifest audit (2 d)
+
+- [ ] **TODO** · gate: pre-Play Store push
+
+Verificar permisos, intents, deep links. Probar el dev client en emulator Android. Documentar diferencias mobile-specific con iOS.
+
+---
+
+### P5.3 · i18n infra (es-AR → es / en) (4 d)
+
+- [ ] **TODO** · gate: tracción real fuera de AR
+
+Setup `i18next` + extracción de ~2000 strings hardcoded + translation files. ¿Vale la pena un mecanismo automatizado de extraction o lo hacemos manual?
+
+---
+
+### P5.4 · Biometric auto-sign-in on cold start (1 d)
+
+- [ ] **TODO** · gate: métrica de fricción real
+
+Re-evaluar el patrón. Hoy en pausa por friction. Si las métricas muestran que la fricción del login era el real problema (no la app), reactivar.
+
+---
+
+### P5.5 · Gift subscription IAP (2 d)
+
+- [ ] **TODO** · gate: D1 decidida (Monetización en v1.0 o v1.1)
+
+RevenueCat gift flow. Requiere SDK + paywall + persistence.
+
+---
+
+### P5.6 · Win-back flow (1 d)
+
+- [ ] **TODO** · gate: D1 decidida + datos de cancelaciones
+
+Después de cancel sub, prompt con descuento. Mismo gating que P5.5.
+
+---
+
+## 6 · Apéndice — Items SKIPPED en este plan
+
+Estos items aparecen en el [estado-actual](2026-06-08-estado-ready-pendientes.md#2--pendientes) pero **NO son code**, así que no entran acá. Se ejecutan por separado:
+
+| Item | Tipo | Owner |
+|---|---|---|
+| Privacy Policy + Terms redactados + hosteados | Legal + infra | Owner |
+| Screenshots, listing copy, App Preview video | Assets | Owner |
+| Privacy nutrition form en App Store Connect | Submission | Owner |
+| Age rating questionnaire | Submission | Owner |
+| APNs key generation en Apple Developer | 3rd party | Owner |
+| Hosting Privacy/Terms en GitHub Pages + DNS | Infra | Owner |
+| Sentry / PostHog account creation | 3rd party | Owner |
+| RevenueCat account + product setup | 3rd party | Owner |
+| L4 verificar usuario test (`aye.tello18@gmail.com`) | Manual SQL | Maintenance |
+| Password policy 10c, HIBP, network restrictions | Supabase config | Admin (no code) |
+| D1-D4 deferred decisions | Owner decisions | Owner |
+
+---
+
+## 7 · Mantenimiento de este doc
+
+**Cada viernes**: revisá WIP / BLOCKED y actualizá. Si un item lleva > 2 semanas en BLOCKED, evaluar si se baja a P3 o se mueve a "skipped".
+
+**Cada item DONE**: agregá el SHA + fecha al lado del checkbox (`[x] ✅ a1b2c3d 2026-06-15`).
+
+**Cuando arranques un sprint nuevo**: si el sprint anterior no está 100% done, marcá los pendientes como "carry-over" en una nota inicial.
+
+**Cuando descubras un nuevo item code-only**: agregalo al sprint que más sentido tenga + actualizá el effort total del sprint.
+
+---
+
+> **Última actualización**: 2026-06-08 · `99ed0db` HEAD
+> **Total estimado**: ~30 días de coding para cerrar Sprint A+B+C+D. Backlog P5 al margen.
+> **Sprint sugerido inmediato**: A (P1 App Store CODE — desbloquea submit cuando lleguen los items de owner).
