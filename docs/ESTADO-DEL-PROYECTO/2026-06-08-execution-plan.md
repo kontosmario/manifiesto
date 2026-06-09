@@ -68,7 +68,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 ### A2 · Password reset UI flow (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** — verificación end-to-end 2026-06-09 (sin cambios de código requeridos; todo ya estaba wireado en commits previos)
 
 **Por qué**: el backend está (Supabase Auth `resetPasswordForEmail`); falta el flow visual completo.
 
@@ -86,11 +86,18 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 **Notas**: muchas piezas están — verificá end-to-end con un email real (no mock). Si falta wiring de deep link → priorizar eso.
 
+**Verificación (2026-06-09)**:
+- `forgot-password-screen.tsx` llama `supabase.auth.resetPasswordForEmail` con `redirectTo` derivado de `getPasswordResetRedirectTo()` → `manifiesto://auth/reset-password`.
+- `app/auth/reset-password.tsx` route monta `ResetPasswordScreen`, que parsea `code` con `useLocalSearchParams` y lo intercambia vía PKCE (`exchangeCodeForSession`).
+- `app.config.ts` ya declara `scheme: 'manifiesto'` → el deep link entra a la app.
+- Validación 8+ chars + match con confirmar ya implementada. Stages: `exchanging | form | success | error | timeout` con timeout de 30s y CTAs de "pedir otro link".
+- Sign-in automático: Supabase deja sesión activa tras `exchangeCodeForSession` + `updateUser({password})`, y el "Ir al inicio" cierra el flow.
+
 ---
 
 ### A3 · Email confirm resend (0.5 d)
 
-- [ ] **TODO**
+- [x] **DONE** `151f4f2` 2026-06-09
 
 **Por qué**: si el user no recibe email tras signup, hoy queda atascado.
 
