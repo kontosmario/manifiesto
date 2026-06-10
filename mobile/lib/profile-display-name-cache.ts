@@ -12,7 +12,11 @@ export function getCachedProfileDisplayName(userId: string): string | null {
     return null
   }
 
-  if (Date.now() - cached.cachedAt > PROFILE_CACHE_TTL_MS) {
+  // Sprint M · M-L-1 (2026-06-14): treat negative-delta entries
+  // (cachedAt > now, e.g. device clock jumped backwards) the same as
+  // expired so we invalidate instead of trusting indefinitely.
+  const delta = Date.now() - cached.cachedAt
+  if (delta < 0 || delta > PROFILE_CACHE_TTL_MS) {
     profileDisplayNameCache.delete(userId)
     return null
   }

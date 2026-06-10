@@ -140,6 +140,34 @@ describe('notification-pending-route', () => {
     expect(peekPendingNotificationRoute()).toBeNull()
   })
 
+  // Sprint M · Audit #7 L-1 / 7-T2 (2026-06-14): negative delta → null
+  it('M-L-1: consume drops the route when delta is negative (clock backwards)', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(2_000_000)
+    const {
+      setPendingNotificationRoute,
+      consumePendingNotificationRoute,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/control')
+    // Move clock backwards so Date.now() < queuedAt → delta < 0
+    vi.setSystemTime(1_000_000)
+    expect(consumePendingNotificationRoute()).toBeNull()
+  })
+
+  it('M-L-1: peek drops the route when delta is negative', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(2_000_000)
+    const {
+      setPendingNotificationRoute,
+      peekPendingNotificationRoute,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/control')
+    vi.setSystemTime(1_000_000)
+    expect(peekPendingNotificationRoute()).toBeNull()
+  })
+
   it('L-3: TTL constant is 60 seconds', async () => {
     const { PENDING_ROUTE_TTL_MS } = await import(
       '@/lib/notification-pending-route'

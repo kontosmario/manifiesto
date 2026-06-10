@@ -368,15 +368,20 @@ export interface VerifyPinResult {
 export async function verifyPin(pin: string): Promise<VerifyPinResult> {
   const lockout = await readLockout()
   const now = Date.now()
-  if (lockout.lockedUntilMs > now) {
-    // Sprint G · G-Auth3: take the stricter of local + server lockouts.
-    // Even when SecureStore says "locked", we still consult the server
-    // so a wiped local store can't free the user prematurely. Server
-    // returns 0 silently if no session is available, so this is a
-    // no-op cost on cold-start app-lock.
-    const serverLocked = await readServerLockout()
-    const lockedForMs = Math.max(lockout.lockedUntilMs - now, serverLocked)
-    return { ok: false, lockedForMs }
+  // Sprint M · M-2 (2026-06-14): ALWAYS consult the server lockout
+  // mirror BEFORE attempting the PBKDF2 hash, regardless of local
+  // state. Previously we only called readServerLockout() when local
+  // already said "locked". That left a gap: if SecureStore was wiped
+  // (jailbreak / restore-on-new-device), local resets to {0, 0} and
+  // the server mirror was skipped entirely, defeating the G-Auth3
+  // defense-in-depth on the FIRST attempt. Now the mirror gates every
+  // verifyPin call. If the server is unreachable readServerLockout
+  // returns 0 (offline-safe), so we degrade to local-only there.
+  const serverLockedForMs = await readServerLockout()
+  const localLockedForMs = Math.max(0, lockout.lockedUntilMs - now)
+  const preLockedForMs = Math.max(localLockedForMs, serverLockedForMs)
+  if (preLockedForMs > 0) {
+    return { ok: false, lockedForMs: preLockedForMs }
   }
   try {
     const salt = await SecureStore.getItemAsync(PIN_SALT_KEY, storeOptions)

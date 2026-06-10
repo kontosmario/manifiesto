@@ -51,6 +51,16 @@ describe('pruneCleanupQueue', () => {
     expect(remaining.has('u24')).toBe(false)
   })
 
+  // Sprint M · Audit #7 L-1 / 7-T2 (2026-06-14)
+  it('M-L-1: drops entries with negative delta (queuedAt > now)', () => {
+    const queue: PendingCleanupEntry[] = [
+      { userId: 'future', queuedAt: NOW + 10_000 },
+      entry('fresh', 1_000),
+    ]
+    const result = pruneCleanupQueue(queue, NOW)
+    expect(result.map((e) => e.userId)).toEqual(['fresh'])
+  })
+
   it('applies age eviction before capping', () => {
     // 21 fresh entries + 5 stale ones. After age eviction we have 21,
     // then cap drops the single oldest fresh entry.

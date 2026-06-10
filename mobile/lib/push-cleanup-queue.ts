@@ -43,7 +43,15 @@ export function pruneCleanupQueue(
   now: number = Date.now(),
 ): PendingCleanupEntry[] {
   const ageCutoff = now - MAX_PENDING_CLEANUP_AGE_MS
-  const fresh = queue.filter((entry) => entry.queuedAt >= ageCutoff)
+  // Sprint M · M-L-1 (2026-06-14): treat negative-delta entries
+  // (queuedAt > now, i.e. "queued in the future") as untrustworthy and
+  // drop them too. This catches devices whose clock jumped backwards
+  // between queueing and pruning — otherwise the entry survives
+  // indefinitely as `queuedAt >= ageCutoff` stays true.
+  const fresh = queue.filter((entry) => {
+    const delta = now - entry.queuedAt
+    return delta >= 0 && entry.queuedAt >= ageCutoff
+  })
   if (fresh.length <= MAX_PENDING_CLEANUP_QUEUE) return fresh
   const sorted = [...fresh].sort((a, b) => a.queuedAt - b.queuedAt)
   return sorted.slice(sorted.length - MAX_PENDING_CLEANUP_QUEUE)

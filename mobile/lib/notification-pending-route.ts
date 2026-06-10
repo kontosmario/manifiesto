@@ -56,7 +56,12 @@ export function consumePendingNotificationRoute(): string | null {
   // as "no pending route", which is the right behaviour — the user
   // should land on the default screen for their auth state, not be
   // teleported into yesterday's notification context.
-  if (Date.now() - entry.queuedAt > PENDING_ROUTE_TTL_MS) {
+  // Sprint M · M-L-1 (2026-06-14): also drop negative-delta entries
+  // (delta < 0 means the device clock moved backwards after queuing
+  // OR the entry was queued under a forward-jumped clock). Either way
+  // it's untrustworthy.
+  const delta = Date.now() - entry.queuedAt
+  if (delta < 0 || delta > PENDING_ROUTE_TTL_MS) {
     return null
   }
   return entry.route
@@ -64,7 +69,10 @@ export function consumePendingNotificationRoute(): string | null {
 
 export function peekPendingNotificationRoute(): string | null {
   if (pendingRoute === null) return null
-  if (Date.now() - pendingRoute.queuedAt > PENDING_ROUTE_TTL_MS) {
+  // Sprint M · M-L-1 (2026-06-14): mirror consume's negative-delta
+  // guard so peek and consume agree on validity.
+  const delta = Date.now() - pendingRoute.queuedAt
+  if (delta < 0 || delta > PENDING_ROUTE_TTL_MS) {
     // Peek also honors the TTL so callers (e.g. boot-time decision
     // logic) don't act on a stale route they're about to discard.
     return null

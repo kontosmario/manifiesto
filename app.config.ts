@@ -135,6 +135,20 @@ const config: ExpoConfig = {
     config: {
       usesNonExemptEncryption: false,
     },
+    // Sprint M · Audit #7 L-3 (2026-06-14): Info.plist previously
+    // declared NSMicrophoneUsageDescription and NSCameraUsageDescription
+    // (leftover Expo default-template entries) even though no shipping
+    // code uses the microphone or camera. App Store privacy labels
+    // require usage descriptions to be backed by actual API use. The
+    // plist was edited to remove them; this `infoPlist` override pins
+    // them to `undefined` so a future `expo prebuild` that re-generates
+    // Info.plist from defaults can't silently re-introduce them. Keeps
+    // NSPhotoLibraryUsageDescription (used by OCR import flow) and
+    // NSFaceIDUsageDescription untouched.
+    infoPlist: {
+      NSMicrophoneUsageDescription: undefined,
+      NSCameraUsageDescription: undefined,
+    },
   },
   android: {
     package: 'com.manifiesto.mobile',

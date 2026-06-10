@@ -34,6 +34,20 @@
 //      `code` fallback for resets where email isn't surfaced) so the
 //      countdown survives unmount within the reset flow. Cleaned up
 //      on `onContinue` so the next reset starts fresh.
+//
+// Sprint M · Audit #7 M-1 (2026-06-14) — clock-skew bypass:
+//   The Sprint L hardening defended FUTURE-dated stored anchors via
+//   `parsed <= Date.now()` but did NOT defend FORWARD-jumped current
+//   time consuming PAST anchors. Attacker flow: open the screen → anchor
+//   `T0` lands in SecureStore → bump device clock forward 1 minute →
+//   re-mount → `elapsed = 60s > COUNTDOWN_SECONDS` → CTA immediately
+//   enabled. Fix: when rehydrating, if `Date.now() - parsed` exceeds
+//   `MAX_REASONABLE_ANCHOR_GAP_MS` (5 min), discard the stored anchor
+//   and start fresh. That generous threshold tolerates slow networks,
+//   app-switching and legitimate backgrounding, but catches the clock
+//   jumps that would otherwise grant a free CTA. Worst case for an
+//   attacker is one bypassed countdown per fresh write — not a sustained
+//   free pass.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -50,6 +64,15 @@ import { useAppTheme } from '@/theme/theme-provider'
 const COUNTDOWN_SECONDS = 10
 const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
 const FRICTION_KEY_PREFIX = 'fresh-install-friction-'
+
+/**
+ * Sprint M · M-1 (2026-06-14): max delta between a stored anchor and
+ * "now" before we treat the anchor as untrustworthy and start fresh.
+ * Generous enough to swallow real-world slow networks, app-switching
+ * and brief backgrounding, tight enough to catch a forward clock jump
+ * that would otherwise instantly satisfy the countdown.
+ */
+const MAX_REASONABLE_ANCHOR_GAP_MS = 5 * 60 * 1000
 
 interface FreshInstallResetFrictionProps {
   onContinue: () => void
@@ -103,13 +126,28 @@ export function FreshInstallResetFriction({
       try {
         const stored = await getPersistentValue(storageKey)
         const parsed = stored ? Number.parseInt(stored, 10) : NaN
-        if (!cancelled && Number.isFinite(parsed) && parsed > 0 && parsed <= Date.now()) {
+        const now = Date.now()
+        // Sprint M · M-1 (2026-06-14): only trust stored anchors that
+        // sit in a sane window relative to current wall-clock. Anchors
+        // in the future (parsed > now) keep being rejected (Sprint L);
+        // anchors more than MAX_REASONABLE_ANCHOR_GAP_MS in the past
+        // are now ALSO rejected so a forward clock jump can't consume
+        // an old anchor to satisfy the countdown.
+        const gap = now - parsed
+        if (
+          !cancelled &&
+          Number.isFinite(parsed) &&
+          parsed > 0 &&
+          parsed <= now &&
+          gap <= MAX_REASONABLE_ANCHOR_GAP_MS
+        ) {
           mountedAtRef.current = parsed
           setRemaining(computeRemaining(parsed))
           return
         }
-        // No usable stored anchor — persist the current one for
-        // future remounts. Writes are best-effort.
+        // No usable stored anchor (missing, future-dated, or stale) —
+        // persist the current one for future remounts. Writes are
+        // best-effort.
         await setPersistentValue(storageKey, String(mountedAtRef.current))
       } catch {
         // ignore — fallback to in-memory anchor
