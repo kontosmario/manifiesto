@@ -3,6 +3,22 @@ import * as AppleAuthentication from 'expo-apple-authentication'
 import { supabase } from '@/lib/supabase'
 import { createNoncePair } from '@/lib/auth-nonce'
 
+// Sprint O · Audit #8 O-Info (2026-06-14): strip ASCII control bytes +
+// Unicode `Cf` format chars (bidi marks/overrides, zero-width, BOM)
+// from the Apple-supplied fullName before persisting it as
+// display_name. End-to-end safe today — the read path sanitizes — but
+// removing this at write time keeps clean data in `auth.users.user_metadata`
+// and mirrors the same regex used by the edge functions. Source kept
+// grep-friendly by building the regex via `new RegExp`.
+function stripBidiAndControls(value: string): string {
+  const re = new RegExp(
+    // eslint-disable-next-line no-control-regex
+    '[\\x00-\\x1F\\x7F\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]+',
+    'gu',
+  )
+  return value.replace(re, ' ').replace(/\s+/g, ' ').trim()
+}
+
 // Google sign-in is loaded lazily because the package's top-level
 // import calls `TurboModuleRegistry.getEnforcing('RNGoogleSignin')`,
 // which crashes the entire JS bundle when the native module isn't in
@@ -146,13 +162,19 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
     // Apple only returns the user's name on the FIRST sign-in. We
     // forward it to Supabase so the trigger that creates the profile
     // can use it as `display_name`.
-    const fullName = [
-      credential.fullName?.givenName,
-      credential.fullName?.familyName,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .trim()
+    //
+    // Sprint O · Audit #8 O-Info (2026-06-14): both `givenName` and
+    // `familyName` are user-controlled (the Apple "edit name" sheet
+    // lets the user type whatever they want). Strip bidi marks /
+    // overrides and other Cf chars defensively — a user planting U+202E
+    // in their first name would otherwise propagate it through
+    // `display_name` into push titles ("Buen día, <reversed>") seen
+    // by family members.
+    const rawGiven = credential.fullName?.givenName ?? ''
+    const rawFamily = credential.fullName?.familyName ?? ''
+    const fullName = stripBidiAndControls(
+      [rawGiven, rawFamily].filter(Boolean).join(' '),
+    )
 
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
