@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules for Android 12+ (API 31+).
+  Referenced by AndroidManifest.xml -> application[android:dataExtractionRules].
+
+  Red team finding (2026-06-10, Sprint E · C3):
+  Same as secure_store_backup_rules.xml — the file was referenced but
+  missing. Without it, Android 12+ devices would default to backing up
+  AsyncStorage / SecureStore both to Google cloud-backup AND across
+  device-to-device transfers (Pixel "Switch to a new device" flow), which
+  would leak the React Query cache and flags.
+
+  Manifiesto threat model: financial data lives in Supabase, and the
+  client re-syncs from there on first launch on a new device. There is no
+  legitimate reason to ship the local cache across cloud-backup OR
+  device-transfer — both are excluded.
+
+  Structure:
+    <cloud-backup>     - rules applied to Google Drive automatic backups.
+    <device-transfer>  - rules applied to device-to-device migration.
+  Both sections exclude the same surfaces (SecureStore + AsyncStorage +
+  any other sharedpref/database/file under the app sandbox).
+
+  Source of truth: plugins/android-backup-rules/. Copied into
+  android/app/src/main/res/xml/ at prebuild time by
+  plugins/with-android-backup-rules.ts. Do NOT edit the copy in
+  android/ — it is regenerated.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="SecureStore.xml" />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="RKStorage" />
+        <exclude domain="database" path="RKStorage-journal" />
+        <exclude domain="database" path="AsyncStorage" />
+        <exclude domain="database" path="AsyncStorage-journal" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="SecureStore.xml" />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="RKStorage" />
+        <exclude domain="database" path="RKStorage-journal" />
+        <exclude domain="database" path="AsyncStorage" />
+        <exclude domain="database" path="AsyncStorage-journal" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>

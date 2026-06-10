@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy Auto Backup rules (Android 6.0 / API 23+ through Android 11).
+  Referenced by AndroidManifest.xml -> application[android:fullBackupContent].
+
+  Red team finding (2026-06-10, Sprint E · C3):
+  AndroidManifest declared android:allowBackup="true" and pointed
+  android:fullBackupContent at @xml/secure_store_backup_rules, but the
+  resource file did not exist. On release builds this would silently fall
+  back to "back up everything", letting an attacker run `adb backup` and
+  extract AsyncStorage (TanStack Query cache, pin-enabled-flag,
+  biometric-enabled-flag) plus SecureStore-encrypted blobs.
+
+  Scope: exclude every local storage surface that may hold user PII or
+  auth state from cloud-backup transfers. The security boundary is
+  Supabase — on a new device the user must re-auth and re-sync from there.
+
+  Excludes:
+    sharedpref://SecureStore     - expo-secure-store SharedPreferences file
+                                   (encrypted blobs + IVs, but the keys are
+                                   in Android Keystore which is NOT backed
+                                   up — so backing up the cipher text is
+                                   useless and only leaks metadata).
+    sharedpref://*               - any other SharedPreferences file
+                                   (defensive wildcard via path=".").
+    database://RKStorage         - AsyncStorage legacy SQLite database
+                                   (React Query cache, flags, prefs).
+    database://AsyncStorage      - AsyncStorage "next" Room database
+                                   (same data, new storage backend).
+    database://*                 - any other SQLite database (defensive).
+    file://*                     - any plain file in internal storage
+                                   (covers MMKV/Filesystem caches if added
+                                   later).
+
+  Source of truth: plugins/android-backup-rules/. Copied into
+  android/app/src/main/res/xml/ at prebuild time by
+  plugins/with-android-backup-rules.ts. Do NOT edit the copy in
+  android/ — it is regenerated.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="SecureStore.xml" />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="database" path="RKStorage" />
+    <exclude domain="database" path="RKStorage-journal" />
+    <exclude domain="database" path="AsyncStorage" />
+    <exclude domain="database" path="AsyncStorage-journal" />
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>

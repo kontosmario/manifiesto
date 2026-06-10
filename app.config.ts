@@ -70,6 +70,14 @@ const config: ExpoConfig = {
         ios: { deploymentTarget: '15.5' },
       },
     ],
+    // Sprint E · C3 (red team finding 2026-06-10): the Expo default
+    // AndroidManifest references @xml/secure_store_backup_rules and
+    // @xml/secure_store_data_extraction_rules but never writes them.
+    // Missing files → rules silently fall back to "back up everything",
+    // so `adb backup` can extract AsyncStorage / SecureStore. This
+    // local plugin copies the two XMLs from plugins/android-backup-rules/
+    // into android/app/src/main/res/xml/ on every prebuild.
+    './plugins/with-android-backup-rules.cjs',
   ],
   experiments: {
     typedRoutes: true,
