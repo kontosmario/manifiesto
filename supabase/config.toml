@@ -391,13 +391,26 @@ deno_version = 2
 verify_jwt = false
 
 # control-advisor runs the Anthropic Sonnet call (~1500 tokens / call).
-# Be explicit about gateway verify_jwt = true so a copy-paste of the
-# send-family-push block above does NOT accidentally make this
-# function publicly callable. The function ALSO re-checks the bearer
-# token internally for ES256 compatibility and applies a per-user
-# rate limit, but defense-in-depth: keep the gateway gate on.
+#
+# Sprint O · Audit #8 O-5 (2026-06-14): set verify_jwt = false (was
+# true). The project uses asymmetric ES256 JWTs; the Edge Functions
+# gateway does not yet validate ES256 — when verify_jwt = true was
+# active, every legitimate ES256-signed mobile request hit
+# 401 UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM BEFORE reaching the
+# function. The result was a silent production outage of the advisor
+# whenever the gateway was reached with an ES256 token (the function
+# was effectively offline). send-family-push had this same issue and
+# was fixed in Sprint I — we missed it here.
+#
+# Defense-in-depth is unchanged:
+#   • The function still verifies the bearer token via auth.getUser()
+#     server-side and rejects service-role / anon tokens explicitly
+#     (Sprint I-6).
+#   • Per-user rate limit applied inside the function.
+#   • CORS allowlist enforced inside the function.
+# Mirrors the rationale on `[functions.send-family-push]` above.
 [functions.control-advisor]
-verify_jwt = true
+verify_jwt = false
 
 [analytics]
 enabled = true
