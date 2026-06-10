@@ -972,8 +972,8 @@ Migración: `supabase/migrations/20260503000000_seed_home_test_account.sql`. Ide
 
 | Campo | Valor |
 |-------|-------|
-| Email | `home.test@manifiesto.app` |
-| Password | `HomeTest2026` |
+| Email | `home.test@manifiesto.app` (LEGACY — superseded, no longer in prod) |
+| Password | rotated out-of-band (no longer documented in repo) |
 | Family code | `HOMETEST` |
 | Avatar | `cat` |
 | Income | 2.500.000 ARS |

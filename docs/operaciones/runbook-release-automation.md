@@ -227,3 +227,41 @@ Patrones custom en `.gitleaks.toml`:
 - SDK 54 builds solo aceptan OTAs publicados desde un repo con SDK 54.
 - Cuando bumpees Expo SDK (54 → 55), TODOS los usuarios necesitan re-installar desde TestFlight / App Store. Un OTA no puede arreglar eso.
 - Si querés un control más fino (e.g. pinear a un native module version), cambiá a `policy: 'fingerprint'` (requiere `@expo/fingerprint`).
+
+## Apple Review credentials
+
+La cuenta `apple.review@manifiestoapp.com` existe en producción para que los reviewers de Apple puedan loguearse al App Store review (referenciada en App Store Connect → Información para el equipo de revisión de apps).
+
+### Política de credenciales
+
+**Plain text PROHIBIDO en git**. La migration `20260611000000_seed_apple_review_account.sql` crea el user con un password placeholder (`bootstrap-CHANGE-ME-immediately`). Esto se rota out-of-band inmediatamente después de aplicar la migration.
+
+### Cómo rotar el password (procedimiento)
+
+1. **Generar password seguro local** (no committearlo a ningún archivo):
+   ```bash
+   openssl rand -base64 24 | tr -d '+/=' | head -c 32
+   ```
+
+2. **Update en remote via SQL directo** (NO en migration):
+   ```bash
+   echo "update auth.users set encrypted_password = extensions.crypt('<NEW_PASSWORD>', extensions.gen_salt('bf')) where email = 'apple.review@manifiestoapp.com' returning email, updated_at;" | npx supabase db query --linked
+   ```
+
+3. **Actualizar App Store Connect**:
+   - Andá a https://appstoreconnect.apple.com/apps/6776033487/distribution
+   - Sección "Información para el equipo de revisión de apps"
+   - Campo "Contraseña" → pegar el nuevo password
+   - Click "Guardar"
+
+4. **NO committear el password a ningún lado**. Si vos lo necesitás para tu password manager personal, agregalo ahí (NO en archivos del repo).
+
+### Rotación periódica
+
+- **Antes de cada App Store submit**: rotar (Apple no debería tener acceso histórico)
+- **Después de cada submit aprobado**: ✅ podés optar por (a) rotar de nuevo (defensa-en-profundidad) o (b) dejar el password actual hasta el próximo submit
+- **Si el repo se vuelve público**: rotar inmediatamente
+
+### Por qué este flow
+
+Documentado en red team audit 2026-06-10 (finding RLS F1 + Infra C-1): el password original (`AppleReview2026!`) estaba en plain text en la migration committed. Cualquier acceso al git history exponía credenciales prod. Rotación out-of-band + placeholder en migration cierra el gap.

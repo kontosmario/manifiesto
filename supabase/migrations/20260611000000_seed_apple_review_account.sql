@@ -1,5 +1,5 @@
 -- One-shot seed for a Apple App Review account.
--- Creates `apple.review@manifiestoapp.com` with password `AppleReview2026!`,
+-- Creates `apple.review@manifiestoapp.com` with an initial bootstrap password,
 -- a single-member family, finance config, and enough data to exercise
 -- every main Home surface (cycle progress bar, top category chip,
 -- próximo fijo chip, forecast trend, fijos coverage micro-text).
@@ -87,7 +87,10 @@ begin
     'authenticated',
     'authenticated',
     'apple.review@manifiestoapp.com',
-    extensions.crypt('AppleReview2026!', extensions.gen_salt('bf')),
+    -- Initial bootstrap password. **ROTATED OUT-OF-BAND** after seed runs.
+    -- See docs/operaciones/runbook-release-automation.md §"Apple Review credentials".
+    -- Never commit the real prod password to git.
+    extensions.crypt('bootstrap-CHANGE-ME-immediately', extensions.gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Apple Review"}'::jsonb,

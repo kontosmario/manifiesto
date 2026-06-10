@@ -23,7 +23,7 @@
 
 ### 1. Seed account para Apple Review
 
-Migration `20260611000000_seed_apple_review_account.sql` aplicada en remote. Cuenta `apple.review@manifiestoapp.com` con password `AppleReview2026!`, 85 gastos seedeados, 5 fijos, 1 meta de ahorro. Apple reviewers pueden loguearse y testear el flujo completo sin que el owner tenga que exponer su cuenta personal.
+Migration `20260611000000_seed_apple_review_account.sql` aplicada en remote. Cuenta `apple.review@manifiestoapp.com` con password **rotado out-of-band** (ver `docs/operaciones/runbook-release-automation.md` §"Apple Review credentials"), 85 gastos seedeados, 5 fijos, 1 meta de ahorro. Apple reviewers pueden loguearse y testear el flujo completo sin que el owner tenga que exponer su cuenta personal.
 
 Fixes técnicos vs el template del seed previo (`home.test@manifiesto.app`):
 - `families.code` columna removida en post-Sprint B → `insert ... default values`

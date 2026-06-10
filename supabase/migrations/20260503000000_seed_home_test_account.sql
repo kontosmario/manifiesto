@@ -1,5 +1,6 @@
--- One-shot seed for a Home tab QA account.
--- Creates `home.test@manifiesto.app` with password `HomeTest2026`,
+-- One-shot seed for a Home tab QA account (LEGACY — superseded by
+-- 20260611000000_seed_apple_review_account.sql for App Store reviewers).
+-- Creates `home.test@manifiesto.app` with an initial bootstrap password,
 -- a single-member family, finance config, and enough data to exercise
 -- every Home Sprint surface (cycle progress bar, top category chip,
 -- próximo fijo chip, forecast trend, fijos coverage micro-text).
@@ -87,7 +88,9 @@ begin
     'authenticated',
     'authenticated',
     'home.test@manifiesto.app',
-    crypt('HomeTest2026', gen_salt('bf')),
+    -- LEGACY initial bootstrap password. This account is no longer used in prod.
+    -- New seed (apple.review@manifiestoapp.com) supersedes this one.
+    crypt('legacy-bootstrap-do-not-use', gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Home QA"}'::jsonb,
