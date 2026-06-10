@@ -416,8 +416,49 @@ La cuenta `apple.review@manifiestoapp.com` existe en producción para que los re
    ```
 
 2. **Update en remote via SQL directo** (NO en migration):
+
+   > **Sprint Q · Audit #10 Q-4 (2026-06-10) — IMPORTANTE**: el password
+   > NUNCA debe contener `'`, `\`, `;`, `--` ni backtick. El generador
+   > recomendado del paso 1 (`openssl rand -base64 24 | tr -d '+/=' | head -c 32`)
+   > emite solo `[A-Za-z0-9]`, que son siempre seguros. Si por algún
+   > motivo cambiás el generador, validá antes de inyectar.
+
+   **Pattern recomendado** (heredoc a archivo temporal + validación de
+   caracteres especiales, sin string interpolation cruda en la línea de
+   comando):
+
    ```bash
-   echo "update auth.users set encrypted_password = extensions.crypt('<NEW_PASSWORD>', extensions.gen_salt('bf')) where email = 'apple.review@manifiestoapp.com' returning email, updated_at;" | npx supabase db query --linked
+   # 1. Generar
+   NEW_PASSWORD=$(openssl rand -base64 24 | tr -d '+/=' | head -c 32)
+
+   # 2. Validar que no contiene caracteres SQL-peligrosos. Si pega,
+   #    abortá y regenerá — NO intentes escapar manualmente.
+   if echo "$NEW_PASSWORD" | grep -q "[';\\\`-]"; then
+     echo "ERROR: password contiene un caracter no seguro — regenerá."
+     exit 1
+   fi
+
+   # 3. Escribir SQL a archivo temporal (modo 600) y aplicar.
+   umask 077
+   cat > /tmp/rotate-apple-review.sql <<EOF
+   update auth.users
+   set encrypted_password = extensions.crypt('$NEW_PASSWORD', extensions.gen_salt('bf'))
+   where email = 'apple.review@manifiestoapp.com'
+   returning email, updated_at;
+   EOF
+
+   npx supabase db query --linked < /tmp/rotate-apple-review.sql
+
+   # 4. Borrar inmediatamente. NUNCA dejes el .sql en disco.
+   rm -f /tmp/rotate-apple-review.sql
+   ```
+
+   **Por qué no el one-liner anterior** (legacy, NO usar):
+   ```bash
+   # ❌ INSEGURO — string interpolation cruda. Si el password contiene
+   #    `'` por cualquier razón (otro generador, copy-paste, etc.),
+   #    el SQL rompe (best case) o se inyecta (worst case).
+   # echo "update auth.users set encrypted_password = extensions.crypt('<NEW_PASSWORD>', ...)" | npx supabase db query --linked
    ```
 
 3. **Actualizar App Store Connect**:
@@ -444,7 +485,7 @@ Sprint P · Audit #9 P-7 (2026-06-10) — recordatorios concentrados para evitar
 
 | Item | Vence | Notas |
 |---|---|---|
-| Provisioning Profile (App Store) | 2027-06-09 | EAS auto-renueva on `eas build`. Si no buildeás dentro de los ~30 días anteriores a la fecha, el OTA channel se queda con binary stale y los TestFlight/App Store builds futuros fallan al firmar hasta correr `eas credentials` manual. |
+| Provisioning Profile (App Store) | 2027-06-09 | EAS auto-renueva on `eas build`. Si no buildeás dentro de los ~30 días anteriores a la fecha, el OTA channel se queda con binary stale y los TestFlight/App Store builds futuros fallan al firmar hasta correr `eas credentials` manual. **Sprint Q · Q-5**: CI guard hardcoded en `.github/workflows/ota-update.yml` (step "Provisioning profile expiry warning"). Cuando rote el profile, bumpeá la `EXPIRY` ahí Y la fecha de esta tabla en el mismo commit. |
 | Code-signing cert (`certs/certificate.pem`) | 2036-06-10 | CI fail automático si quedan <90 días (`ota-update.yml` → "Cert expiry check", Sprint P · P-6). Ver "EAS Update code signing" para el procedure de rotación. |
 | ASC API Key `.p8` (Key ID `HUNBRN89BT`) | N/A | Nunca expira hasta revoke manual desde App Store Connect. Rotar si el `.p8` se filtra o si dejás de usar la cuenta. |
 | APNs Push Key `.p8` (Key ID `J3525JQHM2`) | N/A | Nunca expira hasta revoke manual desde Apple Developer. Misma política que ASC API Key. |
