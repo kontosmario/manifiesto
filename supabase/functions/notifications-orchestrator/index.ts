@@ -73,10 +73,38 @@ const supabaseUrl = env?.get('SUPABASE_URL') ?? ''
 const supabaseServiceRoleKey = env?.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const CHUNK_SIZE = 200
 
-function jsonResponse(payload: unknown, status = 200): Response {
+// CORS for this function is defensive only — the sole production
+// caller is pg_cron (via pg_net), which does not honor CORS at all.
+// We still surface preflight headers + thread them onto non-success
+// responses so that:
+//   (a) a future browser-origin caller (ops dashboard, debug tool)
+//       sees a real status instead of a generic CORS error, and
+//   (b) the response shape matches `send-family-push` and
+//       `control-advisor` for consistency.
+// H-9 (red-team 2026-06-10).
+const ALLOWED_ORIGINS = new Set([
+  'https://manifiestoapp.com',
+  'https://www.manifiestoapp.com',
+])
+
+function corsHeadersFor(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : ''
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  }
+}
+
+function jsonResponse(
+  payload: unknown,
+  status = 200,
+  corsHeadersOverride: Record<string, string> = corsHeadersFor(null),
+): Response {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersOverride, 'Content-Type': 'application/json' },
   })
 }
 
@@ -205,21 +233,37 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0
 }
 
+// RFC 6750 §2.1 bearer parser — requires the literal `Bearer ` prefix
+// (case-insensitive, per RFC). The previous implementation fell back
+// to returning the raw header when no prefix matched, which let a
+// caller skip the spec. The only caller is pg_cron (via pg_net) which
+// already emits `Bearer <service-role-key>`, so tightening this is
+// safe. H-8 (red-team 2026-06-10).
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) {
     return null
   }
   const normalized = authorizationHeader.trim()
-  if (normalized.toLowerCase().startsWith('bearer ')) {
-    const token = normalized.slice(7).trim()
-    return token.length > 0 ? token : null
+  if (!normalized.toLowerCase().startsWith('bearer ')) {
+    return null
   }
-  return normalized.length > 0 ? normalized : null
+  const token = normalized.slice(7).trim()
+  return token.length > 0 ? token : null
 }
 
 export async function handler(request: Request): Promise<Response> {
+  const cors = corsHeadersFor(request.headers.get('origin'))
+
+  // H-9 (red-team 2026-06-10): handle OPTIONS preflight explicitly with
+  // CORS headers. Returning 405 without CORS (the previous behavior)
+  // would cause a browser preflight to fail with a generic CORS error,
+  // masking the real reason a request was rejected.
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors })
+  }
+
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405)
+    return jsonResponse({ error: 'Method not allowed.' }, 405, cors)
   }
 
   // Service-role gate: this function is invoked by pg_cron (which
@@ -235,21 +279,21 @@ export async function handler(request: Request): Promise<Response> {
     !supabaseServiceRoleKey ||
     !timingSafeEqual(callerToken, supabaseServiceRoleKey)
   ) {
-    return jsonResponse({ error: 'Unauthorized (service-role required).' }, 401)
+    return jsonResponse({ error: 'Unauthorized (service-role required).' }, 401, cors)
   }
 
   let payload: { kind?: unknown }
   try {
     payload = (await request.json()) as { kind?: unknown }
   } catch {
-    return jsonResponse({ error: 'Invalid JSON payload.' }, 400)
+    return jsonResponse({ error: 'Invalid JSON payload.' }, 400, cors)
   }
   if (!isKind(payload.kind)) {
-    return jsonResponse({ error: 'kind required (one of allowed kinds).' }, 400)
+    return jsonResponse({ error: 'kind required (one of allowed kinds).' }, 400, cors)
   }
   try {
     const result = await processKind(payload.kind)
-    return jsonResponse(result)
+    return jsonResponse(result, 200, cors)
   } catch (error) {
     // Redact upstream error from the response (M-edge2, red-team
     // 2026-06-10). The callers are pg_cron (service-role) which
@@ -258,7 +302,7 @@ export async function handler(request: Request): Promise<Response> {
     // service-internal identifiers. Log the detail for the operator
     // and respond with a generic marker.
     console.error('orchestrator failed', error)
-    return jsonResponse({ error: 'internal' }, 500)
+    return jsonResponse({ error: 'internal' }, 500, cors)
   }
 }
 

@@ -53,6 +53,44 @@ Deno.test('accepts POST with service-role bearer (not 401)', async () => {
   if (res.status === 401) throw new Error('service-role bearer was rejected')
 })
 
+// H-8 (red-team 2026-06-10): a raw token (no `Bearer ` prefix) must
+// be rejected. The previous parser fell back to returning the raw
+// header value, which let a caller skip the spec.
+Deno.test('rejects raw token without Bearer prefix (401)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: '{}',
+    headers: { Authorization: 'service-role-fake-12345' },
+  }))
+  assertEquals(res.status, 401)
+})
+
+// H-9 (red-team 2026-06-10): OPTIONS preflight must return 204 with
+// CORS headers, not 405. Pre-fix, browsers would see a generic CORS
+// error instead of the real reason a request was rejected.
+Deno.test('OPTIONS preflight returns 204 with CORS', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'OPTIONS',
+    headers: { origin: 'https://manifiestoapp.com' },
+  }))
+  assertEquals(res.status, 204)
+  assertEquals(res.headers.get('Access-Control-Allow-Origin'), 'https://manifiestoapp.com')
+})
+
+Deno.test('non-POST returns 405 with CORS headers', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'GET',
+    headers: { origin: 'https://manifiestoapp.com' },
+  }))
+  assertEquals(res.status, 405)
+  // H-9: 405 must still carry CORS so a browser-origin caller sees
+  // the real status rather than a generic preflight failure.
+  assertEquals(res.headers.get('Access-Control-Allow-Origin'), 'https://manifiestoapp.com')
+})
+
 Deno.test('500 response does not leak internal error message (M-edge2)', async () => {
   const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
