@@ -11,8 +11,8 @@
  * URL de Privacy declarada en App Store Connect abra una página válida.
  */
 
-export const PRIVACY_POLICY_URL = 'https://manifiestoapp.com/privacy'
-export const TERMS_OF_SERVICE_URL = 'https://manifiestoapp.com/terms'
+export const PRIVACY_POLICY_URL = 'https://manifiestoapp.com/privacy/'
+export const TERMS_OF_SERVICE_URL = 'https://manifiestoapp.com/terms/'
 
 export const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
 
