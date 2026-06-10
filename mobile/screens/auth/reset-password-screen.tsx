@@ -245,6 +245,14 @@ export function ResetPasswordScreen() {
         <FreshInstallResetFriction
           onContinue={handleFrictionContinue}
           onCancel={handleFrictionCancel}
+          // Sprint L · Audit #5 L-Med3: the recovery `code` is unique
+          // per reset flow, so it keys the SecureStore anchor so the
+          // countdown survives remounts within the same flow without
+          // leaking across distinct resets. Email isn't surfaced here
+          // (no auth context wired into this screen pre-form), and
+          // `code` is just as scoped to "the password reset attempt
+          // currently in progress" — exactly what we want.
+          frictionKey={code}
         />
       </Screen>
     )

@@ -21,20 +21,52 @@
 // Migration path: when a backend email-confirmation flow exists, replace
 // this with a "we sent a verification link to your other email — open
 // it to continue" gate.
+//
+// Sprint L · Audit #5 L-Med3 (2026-06-13) — countdown hardening:
+//   1. Previously the countdown used `setInterval` decrementing a
+//      tick counter. iOS pauses JS timers when the app is backgrounded,
+//      so a user could foreground after a wall-clock minute and still
+//      see "5s" remaining — defeating the "force the user to read"
+//      rationale. Fix: anchor on `mountedAt` (wall-clock ms) and
+//      compute `remaining` from `Date.now() - mountedAt` on each tick.
+//   2. Remount (navigating away and back) restarted the countdown.
+//      Fix: persist the anchor in SecureStore keyed by `email` (or
+//      `code` fallback for resets where email isn't surfaced) so the
+//      countdown survives unmount within the reset flow. Cleaned up
+//      on `onContinue` so the next reset starts fresh.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
+import {
+  deletePersistentValue,
+  getPersistentValue,
+  setPersistentValue,
+} from '@/lib/persistent-kv'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 const COUNTDOWN_SECONDS = 10
 const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
+const FRICTION_KEY_PREFIX = 'fresh-install-friction-'
 
 interface FreshInstallResetFrictionProps {
   onContinue: () => void
   onCancel: () => void
+  /**
+   * Identifier the countdown anchor is keyed by in SecureStore. Pass
+   * the email being reset when available; otherwise pass a unique
+   * per-flow token (e.g. the recovery `code`). Without a key the
+   * countdown is in-memory only and resets on unmount — acceptable as
+   * a fallback but not the documented behaviour.
+   */
+  frictionKey?: string | null
+}
+
+function computeRemaining(mountedAtMs: number): number {
+  const elapsed = Math.floor((Date.now() - mountedAtMs) / 1000)
+  return Math.max(0, COUNTDOWN_SECONDS - elapsed)
 }
 
 /**
@@ -46,21 +78,73 @@ interface FreshInstallResetFrictionProps {
 export function FreshInstallResetFriction({
   onContinue,
   onCancel,
+  frictionKey,
 }: FreshInstallResetFrictionProps) {
   const { theme } = useAppTheme()
-  const [remaining, setRemaining] = useState(COUNTDOWN_SECONDS)
+  // L-Med3: anchor on wall-clock ms, not on tick count, so background
+  // time IS counted towards the countdown. `mountedAtRef.current` is
+  // initialised synchronously to `Date.now()` and then potentially
+  // rewound to a persisted earlier anchor after the SecureStore read
+  // resolves (see effect below).
+  const mountedAtRef = useRef<number>(Date.now())
+  const [remaining, setRemaining] = useState<number>(COUNTDOWN_SECONDS)
 
+  const storageKey = frictionKey
+    ? `${FRICTION_KEY_PREFIX}${frictionKey}`
+    : null
+
+  // L-Med3: rehydrate the anchor from SecureStore so navigating away
+  // and back doesn't reset the countdown. Best-effort; if storage is
+  // unavailable we fall back to the in-memory `Date.now()` set above.
+  useEffect(() => {
+    if (!storageKey) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const stored = await getPersistentValue(storageKey)
+        const parsed = stored ? Number.parseInt(stored, 10) : NaN
+        if (!cancelled && Number.isFinite(parsed) && parsed > 0 && parsed <= Date.now()) {
+          mountedAtRef.current = parsed
+          setRemaining(computeRemaining(parsed))
+          return
+        }
+        // No usable stored anchor — persist the current one for
+        // future remounts. Writes are best-effort.
+        await setPersistentValue(storageKey, String(mountedAtRef.current))
+      } catch {
+        // ignore — fallback to in-memory anchor
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [storageKey])
+
+  // L-Med3: recompute `remaining` from wall-clock each tick so
+  // backgrounded time counts. Stop the interval once we hit zero.
   useEffect(() => {
     if (remaining <= 0) return
     const id = setInterval(() => {
-      setRemaining((current) => (current > 0 ? current - 1 : 0))
-    }, 1000)
+      const next = computeRemaining(mountedAtRef.current)
+      setRemaining(next)
+    }, 250)
     return () => clearInterval(id)
   }, [remaining])
 
   const handleEmailSupport = useCallback(() => {
     void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)
   }, [])
+
+  const handleContinue = useCallback(() => {
+    // Clean up the anchor so the NEXT reset request starts a fresh
+    // 10s countdown. Best-effort — a failed delete doesn't block the
+    // user (worst case is a slightly shorter countdown on a re-reset
+    // within the same minute, which is fine).
+    if (storageKey) {
+      void deletePersistentValue(storageKey)
+    }
+    onContinue()
+  }, [onContinue, storageKey])
 
   const canContinue = remaining <= 0
   const ctaLabel = canContinue ? 'Continuar' : `Continuar (${remaining}s)`
@@ -104,7 +188,7 @@ export function FreshInstallResetFriction({
         accessibilityLabel={ctaLabel}
         disabled={!canContinue}
         label={ctaLabel}
-        onPress={onContinue}
+        onPress={handleContinue}
         variant="danger"
       />
       <Pressable
