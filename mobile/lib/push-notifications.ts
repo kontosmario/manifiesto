@@ -8,6 +8,10 @@ import {
   getPersistentValue,
   setPersistentValue,
 } from '@/lib/persistent-kv'
+import {
+  type PendingCleanupEntry,
+  pruneCleanupQueue,
+} from '@/lib/push-cleanup-queue'
 
 /**
  * Lightweight facade sobre `expo-notifications` para el setup
@@ -224,10 +228,9 @@ export async function setupPushNotifications({
  */
 const PENDING_PUSH_CLEANUP_KEY = 'pending-push-token-cleanup'
 
-interface PendingCleanupEntry {
-  userId: string
-  queuedAt: number
-}
+// Cap + age eviction live in `./push-cleanup-queue` so they can be unit
+// tested under vitest without dragging in expo/react-native imports.
+// Sprint I · I-3 — was unbounded growth.
 
 async function readPendingCleanupQueue(): Promise<PendingCleanupEntry[]> {
   const raw = await getPersistentValue(PENDING_PUSH_CLEANUP_KEY)
@@ -258,7 +261,10 @@ async function enqueuePendingCleanup(userId: string): Promise<void> {
   // Dedupe — si el mismo userId ya está en la cola no apilamos.
   if (queue.some((entry) => entry.userId === userId)) return
   queue.push({ userId, queuedAt: Date.now() })
-  await writePendingCleanupQueue(queue)
+  // Sprint I · I-3 — cap + age-evict before persisting so the queue
+  // cannot grow unbounded on devices that never regain network.
+  const pruned = pruneCleanupQueue(queue)
+  await writePendingCleanupQueue(pruned)
 }
 
 async function tryDeletePushTokens(userId: string): Promise<boolean> {
@@ -305,8 +311,14 @@ export async function tearDownPushNotifications(userId: string): Promise<void> {
  * próximo intento. Las que tienen éxito se remueven.
  */
 export async function flushPendingPushTokenCleanup(): Promise<void> {
-  const queue = await readPendingCleanupQueue()
-  if (queue.length === 0) return
+  // Sprint I · I-3 — prune before flushing so we never retry an entry
+  // older than 30 days, and so the working set fits the cap even if
+  // a previous build wrote an unbounded queue.
+  const queue = pruneCleanupQueue(await readPendingCleanupQueue())
+  if (queue.length === 0) {
+    await writePendingCleanupQueue(queue)
+    return
+  }
   const remaining: PendingCleanupEntry[] = []
   for (const entry of queue) {
     const ok = await tryDeletePushTokens(entry.userId)
