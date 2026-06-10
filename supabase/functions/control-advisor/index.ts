@@ -141,6 +141,21 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
   return normalized.slice(bearerPrefix.length).trim() || null
 }
 
+// Constant-time string equality. Used for the service-role reject
+// below — `===` short-circuits on first byte mismatch, leaking match
+// progress through response timing. Risk over the public internet is
+// minimal but the cost of doing it right is one helper. Mirrors
+// send-family-push and register-push-subscription. Sprint J · Audit #3
+// J-Edge2 (2026-06-10).
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let mismatch = 0
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return mismatch === 0
+}
+
 // RFC 4122 UUID format (any version, any variant). The control-advisor
 // per-user rate-limit bucket is consumed BEFORE the membership /
 // family-existence checks, so a non-UUID `familyId` was burning a
@@ -409,6 +424,54 @@ async function callClaude(ctx: FamilyContext): Promise<string> {
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
+// Sprint J-Med · J-Med5 (2026-06-10): sanitize user-facing fields from
+// the Claude response before forwarding to the mobile UI. The prompt
+// context includes user-controlled DB content (savings_goals.title,
+// expense category names) so an attacker could nudge Claude into
+// echoing crafted payloads (e.g. deep-link injection in `cta` like
+// "manifiesto://transfer/?to=:attacker"). We strip control chars, cap
+// length, and reject suspicious patterns. Anything malformed → null
+// so the caller falls back to a generic safe task.
+const CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g
+
+function stripControlChars(input: string): string {
+  return input.replace(CONTROL_CHARS_RE, '')
+}
+
+function sanitizeText(input: string, maxLen: number): string | null {
+  const cleaned = stripControlChars(input).trim()
+  if (cleaned.length === 0) return null
+  if (cleaned.length <= maxLen) return cleaned
+  // Slice on UTF-16 unit; safer than splitting astral pairs would be
+  // nice but for our cap (≤240 chars) the risk is cosmetic.
+  return cleaned.slice(0, maxLen)
+}
+
+function sanitizeCta(input: string): string | null {
+  const cleaned = sanitizeText(input, 24)
+  if (!cleaned) return null
+  // Reject anything that smells like a deep-link / URL injection. The
+  // mobile UI treats `cta` as plain button text; a payload like
+  // "manifiesto://" or "https://" never makes sense here.
+  if (cleaned.includes(':') || cleaned.includes('//')) return null
+  return cleaned
+}
+
+function sanitizeEmoji(input: string): string | null {
+  const cleaned = stripControlChars(input).trim()
+  if (cleaned.length === 0) return null
+  // Cap at 4 codepoints (handles ZWJ sequences like family emoji).
+  const codepoints = Array.from(cleaned)
+  if (codepoints.length > 4) return null
+  // Reject if any codepoint is plain ASCII letter / digit / punctuation
+  // — emoji codepoints fall outside that range.
+  for (const cp of codepoints) {
+    const code = cp.codePointAt(0) ?? 0
+    if (code < 0x80) return null
+  }
+  return codepoints.join('')
+}
+
 function parseAndValidate(raw: string): ControlAdvisorTask[] | null {
   // Strip code fences if Claude slipped up
   const cleaned = raw
@@ -446,15 +509,36 @@ function parseAndValidate(raw: string): ControlAdvisorTask[] | null {
     ) {
       return null
     }
+    // Sprint J-Med · J-Med5 (2026-06-10): sanitize each user-facing
+    // string field. If any required field comes back empty or
+    // rejected after sanitization, drop the whole batch — we'd rather
+    // fall back to the static `fallbackTasks()` than ship partial /
+    // unsafe content.
+    const safeTitle = sanitizeText(o.title, 80)
+    const safeBody = sanitizeText(o.body, 240)
+    const safeCta = sanitizeCta(o.cta)
+    const safeCat = sanitizeText(o.cat, 32)
+    const safeEmoji = sanitizeEmoji(o.emoji)
+    const safeImpact = sanitizeText(o.impact, 32)
+    if (
+      !safeTitle ||
+      !safeBody ||
+      !safeCta ||
+      !safeCat ||
+      !safeEmoji ||
+      !safeImpact
+    ) {
+      return null
+    }
     tasks.push({
       id: o.id,
-      emoji: o.emoji,
-      cat: o.cat,
-      title: o.title,
-      body: o.body,
-      impact: o.impact,
+      emoji: safeEmoji,
+      cat: safeCat,
+      title: safeTitle,
+      body: safeBody,
+      impact: safeImpact,
       impactRaw: Math.round(o.impactRaw),
-      cta: o.cta,
+      cta: safeCta,
       urgency: o.urgency as 'alta' | 'media' | 'baja',
     })
   }
@@ -550,8 +634,10 @@ export async function handler(request: Request): Promise<Response> {
   // for the service principal, which would let a caller in possession of
   // the service role key impersonate any family without going through
   // the per-user / per-family rate limits. Reject explicitly so that
-  // path can never succeed via this entry point.
-  if (token === supabaseServiceRoleKey) {
+  // path can never succeed via this entry point. Sprint J · Audit #3
+  // J-Edge2 (2026-06-10): switched `===` to `timingSafeEqual` for parity
+  // with send-family-push / register-push-subscription.
+  if (timingSafeEqual(token, supabaseServiceRoleKey)) {
     return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401, cors)
   }
 
@@ -631,8 +717,10 @@ export async function handler(request: Request): Promise<Response> {
     console.error('[control-advisor] no owner for family — refusing call', {
       familyId,
     })
+    // Sprint J-Med · J-Med4 (2026-06-10): generic public message,
+    // detailed reason already in console.error above for ops.
     return jsonResponse(
-      { error: 'Family ownership in flux. Try again shortly.' },
+      { error: 'Temporarily unavailable. Try again shortly.' },
       503,
       cors,
     )
