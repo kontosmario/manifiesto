@@ -23,12 +23,20 @@
 
 ## 1 · Qué es Manifiesto (en 1 frase)
 
-> **Una app móvil para parejas y familias argentinas que quieren manejar sus finanzas compartidas con claridad, sin planillas y sin pelearse.**
+> **Una app móvil para entender en qué se te va la plata y ahorrar — sin saber de finanzas. Funciona igual de bien usándola solo o compartida con tu familia.**
 
 Variantes según contexto:
 - **Hero del sitio**: "Finanzas familiares simples y compartidas."
-- **Tagline corto** (subtítulo App Store): "Finanzas familiares sin discusiones."
-- **Pitch a un amigo**: "Es como Splitwise + YNAB pero hecho para una pareja argentina que tiene pesos, dólares, gastos fijos y quiere ahorrar."
+- **Tagline corto** (subtítulo App Store): "Gastos claros, ahorro simple."
+- **Pitch a un amigo**: "Es la app para entender en qué se te va la plata y empezar a ahorrar de a poco. La podés usar solo o con tu pareja/familia. Pensada para Argentina (pesos + USD, bancos AR, ciclos de cobro reales)."
+
+### Sobre el pivote de posicionamiento (2026-06-10)
+
+El draft inicial del doc giraba alrededor de **"parejas que no se pelean por plata"** (ángulo Splitwise-like). Lo movimos a **"ahorro + claridad sin ser experto"** con familia como **modo opcional**. Razones:
+- TAM más grande: incluye solteros, no solo parejas.
+- Dolor más universal: "no entiendo mis gastos" + "no sé ahorrar" toca más gente que "no me llevo bien con mi pareja con la plata".
+- No nos encasilla en una categoría saturada (split apps).
+- El modo familia sigue siendo un diferenciador potente, pero como **superpoder opcional**, no como el pitch principal.
 
 ---
 
@@ -36,17 +44,19 @@ Variantes según contexto:
 
 ### Primary
 
-- **Parejas argentinas que conviven** (25-45 años)
+- **Personas que quieren entender sus gastos y empezar a ahorrar** sin tener background financiero (25-50 años, AR + LATAM)
+- **Solteros / monousuarios** que abandonaron Excel o apps complicadas por fricción
+- **Parejas que conviven** y quieren visibilidad mutua sin micromanaging (modo familia)
 - **Familias chicas-medianas** con hijos adolescentes o que aportan al pool familiar
-- **Roommates serios** que comparten gastos del hogar
 - Personas que **tienen ahorros en USD** además de pesos (común en AR)
-- Personas que **probaron Excel/Google Sheets** y abandonaron por fricción
+
+> 💡 El modo solo y el modo familia conviven en el mismo producto sin fricción. No hay que elegir.
 
 ### Secondary
 
-- Solteros con control financiero personal (single-mode también soportado)
 - Padres que quieren enseñar finanzas a hijos jóvenes
 - Personas con freelance income variable mes a mes
+- Roommates serios que comparten gastos del hogar
 
 ### NOT target (de momento)
 
@@ -154,11 +164,12 @@ Variantes según contexto:
 
 ### Ángulos para destacar
 
-1. **Hecho en Argentina, para Argentina** — entiende devaluaciones, dolar blue, ciclos de cobro AR
-2. **Para parejas que no quieren pelearse por plata** — visibilidad mutua sin micromanaging
-3. **Diseño calmo** — la app **no grita** ni te bombardea con notificaciones
-4. **OCR de bancos AR** — el único que importa de Galicia, Santander, Macro, etc.
-5. **Privacy first** — sin ads, sin tracking, sin AI sobre tus datos
+1. **Ahorrar sin saber de finanzas** — el dolor más universal, el hook principal
+2. **Solo o en familia, mismo producto** — no te obliga a elegir un modo
+3. **Hecho en Argentina, para Argentina** — entiende devaluaciones, dolar blue, ciclos de cobro AR
+4. **Diseño calmo** — la app **no grita** ni te bombardea con notificaciones
+5. **OCR de bancos AR** — el único que importa de Galicia, Santander, Macro, etc.
+6. **Privacy first** — sin ads, sin tracking, sin AI sobre tus datos
 
 ---
 
@@ -192,156 +203,162 @@ Variantes según contexto:
 
 App Store Connect tiene 100 chars total separados por coma. Apple **ya indexa el nombre del app + subtítulo** así que no hace falta repetir "manifiesto" en keywords.
 
+> 📈 **Peso de orden**: las primeras keywords pesan más en el ranking de Apple. Por eso `ahorro` y `gastos` van primero — son las búsquedas más alineadas con nuestro nuevo posicionamiento.
+
 ### Tier 1 (must-have)
 
-`finanzas, gastos, pareja, familia, ahorro, presupuesto, dinero, control, planificar, mensual`
+`ahorro, gastos, finanzas, familia, presupuesto, metas, fijos, dinero, simple, facil`
 
 ### Tier 2 (high-value)
 
-`fijos, suscripciones, USD, dolar, metas, hogar, casa, compartir, juntos, splitwise`
+`pareja, USD, dolar, hogar, suscripciones, mensual, control, organizar`
 
 ### Tier 3 (long-tail)
 
-`organizar, planilla, excel, app finanzas argentina, gastos compartidos, presupuesto familiar, pareja dinero`
+`planilla, excel, app finanzas argentina, gastos compartidos, presupuesto familiar`
 
-### Combinación sugerida (100 chars, ~14 palabras)
-
-```
-finanzas,pareja,familia,gastos,ahorro,presupuesto,fijos,dolar,metas,compartir,hogar,planificar,argentina
-```
-
-(110 chars exactos — necesita un trim. Si pasamos al final, mostrate que entre.)
-
-### Combinación alternativa (más enfocada en pareja)
+### Combinación elegida (91 chars — recomendada)
 
 ```
-pareja,finanzas,gastos,familia,ahorro,presupuesto,compartir,fijos,metas,dinero
+ahorro,gastos,finanzas,familia,presupuesto,metas,fijos,pareja,dinero,simple,hogar,facil,USD
 ```
 
-(95 chars — entra cómodo)
+(91 chars — entra cómodo, deja 9 chars de buffer si querés sumar una palabra más adelante)
+
+### Variantes para A/B testing post-launch
+
+**Más foco en simplicidad** (97 chars):
+```
+ahorro,gastos,finanzas,simple,facil,presupuesto,metas,familia,pareja,fijos,dinero,hogar
+```
+
+**Más foco en familia/pareja** (95 chars):
+```
+ahorro,gastos,finanzas,familia,pareja,presupuesto,fijos,metas,compartir,hogar,USD
+```
 
 ---
 
-## 7 · Draft de los 6 campos
+## 7 · Drafts finales de los 6 campos (2026-06-10)
 
-### 7.1 Nombre (30 chars máx)
+> ✅ **Esta es la versión recomendada para pegar en App Store Connect**, ajustada al pivote de posicionamiento "simplicidad + ahorro + modo dual" (solo o familia).
 
-**Sugerencia A** (literal): `Manifiesto` (10 chars)
+### 7.1 Nombre (10/30)
 
-**Sugerencia B** (con subtítulo embebido — Apple permite hasta 30 chars): `Manifiesto: Finanzas Familia` (28 chars)
+```
+Manifiesto
+```
 
-**Recomendación**: Apple penaliza títulos con dos palabras clave embebidas como keyword stuffing. **Mantené solo "Manifiesto"** (10 chars). El subtítulo te da otros 30 chars para el descriptor.
+> No agregamos descriptor al nombre. Apple penaliza "keyword stuffing" en este campo, y el subtítulo nos da otros 30 chars para el descriptor.
 
 ### 7.2 Subtítulo (30 chars máx)
 
-Opciones, elegí la que más suene:
+Opciones evaluadas:
 
-| Opción | Largo | Tono |
+| Opción | Chars | Nota |
 |---|---|---|
-| `Finanzas para tu familia` | 24 | Directo, claro |
-| `Plata clara con tu pareja` | 25 | Argentino + conversacional |
-| `Gastos compartidos sin discutir` | 31 ⚠️ | Pasa el límite por 1 char |
-| `Tu plan con tu pareja, claro` | 28 | Editorial |
-| `Finanzas familiares simples` | 27 | Mismo del sitio |
+| `Gastos claros, ahorro simple` | 28 | ✅ **Recomendada** — captura ambos pilares |
+| `Ahorrá sin ser experto` | 22 | Foco 100% en ahorro |
+| `Ahorrá, solo o en familia` | 25 | Foco en el modo dual |
 
-**Recomendación**: `Plata clara con tu pareja` (25 chars) — argentino, concreto, captura la idea central.
+**Recomendación final**: **`Gastos claros, ahorro simple`** (28 chars).
 
-### 7.3 Descripción (4000 chars máx)
+### 7.3 Descripción (~2.100/4000)
 
 ```
-Manifiesto es la app de finanzas pensada para parejas y familias argentinas que quieren tener visibilidad clara del mes sin planillas ni discusiones.
+Manifiesto es la app para entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas. Funciona igual de bien si la usás solo o con tu familia.
 
-CARGÁS TUS GASTOS EN SEGUNDOS
+VER TUS GASTOS, SIN VUELTAS
 
-Suma un gasto en 4 taps. Categorías a medida, descripciones rápidas, y todo lo que cargás aparece al instante en el celular de tu pareja.
+Cargás un gasto en 4 taps y listo. Nada de planillas, fórmulas ni términos raros: abrís el home y ves cuánto gastaste este mes y cuánto te queda.
 
-¿Importás resúmenes de tu banco? Sumamos OCR para 8 bancos argentinos: Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá y Naranja X.
+¿Te llegan los resúmenes del banco? Importalos por OCR desde 8 bancos argentinos: Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá y Naranja X.
 
-UN PLAN PARA EL MES, COMPARTIDO
+AHORRAR, PASO A PASO
 
-- Cargá los gastos fijos (alquiler, servicios, suscripciones) y te avisamos antes de que venzan.
-- Definí cuánto querés guardar de tu sueldo este mes.
-- Mirá tu saldo del día en el home: ¿cuánto te queda para llegar a fin de mes?
+- Definí cuánto querés guardar este mes, aunque sea poco.
+- Armá una meta (un viaje, el auto, un colchón de emergencia), ponele plazo y mirá el progreso cada vez que aportás.
+- Al cerrar el mes decidís qué hacer con el sobrante: meta, reserva o empezar fresco.
 
-METAS DE AHORRO REALES
+Sin promesas mágicas: una meta a la vez.
 
-Armá una meta (un viaje, el alquiler, el auto), ponele un plazo, y mirá tu progreso visualmente cada vez que aportás. Sin promesas mágicas: una meta a la vez, paso a paso.
+SOLO O EN FAMILIA
+
+Usala para tus finanzas personales, o invitá a tu pareja o familia con un código. Todo lo que carga el otro lo ves al instante, sin pasarse capturas ni discutir quién pagó qué.
+
+GASTOS FIJOS BAJO CONTROL
+
+Cargá el alquiler, los servicios y las suscripciones una sola vez. Te avisamos antes de que venzan.
 
 PESOS Y DÓLARES, JUNTOS
 
-Manifiesto entiende el contexto argentino. Configurás tu cotización ARS/USD y la app convierte automáticamente. Ideal si ahorrás en dólares como tantos en Argentina.
+Configurás tu cotización ARS/USD y la app convierte automáticamente. Ideal si ahorrás en dólares como tantos en Argentina.
 
 EL WRAPPED DE FIN DE MES
 
-Al cerrar cada mes te mostramos un resumen cinematográfico: en qué gastaste más, cuál fue tu compra del mes, cuánto pudiste guardar. Después decidís qué hacer con el sobrante (si hay): aportar a tu meta, sumar a la reserva, o empezar fresco el mes siguiente.
+Al cerrar cada mes te mostramos un resumen visual: en qué gastaste más, cuál fue tu compra del mes, cuánto pudiste guardar.
 
 PRIVACIDAD COMO PRINCIPIO
 
-Tus datos financieros nunca se venden, no se cruzan con otras apps para publicidad y no se usan para entrenar inteligencia artificial. Solo los usamos para que Manifiesto funcione.
+Tus datos financieros no se venden, no se cruzan con otras apps para publicidad y no se usan para entrenar inteligencia artificial.
 
-Podés eliminar tu cuenta en cualquier momento desde la app (con 30 días para arrepentirte). Política completa en manifiestoapp.com/privacy
-
-CUIDADO CON LA EXPERIENCIA
-
-- Diseño calmo. La app no grita ni te bombardea con notificaciones.
-- Pensado en iOS: Sign in with Apple, Face ID/Touch ID, Widgets próximamente.
-- Funciona en pesos argentinos o en cualquier otra moneda.
+Podés eliminar tu cuenta cuando quieras desde la app (con 30 días para arrepentirte). Política completa en manifiestoapp.com/privacy
 
 QUÉ NO SOMOS
 
-- No procesamos pagos. Manifiesto te ayuda a organizarte, no mueve plata por vos.
-- No damos asesoramiento financiero. Si necesitás un asesor, buscá uno.
+- No procesamos pagos ni movemos plata por vos.
+- No damos asesoramiento financiero.
 - No es una billetera virtual ni un banco.
 
-EQUIPO Y CONTACTO
-
-Hecho por una persona, en Argentina. Si encontrás un bug, tenés una idea, o solo querés decir hola: soporte@manifiestoapp.com
+Hecho por una persona, en Argentina. ¿Bugs, ideas o un hola? soporte@manifiestoapp.com
 
 manifiestoapp.com
 ```
 
-(~2400 chars — bien por debajo del límite, deja espacio para iterar)
-
-### 7.4 Palabras clave (100 chars máx)
+### 7.4 Palabras clave (91/100)
 
 ```
-pareja,finanzas,gastos,familia,ahorro,presupuesto,compartir,fijos,metas,dinero,hogar,USD
+ahorro,gastos,finanzas,familia,presupuesto,metas,fijos,pareja,dinero,simple,hogar,facil,USD
 ```
 
-(99 chars — entra justo)
+> `ahorro` primero (peso de orden en ASO). Sumamos `simple` y `facil` por el nuevo posicionamiento. Sacamos `compartir` y `planificar` (baja intención de búsqueda con el pivote a usuario menos sofisticado).
 
-### 7.5 Texto promocional (170 chars máx)
-
-**Funciona como banner editable**. Casos de uso típicos:
-- Lanzamiento: "Recién lanzamos. Probala gratis y contanos qué te parece."
-- Update mayor: "Versión 1.2: ahora con widgets en el lock screen."
-- Estacional: "Plan de gastos para fin de año listo en 10 minutos."
-
-**Draft de lanzamiento** (158 chars):
+### 7.5 Texto promocional (143/170)
 
 ```
-Recién lanzamos la versión 1.0. Si la probás y te ayuda, contanos qué te resultó útil. Si algo no funciona, también: soporte@manifiestoapp.com
+Recién lanzamos la versión 1.0. Si la probás y te ayuda a ordenar tus gastos, contanos. Si algo no funciona, también: soporte@manifiestoapp.com
 ```
 
-### 7.6 Qué hay nuevo (release notes, 4000 chars máx)
-
-Para v1.0:
+### 7.6 Qué hay nuevo (release notes v1.0)
 
 ```
 Esta es la versión inicial de Manifiesto.
 
 Lo que podés hacer desde el día 1:
-- Cargar gastos del mes con categorías a medida
-- Sumar gastos fijos y recibir aviso antes del vencimiento
-- Importar resúmenes de 8 bancos argentinos por OCR
-- Compartir todo con tu pareja o familia en tiempo real
+- Ver tus gastos del mes de un vistazo, sin planillas
 - Armar metas de ahorro con plazo y progreso visual
+- Cargar gastos fijos y recibir aviso antes del vencimiento
+- Importar resúmenes de 8 bancos argentinos por OCR
+- Usarla solo, o compartir todo con tu pareja o familia en tiempo real
 - Trackear ahorro en pesos y dólares al mismo tiempo
-- Ver el Wrapped al cierre de cada mes con resumen cinematográfico
+- Ver el Wrapped al cierre de cada mes
 - Login con Apple, Face ID o Touch ID
 
 Gracias por probar Manifiesto. Si encontrás algo que mejorar, escribinos: soporte@manifiestoapp.com
 ```
+
+---
+
+## 7.bis · Cambios clave entre el draft inicial y el final
+
+| Sección | Draft inicial (descartado) | Draft final (recomendado) |
+|---|---|---|
+| Hook de descripción | "parejas y familias argentinas… sin discusiones" | "entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas" |
+| Orden de secciones | Gastos → Plan → Metas → Familia → ... | Gastos → **Ahorrar** → **Solo o en familia** → Fijos → ... |
+| Subtítulo | "Plata clara con tu pareja" | "Gastos claros, ahorro simple" |
+| Keyword peso 1 | `pareja` | `ahorro` |
+| Single-mode | Secondary audience (enterrado) | Sección propia "SOLO O EN FAMILIA" |
+| Tono | "pareja que no se pelea" | "principiante que quiere ahorrar" |
 
 ---
 
@@ -350,10 +367,10 @@ Gracias por probar Manifiesto. Si encontrás algo que mejorar, escribinos: sopor
 Cuando vayas a App Store Connect → app → Distribución → Versión 1.0:
 
 - [ ] Nombre = `Manifiesto`
-- [ ] Subtítulo = `Plata clara con tu pareja` (o variante elegida)
-- [ ] Descripción = pegada del draft 7.3 (ajustada si querés)
-- [ ] Palabras clave = `pareja,finanzas,gastos,familia,ahorro,presupuesto,compartir,fijos,metas,dinero,hogar,USD`
-- [ ] Texto promocional = draft 7.5
+- [ ] Subtítulo = `Gastos claros, ahorro simple` (28 chars)
+- [ ] Descripción = pegada del draft 7.3
+- [ ] Palabras clave = `ahorro,gastos,finanzas,familia,presupuesto,metas,fijos,pareja,dinero,simple,hogar,facil,USD` (91 chars)
+- [ ] Texto promocional = draft 7.5 (143 chars)
 - [ ] Qué hay nuevo = draft 7.6
 - [ ] **Idioma principal**: Español (México) — el campo de localización
 - [ ] Verificá que **no hay typos** antes de submit (Apple no rechaza por eso pero es feo)
