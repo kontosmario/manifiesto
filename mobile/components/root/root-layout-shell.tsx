@@ -14,6 +14,7 @@ import { BackgroundRelockWatcher } from '@/components/root/background-relock-wat
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
+import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-banner'
 import { AppProviders } from '@/providers/app-providers'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -103,6 +104,16 @@ export function RootLayoutShell() {
             phase={authTransition.phase}
             errorKind={authTransition.errorKind}
           />
+
+          {/*
+            Sprint I · I-6 — captcha misconfig banner. Only renders when
+            getCaptchaBootError() returns non-null (non-dev build with no
+            HCAPTCHA_SITE_KEY loaded). Lives on top of the Stack but below
+            the transition overlay so the warning is dismissed during the
+            full-screen auth splash. Subtle red bar at the top — visible
+            enough to spot, not aggressive enough to derail QA.
+          */}
+          <CaptchaBootErrorBanner />
         </ThemedRoot>
       </AppProviders>
     </RootErrorBoundary>

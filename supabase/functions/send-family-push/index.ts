@@ -438,6 +438,16 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Unauthorized (missing token).' }, 401, cors)
   }
 
+  // Sprint I · I-6 — defense in depth. supabase-js' `auth.getUser`
+  // accepts the service-role JWT and resolves it to a service-principal
+  // user object. Outside the orchestrator batch path above (which is
+  // the only legitimate service-role caller) we must NOT let the
+  // service-role token act as a regular user — it would bypass the
+  // per-user rate limit and pretend to be a member of any family.
+  if (timingSafeEqual(token, supabaseServiceRoleKey)) {
+    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401, cors)
+  }
+
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
   const authUserResponse = await userClient.auth.getUser(token)
   if (authUserResponse.error || !authUserResponse.data.user) {

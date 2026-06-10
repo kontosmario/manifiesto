@@ -545,6 +545,16 @@ export async function handler(request: Request): Promise<Response> {
   )
   if (!token) return jsonResponse({ error: 'Unauthorized (missing token).' }, 401, cors)
 
+  // Sprint I · I-6 — defense in depth. supabase-js' `auth.getUser`
+  // recognizes the service-role JWT and returns a "user-shaped" payload
+  // for the service principal, which would let a caller in possession of
+  // the service role key impersonate any family without going through
+  // the per-user / per-family rate limits. Reject explicitly so that
+  // path can never succeed via this entry point.
+  if (token === supabaseServiceRoleKey) {
+    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401, cors)
+  }
+
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
   const authUserResponse = await userClient.auth.getUser(token)
   if (authUserResponse.error || !authUserResponse.data.user) {
