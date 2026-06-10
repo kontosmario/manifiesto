@@ -8,21 +8,38 @@
 ```
 docs/marketing/screenshots/
 ├── README.md                    (este archivo)
+├── PROMPT.md                    (prompt usado para regenerar a Apple specs)
 ├── v1.0/
-│   └── source/                  (assets crudos del owner — 768×1376 px)
-│       ├── 01-home-hero.jpg
-│       ├── 02-wrapped.jpg
-│       ├── 03-asistente.jpg
-│       ├── 04-gastos-calendar.jpg
-│       ├── 05-fijos.jpg
-│       ├── 06-control.jpg
-│       ├── 07-quick-add.jpg
-│       ├── 08-add-expense.jpg
-│       └── 09-splash.jpg
+│   ├── source/                  (assets crudos del owner — 768×1376 px, batch 1)
+│   │   ├── 01-home-hero.jpg
+│   │   ├── 02-wrapped.jpg
+│   │   ├── ...
+│   │   └── 09-splash.jpg
+│   └── final/                   ✅ READY FOR UPLOAD — 1320×2868 px (Apple 6.9")
+│       ├── 01-home-hero.png
+│       ├── 02-wrapped.png
+│       ├── 03-asistente.png
+│       ├── 04-gastos-calendar.png
+│       ├── 05-fijos.png
+│       ├── 06-control.png
+│       ├── 07-quick-add.png
+│       ├── 08-add-expense.png
+│       └── 09-splash.png
 └── marketing-scenes/            (composiciones para redes/sitio, NO App Store)
-    ├── composite-3-phones.jpg
-    └── landscape-collage.jpg
+    ├── composite-3-phones.jpg      (v1, 1376×768 landscape)
+    ├── composite-3-phones-v2.png   (v2 regenerado, 1408×3040 portrait)
+    └── landscape-collage.jpg       (5 iPhones, sirve para OG image)
 ```
+
+## ✅ Estado actual: READY for App Store upload
+
+Owner regeneró los 9 screenshots con **Nano Banana / Flow** (Gemini Image Gen) a 1408×3040 (aspect ratio 0.4632 — esencialmente nativo iPhone 6.9"). Los downscaleamos 6% a **1320×2868 exact** y están en `v1.0/final/`. **Listos para subir a App Store Connect.**
+
+### Tamaños verificados
+
+| File | Dimensions | OK |
+|---|---|---|
+| `01-home-hero.png` → `09-splash.png` | 1320×2868 px | ✅ matches Apple iPhone 6.9" requirement |
 
 ## Inventario y captions
 
@@ -70,35 +87,23 @@ Según §11 del [source doc del listing](../app-store-listing-source.md#11--scre
 
 > 📝 `08-add-expense.jpg` y `09-splash.jpg` quedan como **backup**. El splash es low-info, va último o se omite. El add-expense es útil pero redundante con `07-quick-add.jpg`.
 
-## ⚠️ Issue de specs: 768×1376 vs Apple required 1320×2868
+## Historial del gap de specs (RESUELTO ✅)
 
-**Los assets actuales NO entran directamente en App Store Connect.**
+**Cómo se resolvió** (timeline 2026-06-10):
 
-Apple requiere screenshots de iPhone 6.9" en **exactamente 1320×2868 px** (portrait). Los assets están en **768×1376 px** (~aspect ratio 5.5" iPhone, equivalente a iPhone 8 Plus).
+1. **Batch 1 (768×1376)**: owner generó los primeros 9 assets con AI image gen, pero quedaron en aspect ratio 5.5" iPhone (no native 6.9"). NO uploadeable a App Store.
+2. **Decisión**: Opción A del README anterior — re-renderizar a tamaño nativo.
+3. **Batch 2 (1408×3040)**: owner regeneró con **Nano Banana / Flow** (Gemini Image Gen) usando el prompt de `PROMPT.md`. Output 1408×3040 (aspect ratio 0.4632 vs Apple 0.4603 — 0.6% off, esencialmente nativo).
+4. **Downscale a 1320×2868**: con `sips -z 2868 1320` para exact match Apple requirement.
+5. ✅ **9 PNGs en `final/`**, dimensiones verificadas, listos para upload.
 
-| | 768×1376 (actual) | 1320×2868 (required) |
-|---|---|---|
-| Megapixels | 1.06 MP | 3.78 MP |
-| Diferencia | — | **3.57× más grande, factor de upscale 1.72×** |
-| Aspect ratio | 0.558 | 0.460 |
+### Comando usado para downscale
 
-### Opciones para resolver
+```bash
+sips -z 2868 1320 input.png --out output.png
+```
 
-| Opción | Esfuerzo | Calidad | Recomendado |
-|---|---|---|---|
-| **A) Re-renderizar en el tool original a tamaño nativo 1320×2868** | Bajo (si tenés acceso al source en Figma/Sketch/etc.) | ⭐⭐⭐⭐⭐ Excelente | ✅ **Mejor opción** |
-| B) Upscale 1.72× con AI (Topaz, ESRGAN, Replicate API) | Medio | ⭐⭐⭐⭐ Buena, texto puede tener artifacts | Si A no es viable |
-| C) Upscale con `sips`/`convert` bicúbico | Bajo | ⭐⭐ Borroso, NO recomendado para producción | Solo emergencia |
-| D) Capturar screenshots nativos desde iPhone 16 Pro Max + re-componer con captions | Alto | ⭐⭐⭐⭐⭐ Perfecto | Solo si A/B no funcionan |
-
-**Adicional**: el aspect ratio (0.558 → 0.460) significa que hay que **recortar o re-flow el layout** además de upscale. Un upscale puro distorsionaría las proporciones.
-
-### Estado actual
-
-Los 9 assets están commiteados como **source** (no listos para App Store). Antes del submit a Apple (H8) hay que:
-1. Decidir cuál de A/B/C/D usar
-2. Generar la versión final a 1320×2868
-3. Guardar en `docs/marketing/screenshots/v1.0/final/` (carpeta a crear cuando estén listos)
+> 💡 Para futuras regeneraciones: si Nano Banana sigue dando 1408×3040, el comando arriba sirve idéntico. Si cambia el output size, ajustar el `-z` o usar `--resampleHeightWidth`.
 
 ## Referencias
 
