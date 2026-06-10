@@ -103,11 +103,30 @@ describe('getBiometricLoginState', () => {
     expect(state.hasSavedCredentials).toBe(true)
   })
 
-  it('REGRESIÓN: si el metadata read falla pero la flag está set, hasSavedCredentials sigue true (defense in depth)', async () => {
-    ssState.throwGet = true   // metadata read rejects
-    asState.enabled = true    // flag mirror says biometric is enabled
+  // Sprint F · F15: la flag de AsyncStorage YA NO es authority. Si el
+  // keychain read falla, `hasSavedCredentials` cae a false aunque la
+  // flag esté set — eso es por diseño. Un atacante con write access a
+  // AsyncStorage (pero no a Keychain) en un device rooteado podía
+  // antes flipear la flag y engañar al gate; ahora el keychain es la
+  // única fuente de verdad. La flag queda como display-hint, no gate.
+  it('F15: la flag de AsyncStorage NO sube hasSavedCredentials si keychain está vacío', async () => {
+    ssState.throwGet = false  // metadata read OK, devuelve null
+    ssState.metadata = null   // sin metadata en keychain
+    asState.enabled = true    // flag mirror dice que biometric está activo
     const state = await getBiometricLoginState()
-    expect(state.hasSavedCredentials).toBe(true) // ← clave: NO colapsa a false
-    expect(state.isAvailable).toBe(true)         // hardware/enroll OK
+    expect(state.hasSavedCredentials).toBe(false) // ← clave: NO confiar en la flag
+    expect(state.isAvailable).toBe(true)
+  })
+
+  it('F15: la flag de AsyncStorage NO recupera hasSavedCredentials si el keychain read tira', async () => {
+    ssState.throwGet = true   // metadata read rejects
+    asState.enabled = true    // flag mirror dice enabled
+    const state = await getBiometricLoginState()
+    // Antes este test esperaba true (defense-in-depth). Ahora esperamos
+    // false: el costo es UX (el user tipea pwd una vez); el beneficio es
+    // que un attacker que solo puede escribir AsyncStorage no puede
+    // simular credenciales guardadas.
+    expect(state.hasSavedCredentials).toBe(false)
+    expect(state.isAvailable).toBe(true)
   })
 })

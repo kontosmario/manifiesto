@@ -20,7 +20,7 @@
 | # | Issue | Approach |
 |---|---|---|
 | F1 | EAS Updates sin code signing → OTA hijack | `npx expo-updates codesigning:generate` + integrar en `app.config.ts` + sign en CI |
-| F2 | PIN 4-digit + 100k PBKDF2 brute-force offline | Permitir PIN 6+ digits + bump a 600k iterations (OWASP 2023) + reject weak PINs (0000, 1234, etc) |
+| F2 ✅ | PIN 4-digit + 100k PBKDF2 brute-force offline | **DONE 2026-06-10**: `PIN_PATTERN = /^\d{4,8}$/`, `PIN_ITER_TARGET = 600_000`, weak-PIN blocklist + sequential/all-same predicates (`isWeakPin`, `WeakPinError`). Silent re-hash on verify when stored iter < target (legacy 100k installs migrate transparentemente). Pin-setup screen acepta 4/6 dígitos vía length chip y surface weak-PIN error inline. Tests: `tests/unit/pin-lock.test.ts` (+8 nuevos casos incl. legacy migration). Files: `mobile/lib/pin-lock.ts`, `mobile/screens/auth/pin-setup-screen.tsx`, `mobile/components/auth/pin-pad.tsx` (length prop). |
 | F3 | `apply_month_close_decision` y `apply_reserve_decision` no checkean owner | Migration: agregar `is_family_owner` check |
 | F4 | Push subscriptions upsert directo desde mobile | Edge function `register-push-subscription` que usa `auth.uid()` server-side |
 | F5+F6 | `control-advisor` y `send-family-push` cost amplifier (per-user only) | Agregar per-family rate limit bucket |
@@ -31,8 +31,8 @@
 | F11 | Workflows GitHub Actions sin `permissions:` block | Agregar `permissions: { contents: read }` + pin actions a SHAs |
 | F12 | `profiles_select_same_family_or_self` no filtra `blocked` | Update policy |
 | F13 | `create_family_invite` usa `blocked_at IS NULL` vs canonical helper | Update policy |
-| F14 | `usePasswordSignIn` no pasa `captchaToken` | Pasar captchaToken |
-| F15 | Biometric flag en AsyncStorage permite bypass de Keychain integrity | Make Keychain authoritative |
+| F14 ✅ | `usePasswordSignIn` no pasa `captchaToken` | **DONE 2026-06-10**: `usePasswordSignIn` ahora acepta `captchaToken?: string` y lo forwardea via `options.captchaToken`. `useLoginSubmit` toma un `resolveCaptchaToken` opcional, `useLoginController` lo plumbea desde la LoginScreen (que ya monta `useCaptcha()` + `CaptchaModal`). Mismo patrón que signup/forgot-password. Files: `mobile/features/auth/use-auth-actions.ts`, `use-login-submit.ts`, `use-login-controller.ts`, `mobile/screens/auth/login-screen.tsx`. |
+| F15 ✅ | Biometric flag en AsyncStorage permite bypass de Keychain integrity | **DONE 2026-06-10**: `hasSavedCredentials` ahora deriva ÚNICAMENTE de `savedMetadata` (Keychain). La AsyncStorage flag queda como display-hint, no como authority — un attacker que solo puede escribir AsyncStorage no puede simular credenciales guardadas. Tests `tests/unit/biometric-login-state.test.ts` actualizados (regresion test invertido). Files: `mobile/lib/biometric-auth.ts`. |
 
 ## Sprint G — Mediums
 

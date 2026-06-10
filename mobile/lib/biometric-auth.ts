@@ -127,16 +127,33 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
   const isEnrolled = settledValue(enrolled, false)
   const supportedTypes = settledValue(types, [] as LocalAuthentication.AuthenticationType[])
   const savedMetadata = settledValue(metadata, null)
-  const flagIsSet = settledValue(enabledFlag, false)
+  // Sprint F · F15: the AsyncStorage flag is read but DELIBERATELY NOT
+  // included in `hasSavedCredentials`. See block below for the authority
+  // model. We keep the probe so the variable stays in scope for future
+  // display-hint usage and so the probe surfaces in test fixtures.
+  void settledValue(enabledFlag, false)
 
-  // `hasSavedCredentials` is the OR of two signals so a transient
-  // SecureStore failure can't collapse it to false and bypass the
-  // app-lock gate. The keychain metadata is the source of truth when
-  // readable; the AsyncStorage flag is a non-encrypted mirror that
-  // survives a flaky keychain read. Both are set on save and cleared
-  // on logout in lock-step.
+  // Sprint F · F15 — Keychain is the sole source of truth.
+  //
+  // The previous implementation OR-ed `savedMetadata` with an
+  // AsyncStorage flag (`auth.biometric.enabled`) so a flaky keychain
+  // read couldn't collapse the gate to false. The downside: AsyncStorage
+  // is plaintext and writable without root on rooted/jailbroken devices.
+  // An attacker who cannot read the encrypted keychain CAN write `'1'`
+  // to that key — flipping `hasSavedCredentials` to true and tricking
+  // downstream code that uses this flag as an auth-gate hint. Today the
+  // effect is only confused UI; tomorrow a refactor could turn it into
+  // an actual bypass. We close the door now.
+  //
+  // The keychain metadata read is the only signal. If it transiently
+  // fails (rare), the user sees the password fallback instead of the
+  // Face ID CTA — that's an acceptable degradation: the worst case is
+  // an extra password entry, not a silent bypass. The AsyncStorage flag
+  // stays in the codebase as a fast-path display hint only (the lock
+  // screen reads it to decide whether to even render the Face ID
+  // button without waiting on the async keychain probe).
   return {
-    hasSavedCredentials: Boolean(savedMetadata) || flagIsSet,
+    hasSavedCredentials: Boolean(savedMetadata),
     isAvailable: isSecureStoreAvailable && hasHardware && isEnrolled,
     label: resolveBiometricLabel(supportedTypes),
   }
