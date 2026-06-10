@@ -268,13 +268,38 @@ async function enqueuePendingCleanup(userId: string): Promise<void> {
 }
 
 async function tryDeletePushTokens(userId: string): Promise<boolean> {
+  // Sprint J · J-Mobile1 — un DELETE con RLS-rejected NO devuelve error
+  // en supabase-js (silenciosamente borra 0 filas) así que `!error` solo
+  // no alcanza. Estrategia:
+  //   1. SELECT primero para saber si hay algo que borrar y confirmar
+  //      que la sesión actual puede ver las filas (si RLS bloquea, el
+  //      SELECT también devuelve 0 — esto distingue "nada que limpiar"
+  //      de "auth perdida").
+  //   2. Si hay filas visibles, DELETE + `.select()` y comparamos.
+  // El caller de tearDownPushNotifications debe correr ANTES de
+  // signOut() (logout.ts) para que el JWT siga válido.
   try {
-    const { error } = await supabase
+    const { data: existing, error: selectErr } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('provider', 'expo')
+    if (selectErr) return false
+    const existingCount = Array.isArray(existing) ? existing.length : 0
+    // Nothing to clean up → vacuous success, no retry needed.
+    if (existingCount === 0) return true
+
+    const { data: deleted, error: deleteErr } = await supabase
       .from('push_subscriptions')
       .delete()
       .eq('user_id', userId)
       .eq('provider', 'expo')
-    return !error
+      .select('id')
+    if (deleteErr) return false
+    const deletedCount = Array.isArray(deleted) ? deleted.length : 0
+    // Si vimos N filas pero borramos menos, algo falló (RLS, race con
+    // otro device). Encolamos retry.
+    return deletedCount >= existingCount
   } catch {
     return false
   }

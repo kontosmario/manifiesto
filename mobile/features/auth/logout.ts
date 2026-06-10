@@ -19,6 +19,22 @@ export async function logoutSession(input: {
   const sessionResponse = await supabase.auth.getSession()
   const userId = sessionResponse.data.session?.user.id ?? null
 
+  // Sprint J · J-Mobile1 — Borrar el token Expo Push del backend ANTES
+  // de signOut(). El DELETE necesita el JWT del usuario para pasar RLS
+  // (`auth.uid() = user_id`); si lo corremos después de signOut, la
+  // request va anónima → RLS rechaza → encolamos retry → al próximo
+  // login (otro user) el retry tampoco matchea RLS → no-op silencioso.
+  // best-effort: si falla, no bloqueamos el logout (queda encolado
+  // para retry en el próximo cold start vía flushPendingPushTokenCleanup).
+  if (userId) {
+    const { tearDownPushNotifications } = await import('@/lib/push-notifications')
+    try {
+      await tearDownPushNotifications(userId)
+    } catch {
+      // best-effort
+    }
+  }
+
   const { error } = await supabase.auth.signOut()
 
   if (error) {
@@ -61,17 +77,6 @@ export async function logoutSession(input: {
   // see it again on the next login.
   if (userId) {
     await clearBiometricSetupShown(userId)
-  }
-  // Borrar el token Expo Push del backend para que un device
-  // compartido no siga recibiendo push del usuario que se desloguea.
-  // best-effort: si falla, no bloqueamos el logout.
-  if (userId) {
-    const { tearDownPushNotifications } = await import('@/lib/push-notifications')
-    try {
-      await tearDownPushNotifications(userId)
-    } catch {
-      // best-effort
-    }
   }
   // Re-arm the app-lock gate so the next session (if a different
   // user signs in on the same device, or the same user signs back
