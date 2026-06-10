@@ -24,10 +24,18 @@
 //
 // Plus the in-app lockout (5 attempts → 30s/1m/2m/4m/8m exponential
 // backoff) caps the ONLINE attack budget. The lockout state lives
-// in SecureStore, so a user-controlled wipe (uninstall+reinstall,
-// SecureStore.deleteItemAsync) resets the counter — that's the
-// "casual lock" boundary, not full anti-forensics defense. A
-// server-mirrored lockout is tracked as future work.
+// in SecureStore as the FAST PATH.
+//
+// Sprint G · G-Auth3: server-side mirror. The same lockout schedule
+// is also tracked server-side via `track_pin_failure` / `get_pin_lockout`
+// / `clear_pin_failures`. The client takes max(local, server) so a
+// rooted device wiping SecureStore values can't reset the server's
+// view of the user's failure count. The mirror is best-effort: it only
+// runs when a Supabase session is available, so cold-start app-lock
+// (when no session exists yet) falls back to the SecureStore-only
+// floor. Cannot defend against a fully offline attacker (they patch
+// the client to skip the RPC), but it deters the casual jailbreak +
+// SecureStore-rewrite scenario.
 //
 // PBKDF2 is implemented manually on top of `js-sha256`'s HMAC
 // (RN/Hermes-compatible, zero transitive deps). The `pbkdf2` npm
@@ -43,6 +51,7 @@ import {
   isPinEnabledFlagSet,
   setPinEnabledFlag,
 } from '@/features/auth/pin-enabled-flag'
+import { supabase } from '@/lib/supabase'
 
 const PIN_HASH_KEY = 'app-lock.pin.hash'
 const PIN_SALT_KEY = 'app-lock.pin.salt'
@@ -232,6 +241,64 @@ async function clearLockout(): Promise<void> {
   await SecureStore.deleteItemAsync(PIN_LOCKOUT_KEY)
 }
 
+// Sprint G · G-Auth3: server-side mirror. All three helpers are
+// best-effort — they swallow network/auth errors and return a neutral
+// value so the client-side floor still works on cold-start (no
+// session) or transient network failures.
+//
+// Important: we only call these when a Supabase session is present.
+// The app-lock screen runs BEFORE the session is restored on cold
+// start, so the first verifyPin of the day will skip the RPC entirely
+// and rely on the SecureStore floor. Subsequent attempts (after the
+// user successfully unlocks and the session is restored) will mirror
+// up.
+
+async function hasActiveSession(): Promise<boolean> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    return Boolean(data.session)
+  } catch {
+    return false
+  }
+}
+
+async function trackServerPinFailure(): Promise<number> {
+  try {
+    if (!(await hasActiveSession())) return 0
+    const { data, error } = await supabase.rpc('track_pin_failure')
+    if (error || !data) return 0
+    const row = Array.isArray(data) ? data[0] : data
+    const lockedUntil = Number(row?.locked_until_ms ?? 0)
+    if (!Number.isFinite(lockedUntil) || lockedUntil <= 0) return 0
+    return Math.max(0, lockedUntil - Date.now())
+  } catch {
+    return 0
+  }
+}
+
+async function clearServerPinFailures(): Promise<void> {
+  try {
+    if (!(await hasActiveSession())) return
+    await supabase.rpc('clear_pin_failures')
+  } catch {
+    // swallow — clearing is opportunistic
+  }
+}
+
+async function readServerLockout(): Promise<number> {
+  try {
+    if (!(await hasActiveSession())) return 0
+    const { data, error } = await supabase.rpc('get_pin_lockout')
+    if (error || !data) return 0
+    const row = Array.isArray(data) ? data[0] : data
+    const lockedUntil = Number(row?.locked_until_ms ?? 0)
+    if (!Number.isFinite(lockedUntil) || lockedUntil <= 0) return 0
+    return Math.max(0, lockedUntil - Date.now())
+  } catch {
+    return 0
+  }
+}
+
 function nextLockoutDuration(failedAttempts: number): number {
   // failed=5 → 30s, failed=6 → 60s, failed=7 → 120s, ... cap 8min
   const overage = failedAttempts - LOCKOUT_THRESHOLD
@@ -270,7 +337,14 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
   const lockout = await readLockout()
   const now = Date.now()
   if (lockout.lockedUntilMs > now) {
-    return { ok: false, lockedForMs: lockout.lockedUntilMs - now }
+    // Sprint G · G-Auth3: take the stricter of local + server lockouts.
+    // Even when SecureStore says "locked", we still consult the server
+    // so a wiped local store can't free the user prematurely. Server
+    // returns 0 silently if no session is available, so this is a
+    // no-op cost on cold-start app-lock.
+    const serverLocked = await readServerLockout()
+    const lockedForMs = Math.max(lockout.lockedUntilMs - now, serverLocked)
+    return { ok: false, lockedForMs }
   }
   try {
     const salt = await SecureStore.getItemAsync(PIN_SALT_KEY, storeOptions)
@@ -287,6 +361,8 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
     const computed = await hashPinAsync(salt, pin, effectiveIter)
     if (computed === hash) {
       await clearLockout()
+      // Sprint G · G-Auth3: clear the server counter too. Best-effort.
+      void clearServerPinFailures()
       // Sprint F · F2: silent upgrade. If the hash was generated at
       // a weaker iteration count than the current target, re-hash
       // with the new target (and a fresh salt for good measure) and
@@ -312,7 +388,13 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
       failedAttempts: nextFailed,
       lockedUntilMs: dur > 0 ? now + dur : 0,
     })
-    return { ok: false, lockedForMs: dur }
+    // Sprint G · G-Auth3: also bump server counter and honour the
+    // stricter of the two lockouts. The server runs the same schedule
+    // (5 → 30s/1m/2m/4m/8m), so under happy-path conditions both sides
+    // agree. The divergence happens after a SecureStore wipe: client
+    // says "no lockout", server still has the accumulated failures.
+    const serverLockMs = await trackServerPinFailure()
+    return { ok: false, lockedForMs: Math.max(dur, serverLockMs) }
   } catch {
     return { ok: false, lockedForMs: 0 }
   }
@@ -332,14 +414,20 @@ export async function clearPin(): Promise<void> {
 }
 
 export async function getPinLockState(): Promise<{ isSet: boolean; lockedForMs: number }> {
-  const [hashResult, flagResult, lockout] = await Promise.all([
+  const [hashResult, flagResult, lockout, serverLockedForMs] = await Promise.all([
     SecureStore.getItemAsync(PIN_HASH_KEY, storeOptions),
     isPinEnabledFlagSet(),
     readLockout(),
+    // Sprint G · G-Auth3: include server lockout in the snapshot so
+    // sheets that gate on `lockedForMs > 0` honour it without needing
+    // to call verifyPin first. Best-effort: returns 0 silently when no
+    // session is available.
+    readServerLockout(),
   ])
   const hasHash = Boolean(hashResult)
   const flagSet = flagResult === true
   const now = Date.now()
-  const lockedForMs = Math.max(0, lockout.lockedUntilMs - now)
+  const localLockedForMs = Math.max(0, lockout.lockedUntilMs - now)
+  const lockedForMs = Math.max(localLockedForMs, serverLockedForMs)
   return { isSet: hasHash || flagSet, lockedForMs }
 }

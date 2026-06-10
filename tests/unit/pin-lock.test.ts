@@ -15,6 +15,19 @@ vi.mock('@/features/auth/pin-enabled-flag', () => ({
   isPinEnabledFlagSet: vi.fn(async () => enabledStore.value),
 }))
 
+// Sprint G · G-Auth3: pin-lock now consults Supabase for the server
+// failure mirror. Stub the client to return "no session" so the server
+// path becomes a no-op and existing tests keep covering the SecureStore
+// floor unchanged.
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null } })),
+    },
+    rpc: vi.fn(async () => ({ data: null, error: null })),
+  },
+}))
+
 import {
   clearPin,
   getPinLockState,

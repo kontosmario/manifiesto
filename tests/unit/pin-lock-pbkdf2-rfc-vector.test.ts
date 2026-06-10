@@ -1,4 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Sprint G · G-Auth3: pin-lock imports the Supabase client (for the
+// server-side failure mirror). Stub it before the dynamic import so we
+// don't try to load the real native bundle under vitest's Node env.
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null } })),
+    },
+    rpc: vi.fn(async () => ({ data: null, error: null })),
+  },
+}))
+
 import { _pbkdf2HmacSha256ForTesting } from '@/lib/pin-lock'
 
 // RFC 6070 (PBKDF2-HMAC-SHA1) extended to SHA-256 by RFC 7914

@@ -21,6 +21,18 @@ vi.mock('@/features/auth/pin-enabled-flag', () => ({
   isPinEnabledFlagSet: vi.fn(async () => enabledStore.value),
 }))
 
+// Sprint G · G-Auth3: pin-lock now imports the Supabase client to mirror
+// failures server-side. Stub the client so tests don't try to load the
+// native @supabase/supabase-js bundle (which transitively pulls RN deps).
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null } })),
+    },
+    rpc: vi.fn(async () => ({ data: null, error: null })),
+  },
+}))
+
 beforeEach(() => {
   secure.clear()
   enabledStore.value = false
