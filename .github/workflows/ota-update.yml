@@ -171,6 +171,33 @@ jobs:
             exit 1
           }
 
+      # Sprint O · Audit #8 O-4 (2026-06-14): cert↔private-key fingerprint
+      # check. If the owner rotates `certs/certificate.pem` in the repo
+      # but forgets to rotate `EXPO_UPDATE_PRIVATE_KEY` in GitHub Secrets
+      # (or vice-versa), `eas update` happily signs the bundle with the
+      # wrong key — every installed client SILENTLY rejects the OTA. OTA
+      # goes dead with zero warning. This step makes the divergence loud
+      # at CI time: extract the public key from the cert, derive the
+      # public key from the private key, compare. They must match.
+      - name: Verify cert matches private key
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          if [ ! -f certs/certificate.pem ]; then
+            echo "::error::certs/certificate.pem is missing — cannot verify cert/key match."
+            exit 1
+          fi
+          CERT_PUB=$(openssl x509 -in certs/certificate.pem -pubkey -noout 2>/dev/null)
+          KEY_PUB=$(openssl rsa -in "$RUNNER_TEMP/private-key.pem" -pubout 2>/dev/null)
+          if [ -z "$CERT_PUB" ] || [ -z "$KEY_PUB" ]; then
+            echo "::error::Failed to extract public key from cert or private key."
+            exit 1
+          fi
+          if [ "$CERT_PUB" != "$KEY_PUB" ]; then
+            echo "::error::EXPO_UPDATE_PRIVATE_KEY does not match certs/certificate.pem. Installed clients will reject the OTA. Rotate one to match the other."
+            exit 1
+          fi
+          echo "Cert and private key match — OTA signature will validate."
+
       - name: EAS Update
         if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
         env:
