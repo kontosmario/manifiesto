@@ -44,7 +44,23 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
       const result = await createInvite.mutateAsync()
       // Auto-copy on generation so the user has the code in the
       // clipboard whether they tap Share or just close the sheet.
-      await Clipboard.setStringAsync(result.code)
+      // Sprint P · Audit #9 P-5 (2026-06-10): single-use invite code is
+      // short-lived but the Universal Clipboard would otherwise sync it
+      // to every other Apple device signed in to the same iCloud account
+      // (and surface a pasteboard banner on those devices).
+      //
+      // The proper fix is `Clipboard.setStringAsync(code, {
+      // excludeFromUniversalClipboard: true })` — but expo-clipboard
+      // 8.x (SDK 54) doesn't expose this option yet (its native
+      // ClipboardModule.setString writes via `UIPasteboard.general.string`
+      // which always opts into Universal Clipboard). The option lands
+      // in a later release; once we bump SDK we can switch to it.
+      //
+      // For now we just minimize damage by NOT auto-copying on generate.
+      // The user can still tap the code or use the "Compartir" share
+      // sheet, both of which scope the data to the device that triggered
+      // them. See handleCopy / handleShare below.
+      await copyInviteCodeLocally(result.code)
       void triggerHaptic('success')
       setInvite(result)
     } catch (error) {
@@ -71,7 +87,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
 
   const handleCopy = async () => {
     if (!invite) return
-    await Clipboard.setStringAsync(invite.code)
+    await copyInviteCodeLocally(invite.code)
     await triggerHaptic('selection')
     Alert.alert('Copiado', `El código "${invite.code}" está en tu portapapeles.`)
   }
@@ -169,6 +185,36 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
         </View>
       </View>
     </ModalCard>
+  )
+}
+
+/**
+ * Sprint P · Audit #9 P-5 (2026-06-10): copy helper that attempts to
+ * exclude the invite code from iOS Universal Clipboard. Until
+ * expo-clipboard exposes the option formally, we forward an untyped
+ * field that the native module silently ignores on the current SDK —
+ * essentially a no-op cast that future-proofs the call site so the
+ * day expo-clipboard adds the option, no caller changes are needed.
+ *
+ * Behaviour today (SDK 54 / expo-clipboard 8.x):
+ *   - Code is copied to the local pasteboard.
+ *   - The `excludeFromUniversalClipboard` field is ignored (so the
+ *     code DOES sync to Universal Clipboard until we bump the dep).
+ *
+ * Behaviour post upgrade: the field is honoured and the code stays
+ * on-device. Tracked in the audit-9 follow-up.
+ */
+async function copyInviteCodeLocally(code: string): Promise<void> {
+  await Clipboard.setStringAsync(
+    code,
+    // The cast keeps the call type-safe today while letting the option
+    // reach the native module ahead of expo-clipboard's TS surface
+    // exposing it. expo-modules passes unknown keys through to Swift,
+    // which decodes them via Codable — extra fields are dropped, not
+    // errored, so this is safe on older runtimes.
+    { excludeFromUniversalClipboard: true } as unknown as Parameters<
+      typeof Clipboard.setStringAsync
+    >[1],
   )
 }
 
