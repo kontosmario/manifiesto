@@ -16,6 +16,10 @@ import { getPinLockState } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
+import {
+  checkPasswordPolicy,
+  PASSWORD_POLICY,
+} from '@/features/auth/password-policy'
 
 const RESET_TIMEOUT_MS = 30_000
 
@@ -110,15 +114,22 @@ export function ResetPasswordScreen() {
     }
   }, [code])
 
+  // Sprint H · H1: enforce full policy on password reset (new password
+  // is treated as if the user were signing up — we don't want a recovery
+  // flow to weaken the policy that signup just hardened).
   const passwordValid = useMemo(
-    () => password.length >= 8 && password === confirm,
+    () =>
+      password.length >= PASSWORD_POLICY.MIN_LENGTH &&
+      password === confirm &&
+      checkPasswordPolicy(password).ok,
     [password, confirm],
   )
 
   const handleSubmit = useCallback(async () => {
     if (!passwordValid || updatePassword.isPending) return
-    if (password.length < 8) {
-      setFormError('Mínimo 8 caracteres.')
+    const policy = checkPasswordPolicy(password)
+    if (!policy.ok) {
+      setFormError(policy.error ?? 'La contraseña no cumple los requisitos.')
       await triggerHaptic('warning')
       return
     }
@@ -235,7 +246,7 @@ export function ResetPasswordScreen() {
   return (
     <Screen
       title="Nueva contraseña"
-      subtitle="Elegí una contraseña de al menos 8 caracteres."
+      subtitle={`Elegí una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
     >
       <View style={styles.stack}>
         <TextField

@@ -37,6 +37,10 @@ import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
 import { CaptchaModal } from '@/components/auth/captcha-modal'
 import { resolveAuthSubmitResolution } from '@/features/auth/auth-submit-flow'
 import { normalizeEmail } from '@/features/auth/auth-flow'
+import {
+  checkPasswordPolicy,
+  PASSWORD_POLICY,
+} from '@/features/auth/password-policy'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import {
   hideAuthTransitionSplash,
@@ -137,7 +141,9 @@ export function SignupScreen() {
 
   const canSubmit = useMemo(
     () =>
-      name.trim().length > 1 && email.includes('@') && password.length >= 8,
+      name.trim().length > 1 &&
+      email.includes('@') &&
+      password.length >= PASSWORD_POLICY.MIN_LENGTH,
     [email, name, password.length],
   )
 
@@ -168,8 +174,9 @@ export function SignupScreen() {
       emailRef.current?.focus?.()
       return
     }
-    if (trimmedPassword.length < 8) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres.')
+    const policy = checkPasswordPolicy(trimmedPassword)
+    if (!policy.ok) {
+      setErrorMessage(policy.error ?? 'La contraseña no cumple los requisitos.')
       await triggerHaptic('warning')
       passwordRef.current?.focus?.()
       return
@@ -319,7 +326,13 @@ export function SignupScreen() {
   // Strength meter for the password input — gives the user a quick
   // visual indicator without forcing extra steps.
   const strength =
-    password.length === 0 ? 0 : password.length < 8 ? 1 : password.length < 12 ? 2 : 3
+    password.length === 0
+      ? 0
+      : password.length < PASSWORD_POLICY.MIN_LENGTH
+        ? 1
+        : password.length < 14
+          ? 2
+          : 3
   const strengthLabel = ['', 'Débil', 'Buena', 'Excelente'][strength]
   const strengthColor =
     strength === 1

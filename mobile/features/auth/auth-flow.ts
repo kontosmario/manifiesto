@@ -1,4 +1,5 @@
 import * as Linking from 'expo-linking'
+import { checkPasswordPolicy } from '@/features/auth/password-policy'
 
 export type AuthMode = 'sign-in' | 'sign-up'
 
@@ -69,8 +70,26 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
     return { error: 'Ingresa un email válido.' }
   }
 
-  if (trimmedPassword.length < 8) {
-    return { error: 'La contraseña debe tener al menos 8 caracteres.' }
+  // Sprint H · H1: differentiate sign-in vs sign-up password validation.
+  //   · sign-up: enforce the full local policy (min 10, max 72,
+  //     mixed-class, blocklist). Stops trivial passwords at the door.
+  //   · sign-in: only enforce non-empty + max 72. We cannot tighten
+  //     here without locking out existing users whose passwords pre-
+  //     date the policy bump. The server still gets the candidate and
+  //     either accepts the password or returns a generic auth error
+  //     — no enumeration risk.
+  if (draft.mode === 'sign-up') {
+    const policy = checkPasswordPolicy(trimmedPassword)
+    if (!policy.ok) {
+      return { error: policy.error ?? 'La contraseña no cumple los requisitos.' }
+    }
+  } else {
+    if (trimmedPassword.length === 0) {
+      return { error: 'Ingresa tu contraseña.' }
+    }
+    if (trimmedPassword.length > 72) {
+      return { error: 'La contraseña no puede tener más de 72 caracteres.' }
+    }
   }
 
   if (draft.mode === 'sign-up' && trimmedDisplayName.length < 2) {
