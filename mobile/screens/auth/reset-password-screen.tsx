@@ -6,10 +6,13 @@ import { TextField } from '@/components/ui/text-field'
 import { Screen } from '@/components/ui/screen'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
+import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import {
   useCompleteAuthCallback,
   useUpdatePassword,
 } from '@/features/auth/use-auth-actions'
+import { getBiometricLoginState } from '@/lib/biometric-auth'
+import { getPinLockState } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -42,15 +45,26 @@ export function ResetPasswordScreen() {
   })
 
   const code = typeof params.code === 'string' ? params.code : null
-  const [stage, setStage] = useState<'exchanging' | 'form' | 'success' | 'error' | 'timeout'>(
-    code ? 'exchanging' : 'error',
-  )
+  // Sprint G · G-Auth1: si el user tiene PIN o biometric configurado en
+  // este device, gateamos el form detrás de un re-auth ANTES de permitir
+  // updateUser({password}). El email link es ONE factor; si su inbox
+  // está comprometido (o el laptop quedó desbloqueado un rato), el
+  // atacante no debería poder lockear al user sin además conocer PIN o
+  // pasar Face ID en este device. Si el user no tiene ninguno de los
+  // dos (`hasLocalAuth=false`), seguimos el flujo previo — el link es
+  // el único factor posible.
+  const [stage, setStage] = useState<
+    'exchanging' | 'reauth' | 'form' | 'success' | 'error' | 'timeout'
+  >(code ? 'exchanging' : 'error')
   const [exchangeError, setExchangeError] = useState<string | null>(
     code ? null : 'El link es inválido o ya expiró. Pedinos uno nuevo.',
   )
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  // Bound to RequireReauthSheet visibility — only shown when we
+  // detect local auth and the user hasn't confirmed yet.
+  const [reauthVisible, setReauthVisible] = useState(false)
 
   useEffect(() => {
     if (!code) return
@@ -65,7 +79,22 @@ export function ResetPasswordScreen() {
         await mutateRef.current.mutateAsync({ code })
         if (cancelledRef.current) return
         clearTimeout(timeoutId)
-        setStage('form')
+        // Sprint G · G-Auth1: chequeo si el device tiene local auth
+        // (PIN o biometric). Si tiene, paso a 'reauth' y abro el sheet.
+        // Si no, mantengo el comportamiento previo y voy directo al
+        // form — el email link sigue siendo el único factor disponible.
+        const [pinState, bioState] = await Promise.all([
+          getPinLockState(),
+          getBiometricLoginState(),
+        ])
+        if (cancelledRef.current) return
+        const hasLocalAuth = pinState.isSet || bioState.isAvailable
+        if (hasLocalAuth) {
+          setStage('reauth')
+          setReauthVisible(true)
+        } else {
+          setStage('form')
+        }
       } catch (error) {
         if (cancelledRef.current) return
         clearTimeout(timeoutId)
@@ -109,8 +138,43 @@ export function ResetPasswordScreen() {
     }
   }, [confirm, password, passwordValid, updatePassword])
 
+  const handleReauthConfirmed = useCallback(() => {
+    setReauthVisible(false)
+    setStage('form')
+  }, [])
+
+  const handleReauthCancel = useCallback(() => {
+    setReauthVisible(false)
+    setStage('error')
+    setExchangeError(
+      'Cancelaste la verificación. Por seguridad, no podemos actualizar tu contraseña sin confirmar tu identidad en este dispositivo.',
+    )
+  }, [])
+
   if (stage === 'exchanging') {
     return <BlockingScreen message="Validando tu link..." />
+  }
+
+  if (stage === 'reauth') {
+    return (
+      <Screen
+        title="Confirmá tu identidad"
+        subtitle="Antes de cambiar la contraseña pedimos tu PIN o biometría en este dispositivo."
+      >
+        <View style={styles.stack}>
+          <Text style={[styles.body, { color: theme.colors.textSoft }]}>
+            Esto evita que alguien con acceso temporal a tu email pueda
+            bloquearte la cuenta.
+          </Text>
+        </View>
+        <RequireReauthSheet
+          visible={reauthVisible}
+          actionLabel="cambiar tu contraseña"
+          onConfirmed={handleReauthConfirmed}
+          onCancel={handleReauthCancel}
+        />
+      </Screen>
+    )
   }
 
   if (stage === 'timeout') {
