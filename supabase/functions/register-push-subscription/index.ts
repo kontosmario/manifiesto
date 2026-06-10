@@ -335,11 +335,16 @@ export async function handler(request: Request): Promise<Response> {
   if (!familyBucketSeed) {
     // Mirrors Sprint I · I-5: null owner used to silently SKIP the
     // bucket. Reject with 503 instead (consistent with send-family-push).
+    // Sprint K · Audit #4 K-2 (2026-06-10): generic client-facing
+    // message so the 503 doesn't disclose "ownership in flux" — that
+    // string was a recon signal for an attacker probing family state
+    // transitions. The detail stays in console.error for ops triage,
+    // mirroring the send-family-push fix from Sprint J-Med4.
     console.error('[register-push-subscription] no owner for family — refusing', {
       familyId,
     })
     return jsonResponse(
-      { error: 'Family ownership in flux. Try again shortly.' },
+      { error: 'Temporarily unavailable. Try again shortly.' },
       503,
       cors,
     )
