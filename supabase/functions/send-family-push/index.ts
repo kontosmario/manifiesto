@@ -526,8 +526,10 @@ export async function handler(request: Request): Promise<Response> {
     console.error('[send-family-push] no owner for family — refusing call', {
       familyId,
     })
+    // Sprint J-Med · J-Med4 (2026-06-10): generic public message,
+    // detailed reason already in console.error above for ops.
     return jsonResponse(
-      { error: 'Family ownership in flux. Try again shortly.' },
+      { error: 'Temporarily unavailable. Try again shortly.' },
       503,
       cors,
     )
