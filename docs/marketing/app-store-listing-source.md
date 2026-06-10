@@ -168,7 +168,7 @@ El draft inicial del doc giraba alrededor de **"parejas que no se pelean por pla
 
 1. **Ahorrar sin saber de finanzas** — el dolor más universal, el hook principal
 2. **Anti-shame**: "una app que te acompaña, no que te reta" — diferencia clave vs YNAB / Mint / Wallet, que se posicionan en "disciplina". Manifiesto se posiciona en "compañía calma"
-3. **Solo o en familia, mismo producto** — no te obliga a elegir un modo
+3. **Por tu cuenta o en familia, mismo producto** — no te obliga a elegir un modo
 4. **Hecho en Argentina, para Argentina** — entiende devaluaciones, dolar blue, ciclos de cobro AR (relevante para el AR storefront principalmente)
 5. **Diseño calmo** — la app **no grita** ni te bombardea con notificaciones
 6. **OCR de bancos** — importa de Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá, Naranja X
@@ -271,7 +271,7 @@ Opciones evaluadas:
 ```
 Manifiesto es la app para entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas. Funciona igual de bien por tu cuenta, en pareja o en familia.
 
-Sin culpa, sin gritos, sin promesas mágicas: una app que te acompaña, no que te reta.
+Sin culpa, sin sermones: una app que te acompaña, no que te juzga.
 
 VER TUS GASTOS, SIN VUELTAS
 
@@ -345,7 +345,7 @@ Lo que podés hacer desde el día 1:
 - Ver tus gastos del mes de un vistazo, sin planillas
 - Armar metas de ahorro con plazo y progreso visual
 - Cargar gastos fijos y recibir aviso antes del vencimiento
-- Importar resúmenes de 8 bancos argentinos por OCR
+- Importar resúmenes de tu banco por OCR (8 bancos soportados)
 - Usarla por tu cuenta, o compartir todo con tu pareja, familia o con quien convivas
 - Trackear ahorro en pesos y dólares al mismo tiempo
 - Ver el Wrapped al cierre de cada mes
@@ -436,6 +436,33 @@ Esto requiere setup adicional en App Store Connect (cargar copy por país) — b
 
 ---
 
+## 7.quinquies · Polish final + ship-it stance (2026-06-10)
+
+Cuarta y **última** pasada del doc antes de submit. 6 catches de consistencia + 1 data update:
+
+| # | Catch | Fix |
+|---|---|---|
+| 1 | "retar" en AR = regañar; en MX/LATAM = desafiar — cambia el sentido | Hook: "no que te reta" → "no que te juzga" + "sin gritos" → "sin sermones" (universal LATAM) |
+| 2 | Specs de screenshots desactualizados — Apple unificó en 2024 | §11 actualizado: solo 1 set en 6.9" (1320×2868), Apple auto-escala a tamaños menores. Ya NO requiere subir 6.7" + 5.5" como antes |
+| 3 | "Solo o con tu familia" en caption screenshot 5 — regresión del pass inclusivo | "Por tu cuenta o en familia" |
+| 4 | "Solo o en familia, mismo producto" en §4 ángulo 3 — misma regresión | "Por tu cuenta o en familia, mismo producto" |
+| 5 | "8 bancos argentinos" en release notes (§7.6) — regresión del pivote storefront | "Importar resúmenes de tu banco por OCR (8 bancos soportados)" |
+| 6 | Checklist §8 no incluía screenshots | Sumadas 2 líneas para screenshots + App Preview video |
+| 7 | "Sin promesas mágicas" aparecía 3 veces (hook + AHORRAR + screenshot 3) | Removida del hook (reemplazada por la línea anti-shame). Quedan 2 ocurrencias = aceptable |
+
+### Ship-it stance
+
+Después de 4 iteraciones (inicial → pivote → inclusivo → ampliar sin diluir → polish), los catches encontrados son **de consistencia y data updates, NO de posicionamiento**. Señal clásica de rendimientos decrecientes en doc work.
+
+**El próximo aprendizaje real no va a salir de otra lectura del doc** sino de:
+- Conversion rate de la página del App Store (Apple Analytics)
+- Storefront breakdown post-launch
+- Qué keywords traen tráfico (Search appearances)
+
+**Decisión**: este es el último pass del doc antes de submit. Si después de tener data Apple Analytics encontramos que algo no convierte, iteramos basados en evidencia real, no en una quinta lectura del mismo texto.
+
+---
+
 ## 8 · Checklist al cargar en App Store Connect
 
 Cuando vayas a App Store Connect → app → Distribución → Versión 1.0:
@@ -446,6 +473,8 @@ Cuando vayas a App Store Connect → app → Distribución → Versión 1.0:
 - [ ] Palabras clave = `ahorro,gastos,finanzas,familia,presupuesto,metas,fijos,pareja,dinero,simple,hogar,facil,USD` (91 chars)
 - [ ] Texto promocional = draft 7.5 (143 chars)
 - [ ] Qué hay nuevo = draft 7.6
+- [ ] **Screenshots**: 3-5 en 1320×2868 (6.9"), orden según §11
+- [ ] **App Preview video** (opcional): 15-30s según §11
 - [ ] **Idioma principal**: Español (México) — el campo de localización
 - [ ] Verificá que **no hay typos** antes de submit (Apple no rechaza por eso pero es feo)
 - [ ] Verificá que **no mencionás competidores por nombre** (Splitwise, YNAB, Mint — Apple rechaza)
@@ -489,12 +518,14 @@ Una vez que la app está en App Store:
 
 > **El 70% de la decisión de instalar pasa por screenshots y App Preview video, no por el copy.** Esta sección no entra en App Store Connect como texto (los screenshots son imágenes), pero las decisiones de qué mostrar y en qué orden son tan importantes como el listing copy. Documentar acá para alinear con el resto del posicionamiento.
 
-### Requisitos técnicos (Apple)
+### Requisitos técnicos (Apple, post-cambio 2024)
 
-| Asset | Cantidad | Tamaños obligatorios | Tamaños opcionales |
+| Asset | Cantidad | Tamaño primario obligatorio | Notas |
 |---|---|---|---|
-| **Screenshots iPhone** | 1-10 (recomendado 3-5) | 6.7" (iPhone 15 Pro Max: 1290×2796) + 5.5" (iPhone 8 Plus: 1242×2208) | 6.5", 5.8", 4.7" |
-| **App Preview video** | 0-3 por tamaño | Mismo tamaño que screenshots | — |
+| **Screenshots iPhone** | 1-10 (recomendado 3-5) | **6.9" — 1320×2868 px** (iPhone 16 Pro Max portrait) | Apple **auto-escala a tamaños menores** (6.5", 5.5", etc.) — ya NO requiere subir múltiples sets como antes |
+| **App Preview video** | 0-3 | Mismo tamaño que screenshots | Opcional |
+
+> ⚠️ Cambio importante: hasta principios de 2024, Apple obligaba a subir screenshots en múltiples tamaños (6.7" + 5.5" mínimo). Desde el cambio, **basta con el tamaño más grande** y Apple se encarga del resto. Dimensiones exactas: un solo pixel de diferencia rechaza el upload.
 
 > ⚠️ Apple muestra solo los **primeros 3 screenshots** en la página de búsqueda. Los siguientes 7 los ve quien hace scroll en la página del producto. **Los 3 primeros se llevan el peso de la decisión de install**.
 
@@ -520,7 +551,7 @@ Los 3 primeros tienen que vender la propuesta de valor del hook (entender gastos
   - Screenshot 2: "Tu Wrapped al cierre del mes"
   - Screenshot 3: "Una meta por vez. Sin promesas mágicas."
   - Screenshot 4: "Cargás un gasto en 4 taps"
-  - Screenshot 5: "Solo o con tu familia"
+  - Screenshot 5: "Por tu cuenta o en familia"
 - **Sin device frames decorativos** (Apple muestra el frame del iPhone automáticamente cuando el screenshot es nativo).
 
 ### App Preview video (opcional pero recomendado)
