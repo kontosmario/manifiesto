@@ -98,7 +98,17 @@ export function showAuthTransitionSplash() {
  */
 export function markAuthTransitionLoaded() {
   if (state.phase !== 'showing') return
-  const elapsed = Date.now() - showStartedAt
+  // Clamp to non-negative: under backward clock skew (NTP correction,
+  // user toggled date, daylight-savings glitch) `Date.now()` can move
+  // backwards between `showAuthTransitionSplash` and here. Without the
+  // clamp, `elapsed` goes negative, the `>= MIN_VISIBLE_MS` check
+  // fails, AND the `setTimeout(MIN_VISIBLE_MS - elapsed)` below
+  // schedules a fire wildly in the future (e.g. 30 minutes if the
+  // clock jumped back). The splash would then pin until MAX_VISIBLE_MS
+  // promotes it to error(timeout) — terrible UX for a fast login.
+  // Treat backward skew as "elapsed = 0" and re-arm the normal
+  // pending-hide path. Audit #7 7-T8 (Sprint N).
+  const elapsed = Math.max(0, Date.now() - showStartedAt)
   if (elapsed >= MIN_VISIBLE_MS) {
     clearAllTimers()
     setStateAndNotify({ phase: 'hidden' })
