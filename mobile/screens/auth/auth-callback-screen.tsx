@@ -6,6 +6,7 @@ import { BrandedPanel } from '@/components/ui/branded-panel'
 import { Screen } from '@/components/ui/screen'
 import { useCompleteAuthCallback } from '@/features/auth/use-auth-actions'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
+import { supabase } from '@/lib/supabase'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -48,10 +49,29 @@ export function AuthCallbackScreen() {
     // Si Supabase no respondió en 30s probablemente está caído o la red
     // está rota. En vez de dejar al usuario colgado en el blocking
     // splash, le damos retry + fallback a login.
+    //
+    // Sprint G · G-Auth4: `cancelledRef = true` solo evita que ESTE
+    // effect aplique el resultado del exchange tardío en la UI, pero
+    // Supabase ya guardó el JWT en SecureStore vía persistSession.
+    // Si el exchange completa después del timeout, el user queda
+    // logueado de manera fantasma con la sesión del code consumido.
+    // Cuando el user vuelve al login y entra con OTRO email, durante
+    // unos ms se ven 2 sesiones racing por onAuthStateChange. Llamamos
+    // `signOut()` defensivo en el timeout para garantizar que NO queda
+    // sesión stale del exchange tardío. Si el exchange ya estableció
+    // sesión y signOut se ejecuta primero, el usuario simplemente ve
+    // el login; si falla la red, signOut igual limpia el local storage.
     const timeoutId = setTimeout(() => {
       if (cancelledRef.current) return
+      cancelledRef.current = true
       setTimedOut(true)
       setProcessing(false)
+      void supabase.auth.signOut().catch(() => {
+        // Best-effort defensive cleanup. The user will hit the login
+        // screen via the timeout UI anyway; if signOut throws (no
+        // session yet because exchange hasn't completed) it's a no-op
+        // for our purposes.
+      })
     }, AUTH_CALLBACK_TIMEOUT_MS)
 
     const run = async () => {

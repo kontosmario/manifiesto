@@ -130,7 +130,7 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
       .join(' ')
       .trim()
 
-    const { error } = await supabase.auth.signInWithIdToken({
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
       token: credential.identityToken,
       nonce: rawNonce,
@@ -149,8 +149,14 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
     // different the silent overwrite would clobber whatever the user
     // had customized inside the app. So we read the current metadata
     // and only patch when display_name is empty/missing.
+    //
+    // Sprint G · G-Auth5: use the `user` already returned by
+    // `signInWithIdToken` instead of a redundant `supabase.auth.getUser()`
+    // round-trip. Flaky network was causing `user` to come back null
+    // and the display_name patch to be silently skipped on first
+    // sign-in.
     if (fullName) {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = data?.user
       const existing = user?.user_metadata?.display_name
       const hasExistingName =
         typeof existing === 'string' && existing.trim().length > 0
