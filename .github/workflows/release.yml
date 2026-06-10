@@ -64,6 +64,15 @@ on:
 permissions:
   contents: read
 
+# Sprint J · J-Infra1 — un solo build/submit por tag (o por dispatch).
+# Si el owner empuja v1.0.1 y luego corre un workflow_dispatch antes
+# que el primero termine, queremos que esperen en cola en vez de
+# pelearse por el slot de TestFlight. `github.ref` distingue tags
+# diferentes; runs para la misma tag se serializan.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-submit:
     runs-on: ubuntu-latest

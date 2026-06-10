@@ -58,6 +58,16 @@ on:
 permissions:
   contents: read
 
+# Sprint J · J-Infra1 — serializar publishes a la misma branch para que
+# dos runs en paralelo (push a main + workflow_dispatch lanzado por el
+# owner, o dos merges back-to-back) no llamen a `eas update` al mismo
+# tiempo. El último PUT al manifest store gana silenciosamente; con
+# `cancel-in-progress: false` el segundo run espera al primero en vez
+# de cancelarlo (no queremos perder un publish ya empezado).
+concurrency:
+  group: ota-update-${{ github.event.inputs.branch || 'production' }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -167,10 +177,18 @@ jobs:
           # expo-updates reads this env var to sign the manifest before
           # uploading. Path is runner-local (cleaned up below).
           EXPO_UPDATES_PRIVATE_KEY_PATH: ${{ runner.temp }}/private-key.pem
+          # Sprint J · J-Infra2 — pasar BRANCH/MESSAGE vía env evita
+          # command-injection si el commit subject (o el input manual de
+          # workflow_dispatch) contiene comillas/backticks/$. La
+          # substitución `${{ ... }}` ocurre ANTES del shell parsing, así
+          # que un message con `"` cerraría el quote del comando expandido.
+          # Misma defensa que aplicamos en release.yml (Sprint C #6).
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          MESSAGE: ${{ steps.meta.outputs.message }}
         run: |
           eas update \
-            --branch "${{ steps.meta.outputs.branch }}" \
-            --message "${{ steps.meta.outputs.message }}" \
+            --branch "$BRANCH" \
+            --message "$MESSAGE" \
             --private-key-path "$EXPO_UPDATES_PRIVATE_KEY_PATH" \
             --non-interactive
 
