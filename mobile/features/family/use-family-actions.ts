@@ -108,8 +108,10 @@ export function usePeekFamilyInvite() {
 
 /** Consume a single-use invite code. Inserts the caller's
  *  `family_members` row (with the optional contribution) and marks
- *  the invite as used. Subsequent calls with the same code raise
- *  "Invite already used". */
+ *  the invite as used. Subsequent calls with the same code raise the
+ *  generic "Invalid invite" message (Sprint P · Audit #9 P-8 collapsed
+ *  the previously-distinct not-found / already-used / expired / owner-
+ *  pending-deletion branches into one). */
 export interface ConsumeFamilyInviteInput {
   code: string
   monthlyIncomeContribution?: number | null
