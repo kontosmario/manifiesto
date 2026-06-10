@@ -462,6 +462,10 @@ export function LoginScreen() {
       const result = await signInWithApple()
       if (result.status === 'signed-in') {
         await triggerHaptic('success')
+        // J-Auth1: a successful Apple sign-in is an explicit auth
+        // event; mark the app-lock unlocked so RequireAuth's
+        // defense-in-depth gate doesn't bounce the user back to `/`.
+        markAppUnlocked()
         showAuthTransitionSplash()
         // La sesión queda persistida por Supabase → AppEntryGate / root
         // layout detectan el cambio y nos sacan a /(app). No

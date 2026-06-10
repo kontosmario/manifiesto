@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AppButton } from '@/components/ui/button'
 import { BrandedPanel } from '@/components/ui/branded-panel'
 import { Screen } from '@/components/ui/screen'
+import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { useCompleteAuthCallback } from '@/features/auth/use-auth-actions'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { supabase } from '@/lib/supabase'
@@ -80,6 +81,10 @@ export function AuthCallbackScreen() {
 
         if (!cancelledRef.current) {
           clearTimeout(timeoutId)
+          // J-Auth1: the OAuth callback exchange is an explicit auth
+          // event; mark the app-lock unlocked so the protected stack
+          // mounts without RequireAuth bouncing back to `/`.
+          markAppUnlocked()
           router.replace('/')
         }
       } catch (error) {

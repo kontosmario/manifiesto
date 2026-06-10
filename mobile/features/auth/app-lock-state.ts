@@ -56,6 +56,15 @@ function subscribe(listener: () => void) {
   }
 }
 
+/**
+ * Imperative subscription to lock-state changes. Used by non-React
+ * consumers (e.g. the notification pending-route module that flushes a
+ * deferred push tap after the user passes the lock screen).
+ */
+export function subscribeAppLock(listener: () => void): () => void {
+  return subscribe(listener)
+}
+
 function getSnapshot() {
   return unlocked
 }

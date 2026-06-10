@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
+import { useAppLockState } from '@/features/auth/app-lock-state'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
@@ -23,6 +24,14 @@ export function RequireAuth({ children }: RequireAuthProps) {
   const familyQuery = useFamily(userId)
   const family = familyQuery.data ?? null
   const profileQuery = useMyProfile(userId)
+  // J-Auth1 defense-in-depth — if `AppEntryGate` is the single source of
+  // truth for the lock gate, why bother here? Because a notification tap
+  // or deep link can race the relock watcher's `router.replace('/')` and
+  // mount a `RequireAuth`-wrapped screen while `isAppUnlocked === false`.
+  // Redirect back to `/` so AppEntryGate gets a chance to send the user
+  // to the lock screen. The pending notification route is preserved by
+  // `notification-pending-route` and flushed after unlock.
+  const isUnlocked = useAppLockState()
   const isLoading =
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||
@@ -47,6 +56,14 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
   if (!session || !userId) {
     return <Redirect href="/(auth)/welcome" />
+  }
+
+  // J-Auth1 defense-in-depth — if a deep link / push tap mounts a
+  // RequireAuth screen while the app-lock is still up, bounce back to
+  // `/` so AppEntryGate routes the user through the lock UI before any
+  // financial data renders.
+  if (!isUnlocked) {
+    return <Redirect href="/" />
   }
 
   // First-login onboarding wizard. Once the user finishes, the mutation

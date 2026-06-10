@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
-import { useAppLockState } from '@/features/auth/app-lock-state'
+import { markAppUnlocked, useAppLockState } from '@/features/auth/app-lock-state'
 import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -103,6 +103,28 @@ export function AppEntryGate() {
     }
   }, [isLoading, shouldShowAuthTransitionSplash])
 
+  // J-Auth1: when AppEntryGate has decided the user does NOT need a
+  // per-launch lock (no biometric or PIN configured), proactively flip
+  // the lock state to "unlocked". Without this, RequireAuth's defense-
+  // in-depth bouncer would loop the user back to `/` forever — their
+  // session is valid, but `isAppUnlocked` stays `false` because nothing
+  // ever fired `markAppUnlocked()` for them.
+  //
+  // An effect (post-commit) is the safe place to mutate the lock store
+  // — calling it during render would emit to `useSyncExternalStore`
+  // subscribers mid-commit. The trade-off is one extra
+  // RequireAuth→`/`→AppEntryGate round-trip on the very first protected
+  // render after sign-in for no-lock users; that's acceptable for the
+  // defense-in-depth gain (and converges within a single tick).
+  const lockRequired = biometric.shouldUseBiometric || pin.isSet
+  useEffect(() => {
+    if (isLoading) return
+    if (!session) return
+    if (lockRequired) return
+    if (isAppUnlocked) return
+    markAppUnlocked()
+  }, [isLoading, session, lockRequired, isAppUnlocked])
+
   if (isLoading) {
     // Always render the passive backdrop while loading. CRITICAL: do
     // NOT mount `AuthLaunchSplash` here when the warm transition
@@ -140,6 +162,12 @@ export function AppEntryGate() {
     }
     return <Redirect href="/(auth)/pin-unlock" />
   }
+
+  // J-Auth1: the no-lock-required `markAppUnlocked` flip is handled by
+  // the effect above so we don't mutate the lock store mid-render.
+  // While that effect settles (one extra render), fall through here
+  // and let AppEntryGate complete its redirect — RequireAuth's bouncer
+  // sees the unlocked state once the effect commits.
 
   // First-login onboarding wizard — has to be checked BEFORE the
   // family fallback. Otherwise a brand-new user (just signed up, no

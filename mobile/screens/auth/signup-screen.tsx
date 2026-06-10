@@ -31,6 +31,7 @@ import {
   signInWithGoogle,
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
+import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
 import { useCaptcha } from '@/features/auth/use-captcha'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
@@ -228,6 +229,11 @@ export function SignupScreen() {
         return
       }
 
+      // J-Auth1: a fresh signup is an explicit authentication event;
+      // mark the app-lock unlocked so RequireAuth's defense-in-depth
+      // gate doesn't bounce the user back to `/` on the first protected
+      // mount.
+      markAppUnlocked()
       showAuthTransitionSplash()
       // Hand off to the pre-onboarding biometric-setup gate. AppEntryGate
       // falls through to /(app)/onboarding if the user already saw the
@@ -275,6 +281,10 @@ export function SignupScreen() {
         const result = await runner()
         if (result.status === 'signed-in') {
           await triggerHaptic('success')
+          // J-Auth1: same rationale as the email path above — an Apple /
+          // Google sign-in is an explicit auth event, mark the lock
+          // unlocked before routing into the protected stack.
+          markAppUnlocked()
           showAuthTransitionSplash()
           // Apple/Google sign-up = same as email signup → biometric-setup
           // gate first (activate Face ID), then 5-step onboarding handles

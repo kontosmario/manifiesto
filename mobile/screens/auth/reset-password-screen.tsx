@@ -7,6 +7,7 @@ import { Screen } from '@/components/ui/screen'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
+import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
   useCompleteAuthCallback,
   useUpdatePassword,
@@ -150,6 +151,10 @@ export function ResetPasswordScreen() {
     try {
       await updatePassword.mutateAsync({ password })
       await triggerHaptic('success')
+      // J-Auth1: a successful password reset leaves the user with a
+      // valid Supabase session; mark the app-lock unlocked so the
+      // protected stack mounts when the user taps "Ir al inicio".
+      markAppUnlocked()
       setStage('success')
     } catch (error) {
       await triggerHaptic('error')
