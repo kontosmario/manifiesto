@@ -44,6 +44,19 @@ interface PendingRouteEntry {
 
 let pendingRoute: PendingRouteEntry | null = null
 
+// Sprint Q · Audit #10 Q-7 (2026-06-10) — accepted trade-off, documented:
+// pendingRoute is a single-slot store, NOT a queue. If the user taps two
+// notifications while the app is locked, the second tap overwrites the
+// first ("collapse onto most recent intent"). This is the intentional
+// behaviour:
+//   - Notifications are time-sensitive contexts ("how's your budget
+//     today?", "your fixed expense is coming up"); after unlock, the
+//     user almost always wants the LATEST intent, not the oldest.
+//   - A FIFO queue would deep-link them into yesterday's notification
+//     after unlock — confusing, and we already discard >60s old entries
+//     via PENDING_ROUTE_TTL_MS (Sprint L · L-3).
+//   - Tap counts are <2 in 99%+ of sessions (push notifications coalesce
+//     on the lock screen anyway), so the lost-event surface is tiny.
 export function setPendingNotificationRoute(route: string): void {
   pendingRoute = { route, queuedAt: Date.now() }
 }

@@ -128,9 +128,16 @@ SECRET_PATTERNS=(
 violations=0
 
 for f in "${STAGED_FILES[@]}"; do
-  # Skip binaries, lockfiles, and the hook itself (it contains the
-  # secret-pattern strings as part of its logic, but those are
-  # regexes, not real secrets).
+  # Skip binaries, lockfiles, and the hook itself.
+  #
+  # Sprint Q · Audit #10 Q-7 (2026-06-10) — accepted trade-off:
+  # `.githooks/*` is excluded because THIS very file embeds the
+  # secret-pattern regexes as part of its logic (see SECRET_PATTERNS
+  # array above). Scanning ourselves would always self-match and
+  # never let any commit land that touches the hook. The trade-off
+  # is that any *real* secret accidentally pasted into a future
+  # `.githooks/*` file would slip past this scan — code review of
+  # changes to `.githooks/*` is the compensating control.
   case "$f" in
     *.lock|*.png|*.jpg|*.jpeg|*.gif|*.pdf|*.zip|*.ipa|*.apk|.githooks/*)
       continue ;;
