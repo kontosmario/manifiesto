@@ -437,3 +437,27 @@ La cuenta `apple.review@manifiestoapp.com` existe en producción para que los re
 ### Por qué este flow
 
 Documentado en red team audit 2026-06-10 (finding RLS F1 + Infra C-1): el password original (`AppleReview2026!`) estaba en plain text en la migration committed. Cualquier acceso al git history exponía credenciales prod. Rotación out-of-band + placeholder en migration cierra el gap.
+
+## Calendario de rotación
+
+Sprint P · Audit #9 P-7 (2026-06-10) — recordatorios concentrados para evitar que algo expire silenciosamente y rompa el pipeline.
+
+| Item | Vence | Notas |
+|---|---|---|
+| Provisioning Profile (App Store) | 2027-06-09 | EAS auto-renueva on `eas build`. Si no buildeás dentro de los ~30 días anteriores a la fecha, el OTA channel se queda con binary stale y los TestFlight/App Store builds futuros fallan al firmar hasta correr `eas credentials` manual. |
+| Code-signing cert (`certs/certificate.pem`) | 2036-06-10 | CI fail automático si quedan <90 días (`ota-update.yml` → "Cert expiry check", Sprint P · P-6). Ver "EAS Update code signing" para el procedure de rotación. |
+| ASC API Key `.p8` (Key ID `HUNBRN89BT`) | N/A | Nunca expira hasta revoke manual desde App Store Connect. Rotar si el `.p8` se filtra o si dejás de usar la cuenta. |
+| APNs Push Key `.p8` (Key ID `J3525JQHM2`) | N/A | Nunca expira hasta revoke manual desde Apple Developer. Misma política que ASC API Key. |
+| App Store apple.review password | rotación ad-hoc | Antes de cada submit ([ver "Apple Review test account"](#apple-review-test-account-passwords)). |
+| Distribution Certificate (EAS-managed) | 2027-06-09 | Se renueva con el Provisioning Profile dentro del flow de `eas build`. |
+
+**Guarda automática (CI):**
+- `ota-update.yml` → step "Cert expiry check" falla si `certs/certificate.pem` queda con <90 días (warning entre 90-365 días).
+- `ota-update.yml` → step "Verify cert matches private key" falla si el cert en el repo y el `EXPO_UPDATE_PRIVATE_KEY` divergen.
+
+**Guarda manual (humana):**
+- Provisioning profile + dist cert: poner recordatorio en calendario para **2027-04-09** (60 días antes) que dispare un `eas build` aunque sea con changes vacíos para forzar la renovación.
+- ASC API key y APNs key: no expiran, pero conviene revisar permisos cada 12 meses.
+- Apple Review password: rotar antes de cada App Store submit.
+
+Cuando agregues un nuevo recurso con expiración (otro cert, otra key, un dominio), **sumá la fila acá en el mismo commit**. Si no está en esta tabla, asumí que nadie va a acordarse.
