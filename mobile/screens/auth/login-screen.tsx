@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CaptchaModal } from '@/components/auth/captcha-modal'
+import { useCaptcha } from '@/features/auth/use-captcha'
 import {
   Alert,
   Keyboard,
@@ -79,7 +81,19 @@ type FormMode = 'use-password' | 'change-account' | null
 export function LoginScreen() {
   const router = useRouter()
   const reducedMotion = useReducedMotion()
-  const controller = useLoginController()
+  // Sprint F · F14: captcha for password sign-in. The hook is a no-op
+  // when EXPO_PUBLIC_HCAPTCHA_SITE_KEY isn't configured (request()
+  // resolves null → we forward undefined to Supabase, which ignores
+  // it when captcha isn't enabled server-side). When configured, the
+  // resolver opens CaptchaModal and returns the user's token. Same
+  // pattern as signup-screen.
+  const captcha = useCaptcha()
+  const resolveCaptchaToken = useCallback(async (): Promise<string | undefined> => {
+    if (!captcha.isConfigured) return undefined
+    const token = await captcha.request()
+    return token ?? undefined
+  }, [captcha])
+  const controller = useLoginController({ resolveCaptchaToken })
   const { theme } = useAppTheme()
   // Cold-start biometric auto-fire. AppEntryGate redirects returning
   // users with saved biometrics to `/(auth)/login?autoBiometric=1`,
@@ -815,6 +829,11 @@ export function LoginScreen() {
             ) : null}
         </View>
       </Screen>
+      {/* Sprint F · F14: render the captcha widget alongside the screen
+          so `resolveCaptchaToken` above can open it before sign-in.
+          The modal stays hidden when captcha isn't configured because
+          `request()` short-circuits to null without flipping `visible`. */}
+      <CaptchaModal visible={captcha.visible} onComplete={captcha.onComplete} />
     </>
   )
 

@@ -8,14 +8,18 @@ import {
 interface SignInInput {
   email: string
   password: string
+  /** hCaptcha token (sprint F · F14). Sign-in MUST forward the token
+   *  when captcha is enabled in the Supabase Dashboard — otherwise
+   *  every login returns `captcha_token_required`. If captcha is not
+   *  enabled, the server ignores this field silently, so it's always
+   *  safe to forward (including `undefined` in dev without a site key).
+   *  Closes the credential-stuffing-without-captcha gap that sign-up
+   *  and password-reset already cover. */
+  captchaToken?: string
 }
 
 interface SignUpInput extends SignInInput {
   displayName: string
-  /** hCaptcha token (sprint B · B3). `undefined` skipea — válido en dev
-   *  cuando no hay site key configurada y mientras el captcha aún no
-   *  esté habilitado en Supabase Dashboard. */
-  captchaToken?: string
 }
 
 interface CallbackPayload {
@@ -24,10 +28,16 @@ interface CallbackPayload {
 
 export function usePasswordSignIn() {
   return useMutation({
-    mutationFn: async ({ email, password }: SignInInput) => {
+    mutationFn: async ({ email, password, captchaToken }: SignInInput) => {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          // Sprint F · F14: forward captcha token. Supabase ignores the
+          // field if captcha isn't enabled server-side; required when it
+          // is. Matches the sign-up + password-reset call shape.
+          captchaToken,
+        },
       })
 
       if (error) {

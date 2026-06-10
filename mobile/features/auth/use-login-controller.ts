@@ -18,7 +18,18 @@ import { useLoginSubmit } from '@/features/auth/use-login-submit'
 import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
-export function useLoginController() {
+interface UseLoginControllerOptions {
+  /**
+   * Sprint F · F14: captcha resolver passed from the LoginScreen,
+   * which owns the `useCaptcha()` modal state. When provided,
+   * `useLoginSubmit` calls it before `signInWithPassword` and forwards
+   * the resulting token to Supabase. Optional so other entry points
+   * that don't render the captcha modal (e.g. tests) keep working.
+   */
+  resolveCaptchaToken?: () => Promise<string | undefined>
+}
+
+export function useLoginController(options?: UseLoginControllerOptions) {
   const router = useRouter()
   const isReducedMotionEnabled = useReducedMotion()
   const { width } = useWindowDimensions()
@@ -124,6 +135,7 @@ export function useLoginController() {
     passwordSignIn: passwordSignIn.mutateAsync,
     passwordSignUp: passwordSignUp.mutateAsync,
     persistBiometricCredentials,
+    resolveCaptchaToken: options?.resolveCaptchaToken,
     setSubmitting,
     submissionLockRef: isSubmittingRef,
   })

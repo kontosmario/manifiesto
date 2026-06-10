@@ -27,12 +27,22 @@ interface UseLoginSubmitInput {
   passwordSignIn: (input: {
     email: string
     password: string
+    captchaToken?: string
   }) => Promise<unknown>
   passwordSignUp: (input: {
     displayName: string
     email: string
     password: string
+    captchaToken?: string
   }) => Promise<{ session?: unknown | null }>
+  /**
+   * Sprint F · F14: optional captcha resolver, called right before
+   * `signInWithPassword`. When `useCaptcha().isConfigured` is true the
+   * caller passes a fn that opens the hCaptcha widget and returns a
+   * fresh token; otherwise `undefined` (forwarded to Supabase, ignored
+   * server-side when captcha isn't on).
+   */
+  resolveCaptchaToken?: () => Promise<string | undefined>
   persistBiometricCredentials: (
     email: string,
     options: { shouldPromptSetup: boolean },
@@ -57,6 +67,7 @@ export function useLoginSubmit({
   passwordSignIn,
   passwordSignUp,
   persistBiometricCredentials,
+  resolveCaptchaToken,
   setSubmitting,
   submissionLockRef,
 }: UseLoginSubmitInput) {
@@ -97,9 +108,18 @@ export function useLoginSubmit({
             })
 
       if (mode === 'sign-in') {
+        // Sprint F · F14: resolve captcha BEFORE the mutation so a
+        // cancel/error path doesn't leave the submit lock dangling
+        // (the finally below clears it). When `resolveCaptchaToken`
+        // is undefined or returns undefined we forward `undefined` —
+        // Supabase ignores it when captcha is disabled server-side.
+        const captchaToken = resolveCaptchaToken
+          ? await resolveCaptchaToken()
+          : undefined
         await passwordSignIn({
           email: normalizedEmail,
           password: trimmedPassword,
+          captchaToken,
         })
       }
 
@@ -150,6 +170,7 @@ export function useLoginSubmit({
     passwordSignIn,
     passwordSignUp,
     persistBiometricCredentials,
+    resolveCaptchaToken,
     setSubmitting,
     submissionLockRef,
   ])
