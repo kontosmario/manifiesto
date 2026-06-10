@@ -171,6 +171,42 @@ jobs:
             exit 1
           }
 
+      # Sprint P · Audit #9 P-6 (2026-06-10): cert expiry guard. The
+      # code-signing cert (certs/certificate.pem) expires 2036-06-10.
+      # Without a CI guard, the day before expiry every OTA bundle would
+      # silently start failing signature verification on installed
+      # clients — they'd just keep running the old cached bundle while
+      # we publish new ones that nobody can load. Fail CI early so we
+      # always have weeks/months of runway to rotate.
+      #
+      # Thresholds:
+      #   < 90 days  → CI fails (URGENT rotation required).
+      #   < 365 days → ::warning (schedule rotation).
+      #   otherwise   → green log line.
+      #
+      # `date -j` (BSD/macOS) is tried first because the format string
+      # is portable; fall through to GNU `date -d` which is what
+      # ubuntu-latest actually has at runtime.
+      - name: Cert expiry check
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          if [ ! -f certs/certificate.pem ]; then
+            echo "::error::certs/certificate.pem is missing — cannot run expiry guard."
+            exit 1
+          fi
+          EXPIRY=$(openssl x509 -in certs/certificate.pem -noout -enddate | cut -d= -f2)
+          EXPIRY_TS=$(date -j -f "%b %e %T %Y %Z" "$EXPIRY" +%s 2>/dev/null || date -d "$EXPIRY" +%s)
+          NOW_TS=$(date +%s)
+          DAYS_LEFT=$(( (EXPIRY_TS - NOW_TS) / 86400 ))
+          if [ "$DAYS_LEFT" -lt 90 ]; then
+            echo "::error::certs/certificate.pem expires in $DAYS_LEFT days — URGENT rotation needed. See docs/operaciones/runbook-release-automation.md → EAS Update code signing."
+            exit 1
+          elif [ "$DAYS_LEFT" -lt 365 ]; then
+            echo "::warning::certs/certificate.pem expires in $DAYS_LEFT days — schedule rotation soon."
+          else
+            echo "certs/certificate.pem valid for $DAYS_LEFT days."
+          fi
+
       # Sprint O · Audit #8 O-4 (2026-06-14): cert↔private-key fingerprint
       # check. If the owner rotates `certs/certificate.pem` in the repo
       # but forgets to rotate `EXPO_UPDATE_PRIVATE_KEY` in GitHub Secrets
