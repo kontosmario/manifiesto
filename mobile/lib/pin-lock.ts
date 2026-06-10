@@ -3,10 +3,25 @@
 // Threat model: a CASUAL lock + offline brute-force resistance.
 // Real-world attackers don't enumerate all 10k 4-digit combinations
 // — they try the ~100 most common PINs first (1234, 0000, 1111,
-// 2580, birthdays, repeats). PBKDF2 with 100k iterations costs
-// ~100ms/attempt on modern phones:
-//   - top-100 PINs:  ~10s   to brute-force offline
-//   - full 10k space: ~17min to brute-force offline
+// 2580, birthdays, repeats).
+//
+// Sprint F · F2 hardening (2026-06-10):
+//   - PBKDF2 iterations: 100_000 → 600_000 (OWASP 2023 baseline
+//     for HMAC-SHA-256). New cost on modern phones is ~600ms/attempt:
+//       · top-100 PINs:   ~60s   offline (was ~10s)
+//       · full 10k 4-dig: ~100min offline (was ~17min)
+//   - Allow 4–8 digit PINs. A 6-digit space is 100x larger than
+//     4-digit, pushing full-enumeration past the practical horizon
+//     for casual offline attackers. The pad still defaults to 4
+//     for backward compatibility; users can pick longer if they
+//     want.
+//   - Reject a small blocklist of well-known weak PINs (all-same,
+//     simple sequential, top-row patterns).
+//   - On verifyPin, if the stored iteration count is below the
+//     current target, transparently re-hash with the new target
+//     after a successful verification. Silent upgrade — no user
+//     prompt, no re-enroll.
+//
 // Plus the in-app lockout (5 attempts → 30s/1m/2m/4m/8m exponential
 // backoff) caps the ONLINE attack budget. The lockout state lives
 // in SecureStore, so a user-controlled wipe (uninstall+reinstall,
@@ -38,9 +53,70 @@ const storeOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 }
 
-const PIN_PATTERN = /^\d{4}$/
-const PBKDF2_ITERATIONS = 100_000
+// Sprint F · F2: accept 4–8 digit PINs. Users keep their existing
+// 4-digit PIN (no forced re-enroll); new PINs may be longer.
+export const PIN_MIN_LENGTH = 4
+export const PIN_MAX_LENGTH = 8
+const PIN_PATTERN = /^\d{4,8}$/
+// Sprint F · F2: bumped to OWASP 2023 PBKDF2-HMAC-SHA-256 baseline.
+// Old hashes (100k) auto-upgrade to this target on next successful
+// verifyPin — see `PIN_ITER_LEGACY` below for the migration boundary.
+const PIN_ITER_TARGET = 600_000
+const PIN_ITER_LEGACY = 100_000
 const SHA256_BLOCK_BYTES = 32
+
+// Sprint F · F2: weak-PIN blocklist. Not exhaustive — the goal is to
+// stop a casual user from picking the textbook-worst handful of PINs
+// that show up across every leaked-password study (Berry 2012 et al).
+// Curated for both 4-digit and the most common 6-digit weak patterns.
+// Repeating digits + simple-sequential PINs are detected algorithmically
+// below so we don't bloat this set with all 10 of each.
+const WEAK_PINS: ReadonlySet<string> = new Set([
+  // Top leaked 4-digit PINs
+  '1234', '4321', '0000', '1111', '2222', '3333', '4444',
+  '5555', '6666', '7777', '8888', '9999',
+  '1212', '1313', '2580', '0852', '6969', '1004', '2000',
+  '5683', // "LOVE" on a phone keypad
+  '0123', '9876', '2468', '1357',
+  // Common 6-digit weak PINs
+  '123456', '654321', '111111', '000000', '121212', '123123',
+  '696969', '112233', '789456', '159753', '147258', '258369',
+  '102030',
+  // Long all-same / sequential, in case user picks 7/8 digits
+  '11111111', '00000000', '12345678', '87654321',
+  '1111111', '0000000', '1234567', '7654321',
+])
+
+/**
+ * Detect a "weak" PIN that we refuse to set even though it matches
+ * the digit-length pattern. Catches:
+ *   · all-same digits (1111, 222222, ...)
+ *   · simple monotonic sequences ascending or descending by 1
+ *     (1234, 56789, 9876, 0123 wrap rejected by string compare)
+ *   · entries in the hardcoded `WEAK_PINS` list
+ */
+export function isWeakPin(pin: string): boolean {
+  if (WEAK_PINS.has(pin)) return true
+  // All-same: every digit equals the first.
+  if (pin.split('').every((d) => d === pin[0])) return true
+  // Strictly ascending step=+1: digits[i+1] = digits[i] + 1.
+  let ascending = true
+  let descending = true
+  for (let i = 1; i < pin.length; i++) {
+    const prev = pin.charCodeAt(i - 1) - 48
+    const cur = pin.charCodeAt(i) - 48
+    if (cur !== prev + 1) ascending = false
+    if (cur !== prev - 1) descending = false
+  }
+  return ascending || descending
+}
+
+export class WeakPinError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'WeakPinError'
+  }
+}
 
 // Lockout: 5 failed attempts triggers a backoff. Each subsequent
 // failure doubles the wait (30s, 1min, 2min, 4min, 8min cap).
@@ -166,12 +242,20 @@ function nextLockoutDuration(failedAttempts: number): number {
 
 export async function setPin(pin: string): Promise<void> {
   if (!PIN_PATTERN.test(pin)) {
-    throw new Error('El PIN debe tener exactamente 4 dígitos.')
+    throw new Error(`El PIN debe tener entre ${PIN_MIN_LENGTH} y ${PIN_MAX_LENGTH} dígitos.`)
+  }
+  // Sprint F · F2: reject obvious weak PINs at setPin time. The
+  // setup screen also checks `isWeakPin` to give a specific UX hint
+  // before reaching here; this throw is the defense-in-depth gate.
+  if (isWeakPin(pin)) {
+    throw new WeakPinError(
+      'Ese PIN es demasiado fácil de adivinar. Evitá repeticiones (1111) o secuencias (1234).',
+    )
   }
   const salt = randomSalt()
   await SecureStore.setItemAsync(PIN_SALT_KEY, salt, storeOptions)
-  await SecureStore.setItemAsync(PIN_ITER_KEY, String(PBKDF2_ITERATIONS), storeOptions)
-  await SecureStore.setItemAsync(PIN_HASH_KEY, await hashPinAsync(salt, pin, PBKDF2_ITERATIONS), storeOptions)
+  await SecureStore.setItemAsync(PIN_ITER_KEY, String(PIN_ITER_TARGET), storeOptions)
+  await SecureStore.setItemAsync(PIN_HASH_KEY, await hashPinAsync(salt, pin, PIN_ITER_TARGET), storeOptions)
   await clearLockout()
   await setPinEnabledFlag()
 }
@@ -195,10 +279,31 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
     if (!salt || !hash) {
       return { ok: false, lockedForMs: 0 }
     }
-    const iter = iterRaw ? Number.parseInt(iterRaw, 10) : PBKDF2_ITERATIONS
-    const computed = await hashPinAsync(salt, pin, Number.isFinite(iter) && iter > 0 ? iter : PBKDF2_ITERATIONS)
+    // Default to the LEGACY iteration count when the stored value
+    // is missing — that's how old installs (pre-F2) wrote their
+    // hashes, so we must reproduce the same input to verify.
+    const iter = iterRaw ? Number.parseInt(iterRaw, 10) : PIN_ITER_LEGACY
+    const effectiveIter = Number.isFinite(iter) && iter > 0 ? iter : PIN_ITER_LEGACY
+    const computed = await hashPinAsync(salt, pin, effectiveIter)
     if (computed === hash) {
       await clearLockout()
+      // Sprint F · F2: silent upgrade. If the hash was generated at
+      // a weaker iteration count than the current target, re-hash
+      // with the new target (and a fresh salt for good measure) and
+      // overwrite the stored material. Best-effort: if any SecureStore
+      // write fails we still report success — the user just stays on
+      // the old hash and we'll retry next verifyPin.
+      if (effectiveIter < PIN_ITER_TARGET) {
+        try {
+          const nextSalt = randomSalt()
+          const nextHash = await hashPinAsync(nextSalt, pin, PIN_ITER_TARGET)
+          await SecureStore.setItemAsync(PIN_SALT_KEY, nextSalt, storeOptions)
+          await SecureStore.setItemAsync(PIN_ITER_KEY, String(PIN_ITER_TARGET), storeOptions)
+          await SecureStore.setItemAsync(PIN_HASH_KEY, nextHash, storeOptions)
+        } catch {
+          // Swallow — re-hash is opportunistic, not load-bearing.
+        }
+      }
       return { ok: true, lockedForMs: 0 }
     }
     const nextFailed = lockout.failedAttempts + 1

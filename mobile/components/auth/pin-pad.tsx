@@ -18,11 +18,18 @@ interface PinPadProps {
   onChange: (next: string) => void
   /** Bump this number to play the error shake + a warning haptic. */
   errorToken?: number
+  /**
+   * Sprint F · F2: PINs may be 4–8 digits. The pad renders one dot
+   * per slot and caps input at `pinLength`. Defaults to `PIN_LENGTH`
+   * (4) so existing callers (unlock, reauth-sheet, delete-account)
+   * keep their current behaviour.
+   */
+  pinLength?: number
 }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'] as const
 
-export function PinPad({ value, onChange, errorToken = 0 }: PinPadProps) {
+export function PinPad({ value, onChange, errorToken = 0, pinLength = PIN_LENGTH }: PinPadProps) {
   const { theme } = useAppTheme()
   const shake = useSharedValue(0)
 
@@ -47,13 +54,13 @@ export function PinPad({ value, onChange, errorToken = 0 }: PinPadProps) {
       onChange(backspacePin(value))
       return
     }
-    onChange(appendPinDigit(value, key))
+    onChange(appendPinDigit(value, key, pinLength))
   }
 
   return (
     <View style={styles.root}>
       <Animated.View style={[styles.dotsRow, dotsStyle]}>
-        {Array.from({ length: PIN_LENGTH }).map((_, i) => {
+        {Array.from({ length: pinLength }).map((_, i) => {
           const filled = i < value.length
           return (
             <View
