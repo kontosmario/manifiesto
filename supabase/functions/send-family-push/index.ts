@@ -172,12 +172,28 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
 // rendered verbatim by the OS notification UI; we don't want a
 // malicious caller injecting newlines, ANSI escapes, or extreme
 // strings that fragment the notification or impersonate UI chrome.
-function sanitizeText(value: string | undefined, maxLen: number): string {
+//
+// Sprint O · Audit #8 O-2 (2026-06-14): the original ASCII-only range
+// (\x00-\x1F\x7F) missed Unicode `Cf` "format" characters that the OS
+// notification UI happily renders (or, worse, reorders). Specifically:
+//   • U+200B-U+200D  zero-width space / joiner / non-joiner
+//   • U+200E-U+200F  LRM / RLM (left-to-right / right-to-left mark)
+//   • U+202A-U+202E  RTL/LTR override family (incl. U+202E, the
+//                    "RIGHT-TO-LEFT OVERRIDE" used to spoof "$100"
+//                    as "$001" in feed / push body)
+//   • U+2066-U+2069  bidi isolate family
+//   • U+FEFF         BOM / zero-width no-break space
+// Attacker-planted expense descriptions containing these chars could
+// flip digits in the push body the family member sees.
+export function sanitizeText(value: string | undefined, maxLen: number): string {
   if (!value) return ""
-  // Build the control-char regex via RegExp() so the source stays
-  // grep-friendly (no literal 0x00-0x1F bytes embedded in the file).
+  // Build the regex via RegExp() so the source file stays grep-friendly
+  // (no literal control bytes or invisible chars embedded inline).
   // eslint-disable-next-line no-control-regex
-  const controlRe = new RegExp("[\\x00-\\x1F\\x7F]+", "g")
+  const controlRe = new RegExp(
+    "[\\x00-\\x1F\\x7F\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]+",
+    "gu",
+  )
   return value.replace(controlRe, " ").trim().slice(0, maxLen)
 }
 

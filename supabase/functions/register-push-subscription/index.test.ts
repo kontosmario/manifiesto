@@ -237,3 +237,30 @@ Deno.test('Sprint J · J-Edge1(d): accepts Expo token matching tightened regex (
     throw new Error(`Expected non-400; got 400 with ${JSON.stringify(payload)}`)
   }
 })
+
+// Sprint O · Audit #8 O-2 (2026-06-14): stripControlChars must drop
+// Unicode `Cf` format characters in addition to ASCII control bytes.
+Deno.test('stripControlChars removes bidi + zero-width + BOM', async () => {
+  const mod = await import('./index.ts')
+  const strip = (mod as unknown as {
+    stripControlChars?: (v: string) => string
+  }).stripControlChars
+  if (typeof strip !== 'function') {
+    throw new Error('stripControlChars not exported — Sprint O O-2 regression test cannot run')
+  }
+  const cfChars = [
+    '\u{200B}', '\u{200C}', '\u{200D}',
+    '\u{200E}', '\u{200F}',
+    '\u{202A}', '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}',
+    '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}',
+    '\u{FEFF}',
+  ]
+  for (const ch of cfChars) {
+    const result = strip(`ExponentPushToken[${ch}abc]`)
+    assertEquals(
+      result,
+      'ExponentPushToken[abc]',
+      `${ch.codePointAt(0)?.toString(16)} should be stripped`,
+    )
+  }
+})

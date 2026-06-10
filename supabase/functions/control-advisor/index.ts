@@ -432,9 +432,20 @@ async function callClaude(ctx: FamilyContext): Promise<string> {
 // "manifiesto://transfer/?to=:attacker"). We strip control chars, cap
 // length, and reject suspicious patterns. Anything malformed → null
 // so the caller falls back to a generic safe task.
-const CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g
+//
+// Sprint O · Audit #8 O-2 (2026-06-14): extend the regex to also strip
+// Unicode `Cf` "format" characters (zero-width spaces, bidi marks/
+// overrides, BOM). Claude can be coaxed into echoing them — and the
+// mobile UI rendering would then re-order digits (RLO trick) or
+// silently absorb them (ZWSP). We also reject any of these from
+// `sanitizeEmoji` (see below).
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_RE = new RegExp(
+  '[\\x00-\\x1F\\x7F\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]',
+  'gu',
+)
 
-function stripControlChars(input: string): string {
+export function stripControlChars(input: string): string {
   return input.replace(CONTROL_CHARS_RE, '')
 }
 
@@ -460,14 +471,32 @@ function sanitizeCta(input: string): string | null {
 function sanitizeEmoji(input: string): string | null {
   const cleaned = stripControlChars(input).trim()
   if (cleaned.length === 0) return null
-  // Cap at 4 codepoints (handles ZWJ sequences like family emoji).
+  // Sprint O · Audit #8 O-2 (2026-06-14): stripControlChars already
+  // removes bidi marks / overrides, zero-width chars and BOM (including
+  // ZWJ U+200D). That trades the ability to render multi-codepoint ZWJ
+  // sequences (e.g. family emoji) for a guarantee that the field can't
+  // smuggle text direction or invisible characters into the mobile UI.
+  // Single-codepoint emoji — the overwhelming majority of what Claude
+  // returns here — still pass. We additionally reject any leftover Cf
+  // codepoint as a defense-in-depth check in case the regex above is
+  // ever loosened.
   const codepoints = Array.from(cleaned)
   if (codepoints.length > 4) return null
-  // Reject if any codepoint is plain ASCII letter / digit / punctuation
-  // — emoji codepoints fall outside that range.
   for (const cp of codepoints) {
     const code = cp.codePointAt(0) ?? 0
+    // Reject ASCII letter / digit / punctuation — emoji codepoints
+    // fall outside that range.
     if (code < 0x80) return null
+    // Defense-in-depth: explicitly reject Cf format chars even if a
+    // future regex change misses them.
+    if (
+      (code >= 0x200b && code <= 0x200f) ||
+      (code >= 0x202a && code <= 0x202e) ||
+      (code >= 0x2066 && code <= 0x2069) ||
+      code === 0xfeff
+    ) {
+      return null
+    }
   }
   return codepoints.join('')
 }

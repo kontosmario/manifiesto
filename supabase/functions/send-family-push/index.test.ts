@@ -95,3 +95,46 @@ Deno.test('non-batch path rejects raw token (no Bearer prefix) (401)', async () 
   }))
   assertEquals(res.status, 401)
 })
+
+// Sprint O · Audit #8 O-2 (2026-06-14): sanitizeText must strip Unicode
+// `Cf` format chars (bidi marks/overrides, zero-width, BOM). An
+// attacker planting U+202E in an expense description would otherwise
+// flip digits in the push body the family sees on the lock screen.
+// Test inputs use `\u{...}` escapes to keep the source grep-friendly
+// (no literal invisible chars embedded inline).
+Deno.test('sanitizeText strips bidi override (U+202E)', async () => {
+  const mod = await import('./index.ts')
+  const sanitize = (mod as unknown as {
+    sanitizeText?: (v: string | undefined, n: number) => string
+  }).sanitizeText
+  if (typeof sanitize !== 'function') {
+    throw new Error('sanitizeText not exported — Sprint O O-2 regression test cannot run')
+  }
+  // RIGHT-TO-LEFT OVERRIDE — flips visual reading order of "100" → "001"
+  const result = sanitize(`$\u{202E}100`, 240)
+  assertEquals(result.includes('\u{202E}'), false)
+  // Char dropped, surrounding text preserved (and trimmed/collapsed).
+  assertEquals(result.replace(/\s+/g, ''), '$100')
+})
+
+Deno.test('sanitizeText strips zero-width + BOM + LRM/RLM + isolates', async () => {
+  const mod = await import('./index.ts')
+  const sanitize = (mod as unknown as {
+    sanitizeText?: (v: string | undefined, n: number) => string
+  }).sanitizeText
+  if (typeof sanitize !== 'function') {
+    throw new Error('sanitizeText not exported')
+  }
+  const cfChars = [
+    '\u{200B}', '\u{200C}', '\u{200D}', // zero-width space / non-joiner / joiner
+    '\u{200E}', '\u{200F}',             // LRM / RLM
+    '\u{202A}', '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}', // embedding/override family
+    '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}', // bidi isolates
+    '\u{FEFF}', // BOM / zero-width no-break space
+  ]
+  const input = `a${cfChars.join('b')}c`
+  const result = sanitize(input, 240)
+  for (const ch of cfChars) {
+    assertEquals(result.includes(ch), false, `${ch.codePointAt(0)?.toString(16)} should be stripped`)
+  }
+})

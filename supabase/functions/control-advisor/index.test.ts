@@ -112,3 +112,29 @@ Deno.test('accepts well-formed UUID familyId past the regex gate', async () => {
     throw new Error('UUID gate rejected a valid UUID')
   }
 })
+
+// Sprint O · Audit #8 O-2 (2026-06-14): stripControlChars must drop
+// Unicode `Cf` format characters in addition to ASCII control bytes.
+// Claude can be coaxed into echoing them inside a `cta` / `body` /
+// `title` field, and the mobile UI renderer would happily reorder
+// digits (RLO) or absorb invisible chars (ZWSP/BOM).
+Deno.test('stripControlChars removes bidi + zero-width + BOM', async () => {
+  const mod = await import('./index.ts')
+  const strip = (mod as unknown as {
+    stripControlChars?: (v: string) => string
+  }).stripControlChars
+  if (typeof strip !== 'function') {
+    throw new Error('stripControlChars not exported — Sprint O O-2 regression test cannot run')
+  }
+  const cfChars = [
+    '\u{200B}', '\u{200C}', '\u{200D}',
+    '\u{200E}', '\u{200F}',
+    '\u{202A}', '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}',
+    '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}',
+    '\u{FEFF}',
+  ]
+  for (const ch of cfChars) {
+    const result = strip(`hola${ch}mundo`)
+    assertEquals(result, 'holamundo', `${ch.codePointAt(0)?.toString(16)} should be stripped`)
+  }
+})

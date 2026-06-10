@@ -160,9 +160,17 @@ function isAllowedWebPushEndpoint(rawEndpoint: string): boolean {
 // characters BEFORE the format regex check. A token containing
 // `\r\n` could fool log analysis or downstream consumers (Expo's API
 // rejects them, but defense-in-depth is cheap).
-function stripControlChars(value: string): string {
+//
+// Sprint O · Audit #8 O-2 (2026-06-14): extend to Unicode `Cf` format
+// chars (bidi marks/overrides, zero-width chars, BOM). The user-agent
+// metadata field could otherwise be planted with U+202E and shown in
+// admin / debug UIs with reversed digits.
+export function stripControlChars(value: string): string {
   // eslint-disable-next-line no-control-regex
-  const controlRe = new RegExp('[\\x00-\\x1F\\x7F]+', 'g')
+  const controlRe = new RegExp(
+    '[\\x00-\\x1F\\x7F\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]+',
+    'gu',
+  )
   return value.replace(controlRe, '')
 }
 
