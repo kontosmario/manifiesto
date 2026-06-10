@@ -44,12 +44,13 @@ El draft inicial del doc giraba alrededor de **"parejas que no se pelean por pla
 
 ### Primary
 
-- **Personas que quieren entender sus gastos y empezar a ahorrar** sin tener background financiero (25-50 años, AR + LATAM)
+- **Personas que quieren entender sus gastos y empezar a ahorrar** sin tener background financiero (18-50 años, AR + LATAM)
+- **Primeros años de independencia financiera**: primer sueldo, primer alquiler, primera convivencia. Segmento con alta adopción orgánica de finanzas + alta compartibilidad de Wrapped en redes sociales
 - **Quienes manejan sus finanzas por su cuenta** y abandonaron Excel o apps complicadas por fricción
 - **Parejas que conviven** y quieren visibilidad mutua sin micromanaging
 - **Familias chicas-medianas** con hijos adolescentes o que aportan al pool familiar
 - **Hogares no-nucleares**: roommates, hermanos que conviven, madre/padre soltero con hijos que aportan, parejas no convivientes que comparten algunos gastos
-- Personas que **tienen ahorros en USD** además de pesos (común en AR)
+- Personas que **tienen ahorros en USD** además de pesos (común en LATAM)
 
 > 💡 El modo individual y el modo compartido conviven en el mismo producto sin fricción. No hay que elegir. El modelo de "familia" en la app es abstracto: lo que importa es **quiénes comparten gastos**, no la estructura legal del hogar.
 
@@ -166,11 +167,12 @@ El draft inicial del doc giraba alrededor de **"parejas que no se pelean por pla
 ### Ángulos para destacar
 
 1. **Ahorrar sin saber de finanzas** — el dolor más universal, el hook principal
-2. **Solo o en familia, mismo producto** — no te obliga a elegir un modo
-3. **Hecho en Argentina, para Argentina** — entiende devaluaciones, dolar blue, ciclos de cobro AR
-4. **Diseño calmo** — la app **no grita** ni te bombardea con notificaciones
-5. **OCR de bancos AR** — el único que importa de Galicia, Santander, Macro, etc.
-6. **Privacy first** — sin ads, sin tracking, sin AI sobre tus datos
+2. **Anti-shame**: "una app que te acompaña, no que te reta" — diferencia clave vs YNAB / Mint / Wallet, que se posicionan en "disciplina". Manifiesto se posiciona en "compañía calma"
+3. **Solo o en familia, mismo producto** — no te obliga a elegir un modo
+4. **Hecho en Argentina, para Argentina** — entiende devaluaciones, dolar blue, ciclos de cobro AR (relevante para el AR storefront principalmente)
+5. **Diseño calmo** — la app **no grita** ni te bombardea con notificaciones
+6. **OCR de bancos** — importa de Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá, Naranja X
+7. **Privacy first** — sin ads, sin tracking, sin AI sobre tus datos
 
 ---
 
@@ -264,16 +266,16 @@ Opciones evaluadas:
 
 **Recomendación final**: **`Gastos claros, ahorro simple`** (28 chars).
 
-### 7.3 Descripción (~2.150/4000)
+### 7.3 Descripción (~2.250/4000)
 
 ```
 Manifiesto es la app para entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas. Funciona igual de bien por tu cuenta, en pareja o en familia.
 
+Sin culpa, sin gritos, sin promesas mágicas: una app que te acompaña, no que te reta.
+
 VER TUS GASTOS, SIN VUELTAS
 
 Cargás un gasto en 4 taps y listo. Nada de planillas, fórmulas ni términos raros: abrís el home y ves cuánto gastaste este mes y cuánto te queda.
-
-¿Te llegan los resúmenes del banco? Importalos por OCR desde 8 bancos argentinos: Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá y Naranja X.
 
 AHORRAR, PASO A PASO
 
@@ -291,9 +293,13 @@ GASTOS FIJOS BAJO CONTROL
 
 Cargá el alquiler, los servicios y las suscripciones una sola vez. Te avisamos antes de que venzan.
 
+IMPORTAR DEL BANCO
+
+¿Te llegan los resúmenes del banco al mail? Importalos por OCR. Soportamos 8: Galicia, Santander, Macro, BBVA, Mercado Pago, Modo, Ualá y Naranja X.
+
 PESOS Y DÓLARES, JUNTOS
 
-Configurás tu cotización ARS/USD y la app convierte automáticamente. Ideal si ahorrás en dólares como tantos en Argentina.
+Configurás tu cotización ARS/USD y la app convierte automáticamente. Ideal si ahorrás en dólares.
 
 EL WRAPPED DE FIN DE MES
 
@@ -391,6 +397,45 @@ Una vez aplicado el pivote a "ahorro + simplicidad + modo dual", una segunda lec
 
 ---
 
+## 7.quater · Ampliar atractivo sin diluir el posicionamiento (2026-06-10, post-pulido)
+
+Una tercera lectura del doc detectó que el copy estaba bien para el target pero **filtraba activamente** segmentos del storefront es-MX que no eran AR. La trampa a evitar: "atractivo para todo el mundo" es **un anti-pattern de posicionamiento** — el copy que le habla a todos no le habla a nadie. La meta correcta no es "todos" sino **"que nadie del target se sienta excluido del primer scan"**.
+
+### El principio
+
+> Si vos mismo definiste un NOT target en §2 (pymes, inversores, facturación), está bien que el copy filtre. Lo que NO está bien es que el copy filtre **personas que sí son del target** por accidente lingüístico o estructural.
+
+### Cambios aplicados
+
+| Lugar | Antes | Después | Por qué |
+|---|---|---|---|
+| Hook (§7.3) | Solo el párrafo del producto | Sumamos línea anti-shame: "Sin culpa, sin gritos, sin promesas mágicas: una app que te acompaña, no que te reta." | Diferencia visceral vs YNAB/Mint/Wallet (postura "disciplina"); funciona en todo LATAM |
+| Banco mención (§7.3) | "Importalos por OCR desde 8 bancos **argentinos**" en la 2ª sección del cuerpo | Movido a una sección propia ("IMPORTAR DEL BANCO") más abajo, sin el adjetivo "argentinos" | El user de CDMX no se topa con "esto no es para mí" en los primeros 200 chars. Los nombres de bancos son anchor suficiente para argentinos |
+| Pesos/dólares (§7.3) | "Ideal si ahorrás en dólares como tantos en Argentina" | "Ideal si ahorrás en dólares" | Dolarización ahorro es dolor LATAM, no solo AR |
+| Edad target (§2) | "(25-50 años, AR + LATAM)" | "(18-50 años, AR + LATAM)" + bullet explícito sobre primer-sueldo / primera-convivencia | 18-25 = mayor adopción orgánica de finanzas + mayor compartibilidad de Wrapped en redes |
+| USD line target | "común en AR" | "común en LATAM" | Coherencia con storefront es-MX |
+| Ángulos (§4) | 6 puntos | Sumado anti-shame como #2 + nota sobre AR-specific como relevante para AR storefront | Diferenciador real vs competencia, no estaba capitalizado |
+
+### Cosas que NO se cambiaron (deliberado, pushback recibido y aceptado)
+
+Mantuvimos así por **disciplina de posicionamiento** (no por inercia):
+
+- **Subtítulo** `Gastos claros, ahorro simple` — ya universal, no necesita ajuste.
+- **Keywords** — es-MX las indexa para toda la región. Cambiar nada.
+- **`QUÉ NO SOMOS`** — la honestidad atrae al target real y filtra ruido. No es excluyente, es honesta.
+- **`Hecho por una persona, en Argentina`** al final de la descripción — pasa de ser "limitación" a "diferenciador de autenticidad" cuando aparece después de toda la propuesta de valor. No al principio (donde sería filtro), sí al final (donde es firma).
+
+### Pendiente para v1.1
+
+**Per-storefront localization**. App Store soporta copy distinto por país. En la versión actual usamos un solo es-MX para toda LATAM, pero el copy ideal sería:
+
+- **AR storefront**: amplificá el "Hecho en Argentina", banco list al inicio, "dólares como tantos en Argentina" funciona ahí
+- **MX/CO/CL/etc. storefronts**: keep current versión (AR-specific movido abajo)
+
+Esto requiere setup adicional en App Store Connect (cargar copy por país) — bajo prioridad para v1.0, considerar para v1.1 cuando tengamos datos de qué storefronts traen instalación.
+
+---
+
 ## 8 · Checklist al cargar en App Store Connect
 
 Cuando vayas a App Store Connect → app → Distribución → Versión 1.0:
@@ -430,17 +475,87 @@ Una vez que la app está en App Store:
 - **A/B testing nativo** (Apple Product Page Optimization) — disponible solo después de algunos miles de visits/mes
 - **Texto promocional** se puede editar sin re-submit — usalo para campañas
 - **Subtítulo y descripción** requieren nueva versión para cambiar — bumpear versión menor está OK
+- **Per-storefront localization** (ver 7.quater "pendiente para v1.1") — copy distinto por país, soportado nativamente por App Store Connect
 
 **Métricas a mirar** (App Store Connect → Analytics):
 - Product Page Views
 - Conversion Rate (views → installs)
 - Search appearances (¿qué keywords te traen tráfico?)
+- **Storefront breakdown**: ¿desde qué países viene tráfico? Si Chile o Colombia traen volumen, validar per-storefront copy
+
+---
+
+## 11 · Screenshots & App Preview (item H3 del ready-pendientes)
+
+> **El 70% de la decisión de instalar pasa por screenshots y App Preview video, no por el copy.** Esta sección no entra en App Store Connect como texto (los screenshots son imágenes), pero las decisiones de qué mostrar y en qué orden son tan importantes como el listing copy. Documentar acá para alinear con el resto del posicionamiento.
+
+### Requisitos técnicos (Apple)
+
+| Asset | Cantidad | Tamaños obligatorios | Tamaños opcionales |
+|---|---|---|---|
+| **Screenshots iPhone** | 1-10 (recomendado 3-5) | 6.7" (iPhone 15 Pro Max: 1290×2796) + 5.5" (iPhone 8 Plus: 1242×2208) | 6.5", 5.8", 4.7" |
+| **App Preview video** | 0-3 por tamaño | Mismo tamaño que screenshots | — |
+
+> ⚠️ Apple muestra solo los **primeros 3 screenshots** en la página de búsqueda. Los siguientes 7 los ve quien hace scroll en la página del producto. **Los 3 primeros se llevan el peso de la decisión de install**.
+
+### Orden recomendado para v1.0
+
+Los 3 primeros tienen que vender la propuesta de valor del hook (entender gastos + ahorrar + sin saber de finanzas). Los siguientes amplían features.
+
+| # | Pantalla | Por qué |
+|---|---|---|
+| 1 | **Home con hero card** mostrando el saldo del día con valores claros | Comunica "ver tus gastos sin vueltas" — primer feature del hook |
+| 2 | **Wrapped scene del veredicto** (positiva, con números) | El asset más compartible. Diferenciador único. Le habla al 18-30 que comparte en redes |
+| 3 | **Meta de ahorro con progreso visual** | Cierra el hook: "ahorrar paso a paso" |
+| 4 | Calendar/Cronología visual de gastos | Demuestra densidad de info sin sobrecargar — refuerza "calmo" |
+| 5 | Settings con "Compartir con familia" o code de invitación | Comunica el "modo dual" (por tu cuenta o con otros) |
+| 6 | Modal de OCR / Importar del banco | Para el segmento argentino, alta intención |
+| 7 | Privacy / Eliminar cuenta | Para el segmento privacy-aware. Marketing diferente |
+
+### Estilo visual
+
+- **Mantener el branding del wrapped** (forest-deep + cream + lime accent) para coherencia entre App Store y la app real.
+- **Captions cortos sobre cada screenshot** (App Store permite agregar texto descriptivo over-the-image). Para Manifiesto, sugerencia:
+  - Screenshot 1: "Ver en qué se te va la plata"
+  - Screenshot 2: "Tu Wrapped al cierre del mes"
+  - Screenshot 3: "Una meta por vez. Sin promesas mágicas."
+  - Screenshot 4: "Cargás un gasto en 4 taps"
+  - Screenshot 5: "Solo o con tu familia"
+- **Sin device frames decorativos** (Apple muestra el frame del iPhone automáticamente cuando el screenshot es nativo).
+
+### App Preview video (opcional pero recomendado)
+
+| Característica | Recomendación |
+|---|---|
+| Duración | 15-30 segundos |
+| Contenido | Demo rápida del flow más visceral: cargar gasto → ver hero card → wrapped al cierre |
+| Música | Opcional, calma — coherente con tono editorial |
+| Audio | Sin voz humana (Apple muestra video muteado por default; subtítulos clave en pantalla) |
+| Sin call-to-actions hacia URLs | Apple rechaza videos que dirijan fuera del App Store |
+
+### Cómo armar los screenshots
+
+| Opción | Tiempo | Costo | Calidad |
+|---|---|---|---|
+| **Simulator de Xcode** con cuenta poblada | 2-4 h | USD 0 | Buena, pero vacíos los datos si no se pueblan a mano |
+| **Device físico real** (tu iPhone con la cuenta del owner que ya tiene Manifiesto en TestFlight con datos reales del owner) | 2-3 h | USD 0 | Excelente — son datos reales del producto en acción |
+| **Mockup tools** (Shotsnapp, Screely, etc.) sobre screenshots crudos | 4-6 h | USD 0-50 | Profesional pero requiere diseño |
+| **Contratar designer** que arme screenshots con device frames + captions + variantes | 1-2 días | USD 100-400 | Top — se ve "ready for prime time" |
+
+**Recomendación para v1.0**: arrancar con device físico real (opción 2) — vos ya tenés TestFlight con datos reales, sacar screenshots desde ahí da el mejor balance time/quality para una app indie. Si después la conversion no es buena, iterar contratando designer (opción 4) en v1.0.x.
+
+### Fuente: por qué screenshots > copy
+
+Studies de App Store Optimization (Sensor Tower 2024, Apptopia 2025) coinciden: **screenshots y preview video explican entre 65-75% de la decisión de install** en sesiones de browsing del App Store. El copy explica ~15-20%. Las reviews/ratings explican otro 10-15%.
+
+Implicación: si tenés bandwidth limitado, invertir 1 día en screenshots cuidados rinde más que 1 día puliendo copy.
 
 ---
 
 ## Referencias
 
 - App Store Connect Help: https://help.apple.com/app-store-connect/
+- Apple HIG screenshots & previews: https://developer.apple.com/design/human-interface-guidelines/app-store-marketing-and-promotion
 - ASO best practices 2026: TBD
 - Manifiesto Privacy Policy: https://manifiestoapp.com/privacy/
 - Manifiesto Terms: https://manifiestoapp.com/terms/
