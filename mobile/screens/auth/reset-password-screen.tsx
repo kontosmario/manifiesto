@@ -87,12 +87,20 @@ export function ResetPasswordScreen() {
         // (PIN o biometric). Si tiene, paso a 'reauth' y abro el sheet.
         // Si no, mantengo el comportamiento previo y voy directo al
         // form — el email link sigue siendo el único factor disponible.
+        //
+        // Sprint I · I-4 — anclar a `hasSavedCredentials` en vez de
+        // `isAvailable`. `isAvailable` es true por el simple hecho de
+        // que el HARDWARE tiene Face ID, lo cual no prueba nada en un
+        // fresh install: el usuario pasa un Face ID prompt y vuelve al
+        // form sin que esto agregue ningún factor extra a la cuenta.
+        // Solo gateamos cuando el APP ya tiene credenciales locales
+        // guardadas para este user.
         const [pinState, bioState] = await Promise.all([
           getPinLockState(),
           getBiometricLoginState(),
         ])
         if (cancelledRef.current) return
-        const hasLocalAuth = pinState.isSet || bioState.isAvailable
+        const hasLocalAuth = pinState.isSet || bioState.hasSavedCredentials
         if (hasLocalAuth) {
           setStage('reauth')
           setReauthVisible(true)
