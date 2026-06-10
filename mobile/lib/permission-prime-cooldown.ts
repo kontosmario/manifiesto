@@ -41,7 +41,14 @@ export async function shouldPrimePermission(key: PrimeKey): Promise<boolean> {
   if (!dismissedAt) return true
   const ms = Number.parseInt(dismissedAt, 10)
   if (!Number.isFinite(ms)) return true
-  return Date.now() - ms >= COOLDOWN_MS
+  // Sprint M · M-L-1 (2026-06-14): treat negative-delta (dismissedAt
+  // > now, i.e. device clock moved backwards since dismissal) as "show
+  // the prime". The stored timestamp is no longer meaningful as a
+  // cooldown anchor and we'd rather re-prompt once than silently honor
+  // a future-dated dismissal forever.
+  const delta = Date.now() - ms
+  if (delta < 0) return true
+  return delta >= COOLDOWN_MS
 }
 
 /**
