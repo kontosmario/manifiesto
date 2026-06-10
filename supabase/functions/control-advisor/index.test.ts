@@ -70,3 +70,45 @@ Deno.test('CORS preflight blocks unknown origin', async () => {
   }))
   assertEquals(res.headers.get('Access-Control-Allow-Origin'), '')
 })
+
+// H-8 (red-team 2026-06-10): tighten bearer parser; a raw token must
+// NOT authenticate.
+Deno.test('rejects raw token without Bearer prefix (401)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ familyId: '00000000-0000-0000-0000-000000000000' }),
+    headers: { Authorization: 'some-raw-jwt' },
+  }))
+  assertEquals(res.status, 401)
+})
+
+// H-11 (red-team 2026-06-10): non-UUID familyId is rejected BEFORE
+// the rate-limit bucket is consumed. We assert on the 400 status; the
+// "before rate limit" property is enforced by ordering in the handler
+// — the test exercises the regex gate landing first.
+Deno.test('rejects non-UUID familyId (400) before rate-limit', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ familyId: 'not-a-uuid' }),
+    headers: { Authorization: 'Bearer some-jwt', origin: 'https://manifiestoapp.com' },
+  }))
+  assertEquals(res.status, 400)
+  assertEquals(res.headers.get('Access-Control-Allow-Origin'), 'https://manifiestoapp.com')
+})
+
+Deno.test('accepts well-formed UUID familyId past the regex gate', async () => {
+  // Just past the regex gate, the handler falls into auth (which will
+  // fail against the fake env). 401 is the expected outcome; the key
+  // assertion is "not 400 from the UUID gate".
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ familyId: '00000000-0000-0000-0000-000000000000' }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  if (res.status === 400) {
+    throw new Error('UUID gate rejected a valid UUID')
+  }
+})

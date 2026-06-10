@@ -128,16 +128,25 @@ function jsonResponse(
   })
 }
 
+// RFC 6750 §2.1 bearer parser — requires the literal `Bearer ` prefix
+// (case-insensitive, per RFC). Reject anything without the prefix.
+// All known callers (mobile via `supabase.functions.invoke`) emit the
+// prefix; tightening this is safe. H-8 (red-team 2026-06-10).
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) return null
   const normalized = authorizationHeader.trim()
   if (!normalized) return null
   const bearerPrefix = 'bearer '
-  if (normalized.toLowerCase().startsWith(bearerPrefix)) {
-    return normalized.slice(bearerPrefix.length).trim() || null
-  }
-  return normalized
+  if (!normalized.toLowerCase().startsWith(bearerPrefix)) return null
+  return normalized.slice(bearerPrefix.length).trim() || null
 }
+
+// RFC 4122 UUID format (any version, any variant). The control-advisor
+// per-user rate-limit bucket is consumed BEFORE the membership /
+// family-existence checks, so a non-UUID `familyId` was burning a
+// 5/hour slot before failing downstream. Validate up front. H-11
+// (red-team 2026-06-10).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function isServerReady(): boolean {
   return Boolean(supabaseUrl && supabaseAnonKey && supabaseServiceRoleKey && anthropicApiKey)
@@ -522,6 +531,13 @@ export async function handler(request: Request): Promise<Response> {
 
   const familyId = (body.familyId ?? '').trim()
   if (!familyId) return jsonResponse({ error: 'familyId is required.' }, 400, cors)
+  // H-11 (red-team 2026-06-10): validate UUID format BEFORE the
+  // expensive rate-limit / membership work. Without this, a non-UUID
+  // value burns a 5/hour rate-limit slot before failing at the DB
+  // layer (where Postgres rejects the cast with a generic 500).
+  if (!UUID_RE.test(familyId)) {
+    return jsonResponse({ error: 'familyId must be a UUID.' }, 400, cors)
+  }
 
   // Auth
   const token = extractBearerToken(
