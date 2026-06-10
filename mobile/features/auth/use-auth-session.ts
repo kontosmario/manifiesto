@@ -94,6 +94,24 @@ export function useAuthSession() {
         // previous account by name. The biometric metadata is wiped
         // separately via `clearBiometricCredentials` where applicable.
         void clearLastUserProfile()
+        // Sprint L · Audit #5 L-2 (2026-06-10): defense-in-depth clear
+        // of the notification-bridge pendingRoute. `logoutSession`
+        // already calls this synchronously before resetAppLock(), but
+        // any code path that calls `supabase.auth.signOut()` directly
+        // (e.g. a 401 response forcing a sign-out, or test harnesses)
+        // would otherwise leave the queued route alive for the next
+        // sign-in to drain. Dynamic import to avoid pulling the bridge
+        // module into the auth bundle at startup.
+        void (async () => {
+          try {
+            const { clearPendingNotificationRoute } = await import(
+              '@/lib/notification-pending-route'
+            )
+            clearPendingNotificationRoute()
+          } catch {
+            // best-effort
+          }
+        })()
       }
     })
 

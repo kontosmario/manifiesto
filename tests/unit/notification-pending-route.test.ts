@@ -1,5 +1,9 @@
 // J-Auth1 — ensure the push-tap pending-route module preserves the
 // route across the lock window and flushes once `markAppUnlocked()` fires.
+//
+// Sprint L · Audit #5 L-2 + L-3 (2026-06-10): adds coverage for the
+// explicit clear surface (sign-out leak fix) and the 60s TTL (long
+// lock-delay staleness fix).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,9 +15,11 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  // Real timers — earlier tests may have flipped to fake.
+  vi.useRealTimers()
   const routeMod = await import('@/lib/notification-pending-route')
   // Drain any leftover pending route so other test files don't see it.
-  routeMod.consumePendingNotificationRoute()
+  routeMod.clearPendingNotificationRoute()
   const lockMod = await import('@/features/auth/app-lock-state')
   lockMod.resetAppLock()
 })
@@ -69,6 +75,91 @@ describe('notification-pending-route', () => {
     expect(onUnlock).toHaveBeenCalledTimes(2)
 
     unsubscribe()
+  })
+
+  it('L-2: clearPendingNotificationRoute drops any queued route', async () => {
+    const {
+      setPendingNotificationRoute,
+      clearPendingNotificationRoute,
+      consumePendingNotificationRoute,
+      peekPendingNotificationRoute,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/(tabs)/home')
+    clearPendingNotificationRoute()
+    expect(peekPendingNotificationRoute()).toBeNull()
+    expect(consumePendingNotificationRoute()).toBeNull()
+  })
+
+  it('L-2: clearPendingNotificationRoute is a no-op when nothing is queued', async () => {
+    const {
+      clearPendingNotificationRoute,
+      consumePendingNotificationRoute,
+    } = await import('@/lib/notification-pending-route')
+
+    expect(() => clearPendingNotificationRoute()).not.toThrow()
+    expect(consumePendingNotificationRoute()).toBeNull()
+  })
+
+  it('L-3: consume returns the route when called before the TTL elapses', async () => {
+    vi.useFakeTimers()
+    const {
+      setPendingNotificationRoute,
+      consumePendingNotificationRoute,
+      PENDING_ROUTE_TTL_MS,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/control')
+    vi.advanceTimersByTime(PENDING_ROUTE_TTL_MS - 1)
+    expect(consumePendingNotificationRoute()).toBe('/(app)/control')
+  })
+
+  it('L-3: consume drops the route once TTL has elapsed', async () => {
+    vi.useFakeTimers()
+    const {
+      setPendingNotificationRoute,
+      consumePendingNotificationRoute,
+      PENDING_ROUTE_TTL_MS,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/expenses/edit/abc')
+    vi.advanceTimersByTime(PENDING_ROUTE_TTL_MS + 1)
+    expect(consumePendingNotificationRoute()).toBeNull()
+  })
+
+  it('L-3: peek honors the TTL', async () => {
+    vi.useFakeTimers()
+    const {
+      setPendingNotificationRoute,
+      peekPendingNotificationRoute,
+      PENDING_ROUTE_TTL_MS,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/(app)/notifications')
+    vi.advanceTimersByTime(PENDING_ROUTE_TTL_MS + 1)
+    expect(peekPendingNotificationRoute()).toBeNull()
+  })
+
+  it('L-3: TTL constant is 60 seconds', async () => {
+    const { PENDING_ROUTE_TTL_MS } = await import(
+      '@/lib/notification-pending-route'
+    )
+    expect(PENDING_ROUTE_TTL_MS).toBe(60_000)
+  })
+
+  it('L-3: setPendingNotificationRoute resets the queuedAt clock', async () => {
+    vi.useFakeTimers()
+    const {
+      setPendingNotificationRoute,
+      consumePendingNotificationRoute,
+      PENDING_ROUTE_TTL_MS,
+    } = await import('@/lib/notification-pending-route')
+
+    setPendingNotificationRoute('/old')
+    vi.advanceTimersByTime(PENDING_ROUTE_TTL_MS + 10)
+    setPendingNotificationRoute('/new')
+    vi.advanceTimersByTime(PENDING_ROUTE_TTL_MS - 1)
+    expect(consumePendingNotificationRoute()).toBe('/new')
   })
 
   it('subscribeToAppUnlock unsubscribe stops further events', async () => {

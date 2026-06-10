@@ -12,6 +12,9 @@ export async function logoutSession(input: {
   const { clearBiometricSetupShown } = await import(
     '@/features/auth/biometric-setup-flag'
   )
+  const { clearPendingNotificationRoute } = await import(
+    '@/lib/notification-pending-route'
+  )
 
   // Capture userId BEFORE signOut so we can namespace the per-user
   // flag clear. After signOut the session is null and we'd lose
@@ -78,6 +81,13 @@ export async function logoutSession(input: {
   if (userId) {
     await clearBiometricSetupShown(userId)
   }
+  // Sprint L · Audit #5 L-2 (2026-06-10): clear any pending push-tap
+  // route BEFORE `resetAppLock()` so the next unlock (post-login on a
+  // shared device) cannot drain user A's queued deep link into user B's
+  // session. Must run pre-`resetAppLock()` because that call eventually
+  // triggers an unlock transition, and the bridge listens for the
+  // locked→unlocked edge to flush pendingRoute.
+  clearPendingNotificationRoute()
   // Re-arm the app-lock gate so the next session (if a different
   // user signs in on the same device, or the same user signs back
   // in) goes through the biometric re-confirmation again.
