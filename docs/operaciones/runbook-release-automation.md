@@ -21,6 +21,7 @@
 | Secret | Usado por | De dónde salió | Status |
 |---|---|---|---|
 | `EXPO_TOKEN` | `release.yml`, `ota-update.yml` | https://expo.dev/accounts/markon07/settings/access-tokens | ✅ |
+| `EXPO_UPDATE_PRIVATE_KEY` | `ota-update.yml` | `keys/private-key.pem` generado con `npx expo-updates codesigning:generate` — ver sección "EAS Update code signing" | ⚠️ owner action pendiente (Sprint F · F1, 2026-06-10) |
 | `EXPO_APPLE_ID` | `release.yml` (legacy, ya no requerido) | `kontosmario@gmail.com` | ✅ (deprecado en 2026-06-09 — ASC API key reemplaza) |
 | `EXPO_ASC_APP_ID` | `release.yml` (legacy) | App Store Connect App ID `6776033487` | ✅ (deprecado — hardcoded en `eas.json`) |
 | `ASC_API_KEY_ID` | `release.yml` (submit) | App Store Connect → API key `HUNBRN89BT` | ✅ |
@@ -155,6 +156,99 @@ Si tarda más de 2-3 force-restarts:
 - Verificar el network del device (a veces wifi corporativo bloquea CDN de Expo)
 
 Si tocaste `package.json` (incluso dep no-native): el workflow lo skipea por seguridad. Forzá con `workflow_dispatch` después de confirmar que no agregaste deps nativas.
+
+## EAS Update code signing (Sprint F · F1)
+
+> Threat model: red team audit 2026-06-10 (Mobile H3 + Infra H-1). Si alguien filtra `EXPO_TOKEN` (dep comprometida en GitHub Actions, sesión `~/.expo` robada, phishing del dashboard de EAS), puede publicar un JS bundle malicioso al canal `production` y RCE-ear a todos los users en el próximo cold start (`fallbackToCacheTimeout: 0`). El code signing levanta la barrera: el atacante también necesita la **private key**, que vive offline en la máquina del owner + como GitHub Secret para CI.
+
+### Cómo funciona
+
+- `app.config.ts` declara `updates.codeSigningCertificate: './certs/certificate.pem'` + `codeSigningMetadata.alg: 'rsa-v1_5-sha256'`.
+- El cert público (`certs/certificate.pem`) se bundlea en el binario en build time (sí, está commiteado al repo — es público por diseño).
+- La private key (`keys/private-key.pem`) **nunca se commitea** (está en `.gitignore`) y vive en:
+  1. La máquina del owner (`/Users/mario/apps/manifiesto/keys/private-key.pem`, permisos `600`).
+  2. GitHub Secrets como `EXPO_UPDATE_PRIVATE_KEY` (PEM literal, multilínea).
+- `ota-update.yml` escribe la key a un archivo temp del runner, pasa `--private-key-path` a `eas update`, y la borra en un step `if: always()`.
+- En el device, `expo-updates` valida la firma del manifest contra el cert bundleado. Si no matchea, ignora el update y se queda con el bundle cacheado.
+
+### Generación inicial (owner, una vez)
+
+```bash
+cd /Users/mario/apps/manifiesto
+mkdir -p keys certs
+npx expo-updates codesigning:generate \
+  --key-output-directory keys \
+  --certificate-output-directory certs \
+  --certificate-validity-duration-years 10 \
+  --certificate-common-name "Manifiesto"
+```
+
+Output:
+- `keys/private-key.pem` (ECDSA P-256, **never commit**)
+- `keys/public-key.pem` (informativo, no se usa en runtime)
+- `certs/certificate.pem` (self-signed con la public key; se bundlea en el app)
+
+> **Nota de algoritmo**: el campo `alg: 'rsa-v1_5-sha256'` en `app.config.ts` es el nombre formal que usa Expo para identificar la suite (definido por la spec del manifest protocol). El keypair real es ECDSA P-256, generado por `codesigning:generate`. No tocar el `alg` salvo que Expo lo cambie en una versión futura del SDK.
+
+### Subir la private key a GitHub Secrets
+
+1. Copiar el contenido completo del PEM (incluyendo `-----BEGIN/END EC PRIVATE KEY-----`):
+   ```bash
+   cat keys/private-key.pem | pbcopy
+   ```
+2. https://github.com/<owner>/manifiesto/settings/secrets/actions → **New repository secret**
+3. Name: `EXPO_UPDATE_PRIVATE_KEY`
+4. Value: pegar el contenido del PEM
+5. **Add secret**
+
+Verificación: el próximo run de `ota-update.yml` debería loggear "EAS Update completed" sin errores. Si `EXPO_UPDATE_PRIVATE_KEY` está vacío, el step "Write OTA signing key" falla con `::error::EXPO_UPDATE_PRIVATE_KEY secret is empty`.
+
+### Primer deploy después de habilitar signing
+
+El cert sólo se incrusta en builds nativos **nuevos** (cuando Expo procesa `app.config.ts`). El binario actualmente en TestFlight (1.0.0 (1), 2026-06-09) **no tiene el cert** y por lo tanto:
+- Acepta updates **firmados** o **sin firmar** indistintamente (sin cert → sin verificación).
+- Una vez que cortemos un build nuevo (tag `vX.Y.Z` próximo), ese binario va a empezar a verificar firmas.
+
+Por ende: enviar el primer OTA firmado **antes** de cortar el próximo build nativo es seguro — pero la protección sólo entra en efecto a partir del próximo TestFlight build. Hasta entonces, la mitigación principal contra `EXPO_TOKEN` leak es la rotación rápida del token + revisar el dashboard de EAS Updates.
+
+### Qué pasa si la firma falla en el cliente
+
+- `expo-updates` descarta el update y se queda con el bundle anterior (cacheado).
+- Logs (Sentry deshabilitado por ahora, ver `project_sentry_skipped.md`): `console.error` con `CodeSigningError` — visible vía Xcode console con device cableado.
+- No hay UI de error: el user simplemente sigue viendo el bundle viejo. Ese silencio es by-design (atacante no tiene cómo distinguir "update firmado mal" de "update no llegó").
+
+Cómo detectar el caso legítimo (CI publicó pero los devices no actualizan):
+1. Verificar https://expo.dev/accounts/markon07/projects/manifiesto/updates que el update group exista.
+2. Confirmar que `runtimeVersion` del update matchea el del build instalado.
+3. Si todo matchea pero los devices no toman el update → mismatch de signing. Verificar que la key en GitHub Secrets corresponde al cert bundleado en el binario actual.
+
+### Rotación de keys
+
+Periodicidad recomendada: cada 2-3 años, o **inmediatamente** si sospechás compromiso (laptop robada, GitHub Secret accidentalmente expuesto).
+
+1. Regenerar localmente:
+   ```bash
+   rm -rf keys/ certs/
+   mkdir -p keys certs
+   npx expo-updates codesigning:generate \
+     --key-output-directory keys \
+     --certificate-output-directory certs \
+     --certificate-validity-duration-years 10 \
+     --certificate-common-name "Manifiesto"
+   ```
+2. Commitear el nuevo `certs/certificate.pem` (el viejo se sobrescribe; OK porque es público).
+3. Cortar un **build nativo nuevo** (tag `vX.Y.Z`) — el cert nuevo entra al binario solo en builds nuevos.
+4. Esperar a que ese build llegue a producción (App Store rollout). Mientras tanto los binarios viejos siguen verificando contra el cert viejo — **no actualizar el GitHub Secret todavía** o vas a romper updates a los binarios viejos.
+5. Cuando el adoption del build nuevo sea ≥ 95% (o pasaron 30 días, lo que sea antes), actualizar `EXPO_UPDATE_PRIVATE_KEY` en GitHub Secrets con el contenido del nuevo `keys/private-key.pem`.
+6. El próximo OTA queda firmado con la nueva key — los binarios viejos lo van a rechazar (silenciosamente), pero ya están en minoría y eventualmente actualizan via App Store.
+
+### Recovery — perdí la private key
+
+Si `keys/private-key.pem` se pierde del filesystem local + nadie tiene backup, el GitHub Secret sigue siendo la única copia. Para rescatarla:
+1. **No** abras el Secret en la UI de GitHub (no se puede leer una vez creado).
+2. En su lugar: regenerar el keypair (paso "Rotación" arriba) — equivalente operacionalmente a un compromise event, y vas a tener que esperar al próximo build nativo para que la nueva key surta efecto.
+
+Backup recomendado: 1Password o similar, vault personal del owner, no compartir.
 
 ## Agregar un internal tester (App Store Connect)
 

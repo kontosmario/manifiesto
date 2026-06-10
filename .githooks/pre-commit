@@ -46,11 +46,31 @@ FORBIDDEN_PATHS=(
   '^.*\.key$'
 )
 
+# Explicit allowlist for public-by-design crypto material that legitimately
+# lives in the repo (Sprint F · F1: the EAS Update self-signed cert is
+# bundled into the binary at build time so clients can verify OTA bundle
+# signatures — see docs/operaciones/runbook-release-automation.md). The
+# matching private key lives in keys/ (gitignored) + a GitHub Secret.
+ALLOWED_PATHS=(
+  '^certs/certificate\.pem$'
+)
+
 for f in "${STAGED_FILES[@]}"; do
   for pat in "${FORBIDDEN_PATHS[@]}"; do
     if [[ "$f" =~ $pat ]]; then
       # Allow .example placeholders.
       if [[ "$f" == *".example"* ]]; then
+        continue
+      fi
+      # Allow explicit public-cert entries.
+      allowed=0
+      for ap in "${ALLOWED_PATHS[@]}"; do
+        if [[ "$f" =~ $ap ]]; then
+          allowed=1
+          break
+        fi
+      done
+      if [ "$allowed" -eq 1 ]; then
         continue
       fi
       echo "[pre-commit] BLOCKED: $f matches forbidden path pattern ($pat)"

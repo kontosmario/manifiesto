@@ -125,10 +125,46 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "message=$MSG" >> "$GITHUB_OUTPUT"
 
+      # Sprint F · F1 — write the code-signing private key to a runner-local
+      # file that only the EAS Update step reads. We never commit the key
+      # nor expose it in logs (the heredoc avoids `echo` showing the value
+      # if `set -x` ever gets enabled). The cleanup step below removes the
+      # file even on failure, so a cached runner can never leak it.
+      - name: Write OTA signing key
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          PRIVATE_KEY: ${{ secrets.EXPO_UPDATE_PRIVATE_KEY }}
+        run: |
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo "::error::EXPO_UPDATE_PRIVATE_KEY secret is empty. Owner must add it (see docs/operaciones/runbook-release-automation.md → EAS Update code signing)."
+            exit 1
+          fi
+          install -m 600 /dev/null "$RUNNER_TEMP/private-key.pem"
+          printf '%s' "$PRIVATE_KEY" > "$RUNNER_TEMP/private-key.pem"
+          # Sanity check the file looks like a PEM key without printing its
+          # contents — `head -n1` shows only the BEGIN line.
+          head -n1 "$RUNNER_TEMP/private-key.pem" | grep -q "BEGIN" || {
+            echo "::error::EXPO_UPDATE_PRIVATE_KEY does not look like a PEM key."
+            exit 1
+          }
+
       - name: EAS Update
         if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          # expo-updates reads this env var to sign the manifest before
+          # uploading. Path is runner-local (cleaned up below).
+          EXPO_UPDATES_PRIVATE_KEY_PATH: ${{ runner.temp }}/private-key.pem
         run: |
           eas update \
             --branch "${{ steps.meta.outputs.branch }}" \
             --message "${{ steps.meta.outputs.message }}" \
+            --private-key-path "$EXPO_UPDATES_PRIVATE_KEY_PATH" \
             --non-interactive
+
+      - name: Cleanup signing key
+        if: always()
+        run: |
+          # Always wipe the key, even on failure / cancellation. GitHub
+          # runners are ephemeral but defence in depth: a flaky shared
+          # runner or post-step plugin could otherwise read the file.
+          rm -f "$RUNNER_TEMP/private-key.pem" || true

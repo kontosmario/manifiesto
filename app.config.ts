@@ -37,6 +37,28 @@ const config: ExpoConfig = {
   updates: {
     url: 'https://u.expo.dev/54449767-9236-4734-972a-e561debd1360',
     fallbackToCacheTimeout: 0,
+    // Sprint F · F1 (red team finding 2026-06-10, Mobile H3 + Infra H-1):
+    // OTA bundles are signed with an ECDSA P-256 key. The matching cert
+    // is bundled into the app binary at build time; expo-updates rejects
+    // any manifest whose signature doesn't verify against this cert.
+    //
+    // Threat model: a leaked EXPO_TOKEN (compromised GitHub Action dep,
+    // stolen ~/.expo session, EAS dashboard phishing) would otherwise let
+    // an attacker push an arbitrary JS bundle to the `production` channel
+    // and RCE every installed user on next cold start. With signing, the
+    // attacker also needs the private key — stored separately as the
+    // GitHub Secret EXPO_UPDATE_PRIVATE_KEY (see ota-update.yml) and held
+    // offline by the owner.
+    //
+    // Key rotation: regenerate via `expo-updates codesigning:generate`,
+    // ship a new TestFlight build with the new cert, then update the
+    // secret. Old binaries continue to verify against the old cert until
+    // users update. See docs/operaciones/runbook-release-automation.md.
+    codeSigningCertificate: './certs/certificate.pem',
+    codeSigningMetadata: {
+      keyid: 'main',
+      alg: 'rsa-v1_5-sha256',
+    },
   },
   plugins: [
     'expo-router',

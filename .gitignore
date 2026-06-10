@@ -63,3 +63,10 @@ backups/
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# EAS Update code signing — private key never leaves the owner's machine
+# (and the CI runner that consumes it via GitHub Secret EXPO_UPDATE_PRIVATE_KEY).
+# The public cert in certs/certificate.pem IS committed: it gets bundled
+# into the binary so the client can verify update signatures.
+# See docs/operaciones/runbook-release-automation.md → "EAS Update code signing".
+keys/
