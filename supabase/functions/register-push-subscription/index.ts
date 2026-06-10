@@ -79,15 +79,21 @@ function jsonResponse(
   })
 }
 
+// RFC 6750 §2.1 bearer parser — requires the literal `Bearer ` prefix
+// (case-insensitive, per RFC). The previous implementation fell back to
+// returning the raw header value when no prefix matched, which let
+// callers send a bare token and still authenticate (the same regression
+// fixed in Sprint H-8 across the other three edge functions). Sprint I
+// · I-2 (red-team re-audit 2026-06-10).
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) return null
   const normalized = authorizationHeader.trim()
   if (!normalized) return null
   const bearerPrefix = 'bearer '
-  if (normalized.toLowerCase().startsWith(bearerPrefix)) {
-    return normalized.slice(bearerPrefix.length).trim() || null
+  if (!normalized.toLowerCase().startsWith(bearerPrefix)) {
+    return null
   }
-  return normalized
+  return normalized.slice(bearerPrefix.length).trim() || null
 }
 
 function isServerReady(): boolean {

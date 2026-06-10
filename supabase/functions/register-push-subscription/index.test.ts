@@ -97,3 +97,16 @@ Deno.test('rejects POST with invalid bearer (401)', async () => {
   // 401 (auth.getUser rejects) is the expected branch.
   assertEquals(res.status, 401)
 })
+
+Deno.test('rejects POST with raw (prefix-less) token as 401 — Sprint I · I-2', async () => {
+  // Regression guard: prior bearer parser fell back to returning the raw
+  // header value when the `Bearer ` prefix was absent, letting a bare
+  // token authenticate. We now require the literal prefix per RFC 6750.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ token: 'ExponentPushToken[abc]' }),
+    headers: { Authorization: 'fake-jwt-token' },
+  }))
+  assertEquals(res.status, 401)
+})
