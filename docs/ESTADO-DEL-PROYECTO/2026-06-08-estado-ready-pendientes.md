@@ -1,11 +1,11 @@
-# Estado del proyecto · 2026-06-08 (actualizado 2026-06-10)
+# Estado del proyecto · 2026-06-08 (actualizado 2026-06-11)
 
 > **Snapshot inmediatamente actionable**: qué está READY (mergeable / shippeable hoy) vs qué queda PENDIENTE.
 >
-> **HEAD (2026-06-10)**: dominio `manifiestoapp.com` LIVE con Privacy + Terms hosteados + email forwarding + OTA aplicado al TestFlight build. Items H1 + H2 cerrados.
-> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup + dominio+sitio legal completos. 0 deuda técnica. Solo pending: assets visuales (screenshots, video) + cuestionarios de App Store Connect + submit final.
+> **HEAD (2026-06-11)**: 🎯 **App Store v1.0 ASSEMBLED — listo para el click de Submit for Review.** Listing copy, screenshots, privacy nutrition, age rating, seed account para reviewers, build atada, todo cargado en App Store Connect. Solo falta que owner clickee "Añadir a revisión" cuando decida.
+> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup + dominio+sitio legal + listing copy + screenshots completos. 0 deuda técnica.
 >
-> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES). Todo lo que está ahí es owner action, no requiere desarrollo.
+> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES) — solo queda el click + follow-ups post-launch.
 >
 > **Foto canónica de pantallas/sistemas**: sigue siendo [`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md). Este doc es el *delta y plan*, no reemplaza la foto exhaustiva — sólo la complementa para el período post-2026-05-21.
 
@@ -21,11 +21,14 @@ Producto feature-complete (desde 2026-05-09) **+ Sprints A→D shippeados + 4 CR
 | Tests integration | **24 nuevos + 1 todo**, verde local |
 | Lint errors | **0** |
 | Typecheck | clean |
-| Migrations aplicadas remote | **22** (las últimas 9 del wizard + sprints A-D) |
+| Migrations aplicadas remote | **23** (las últimas 9 del wizard + sprints A-D + seed `apple.review@manifiestoapp.com`) |
 | Build production en TestFlight | ✅ 1.0.0 (1) instalado en device |
 | Dominio público `manifiestoapp.com` | ✅ LIVE con Privacy + Terms hosteados |
 | Email `soporte@manifiestoapp.com` | ✅ forwarding LIVE → gmail |
 | OTA propagado a TestFlight | ✅ `64b2bb9a-884e-4920-b736-a2de70324766` (2026-06-10) |
+| **Listing copy App Store Connect** | ✅ 6 campos cargados (2026-06-11) |
+| **Screenshots App Store** | ✅ 9 uploads a slot iPhone 6.5" (2026-06-11) |
+| **Seed account para Apple Review** | ✅ `apple.review@manifiestoapp.com` (2026-06-11) |
 | Deuda técnica de código | **0** para shippeo a App Store |
 
 **🚀 Camino crítico al App Store**: solo restan **owner actions de contenido** (Privacy Policy hosting, screenshots, listing copy, age rating, privacy nutrition). Ningún item de código bloquea. Ver sección 2.
@@ -112,20 +115,27 @@ Aplicadas y verificadas contra remote production. No quedan migrations sin aplic
 >
 > **Resultado**: el grueso de los items "blocked by Apple Dev" están desbloqueados. Lo único que queda es **contenido del owner** (legal, screenshots, listing copy) — ninguna deuda técnica de código.
 
-### 2.1 · High priority — Owner content para Apple submit
+### 2.1 · App Store submit · 7/8 items DONE, solo falta el click
 
-Todos son **owner actions**, no requieren código:
-
-| # | Item | Effort | Notas |
+| # | Item | Status | Notas |
 |---|------|--------|-------|
-| ~~H1~~ | ~~**Privacy Policy + Terms redactados y hosteados**~~ | — | ✅ **DONE 2026-06-10**. Sitio LIVE en `manifiestoapp.com` (Cloudflare Pages). Ver [milestone doc](2026-06-10-domain-and-legal-site-completed.md) |
-| ~~H2~~ | ~~**Email forwarding `soporte@manifiestoapp.com` → gmail**~~ | — | ✅ **DONE 2026-06-10**. Cloudflare Email Routing (`soporte@` + `support@` → gmail) |
-| H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado. Tools: simulator de Xcode (screenshots vacíos) o un device físico con cuenta poblada |
-| ~~H4~~ | ~~**Privacy Nutrition labels**~~ | — | ✅ **DONE 2026-06-10**. 7 tipos de datos declarados (Nombre, Email, Otra info financiera, Atención al cliente, Otro contenido del user, ID de usuario, ID del dispositivo). Todos atados a Funcionalidad de la app + linked al user + NO tracking. Publicado en App Store Connect |
-| H5 | **Listing copy** (descripción es-MX, keywords, qué hay nuevo) | 2-4 h | App Store Connect → app → Distribución → Versión 1.0. Hay placeholder pero requiere copy final |
-| ~~H6~~ | ~~**Age rating survey**~~ | — | ✅ **DONE 2026-06-10**. Rating: **4+** en 173 países (equivalencias regionales para Brasil "AL" y Corea "ALL"). 7 pasos del cuestionario, todas las categorías sin contenido sensible |
-| H7 | **App Preview video** (opcional) | 1 d | Boost del conversion rate en App Store. Si no, usar solo screenshots |
-| H8 | **Submit for Review** + esperar Apple (~1-3 días) | 1 click → wait | Una vez todo lo anterior listo |
+| ~~H1~~ | ~~Privacy Policy + Terms hosteados~~ | ✅ DONE 2026-06-10 | Sitio LIVE en `manifiestoapp.com`. Ver [milestone 2026-06-10](2026-06-10-domain-and-legal-site-completed.md) |
+| ~~H2~~ | ~~Email forwarding `soporte@manifiestoapp.com`~~ | ✅ DONE 2026-06-10 | Cloudflare Email Routing (soporte@ + support@) |
+| ~~H3~~ | ~~Screenshots App Store~~ | ✅ DONE 2026-06-11 | 9 PNGs 1284×2778 (iPhone 6.5") subidos. Pipeline en `docs/marketing/screenshots/README.md` |
+| ~~H4~~ | ~~Privacy Nutrition labels~~ | ✅ DONE 2026-06-10 | 7 tipos de datos declarados, todos App Functionality + linked + NO tracking |
+| ~~H5~~ | ~~Listing copy~~ | ✅ DONE 2026-06-11 | 6 campos pegados de `docs/marketing/app-store-listing-source.md` §7. Subtítulo "Gastos claros, ahorro simple", desc ~2250 chars, keywords 91/100 |
+| ~~H6~~ | ~~Age rating survey~~ | ✅ DONE 2026-06-10 | **4+** en 173 países, equivalencias para Brasil y Corea |
+| H7 | App Preview video (opcional) | 🟡 SKIPPED | Decisión owner: arrancar sin video, agregar en v1.1 si conversion < 20% |
+| **H8** | **Submit for Review** | 🔵 **READY TO CLICK** | Owner decide cuándo. Apple va a hacer 4-6 preguntas finales con respuestas conocidas (export compliance: No, IDFA: No, DSA EU comerciante: No, etc.). Después: 1-3 días hábiles de review. Ver [milestone 2026-06-11](2026-06-11-app-store-assembled-ready-for-review.md) |
+
+### Adicional ya cubierto (no estaba en la lista original H1-H8)
+
+| # | Item | Status |
+|---|------|--------|
+| H-extra | Seed account para Apple Review (`apple.review@manifiestoapp.com`) | ✅ DONE 2026-06-11 (migration aplicada en remote) |
+| H-extra | Build atada a la versión en App Store Connect | ✅ DONE (1.0 build 1 de EAS Submit del 2026-06-09) |
+| H-extra | Datos de contacto + notas para Apple reviewers | ✅ DONE 2026-06-11 |
+| H-extra | Publicación post-aprobación configurada | ✅ Automática |
 
 ### 2.2 · Medium priority — Tech debt residual
 

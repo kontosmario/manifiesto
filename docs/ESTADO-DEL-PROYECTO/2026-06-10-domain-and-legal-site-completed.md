@@ -86,12 +86,14 @@ Items H1 + H2 del ready-pendientes **cerrados**. Resto pendiente:
 
 | # | Item | Effort estimado | Status |
 |---|---|---|---|
-| H3 | Screenshots App Store (6.7" + 5.5" iPhone) | 1-2 d self / USD 100-300 contratado | 🔴 pendiente |
-| ~~H4~~ | ~~Privacy Nutrition labels~~ | — | ✅ **DONE 2026-06-10 noche** |
-| H5 | Listing copy (descripción es-MX + keywords) | 2-4 h | 🔴 pendiente |
-| ~~H6~~ | ~~Age rating survey~~ | — | ✅ **DONE 2026-06-10 noche** (4+ en 173 países) |
-| H7 | App Preview video (opcional pero recomendado) | 1 d | 🟡 opcional |
-| H8 | Submit for Review + esperar Apple | 1 click + 1-3 días | 🔴 final |
+| ~~H3~~ | ~~Screenshots App Store~~ | — | ✅ **DONE 2026-06-11** (9 PNGs subidos en 1284×2778) |
+| ~~H4~~ | ~~Privacy Nutrition labels~~ | — | ✅ **DONE 2026-06-10** |
+| ~~H5~~ | ~~Listing copy~~ | — | ✅ **DONE 2026-06-11** |
+| ~~H6~~ | ~~Age rating survey~~ | — | ✅ **DONE 2026-06-10** (4+ en 173 países) |
+| H7 | App Preview video | — | 🟡 SKIPPED (owner: arrancar sin, v1.1 si hace falta) |
+| H8 | **Submit for Review** | 1 click + 1-3 días | 🔵 **READY** — owner decide cuándo clickea |
+
+**🎯 Estado final**: todos los items técnicos cerrados. Detalles del armado final en [milestone 2026-06-11](2026-06-11-app-store-assembled-ready-for-review.md).
 
 ## Referencias
 

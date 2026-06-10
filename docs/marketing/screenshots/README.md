@@ -31,15 +31,42 @@ docs/marketing/screenshots/
     └── landscape-collage.jpg       (5 iPhones, sirve para OG image)
 ```
 
-## ✅ Estado actual: READY for App Store upload
+## ✅ Estado final: UPLOADED a App Store Connect (2026-06-11)
 
-Owner regeneró los 9 screenshots con **Nano Banana / Flow** (Gemini Image Gen) a 1408×3040 (aspect ratio 0.4632 — esencialmente nativo iPhone 6.9"). Los downscaleamos 6% a **1320×2868 exact** y están en `v1.0/final/`. **Listos para subir a App Store Connect.**
+Owner regeneró los 9 screenshots con **Nano Banana / Flow** (Gemini Image Gen) a 1408×3040. Hicimos 2 batches de resize:
+- `v1.0/final/` → 1320×2868 (iPhone 6.9") — **NO funcionó** en App Store Connect del owner (Apple mostró slot 6.5" que no acepta 6.9" sizes)
+- `v1.0/final-6.5/` → 1284×2778 (iPhone 6.5") — ✅ **ESTOS son los que están live en App Store Connect**
+
+### Orden final en App Store Connect (9 de 10 slots usados)
+
+| # | File | Caption |
+|---|---|---|
+| 1 | `00-brand-cover.png` | Manifiesto · "Tus finanzas, claras." (composite con 3 phones) |
+| 2 | `01-home-hero.png` | "Tus finanzas, claras." |
+| 3 | `04-gastos-calendar.png` | "Cada peso, a la vista." |
+| 4 | `05-fijos.png` | "Lo recurrente, en orden." |
+| 5 | `06-control.png` | "Sabé cuándo frenar." |
+| 6 | `07-quick-add.png` | "Cargá en segundos." |
+| 7 | `08-add-expense.png` | "Categorías que entendés." |
+| 8 | `03-asistente.png` | "Acciones que mueven la aguja." |
+| 9 | `02-wrapped.png` | "Tu mes, en cifras." |
+
+`09-splash.png` no subido (backup, low-info).
+
+### Riesgo conocido del orden elegido
+
+El owner decidió poner el brand cover como #1 a pesar de que el text dentro de las phones del cover está hallucinated (Nano Banana no preservó el contenido original al regenerar). Trade-off:
+- ✅ Branding fuerte, impacto visual alto en search
+- ⚠️ Apple podría flagear por "screenshots don't reflect actual app functionality" (guideline 2.3.7)
+
+Si Apple lo rechaza, fix rápido: mover el cover al slot 10 o removerlo entirely. Los otros 8 quedan sin re-editar.
 
 ### Tamaños verificados
 
-| File | Dimensions | OK |
-|---|---|---|
-| `01-home-hero.png` → `09-splash.png` | 1320×2868 px | ✅ matches Apple iPhone 6.9" requirement |
+| Carpeta | Dimensions | Apple slot | Status |
+|---|---|---|---|
+| `v1.0/final/` | 1320×2868 | iPhone 6.9" (no presente en owner's App Store Connect) | 🟡 backup |
+| `v1.0/final-6.5/` | 1284×2778 | iPhone 6.5" | ✅ **subido** |
 
 ## Inventario y captions
 
