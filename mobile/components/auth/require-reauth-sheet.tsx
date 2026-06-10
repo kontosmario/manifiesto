@@ -43,11 +43,41 @@ import { getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
+/**
+ * Sprint H · H7 — Threat model + fallback policy.
+ *
+ * Default precedence (biometric > PIN > none) maximizes UX coverage but
+ * may DOWNGRADE the auth factor for users who set up both: a destructive
+ * action gated by biometric WILL fall through to a 4-digit PIN if the
+ * biometric prompt fails or is cancelled. A 4-digit PIN is weaker than
+ * a successful Face ID match in two ways:
+ *
+ *   1. Entropy: ~13 bits (with PIN lockout helping after N attempts).
+ *   2. Shoulder-surfing: visible from a glance over the user's shoulder.
+ *
+ * For most actions this trade is fine — falling back to PIN beats
+ * locking the user out entirely. For the highest-impact destructive
+ * action (account deletion) the owner may want to require biometric
+ * with NO PIN fallback. We expose `allowPinFallback` (defaults to
+ * `true` to preserve existing behavior). Callers that want the strict
+ * gate pass `allowPinFallback={false}` — currently only the
+ * delete-account flow opts in.
+ *
+ * If we later expose this as a Settings toggle, that's the right place
+ * for it; for now it's compile-time per callsite to avoid silent
+ * behavior shifts for existing users.
+ */
 interface RequireReauthSheetProps {
   visible: boolean
   actionLabel: string
   onConfirmed: () => void
   onCancel: () => void
+  /**
+   * When `false`, a failed biometric attempt does NOT degrade to PIN —
+   * the user must retry biometric or cancel. Defaults to `true` (legacy
+   * behavior).
+   */
+  allowPinFallback?: boolean
 }
 
 type AuthMethod = 'biometric' | 'pin' | 'none' | 'loading'
@@ -57,6 +87,7 @@ export function RequireReauthSheet({
   actionLabel,
   onConfirmed,
   onCancel,
+  allowPinFallback = true,
 }: RequireReauthSheetProps) {
   const { theme } = useAppTheme()
   const router = useRouter()
@@ -95,6 +126,12 @@ export function RequireReauthSheet({
       // Biometric tiene precedencia: es la UX más fluida y respaldada
       // por OS. PIN es el fallback determinista. Si NINGUNO está
       // configurado, mostramos el placeholder "configurá primero".
+      // H7: when `allowPinFallback` is false and biometric is available,
+      // we go biometric-only. If biometric isn't available we still let
+      // PIN serve as the primary factor (no fallback because there's
+      // nothing to fall back from) — the intent of the flag is to
+      // prevent biometric→PIN DOWNGRADES, not to remove PIN as a
+      // standalone option.
       if (bioState.isAvailable) {
         setMethod('biometric')
         void runBiometric(bioState)
@@ -128,9 +165,14 @@ export function RequireReauthSheet({
         if (!hasHardware || !isEnrolled) {
           setChecking(false)
           setBiometricFailed(true)
-          // Cae a PIN si está configurado.
-          const pinState = await getPinLockState()
-          setMethod(pinState.isSet ? 'pin' : 'none')
+          // H7: solo bajar a PIN si el caller lo permite. En modo
+          // biometric-only, este es un dead-end y el user debe cancelar
+          // o ir a Ajustes a habilitar biometría — mantenemos el botón
+          // de Reintentar visible para no quedar atrapado.
+          if (allowPinFallback) {
+            const pinState = await getPinLockState()
+            setMethod(pinState.isSet ? 'pin' : 'none')
+          }
           return
         }
         const result = await authenticateBiometricAccess({
@@ -145,14 +187,17 @@ export function RequireReauthSheet({
         // User canceló o falló — ofrecemos retry o fallback a PIN.
         setChecking(false)
         setBiometricFailed(true)
-        const pinState = await getPinLockState()
-        if (pinState.isSet) setMethod('pin')
+        // H7: solo degradamos a PIN si el caller lo permite.
+        if (allowPinFallback) {
+          const pinState = await getPinLockState()
+          if (pinState.isSet) setMethod('pin')
+        }
       } catch {
         setChecking(false)
         setBiometricFailed(true)
       }
     },
-    [actionLabel, isChecking, onConfirmed],
+    [actionLabel, allowPinFallback, isChecking, onConfirmed],
   )
 
   const handlePinChange = useCallback(
