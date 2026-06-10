@@ -1,9 +1,11 @@
 # Runbook · Release automation (Sprint C — C3 / C5 / C6 / C7 / C10)
 
-> Última actualización: 2026-06-09 (post-wizard Apple Developer setup)
-> Status: **end-to-end verified** — build 1.0.0 (1) llegó a TestFlight 2026-06-09.
+> Última actualización: 2026-06-10 (post setup dominio + sitio legal)
+> Status: **end-to-end verified end-to-end** — build 1.0.0 (1) llegó a TestFlight 2026-06-09 + OTA aplicado 2026-06-10 con URLs legales reales.
 >
-> El [doc del milestone](../ESTADO-DEL-PROYECTO/2026-06-09-apple-dev-setup-completed.md) tiene el detalle de IDs, decisiones y gotchas del setup inicial.
+> Milestones relacionados:
+> - [Apple Dev + EAS + TestFlight (2026-06-09)](../ESTADO-DEL-PROYECTO/2026-06-09-apple-dev-setup-completed.md)
+> - [Dominio + sitio legal LIVE (2026-06-10)](../ESTADO-DEL-PROYECTO/2026-06-10-domain-and-legal-site-completed.md)
 
 ## TL;DR
 
@@ -59,6 +61,41 @@ Los `.p8` originales viven en `~/secrets/manifiesto/` con permisos `600` (machin
 | Categoría App Store | Finanzas / Economía y empresa |
 | Apple ID owner | `kontosmario@gmail.com` |
 
+## Dominio público + sitio (cheat sheet)
+
+| Item | Valor |
+|---|---|
+| Dominio | `manifiestoapp.com` (Cloudflare Registrar) |
+| DNS provider | Cloudflare (nameservers de Cloudflare) |
+| Email forwarding | `soporte@manifiestoapp.com` + `support@manifiestoapp.com` → `kontosmario@gmail.com` (Cloudflare Email Routing) |
+| Hosting sitio | Cloudflare Pages, proyecto `manifiestoapp-site` |
+| Preview URL | https://manifiestoapp-site.pages.dev |
+| Production URL apex | https://manifiestoapp.com |
+| Production URL www | https://www.manifiestoapp.com |
+| Repo del sitio | https://github.com/kontosmario/manifiestoapp-site |
+| Privacy Policy | https://manifiestoapp.com/privacy/ |
+| Terms of Service | https://manifiestoapp.com/terms/ |
+| Single source URLs en app | `mobile/lib/legal-urls.ts` |
+
+### Actualizar Privacy Policy o Terms
+
+```bash
+cd /Users/mario/apps/manifiestoapp-site
+# Editar privacy/index.html o terms/index.html
+# Bump fecha y versión en el <p class="meta"> del header
+git add . && git commit -m "docs(legal): <descripción>" && git push origin main
+# Cloudflare Pages deploya en ~30s automáticamente.
+```
+
+Si el cambio es **material** (no cosmético): considerar in-app notice con aceptación expresa del user.
+
+### Si tenés que mover el dominio a otro provider
+
+Cloudflare Pages funciona con cualquier DNS provider (no requiere que el dominio esté en Cloudflare). Si movés `manifiestoapp.com` a Namecheap/GoDaddy/etc:
+1. En el nuevo provider: agregar CNAME `manifiestoapp.com` → `manifiestoapp-site.pages.dev` (apex CNAME flattening puede no estar soportado en todos los providers — usar A records contra IPs de Cloudflare Pages como fallback)
+2. Para email: configurar MX records que apunten a `route1.mx.cloudflare.net` y `route2.mx.cloudflare.net` (los que Cloudflare Email Routing usa)
+3. En Cloudflare Pages dashboard: borrar y re-agregar el custom domain para que reverify
+
 ⚠️ **Sobre el sufijo `.ZKYQF7UNYA` del bundle ID iOS**: es resultado de un auto-provisioning de Apple al crear el App ID. Apple no permite cambiar el bundle ID post-registro y el delete está bloqueado por la entrada de App Store Connect. Decisión documentada en commit `6c94c00`: aceptamos el sufijo porque es invisible al usuario.
 
 ## Liberar una versión nueva (full release)
@@ -89,6 +126,33 @@ git push origin main
 # Actions → "OTA Update (EAS Update)" dispara automaticamente.
 # ~3min y el bundle llega a usuarios en su próximo cold-start.
 ```
+
+### Trigger manual sin push (útil para hotfix urgente sin commit-push)
+
+```bash
+cd /Users/mario/apps/manifiesto
+npx eas-cli update --branch production --message "<descripción del fix>" --non-interactive
+```
+
+Si tenés cambios sin commitear los va a publicar igual. Confirmá con `git status` antes para no embarrar.
+
+Ejemplo real (2026-06-10):
+- Cambio: `mobile/lib/legal-urls.ts` updated con URLs reales del dominio nuevo
+- Comando: `npx eas-cli update --branch production --message "Update legal URLs → manifiestoapp.com + soporte email + sitio LIVE"`
+- Update Group ID: `64b2bb9a-884e-4920-b736-a2de70324766`
+- Tiempo: ~30s desde el comando hasta que el bundle estaba disponible para el TestFlight build
+- Verificación: force-quit + re-open de la app en device → cold-start descarga el OTA + lo aplica
+
+### Cómo verificar que el OTA llegó al device
+
+1. Force-quit la app (swipe up + delete from app switcher)
+2. Re-abrir desde home screen
+3. Cold start descarga el OTA en background (~1-3s, invisible)
+4. Verificar que el cambio se aplicó en la pantalla afectada
+
+Si tarda más de 2-3 force-restarts:
+- Verificar que el build TestFlight tiene `runtimeVersion: exposdk:54.0.0` matcheando el `runtime` del update en `expo.dev/.../updates/<id>`
+- Verificar el network del device (a veces wifi corporativo bloquea CDN de Expo)
 
 Si tocaste `package.json` (incluso dep no-native): el workflow lo skipea por seguridad. Forzá con `workflow_dispatch` después de confirmar que no agregaste deps nativas.
 

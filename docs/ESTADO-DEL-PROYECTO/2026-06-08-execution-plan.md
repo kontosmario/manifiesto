@@ -4,11 +4,13 @@
 >
 > **Source of truth**: este doc reemplaza la sección "Pendientes" de [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md) para los items de código. Cuando un item se marca DONE, agregá el commit SHA + fecha al lado.
 >
-> **Última actualización**: 2026-06-09 (post wizard Apple Developer setup)
+> **Última actualización**: 2026-06-10 (post setup dominio + sitio legal)
 >
 > **HEAD al armar el plan**: `99ed0db` — 35 commits ahead de `origin/main`.
 >
-> **2026-06-09 update**: Apple Developer setup completo + EAS + GitHub Secrets wireados + build 1.0.0 (1) en TestFlight. A4/A7/A8/C5/C6/C7 ahora son **VERIFIED end-to-end**. Detalles en [milestone doc](2026-06-09-apple-dev-setup-completed.md).
+> **2026-06-09 update**: Apple Developer setup completo + EAS + GitHub Secrets wireados + build 1.0.0 (1) en TestFlight. A4/A7/A8/C5/C6/C7 **VERIFIED end-to-end**. Detalles en [milestone 2026-06-09](2026-06-09-apple-dev-setup-completed.md).
+>
+> **2026-06-10 update**: dominio `manifiestoapp.com` comprado + email forwarding + Privacy/Terms hosteados en Cloudflare Pages + OTA aplicado a TestFlight. A6 ahora también **VERIFIED end-to-end**. Detalles en [milestone 2026-06-10](2026-06-10-domain-and-legal-site-completed.md).
 
 ---
 
@@ -163,7 +165,7 @@ Si solo tenés bandwidth para 1 sprint en la próxima semana: **Sprint A** (App 
 
 - [x] **DONE** `635eeda` 2026-06-09 — pantalla `/(app)/settings/about` con hero (versión + build), grupo "Información legal" (Privacy/Terms, oculta filas si su URL en `legal-urls.ts` está vacía), grupo "Soporte" con mailto pre-poblado vía `buildSupportMailto`, footer "Hecho con ♥ en Argentina". Settings ahora linkea con un row "Acerca de" al final.
 
-> ⚠️ **Pendiente owner action** (2026-06-09 post-build): completar URLs reales en `mobile/lib/legal-urls.ts`. Hoy están vacías → los rows Privacy/Terms se ocultan silenciosamente. Cuando el owner hoste Privacy Policy + Terms (item del [milestone doc](2026-06-09-apple-dev-setup-completed.md) → "Lo que falta para shippear v1.0"), actualizar las 3 constants y los rows aparecen automáticamente.
+> ✅ **CERRADO 2026-06-10**: URLs reales completadas en `mobile/lib/legal-urls.ts` con `https://manifiestoapp.com/privacy/` + `/terms/` + `soporte@manifiestoapp.com`. Sitio público hosteado en Cloudflare Pages. OTA aplicado al build TestFlight, verified en device. Rows ahora aparecen visibles en el About screen. Ver [milestone 2026-06-10](2026-06-10-domain-and-legal-site-completed.md).
 
 **Por qué**: App Store listing requiere link a privacy + support email.
 

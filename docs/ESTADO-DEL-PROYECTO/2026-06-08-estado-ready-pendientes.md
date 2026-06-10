@@ -1,11 +1,11 @@
-# Estado del proyecto · 2026-06-08 (actualizado 2026-06-09)
+# Estado del proyecto · 2026-06-08 (actualizado 2026-06-10)
 
 > **Snapshot inmediatamente actionable**: qué está READY (mergeable / shippeable hoy) vs qué queda PENDIENTE.
 >
-> **HEAD (2026-06-09 EOD)**: post wizard Apple Developer. Build production 1.0.0 (1) en TestFlight, instalado en device del owner.
-> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup completos. 0 deuda técnica de código para shippeo. Solo pending: contenido del owner para App Store submit (legal, screenshots, listing).
+> **HEAD (2026-06-10)**: dominio `manifiestoapp.com` LIVE con Privacy + Terms hosteados + email forwarding + OTA aplicado al TestFlight build. Items H1 + H2 cerrados.
+> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup + dominio+sitio legal completos. 0 deuda técnica. Solo pending: assets visuales (screenshots, video) + cuestionarios de App Store Connect + submit final.
 >
-> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES). Todo lo que está ahí es owner content, no requiere desarrollo.
+> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES). Todo lo que está ahí es owner action, no requiere desarrollo.
 >
 > **Foto canónica de pantallas/sistemas**: sigue siendo [`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md). Este doc es el *delta y plan*, no reemplaza la foto exhaustiva — sólo la complementa para el período post-2026-05-21.
 
@@ -23,6 +23,9 @@ Producto feature-complete (desde 2026-05-09) **+ Sprints A→D shippeados + 4 CR
 | Typecheck | clean |
 | Migrations aplicadas remote | **22** (las últimas 9 del wizard + sprints A-D) |
 | Build production en TestFlight | ✅ 1.0.0 (1) instalado en device |
+| Dominio público `manifiestoapp.com` | ✅ LIVE con Privacy + Terms hosteados |
+| Email `soporte@manifiestoapp.com` | ✅ forwarding LIVE → gmail |
+| OTA propagado a TestFlight | ✅ `64b2bb9a-884e-4920-b736-a2de70324766` (2026-06-10) |
 | Deuda técnica de código | **0** para shippeo a App Store |
 
 **🚀 Camino crítico al App Store**: solo restan **owner actions de contenido** (Privacy Policy hosting, screenshots, listing copy, age rating, privacy nutrition). Ningún item de código bloquea. Ver sección 2.
@@ -115,10 +118,10 @@ Todos son **owner actions**, no requieren código:
 
 | # | Item | Effort | Notas |
 |---|------|--------|-------|
-| H1 | **Privacy Policy + Terms redactados y hosteados** | 1 d template / 1-2 sem si va a lawyer review | Dominio `manifiestoapp.com` comprado 2026-06-09 vía Cloudflare Registrar. Pendiente: GitHub Pages setup + redacción + DNS + actualizar `mobile/lib/legal-urls.ts` (ya pre-wireado para apuntar al dominio) |
-| H2 | **Email forwarding `soporte@manifiestoapp.com` → gmail** | 5 min | Cloudflare Email Routing (free). Permite responder desde gmail con "Send As" si se configura SMTP |
-| H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado |
-| H4 | **Privacy Nutrition labels** | 30 min | App Store Connect → app → Privacidad. Cuestionario sobre qué datos colectamos. Para Manifiesto: email (auth), nombre (display), datos financieros (encrypted local + Supabase). |
+| ~~H1~~ | ~~**Privacy Policy + Terms redactados y hosteados**~~ | — | ✅ **DONE 2026-06-10**. Sitio LIVE en `manifiestoapp.com` (Cloudflare Pages). Ver [milestone doc](2026-06-10-domain-and-legal-site-completed.md) |
+| ~~H2~~ | ~~**Email forwarding `soporte@manifiestoapp.com` → gmail**~~ | — | ✅ **DONE 2026-06-10**. Cloudflare Email Routing (`soporte@` + `support@` → gmail) |
+| H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado. Tools: simulator de Xcode (screenshots vacíos) o un device físico con cuenta poblada |
+| H4 | **Privacy Nutrition labels** | 30 min | App Store Connect → app → Privacidad. Cuestionario sobre qué datos colectamos. Para Manifiesto: email (auth), nombre (display), datos financieros (encrypted local + Supabase). Ver Privacy Policy LIVE para guía exacta de respuestas |
 | H5 | **Listing copy** (descripción es-MX, keywords, qué hay nuevo) | 2-4 h | App Store Connect → app → Distribución → Versión 1.0. Hay placeholder pero requiere copy final |
 | H6 | **Age rating survey** | 10 min | App Store Connect → app → Información de la app. Manifiesto = 4+ (sin contenido sensible) |
 | H7 | **App Preview video** (opcional) | 1 d | Boost del conversion rate en App Store. Si no, usar solo screenshots |

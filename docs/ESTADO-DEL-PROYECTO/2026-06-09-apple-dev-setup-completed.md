@@ -170,8 +170,8 @@ Solo faltan **owner actions de contenido** (no más Apple Developer setup):
 
 | # | Item | Effort | Notas |
 |---|---|---|---|
-| 1 | Privacy Policy + Terms hosteados | 1 d | Dominio `manifiestoapp.com` comprado 2026-06-09 vía Cloudflare Registrar. Setup GitHub Pages + DNS + redacción de docs |
-| 2 | URLs en `mobile/lib/legal-urls.ts` | 5 min | Reemplazar placeholders con URLs reales |
+| ~~1~~ | ~~Privacy Policy + Terms hosteados~~ | — | ✅ **DONE 2026-06-10**. Sitio LIVE en `manifiestoapp.com` (Cloudflare Pages + custom domain SSL). Ver [milestone 2026-06-10](2026-06-10-domain-and-legal-site-completed.md) |
+| ~~2~~ | ~~URLs en `mobile/lib/legal-urls.ts`~~ | — | ✅ **DONE 2026-06-10**. OTA aplicado a TestFlight build, verified en device |
 | 3 | Screenshots (6.7" + 5.5" iPhone) | 1-2 d | Self-made o contratado USD 100-300 |
 | 4 | App Preview video | 1 d (opcional) | Boost del conversion rate en App Store |
 | 5 | Privacy Nutrition labels | 30 min | En App Store Connect, responder cuestionario |
