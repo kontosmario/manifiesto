@@ -207,6 +207,40 @@ jobs:
             echo "certs/certificate.pem valid for $DAYS_LEFT days."
           fi
 
+      # Sprint Q · Audit #10 Q-5 (2026-06-10): provisioning profile
+      # expiry guard. The profile expires 2027-06-09. EAS auto-renews
+      # on `eas build`, BUT if no native build runs in the ~30 days
+      # before expiry, the prod OTA channel binary stays signed by a
+      # profile that's about to die. We can't reach the EAS API from
+      # CI cheaply (token scopes + JSON shape change between versions),
+      # so we hardcode the date and bump it manually each time the
+      # profile rotates. See
+      # docs/operaciones/runbook-release-automation.md → "Calendario de
+      # rotación" for the bump procedure (replace EXPIRY below + commit).
+      #
+      # Thresholds:
+      #   < 30 days  → CI fails (URGENT: run `eas build` to renew).
+      #   < 90 days  → ::warning (schedule renewal soon).
+      #   otherwise   → green log line.
+      - name: Provisioning profile expiry warning
+        if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Bump this date each time the profile rotates (also update
+          # docs/operaciones/runbook-release-automation.md → "Calendario
+          # de rotación" → "Provisioning Profile (App Store)" row).
+          EXPIRY="2027-06-09"
+          EXPIRY_TS=$(date -j -f "%Y-%m-%d" "$EXPIRY" +%s 2>/dev/null || date -d "$EXPIRY" +%s)
+          NOW_TS=$(date +%s)
+          DAYS_LEFT=$(( (EXPIRY_TS - NOW_TS) / 86400 ))
+          if [ "$DAYS_LEFT" -lt 30 ]; then
+            echo "::error::Provisioning profile expires in $DAYS_LEFT days. Run 'eas build' (or 'eas credentials') to renew before the OTA channel stalls."
+            exit 1
+          elif [ "$DAYS_LEFT" -lt 90 ]; then
+            echo "::warning::Provisioning profile expires in $DAYS_LEFT days. Schedule an 'eas build' to auto-renew."
+          else
+            echo "Provisioning profile valid for $DAYS_LEFT days."
+          fi
+
       # Sprint O · Audit #8 O-4 (2026-06-14): cert↔private-key fingerprint
       # check. If the owner rotates `certs/certificate.pem` in the repo
       # but forgets to rotate `EXPO_UPDATE_PRIVATE_KEY` in GitHub Secrets
