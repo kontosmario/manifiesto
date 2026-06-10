@@ -43,4 +43,13 @@ describe('shouldRelock', () => {
   it('el umbral default es 60s', () => {
     expect(BACKGROUND_RELOCK_THRESHOLD_MS).toBe(60_000)
   })
+
+  // Sprint M · Audit #7 L-2 / 7-T7 (2026-06-14)
+  it('re-bloquea si el delta es negativo (clock backwards manipulation)', () => {
+    // leftActiveAt > now → delta negativo → forzar re-lock
+    const leftActiveAt = 2_000_000
+    expect(
+      shouldRelock({ ...base, leftActiveAt, now: leftActiveAt - 10_000 }),
+    ).toBe(true)
+  })
 })

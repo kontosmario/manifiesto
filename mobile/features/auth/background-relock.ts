@@ -28,5 +28,12 @@ export function shouldRelock({
 }: ShouldRelockInput): boolean {
   if (!isUnlocked) return false
   if (leftActiveAt === null) return false
-  return now - leftActiveAt >= thresholdMs
+  // Sprint M · M-L-2 (2026-06-14): treat negative-delta (clock moved
+  // backwards between leaving 'active' and foregrounding) as
+  // "manipulated → force re-lock". Otherwise an attacker who bumps the
+  // clock backwards during background could indefinitely defer the
+  // re-lock; the security-conservative move is to re-arm whenever the
+  // timing math stops making sense.
+  const delta = now - leftActiveAt
+  return delta < 0 || delta >= thresholdMs
 }
