@@ -52,6 +52,33 @@ const credentialStoreOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 }
 
+// Sprint H · H5 — Bind the refresh-token blob to a successful local
+// authentication challenge (Face ID / Touch ID / device passcode).
+//
+// Threat model:
+//   `WHEN_UNLOCKED_THIS_DEVICE_ONLY` is great at protecting the keychain
+//   row from off-device extraction (no iCloud sync, no backup leak).
+//   But once the device is unlocked, ANY process in our app sandbox
+//   can read the row — including JS executed via a maliciously hijacked
+//   OTA bundle (now hardened by F1, but defense-in-depth wins).
+//
+//   `requireAuthentication: true` adds OS-level access control via the
+//   Secure Enclave: reading the row triggers a LocalAuthentication
+//   prompt. The attacker would need a live biometric/passcode auth at
+//   read time, which prevents headless exfil and aligns with the way
+//   refresh-tokens already power the biometric-restore flow (the user
+//   already passes Face ID before we touch this blob — iOS coalesces
+//   the prompts so there is no double tap).
+//
+//   The non-credential metadata (just the email for UI hints) does NOT
+//   need this — it's already revealed by the login screen avatar.
+const credentialStoreOptionsAuthed: SecureStore.SecureStoreOptions = {
+  ...credentialStoreOptions,
+  requireAuthentication: true,
+  authenticationPrompt:
+    'Confirmá tu identidad para acceder al inicio de sesión guardado.',
+}
+
 function getDefaultBiometricLabel() {
   return Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'biometría'
 }
@@ -163,11 +190,15 @@ export async function saveBiometricCredentials(input: BiometricCredentialsPayloa
   if (!input.email || !input.refreshToken) {
     return
   }
+  // H5: credentials use the AUTHED options (Face ID gate at read time).
   await SecureStore.setItemAsync(
     BIOMETRIC_CREDENTIALS_KEY,
     JSON.stringify(input),
-    credentialStoreOptions,
+    credentialStoreOptionsAuthed,
   )
+  // Metadata stays plain because the biometric-login state probe needs
+  // to read it WITHOUT prompting Face ID (otherwise the login screen
+  // can't decide whether to render the Face ID CTA at all).
   await SecureStore.setItemAsync(
     BIOMETRIC_METADATA_KEY,
     JSON.stringify({
@@ -187,14 +218,22 @@ export async function updateStoredRefreshToken(nextToken: string) {
   if (!nextToken) return
   const metadata = await readBiometricMetadata()
   if (!metadata) return
-  await SecureStore.setItemAsync(
-    BIOMETRIC_CREDENTIALS_KEY,
-    JSON.stringify({
-      email: metadata.email,
-      refreshToken: nextToken,
-    } satisfies BiometricCredentialsPayload),
-    credentialStoreOptions,
-  )
+  // H5: write must use the same authed options used to create the row
+  // so the access-control flags survive the rotation. We swallow errors:
+  // a rotation that fails just means the next biometric login will
+  // re-issue the same token from the prior session — not fatal.
+  try {
+    await SecureStore.setItemAsync(
+      BIOMETRIC_CREDENTIALS_KEY,
+      JSON.stringify({
+        email: metadata.email,
+        refreshToken: nextToken,
+      } satisfies BiometricCredentialsPayload),
+      credentialStoreOptionsAuthed,
+    )
+  } catch {
+    // best-effort
+  }
 }
 
 export async function clearBiometricCredentials() {
@@ -206,7 +245,22 @@ export async function clearBiometricCredentials() {
 }
 
 export async function getBiometricCredentials(): Promise<BiometricCredentialsPayload | null> {
-  const rawValue = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY, credentialStoreOptions)
+  // H5: read must include the authed options. On iOS this triggers the
+  // Face ID prompt via Secure Enclave. The biometric-restore flow
+  // already shows a Face ID prompt right before this call, and iOS
+  // coalesces near-simultaneous prompts into ONE — so the perceived
+  // UX is unchanged. If the user cancels the OS prompt or auth fails,
+  // SecureStore throws — we treat that as "no credentials available"
+  // so the caller falls back to password sign-in cleanly.
+  let rawValue: string | null = null
+  try {
+    rawValue = await SecureStore.getItemAsync(
+      BIOMETRIC_CREDENTIALS_KEY,
+      credentialStoreOptionsAuthed,
+    )
+  } catch {
+    return null
+  }
 
   if (!rawValue) {
     return null
