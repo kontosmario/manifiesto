@@ -68,6 +68,18 @@ const config: ExpoConfig = {
     'expo-asset',
     'expo-secure-store',
     'expo-updates',
+    // Sprint P · Audit #9 P-3 (2026-06-10): screen-capture prevention
+    // on auth/PIN screens (login, signup, reset-password, pin-unlock,
+    // pin-setup, require-reauth-sheet). Registered as a plugin so
+    // expo prebuild keeps the native module linked.
+    'expo-screen-capture',
+    // Sprint P · Audit #9 P-4 (2026-06-10): expo-image-picker's default
+    // plugin config injects `RECORD_AUDIO` permission into the Android
+    // manifest because the camera API supports video. We only use the
+    // picker for static images (OCR import flow), so the permission
+    // inflates the Play Store privacy disclosure for no functional gain.
+    // Setting microphonePermission: false drops it from the manifest.
+    ['expo-image-picker', { microphonePermission: false }],
     [
       'expo-local-authentication',
       {
@@ -107,6 +119,18 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: true,
+    // Sprint P · Audit #9 P-1 (2026-06-10): Universal Links so iOS routes
+    // auth callbacks (magic link, OAuth redirect, password reset) through
+    // https://manifiestoapp.com/auth/* instead of the custom
+    // `manifiesto://` scheme. Custom schemes can be hijacked by any other
+    // app on the device that registers the same scheme; Universal Links
+    // are cryptographically scoped to the AASA file we host at
+    // https://manifiestoapp.com/.well-known/apple-app-site-association
+    // (owner action — see runbook). We KEEP the `manifiesto://` scheme
+    // declared at the top-level `scheme` field as a Supabase OAuth-flow
+    // fallback so older clients / providers that don't honor Universal
+    // Links still land in the app.
+    associatedDomains: ['applinks:manifiestoapp.com'],
     // El sufijo del Team ID en el bundle id es el resultado de un auto-
     // provisioning de Apple Developer al crear el App ID. Apple no permite
     // modificar el Bundle ID una vez registrado y borrarlo está bloqueado
@@ -152,6 +176,33 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.manifiesto.mobile',
+    // Sprint P · Audit #9 P-4 (2026-06-10): explicit deny-list to prevent
+    // upstream plugins / merged manifests from silently shipping extra
+    // permissions. RECORD_AUDIO would otherwise reappear if any future
+    // dep declares it (and inflate the Play Store privacy declaration).
+    // SYSTEM_ALERT_WINDOW would let the app draw over other apps — a
+    // capability we never want and that triggers Play Store review flags.
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+    ],
+    // Sprint P · Audit #9 P-1 (2026-06-10): Android App Links so the
+    // OS routes https://manifiestoapp.com/auth/* deep-links to this app
+    // without the disambiguation chooser (autoVerify resolves against
+    // https://manifiestoapp.com/.well-known/assetlinks.json — owner
+    // action to host, see runbook). The custom `manifiesto://` scheme
+    // remains active via the top-level `scheme` field for Supabase OAuth
+    // fallback paths that don't honor App Links.
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          { scheme: 'https', host: 'manifiestoapp.com', pathPrefix: '/auth' },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
   },
   web: {
     bundler: 'metro',
