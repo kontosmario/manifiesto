@@ -3,6 +3,22 @@
 // last-user cache so we can warn the user about the pending deletion
 // BEFORE they sign back in. The CTA bounces to login so they can
 // authenticate and then trigger `cancel_account_deletion`.
+//
+// Sprint L · Audit #5 L-4 (2026-06-10):
+//   The SecureStore cache is per-device. If the user cancels their
+//   pending deletion on device 2, device 1 keeps showing the banner
+//   indefinitely because we never refresh `deletionScheduledAt` while
+//   the device is signed out (we have no JWT to query profiles).
+//
+//   We can't fix the data-staleness at this layer — only an
+//   authenticated round-trip can confirm the field. What we CAN do is
+//   change the messaging from a forceful "tu cuenta SE ELIMINARÁ el X"
+//   to a soft "TENÍAS una baja agendada · iniciá sesión para verificar
+//   el estado". That removes the false urgency for the user who
+//   already cancelled elsewhere, while still nudging the user who
+//   really does have a pending deletion to log in. After login,
+//   `useLastUserProfileSync` refreshes the field; if the deletion was
+//   cancelled, the banner stops showing on next mount.
 
 import { useEffect, useMemo, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -54,14 +70,20 @@ export function WelcomeCancelDeletionBanner({
 
   if (!loaded || !scheduledAt) return null
 
+  // L-4: soft tone. We deliberately say "tenías" (past tense) and
+  // "verificar el estado" instead of the authenticated banner's
+  // forceful "tu cuenta se eliminará". The cache may be out of date
+  // because the user cancelled on another device — we don't want to
+  // panic them, just route them to login where the server-side
+  // refresh will resolve it.
+  const accessibilityMessage = formatted
+    ? `Tenías una baja agendada para el ${formatted}. Iniciá sesión para verificar el estado.`
+    : 'Tenías una baja de cuenta agendada. Iniciá sesión para verificar el estado.'
+
   return (
     <View
       accessibilityRole="alert"
-      accessibilityLabel={
-        formatted
-          ? `Tu cuenta se eliminará el ${formatted}. Iniciá sesión para cancelar.`
-          : 'Hay una baja de cuenta agendada. Iniciá sesión para cancelar.'
-      }
+      accessibilityLabel={accessibilityMessage}
       style={[
         styles.shell,
         {
@@ -73,24 +95,28 @@ export function WelcomeCancelDeletionBanner({
       <View style={styles.row}>
         <MaterialIcons color={theme.colors.danger} name="warning-amber" size={22} />
         <View style={styles.copy}>
-          <Text style={styles.title}>Baja de cuenta agendada</Text>
+          <Text style={styles.title}>Posible baja de cuenta agendada</Text>
           <Text style={styles.body}>
             {formatted
-              ? `Tu cuenta se eliminará el ${formatted}.`
-              : 'Hay una baja agendada para tu cuenta.'}
+              ? `Tenías una baja agendada para el ${formatted}.`
+              : 'Tenías una baja agendada para tu cuenta.'}
+          </Text>
+          <Text style={styles.hint}>
+            Si ya cancelaste la baja en otro dispositivo, iniciá sesión
+            para actualizar el estado.
           </Text>
         </View>
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Iniciar sesión para cancelar la baja"
+        accessibilityLabel="Iniciar sesión para verificar el estado de la baja"
         onPress={() => router.push(loginHref as never)}
         style={({ pressed }) => [
           styles.cta,
           { backgroundColor: theme.colors.danger, opacity: pressed ? 0.85 : 1 },
         ]}
       >
-        <Text style={styles.ctaLabel}>Iniciar sesión para cancelar</Text>
+        <Text style={styles.ctaLabel}>Iniciar sesión para verificar</Text>
       </Pressable>
     </View>
   )
@@ -123,6 +149,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: 'rgba(255,251,242,0.78)',
+  },
+  hint: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: 'rgba(255,251,242,0.6)',
+    fontStyle: 'italic',
   },
   cta: {
     paddingVertical: 12,
