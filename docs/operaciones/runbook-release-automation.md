@@ -186,15 +186,15 @@ npx expo-updates codesigning:generate \
 ```
 
 Output:
-- `keys/private-key.pem` (ECDSA P-256, **never commit**)
+- `keys/private-key.pem` (RSA-2048, **never commit**)
 - `keys/public-key.pem` (informativo, no se usa en runtime)
 - `certs/certificate.pem` (self-signed con la public key; se bundlea en el app)
 
-> **Nota de algoritmo**: el campo `alg: 'rsa-v1_5-sha256'` en `app.config.ts` es el nombre formal que usa Expo para identificar la suite (definido por la spec del manifest protocol). El keypair real es ECDSA P-256, generado por `codesigning:generate`. No tocar el `alg` salvo que Expo lo cambie en una versión futura del SDK.
+> **Nota de algoritmo**: el campo `alg: 'rsa-v1_5-sha256'` en `app.config.ts` coincide con el keypair real RSA-2048 generado por `codesigning:generate` (verificable con `openssl rsa -in keys/private-key.pem -text -noout`). No tocar el `alg` salvo que Expo lo cambie en una versión futura del SDK.
 
 ### Subir la private key a GitHub Secrets
 
-1. Copiar el contenido completo del PEM (incluyendo `-----BEGIN/END EC PRIVATE KEY-----`):
+1. Copiar el contenido completo del PEM (incluyendo `-----BEGIN/END RSA PRIVATE KEY-----` o `-----BEGIN/END PRIVATE KEY-----`):
    ```bash
    cat keys/private-key.pem | pbcopy
    ```

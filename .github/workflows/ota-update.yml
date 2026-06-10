@@ -22,8 +22,10 @@ name: OTA Update (EAS Update)
 #                  https://expo.dev/settings/access-tokens.
 #   - EXPO_TOKEN : (Legacy) broad-scope Expo token. Fallback only;
 #                  prefer EXPO_UPDATE_TOKEN going forward.
-#   - EXPO_UPDATE_PRIVATE_KEY : PEM-encoded ECDSA P-256 private key matching
-#                  the cert bundled in the app (certs/certificate.pem).
+#   - EXPO_UPDATE_PRIVATE_KEY : PEM-encoded RSA-2048 private key matching
+#                  the cert bundled in the app (certs/certificate.pem),
+#                  used with the `rsa-v1_5-sha256` suite declared in
+#                  app.config.ts.
 #                  Sprint F · F1 — code signing for OTA bundles, see
 #                  docs/operaciones/runbook-release-automation.md. Without
 #                  it the `eas update` step fails — we never silently ship

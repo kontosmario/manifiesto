@@ -38,9 +38,10 @@ const config: ExpoConfig = {
     url: 'https://u.expo.dev/54449767-9236-4734-972a-e561debd1360',
     fallbackToCacheTimeout: 0,
     // Sprint F · F1 (red team finding 2026-06-10, Mobile H3 + Infra H-1):
-    // OTA bundles are signed with an ECDSA P-256 key. The matching cert
-    // is bundled into the app binary at build time; expo-updates rejects
-    // any manifest whose signature doesn't verify against this cert.
+    // OTA bundles are signed with an RSA-2048 key (alg `rsa-v1_5-sha256`,
+    // see metadata below). The matching cert is bundled into the app
+    // binary at build time; expo-updates rejects any manifest whose
+    // signature doesn't verify against this cert.
     //
     // Threat model: a leaked EXPO_TOKEN (compromised GitHub Action dep,
     // stolen ~/.expo session, EAS dashboard phishing) would otherwise let
