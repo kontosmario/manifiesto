@@ -15,12 +15,32 @@
 #   git config core.hooksPath .githooks
 #
 # To bypass intentionally (rare, document why in commit message):
-#   SKIP_SECRET_SCAN=1 git commit ...
+#   SKIP_SECRET_SCAN=1 SKIP_SECRET_SCAN_REASON="explaining why this is safe" \
+#     git commit ...
+#
+# Sprint J · J-Infra3 — el bypass requiere una razón (>= 10 chars). Sin
+# ella el hook falla cerrado. Cada uso se registra en
+# `.git/skip-scans.log` (no se commitea: vive bajo `.git/`).
 
 set -euo pipefail
 
 if [ "${SKIP_SECRET_SCAN:-0}" = "1" ]; then
-  echo "[pre-commit] WARNING: secret scan skipped via SKIP_SECRET_SCAN=1"
+  REASON="${SKIP_SECRET_SCAN_REASON:-}"
+  if [ "${#REASON}" -lt 10 ]; then
+    echo "[pre-commit] BLOCKED: SKIP_SECRET_SCAN=1 requires SKIP_SECRET_SCAN_REASON with at least 10 characters."
+    echo "  Usage: SKIP_SECRET_SCAN=1 SKIP_SECRET_SCAN_REASON='why this is safe' git commit ..."
+    exit 1
+  fi
+  # Log to .git/skip-scans.log (local, not committed). `git rev-parse
+  # --git-dir` works inside worktrees and submodules too.
+  GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || echo .git)"
+  LOG_FILE="$GIT_DIR/skip-scans.log"
+  TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  WHO="$(git config user.email 2>/dev/null || echo unknown)"
+  BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+  printf '%s\t%s\t%s\treason=%s\n' "$TS" "$WHO" "$BRANCH" "$REASON" >> "$LOG_FILE"
+  echo "[pre-commit] WARNING: secret scan skipped (logged to $LOG_FILE)"
+  echo "  reason: $REASON"
   exit 0
 fi
 
@@ -95,6 +115,10 @@ SECRET_PATTERNS=(
   'aws_secret_access_key.*=.*[A-Za-z0-9/+=]{40}'
   # OpenSSH / PGP / RSA private key headers
   '-----BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY-----'
+  # Sprint J · J-Infra4 — unqualified `-----BEGIN PRIVATE KEY-----`
+  # (PKCS#8). ASC API `.p8` keys usan este header sin algoritmo
+  # qualifier, así que el patrón anterior los dejaba pasar.
+  '-----BEGIN PRIVATE KEY-----'
   # Bare service_role assignment
   'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*[A-Za-z0-9._-]+'
   # Postgres passwords inside connection strings
@@ -136,7 +160,7 @@ if [ "$violations" -gt 0 ]; then
   echo "[pre-commit] $violations secret pattern violation(s) found."
   echo "  - Move secrets to .env (already gitignored)."
   echo "  - Override the block ONLY if certain it's a false positive:"
-  echo "      SKIP_SECRET_SCAN=1 git commit ..."
+  echo "      SKIP_SECRET_SCAN=1 SKIP_SECRET_SCAN_REASON='why' git commit ..."
   exit 1
 fi
 
