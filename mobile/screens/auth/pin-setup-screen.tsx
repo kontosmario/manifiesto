@@ -10,6 +10,7 @@ import {
   setPin,
 } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
@@ -39,6 +40,9 @@ const LENGTH_OPTIONS = [4, 6] as const
  *  · Weak-PIN rejection (1111, 1234, 0000, ...) with explicit copy.
  */
 export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture while
+  // the user is typing / confirming their PIN.
+  useScreenCaptureProtection()
   const { theme } = useAppTheme()
   const [phase, setPhase] = useState<Phase>('enter')
   const [first, setFirst] = useState('')

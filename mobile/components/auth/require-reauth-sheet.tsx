@@ -41,6 +41,7 @@ import {
 } from '@/lib/biometric-auth'
 import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
@@ -89,6 +90,11 @@ export function RequireReauthSheet({
   onCancel,
   allowPinFallback = true,
 }: RequireReauthSheetProps) {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture while
+  // the reauth PIN-pad is visible. Gated on `visible` so the protection
+  // is only active when the sheet is actually on screen — preserves
+  // capture for the rest of the app.
+  useScreenCaptureProtection(visible)
   const { theme } = useAppTheme()
   const router = useRouter()
 

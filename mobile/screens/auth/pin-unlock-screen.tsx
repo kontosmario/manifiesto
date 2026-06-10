@@ -10,6 +10,7 @@ import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { getPinLength, verifyPin } from '@/lib/pin-lock'
 import { logoutSession } from '@/features/auth/logout'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
@@ -21,6 +22,9 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  * unlocks an already-valid session — it never restores one.
  */
 export function PinUnlockScreen() {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen recording /
+  // screenshots while the PIN-pad is on screen.
+  useScreenCaptureProtection()
   const { theme } = useAppTheme()
   const router = useRouter()
   const sessionQuery = useAuthSession()

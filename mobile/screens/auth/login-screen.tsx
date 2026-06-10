@@ -48,6 +48,7 @@ import { authenticateBiometricAccess } from '@/lib/biometric-auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { decorativeDurations, motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { getLastUserProfile, type LastUserProfile } from '@/lib/last-user-cache'
 import { authTokens } from '@/theme/palette'
@@ -80,6 +81,10 @@ type FormMode = 'use-password' | 'change-account' | null
  * and synced from controller flags.
  */
 export function LoginScreen() {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture on the
+  // credential form (email + password). Prevents replay of typed creds
+  // from a screen recording captured by malware in side-loaded context.
+  useScreenCaptureProtection()
   const router = useRouter()
   const reducedMotion = useReducedMotion()
   // Sprint F · F14: captcha for password sign-in. The hook is a no-op

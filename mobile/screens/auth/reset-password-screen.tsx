@@ -16,6 +16,7 @@ import {
 import { getBiometricLoginState } from '@/lib/biometric-auth'
 import { getPinLockState } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -36,6 +37,9 @@ const RESET_TIMEOUT_MS = 30_000
  * CTA para volver a pedir reset.
  */
 export function ResetPasswordScreen() {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture so the
+  // half-typed new password never lands in a screenshot/recording.
+  useScreenCaptureProtection()
   const router = useRouter()
   const { theme } = useAppTheme()
   const params = useLocalSearchParams<{ code?: string }>()

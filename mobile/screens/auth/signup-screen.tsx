@@ -49,6 +49,7 @@ import {
 } from '@/lib/auth-transition-splash'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { getErrorMessage } from '@/utils/error-message'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -86,6 +87,9 @@ function maskEmail(email: string): string {
 }
 
 export function SignupScreen() {
+  // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture on the
+  // signup credential form (email + password + name).
+  useScreenCaptureProtection()
   const router = useRouter()
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
