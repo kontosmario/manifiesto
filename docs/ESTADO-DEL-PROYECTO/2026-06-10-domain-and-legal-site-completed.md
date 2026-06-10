@@ -84,14 +84,14 @@ iOS update ID: `019eaf1b-39df-75df-aba9-47659a50a299`
 
 Items H1 + H2 del ready-pendientes **cerrados**. Resto pendiente:
 
-| # | Item | Effort estimado |
-|---|---|---|
-| H3 | Screenshots App Store (6.7" + 5.5" iPhone) | 1-2 d self / USD 100-300 contratado |
-| H4 | Privacy Nutrition labels en App Store Connect | 30 min (cuestionario) |
-| H5 | Listing copy (descripción es-MX + keywords) | 2-4 h |
-| H6 | Age rating survey | 10 min |
-| H7 | App Preview video (opcional pero recomendado) | 1 d |
-| H8 | Submit for Review + esperar Apple | 1 click + 1-3 días |
+| # | Item | Effort estimado | Status |
+|---|---|---|---|
+| H3 | Screenshots App Store (6.7" + 5.5" iPhone) | 1-2 d self / USD 100-300 contratado | 🔴 pendiente |
+| ~~H4~~ | ~~Privacy Nutrition labels~~ | — | ✅ **DONE 2026-06-10 noche** |
+| H5 | Listing copy (descripción es-MX + keywords) | 2-4 h | 🔴 pendiente |
+| ~~H6~~ | ~~Age rating survey~~ | — | ✅ **DONE 2026-06-10 noche** (4+ en 173 países) |
+| H7 | App Preview video (opcional pero recomendado) | 1 d | 🟡 opcional |
+| H8 | Submit for Review + esperar Apple | 1 click + 1-3 días | 🔴 final |
 
 ## Referencias
 

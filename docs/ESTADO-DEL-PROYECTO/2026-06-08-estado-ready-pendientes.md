@@ -121,9 +121,9 @@ Todos son **owner actions**, no requieren código:
 | ~~H1~~ | ~~**Privacy Policy + Terms redactados y hosteados**~~ | — | ✅ **DONE 2026-06-10**. Sitio LIVE en `manifiestoapp.com` (Cloudflare Pages). Ver [milestone doc](2026-06-10-domain-and-legal-site-completed.md) |
 | ~~H2~~ | ~~**Email forwarding `soporte@manifiestoapp.com` → gmail**~~ | — | ✅ **DONE 2026-06-10**. Cloudflare Email Routing (`soporte@` + `support@` → gmail) |
 | H3 | **Screenshots App Store** (6.7" + 5.5" iPhone) | 1-2 d self-made / USD 100-300 contratado | Apple requiere mínimo 2 sets de tamaños para iPhone. iPad opcional pero recomendado. Tools: simulator de Xcode (screenshots vacíos) o un device físico con cuenta poblada |
-| H4 | **Privacy Nutrition labels** | 30 min | App Store Connect → app → Privacidad. Cuestionario sobre qué datos colectamos. Para Manifiesto: email (auth), nombre (display), datos financieros (encrypted local + Supabase). Ver Privacy Policy LIVE para guía exacta de respuestas |
+| ~~H4~~ | ~~**Privacy Nutrition labels**~~ | — | ✅ **DONE 2026-06-10**. 7 tipos de datos declarados (Nombre, Email, Otra info financiera, Atención al cliente, Otro contenido del user, ID de usuario, ID del dispositivo). Todos atados a Funcionalidad de la app + linked al user + NO tracking. Publicado en App Store Connect |
 | H5 | **Listing copy** (descripción es-MX, keywords, qué hay nuevo) | 2-4 h | App Store Connect → app → Distribución → Versión 1.0. Hay placeholder pero requiere copy final |
-| H6 | **Age rating survey** | 10 min | App Store Connect → app → Información de la app. Manifiesto = 4+ (sin contenido sensible) |
+| ~~H6~~ | ~~**Age rating survey**~~ | — | ✅ **DONE 2026-06-10**. Rating: **4+** en 173 países (equivalencias regionales para Brasil "AL" y Corea "ALL"). 7 pasos del cuestionario, todas las categorías sin contenido sensible |
 | H7 | **App Preview video** (opcional) | 1 d | Boost del conversion rate en App Store. Si no, usar solo screenshots |
 | H8 | **Submit for Review** + esperar Apple (~1-3 días) | 1 click → wait | Una vez todo lo anterior listo |
 
