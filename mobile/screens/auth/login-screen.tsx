@@ -407,25 +407,39 @@ export function LoginScreen() {
   const [appleSigningIn, setAppleSigningIn] = useState(false)
   const [appleError, setAppleError] = useState<string | null>(null)
 
-  // Detector + resend para el caso "el user intenta entrar antes de
-  // confirmar su email". Supabase tira un error con `message`
-  // "Email not confirmed" — lo capturamos via `errorMessage` (que el
-  // controller poblá con `getErrorMessage`) y mostramos un banner
-  // inline con CTA de reenvío. El cooldown / rate-limit los maneja el
-  // hook compartido (3 envíos / 5min + 60s cooldown).
+  // Sprint H · H2 — Anti-enumeration resend flow.
+  //
+  // Antes detectábamos "email not confirmed" en el errorMessage y
+  // pintábamos un banner inline. Eso permitía enumeración pasiva: el
+  // banner solo aparecía para emails registrados pero no confirmados,
+  // así que un atacante que tipeara emails al azar identificaba cuáles
+  // pertenecían a cuentas reales sin confirmar.
+  //
+  // Nuevo flujo:
+  //   · use-login-submit ya colapsa todos los signin-errors a copy
+  //     genérico ("Email o contraseña incorrectos"), así que el atacante
+  //     no aprende nada del fallo.
+  //   · Mostramos un link inline DEBAJO del form ("¿No te llegó el
+  //     email de confirmación?") que el USUARIO clickea de manera
+  //     proactiva. Al tocarlo abrimos el banner expandido con CTA de
+  //     reenvío. Como cualquiera puede pedir el resend para cualquier
+  //     email (Supabase responde igual si existe o no), no hay leak.
+  //
+  // El cooldown / rate-limit los maneja el hook compartido
+  // (3 envíos / 5min + 60s cooldown).
   const resendConfirm = useResendConfirmEmail()
-  const showUnconfirmedBanner =
-    !!errorMessage &&
-    /email not confirmed|email_not_confirmed/i.test(errorMessage) &&
-    !!email &&
-    email.includes('@')
+  const [confirmResendOpen, setConfirmResendOpen] = useState(false)
+  const handleOpenConfirmResend = useCallback(() => {
+    void triggerHaptic('selection')
+    setConfirmResendOpen(true)
+  }, [])
   const handleResendUnconfirmed = useCallback(async () => {
     if (!email || !email.includes('@')) return
     if (resendConfirm.secondsUntilRetry > 0) return
     await resendConfirm.resend(email)
     if (!resendConfirm.error) {
       void triggerHaptic('success')
-      actions.setInfoMessage('Te reenviamos el email de confirmación.')
+      actions.setInfoMessage('Si esa cuenta existe, te llegará un email.')
     } else {
       void triggerHaptic('warning')
     }
@@ -672,7 +686,10 @@ export function LoginScreen() {
                   passwordRef={passwordInputRef}
                   colors={theme.colors}
                 />
-                {showUnconfirmedBanner ? (
+                {/* H2: anti-enumeration — link is always visible (not
+                    gated on error shape) so it leaks nothing. Tapping
+                    expands the resend block. */}
+                {confirmResendOpen ? (
                   <UnconfirmedEmailBanner
                     busy={resendConfirm.isPending}
                     rateLimited={resendConfirm.rateLimited}
@@ -681,7 +698,27 @@ export function LoginScreen() {
                     onResend={() => void handleResendUnconfirmed()}
                     colors={theme.colors}
                   />
-                ) : null}
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="¿No te llegó el email de confirmación?"
+                    hitSlop={DEFAULT_HIT_SLOP}
+                    onPress={handleOpenConfirmResend}
+                    style={({ pressed }) => [
+                      styles.confirmResendLink,
+                      { opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.confirmResendLinkLabel,
+                        { color: theme.colors.textSoft },
+                      ]}
+                    >
+                      ¿No te llegó el email de confirmación?
+                    </Text>
+                  </Pressable>
+                )}
                 {appleAvailable ? (
                   <AppleSignInRow
                     busy={appleSigningIn}
@@ -1253,6 +1290,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     textAlign: 'center',
+  },
+  confirmResendLink: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  confirmResendLinkLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    textDecorationLine: 'underline',
   },
   unconfirmedBanner: {
     borderWidth: 1,

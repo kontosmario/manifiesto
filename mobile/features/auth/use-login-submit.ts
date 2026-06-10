@@ -10,6 +10,47 @@ import {
 } from '@/features/auth/auth-flow'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
+import { isEmailNotConfirmedError } from '@/features/auth/email-confirmation-error'
+
+/**
+ * Sprint H · H2 — generic auth-failure copy.
+ *
+ * Antes el screen mostraba "Email not confirmed" (vía getErrorMessage) y
+ * solo entonces renderizaba el resend-banner. Eso permitía enumeración
+ * pasiva: un atacante que tipeara un email + cualquier password obtenía
+ * confirmación de si la cuenta existía pero no estaba verificada.
+ *
+ * Ahora colapsamos todos los signin-errors a un mensaje genérico
+ * indistinguible (wrong password, email no existe, email no confirmado,
+ * todos lucen igual). La acción de "no me llegó el confirm email" pasa a
+ * ser un link separado fuera del error-flow que el usuario clickea
+ * proactivamente, lo que elimina el oráculo pasivo.
+ */
+const GENERIC_SIGNIN_ERROR = 'Email o contraseña incorrectos.'
+
+/**
+ * Trata como "wrong-credentials" cualquier signal de Supabase que pueda
+ * filtrar info al atacante: Invalid login credentials, Email not
+ * confirmed, user not found, etc. Errores de infra (network, captcha
+ * rejected, rate limit) NO se colapsan — esos no enumeran cuentas y
+ * benefician al usuario con copy específico.
+ */
+function isUserFacingCredentialError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as { message?: unknown; code?: unknown; status?: unknown }
+  if (isEmailNotConfirmedError(error)) return true
+  if (typeof e.code === 'string') {
+    if (e.code === 'invalid_credentials') return true
+    if (e.code === 'user_not_found') return true
+  }
+  if (typeof e.message === 'string') {
+    const m = e.message.toLowerCase()
+    if (m.includes('invalid login credentials')) return true
+    if (m.includes('invalid email or password')) return true
+    if (m.includes('user not found')) return true
+  }
+  return false
+}
 
 interface UseLoginSubmitInput {
   clearFeedback: () => void
@@ -149,7 +190,15 @@ export function useLoginSubmit({
       onSignedIn()
     } catch (error) {
       await triggerHaptic('error')
-      onErrorMessage(getErrorMessage(error, 'No pudimos completar el acceso.'))
+      // H2: collapse credential-related errors to a generic message so
+      // unconfirmed-account enumeration is impossible. Infra errors
+      // (network, captcha, rate-limit) keep their specific copy because
+      // they're useful to the user and don't leak account existence.
+      if (mode === 'sign-in' && isUserFacingCredentialError(error)) {
+        onErrorMessage(GENERIC_SIGNIN_ERROR)
+      } else {
+        onErrorMessage(getErrorMessage(error, 'No pudimos completar el acceso.'))
+      }
     } finally {
       submissionLockRef.current = false
       setSubmitting(false)
