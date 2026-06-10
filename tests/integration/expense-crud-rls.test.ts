@@ -391,11 +391,13 @@ describe('expenses CRUD vs RLS — Sprint B (B7)', () => {
     expect((still ?? []).length).toBe(1)
   })
 
-  it('BULK INSERT: 50 expenses en serie no rate-limita (path no-RPC)', async () => {
+  it('BULK INSERT: 50 expenses en serie pasa el cap (OCR batch típico)', async () => {
     if (!reachable) return
-    // Sprint B agregó rate-limits a RPCs sensibles; los INSERT directos
-    // a `expenses` NO deberían tener rate-limit (caen al path mutación
-    // normal de PostgREST). Verificamos un volumen razonable.
+    // Sprint B agregó rate-limits a RPCs sensibles; Sprint N (Audit #7
+    // R-2) agregó un BEFORE INSERT trigger con cap de 120/min en
+    // `expenses` para evitar flood directo via PostgREST. 50 inserts
+    // (el batch típico del OCR import review) DEBEN seguir pasando
+    // sin tocar el cap.
     const family = await seedMinimalFamily('-bulk')
     familiesToCleanup.push(family)
     const categoryId = await getExpenseCategoryId(family.familyId)
