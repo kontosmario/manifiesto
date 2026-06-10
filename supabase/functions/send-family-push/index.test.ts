@@ -71,3 +71,27 @@ Deno.test('CORS preflight blocks unknown origin', async () => {
   }))
   assertEquals(res.headers.get('Access-Control-Allow-Origin'), '')
 })
+
+// H-8 (red-team 2026-06-10): a raw token without the `Bearer ` prefix
+// must NOT authenticate. RFC 6750 requires the prefix; the previous
+// parser silently accepted bare tokens. We assert on both the batch
+// and non-batch paths.
+Deno.test('messages[] rejects raw token (no Bearer prefix) (401)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ messages: [{ to: 'ExponentPushToken[x]', title: 't', body: 'b' }] }),
+    headers: { Authorization: 'service-role-fake-12345' },
+  }))
+  assertEquals(res.status, 401)
+})
+
+Deno.test('non-batch path rejects raw token (no Bearer prefix) (401)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ familyId: '00000000-0000-0000-0000-000000000000', title: 'hi' }),
+    headers: { Authorization: 'some-raw-jwt' },
+  }))
+  assertEquals(res.status, 401)
+})

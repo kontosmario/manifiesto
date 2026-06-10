@@ -126,6 +126,31 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0
 }
 
+// Distinguish a genuine rate-limit hit (P0001 raised inside the
+// `enforce_rate_limit*` plpgsql helpers) from transient DB / planner
+// failures. Postgres surfaces the SQLSTATE via PostgREST as the `code`
+// field on the error object; older payloads include just `message`.
+// Returning false on unknown shape biases toward 503 (caller retries
+// later) rather than silently masking a real outage as a 429.
+function isRateLimitErrcode(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as { code?: unknown; message?: unknown }
+  if (typeof e.code === 'string' && e.code === 'P0001') return true
+  // PostgREST returns the raised exception MESSAGE in `message`. The
+  // helper uses a stable prefix ("Rate limit") that we can sniff as a
+  // fallback when SQLSTATE isn't surfaced (e.g. functions that wrap the
+  // error before re-raising).
+  if (typeof e.message === 'string' && /rate limit/i.test(e.message)) return true
+  return false
+}
+
+// RFC 6750 §2.1 bearer parser — requires the literal `Bearer ` prefix
+// (case-insensitive, per RFC). The previous implementation fell back to
+// returning the raw header value when no prefix matched, which let
+// callers send a bare token and still authenticate. That violates the
+// spec and silently masks misconfigured clients. All known callers
+// (mobile via `supabase.functions.invoke` and the orchestrator) emit
+// the prefix, so tightening this is safe. H-8 (red-team 2026-06-10).
 function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) {
     return null
@@ -137,11 +162,10 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
   }
 
   const bearerPrefix = 'bearer '
-  if (normalized.toLowerCase().startsWith(bearerPrefix)) {
-    return normalized.slice(bearerPrefix.length).trim() || null
+  if (!normalized.toLowerCase().startsWith(bearerPrefix)) {
+    return null
   }
-
-  return normalized
+  return normalized.slice(bearerPrefix.length).trim() || null
 }
 
 // Strip control characters and cap length. Push payloads end up
@@ -435,7 +459,16 @@ export async function handler(request: Request): Promise<Response> {
     p_window_seconds: 60,
   })
   if (rateLimitResponse.error) {
-    return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429, cors)
+    // H-10 (red-team 2026-06-10): the previous implementation conflated
+    // every RPC error with an actual rate-limit hit. `enforce_rate_limit`
+    // raises with errcode `P0001` when the bucket is full; anything else
+    // (network blip, planner error, missing extension) is a transient
+    // infrastructure failure that should surface as 503, not 429.
+    if (isRateLimitErrcode(rateLimitResponse.error)) {
+      return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429, cors)
+    }
+    console.error('[send-family-push] enforce_rate_limit_for_user failed', rateLimitResponse.error)
+    return jsonResponse({ error: 'Rate limit check unavailable. Try again shortly.' }, 503, cors)
   }
 
   const membershipResponse = await adminClient
@@ -485,9 +518,23 @@ export async function handler(request: Request): Promise<Response> {
       },
     )
     if (familyRateLimitResponse.error) {
+      // H-10 (red-team 2026-06-10): distinguish actual rate-limit
+      // P0001 from transient DB / planner errors. See per-user
+      // branch above for the rationale.
+      if (isRateLimitErrcode(familyRateLimitResponse.error)) {
+        return jsonResponse(
+          { error: 'Rate limit exceeded (family). Try again shortly.' },
+          429,
+          cors,
+        )
+      }
+      console.error(
+        '[send-family-push] enforce_rate_limit_for_user (family) failed',
+        familyRateLimitResponse.error,
+      )
       return jsonResponse(
-        { error: 'Rate limit exceeded (family). Try again shortly.' },
-        429,
+        { error: 'Rate limit check unavailable. Try again shortly.' },
+        503,
         cors,
       )
     }
