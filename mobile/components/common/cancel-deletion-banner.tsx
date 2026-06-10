@@ -25,7 +25,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { MONTH_SHORT } from '@/utils/date-format'
-import { getErrorMessage } from '@/utils/error-message'
+import { getErrorMessage, isRateLimitError } from '@/utils/error-message'
 
 interface CancelDeletionBannerProps {
   userId: string
@@ -62,12 +62,24 @@ export function CancelDeletionBanner({
       },
       onError: (error) => {
         void triggerHaptic('error')
+        // Sprint L · Audit #5 L-Med2 — rate-limit explicit UX.
+        // `cancel_account_deletion` is capped at 5/hour (Sprint H · H3).
+        // A panicked user fat-fingering the button hits the cap and
+        // the generic Postgres error reads like "the cancel failed",
+        // which is exactly the wrong message — the deletion is still
+        // pending and they CAN still cancel later. We detect the rate
+        // limit explicitly and reassure the user.
+        const rateLimited = isRateLimitError(error)
         Alert.alert(
-          'No pudimos cancelar la baja',
-          getErrorMessage(
-            error,
-            'Probá nuevamente en un momento. Si el problema persiste, escribinos a soporte@manifiestoapp.com.',
-          ),
+          rateLimited
+            ? 'Probá de vuelta en unos segundos'
+            : 'No pudimos cancelar la baja',
+          rateLimited
+            ? 'Probá nuevamente en unos segundos. Tu solicitud de baja sigue agendada — está todo bien y vas a poder cancelarla cuando quieras.'
+            : getErrorMessage(
+                error,
+                'Probá nuevamente en un momento. Si el problema persiste, escribinos a soporte@manifiestoapp.com.',
+              ),
         )
       },
     })

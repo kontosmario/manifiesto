@@ -25,6 +25,45 @@ function parseRateLimitMessage(
   return `Probá de nuevo en ${hours}h.`
 }
 
+/**
+ * Returns true if `error` looks like a `check_rate_limit` RAISE
+ * (errcode `P0001` + message containing `rate_limit_exceeded`). Sprint
+ * L · Audit #5 L-Med2 — surfaces let callers branch their copy when a
+ * generic "try again" is the wrong message (e.g. "your deletion is
+ * still scheduled, this is OK"). Stays loose on shape because Supabase
+ * surfaces RPC errors with several field combos.
+ */
+export function isRateLimitError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    if (error instanceof Error) {
+      return error.message.includes('rate_limit_exceeded')
+    }
+    return false
+  }
+
+  const candidate = error as {
+    code?: unknown
+    message?: unknown
+    details?: unknown
+    hint?: unknown
+  }
+
+  const code = typeof candidate.code === 'string' ? candidate.code : ''
+  const message = typeof candidate.message === 'string' ? candidate.message : ''
+  const details = typeof candidate.details === 'string' ? candidate.details : ''
+  const hint = typeof candidate.hint === 'string' ? candidate.hint : ''
+
+  if (code === 'P0001' && (message.includes('rate_limit_exceeded') || hint.startsWith('retry_after_'))) {
+    return true
+  }
+
+  return (
+    message.includes('rate_limit_exceeded') ||
+    details.includes('rate_limit_exceeded') ||
+    hint.startsWith('retry_after_')
+  )
+}
+
 export function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
     // Si el mensaje viene de un RPC con rate_limit_exceeded sin `hint`
