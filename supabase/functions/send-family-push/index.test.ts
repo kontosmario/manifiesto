@@ -41,3 +41,33 @@ Deno.test('messages[] rejects anon bearer (401)', async () => {
   }))
   assertEquals(res.status, 401)
 })
+
+Deno.test('non-batch path missing bearer rejected (401)', async () => {
+  // F6 follow-up: ensure the non-batch (familyId) path still requires
+  // a bearer token. Smoke check for the auth gate landing before any
+  // rate-limit / membership work.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ familyId: '00000000-0000-0000-0000-000000000000', title: 'hi' }),
+  }))
+  assertEquals(res.status, 401)
+})
+
+Deno.test('CORS preflight echoes allowed origin', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'OPTIONS',
+    headers: { origin: 'https://manifiestoapp.com' },
+  }))
+  assertEquals(res.headers.get('Access-Control-Allow-Origin'), 'https://manifiestoapp.com')
+})
+
+Deno.test('CORS preflight blocks unknown origin', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'OPTIONS',
+    headers: { origin: 'https://evil.example.com' },
+  }))
+  assertEquals(res.headers.get('Access-Control-Allow-Origin'), '')
+})

@@ -168,25 +168,28 @@ export async function setupPushNotifications({
     return { status: 'no-token' }
   }
 
-  // Upsert al backend. Usamos el mismo shape que el hook existente
-  // (`useEnablePushNotifications`) para que la fila se comparta y no
-  // se dupliquen filas con shape distinto.
+  // Registro vía edge function. Antes el cliente escribía directo a
+  // `push_subscriptions` y construía user_id + family_id en JS — un
+  // binario modificado podía pasar cualquier cosa y quedaba solo
+  // RLS como red de seguridad. F4 (red-team 2026-06-10): subimos el
+  // gatekeeper al server, que resuelve userId con auth.getUser(token)
+  // y familyId con un lookup en family_members.
   try {
-    const { error } = await supabase.from('push_subscriptions').upsert(
-      {
-        family_id: familyId ?? null,
-        user_id: userId,
+    const sessionResponse = await supabase.auth.getSession()
+    const accessToken = sessionResponse.data.session?.access_token
+    if (!accessToken) {
+      return { status: 'error' }
+    }
+    const { error } = await supabase.functions.invoke('register-push-subscription', {
+      body: {
+        token,
         provider: 'expo',
-        endpoint: token,
-        p256dh: 'expo',
-        auth: 'expo',
-        user_agent: `${Platform.OS}/${Device.osVersion ?? 'unknown'}`,
-        last_used_at: new Date().toISOString(),
+        userAgent: `${Platform.OS}/${Device.osVersion ?? 'unknown'}`,
       },
-      {
-        onConflict: 'user_id,endpoint',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
-    )
+    })
     if (error) {
       return { status: 'error' }
     }

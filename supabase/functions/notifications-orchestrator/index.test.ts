@@ -52,3 +52,18 @@ Deno.test('accepts POST with service-role bearer (not 401)', async () => {
   // we just assert the gate didn't reject as 401.
   if (res.status === 401) throw new Error('service-role bearer was rejected')
 })
+
+Deno.test('500 response does not leak internal error message (M-edge2)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: '{"kind":"morning_checkins"}',
+    headers: { Authorization: 'Bearer service-role-fake-12345' },
+  }))
+  // The downstream Supabase fetch will fail against the fake URL, so
+  // processKind throws and lands in the catch. We assert the error
+  // body is the redacted marker, not the raw exception text.
+  if (res.status !== 500) return
+  const body = (await res.json()) as { error?: unknown }
+  assertEquals(body.error, 'internal')
+})

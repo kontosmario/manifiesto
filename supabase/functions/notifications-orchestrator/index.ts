@@ -251,14 +251,14 @@ export async function handler(request: Request): Promise<Response> {
     const result = await processKind(payload.kind)
     return jsonResponse(result)
   } catch (error) {
+    // Redact upstream error from the response (M-edge2, red-team
+    // 2026-06-10). The callers are pg_cron (service-role) which
+    // doesn't render the body, and ops dashboards. Returning the raw
+    // exception message can leak Postgres error codes / SQL hints /
+    // service-internal identifiers. Log the detail for the operator
+    // and respond with a generic marker.
     console.error('orchestrator failed', error)
-    const message =
-      error instanceof Error
-        ? error.message
-        : typeof error === 'object' && error != null
-          ? JSON.stringify(error)
-          : String(error)
-    return jsonResponse({ error: message }, 500)
+    return jsonResponse({ error: 'internal' }, 500)
   }
 }
 

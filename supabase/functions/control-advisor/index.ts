@@ -492,14 +492,14 @@ function fallbackTasks(): ControlAdvisorTask[] {
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-async function handler(request: Request): Promise<Response> {
+export async function handler(request: Request): Promise<Response> {
   const cors = corsHeadersFor(request.headers.get('origin'))
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: cors })
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405)
+    return jsonResponse({ error: 'Method not allowed.' }, 405, cors)
   }
 
   if (!isServerReady()) {
@@ -509,6 +509,7 @@ async function handler(request: Request): Promise<Response> {
           'Missing env vars (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY).',
       },
       500,
+      cors,
     )
   }
 
@@ -516,22 +517,22 @@ async function handler(request: Request): Promise<Response> {
   try {
     body = (await request.json()) as RequestBody
   } catch {
-    return jsonResponse({ error: 'Invalid JSON payload.' }, 400)
+    return jsonResponse({ error: 'Invalid JSON payload.' }, 400, cors)
   }
 
   const familyId = (body.familyId ?? '').trim()
-  if (!familyId) return jsonResponse({ error: 'familyId is required.' }, 400)
+  if (!familyId) return jsonResponse({ error: 'familyId is required.' }, 400, cors)
 
   // Auth
   const token = extractBearerToken(
     request.headers.get('Authorization') ?? request.headers.get('authorization'),
   )
-  if (!token) return jsonResponse({ error: 'Unauthorized (missing token).' }, 401)
+  if (!token) return jsonResponse({ error: 'Unauthorized (missing token).' }, 401, cors)
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
   const authUserResponse = await userClient.auth.getUser(token)
   if (authUserResponse.error || !authUserResponse.data.user) {
-    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401)
+    return jsonResponse({ error: 'Unauthorized (invalid token).' }, 401, cors)
   }
   const actorUserId = authUserResponse.data.user.id
 
@@ -552,6 +553,7 @@ async function handler(request: Request): Promise<Response> {
     return jsonResponse(
       { error: 'Rate limit exceeded. Refresh in ~1 hour.' },
       429,
+      cors,
     )
   }
 
@@ -564,14 +566,49 @@ async function handler(request: Request): Promise<Response> {
     .maybeSingle()
 
   if (membershipResponse.error || !membershipResponse.data) {
-    return jsonResponse({ error: 'User is not a member of this family.' }, 403)
+    return jsonResponse({ error: 'User is not a member of this family.' }, 403, cors)
   }
   const member = membershipResponse.data as {
     role?: string | null
     blocked_at?: string | null
   }
   if (member.role === 'blocked' || member.blocked_at) {
-    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403)
+    return jsonResponse({ error: 'Forbidden: blocked member.' }, 403, cors)
+  }
+
+  // Per-family rate limit (F5, red-team 2026-06-10): the per-user
+  // bucket of 5/hour above caps a single attacker, but an attacker
+  // with N puppet accounts inside the same family could drive Nx
+  // Claude calls. Each call is ~1500 tokens — a 4-member family
+  // could rack up 20 calls/hour by abusing the per-user bucket.
+  // Cap the family aggregate at 8/hour. We seed the bucket with
+  // the family owner's user_id (stable, unique per family thanks
+  // to family_members_one_owner_per_family) so every member's
+  // call lands in the same row.
+  const ownerResponse = await admin
+    .from('family_members')
+    .select('user_id')
+    .eq('family_id', familyId)
+    .eq('role', 'owner')
+    .maybeSingle()
+  const familyBucketSeed = ownerResponse.data?.user_id ?? null
+  if (familyBucketSeed) {
+    const familyRateLimitResponse = await admin.rpc(
+      'enforce_rate_limit_for_user',
+      {
+        p_user_id: familyBucketSeed,
+        p_action: 'control_advisor_family',
+        p_max_attempts: 8,
+        p_window_seconds: 3600,
+      },
+    )
+    if (familyRateLimitResponse.error) {
+      return jsonResponse(
+        { error: 'Rate limit exceeded (family). Refresh in ~1 hour.' },
+        429,
+        cors,
+      )
+    }
   }
 
   // Load context
@@ -580,11 +617,15 @@ async function handler(request: Request): Promise<Response> {
     ctx = await loadFamilyContext(admin, familyId)
   } catch (error) {
     console.error('[control-advisor] loadFamilyContext failed:', error)
-    return jsonResponse({ error: 'Failed to load family context.' }, 500)
+    return jsonResponse({ error: 'Failed to load family context.' }, 500, cors)
   }
 
   if (!hasEnoughData(ctx)) {
-    return jsonResponse({ tasks: [], reason: 'insufficient_data', generatedAt: ctx.generatedAt })
+    return jsonResponse(
+      { tasks: [], reason: 'insufficient_data', generatedAt: ctx.generatedAt },
+      200,
+      cors,
+    )
   }
 
   // Claude
@@ -601,6 +642,7 @@ async function handler(request: Request): Promise<Response> {
         fallback: true,
       },
       502,
+      cors,
     )
   }
 
@@ -615,14 +657,19 @@ async function handler(request: Request): Promise<Response> {
         fallback: true,
       },
       502,
+      cors,
     )
   }
 
-  return jsonResponse({
-    tasks,
-    generatedAt: ctx.generatedAt,
-    cached: false, // prompt caching happens on Anthropic's side; no local cache
-  })
+  return jsonResponse(
+    {
+      tasks,
+      generatedAt: ctx.generatedAt,
+      cached: false, // prompt caching happens on Anthropic's side; no local cache
+    },
+    200,
+    cors,
+  )
 }
 
 if (!denoGlobal.Deno?.serve) {

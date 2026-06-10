@@ -160,26 +160,30 @@ export function useEnablePushNotifications() {
 
       const token = await getExpoPushToken()
 
-      const { error } = await supabase.from('push_subscriptions').upsert(
-        {
-          family_id: familyId,
-          user_id: userId,
+      // Registro vía edge function (F4 red-team 2026-06-10). Antes el
+      // cliente escribía directo a push_subscriptions con user_id +
+      // family_id construidos en JS; ahora el server los resuelve.
+      // familyId / userId del input se mantienen solo para validar
+      // estado del shell antes de pedir el token al OS — el server
+      // ignora cualquier valor que el cliente envíe.
+      const sessionResponse = await supabase.auth.getSession()
+      const accessToken = sessionResponse.data.session?.access_token
+      if (!accessToken) {
+        throw new Error('No hay sesión activa para registrar push.')
+      }
+
+      const { error } = await supabase.functions.invoke('register-push-subscription', {
+        body: {
+          token,
           provider: 'expo',
-          endpoint: token,
-          p256dh: 'expo',
-          auth: 'expo',
-          user_agent: `${Platform.OS}/${Device.osVersion ?? 'unknown'}`,
+          userAgent: `${Platform.OS}/${Device.osVersion ?? 'unknown'}`,
         },
-        {
-          onConflict: 'user_id,endpoint',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-      )
+      })
 
       if (error) {
-        if (isMissingPushSubscriptionsTableError(error)) {
-          throw new Error('Falta correr la migración SQL para habilitar push mobile.')
-        }
-
         throw error
       }
     },

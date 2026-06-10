@@ -366,7 +366,18 @@ export async function handler(request: Request): Promise<Response> {
     ) {
       return jsonResponse({ error: 'Unauthorized (service-role required for batch path).' }, 401, cors)
     }
-    const messages = payload.messages
+    // Belt-and-suspenders sanitize even though this branch is gated to
+    // the service-role caller (notifications-orchestrator). If anyone
+    // ever exfiltrated the service-role key (the only way to reach
+    // this branch) we still don't want raw control chars / extreme
+    // strings ending up in OS notification chrome.
+    const messages = payload.messages.map((m) => ({
+      to: typeof m.to === 'string' ? m.to.slice(0, 256) : '',
+      title: sanitizeText(m.title, 80),
+      body: sanitizeText(m.body, 240),
+      data: m.data,
+      sound: m.sound,
+    }))
     if (messages.length === 0) {
       return jsonResponse({ ok: true, count: 0 }, 200, cors)
     }
@@ -449,6 +460,39 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Forbidden: blocked member.' }, 403, cors)
   }
 
+  // Per-family rate limit (F6, red-team 2026-06-10): the per-user
+  // bucket caps a single attacker at 10/min, but an attacker with N
+  // puppet accounts inside the same family could multiply throughput
+  // Nx. Cap the family aggregate at 30/min regardless of member
+  // count. We seed the bucket with the family owner's user_id (stable,
+  // unique per family thanks to the `family_members_one_owner_per_family`
+  // index) so every member's call lands in the same row.
+  const ownerResponse = await adminClient
+    .from('family_members')
+    .select('user_id')
+    .eq('family_id', familyId)
+    .eq('role', 'owner')
+    .maybeSingle()
+  const familyBucketSeed = ownerResponse.data?.user_id ?? null
+  if (familyBucketSeed) {
+    const familyRateLimitResponse = await adminClient.rpc(
+      'enforce_rate_limit_for_user',
+      {
+        p_user_id: familyBucketSeed,
+        p_action: 'send_family_push_family',
+        p_max_attempts: 30,
+        p_window_seconds: 60,
+      },
+    )
+    if (familyRateLimitResponse.error) {
+      return jsonResponse(
+        { error: 'Rate limit exceeded (family). Try again shortly.' },
+        429,
+        cors,
+      )
+    }
+  }
+
   const subscriptionsResponse = await adminClient
     .from('push_subscriptions')
     .select('id, user_id, endpoint, p256dh, auth')
@@ -456,11 +500,11 @@ export async function handler(request: Request): Promise<Response> {
     .neq('user_id', actorUserId)
 
   if (subscriptionsResponse.error) {
-    return jsonResponse(
-      { error: 'Could not fetch push subscriptions.', details: subscriptionsResponse.error.message },
-      500,
-      cors,
-    )
+    // Redact upstream error (M-edge3, red-team 2026-06-10). The
+    // PostgREST/Postgres message can leak schema details; log it for
+    // the operator and return a generic message to the caller.
+    console.error('[send-family-push] subscriptions query failed', subscriptionsResponse.error)
+    return jsonResponse({ error: 'internal' }, 500, cors)
   }
 
   const subscriptions = (subscriptionsResponse.data ?? []) as PushSubscriptionRow[]
