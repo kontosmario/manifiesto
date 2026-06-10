@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -92,8 +93,14 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   const [passwordValue, setPasswordValue] = useState('')
   const [passwordError, setPasswordError] = useState<string | null>(null)
   // Sprint J · P0: dynamic PIN length so this re-auth path submits the
-  // correct number of digits (4–8). Defaults to 4 for back-compat.
-  const [pinLength, setPinLength] = useState<number>(4)
+  // correct number of digits (4–8).
+  //
+  // Sprint K · Audit #4 K-4 (2026-06-10): start as `null` and hide the
+  // PinPad behind a spinner until SecureStore resolves. Defaulting to
+  // 4 made a fast-typing user with a 6-digit PIN auto-submit a 4-digit
+  // slice — burning a failed attempt and lockout budget on what should
+  // have been the first real try.
+  const [pinLength, setPinLength] = useState<number | null>(null)
   const [biometricState, setBiometricState] =
     useState<BiometricLoginState | null>(null)
 
@@ -225,6 +232,9 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   const handlePinChange = useCallback(
     (next: string) => {
       if (isReauthChecking) return
+      // Sprint K · Audit #4 K-4: short-circuit until pinLength loads
+      // so a fast tap can't submit a slice of a longer PIN.
+      if (pinLength === null) return
       setPinValue(next)
       if (!isPinComplete(next, pinLength)) return
       setReauthChecking(true)
@@ -661,12 +671,19 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
                 Pedimos tu PIN como última verificación antes de programar la baja.
               </Text>
               <View style={styles.pinPadWrap}>
-                <PinPad
-                  errorToken={pinErrorToken}
-                  onChange={handlePinChange}
-                  pinLength={pinLength}
-                  value={pinValue}
-                />
+                {pinLength === null ? (
+                  // Sprint K · Audit #4 K-4: gate PinPad render on the
+                  // SecureStore read so a fast tap on a 6-digit PIN
+                  // doesn't auto-submit a 4-digit slice.
+                  <ActivityIndicator color={theme.colors.primary} />
+                ) : (
+                  <PinPad
+                    errorToken={pinErrorToken}
+                    onChange={handlePinChange}
+                    pinLength={pinLength}
+                    value={pinValue}
+                  />
+                )}
                 {pinLockoutMessage ? (
                   <Text
                     accessibilityLiveRegion="polite"

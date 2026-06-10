@@ -31,9 +31,16 @@ export function PinUnlockScreen() {
   const [checking, setChecking] = useState(false)
   const [lockoutMessage, setLockoutMessage] = useState<string | null>(null)
   // Sprint J · P0: the PIN length is persisted at setPin time and read
-  // here on mount so we submit a complete PIN. Defaults to 4 for users
-  // who set their PIN before this key existed (back-compat).
-  const [pinLength, setPinLength] = useState<number>(4)
+  // here on mount so we submit a complete PIN.
+  //
+  // Sprint K · Audit #4 K-4 (2026-06-10): start as `null` instead of
+  // defaulting to 4. If a user with a 6-digit PIN cold-starts the app
+  // and taps fast, defaulting to 4 made `PinPad` auto-submit at 4
+  // digits — counting as a failed attempt and burning lockout budget.
+  // The pad is now hidden behind a spinner until `getPinLength()`
+  // resolves; in practice the SecureStore read settles within a frame
+  // or two so the loading flash is barely perceptible.
+  const [pinLength, setPinLength] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -48,6 +55,7 @@ export function PinUnlockScreen() {
   const handleChange = useCallback(
     (next: string) => {
       if (checking) return
+      if (pinLength === null) return
       setValue(next)
       if (!isPinComplete(next, pinLength)) return
       setChecking(true)
@@ -112,12 +120,19 @@ export function PinUnlockScreen() {
       </View>
 
       <View style={styles.padWrap}>
-        <PinPad
-          errorToken={errorToken}
-          onChange={handleChange}
-          pinLength={pinLength}
-          value={value}
-        />
+        {pinLength === null ? (
+          // Sprint K · Audit #4 K-4: hold rendering of PinPad until
+          // we know the real PIN length so a fast tap can't auto-submit
+          // a 4-digit slice of a 6-digit PIN and burn lockout budget.
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <PinPad
+            errorToken={errorToken}
+            onChange={handleChange}
+            pinLength={pinLength}
+            value={value}
+          />
+        )}
         {lockoutMessage ? (
           <Text
             accessibilityLiveRegion="polite"
