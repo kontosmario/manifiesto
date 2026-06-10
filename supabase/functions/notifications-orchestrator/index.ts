@@ -133,13 +133,63 @@ async function fetchPushTokens(
     .in('family_id', familyIds)
   if (error) throw error
   const rows = (data ?? []) as PushSubscriptionRow[]
+  if (rows.length === 0) return []
+
+  // Sprint L · Audit #5 L-5 (2026-06-10): defense-in-depth filter
+  // against blocked members. The DB-side `family_block_member` RPC
+  // scrubs push_subscriptions at block time (Sprint L migration
+  // 20260613004100), but two stale-row windows remain:
+  //   • A client re-registers a push token immediately after being
+  //     blocked (before any subsequent block call scrubs the new row).
+  //   • Push tokens written prior to G-DB2 / L-5 that pre-date the
+  //     scrubbing logic and still linger in the table.
+  // We do a second query against family_members and drop any push
+  // row whose (family_id, user_id) lands on a blocked membership.
+  // Two queries instead of an inner-join because push_subscriptions
+  // has no FK to family_members — PostgREST cannot resolve an
+  // implicit relationship there.
+  const blockedKeys = await fetchBlockedMembershipKeys(admin, familyIds)
+  const filtered = rows.filter(
+    (r) => !blockedKeys.has(`${r.family_id}:${r.user_id}`),
+  )
   // userIds is the set of user-scoped rows in this chunk. If empty,
   // every chunk row is family-scoped (user_id null), so all family
   // tokens are valid recipients. Otherwise filter to {family-scoped
   // rows that match family_id} ∪ {user-scoped rows that match user_id}.
-  if (userIds.length === 0) return rows
+  if (userIds.length === 0) return filtered
   const userSet = new Set(userIds)
-  return rows.filter((r) => userSet.has(r.user_id))
+  return filtered.filter((r) => userSet.has(r.user_id))
+}
+
+async function fetchBlockedMembershipKeys(
+  admin: ReturnType<typeof adminClient>,
+  familyIds: string[],
+): Promise<Set<string>> {
+  if (familyIds.length === 0) return new Set()
+  const { data, error } = await admin
+    .from('family_members')
+    .select('family_id, user_id, role, blocked_at')
+    .in('family_id', familyIds)
+  if (error) {
+    // Fail-open would leak pushes to blocked members. Better to
+    // log and treat the whole batch as having an empty blocklist —
+    // the DB scrub is the canonical defense; this second query
+    // is just hardening.
+    console.error('[notifications-orchestrator] family_members fetch failed', error)
+    return new Set()
+  }
+  const out = new Set<string>()
+  for (const row of (data ?? []) as Array<{
+    family_id: string
+    user_id: string
+    role: string | null
+    blocked_at: string | null
+  }>) {
+    if (row.role === 'blocked' || row.blocked_at !== null) {
+      out.add(`${row.family_id}:${row.user_id}`)
+    }
+  }
+  return out
 }
 
 async function processKind(kind: Kind) {

@@ -579,7 +579,40 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'internal' }, 500, cors)
   }
 
-  const subscriptions = (subscriptionsResponse.data ?? []) as PushSubscriptionRow[]
+  // Sprint L · Audit #5 L-5 (2026-06-10): defense-in-depth against
+  // blocked-member surveillance. The DB migration
+  // 20260613004100_sprint_l_block_member_push_cleanup.sql scrubs
+  // push_subscriptions inside `family_block_member`, but stale rows
+  // can survive: (a) a client re-registers a push token right after
+  // being blocked, (b) tokens written prior to L-5 still linger.
+  // We separately query family_members for the family and exclude
+  // any (family_id, user_id) tuple that lands on a blocked role or
+  // a non-null blocked_at. Two queries (no inner-join) because
+  // push_subscriptions has no FK to family_members.
+  const familyMembersResponse = await adminClient
+    .from('family_members')
+    .select('user_id, role, blocked_at')
+    .eq('family_id', familyId)
+  if (familyMembersResponse.error) {
+    console.error(
+      '[send-family-push] family_members fetch failed',
+      familyMembersResponse.error,
+    )
+    return jsonResponse({ error: 'internal' }, 500, cors)
+  }
+  const blockedUserIds = new Set<string>()
+  for (const row of (familyMembersResponse.data ?? []) as Array<{
+    user_id: string
+    role: string | null
+    blocked_at: string | null
+  }>) {
+    if (row.role === 'blocked' || row.blocked_at !== null) {
+      blockedUserIds.add(row.user_id)
+    }
+  }
+  const subscriptions = (
+    (subscriptionsResponse.data ?? []) as PushSubscriptionRow[]
+  ).filter((s) => !blockedUserIds.has(s.user_id))
   if (subscriptions.length === 0) {
     return jsonResponse({ sent: 0, failed: 0, removed: 0 }, 200, cors)
   }
