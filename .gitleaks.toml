@@ -1,8 +1,10 @@
-# Custom gitleaks ruleset — Sprint C / C10.
+# Custom gitleaks ruleset — Sprint C / C10 + Sprint G (G-Infra1, 2026-06-10).
 #
 # Extends the default ruleset (we keep the upstream rules via `[extend]`)
-# with Manifiesto-specific patterns: Supabase JWTs (anon + service_role)
-# and our own SecureStore key prefixes.
+# with Manifiesto-specific patterns: Supabase JWTs (HS256 + RS256 + sb_*),
+# Anthropic API keys, AWS access keys, Expo tokens, Supabase project tokens
+# (sbp_*) — kept in sync with `.githooks/pre-commit` so CI and the local
+# hook share the same scope.
 #
 # Run locally:
 #   gitleaks detect --config .gitleaks.toml --no-banner --redact
@@ -14,48 +16,110 @@ title = "Manifiesto gitleaks ruleset"
 [extend]
 useDefault = true
 
-# Supabase JWTs — both `anon` and `service_role` keys use the same JWT shape
-# with the HS256 header fingerprint. The header segment is deterministic for
-# JWTs minted by Supabase (`{"alg":"HS256","typ":"JWT"}` base64-encoded).
+# ─────────────────────────────────────────────────────────────────────────────
+# Supabase JWTs
+# Two header fingerprints in the wild:
+#   - HS256 (`{"alg":"HS256","typ":"JWT"}`) — legacy anon / service_role
+#     encoded prefix: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+#   - RS256 (`{"alg":"RS256","typ":"JWT", ...}`) — newer asymmetric keys
+#     encoded prefix starts: eyJhbGciOiJSUzI1NiI
+# ─────────────────────────────────────────────────────────────────────────────
 [[rules]]
-id = "supabase-jwt"
-description = "Supabase JWT (anon or service_role key)"
+id = "manifiesto-supabase-jwt-hs256"
+description = "Supabase JWT (HS256 — anon or service_role key)"
 regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
-tags = ["key", "supabase"]
+tags = ["key", "supabase", "jwt"]
+
+[[rules]]
+id = "manifiesto-supabase-jwt-rs256"
+description = "Supabase JWT (RS256 — newer asymmetric keys)"
+regex = '''eyJhbGciOiJSUzI1NiI[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+tags = ["key", "supabase", "jwt"]
 
 # Newer Supabase keys follow the `sb_secret_*` / `sb_publishable_*` prefix
 # (introduced 2025). Catch both.
 [[rules]]
-id = "supabase-sb-secret"
+id = "manifiesto-supabase-sb-secret"
 description = "Supabase sb_secret_* key"
 regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
 tags = ["key", "supabase"]
 
 [[rules]]
-id = "supabase-sb-publishable"
+id = "manifiesto-supabase-sb-publishable"
 description = "Supabase sb_publishable_* key"
 regex = '''sb_publishable_[A-Za-z0-9_-]{20,}'''
 tags = ["key", "supabase"]
 
+# Supabase Management API personal access token (sbp_*).
+# Format: sbp_ + 40 hex chars (current Supabase format), but allow a
+# slightly looser tail to future-proof for format bumps.
+[[rules]]
+id = "manifiesto-supabase-sbp-token"
+description = "Supabase Management API personal access token (sbp_*)"
+regex = '''sbp_[A-Za-z0-9]{30,}'''
+tags = ["key", "supabase"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Anthropic API keys (used by Claude Code + any in-house tooling).
+# Format: sk-ant-{api,admin}-... — keep loose enough to catch any subtype.
+# ─────────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "manifiesto-anthropic-api-key"
+description = "Anthropic API key (sk-ant-*). Looser than upstream `anthropic-api-key` so we catch legacy + sk-ant-admin01 + future subtype prefixes; upstream rule (already enabled via [extend]) handles the strict 93-char + 'AA' suffix form."
+regex = '''sk-ant-[A-Za-z0-9_-]{30,}'''
+tags = ["key", "anthropic"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AWS access keys — even though we don't use AWS today, catch them so a
+# stray copy/paste from a teammate's env doesn't sneak in.
+# ─────────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "manifiesto-aws-access-key-id"
+description = "AWS access key ID (AKIA...)"
+regex = '''(?:^|[^A-Z0-9])(AKIA[0-9A-Z]{16})(?:[^A-Z0-9]|$)'''
+tags = ["key", "aws"]
+
 # Expo access token — used in CI for EAS Build / Submit / Update.
 [[rules]]
-id = "expo-access-token"
+id = "manifiesto-expo-access-token"
 description = "Expo access token"
 regex = '''(?i)expo[_-]?(?:access[_-]?)?token['"\s:=]+[A-Za-z0-9_-]{32,}'''
 tags = ["key", "expo"]
 
+# ─────────────────────────────────────────────────────────────────────────────
 # Allowlist — paths and contexts where matches are expected and OK.
+#
+# G-Infra1 (2026-06-10): tightened the docs allowlist. The old broad
+# `docs/.*\.md$` matched every markdown file in the docs tree, which means
+# a real secret pasted into any new doc (e.g. a future incident postmortem)
+# would slip through CI silently. Now we list specific historical files
+# that legitimately reference sample tokens — any new doc that needs an
+# allowlist entry must be added explicitly here.
+# ─────────────────────────────────────────────────────────────────────────────
 [allowlist]
-description = "Files where Supabase JWTs are expected (sample / example only)"
+description = "Known historical references and template/example files"
 paths = [
+  # Local env templates — placeholder tokens only.
+  '''\.env\.example$''',
   '''\.env\.supabase\.example$''',
-  '''docs/.*\.md$''',
-  '''tests/.*\.(ts|tsx|js)$''',
+  # Tests — fixtures may include sample tokens for parser coverage.
+  '''tests/.*\.(ts|tsx|js|mjs)$''',
+  # Specific test-account bootstrap script (uses literal placeholders).
   '''scripts/create-test-account\.mjs$''',
+  # Known historical reference: backend hardening runbook has a sample
+  # JWT in the "what a leaked key looks like" section. If we ever scrub
+  # it, remove this entry.
+  '''docs/operaciones/runbook-backend-hardening\.md$''',
+  # Known historical reference: release automation runbook documents
+  # token formats and sample paths.
+  '''docs/operaciones/runbook-release-automation\.md$''',
 ]
 # Ignore literal placeholders we use in docs/templates.
 regexes = [
   '''YOUR_SUPABASE_ANON_KEY''',
   '''YOUR_SUPABASE_SERVICE_ROLE_KEY''',
   '''<your-(anon|service-role)-key>''',
+  '''sb_publishable_<your-key>''',
+  '''sb_secret_<your-key>''',
+  '''sk-ant-<your-key>''',
 ]
