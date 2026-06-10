@@ -13,9 +13,15 @@ name: OTA Update (EAS Update)
 # new native deps) triggers a no-op. The owner cuts a new tag instead.
 #
 # Required secrets:
-#   - EXPO_TOKEN : Expo access token with `Update` permission. Same token
-#                  that `release.yml` uses for `eas build`. Generate at
+#   - EXPO_UPDATE_TOKEN : Expo access token scoped to `Update` only
+#                  (G-Infra2, red team audit 2026-06-10). Separating it
+#                  from the release pipeline's token means a leak from
+#                  here cannot trigger a new TestFlight build (and vice
+#                  versa). If unset, falls back to EXPO_TOKEN for
+#                  backwards compatibility. Generate at
 #                  https://expo.dev/settings/access-tokens.
+#   - EXPO_TOKEN : (Legacy) broad-scope Expo token. Fallback only;
+#                  prefer EXPO_UPDATE_TOKEN going forward.
 #   - EXPO_UPDATE_PRIVATE_KEY : PEM-encoded ECDSA P-256 private key matching
 #                  the cert bundled in the app (certs/certificate.pem).
 #                  Sprint F · F1 — code signing for OTA bundles, see
@@ -94,11 +100,16 @@ jobs:
           cache: npm
 
       - name: Setup EAS
+        # G-Infra2 (red team audit 2026-06-10): prefer the scoped
+        # EXPO_UPDATE_TOKEN (Update perms only) so a token leak from
+        # the OTA pipeline cannot trigger a new TestFlight build /
+        # submit. Falls back to EXPO_TOKEN for backwards compatibility
+        # during the rollout window.
         if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'
         uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          token: ${{ secrets.EXPO_UPDATE_TOKEN || secrets.EXPO_TOKEN }}
 
       - name: Install
         if: steps.filter.outputs.native != 'true' || github.event_name == 'workflow_dispatch'

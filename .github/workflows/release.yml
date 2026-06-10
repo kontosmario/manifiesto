@@ -20,8 +20,16 @@ name: Release (EAS build + TestFlight submit)
 #      Discord vs GitHub issue comment).
 #
 # Required secrets (owner must add in repo settings → Secrets and variables):
-#   - EXPO_TOKEN           : Expo account access token with build + submit perms.
-#                            Generate at expo.dev/settings/access-tokens.
+#   - EXPO_BUILD_TOKEN     : Expo access token scoped to Build + Submit only.
+#                            Preferred over the broad EXPO_TOKEN (G-Infra2,
+#                            red team audit 2026-06-10). If unset, the
+#                            workflow falls back to EXPO_TOKEN for
+#                            backwards compatibility — owner can rotate at
+#                            their own pace. Generate at
+#                            expo.dev/settings/access-tokens.
+#   - EXPO_TOKEN           : (Legacy) broad-scope Expo token. Fallback only;
+#                            do not use for new runs once EXPO_BUILD_TOKEN
+#                            is configured.
 #   - EXPO_APPLE_ID        : Apple ID used for ASC (e.g. ops@manifiesto.app).
 #                            Maps to `eas.json` `submit.production.ios.appleId`.
 #   - EXPO_ASC_APP_ID      : App Store Connect numeric app id.
@@ -71,10 +79,15 @@ jobs:
           cache: npm
 
       - name: Setup EAS
+        # G-Infra2 (red team audit 2026-06-10): prefer the scoped
+        # EXPO_BUILD_TOKEN (Build + Submit perms only) so a token leak
+        # from this pipeline cannot publish OTA updates. Falls back to
+        # EXPO_TOKEN if the scoped secret is not yet provisioned —
+        # ensures the workflow keeps working during the rollout window.
         uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          token: ${{ secrets.EXPO_BUILD_TOKEN || secrets.EXPO_TOKEN }}
 
       - name: Install
         run: npm ci
