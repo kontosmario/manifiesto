@@ -3,6 +3,11 @@ import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import { supabase } from '@/lib/supabase'
+import {
+  deletePersistentValue,
+  getPersistentValue,
+  setPersistentValue,
+} from '@/lib/persistent-kv'
 
 /**
  * Lightweight facade sobre `expo-notifications` para el setup
@@ -200,19 +205,114 @@ export async function setupPushNotifications({
 }
 
 /**
- * Borra los tokens del usuario en el backend. Usado en logout para
- * que un device compartido no siga recibiendo push del user anterior.
- * Silencioso ante errores (el logout no debe fallar por esto).
+ * Sprint H · H6 — Persistent queue for failed push-token cleanup.
+ *
+ * Threat:
+ *   `tearDownPushNotifications` se llama en el logout. Si el device
+ *   está offline (logout sin red) el DELETE falla y el token del user
+ *   anterior queda registrado server-side. En un device compartido el
+ *   próximo user recibe push intended for the prior user.
+ *
+ * Mitigación:
+ *   Al fallar, guardamos `{ userId, queuedAt }` en SecureStore. Al
+ *   próximo app launch + en cada auth state change `flushPendingPushTokenCleanup`
+ *   reintenta el DELETE. Hasta que tenga éxito (eventual consistency).
+ *
+ * Se guarda un solo userId por vez — si encolamos otro user antes de
+ * drenar, los stackeamos en un array. La key vive en SecureStore para
+ * sobrevivir al kill/reinstall.
  */
-export async function tearDownPushNotifications(userId: string): Promise<void> {
-  if (!userId) return
+const PENDING_PUSH_CLEANUP_KEY = 'pending-push-token-cleanup'
+
+interface PendingCleanupEntry {
+  userId: string
+  queuedAt: number
+}
+
+async function readPendingCleanupQueue(): Promise<PendingCleanupEntry[]> {
+  const raw = await getPersistentValue(PENDING_PUSH_CLEANUP_KEY)
+  if (!raw) return []
   try {
-    await supabase
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is PendingCleanupEntry => {
+      if (!entry || typeof entry !== 'object') return false
+      const e = entry as Partial<PendingCleanupEntry>
+      return typeof e.userId === 'string' && typeof e.queuedAt === 'number'
+    })
+  } catch {
+    return []
+  }
+}
+
+async function writePendingCleanupQueue(queue: PendingCleanupEntry[]): Promise<void> {
+  if (queue.length === 0) {
+    await deletePersistentValue(PENDING_PUSH_CLEANUP_KEY)
+    return
+  }
+  await setPersistentValue(PENDING_PUSH_CLEANUP_KEY, JSON.stringify(queue))
+}
+
+async function enqueuePendingCleanup(userId: string): Promise<void> {
+  const queue = await readPendingCleanupQueue()
+  // Dedupe — si el mismo userId ya está en la cola no apilamos.
+  if (queue.some((entry) => entry.userId === userId)) return
+  queue.push({ userId, queuedAt: Date.now() })
+  await writePendingCleanupQueue(queue)
+}
+
+async function tryDeletePushTokens(userId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
       .from('push_subscriptions')
       .delete()
       .eq('user_id', userId)
       .eq('provider', 'expo')
+    return !error
   } catch {
-    // best-effort
+    return false
   }
+}
+
+/**
+ * Borra los tokens del usuario en el backend. Usado en logout para
+ * que un device compartido no siga recibiendo push del user anterior.
+ * Silencioso ante errores (el logout no debe fallar por esto) — pero
+ * en caso de fallo encolamos el cleanup para reintentarlo más tarde
+ * (Sprint H · H6).
+ */
+export async function tearDownPushNotifications(userId: string): Promise<void> {
+  if (!userId) return
+  const ok = await tryDeletePushTokens(userId)
+  if (!ok) {
+    try {
+      await enqueuePendingCleanup(userId)
+    } catch {
+      // best-effort — si SecureStore tampoco responde, el flush en el
+      // próximo launch no tendrá nada que drenar pero al menos no
+      // bloqueamos el logout.
+    }
+  }
+}
+
+/**
+ * Drena la cola de cleanups pendientes. Llamarlo:
+ *   · en cold start (app/_layout, después de que el client de Supabase
+ *     esté listo)
+ *   · en cada `onAuthStateChange` (cuando recuperamos red post-logout)
+ *
+ * Las entradas que sigan fallando se mantienen en la cola para el
+ * próximo intento. Las que tienen éxito se remueven.
+ */
+export async function flushPendingPushTokenCleanup(): Promise<void> {
+  const queue = await readPendingCleanupQueue()
+  if (queue.length === 0) return
+  const remaining: PendingCleanupEntry[] = []
+  for (const entry of queue) {
+    const ok = await tryDeletePushTokens(entry.userId)
+    if (!ok) {
+      remaining.push(entry)
+    }
+  }
+  await writePendingCleanupQueue(remaining)
 }

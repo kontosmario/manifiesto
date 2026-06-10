@@ -14,10 +14,33 @@ export function useAuthSession() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
+    // Sprint H · H6: en cada arranque drenamos la cola de cleanups de
+    // push-token que pudieron haber quedado pendientes en un logout
+    // offline. Best-effort; si sigue offline, vuelve a quedar pending.
+    void (async () => {
+      try {
+        const { flushPendingPushTokenCleanup } = await import('@/lib/push-notifications')
+        await flushPendingPushTokenCleanup()
+      } catch {
+        // best-effort
+      }
+    })()
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       queryClient.setQueryData(authQueryKeys.session, session)
+      // H6: cada vez que cambia el auth state también drenamos. Cubre
+      // el escenario en el que el logout-offline encoló un cleanup y
+      // ahora el user (mismo o nuevo) loguea con red activa.
+      void (async () => {
+        try {
+          const { flushPendingPushTokenCleanup } = await import('@/lib/push-notifications')
+          await flushPendingPushTokenCleanup()
+        } catch {
+          // best-effort
+        }
+      })()
       // Purge every cached query ONLY when the session itself flips —
       // i.e. the user signed out. `USER_UPDATED` also fires on benign
       // metadata edits (display_name, password, etc.) for the SAME
@@ -26,7 +49,24 @@ export function useAuthSession() {
       // name). Different-user scenarios are covered by `SIGNED_IN`
       // → route redirect, not by cache eviction here.
       if (event === 'SIGNED_OUT') {
+        // Sprint H · H4 — explicit null write for the session query.
+        //
+        // Antes el predicate `q.queryKey[0] !== 'auth'` excluía las
+        // claves del auth query del purge. La intención era buena (no
+        // dropear la query que mantiene el listener) pero combinado con
+        // `gcTime: Infinity` (más abajo) significaba que un signOut que
+        // NO propaga via onAuthStateChange (raro, pero posible si algún
+        // path llama directo a clearLocal()) dejaba la sesión vieja
+        // viva en memoria. Acá la flushiamos a null explícitamente
+        // — siempre seguro porque el evento que disparó este handler
+        // ES SIGNED_OUT, no hay sesión válida.
+        queryClient.setQueryData(authQueryKeys.session, null)
         queryClient.removeQueries({
+          // Mantenemos la auth query (no la removemos) porque su
+          // identidad queryKey es el contrato del listener — drop
+          // sería un mount/refetch innecesario y crearía un flash
+          // de "loading". Toda otra query del usuario anterior se
+          // borra para evitar leak entre sesiones.
           predicate: (q) => q.queryKey[0] !== 'auth',
         })
         // Drop the persisted React Query cache from disk too. The
