@@ -8,6 +8,7 @@ import {
   type ScrollView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
 import { HomeDashboard } from '@/components/home/home-dashboard'
 import { brand, DARK_TAB_CANVAS } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -361,7 +362,18 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         // sin diferencia perceptible.
         null
       ) : (
-        <HomeDashboard
+        <>
+          {/* J-Auth2: forceful, non-dismissible banner shown whenever the
+              user has a pending account deletion. CTA wired to
+              `cancel_account_deletion`. Sits ABOVE the dashboard so the
+              user cannot miss it. */}
+          {profile?.deletion_scheduled_at ? (
+            <CancelDeletionBanner
+              userId={userId}
+              scheduledAt={profile.deletion_scheduled_at}
+            />
+          ) : null}
+          <HomeDashboard
           dashboard={dashboard}
           recentExpenses={recentExpenses}
           recentIncome={recentIncome}
@@ -401,6 +413,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           isSavingSalary={upsertFamilyFinanceMutation.isPending}
           salaryErrorMessage={salaryErrorMessage}
         />
+        </>
       )}
     </Screen>
   )

@@ -30,6 +30,7 @@ import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FernLogo } from '@/components/auth/fern-logo'
+import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
 import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
@@ -672,6 +673,11 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.actionsStack}>
+          {/* J-Auth2: when the last user on this device has a pending
+              deletion, surface the cancel-deletion CTA before the
+              regular login controls. The banner self-hides if there's
+              no pending state. */}
+          <WelcomeCancelDeletionBanner loginHref="/(auth)/login" />
           {actionView === 'password-form' && formMode ? (
               <>
                 <PasswordForm

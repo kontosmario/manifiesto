@@ -58,6 +58,17 @@ export interface Profile {
   gastos_tour_seen_at?: string | null
   fijos_tour_seen_at?: string | null
   control_tour_seen_at?: string | null
+  /**
+   * Set when the user submitted `request_account_deletion`. Cleared
+   * by `cancel_account_deletion`. The CancelDeletionBanner on home /
+   * settings (and the welcome-screen variant) reads this to surface
+   * a non-dismissible "tu cuenta se eliminará el X · cancelar" CTA
+   * during the 30-day grace window — see Sprint J · Audit #3 J-Auth2.
+   *
+   * Optional in the type because `home_snapshot` seeds the cache with
+   * a smaller column set; the explicit `useMyProfile` fetch fills it.
+   */
+  deletion_scheduled_at?: string | null
 }
 
 export const profileQueryKey = (userId?: string) => ['profile', userId] as const
@@ -78,7 +89,7 @@ export function useMyProfile(userId?: string) {
       const { data, error } = await supabase
         .from('profiles')
         .select(
-          'id, display_name, created_at, avatar_animal, onboarding_completed_at, previously_onboarded, family_closed_by_owner_at, timezone, home_tour_seen_at, gastos_tour_seen_at, fijos_tour_seen_at, control_tour_seen_at',
+          'id, display_name, created_at, avatar_animal, onboarding_completed_at, previously_onboarded, family_closed_by_owner_at, timezone, home_tour_seen_at, gastos_tour_seen_at, fijos_tour_seen_at, control_tour_seen_at, deletion_scheduled_at',
         )
         .eq('id', userId)
         .maybeSingle()

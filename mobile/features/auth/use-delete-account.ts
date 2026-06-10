@@ -1,4 +1,9 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { profileQueryKey } from '@/features/profile/use-profile'
+import {
+  clearLastUserPendingDeletion,
+  setLastUserPendingDeletion,
+} from '@/lib/last-user-cache'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -24,9 +29,13 @@ import { supabase } from '@/lib/supabase'
  * si el user re-loguea durante el grace; el flag
  * `deletion_scheduled_at` queda en el profile pero NO bloquea
  * automáticamente el login. Si el user vuelve a loguearse, exponemos
- * el banner de cancel desde el welcome/login (TODO seguimiento).
+ * el banner de cancel desde el welcome/login (Sprint J · J-Auth2:
+ * `WelcomeCancelDeletionBanner` lee el cache last-user y ofrece un
+ * CTA "Iniciar sesión para cancelar"; el flujo autenticado expone
+ * `CancelDeletionBanner` en home/settings con la CTA directa).
  */
-export function useRequestAccountDeletion() {
+export function useRequestAccountDeletion(userId?: string) {
+  const queryClient = useQueryClient()
   return useMutation({
     retry: false,
     mutationFn: async () => {
@@ -36,16 +45,37 @@ export function useRequestAccountDeletion() {
       }
       return data as string // ISO timestamp scheduled_at
     },
+    onSuccess: (scheduledAt) => {
+      // Sprint J · J-Auth2 — keep the profile cache + last-user cache
+      // in sync so the cancel-deletion banner appears immediately on
+      // the welcome / login screens after the user signs back in (and
+      // on home/settings, the same session if they don't sign out).
+      if (userId) {
+        void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      }
+      void setLastUserPendingDeletion(scheduledAt)
+    },
   })
 }
 
-export function useCancelAccountDeletion() {
+export function useCancelAccountDeletion(userId?: string) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
       const { error } = await supabase.rpc('cancel_account_deletion')
       if (error) {
         throw error
       }
+    },
+    onSuccess: () => {
+      // Sprint J · J-Auth2 — invalidate the profile so the banner
+      // disappears from home/settings, and clear the last-user cache
+      // so the welcome-screen variant also hides next time the user
+      // signs out.
+      if (userId) {
+        void queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      }
+      void clearLastUserPendingDeletion()
     },
   })
 }

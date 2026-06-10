@@ -10,6 +10,7 @@ import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
@@ -822,6 +823,17 @@ const handleOpenSupport = useCallback(() => {
           />
         ) : (
           <>
+            {/* J-Auth2: forceful, non-dismissible banner for a pending
+                account deletion. Sits ABOVE the hero so it's the first
+                thing the user sees on Ajustes. */}
+            {profileQuery.data?.deletion_scheduled_at ? (
+              <RiseView>
+                <CancelDeletionBanner
+                  userId={userId}
+                  scheduledAt={profileQuery.data.deletion_scheduled_at}
+                />
+              </RiseView>
+            ) : null}
             {/* HERO */}
             <RiseView>
               <View

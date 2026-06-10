@@ -20,6 +20,7 @@ import {
   AuroraLayer,
   ParticleLayer,
 } from '@/components/auth/auth-launch-splash'
+import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -118,6 +119,11 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
               { paddingBottom: Math.max(insets.bottom + 12, 24) },
             ]}
           >
+            {/* J-Auth2: if the last-known user on this device has a
+                pending account deletion, surface the warning + login
+                CTA above the regular welcome controls so the rightful
+                owner can sign back in and cancel. */}
+            <WelcomeCancelDeletionBanner />
             <PrimaryCta label="Empezar" onPress={isBusy ? () => {} : onCreate} />
             <SecondaryCta label="Ya tengo cuenta" onPress={isBusy ? () => {} : onLogin} />
 

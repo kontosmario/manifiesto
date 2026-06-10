@@ -31,11 +31,20 @@ export function useLastUserProfileSync() {
       email,
       displayName: profile?.display_name ?? null,
       avatarSlug: profile?.avatar_animal ?? null,
+      // J-Auth2: forward the pending-deletion timestamp so the
+      // welcome-screen banner can read it from SecureStore without a
+      // network round-trip.
+      deletionScheduledAt: profile?.deletion_scheduled_at ?? null,
     }
     const fingerprint = JSON.stringify(payload)
     if (lastWrittenRef.current === fingerprint) return
     lastWrittenRef.current = fingerprint
 
     void saveLastUserProfile(payload)
-  }, [email, profile?.display_name, profile?.avatar_animal])
+  }, [
+    email,
+    profile?.display_name,
+    profile?.avatar_animal,
+    profile?.deletion_scheduled_at,
+  ])
 }
