@@ -11,6 +11,7 @@ import { Stack } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
 import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
+import { BackgroundSnapshotOverlay } from '@/components/root/background-snapshot-overlay'
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
@@ -114,6 +115,17 @@ export function RootLayoutShell() {
             enough to spot, not aggressive enough to derail QA.
           */}
           <CaptchaBootErrorBanner />
+
+          {/*
+            Sprint P · Audit #9 P-2 — background snapshot overlay.
+            Mounted last so it sits on top of every other root-level
+            chrome (transition splash, captcha banner, watcher
+            components). On AppState.inactive / background it goes
+            opaque to obscure sensitive UI before iOS captures the
+            multitasking snapshot; flips back to transparent on
+            active. See component for full rationale.
+          */}
+          <BackgroundSnapshotOverlay />
         </ThemedRoot>
       </AppProviders>
     </RootErrorBoundary>
