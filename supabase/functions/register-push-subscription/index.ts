@@ -96,12 +96,75 @@ function extractBearerToken(authorizationHeader: string | null): string | null {
   return normalized.slice(bearerPrefix.length).trim() || null
 }
 
+// Constant-time string equality. Mirrors send-family-push so the
+// service-role reject below cannot leak match progress through response
+// timing. Sprint J · Audit #3 J-Edge1(b) (2026-06-10).
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let mismatch = 0
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return mismatch === 0
+}
+
 function isServerReady(): boolean {
   return Boolean(supabaseUrl && supabaseAnonKey && supabaseServiceRoleKey)
 }
 
+// Sprint J · Audit #3 J-Edge1(d) (2026-06-10): tightened from
+// `[^\]]+` (which accepted newlines, control characters, even closing
+// brackets via URI-encoding tricks) to url-safe base64 alphabet only,
+// 18-200 chars (real Expo tokens are ~22 chars of base64; cap is
+// generous). Combined with control-char stripping below, blocks log
+// injection / display-spoofing tokens.
 const EXPO_PUSH_TOKEN_REGEX =
-  /^(?:Exponent|Expo)PushToken\[[^\]]+\]$/
+  /^(?:Exponent|Expo)PushToken\[[A-Za-z0-9_-]{18,200}\]$/
+
+// Sprint J · Audit #3 J-Edge1(c) (2026-06-10): allowlist of web-push
+// endpoint hosts. The `provider:'web'` branch used to accept ANY
+// `endpoint` URL because we never validated the host. That let a caller
+// register `http://internal-metadata.example/` (SSRF) or
+// `javascript:alert(1)` (stored XSS for the future web dashboard) as a
+// "push endpoint". Lock down to the four public push services we
+// actually support.
+//
+// Hosts (exact suffix match for the wildcard entry):
+//   • fcm.googleapis.com                       — Chrome / Edge (FCM)
+//   • updates.push.services.mozilla.com        — Firefox (autopush)
+//   • *.notify.windows.com                     — Edge legacy / WNS
+//   • web.push.apple.com                       — Safari (APNs web)
+const WEB_PUSH_HOST_ALLOWLIST = new Set([
+  'fcm.googleapis.com',
+  'updates.push.services.mozilla.com',
+  'web.push.apple.com',
+])
+const WEB_PUSH_HOST_SUFFIX_ALLOWLIST = [
+  '.notify.windows.com',
+]
+
+function isAllowedWebPushEndpoint(rawEndpoint: string): boolean {
+  let url: URL
+  try {
+    url = new URL(rawEndpoint)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:') return false
+  const host = url.hostname.toLowerCase()
+  if (WEB_PUSH_HOST_ALLOWLIST.has(host)) return true
+  return WEB_PUSH_HOST_SUFFIX_ALLOWLIST.some((suffix) => host.endsWith(suffix))
+}
+
+// Sprint J · Audit #3 J-Edge1(d) (2026-06-10): strip ASCII control
+// characters BEFORE the format regex check. A token containing
+// `\r\n` could fool log analysis or downstream consumers (Expo's API
+// rejects them, but defense-in-depth is cheap).
+function stripControlChars(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  const controlRe = new RegExp('[\\x00-\\x1F\\x7F]+', 'g')
+  return value.replace(controlRe, '')
+}
 
 // Sanity caps for the optional metadata fields. Push subscriptions
 // are written verbatim into a Postgres text column — we don't want a
@@ -147,7 +210,15 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Invalid JSON payload.' }, 400, cors)
   }
 
-  const token = clip(body.token, MAX_TOKEN_LEN)
+  const tokenRaw = clip(body.token, MAX_TOKEN_LEN)
+  if (!tokenRaw) {
+    return jsonResponse({ error: 'token is required.' }, 400, cors)
+  }
+  // Sprint J · Audit #3 J-Edge1(d): strip ASCII control characters
+  // before any validation. A token with embedded \r\n would otherwise
+  // slip through the format regex (which uses `[^\]]+`-class patterns
+  // historically) and end up in logs / OS notification chrome.
+  const token = stripControlChars(tokenRaw)
   if (!token) {
     return jsonResponse({ error: 'token is required.' }, 400, cors)
   }
@@ -156,13 +227,18 @@ export async function handler(request: Request): Promise<Response> {
   const provider = providerRaw === 'web' ? 'web' : 'expo'
 
   // Server-side format validation. We currently only ship Expo Push
-  // from the mobile client; web-push tokens come via a different
-  // surface and are not yet wired through this function. Reject
-  // anything that doesn't match the Expo token format outright when
-  // provider=expo. For provider=web we accept any non-empty endpoint
-  // (the format is a URL, validated separately).
+  // from the mobile client; web-push tokens come via the web-push
+  // subscribe path on manifiestoapp.com. Reject anything that doesn't
+  // match the (tightened) Expo token regex when provider=expo. For
+  // provider=web we additionally require the endpoint URL to belong
+  // to a known public push service host (J-Edge1(c)).
   if (provider === 'expo' && !EXPO_PUSH_TOKEN_REGEX.test(token)) {
     return jsonResponse({ error: 'Invalid Expo push token format.' }, 400, cors)
+  }
+  if (provider === 'web' && !isAllowedWebPushEndpoint(token)) {
+    // Sprint J · Audit #3 J-Edge1(c): SSRF / stored-XSS guard. We used
+    // to accept any non-empty string as a `web` endpoint.
+    return jsonResponse({ error: 'Invalid web push endpoint host.' }, 400, cors)
   }
 
   // Auth: bearer token required, no exceptions. Verify with the anon
@@ -172,6 +248,21 @@ export async function handler(request: Request): Promise<Response> {
   )
   if (!bearer) {
     return jsonResponse({ error: 'Unauthorized (missing token).' }, 401, cors)
+  }
+
+  // Sprint J · Audit #3 J-Edge1(b) (2026-06-10): explicit service-role
+  // reject. supabase-js' `auth.getUser` resolves the service-role JWT
+  // to a "user-shaped" payload for the service principal — without this
+  // gate a caller holding the service-role key could register push
+  // subscriptions for arbitrary families bypassing the per-user / per-
+  // family rate limits. Constant-time compare via `timingSafeEqual`
+  // for parity with send-family-push.
+  if (timingSafeEqual(bearer, supabaseServiceRoleKey)) {
+    return jsonResponse(
+      { error: 'Service-role token not permitted on this path' },
+      401,
+      cors,
+    )
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey)
@@ -223,6 +314,48 @@ export async function handler(request: Request): Promise<Response> {
   })
   if (rateLimitResponse.error) {
     return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429, cors)
+  }
+
+  // Sprint J · Audit #3 J-Edge1(a) (2026-06-10): per-family rate limit.
+  // The per-user bucket of 20/min above caps a single attacker, but N
+  // puppet accounts inside the same family multiply throughput Nx.
+  // Cap the family aggregate at 60/min (slightly above the per-user
+  // ceiling × 3 active members, which is the realistic upper bound for
+  // launches concentrated in a short window). We seed the bucket with
+  // the family owner's user_id (stable, unique per family thanks to
+  // `family_members_one_owner_per_family`) so every member's call
+  // lands in the same row. Mirrors the send-family-push pattern.
+  const ownerResponse = await admin
+    .from('family_members')
+    .select('user_id')
+    .eq('family_id', familyId)
+    .eq('role', 'owner')
+    .maybeSingle()
+  const familyBucketSeed = ownerResponse.data?.user_id ?? null
+  if (!familyBucketSeed) {
+    // Mirrors Sprint I · I-5: null owner used to silently SKIP the
+    // bucket. Reject with 503 instead (consistent with send-family-push).
+    console.error('[register-push-subscription] no owner for family — refusing', {
+      familyId,
+    })
+    return jsonResponse(
+      { error: 'Family ownership in flux. Try again shortly.' },
+      503,
+      cors,
+    )
+  }
+  const familyRateLimitResponse = await admin.rpc('enforce_rate_limit_for_user', {
+    p_user_id: familyBucketSeed,
+    p_action: 'register_push_subscription_family',
+    p_max_attempts: 60,
+    p_window_seconds: 60,
+  })
+  if (familyRateLimitResponse.error) {
+    return jsonResponse(
+      { error: 'Rate limit exceeded (family). Try again shortly.' },
+      429,
+      cors,
+    )
   }
 
   const userAgent = clip(body.userAgent, MAX_USER_AGENT_LEN) ?? 'unknown'

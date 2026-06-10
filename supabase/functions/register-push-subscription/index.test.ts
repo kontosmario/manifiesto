@@ -79,7 +79,7 @@ Deno.test('rejects POST without Authorization header (401)', async () => {
   const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
-    body: JSON.stringify({ token: 'ExponentPushToken[abc]' }),
+    body: JSON.stringify({ token: 'ExponentPushToken[abcdefghijklmnopqrstuvwx]' }),
   }))
   assertEquals(res.status, 401)
 })
@@ -91,7 +91,7 @@ Deno.test('rejects POST with invalid bearer (401)', async () => {
   const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
-    body: JSON.stringify({ token: 'ExponentPushToken[abc]' }),
+    body: JSON.stringify({ token: 'ExponentPushToken[abcdefghijklmnopqrstuvwx]' }),
     headers: { Authorization: 'Bearer fake-jwt-token' },
   }))
   // 401 (auth.getUser rejects) is the expected branch.
@@ -105,8 +105,135 @@ Deno.test('rejects POST with raw (prefix-less) token as 401 — Sprint I · I-2'
   const handler = await getHandler()
   const res = await handler(new Request('http://localhost', {
     method: 'POST',
-    body: JSON.stringify({ token: 'ExponentPushToken[abc]' }),
+    body: JSON.stringify({ token: 'ExponentPushToken[abcdefghijklmnopqrstuvwx]' }),
     headers: { Authorization: 'fake-jwt-token' },
   }))
   assertEquals(res.status, 401)
+})
+
+// ── Sprint J · Audit #3 J-Edge1 regression coverage ────────────────────
+
+Deno.test('Sprint J · J-Edge1(b): rejects service-role bearer with 401', async () => {
+  // Service-role key would otherwise resolve to a "user-shaped" payload
+  // via auth.getUser and let the caller bypass rate limits + family
+  // ownership checks. Must be rejected before any user lookup.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    // Token format passes the tightened regex (22 url-safe base64 chars)
+    body: JSON.stringify({ token: 'ExponentPushToken[abcdefghij_klmnopqrst-]' }),
+    headers: { Authorization: 'Bearer service-role-fake-12345' },
+  }))
+  assertEquals(res.status, 401)
+  const payload = await res.json()
+  assertEquals(payload.error, 'Service-role token not permitted on this path')
+})
+
+Deno.test('Sprint J · J-Edge1(c): rejects web provider with non-allowlisted host (400)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({
+      token: 'https://evil.example.com/notify/abc',
+      provider: 'web',
+      p256dh: 'somekey',
+      auth: 'somekey',
+    }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+  const payload = await res.json()
+  assertEquals(payload.error, 'Invalid web push endpoint host.')
+})
+
+Deno.test('Sprint J · J-Edge1(c): rejects web provider with http:// (400)', async () => {
+  // Even if the host is allowlisted, non-https must be rejected.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({
+      token: 'http://fcm.googleapis.com/fcm/send/abc',
+      provider: 'web',
+      p256dh: 'somekey',
+      auth: 'somekey',
+    }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+})
+
+Deno.test('Sprint J · J-Edge1(c): rejects web provider with javascript: scheme (400)', async () => {
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({
+      token: 'javascript:alert(1)',
+      provider: 'web',
+      p256dh: 'somekey',
+      auth: 'somekey',
+    }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+})
+
+Deno.test('Sprint J · J-Edge1(d): rejects Expo token with newline (400)', async () => {
+  // The previous regex `[^\]]+` allowed newlines and control chars.
+  // The tightened regex limits to url-safe base64 only; combined with
+  // stripControlChars the newline is stripped, leaving a token that no
+  // longer matches the `[...]` block (now missing payload between
+  // brackets).
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ token: 'ExponentPushToken[abc\n\rdef]' }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+})
+
+Deno.test('Sprint J · J-Edge1(d): rejects Expo token with non-base64 chars (400)', async () => {
+  // `[^\]]+` previously accepted spaces, slashes, parens, etc. The
+  // tightened regex limits to `[A-Za-z0-9_-]`.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    // Length OK but contains '/' and ' ' which the new regex rejects.
+    body: JSON.stringify({ token: 'ExponentPushToken[abc/def ghi/jkl]' }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+})
+
+Deno.test('Sprint J · J-Edge1(d): rejects Expo token shorter than 18 chars (400)', async () => {
+  // Defense-in-depth: real Expo tokens are ~22 chars of base64. The
+  // lower bound of 18 is generous but blocks trivially short tokens.
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({ token: 'ExponentPushToken[abc]' }),
+    headers: { Authorization: 'Bearer some-jwt' },
+  }))
+  assertEquals(res.status, 400)
+})
+
+Deno.test('Sprint J · J-Edge1(d): accepts Expo token matching tightened regex (passes format check)', async () => {
+  // 24 url-safe base64 chars — well within 18-200. Should pass format
+  // validation. The downstream auth.getUser call will fail (401 or
+  // network) but we only assert it is NOT a 400 (format rejection).
+  const handler = await getHandler()
+  const res = await handler(new Request('http://localhost', {
+    method: 'POST',
+    body: JSON.stringify({
+      token: 'ExponentPushToken[abcdefghijklmnopqrstuvwx]',
+    }),
+    headers: { Authorization: 'Bearer fake-jwt-token' },
+  }))
+  // Token format passed if we don't see a 400 from the format branch.
+  // 401 (auth.getUser rejected) or 500 (network error in test env) both
+  // mean the format gate let us through.
+  if (res.status === 400) {
+    const payload = await res.json()
+    throw new Error(`Expected non-400; got 400 with ${JSON.stringify(payload)}`)
+  }
 })
