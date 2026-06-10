@@ -20,7 +20,9 @@
 
 | Secret | Usado por | De dónde salió | Status |
 |---|---|---|---|
-| `EXPO_TOKEN` | `release.yml`, `ota-update.yml` | https://expo.dev/accounts/markon07/settings/access-tokens | ✅ |
+| `EXPO_BUILD_TOKEN` | `release.yml` (preferred) | expo.dev → access tokens → scope: **Build + Submit** | ⚠️ owner action pendiente (G-Infra2, 2026-06-10) |
+| `EXPO_UPDATE_TOKEN` | `ota-update.yml` (preferred) | expo.dev → access tokens → scope: **Update** | ⚠️ owner action pendiente (G-Infra2, 2026-06-10) |
+| `EXPO_TOKEN` | `release.yml`, `ota-update.yml` (fallback) | https://expo.dev/accounts/markon07/settings/access-tokens | ✅ (legacy, mantener hasta que `EXPO_BUILD_TOKEN` + `EXPO_UPDATE_TOKEN` estén verificados) |
 | `EXPO_UPDATE_PRIVATE_KEY` | `ota-update.yml` | `keys/private-key.pem` generado con `npx expo-updates codesigning:generate` — ver sección "EAS Update code signing" | ⚠️ owner action pendiente (Sprint F · F1, 2026-06-10) |
 | `EXPO_APPLE_ID` | `release.yml` (legacy, ya no requerido) | `kontosmario@gmail.com` | ✅ (deprecado en 2026-06-09 — ASC API key reemplaza) |
 | `EXPO_ASC_APP_ID` | `release.yml` (legacy) | App Store Connect App ID `6776033487` | ✅ (deprecado — hardcoded en `eas.json`) |
@@ -310,10 +312,86 @@ Ver `docs/operaciones/runbook-backend-hardening.md`. Resumen:
 3. Force-push (coordinar con todos los devs).
 4. Verificar que el nuevo secreto NO esté en ningún archivo committeado — actualizar `.env.example`.
 
-Patrones custom en `.gitleaks.toml`:
-- Supabase JWT (`anon` + `service_role`)
-- `sb_secret_*` / `sb_publishable_*`
+Patrones custom en `.gitleaks.toml` (sincronizados con `.githooks/pre-commit` — G-Infra1, 2026-06-10):
+- Supabase JWT HS256 (`{"alg":"HS256",...}`) + RS256 (`{"alg":"RS256",...}` — newer asymmetric keys)
+- `sb_secret_*` / `sb_publishable_*` / `sbp_*` (Management API personal access tokens)
+- Anthropic API keys (`sk-ant-*`)
+- AWS access key IDs (`AKIA...`)
 - Expo access tokens
+
+Allowlist de docs: solo `docs/operaciones/runbook-backend-hardening.md` + `docs/operaciones/runbook-release-automation.md` (referencias históricas a tokens placeholder). Cualquier doc nuevo que necesite incluir un token sample tiene que agregarse explícitamente al allowlist — antes el wildcard `docs/.*\.md$` silenciaba real leaks.
+
+## EXPO_TOKEN scoping — Build / Update / Submit per pipeline (G-Infra2)
+
+> Red team audit 2026-06-10: el `EXPO_TOKEN` original es de cuenta y tiene scope completo (Build + Submit + Update + Project read/write). Si se filtra (dep comprometida en Actions, sesión de owner robada, etc.) el atacante puede tanto cortar un build nativo malicioso como publicar un OTA bundle malicioso. Separar el token por pipeline reduce el blast radius.
+
+### Tokens a generar (owner action)
+
+1. Login en https://expo.dev/settings/access-tokens
+2. **Create token** → `EXPO_BUILD_TOKEN`
+   - Scope: **Build** + **Submit** (deselect Update + cualquier otro).
+   - Name suggestion: `manifiesto-ci-build-submit-YYYYMMDD`.
+   - Copy el token (solo se muestra una vez).
+3. **Create token** → `EXPO_UPDATE_TOKEN`
+   - Scope: **Update** ONLY.
+   - Name suggestion: `manifiesto-ci-update-YYYYMMDD`.
+   - Copy el token.
+
+> Si la UI de expo.dev no expone scopes por-permiso para tu plan, generá dos tokens distintos con scope completo y rotálos por separado — el aislamiento operacional (un token leak no compromete el otro pipeline) sigue siendo la mayor parte del win.
+
+### Subir a GitHub Secrets
+
+```
+https://github.com/<owner>/manifiesto/settings/secrets/actions
+```
+
+- **New repository secret** → name `EXPO_BUILD_TOKEN`, value = token #1.
+- **New repository secret** → name `EXPO_UPDATE_TOKEN`, value = token #2.
+
+### Verificación
+
+1. **Release pipeline**: cortar un tag pre-release (`v1.0.1-rc.1`) o disparar `Release` con `workflow_dispatch` → `profile: preview`. Mirar el step `Setup EAS`: si `EXPO_BUILD_TOKEN` está configurado, lo usa; sino loggea como si nada y cae al fallback.
+2. **OTA pipeline**: hacer un commit JS-only (e.g. typo fix en copy) y push a `main`. Mirar el step `Setup EAS`: si `EXPO_UPDATE_TOKEN` está configurado, lo usa.
+3. **Confirmar fallback**: temporalmente borrar `EXPO_BUILD_TOKEN` y re-disparar el workflow — debe seguir andando vía `EXPO_TOKEN`. Re-crear el secret cuando confirmás que el fallback funciona.
+
+### Rotación
+
+- Si un pipeline tira un error 401 / 403 desde EAS sin causa clara: rotar el token de **ese** pipeline (no necesariamente el otro).
+- Periodicidad recomendada: cada 6 meses, o inmediatamente ante sospecha.
+- Cuando rotás, dejá el viejo token activo unas horas hasta confirmar que el nuevo anda — luego revocá el viejo en expo.dev.
+
+### Deprecation de `EXPO_TOKEN`
+
+Una vez `EXPO_BUILD_TOKEN` + `EXPO_UPDATE_TOKEN` están verificados (al menos un release + un OTA exitoso con cada uno), revocar el `EXPO_TOKEN` legacy en expo.dev y borrarlo de GitHub Secrets. Los workflows tienen `${{ secrets.EXPO_BUILD_TOKEN || secrets.EXPO_TOKEN }}` pero un secret faltante simplemente expande a string vacío — el step de Setup EAS reportará "EXPO_TOKEN required" si ambos faltan.
+
+## Sourcemap retention audit — EAS dashboard (G-Infra3)
+
+> Red team audit 2026-06-10: anyone con `EXPO_TOKEN` (incluso scope `Build` read-only) puede bajarse el IPA + sourcemaps de cualquier build histórico desde el EAS dashboard y reversear el bundle de la app. Default settings de EAS retienen artifacts indefinidamente — no hay TTL automático.
+
+### Verificación periódica (owner, cada 3 meses)
+
+1. https://expo.dev/accounts/markon07/projects/manifiesto/builds
+2. Cada build production → **Artifacts** tab:
+   - Verificar quién tiene acceso al build artifact + sourcemap.
+   - Por default los artifacts son **project-member-only** (no público). Confirmar que esto sigue siendo así — si Expo cambia el default a "anyone with link", remediar inmediatamente.
+3. Auditar el listado de project members en https://expo.dev/accounts/markon07/projects/manifiesto/settings → Members.
+   - Solo debería estar el owner. Cualquier extra → review + remove.
+4. Para builds viejos (> 90 días) que ya no están en producción: considerar borrarlos del dashboard (`...` → Delete) para reducir surface area.
+
+### Sourcemap-specific notes
+
+- Los sourcemaps se generan automáticamente en cada build production (necesarios para symbolication de crash reports — actualmente no usamos crash reporting pero los sourcemaps siguen subiéndose).
+- Visibilidad: project-member-only. Verificar en cada build: Artifacts → "Source map" → confirmar URL requiere auth.
+- Si se filtra un sourcemap: rotar todas las API keys hardcoded en el bundle (no hay ninguna en el código actual — verificar con `grep -r 'sk-\|AKIA\|sbp_' mobile/` antes de cada release) y cortar un build nuevo.
+
+### Threat model — qué expone un sourcemap leak
+
+- Bundle source completo de la app (todas las rutas, lógica de negocio, copy).
+- Nombres de funciones internas + estructura de módulos.
+- **NO** expone secrets si están bien configurados (Supabase publishable key es público por diseño; no debe haber service-role keys, Anthropic keys ni AWS keys en el bundle del cliente).
+- Sí facilita reverse engineering + targeted attacks contra endpoints del backend (probar inputs maliciosos contra RPCs que descubrieron en el bundle).
+
+Mitigación principal: hardening del backend (RLS strict — ver `docs/operaciones/runbook-backend-hardening.md`), input validation en cada RPC, rate limiting. El sourcemap leak no cambia el modelo de amenazas significativamente cuando el backend está bien defendido — pero la verificación periódica es defense-in-depth barato.
 
 ## Runtime version policy
 
