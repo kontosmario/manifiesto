@@ -23,12 +23,12 @@
 
 ## 1 · Qué es Manifiesto (en 1 frase)
 
-> **Una app móvil para entender en qué se te va la plata y ahorrar — sin saber de finanzas. Funciona igual de bien usándola solo o compartida con tu familia.**
+> **Una app móvil para entender en qué se te va la plata y ahorrar — sin saber de finanzas. Funciona igual de bien por tu cuenta, en pareja o en familia.**
 
 Variantes según contexto:
 - **Hero del sitio**: "Finanzas familiares simples y compartidas."
 - **Tagline corto** (subtítulo App Store): "Gastos claros, ahorro simple."
-- **Pitch a un amigo**: "Es la app para entender en qué se te va la plata y empezar a ahorrar de a poco. La podés usar solo o con tu pareja/familia. Pensada para Argentina (pesos + USD, bancos AR, ciclos de cobro reales)."
+- **Pitch a alguien**: "Es la app para entender en qué se te va la plata y empezar a ahorrar de a poco. La podés usar por tu cuenta, en pareja o en familia. Pensada para Argentina (pesos + USD, bancos AR, ciclos de cobro reales)."
 
 ### Sobre el pivote de posicionamiento (2026-06-10)
 
@@ -45,12 +45,13 @@ El draft inicial del doc giraba alrededor de **"parejas que no se pelean por pla
 ### Primary
 
 - **Personas que quieren entender sus gastos y empezar a ahorrar** sin tener background financiero (25-50 años, AR + LATAM)
-- **Solteros / monousuarios** que abandonaron Excel o apps complicadas por fricción
-- **Parejas que conviven** y quieren visibilidad mutua sin micromanaging (modo familia)
+- **Quienes manejan sus finanzas por su cuenta** y abandonaron Excel o apps complicadas por fricción
+- **Parejas que conviven** y quieren visibilidad mutua sin micromanaging
 - **Familias chicas-medianas** con hijos adolescentes o que aportan al pool familiar
+- **Hogares no-nucleares**: roommates, hermanos que conviven, madre/padre soltero con hijos que aportan, parejas no convivientes que comparten algunos gastos
 - Personas que **tienen ahorros en USD** además de pesos (común en AR)
 
-> 💡 El modo solo y el modo familia conviven en el mismo producto sin fricción. No hay que elegir.
+> 💡 El modo individual y el modo compartido conviven en el mismo producto sin fricción. No hay que elegir. El modelo de "familia" en la app es abstracto: lo que importa es **quiénes comparten gastos**, no la estructura legal del hogar.
 
 ### Secondary
 
@@ -263,10 +264,10 @@ Opciones evaluadas:
 
 **Recomendación final**: **`Gastos claros, ahorro simple`** (28 chars).
 
-### 7.3 Descripción (~2.100/4000)
+### 7.3 Descripción (~2.150/4000)
 
 ```
-Manifiesto es la app para entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas. Funciona igual de bien si la usás solo o con tu familia.
+Manifiesto es la app para entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas. Funciona igual de bien por tu cuenta, en pareja o en familia.
 
 VER TUS GASTOS, SIN VUELTAS
 
@@ -282,9 +283,9 @@ AHORRAR, PASO A PASO
 
 Sin promesas mágicas: una meta a la vez.
 
-SOLO O EN FAMILIA
+POR TU CUENTA O EN FAMILIA
 
-Usala para tus finanzas personales, o invitá a tu pareja o familia con un código. Todo lo que carga el otro lo ves al instante, sin pasarse capturas ni discutir quién pagó qué.
+Usala para tus finanzas personales, o sumá a las personas con las que compartís gastos: tu pareja, tu familia, o con quien convivas. Todo lo que cargan los demás lo ves al instante, sin pasarse capturas ni discutir quién pagó qué.
 
 GASTOS FIJOS BAJO CONTROL
 
@@ -339,7 +340,7 @@ Lo que podés hacer desde el día 1:
 - Armar metas de ahorro con plazo y progreso visual
 - Cargar gastos fijos y recibir aviso antes del vencimiento
 - Importar resúmenes de 8 bancos argentinos por OCR
-- Usarla solo, o compartir todo con tu pareja o familia en tiempo real
+- Usarla por tu cuenta, o compartir todo con tu pareja, familia o con quien convivas
 - Trackear ahorro en pesos y dólares al mismo tiempo
 - Ver el Wrapped al cierre de cada mes
 - Login con Apple, Face ID o Touch ID
@@ -349,9 +350,9 @@ Gracias por probar Manifiesto. Si encontrás algo que mejorar, escribinos: sopor
 
 ---
 
-## 7.bis · Cambios clave entre el draft inicial y el final
+## 7.bis · Cambios clave entre el draft inicial y el draft con pivote (2026-06-10)
 
-| Sección | Draft inicial (descartado) | Draft final (recomendado) |
+| Sección | Draft inicial (descartado) | Draft pivoteado |
 |---|---|---|
 | Hook de descripción | "parejas y familias argentinas… sin discusiones" | "entender en qué se te va la plata y ahorrar, sin necesidad de saber de finanzas" |
 | Orden de secciones | Gastos → Plan → Metas → Familia → ... | Gastos → **Ahorrar** → **Solo o en familia** → Fijos → ... |
@@ -359,6 +360,34 @@ Gracias por probar Manifiesto. Si encontrás algo que mejorar, escribinos: sopor
 | Keyword peso 1 | `pareja` | `ahorro` |
 | Single-mode | Secondary audience (enterrado) | Sección propia "SOLO O EN FAMILIA" |
 | Tono | "pareja que no se pelea" | "principiante que quiere ahorrar" |
+
+---
+
+## 7.ter · Pulido por lenguaje inclusivo (2026-06-10, post-pivote)
+
+Una vez aplicado el pivote a "ahorro + simplicidad + modo dual", una segunda lectura detectó que el copy seguía usando **masculino singular por default** ("solo") y un frame implícito de **hogar nuclear** ("tu pareja", "el otro"). Audiencia primaria de finanzas de hogar en LATAM es fuertemente femenina (las mujeres suelen administrar el presupuesto en la mayoría de los estudios), por lo que dejar el masculino default cuesta engagement real, no solo "se ve mal".
+
+**Principio del fix**: neutralizar **sin caer en lenguaje inclusivo militante** (sería "todes" / "amigues" / etc.) y **sin listar exhaustivamente configuraciones de hogar** (sonaría a corporate checklist y rompería el tono editorial calmo definido en §5).
+
+### Cambios aplicados
+
+| Lugar | Antes | Después |
+|---|---|---|
+| Hook descripción + sección 1 | "si la usás solo o con tu familia" | "por tu cuenta, en pareja o en familia" |
+| Título de sección | `SOLO O EN FAMILIA` | `POR TU CUENTA O EN FAMILIA` |
+| Cuerpo de sección | "Usala para tus finanzas personales, o invitá a tu pareja o familia con un código. Todo lo que carga **el otro** lo ves al instante" | "Usala para tus finanzas personales, o sumá a **las personas con las que compartís gastos: tu pareja, tu familia, o con quien convivas**. Todo lo que cargan **los demás** lo ves al instante" |
+| Release notes | "Usarla solo, o compartir todo con tu pareja o familia" | "Usarla por tu cuenta, o compartir todo con tu pareja, familia o con quien convivas" |
+| Target audience §2 | "Solteros / monousuarios" | "Quienes manejan sus finanzas por su cuenta" |
+| Target audience §2 | (no había mención de hogares no-nucleares) | + bullet explícito: "Hogares no-nucleares: roommates, hermanos que conviven, madre/padre soltero con hijos que aportan, parejas no convivientes que comparten algunos gastos" |
+| Pitch a alguien §1 | "Pitch a un amigo" | "Pitch a alguien" |
+
+### Cosas que NO se cambiaron (deliberado)
+
+- **`pareja` sigue en keywords** y como ejemplo concreto en la descripción. Es la configuración más común en el target y sirve como anchor cognitivo. Sacarlo por neutralidad sería overcorrect.
+- **`familia`** sigue siendo el término dominante. Funciona como paraguas semántico amplio (no necesariamente nuclear).
+- **`Hecho por una persona, en Argentina`** ya es neutro.
+- **No agregamos "roommates" / "amigos" a las keywords**: volumen de búsqueda en español es muy bajo y tenemos solo 9 chars de buffer en el campo.
+- **No reescribimos el sitio web** (`manifiestoapp.com`) — esto era para listing copy. El sitio puede hacer el mismo pass después como follow-up.
 
 ---
 
