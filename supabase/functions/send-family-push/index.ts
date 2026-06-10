@@ -506,38 +506,51 @@ export async function handler(request: Request): Promise<Response> {
     .eq('family_id', familyId)
     .eq('role', 'owner')
     .maybeSingle()
+  // Sprint I · I-5 — null owner used to silently SKIP the bucket,
+  // letting an attacker exploiting an ownership-transition window burst
+  // past the family cap. Reject with 503 instead. Falling back to
+  // `family_id` as the seed would FK-violate against
+  // rpc_rate_limits.user_id (references auth.users).
   const familyBucketSeed = ownerResponse.data?.user_id ?? null
-  if (familyBucketSeed) {
-    const familyRateLimitResponse = await adminClient.rpc(
-      'enforce_rate_limit_for_user',
-      {
-        p_user_id: familyBucketSeed,
-        p_action: 'send_family_push_family',
-        p_max_attempts: 30,
-        p_window_seconds: 60,
-      },
+  if (!familyBucketSeed) {
+    console.error('[send-family-push] no owner for family — refusing call', {
+      familyId,
+    })
+    return jsonResponse(
+      { error: 'Family ownership in flux. Try again shortly.' },
+      503,
+      cors,
     )
-    if (familyRateLimitResponse.error) {
-      // H-10 (red-team 2026-06-10): distinguish actual rate-limit
-      // P0001 from transient DB / planner errors. See per-user
-      // branch above for the rationale.
-      if (isRateLimitErrcode(familyRateLimitResponse.error)) {
-        return jsonResponse(
-          { error: 'Rate limit exceeded (family). Try again shortly.' },
-          429,
-          cors,
-        )
-      }
-      console.error(
-        '[send-family-push] enforce_rate_limit_for_user (family) failed',
-        familyRateLimitResponse.error,
-      )
+  }
+  const familyRateLimitResponse = await adminClient.rpc(
+    'enforce_rate_limit_for_user',
+    {
+      p_user_id: familyBucketSeed,
+      p_action: 'send_family_push_family',
+      p_max_attempts: 30,
+      p_window_seconds: 60,
+    },
+  )
+  if (familyRateLimitResponse.error) {
+    // H-10 (red-team 2026-06-10): distinguish actual rate-limit
+    // P0001 from transient DB / planner errors. See per-user
+    // branch above for the rationale.
+    if (isRateLimitErrcode(familyRateLimitResponse.error)) {
       return jsonResponse(
-        { error: 'Rate limit check unavailable. Try again shortly.' },
-        503,
+        { error: 'Rate limit exceeded (family). Try again shortly.' },
+        429,
         cors,
       )
     }
+    console.error(
+      '[send-family-push] enforce_rate_limit_for_user (family) failed',
+      familyRateLimitResponse.error,
+    )
+    return jsonResponse(
+      { error: 'Rate limit check unavailable. Try again shortly.' },
+      503,
+      cors,
+    )
   }
 
   const subscriptionsResponse = await adminClient

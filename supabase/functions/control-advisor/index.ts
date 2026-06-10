@@ -607,24 +607,41 @@ export async function handler(request: Request): Promise<Response> {
     .eq('family_id', familyId)
     .eq('role', 'owner')
     .maybeSingle()
+  // Sprint I · I-5 — if no owner is returned (ownership transition
+  // window, malformed family row, race with member promotion) we used
+  // to silently SKIP the bucket. That let an attacker exploiting the
+  // window burst past the family cap. Reject with 503 instead — every
+  // healthy family has exactly one owner per the
+  // `family_members_one_owner_per_family` constraint, so a null result
+  // here is a transient inconsistency. Falling back to `family_id` as
+  // the bucket seed would FK-violate against rpc_rate_limits.user_id
+  // (which references auth.users), so 503 + retry is the safe move.
   const familyBucketSeed = ownerResponse.data?.user_id ?? null
-  if (familyBucketSeed) {
-    const familyRateLimitResponse = await admin.rpc(
-      'enforce_rate_limit_for_user',
-      {
-        p_user_id: familyBucketSeed,
-        p_action: 'control_advisor_family',
-        p_max_attempts: 8,
-        p_window_seconds: 3600,
-      },
+  if (!familyBucketSeed) {
+    console.error('[control-advisor] no owner for family — refusing call', {
+      familyId,
+    })
+    return jsonResponse(
+      { error: 'Family ownership in flux. Try again shortly.' },
+      503,
+      cors,
     )
-    if (familyRateLimitResponse.error) {
-      return jsonResponse(
-        { error: 'Rate limit exceeded (family). Refresh in ~1 hour.' },
-        429,
-        cors,
-      )
-    }
+  }
+  const familyRateLimitResponse = await admin.rpc(
+    'enforce_rate_limit_for_user',
+    {
+      p_user_id: familyBucketSeed,
+      p_action: 'control_advisor_family',
+      p_max_attempts: 8,
+      p_window_seconds: 3600,
+    },
+  )
+  if (familyRateLimitResponse.error) {
+    return jsonResponse(
+      { error: 'Rate limit exceeded (family). Refresh in ~1 hour.' },
+      429,
+      cors,
+    )
   }
 
   // Load context
