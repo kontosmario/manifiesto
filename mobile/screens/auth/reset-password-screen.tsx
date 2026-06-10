@@ -6,6 +6,7 @@ import { TextField } from '@/components/ui/text-field'
 import { Screen } from '@/components/ui/screen'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
+import { FreshInstallResetFriction } from '@/components/auth/fresh-install-reset-friction'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
@@ -59,7 +60,13 @@ export function ResetPasswordScreen() {
   // dos (`hasLocalAuth=false`), seguimos el flujo previo — el link es
   // el único factor posible.
   const [stage, setStage] = useState<
-    'exchanging' | 'reauth' | 'form' | 'success' | 'error' | 'timeout'
+    | 'exchanging'
+    | 'reauth'
+    | 'fresh-install-friction'
+    | 'form'
+    | 'success'
+    | 'error'
+    | 'timeout'
   >(code ? 'exchanging' : 'error')
   const [exchangeError, setExchangeError] = useState<string | null>(
     code ? null : 'El link es inválido o ya expiró. Pedinos uno nuevo.',
@@ -106,7 +113,19 @@ export function ResetPasswordScreen() {
           setStage('reauth')
           setReauthVisible(true)
         } else {
-          setStage('form')
+          // Sprint J · J-Auth3 — fresh-install path. We have no second
+          // factor we can challenge against, so the email link becomes
+          // single-factor and the attack chain is:
+          //   1. Attacker briefly accesses victim's inbox
+          //   2. Requests reset link
+          //   3. Installs the app, completes reset on attacker's device
+          //   4. Enrolls a PIN → victim locked out
+          // The ideal mitigation is a backend out-of-band confirmation
+          // (e.g. SMS or a second email link from a known device); until
+          // we ship that, the friction interstitial forces a 10-second
+          // pause + a strongly-worded warning to drop the casual case
+          // and give the legitimate user time to bail out.
+          setStage('fresh-install-friction')
         }
       } catch (error) {
         if (cancelledRef.current) return
@@ -175,6 +194,18 @@ export function ResetPasswordScreen() {
     )
   }, [])
 
+  // J-Auth3 — fresh-install friction handlers.
+  const handleFrictionContinue = useCallback(() => {
+    setStage('form')
+  }, [])
+
+  const handleFrictionCancel = useCallback(() => {
+    setStage('error')
+    setExchangeError(
+      'Saliste sin cambiar la contraseña. Si vos no pediste este cambio, escribinos a soporte@manifiestoapp.com.',
+    )
+  }, [])
+
   if (stage === 'exchanging') {
     return <BlockingScreen message="Validando tu link..." />
   }
@@ -196,6 +227,24 @@ export function ResetPasswordScreen() {
           actionLabel="cambiar tu contraseña"
           onConfirmed={handleReauthConfirmed}
           onCancel={handleReauthCancel}
+        />
+      </Screen>
+    )
+  }
+
+  if (stage === 'fresh-install-friction') {
+    // J-Auth3 — fresh-install friction interstitial. Not perfect (it's
+    // a UX speed bump, not a hard gate) but it raises the bar for the
+    // takeover chain described in `fresh-install-reset-friction.tsx`
+    // while we work on a proper backend out-of-band confirmation flow.
+    return (
+      <Screen
+        title="Antes de continuar"
+        subtitle="Leé esto con atención. Sin PIN ni biometría guardada en este dispositivo, este es el único momento en el que podemos avisarte."
+      >
+        <FreshInstallResetFriction
+          onContinue={handleFrictionContinue}
+          onCancel={handleFrictionCancel}
         />
       </Screen>
     )
