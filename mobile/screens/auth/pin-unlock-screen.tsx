@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Redirect, useRouter } from 'expo-router'
@@ -7,7 +7,7 @@ import { PinPad } from '@/components/auth/pin-pad'
 import { isPinComplete } from '@/components/auth/pin-pad-model'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
-import { verifyPin } from '@/lib/pin-lock'
+import { getPinLength, verifyPin } from '@/lib/pin-lock'
 import { logoutSession } from '@/features/auth/logout'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -30,12 +30,26 @@ export function PinUnlockScreen() {
   const [errorToken, setErrorToken] = useState(0)
   const [checking, setChecking] = useState(false)
   const [lockoutMessage, setLockoutMessage] = useState<string | null>(null)
+  // Sprint J · P0: the PIN length is persisted at setPin time and read
+  // here on mount so we submit a complete PIN. Defaults to 4 for users
+  // who set their PIN before this key existed (back-compat).
+  const [pinLength, setPinLength] = useState<number>(4)
+
+  useEffect(() => {
+    let cancelled = false
+    void getPinLength().then((len) => {
+      if (!cancelled) setPinLength(len)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleChange = useCallback(
     (next: string) => {
       if (checking) return
       setValue(next)
-      if (!isPinComplete(next)) return
+      if (!isPinComplete(next, pinLength)) return
       setChecking(true)
       void verifyPin(next)
         .then((result) => {
@@ -65,7 +79,7 @@ export function PinUnlockScreen() {
           setChecking(false)
         })
     },
-    [checking, router],
+    [checking, pinLength, router],
   )
 
   const handleForgot = useCallback(() => {
@@ -98,7 +112,12 @@ export function PinUnlockScreen() {
       </View>
 
       <View style={styles.padWrap}>
-        <PinPad value={value} onChange={handleChange} errorToken={errorToken} />
+        <PinPad
+          errorToken={errorToken}
+          onChange={handleChange}
+          pinLength={pinLength}
+          value={value}
+        />
         {lockoutMessage ? (
           <Text
             accessibilityLiveRegion="polite"

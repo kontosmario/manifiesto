@@ -26,8 +26,10 @@ import {
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
 import { logoutSession } from '@/features/auth/logout'
+import { useAuthSession } from '@/features/auth/use-auth-session'
 import { triggerHaptic } from '@/lib/haptics'
-import { getPinLockState, verifyPin } from '@/lib/pin-lock'
+import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
+import { supabase } from '@/lib/supabase'
 import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
@@ -38,7 +40,12 @@ interface DeleteAccountScreenProps {
   familyId: string
 }
 
-type Step = 'review' | 'confirm' | 'reauth-pin' | 'reauth-biometric'
+type Step =
+  | 'review'
+  | 'confirm'
+  | 'reauth-pin'
+  | 'reauth-biometric'
+  | 'reauth-password'
 
 const CONFIRM_PHRASE = 'ELIMINAR'
 
@@ -66,6 +73,10 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   const { theme } = useAppTheme()
   const router = useRouter()
   const inputRef = useRef<TextInput | null>(null)
+  const passwordInputRef = useRef<TextInput | null>(null)
+
+  const sessionQuery = useAuthSession()
+  const accountEmail = sessionQuery.data?.user?.email ?? null
 
   const [step, setStep] = useState<Step>('review')
   const [phrase, setPhrase] = useState('')
@@ -74,6 +85,15 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   const [pinLockoutMessage, setPinLockoutMessage] = useState<string | null>(null)
   const [isReauthChecking, setReauthChecking] = useState(false)
   const [pinIsSet, setPinIsSet] = useState(false)
+  // Sprint J-Med · J-Med3 (2026-06-10): password fallback state when
+  // user has neither PIN nor biometric configured. We require the
+  // account password as a defense-in-depth reauth before scheduling
+  // the 30-day deletion.
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  // Sprint J · P0: dynamic PIN length so this re-auth path submits the
+  // correct number of digits (4–8). Defaults to 4 for back-compat.
+  const [pinLength, setPinLength] = useState<number>(4)
   const [biometricState, setBiometricState] =
     useState<BiometricLoginState | null>(null)
 
@@ -103,6 +123,9 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
     void getBiometricLoginState().then((s) => {
       if (!cancelled) setBiometricState(s)
     })
+    void getPinLength().then((len) => {
+      if (!cancelled) setPinLength(len)
+    })
     return () => {
       cancelled = true
     }
@@ -112,6 +135,10 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   useEffect(() => {
     if (step === 'confirm') {
       const handle = setTimeout(() => inputRef.current?.focus(), 100)
+      return () => clearTimeout(handle)
+    }
+    if (step === 'reauth-password') {
+      const handle = setTimeout(() => passwordInputRef.current?.focus(), 100)
       return () => clearTimeout(handle)
     }
   }, [step])
@@ -178,14 +205,19 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
       void runBiometricChallenge()
       return
     }
-    // Sin PIN ni biometría: vamos directo a la RPC. El auth.uid en el
-    // JWT ya identifica al caller en el server-side.
-    performRequestDeletion()
+    // Sprint J-Med · J-Med3 (2026-06-10): defense-in-depth — sin PIN
+    // ni biometría, un atacante con el teléfono desbloqueado podría
+    // tipear "ELIMINAR" y arrancar la cuenta regresiva de 30 días.
+    // Pedimos la contraseña de la cuenta como reauth final. El RPC
+    // funcionaría sin esto (auth.uid identifica al caller) pero el
+    // prompt agrega fricción proporcional al daño potencial.
+    setStep('reauth-password')
+    setPasswordValue('')
+    setPasswordError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runBiometricChallenge se define abajo
   }, [
     biometricState?.isAvailable,
     matchesPhrase,
-    performRequestDeletion,
     pinIsSet,
     requestDeletion.isPending,
   ])
@@ -194,7 +226,7 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
     (next: string) => {
       if (isReauthChecking) return
       setPinValue(next)
-      if (!isPinComplete(next)) return
+      if (!isPinComplete(next, pinLength)) return
       setReauthChecking(true)
       void verifyPin(next)
         .then((result) => {
@@ -221,8 +253,60 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
           setReauthChecking(false)
         })
     },
-    [isReauthChecking, performRequestDeletion],
+    [isReauthChecking, performRequestDeletion, pinLength],
   )
+
+  const handlePasswordSubmit = useCallback(async () => {
+    if (isReauthChecking || requestDeletion.isPending) return
+    const trimmedPassword = passwordValue
+    if (!trimmedPassword) {
+      setPasswordError('Ingresá tu contraseña para confirmar.')
+      return
+    }
+    if (!accountEmail) {
+      setPasswordError(
+        'No pudimos identificar tu email. Reintentá en un momento.',
+      )
+      return
+    }
+    setReauthChecking(true)
+    setPasswordError(null)
+    try {
+      // Sprint J-Med · J-Med3 (2026-06-10): verificamos la contraseña
+      // re-autenticando contra Supabase Auth. signInWithPassword
+      // refresca el JWT si es exitoso — eso es OK porque el siguiente
+      // paso (request_account_deletion) usa el mismo session token.
+      const { error } = await supabase.auth.signInWithPassword({
+        email: accountEmail,
+        password: trimmedPassword,
+      })
+      if (error) {
+        setReauthChecking(false)
+        // Mensaje genérico — no distinguimos entre "wrong password" y
+        // "rate limit" para no leakear señal a un atacante.
+        setPasswordError(
+          'La contraseña no coincide. Probá nuevamente.',
+        )
+        void triggerHaptic('error')
+        return
+      }
+      void triggerHaptic('success')
+      setReauthChecking(false)
+      setPasswordValue('')
+      performRequestDeletion()
+    } catch (error) {
+      setReauthChecking(false)
+      setPasswordError(
+        getErrorMessage(error, 'No pudimos verificar la contraseña.'),
+      )
+    }
+  }, [
+    accountEmail,
+    isReauthChecking,
+    passwordValue,
+    performRequestDeletion,
+    requestDeletion.isPending,
+  ])
 
   const runBiometricChallenge = useCallback(async () => {
     if (isReauthChecking || requestDeletion.isPending) return
@@ -276,6 +360,8 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
     setPinValue('')
     setPinErrorToken(0)
     setPinLockoutMessage(null)
+    setPasswordValue('')
+    setPasswordError(null)
   }, [requestDeletion.isPending])
 
   // ── Render: caso bloqueado (owner con miembros activos) ─────────
@@ -335,7 +421,9 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
             ? 'Escribí ELIMINAR para confirmar.'
             : step === 'reauth-pin'
               ? 'Ingresá tu PIN para confirmar.'
-              : 'Confirmá con biometría para programar la baja.'
+              : step === 'reauth-password'
+                ? 'Ingresá la contraseña de tu cuenta.'
+                : 'Confirmá con biometría para programar la baja.'
       }
       title="Eliminar cuenta"
     >
@@ -526,7 +614,12 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
                   Al continuar, te vamos a pedir {biometricState.label} para
                   confirmar.
                 </Text>
-              ) : null}
+              ) : (
+                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                  Al continuar, te vamos a pedir la contraseña de tu cuenta
+                  para confirmar.
+                </Text>
+              )}
             </View>
 
             <View style={styles.row}>
@@ -571,6 +664,7 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
                 <PinPad
                   errorToken={pinErrorToken}
                   onChange={handlePinChange}
+                  pinLength={pinLength}
                   value={pinValue}
                 />
                 {pinLockoutMessage ? (
@@ -582,6 +676,106 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
                   </Text>
                 ) : null}
               </View>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleBackToReview}
+              style={({ pressed }) => [
+                styles.backLink,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}
+            >
+              <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
+                Cancelar baja
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {step === 'reauth-password' ? (
+          <>
+            <View
+              style={[
+                styles.tableCard,
+                {
+                  backgroundColor: theme.isDark
+                    ? theme.colors.surfaceMuted
+                    : theme.colors.creamCard,
+                  borderColor: theme.colors.line,
+                },
+              ]}
+            >
+              <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
+                Confirmá tu contraseña
+              </Text>
+              <Text
+                style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
+              >
+                Como no tenés PIN ni biometría configurados, pedimos la
+                contraseña de tu cuenta como verificación final antes de
+                programar la baja.
+              </Text>
+              {accountEmail ? (
+                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                  Cuenta: {accountEmail}
+                </Text>
+              ) : null}
+
+              <TextInput
+                ref={passwordInputRef}
+                accessibilityLabel="Contraseña de tu cuenta"
+                autoCapitalize="none"
+                autoComplete="current-password"
+                autoCorrect={false}
+                editable={!isReauthChecking && !requestDeletion.isPending}
+                onChangeText={(next) => {
+                  setPasswordValue(next)
+                  if (passwordError) setPasswordError(null)
+                }}
+                onSubmitEditing={() => void handlePasswordSubmit()}
+                placeholder="Tu contraseña"
+                placeholderTextColor={theme.colors.textSoft}
+                returnKeyType="done"
+                secureTextEntry
+                spellCheck={false}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.isDark
+                      ? theme.colors.background
+                      : theme.colors.surfaceMuted,
+                    borderColor: passwordError
+                      ? theme.colors.danger
+                      : theme.colors.line,
+                    color: theme.colors.text,
+                    letterSpacing: 0.5,
+                  },
+                ]}
+                textContentType="password"
+                value={passwordValue}
+              />
+
+              {passwordError ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[styles.errorText, { color: theme.colors.danger }]}
+                >
+                  {passwordError}
+                </Text>
+              ) : null}
+
+              <AppButton
+                disabled={
+                  isReauthChecking ||
+                  requestDeletion.isPending ||
+                  passwordValue.length === 0
+                }
+                label="Eliminar mi cuenta"
+                loading={isReauthChecking || requestDeletion.isPending}
+                onPress={() => void handlePasswordSubmit()}
+                variant="danger"
+              />
             </View>
 
             <Pressable

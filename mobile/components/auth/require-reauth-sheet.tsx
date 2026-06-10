@@ -39,7 +39,7 @@ import {
   getBiometricLoginState,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
-import { getPinLockState, verifyPin } from '@/lib/pin-lock'
+import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -100,6 +100,10 @@ export function RequireReauthSheet({
   const [pinLockoutMessage, setPinLockoutMessage] = useState<string | null>(null)
   const [isChecking, setChecking] = useState(false)
   const [biometricFailed, setBiometricFailed] = useState(false)
+  // Sprint J · P0: read the persisted PIN length so this sheet submits
+  // the right number of digits (4–8) instead of hardcoding 4. Defaults
+  // to 4 for back-compat installs.
+  const [pinLength, setPinLength] = useState<number>(4)
 
   // Reset internal state every time the sheet becomes visible. The
   // sheet may be reused across multiple destructive actions in the same
@@ -117,12 +121,14 @@ export function RequireReauthSheet({
     }
     let cancelled = false
     void (async () => {
-      const [pinState, bioState] = await Promise.all([
+      const [pinState, bioState, len] = await Promise.all([
         getPinLockState(),
         getBiometricLoginState(),
+        getPinLength(),
       ])
       if (cancelled) return
       setBiometricState(bioState)
+      setPinLength(len)
       // Biometric tiene precedencia: es la UX más fluida y respaldada
       // por OS. PIN es el fallback determinista. Si NINGUNO está
       // configurado, mostramos el placeholder "configurá primero".
@@ -204,7 +210,7 @@ export function RequireReauthSheet({
     (next: string) => {
       if (isChecking) return
       setPinValue(next)
-      if (!isPinComplete(next)) return
+      if (!isPinComplete(next, pinLength)) return
       setChecking(true)
       void verifyPin(next)
         .then((result) => {
@@ -231,7 +237,7 @@ export function RequireReauthSheet({
           setChecking(false)
         })
     },
-    [isChecking, onConfirmed],
+    [isChecking, onConfirmed, pinLength],
   )
 
   const handleGoToSettings = useCallback(() => {
@@ -302,6 +308,7 @@ export function RequireReauthSheet({
             <PinPad
               errorToken={pinErrorToken}
               onChange={handlePinChange}
+              pinLength={pinLength}
               value={pinValue}
             />
             {pinLockoutMessage ? (

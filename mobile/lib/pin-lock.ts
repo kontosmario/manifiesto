@@ -57,6 +57,13 @@ const PIN_HASH_KEY = 'app-lock.pin.hash'
 const PIN_SALT_KEY = 'app-lock.pin.salt'
 const PIN_ITER_KEY = 'app-lock.pin.iterations'
 const PIN_LOCKOUT_KEY = 'app-lock.pin.lockout'
+// Sprint J · P0: persist the user's chosen PIN length so every unlock
+// surface (unlock screen, re-auth sheet, delete-account) submits a
+// complete PIN. Without this, a user who picked a 6-digit PIN at setup
+// got bricked because the unlock UI hardcoded 4 digits → hash mismatch
+// → lockout → "Olvidé mi PIN" → forced sign-out.
+const PIN_LEN_KEY = 'app-lock.pin.len'
+const PIN_LENGTH_DEFAULT = 4
 
 const storeOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
@@ -323,8 +330,33 @@ export async function setPin(pin: string): Promise<void> {
   await SecureStore.setItemAsync(PIN_SALT_KEY, salt, storeOptions)
   await SecureStore.setItemAsync(PIN_ITER_KEY, String(PIN_ITER_TARGET), storeOptions)
   await SecureStore.setItemAsync(PIN_HASH_KEY, await hashPinAsync(salt, pin, PIN_ITER_TARGET), storeOptions)
+  // Sprint J · P0: persist the chosen length so unlock surfaces know
+  // how many digits to collect before submitting. Written AFTER the
+  // hash succeeds — if hashing throws, we don't leave an orphan length
+  // key behind.
+  await SecureStore.setItemAsync(PIN_LEN_KEY, String(pin.length), storeOptions)
   await clearLockout()
   await setPinEnabledFlag()
+}
+
+/**
+ * Sprint J · P0: read the persisted PIN length. Defaults to 4 for
+ * back-compat with installs that set their PIN before this key existed
+ * (their PINs are 4 digits — pin-setup-screen only exposed 4 digits
+ * pre-F2, then 4-or-6 with default 4). The verifyPin migration below
+ * fixes-forward any pre-existing 6-digit user.
+ */
+export async function getPinLength(): Promise<number> {
+  try {
+    const raw = await SecureStore.getItemAsync(PIN_LEN_KEY, storeOptions)
+    if (!raw) return PIN_LENGTH_DEFAULT
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isFinite(parsed)) return PIN_LENGTH_DEFAULT
+    if (parsed < PIN_MIN_LENGTH || parsed > PIN_MAX_LENGTH) return PIN_LENGTH_DEFAULT
+    return parsed
+  } catch {
+    return PIN_LENGTH_DEFAULT
+  }
 }
 
 export interface VerifyPinResult {
@@ -363,6 +395,19 @@ export async function verifyPin(pin: string): Promise<VerifyPinResult> {
       await clearLockout()
       // Sprint G · G-Auth3: clear the server counter too. Best-effort.
       void clearServerPinFailures()
+      // Sprint J · P0: fix-forward migration. If PIN_LEN_KEY is missing
+      // (install set its PIN before this key existed), infer the length
+      // from the successfully-verified input and persist it now. Silent
+      // best-effort: if SecureStore fails the user keeps the default-4
+      // behaviour on next unlock attempt.
+      try {
+        const storedLen = await SecureStore.getItemAsync(PIN_LEN_KEY, storeOptions)
+        if (!storedLen) {
+          await SecureStore.setItemAsync(PIN_LEN_KEY, String(pin.length), storeOptions)
+        }
+      } catch {
+        // Swallow — back-fill is opportunistic.
+      }
       // Sprint F · F2: silent upgrade. If the hash was generated at
       // a weaker iteration count than the current target, re-hash
       // with the new target (and a fresh salt for good measure) and
@@ -409,6 +454,9 @@ export async function clearPin(): Promise<void> {
   await SecureStore.deleteItemAsync(PIN_HASH_KEY)
   await SecureStore.deleteItemAsync(PIN_SALT_KEY)
   await SecureStore.deleteItemAsync(PIN_ITER_KEY)
+  // Sprint J · P0: also drop the persisted length so a fresh setPin
+  // can stamp a new one without inheriting stale state.
+  await SecureStore.deleteItemAsync(PIN_LEN_KEY)
   await clearLockout()
   await clearPinEnabledFlag()
 }

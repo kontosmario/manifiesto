@@ -30,6 +30,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import {
   clearPin,
+  getPinLength,
   getPinLockState,
   isWeakPin,
   setPin,
@@ -37,6 +38,8 @@ import {
   verifyPinOk,
   WeakPinError,
 } from '@/lib/pin-lock'
+
+const PIN_LEN_KEY = 'app-lock.pin.len'
 
 beforeEach(() => {
   secure.clear()
@@ -187,4 +190,64 @@ describe('pin-lock', () => {
     // And the new hash must verify under the new iter.
     expect(await verifyPinOk(STRONG_PIN)).toBe(true)
   }, 60_000)
+
+  // Sprint J · P0 — PIN length persistence (multi-length unlock fix) ───
+
+  it('J·P0: getPinLength returns 4 when no length key is set (back-compat)', async () => {
+    expect(secure.get(PIN_LEN_KEY)).toBeUndefined()
+    expect(await getPinLength()).toBe(4)
+  })
+
+  it('J·P0: setPin persists the chosen length to SecureStore', async () => {
+    await setPin(STRONG_PIN)
+    expect(secure.get(PIN_LEN_KEY)).toBe('4')
+    expect(await getPinLength()).toBe(4)
+  }, HASH_TIMEOUT_MS)
+
+  it('J·P0: setPin with a 6-digit PIN persists length=6', async () => {
+    await setPin('739204')
+    expect(secure.get(PIN_LEN_KEY)).toBe('6')
+    expect(await getPinLength()).toBe(6)
+  }, HASH_TIMEOUT_MS)
+
+  it('J·P0: setPin with an 8-digit PIN persists length=8', async () => {
+    await setPin('73920514')
+    expect(secure.get(PIN_LEN_KEY)).toBe('8')
+    expect(await getPinLength()).toBe(8)
+  }, HASH_TIMEOUT_MS)
+
+  it('J·P0: clearPin deletes the length key', async () => {
+    await setPin('739204')
+    expect(secure.get(PIN_LEN_KEY)).toBe('6')
+    await clearPin()
+    expect(secure.get(PIN_LEN_KEY)).toBeUndefined()
+    expect(await getPinLength()).toBe(4) // back to default
+  }, HASH_TIMEOUT_MS)
+
+  it('J·P0: verifyPin success back-fills the length key for pre-existing installs', async () => {
+    // Simulate a user who set a 6-digit PIN before PIN_LEN_KEY existed:
+    // hash + salt + iter are stored, but no length. The first successful
+    // verifyPin should infer the length from the input and write it.
+    await setPin('739204')
+    // Strip the length key to mimic a pre-fix install.
+    secure.delete(PIN_LEN_KEY)
+    expect(secure.get(PIN_LEN_KEY)).toBeUndefined()
+
+    const result = await verifyPin('739204')
+    expect(result.ok).toBe(true)
+    expect(secure.get(PIN_LEN_KEY)).toBe('6')
+    expect(await getPinLength()).toBe(6)
+  }, HASH_TIMEOUT_MS)
+
+  it('J·P0: getPinLength clamps out-of-range stored values back to the default', async () => {
+    // Defensive: if SecureStore returns garbage (corrupted install, prod
+    // tampering), we must NOT submit an invalid pad-length. Falling back
+    // to 4 keeps the user reachable via the back-compat code path.
+    secure.set(PIN_LEN_KEY, '99')
+    expect(await getPinLength()).toBe(4)
+    secure.set(PIN_LEN_KEY, 'not-a-number')
+    expect(await getPinLength()).toBe(4)
+    secure.set(PIN_LEN_KEY, '0')
+    expect(await getPinLength()).toBe(4)
+  })
 })
