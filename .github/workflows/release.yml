@@ -49,22 +49,29 @@ on:
           - production
           - preview
 
+# Infra H-2 (red team audit 2026-06-10): minimum GITHUB_TOKEN scope. The
+# release flow checks out source, builds via EAS (auth: EXPO_TOKEN), and
+# submits to TestFlight (auth: ASC API key). No commit/tag/release writes
+# happen against this repo, so `contents: read` is sufficient.
+permissions:
+  contents: read
+
 jobs:
   build-and-submit:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
       - name: Setup EAS
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
@@ -173,8 +180,17 @@ jobs:
         run: |
           echo "::notice::Release ${TAG} finished with status ${STATUS}. Run: ${RUN_URL}"
           # When a Slack webhook secret is configured, post there too.
+          # Infra H-2 (red team audit 2026-06-10): build the JSON payload with
+          # jq -nc so embedded quotes/backslashes/newlines in TAG, STATUS, or
+          # RUN_URL can't break out of the string and produce invalid JSON (or
+          # worse, inject control structure). jq is preinstalled on ubuntu-latest.
           if [ -n "$SLACK_WEBHOOK" ]; then
+            PAYLOAD=$(jq -nc \
+              --arg tag "$TAG" \
+              --arg status "$STATUS" \
+              --arg run_url "$RUN_URL" \
+              '{text: (":rocket: Manifiesto release " + $tag + " — " + $status + "\n" + $run_url)}')
             curl -sS -X POST -H 'Content-Type: application/json' \
-              --data "{\"text\":\":rocket: Manifiesto release ${TAG} — ${STATUS}\n${RUN_URL}\"}" \
+              --data "$PAYLOAD" \
               "$SLACK_WEBHOOK" || true
           fi
