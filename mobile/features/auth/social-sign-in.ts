@@ -84,7 +84,31 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
   }
 }
 
+/**
+ * Sprint J · Audit #3 J-Auth4 — Google sign-in is disabled in production.
+ *
+ * Why: the free tier of `@react-native-google-signin/google-signin`
+ * exposes `signIn(loginHint?)` without a `nonce` parameter (custom
+ * nonces are gated behind the paid GoogleOneTapSignIn surface). Without
+ * a nonce, the id_token has no `nonce` claim and Supabase can't bind
+ * the token to a per-request value → an attacker who intercepts a valid
+ * id_token (browser extension, malicious dev tool, or a leaked log) can
+ * replay it against `signInWithIdToken` and assume the user.
+ *
+ * Until we either (a) implement the auth-session flow manually so we
+ * can inject a nonce, or (b) pay for OneTap, the safer option is to
+ * hide the entry point entirely. The `signInWithGoogle` runtime
+ * function below also short-circuits to `unavailable` so even a stray
+ * deep link can't drive the flow.
+ *
+ * Migration path for v1.1: build the OAuth request via
+ * `expo-auth-session` (PKCE + nonce), then re-enable
+ * `isGoogleSignInConfigured` to return true again.
+ */
+const GOOGLE_SIGN_IN_ENABLED = false
+
 export function isGoogleSignInConfigured(): boolean {
+  if (!GOOGLE_SIGN_IN_ENABLED) return false
   return Boolean(GOOGLE_WEB_CLIENT_ID) && loadGoogle() !== null
 }
 
@@ -185,6 +209,17 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
 }
 
 export async function signInWithGoogle(): Promise<SocialSignInResult> {
+  // Sprint J · Audit #3 J-Auth4 — runtime guard mirrors the build-time
+  // flag in `isGoogleSignInConfigured`. Even if a deep link or stray
+  // CTA reaches here, we never call the underlying SDK because the SDK
+  // can't inject a nonce → the id_token is replayable.
+  if (!GOOGLE_SIGN_IN_ENABLED) {
+    return {
+      status: 'unavailable',
+      error:
+        'Google sign-in está temporalmente deshabilitado en esta versión. Probá con Apple o email + contraseña.',
+    }
+  }
   if (!GOOGLE_WEB_CLIENT_ID) {
     return {
       status: 'unavailable',

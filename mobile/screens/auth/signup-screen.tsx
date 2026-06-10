@@ -620,22 +620,32 @@ export function SignupScreen() {
               <Text style={styles.appleLabel}>Continuar con Apple</Text>
             </Pressable>
 
-            <Pressable
-              accessibilityLabel="Continuar con Google"
-              accessibilityRole="button"
-              onPress={handleGoogleSignUp}
-              style={({ pressed }) => [
-                styles.socialButton,
-                styles.googleButton,
-                { borderColor: theme.colors.line },
-                pressed && { opacity: 0.85 },
-              ]}
-            >
-              <GoogleIcon />
-              <Text style={[styles.googleLabel, { color: theme.colors.text }]}>
-                Continuar con Google
-              </Text>
-            </Pressable>
+            {/* Sprint J · Audit #3 J-Auth4 — Google sign-in disabled
+                because the free SDK can't inject a nonce → id_token is
+                replayable. Hide the button until we ship the
+                expo-auth-session flow (or pay for OneTap). The
+                `signInWithGoogle` runtime also short-circuits to
+                `unavailable`, defense-in-depth. Keep the dead handler
+                wired so re-enabling the flag in `social-sign-in.ts` is
+                a one-line revert. */}
+            {googleAvailable ? (
+              <Pressable
+                accessibilityLabel="Continuar con Google"
+                accessibilityRole="button"
+                onPress={handleGoogleSignUp}
+                style={({ pressed }) => [
+                  styles.socialButton,
+                  styles.googleButton,
+                  { borderColor: theme.colors.line },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <GoogleIcon />
+                <Text style={[styles.googleLabel, { color: theme.colors.text }]}>
+                  Continuar con Google
+                </Text>
+              </Pressable>
+            ) : null}
           </FadeInUp>
 
           <FadeInUp delay={300} reduced={reduced}>
