@@ -1,6 +1,7 @@
 import { Platform } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { supabase } from '@/lib/supabase'
+import { createNoncePair } from '@/lib/auth-nonce'
 
 // Google sign-in is loaded lazily because the package's top-level
 // import calls `TurboModuleRegistry.getEnforcing('RNGoogleSignin')`,
@@ -96,11 +97,19 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
   }
 
   try {
+    // Nonce: defends against id_token replay. We send the SHA-256
+    // hash to Apple (which echoes it inside the signed JWT's `nonce`
+    // claim) and pass the raw value to Supabase, which recomputes
+    // the hash and asserts equality. A stolen token can't be
+    // replayed because the attacker doesn't have the raw nonce.
+    const { rawNonce, hashedNonce } = createNoncePair()
+
     const credential = await AppleAuthentication.signInAsync({
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
+      nonce: hashedNonce,
     })
 
     if (!credential.identityToken) {
@@ -124,6 +133,7 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
     const { error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
       token: credential.identityToken,
+      nonce: rawNonce,
       // Apple returns the email even on subsequent sign-ins through
       // the relay address — Supabase persists it on first sign-in.
     })
@@ -132,11 +142,19 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
       return { status: 'unavailable', error: error.message }
     }
 
-    // Patch the profile display_name on first sign-in if Apple gave
-    // us a name (it only does so once, ever).
+    // Patch the profile display_name ONLY on first sign-in. Apple
+    // technically returns fullName only the very first time the user
+    // grants the app access — but a user who revokes+re-grants will
+    // see Apple's name editor again, and if they type something
+    // different the silent overwrite would clobber whatever the user
+    // had customized inside the app. So we read the current metadata
+    // and only patch when display_name is empty/missing.
     if (fullName) {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      const existing = user?.user_metadata?.display_name
+      const hasExistingName =
+        typeof existing === 'string' && existing.trim().length > 0
+      if (user && !hasExistingName) {
         await supabase.auth.updateUser({
           data: { display_name: fullName },
         })
@@ -200,6 +218,17 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
       }
     }
 
+    // NOTE on nonce: ideally we'd generate a CSPRNG nonce, send the
+    // hash to Google, and pass the raw value to Supabase (same defense
+    // as Apple — protects against id_token replay). The version of
+    // `@react-native-google-signin/google-signin` we use exposes
+    // `signIn(loginHint?)` in its free tier, which has NO `nonce`
+    // parameter (custom nonce support is gated behind the paid
+    // GoogleOneTapSignIn surface). Without injecting a nonce into the
+    // OAuth request, the id_token has no `nonce` claim, and passing
+    // `nonce: rawNonce` to Supabase would make `signInWithIdToken`
+    // reject the token. Tracked as a follow-up: upgrade to OneTap or
+    // build the OAuth request manually via expo-auth-session.
     const { error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
       token: idToken,
