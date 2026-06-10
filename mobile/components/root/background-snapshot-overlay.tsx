@@ -33,6 +33,41 @@
 //     hidden.
 //   * z-index above the auth transition splash (50) so even mid-auth
 //     transitions, backgrounding hides the sensitive content.
+//
+// ─────────────────────────────────────────────────────────────────────
+// Sprint Q · Audit #10 Q-6 (2026-06-10) — Known residual risk
+// (DOCUMENTED, accepted for v1.0):
+//
+//   Known limitation: the JS-thread AppState listener still races
+//   iOS's snapshot capture. iOS fires `applicationWillResignActive`
+//   on the native side and grabs the snapshot a small number of frames
+//   later — we observe this as the `inactive` event in JS. On a
+//   reasonably fast device the Reanimated shared-value path makes the
+//   overlay opaque BEFORE the snapshot lands, but on cold-cache /
+//   slow-device paths the window is non-zero and one frame of sensitive
+//   UI could slip into the cached PNG under `Library/Caches/Snapshots/`.
+//
+//   Mitigation in place:
+//     • Pre-mounted view (no native view creation on the hot path).
+//     • Reanimated shared value (UI-thread commit, no React render).
+//     • Opaque colour (single-frame paint sufficient).
+//
+//   Future improvement (NOT planned for v1.0):
+//     • Native module bridging `applicationWillResignActive` to set
+//       the overlay's hidden state synchronously inside the iOS
+//       delegate, eliminating the JS round-trip. Requires writing a
+//       small Expo Module + maintaining it through EAS Build upgrades.
+//
+//   Why we're accepting the risk:
+//     • Blast radius is forensic-only — requires physical device
+//       acquisition + filesystem extraction tools (snapshot lives
+//       under sandboxed `Library/Caches/`).
+//     • The window is sub-frame on most devices; the overlay wins.
+//     • Adding a native module adds maintenance burden + EAS Build
+//       complexity that doesn't earn its keep at our threat model.
+//     • Re-evaluate triggers: high-profile-user reports, or any
+//       finance-focused threat-model upgrade in a future audit.
+// ─────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react'
 import { AppState, type AppStateStatus, StyleSheet, View } from 'react-native'
