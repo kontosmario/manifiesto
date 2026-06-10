@@ -44,44 +44,77 @@ const REAUTH_SKIP_WINDOW_MS = 5 * 60 * 1000
 // Sprint J-Med · J-Med2 (2026-06-10): tighten `markVerified` so it
 // cannot be called without genuine auth.
 //
+// Sprint N · Audit #2 N1 / Audit #5 F-9 (2026-06-14): make proofs
+// SINGLE-USE so a captured token can't be replayed.
+//
 // `ReauthProof` is an opaque branded type. The only way to obtain one
 // is through `proofFromPinVerification()` or `proofFromBiometric()`
 // below — both of which require evidence (a successful VerifyPinResult
 // or a successful biometric outcome). Calling `markVerified()` without
 // a proof is a compile-time error.
 //
-// Marker tokens are non-transferable in practice — they are objects, so
-// callers can't fabricate one via JSON; but more importantly, the type
-// brand makes "I accidentally pass `null` / `undefined`" impossible.
+// Single-use enforcement: each proof factory mints a FRESH frozen
+// object and registers it in a module-private WeakSet. `markVerified`
+// validates the proof against the WeakSet AND removes it on use.
+// Subsequent calls with the same proof reference fail the WeakSet
+// check and are refused. The WeakSet uses weak references so unused
+// proofs are garbage-collected automatically; we never leak memory.
+//
+// Why single-use:
+//   The previous singleton (`const PROOF_TOKEN = Object.freeze({})`)
+//   was a shared token: any code with access to the token could call
+//   `markVerified` arbitrarily many times. A compromised module that
+//   captured the token once could mint a permanent skip. Per-call
+//   tokens close that hole — the proof exists for exactly one
+//   consumption.
 declare const ReauthProofBrand: unique symbol
 export interface ReauthProof {
   readonly [ReauthProofBrand]: true
 }
-const PROOF_TOKEN: ReauthProof = Object.freeze({}) as ReauthProof
+
+// Registry of unconsumed proofs. WeakSet so callers that drop the
+// proof reference without using it don't leak memory: V8 will GC the
+// frozen object and the WeakSet entry vanishes with it.
+const issuedProofs: WeakSet<ReauthProof> = new WeakSet()
+
+function mintProof(): ReauthProof {
+  // `at` is included so the object isn't an empty `{}` (which V8 can
+  // intern more aggressively). Each call produces a structurally
+  // distinct object reference; the WeakSet keys on identity, not
+  // value.
+  const proof = Object.freeze({ at: Date.now() }) as unknown as ReauthProof
+  issuedProofs.add(proof)
+  return proof
+}
 
 /**
- * Build a ReauthProof from a successful PIN verification.
+ * Build a single-use ReauthProof from a successful PIN verification.
  *
  * Pass the actual `VerifyPinResult` returned by `verifyPin()` — if
  * `result.ok === false`, this returns `null` and `markVerified` cannot
  * be called.
+ *
+ * The returned proof is consumed on the first `markVerified` call.
+ * Calling `markVerified` again with the same reference is refused.
  */
 export function proofFromPinVerification(
   result: { ok: boolean },
 ): ReauthProof | null {
-  return result.ok ? PROOF_TOKEN : null
+  return result.ok ? mintProof() : null
 }
 
 /**
- * Build a ReauthProof from a successful biometric challenge.
+ * Build a single-use ReauthProof from a successful biometric challenge.
  *
  * Pass the actual `{ success }` from `authenticateBiometricAccess()` —
  * if `success === false`, returns `null`.
+ *
+ * The returned proof is consumed on the first `markVerified` call.
  */
 export function proofFromBiometric(
   result: { success: boolean },
 ): ReauthProof | null {
-  return result.success ? PROOF_TOKEN : null
+  return result.success ? mintProof() : null
 }
 
 interface PendingReauth {
@@ -189,14 +222,19 @@ export function useRequireReauth(): UseRequireReauthResult {
   }, [])
 
   const markVerified = useCallback((proof: ReauthProof) => {
-    // Brand check at runtime: the type system enforces a real proof at
-    // the call site, but this guard catches any `as ReauthProof` casts
-    // that might sneak past code review.
-    if (proof !== PROOF_TOKEN) {
+    // Sprint N: enforce single-use. The proof must be in the registry
+    // of issued-but-unconsumed tokens. WeakSet.delete returns true iff
+    // the entry existed and was removed — i.e. iff this is the proof's
+    // first consumption. Any `as ReauthProof` cast at the call site
+    // creates an object that was never in `issuedProofs`, so the check
+    // fails. Replay (same reference passed twice) also fails because
+    // the first call removed it.
+    const consumed = issuedProofs.delete(proof)
+    if (!consumed) {
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn(
-          '[useRequireReauth] markVerified called with invalid proof — refusing.',
+          '[useRequireReauth] markVerified called with invalid or already-consumed proof — refusing.',
         )
       }
       return
