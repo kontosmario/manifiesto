@@ -98,15 +98,30 @@ export function useDailyBudgetNudges() {
 
       await Promise.all(existingCheckins.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)))
 
+      // Sprint Q · Audit #10 Q-1 (2026-06-10): mirror Sprint O · P-1
+      // PII reduction (push payload server-side). Local notifications
+      // scheduled here ALSO surface on the lock screen — anyone with
+      // physical access to a locked device sees the body preview.
+      // Sprint O P-1 stripped amounts from REMOTE push bodies (see
+      // supabase/migrations/20260614002000_sprint_o_push_pii_reduction.sql
+      // and supabase/functions/notify-orchestrator) but did not touch
+      // these locally-scheduled bodies. We close the gap here: titles
+      // stay descriptive, bodies become a generic CTA so the lock-
+      // screen leak surface is identical to the remote push path.
       if (!isCancelled) {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: 'Presupuesto del día listo',
-            body: `Hoy arrancas con ${formatMoney(checkinBudget)} para moverte con margen.`,
+            body: 'Abrí Manifiesto para verlo.',
             data: {
               key: `${CHECKIN_NOTIFICATION_KEY}:${familyId}`,
               kind: CHECKIN_NOTIFICATION_KEY,
               url: '/expenses',
+              // Sprint Q · Q-1: keep the budget value in `data` (not
+              // surfaced on the lock screen) so the in-app handler
+              // can still render the contextual greeting when the
+              // user actually opens the app.
+              checkinBudget,
             },
             sound: 'default',
           },
@@ -127,14 +142,16 @@ export function useDailyBudgetNudges() {
       if (!hasThresholdLog && hasCrossedThreshold && hour < 18 && !isCancelled) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Ojo con el resto del día',
-            body:
-              summary.remainingToday >= 0
-                ? `Ya usaste gran parte de hoy. Te quedan ${formatMoney(summary.remainingToday)} para cerrar prolijo.`
-                : `Ya te pasaste hoy. Si frenas ahora, mañana abres con ${formatMoney(summary.projectedTomorrowOpening)}.`,
+            title: 'Cerrá tu día',
+            // Sprint Q · Q-1: no amounts on the lock screen. The
+            // contextual amount/projection lives in `data` so the
+            // in-app surface can still tailor the message.
+            body: 'Mirá cómo te fue hoy.',
             data: {
               kind: THRESHOLD_NOTIFICATION_KEY,
               url: '/expenses',
+              remainingToday: summary.remainingToday,
+              projectedTomorrowOpening: summary.projectedTomorrowOpening,
             },
             sound: 'default',
           },
@@ -159,12 +176,4 @@ export function useDailyBudgetNudges() {
     familyId,
     summary,
   ])
-}
-
-function formatMoney(value: number) {
-  return value.toLocaleString('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  })
 }
