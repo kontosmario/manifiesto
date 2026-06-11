@@ -483,7 +483,14 @@ export function computeControlView(d: ControlMockData): ControlView {
   const alcanzaElMes =
     !alreadyExhausted &&
     (noDiscretionarySpendYet || diaAgotamiento > d.diasMes)
-  const gastoProyectadoMes = promedioDiario * d.diasMes
+  // Proyección de cierre HONESTA (auditoría 2026-06-11): lo YA gastado
+  // es un hecho, no una proyección — solo los días que faltan se
+  // extrapolan al ritmo típico. La versión anterior proyectaba el MES
+  // ENTERO al promedio robusto (que además excluye los días pico), así
+  // que con $4.3M ya gastados la card podía anunciar "sobran $2.1M"
+  // cuando el disponible real era ~$0. Caso real de la cuenta owner.
+  const diasFuturos = Math.max(0, d.diasMes - d.diaActual)
+  const gastoProyectadoMes = gastadoHastaHoy + promedioDiario * diasFuturos
   const sobrantePresupuestadoMes = libreMesTotal - gastoProyectadoMes
 
   // 4. DOW pattern
@@ -543,7 +550,10 @@ export function computeControlView(d: ControlMockData): ControlView {
   // ingresoMes=0 → fijosRatio=NaN → sFijos=NaN → score=NaN. Default
   // ratio to 0 when there's no income so the score stays a number.
   const fijosRatio = d.ingresoMes > 0 ? d.fijosMes / d.ingresoMes : 0
-  const sFijos = Math.max(0, (1 - fijosRatio) / 0.5) * 10
+  // Clamp a 10 (auditoría 2026-06-11): sin el tope, un fijosRatio bajo
+  // aportaba hasta 20/10 puntos y el score total podía superar 100,
+  // inflando el label ("Excelente" regalado).
+  const sFijos = Math.min(10, Math.max(0, (1 - fijosRatio) / 0.5) * 10)
   const score = Math.round(sBajoCupo + sRacha + sMomentum + sNoSpend + sFijos)
   const scoreLabel =
     score >= 80

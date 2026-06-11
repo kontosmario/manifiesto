@@ -1376,16 +1376,19 @@ function buildFromZombieNotifications(
       id: `zombie-${n.id}`,
       emoji: '🧟',
       cat: 'Suscripciones',
-      title: `${name}: sin uso reciente`,
-      body: `Cuesta ${fmt(amount)} al mes y hace 2+ meses que no se usa. Si la cancelas ahora, son ${fmt(amount * 12)} hasta fin de año.`,
+      // Auditoría 2026-06-11: la heurística server pasó a payment-aware
+      // (un fijo PAGADO hace <60 días no es zombie) — el copy ahora dice
+      // exactamente lo que detectamos: sin pagos NI uso registrado.
+      title: `${name}: sin movimiento hace 2+ meses`,
+      body: `No registrás pagos de ${name} hace 60+ días. Cuesta ${fmt(amount)}/mes en tu presupuesto: si ya no lo usás, cancelalo y recuperás ${fmt(amount * 12)} al año.`,
       impact: `+${fmt(amount)}/mes`,
       impactRaw: Math.round(amount),
-      cta: 'Cancelar',
+      cta: 'Revisar',
       urgency: 'alta',
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Una suscripción "zombi" es un servicio que pagas mes a mes pero no usas. La detectamos a partir de los patrones de uso registrados. Si la cancelas, recuperas ese monto al instante.',
+        'Un compromiso "zombi" es un servicio que sigue en tu presupuesto pero no muestra movimiento: hace más de 2 meses que no registrás un pago. Puede que lo hayas cancelado (sacalo de tus fijos) o que lo hayas olvidado (decidí si lo querés mantener).',
       action: {
         kind: 'open-fixed-expense',
         fixedExpenseId: String(n.metadata.fixed_expense_id ?? ''),

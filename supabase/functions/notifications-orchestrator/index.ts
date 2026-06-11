@@ -25,6 +25,7 @@ type Kind =
   | 'streak_at_risk'
   | 'streak_broken'
   | 'weekly_insights'
+  | 'push_backlog'
 
 const ALLOWED_KINDS: ReadonlySet<Kind> = new Set<Kind>([
   'morning_checkins',
@@ -34,6 +35,7 @@ const ALLOWED_KINDS: ReadonlySet<Kind> = new Set<Kind>([
   'streak_at_risk',
   'streak_broken',
   'weekly_insights',
+  'push_backlog',
 ])
 
 interface PendingRow {
@@ -192,7 +194,86 @@ async function fetchBlockedMembershipKeys(
   return out
 }
 
+// Auditoría 2026-06-11 (H1): los crons SQL legacy (rachas, zombies,
+// price hikes, weekly insights) insertan filas en `notifications` pero
+// no pushean — quedaban in-app-only para siempre. Este kind relayea
+// las filas recientes sin push (allow-list en list_unpushed_notifications,
+// kinds cron-only para no duplicar ni checkins ni pushes sociales) y
+// las marca con pushed_at. Cron: cada 30 minutos.
+async function processPushBacklog() {
+  const admin = adminClient()
+
+  const pendingResponse = await admin
+    .rpc('list_unpushed_notifications')
+    .returns<Array<PendingRow & { id: string }>>()
+  if (pendingResponse.error) throw pendingResponse.error
+  const rows = pendingResponse.data ?? []
+  if (rows.length === 0) {
+    return { kind: 'push_backlog', processed: 0, sent: 0, chunks: 0 }
+  }
+
+  const chunks = chunk(rows, CHUNK_SIZE)
+  let sent = 0
+  let marked = 0
+
+  for (const c of chunks) {
+    const familyIds = [...new Set(c.map((r) => r.family_id))]
+    const userIds = c
+      .map((r) => r.user_id)
+      .filter((id): id is string => typeof id === 'string')
+    const tokens = await fetchPushTokens(admin, familyIds, userIds)
+
+    const tokenToMsg = new Map<string, ExpoPushMessage>()
+    for (const sub of tokens) {
+      const row = c.find(
+        (r) =>
+          r.family_id === sub.family_id &&
+          (r.user_id === null || r.user_id === sub.user_id),
+      )
+      if (!row) continue
+      tokenToMsg.set(sub.endpoint, {
+        to: sub.endpoint,
+        sound: 'default',
+        title: row.title,
+        body: row.body,
+        data: row.metadata,
+      })
+    }
+
+    if (tokenToMsg.size > 0) {
+      const messages = [...tokenToMsg.values()]
+      const sendResponse = await admin.functions.invoke('send-family-push', {
+        body: { messages },
+      })
+      if (sendResponse.error) {
+        console.error('send-family-push failed (backlog)', sendResponse.error)
+        // No marcamos: el próximo run del backlog reintenta (24h window).
+        continue
+      }
+      sent += messages.length
+    }
+
+    // Marcar TODO el chunk como pusheado — incluso filas sin token
+    // (usuario sin push subscription): reintentar cada 30' no les va a
+    // inventar un device; quedan como notificación in-app, que es su
+    // canal real.
+    const markResponse = await admin.rpc('mark_notifications_pushed', {
+      p_ids: c.map((r) => r.id),
+    })
+    if (markResponse.error) {
+      console.error('mark_notifications_pushed failed', markResponse.error)
+    } else {
+      marked += typeof markResponse.data === 'number' ? markResponse.data : 0
+    }
+  }
+
+  return { kind: 'push_backlog', processed: marked, sent, chunks: chunks.length }
+}
+
 async function processKind(kind: Kind) {
+  if (kind === 'push_backlog') {
+    return processPushBacklog()
+  }
   const admin = adminClient()
 
   const pendingResponse = await admin
@@ -316,19 +397,30 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'Method not allowed.' }, 405, cors)
   }
 
-  // Service-role gate: this function is invoked by pg_cron (which
-  // signs with the service-role key) and should not be reachable by
-  // end users. Defense-in-depth against an authenticated user
-  // triggering a full notification fan-out (DoS/cost amplifier at
-  // scale).
+  // Caller gate: this function is invoked by pg_cron (via pg_net) and
+  // should not be reachable by end users. Defense-in-depth against an
+  // authenticated user triggering a full notification fan-out
+  // (DoS/cost amplifier at scale).
+  //
+  // Auditoría 2026-06-11: la rotación de keys dejó stale el secret del
+  // vault y TODO el pipeline de push murió en silencio con 401 durante
+  // días. Ahora el caller autentica con un secret DEDICADO
+  // (`ORCHESTRATOR_CRON_SECRET`, env del function + vault del DB):
+  //   · sobrevive rotaciones del service-role key (causa raíz del 401)
+  //   · menor blast radius — el bearer que viaja por pg_net solo
+  //     autoriza invocar este function, no es la god-key del proyecto.
+  // El service-role key se acepta como fallback de compatibilidad.
+  const cronSecret = env?.get('ORCHESTRATOR_CRON_SECRET') ?? ''
   const callerToken = extractBearerToken(
     request.headers.get('Authorization') ?? request.headers.get('authorization'),
   )
-  if (
-    !callerToken ||
-    !supabaseServiceRoleKey ||
-    !timingSafeEqual(callerToken, supabaseServiceRoleKey)
-  ) {
+  const matchesCronSecret =
+    Boolean(callerToken) && Boolean(cronSecret) && timingSafeEqual(callerToken!, cronSecret)
+  const matchesServiceRole =
+    Boolean(callerToken) &&
+    Boolean(supabaseServiceRoleKey) &&
+    timingSafeEqual(callerToken!, supabaseServiceRoleKey)
+  if (!matchesCronSecret && !matchesServiceRole) {
     return jsonResponse({ error: 'Unauthorized (service-role required).' }, 401, cors)
   }
 

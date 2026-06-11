@@ -42,6 +42,7 @@ import {
   type NotificationLite,
 } from '@/features/insights/control-signals'
 import { computeUserBaselines } from '@/features/insights/user-baselines'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { buildForecast7Day, type Forecast7Day } from '@/features/insights/forecast-engine'
 import { detectCausalLinks, type CausalLink } from '@/features/insights/causal-engine'
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
@@ -381,6 +382,49 @@ export function useControlV2Data(
 
   const view = useMemo<ControlView>(() => memoizedComputeView(data), [data])
 
+  // Velocity FRESCA derivada de los gastos locales (auditoría
+  // 2026-06-11). El snapshot del server se computa a la 01:00 AR con
+  // los datos presentes EN ESE MOMENTO: las cargas tardías /
+  // back-dateadas (típicas con los imports OCR) lo dejan mintiendo el
+  // resto del día — caso real medido: avg7 $11.8k vs $135k reales, con
+  // stress 'calm' cuando era 'warn'. Derivamos los MISMOS campos con la
+  // MISMA semántica del cron (mean simple, forecast = gastado + avg7 ×
+  // días restantes, mismos umbrales de stress) desde los días del ciclo
+  // que el cliente ya tiene en memoria. El snapshot del server queda
+  // como fallback con <7 días cerrados (ciclo joven).
+  const freshVelocity = useMemo<VelocitySnapshot | null>(() => {
+    const closed = view.detalleDias
+    if (closed.length < 7) return velocity
+    const sum = (xs: ReadonlyArray<{ gasto: number }>) =>
+      xs.reduce((s, x) => s + x.gasto, 0)
+    const last7 = closed.slice(-7)
+    const last30 = closed.slice(-30)
+    const avg7 = sum(last7) / 7
+    const avg30 = sum(last30) / Math.max(1, last30.length)
+    const momentum = avg30 > 0 ? avg7 / avg30 : 1
+    const gastadoCiclo = sum(closed) + data.gastoHoy
+    // `diasRestantes` incluye hoy; hoy ya está contado en gastadoCiclo.
+    const diasFuturos = Math.max(0, view.diasRestantes - 1)
+    const forecast = gastadoCiclo + avg7 * diasFuturos
+    const libre = data.cupoDiario * (closed.length + view.diasRestantes)
+    const stress: VelocitySnapshot['stress_level'] =
+      libre <= 0 || forecast > libre * 1.15
+        ? 'critical'
+        : forecast > libre
+          ? 'warn'
+          : forecast > libre * 0.85
+            ? 'watch'
+            : 'calm'
+    return {
+      snapshot_date: formatLocalDateKey(new Date()),
+      avg_daily_last_7: avg7,
+      avg_daily_last_30: avg30,
+      momentum,
+      forecast_close_amount: forecast,
+      stress_level: stress,
+    }
+  }, [view.detalleDias, view.diasRestantes, data.gastoHoy, data.cupoDiario, velocity])
+
   const baselines = useMemo(
     () => memoizedComputeBaselines(summaries),
     [summaries],
@@ -437,7 +481,7 @@ export function useControlV2Data(
         categoriesExpense,
         summaries,
         limits,
-        velocity,
+        velocity: freshVelocity,
         notifications,
         savingsGoal,
         cupoDiario: data.cupoDiario,
@@ -464,7 +508,7 @@ export function useControlV2Data(
     categoriesExpense,
     summaries,
     limits,
-    velocity,
+    freshVelocity,
     notifications,
     savingsGoal,
     data.cupoDiario,
