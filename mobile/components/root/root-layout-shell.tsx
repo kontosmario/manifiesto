@@ -25,10 +25,24 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 let hasShownAppLaunchSplash = false
 
-// Splash overlay timing — slow-in, fast-out follows the
-// `exit-faster-than-enter` motion principle (rule §7).
-const FADE_IN_MS = 220
-const FADE_OUT_MS = 320
+// Splash overlay timing — premium transition (emil-design-eng principles).
+//
+// 180ms fade-in con strong ease-out cubic-bezier(0.23, 1, 0.32, 1):
+//   - Built-in Easing.cubic es weak — lacks punch
+//   - cubic-bezier(0.23, 1, 0.32, 1) es el strong ease-out curve para UI:
+//     starts FAST (visible movement instant) + settles slowly
+//   - Combina con scale 0.97 → 1 para entrada "alive" (no estática)
+//
+// 260ms fade-out con strong ease-in-out: exit slightly shorter than enter
+// felt natural per "exit-faster-than-enter" principle.
+const FADE_IN_MS = 180
+const FADE_OUT_MS = 260
+// emil-design-eng strong easing curves
+const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
+const EASE_IN_OUT_STRONG = Easing.bezier(0.77, 0, 0.175, 1)
+// Scale entrance starts from 0.97 (no scale(0) per Emil rule). Combined
+// with opacity, the fern "settles in" instead of "appearing flat".
+const SCALE_FROM = 0.97
 
 export function RootLayoutShell() {
   // Cold-start splash:
@@ -256,16 +270,25 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   // browser maneja todo en JS thread con concurrent rendering),
   // entonces unmount cuando hidden es safe + correcto.
   const opacity = useSharedValue(visible ? 1 : 0)
+  const scale = useSharedValue(visible ? 1 : SCALE_FROM)
 
   useEffect(() => {
-    opacity.value = withTiming(visible ? 1 : 0, {
+    // Combined opacity + scale entrance (emil-design-eng principle:
+    // "Never animate from scale(0). Start from scale(0.95) or higher,
+    // combined with opacity. Subtle initial scale makes the entrance
+    // feel more natural, like a balloon that has a visible shape even
+    // when deflated.").
+    const config = {
       duration: visible ? FADE_IN_MS : FADE_OUT_MS,
-      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-    })
-  }, [visible, opacity])
+      easing: visible ? EASE_OUT_STRONG : EASE_IN_OUT_STRONG,
+    }
+    opacity.value = withTiming(visible ? 1 : 0, config)
+    scale.value = withTiming(visible ? 1 : SCALE_FROM, config)
+  }, [visible, opacity, scale])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+    transform: [{ scale: scale.value }],
   }))
 
   // En web, si está hidden, no rendereamos children — evita el
