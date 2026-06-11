@@ -80,6 +80,13 @@ interface HomeDashboardProps {
   displayName: string
   unreadNotificationsCount?: number
   assistantPendingCount?: number
+  /**
+   * Sprint R-3 redesign: forwards to HomeHeader's gear-icon dot. True
+   * when the user has no biometric and no PIN configured — the only
+   * state where Sprints R-1/R-2 lock gates fall through. The previous
+   * inline banner has been removed in favor of this ambient signal.
+   */
+  settingsHasNudge?: boolean
   onPressNotifications?: () => void
   onPressSettings?: () => void
   onPressAssistant?: () => void
@@ -132,6 +139,7 @@ export function HomeDashboard({
   displayName,
   unreadNotificationsCount = 0,
   assistantPendingCount = 0,
+  settingsHasNudge = false,
   onPressNotifications,
   onPressSettings,
   onPressAssistant,
@@ -818,6 +826,7 @@ export function HomeDashboard({
         name={displayName}
         unreadNotificationsCount={unreadNotificationsCount}
         assistantPendingCount={assistantPendingCount}
+        settingsHasNudge={settingsHasNudge}
         onPressNotifications={handlePressNotifications}
         onPressSettings={handlePressSettings}
         onPressAssistant={handlePressAssistant}

@@ -17,6 +17,7 @@ import {
   SettingsGroup,
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
+import { SettingsProtectionDismissRow } from '@/components/settings/protection-dismiss-row'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
@@ -34,6 +35,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useProtectionPrompt } from '@/features/auth/use-protection-prompt'
 import { useRequireReauth } from '@/features/auth/use-require-reauth'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
 import {
@@ -327,6 +329,20 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       void refreshPinState()
     }, [refreshPinState]),
   )
+
+  // Sprint R-3 redesign (2026-06-11): contextual nudge en el group
+  // "Acceso rápido" cuando el user no tiene biometric NI PIN. Reemplaza
+  // el banner sticky que estaba en el top del home (ver home-screen.tsx).
+  // Lock model: con biometric o PIN configurado, Sprints R-1/R-2 cubren
+  // background re-lock (5min) e inactivity re-lock (15min). Sin ninguno,
+  // el lock layer no existe — esta nudge cubre ese caso edge.
+  const protectionPrompt = useProtectionPrompt({
+    userId,
+    hasSession: Boolean(session),
+    hasBiometricCredentials: biometricState.hasSavedCredentials,
+    pinIsSet,
+    onboardingCompleted: Boolean(profileQuery.data?.onboarding_completed_at),
+  })
 
   const handlePinPress = useCallback(() => {
     if (!pinIsSet) {
@@ -1224,13 +1240,23 @@ const handleOpenSupport = useCallback(() => {
                 acá si el usuario lo declinó en el post-login, o
                 desactivarlo (limpia el refresh token guardado). El
                 row queda disabled si el dispositivo no tiene
-                biometría enrolada. */}
+                biometría enrolada.
+
+                Sprint R-3 redesign (2026-06-11): cuando ni biometric ni
+                PIN están configurados, el footer del group cambia a un
+                tono más claro de recomendación (no de info neutral) +
+                link "Recordame mañana" para dismissear 24h. Reemplaza al
+                banner sticky que estaba en el top del home. La señal
+                ambient en home (gear icon dot) trae al user acá; el
+                texto contextual le explica qué hacer. */}
             <RiseView delay={320}>
               <SettingsGroup
                 footer={
-                  biometricState.isAvailable
-                    ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
-                    : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
+                  protectionPrompt.visible
+                    ? 'Tu cuenta no está protegida. Activá Face ID o creá un PIN para que solo vos puedas entrar.'
+                    : biometricState.isAvailable
+                      ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
+                      : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
                 }
                 title="Acceso rápido"
               >
@@ -1250,6 +1276,11 @@ const handleOpenSupport = useCallback(() => {
                   value={pinIsSet ? 'Activado' : 'Desactivado'}
                 />
               </SettingsGroup>
+              {protectionPrompt.visible ? (
+                <SettingsProtectionDismissRow
+                  onPress={() => void protectionPrompt.dismiss()}
+                />
+              ) : null}
             </RiseView>
 
             {/* 7. DESARROLLO — solo en builds de desarrollo. Permite

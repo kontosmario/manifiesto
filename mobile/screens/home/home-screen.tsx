@@ -9,7 +9,6 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
-import { ProtectionPromptBanner } from '@/components/auth/protection-prompt-banner'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
 import { usePinLockCheck } from '@/features/auth/use-pin-lock-check'
 import { useProtectionPrompt } from '@/features/auth/use-protection-prompt'
@@ -387,19 +386,20 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
               `cancel_account_deletion`. Sits ABOVE the dashboard so the
               user cannot miss it.
 
-              Precedence (R-3): deletion > protection. Never stack both
-              banners — too noisy. The deletion case is a true alarm; the
-              protection prompt is a soft recommendation that can wait. */}
+              Sprint R-3 redesign (2026-06-11): the previous protection
+              prompt banner (no biometric AND no PIN) used to render here
+              too. It was sticky at the top of home and stole hero space.
+              The new pattern moves the signal to:
+                1. an ambient dot on the home-header gear icon (settings),
+                   via the `settingsHasNudge` prop on HomeDashboard
+                2. a contextual nudge inside the Settings → "Acceso rápido"
+                   section, with the "Recordame mañana" 24h dismissal
+              Result: home keeps its full hero, the signal lives where
+              the user mentally expects to configure security. */}
           {profile?.deletion_scheduled_at ? (
             <CancelDeletionBanner
               userId={userId}
               scheduledAt={profile.deletion_scheduled_at}
-            />
-          ) : protectionPrompt.visible ? (
-            <ProtectionPromptBanner
-              onDismiss={() => {
-                void protectionPrompt.dismiss()
-              }}
             />
           ) : null}
           <HomeDashboard
@@ -412,6 +412,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           displayName={displayName}
           unreadNotificationsCount={unreadNotificationsCount}
           assistantPendingCount={assistantPendingCount}
+          settingsHasNudge={protectionPrompt.visible}
           onPressNotifications={() => router.push('/(app)/notifications')}
           onPressSettings={() => router.push('/(app)/settings')}
           onPressAssistant={() => {

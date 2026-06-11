@@ -13,6 +13,13 @@ interface HomeHeaderProps {
   /** How many advisor suggestions are pending — drives the badge on
    *  the assistant button. */
   assistantPendingCount?: number
+  /**
+   * Sprint R-3 redesign (2026-06-11): when true, render a small dot
+   * on the settings gear button. Used to ambient-nudge users without
+   * biometric/PIN configured. Replaces the previous sticky
+   * `ProtectionPromptBanner` that stole real estate at the top of home.
+   */
+  settingsHasNudge?: boolean
   onPressNotifications?: () => void
   onPressSettings?: () => void
   onPressAssistant?: () => void
@@ -37,6 +44,7 @@ function HomeHeaderImpl({
   hour,
   unreadNotificationsCount = 0,
   assistantPendingCount = 0,
+  settingsHasNudge = false,
   onPressNotifications,
   onPressSettings,
   onPressAssistant,
@@ -61,8 +69,13 @@ function HomeHeaderImpl({
           <BellIcon color={theme.colors.text} />
         </HomeCircleButton>
         <HomeCircleButton
-          accessibilityLabel="Ir a ajustes"
+          accessibilityLabel={
+            settingsHasNudge
+              ? 'Ir a ajustes. Tu cuenta no tiene protección configurada.'
+              : 'Ir a ajustes'
+          }
           onPress={onPressSettings}
+          showBadge={settingsHasNudge}
         >
           <SlidersIcon color={theme.colors.text} />
         </HomeCircleButton>
