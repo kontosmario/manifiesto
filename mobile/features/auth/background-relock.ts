@@ -5,9 +5,21 @@
 // than the threshold, re-arm the lock so AppEntryGate re-prompts Face ID
 // on the next foreground. Pure + testable; the AppState wiring lives in
 // background-relock-watcher.tsx.
+//
+// Sprint R-1 (2026-06-10): the canonical threshold value lives in
+// `lock-thresholds.ts` (LOCK_THRESHOLDS.background). The named export
+// here is kept for back-compat with the existing watcher + tests.
 
-/** Background dwell time after which a foregrounding app re-locks. */
-export const BACKGROUND_RELOCK_THRESHOLD_MS = 60_000
+import { LOCK_THRESHOLDS } from './lock-thresholds'
+
+/**
+ * Background dwell time after which a foregrounding app re-locks.
+ *
+ * @deprecated — kept exported for back-compat with existing tests and
+ * the BackgroundRelockWatcher. Use `LOCK_THRESHOLDS.background`
+ * directly in new code.
+ */
+export const BACKGROUND_RELOCK_THRESHOLD_MS = LOCK_THRESHOLDS.background
 
 export interface ShouldRelockInput {
   /** Timestamp (ms) the app last left the 'active' state, or null if it never did. */

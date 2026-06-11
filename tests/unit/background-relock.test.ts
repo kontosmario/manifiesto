@@ -3,6 +3,7 @@ import {
   BACKGROUND_RELOCK_THRESHOLD_MS,
   shouldRelock,
 } from '@/features/auth/background-relock'
+import { LOCK_THRESHOLDS } from '@/features/auth/lock-thresholds'
 
 describe('shouldRelock', () => {
   const base = { thresholdMs: BACKGROUND_RELOCK_THRESHOLD_MS, isUnlocked: true }
@@ -21,10 +22,18 @@ describe('shouldRelock', () => {
   it('re-bloquea en o sobre el umbral', () => {
     const leftActiveAt = 1_000_000
     expect(
-      shouldRelock({ ...base, leftActiveAt, now: leftActiveAt + 60_000 }),
+      shouldRelock({
+        ...base,
+        leftActiveAt,
+        now: leftActiveAt + BACKGROUND_RELOCK_THRESHOLD_MS,
+      }),
     ).toBe(true)
     expect(
-      shouldRelock({ ...base, leftActiveAt, now: leftActiveAt + 120_000 }),
+      shouldRelock({
+        ...base,
+        leftActiveAt,
+        now: leftActiveAt + BACKGROUND_RELOCK_THRESHOLD_MS * 2,
+      }),
     ).toBe(true)
   })
 
@@ -35,13 +44,16 @@ describe('shouldRelock', () => {
         ...base,
         isUnlocked: false,
         leftActiveAt,
-        now: leftActiveAt + 120_000,
+        now: leftActiveAt + BACKGROUND_RELOCK_THRESHOLD_MS * 2,
       }),
     ).toBe(false)
   })
 
-  it('el umbral default es 60s', () => {
-    expect(BACKGROUND_RELOCK_THRESHOLD_MS).toBe(60_000)
+  // Sprint R-1 (2026-06-10): el umbral default subió de 60s a 5min.
+  // Single source of truth en lock-thresholds.ts.
+  it('el umbral default es 5min y coincide con LOCK_THRESHOLDS.background', () => {
+    expect(BACKGROUND_RELOCK_THRESHOLD_MS).toBe(5 * 60 * 1000)
+    expect(BACKGROUND_RELOCK_THRESHOLD_MS).toBe(LOCK_THRESHOLDS.background)
   })
 
   // Sprint M · Audit #7 L-2 / 7-T7 (2026-06-14)
