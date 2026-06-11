@@ -47,17 +47,28 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
   },
 
   async promptBiometric() {
+    authFlowLog('adapter', 'promptBiometric → mostrando prompt')
     const result = await authenticateBiometricAccess({
       promptMessage: 'Desbloqueá Manifiesto',
       disableDeviceFallback: true,
+    })
+    authFlowLog('adapter', 'promptBiometric resolvió', {
+      success: result.success,
+      ...(result.success ? {} : { error: result.error }),
     })
     return result.success ? { success: true } : { success: false, error: result.error }
   },
 
   async prefetchSnapshot() {
+    const startedAt = Date.now()
     const userId = await getSessionUserId()
-    if (!userId) return
+    if (!userId) {
+      authFlowLog('adapter', 'prefetchSnapshot SKIP (sin userId)')
+      return
+    }
+    authFlowLog('adapter', 'prefetchSnapshot start')
     await prefetchHomeSnapshot(queryClient, userId)
+    authFlowLog('adapter', 'prefetchSnapshot done', { ms: Date.now() - startedAt })
   },
 
   async confirmSession() {
@@ -65,7 +76,11 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
     // en background). NO llamar refreshSession acá — el token del
     // Keychain puede estar invalidated por una rotación previa.
     const { data } = await supabase.auth.getSession()
-    if (data.session) return 'ok'
+    if (data.session) {
+      authFlowLog('adapter', 'confirmSession ok (fast path)')
+      return 'ok'
+    }
+    authFlowLog('adapter', 'confirmSession SLOW PATH (sin sesión activa)')
     // SLOW PATH: restaurar desde el refresh token del Keychain (app
     // killed por iOS, auto-refresh falló, storage limpio).
     const credentials = await getBiometricCredentials()
@@ -115,6 +130,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
   },
 
   navigate(to) {
+    authFlowLog('adapter', `navigate → ${to}`)
     router.replace(to as never)
   },
 
