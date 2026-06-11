@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react'
-import { InteractionManager } from 'react-native'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 
 // Reactive store for the auth-transition splash overlay.
@@ -182,28 +181,13 @@ export function markAuthTransitionLoaded() {
   })
   if (elapsed >= currentMinVisibleMs) {
     clearAllTimers()
-    // PREMIUM: defer the hide until the JS thread is idle. The caller
-    // (typically RequireAuth) fires markLoaded as soon as its queries
-    // resolve, but the destination screen hasn't painted yet — there's
-    // still a render commit + native layout pass + first paint pending.
-    // If we hide immediately, the splash fade-out (320ms) starts while
-    // the destination is still mid-render, and during that fade the
-    // BlockingScreenView green is visible behind the fading splash =
-    // "pantalla verde" the user complained about.
-    //
-    // InteractionManager.runAfterInteractions waits for the JS thread
-    // to be idle, which typically means: queries done + reconciliation
-    // committed + first paint pushed to native. By the time the hide
-    // fires, the destination is rendered → fade-out crossfades to
-    // content, not to green.
-    InteractionManager.runAfterInteractions(() => {
-      // Re-check phase: callers can cancel via hide() between schedule
-      // and fire.
-      if (state.phase === 'showing') {
-        authFlowLog('splash', 'InteractionManager fired → hidden')
-        setStateAndNotify({ phase: 'hidden' })
-      }
-    })
+    // Hide immediato — el base layer del UnlockScreen + BlockingScreenView
+    // ya rendean welcomeBg + WarmFernLogo, entonces el fade-out NO revela
+    // verde. NO usar InteractionManager.runAfterInteractions: cuando el
+    // JS thread está busy rendering home, puede demorar 500-1500ms más
+    // → splash queda colgado innecesariamente.
+    authFlowLog('splash', 'markLoaded → hidden inmediato (elapsed >= min)')
+    setStateAndNotify({ phase: 'hidden' })
     return
   }
   // Min not yet reached: stay visible until it does.
@@ -216,13 +200,8 @@ export function markAuthTransitionLoaded() {
   pendingHideTimer = setTimeout(() => {
     pendingHideTimer = null
     if (state.phase === 'success-pending') {
-      // Same InteractionManager defer as above so the elapsed >= min
-      // path and the pending-timer path behave identically.
-      InteractionManager.runAfterInteractions(() => {
-        if (state.phase === 'success-pending') {
-          setStateAndNotify({ phase: 'hidden' })
-        }
-      })
+      authFlowLog('splash', 'pendingHideTimer fired → hidden')
+      setStateAndNotify({ phase: 'hidden' })
     }
   }, currentMinVisibleMs - elapsed)
 }
