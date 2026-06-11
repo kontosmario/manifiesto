@@ -350,7 +350,7 @@ export function SignupScreen() {
               />
             </Svg>
           </Pressable>
-          <FernLogo size={26} palette={theme.isDark ? 'light' : 'dark'} iconMode />
+          <FernLogo size={26} palette={theme.isDark ? 'light' : 'dark'} />
           <View style={styles.navSpacer} />
         </View>
 

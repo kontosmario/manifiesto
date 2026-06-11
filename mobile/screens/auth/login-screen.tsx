@@ -517,7 +517,7 @@ export function LoginScreen() {
               />
             </Svg>
           </Pressable>
-          <FernLogo size={28} palette={theme.isDark ? 'light' : 'dark'} iconMode />
+          <FernLogo size={28} palette={theme.isDark ? 'light' : 'dark'} />
           <View style={styles.navSpacer} />
         </View>
 
@@ -559,7 +559,8 @@ export function LoginScreen() {
                     ) : (
                       // Fern fallback when no avatar slug has been
                       // cached yet (legacy install, brand-new account).
-                      <FernLogo size={64} palette="mono-light" iconMode />
+                      // Logo ENTERO (con tallo) — decisión owner 2026-06-11.
+                      <FernLogo size={64} palette="mono-light" />
                     )}
                   </View>
                 </View>
@@ -602,7 +603,7 @@ export function LoginScreen() {
                       end={{ x: 1, y: 1 }}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    <FernLogo size={64} palette="mono-light" iconMode />
+                    <FernLogo size={64} palette="mono-light" />
                   </View>
                 </View>
               </FadeInUp>
