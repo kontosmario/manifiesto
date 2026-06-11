@@ -311,32 +311,34 @@ export function LoginScreen() {
         // SUCCESS, so during the FaceID prompt the user saw the green
         // login-screen background while the hero was still loading
         // async — "pantalla verde vacía". Now the splash is up first:
-        // FaceID prompt opens on top of the fern brand surface. On
-        // success we keep it visible through markAppUnlocked + redirect;
-        // on cancel/fail we hide it so the regular lock UI re-emerges
-        // for the user's escape path.
+        // FaceID prompt opens on top of the fern brand surface.
         //
-        // `minVisibleMs: 0` — para unlock NO queremos el piso default
-        // de 3000ms (que existe para que la WarmFernLogo entrance se
-        // complete en cold-start sign-in). Acá el user ya vio el fern
-        // durante el FaceID prompt; después de success quiere entrar
-        // a la app inmediato, no esperar más segundos para que el fern
-        // termine su animación. Con 0 el splash se esconde apenas
-        // markAuthTransitionLoaded() fire desde RequireAuth del home.
-        showAuthTransitionSplash({ minVisibleMs: 0 })
+        // Lifecycle tied a EJECUCIÓN del FaceID, NO a timing:
+        //   - showAuthTransitionSplash() → ANTES del FaceID
+        //   - splash visible durante el prompt
+        //   - en cuanto authenticateBiometricAccess retorna (success O fail):
+        //     hideAuthTransitionSplash() → fade-out 320ms inmediato
+        //   - durante esos 320ms el router navega + home renderea
+        //   - el crossfade visual: splash fade-out + home fade-in
+        //
+        // Antes el splash quedaba colgado hasta que markAuthTransitionLoaded()
+        // fire desde el RequireAuth del home, lo que dependía del tiempo
+        // de mount del home. Ahora es 100% determinístico por la respuesta
+        // del biometric.
+        showAuthTransitionSplash()
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
           disableDeviceFallback: true,
         })
+        // Hide PRIMERO (libera el splash del lifecycle del FaceID).
+        // El fade-out de 320ms cubre la transición a home naturalmente.
+        hideAuthTransitionSplash()
         if (result.success) {
           await triggerHaptic('success')
           markAppUnlocked()
           router.replace('/')
           return
         }
-        // FaceID failed/cancelled → hide the splash so the user can see
-        // the lock screen's escape (Usar contraseña / retry).
-        hideAuthTransitionSplash()
         // Warning haptic for genuine failures (not user-initiated cancels),
         // matching the sign-in path's feedback.
         if (
