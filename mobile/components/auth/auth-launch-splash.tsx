@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import Animated, {
   Easing,
@@ -13,6 +13,11 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FernLogo } from '@/components/auth/fern-logo'
+import {
+  SOAR_AWAY_MS,
+  SOAR_SCALE_TO,
+  SOAR_TRANSLATE_Y,
+} from '@/features/auth-flow/auth-flow-motion'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useUnboundedLoopAnimation } from '@/hooks/use-unbounded-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -22,6 +27,14 @@ interface AuthLaunchSplashProps {
   onComplete?: () => void
   /** When true the splash never auto-hides; the parent controls visibility. */
   persistent?: boolean
+  /**
+   * Salida controlada por el parent (modo persistent, spec auth-flow
+   * 2026-06-11): 'soar' = soar-away premium (success del unlock — el
+   * hero entero se eleva y desvanece revelando el destino), 'fade' =
+   * fade clásico de 220ms (cancel → login, errores). Se ejecuta UNA
+   * vez (latched); cambios posteriores del prop se ignoran.
+   */
+  exitMode?: 'fade' | 'soar'
   /** Optional override; otherwise read from system accessibility. */
   reducedMotion?: boolean
 }
@@ -61,6 +74,7 @@ const PARTICLES = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
 export function AuthLaunchSplash({
   onComplete,
   persistent = false,
+  exitMode,
   reducedMotion,
 }: AuthLaunchSplashProps) {
   const insets = useSafeAreaInsets()
@@ -69,6 +83,8 @@ export function AuthLaunchSplash({
   const reduced = reducedMotion ?? systemReduced
 
   const overlayOpacity = useSharedValue(1)
+  const overlayScale = useSharedValue(1)
+  const overlayTranslateY = useSharedValue(0)
 
   useEffect(() => {
     if (persistent) return
@@ -91,7 +107,40 @@ export function AuthLaunchSplash({
     }
   }, [onComplete, overlayOpacity, persistent])
 
-  const overlayStyle = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }))
+  // Salida controlada (modo persistent): soar-away (success) o fade
+  // (cancel/error). Latched — corre una sola vez.
+  const exitStartedRef = useRef(false)
+  const handleExitComplete = useCallback(() => {
+    onComplete?.()
+  }, [onComplete])
+  useEffect(() => {
+    if (!exitMode || exitStartedRef.current) return
+    exitStartedRef.current = true
+    if (exitMode === 'soar') {
+      const config = { duration: SOAR_AWAY_MS, easing: Easing.bezier(0.4, 0, 0.2, 1) }
+      overlayScale.value = withTiming(SOAR_SCALE_TO, config)
+      overlayTranslateY.value = withTiming(SOAR_TRANSLATE_Y, config)
+      overlayOpacity.value = withTiming(0, config, (finished) => {
+        if (finished) runOnJS(handleExitComplete)()
+      })
+      return
+    }
+    overlayOpacity.value = withTiming(
+      0,
+      { duration: EXIT_MS, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(handleExitComplete)()
+      },
+    )
+  }, [exitMode, handleExitComplete, overlayOpacity, overlayScale, overlayTranslateY])
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+    transform: [
+      { translateY: overlayTranslateY.value },
+      { scale: overlayScale.value },
+    ],
+  }))
 
   return (
     <Animated.View style={[styles.overlay, overlayStyle]} pointerEvents="auto">

@@ -36,6 +36,10 @@ import {
   SOAR_SCALE_TO,
   SOAR_TRANSLATE_Y,
 } from '@/features/auth-flow/auth-flow-motion'
+import {
+  markLaunchSplashGone,
+  markLaunchSplashShown,
+} from '@/features/auth-flow/launch-splash-state'
 import { useOfflineTakeover } from '@/features/auth-flow/offline-takeover'
 import { useAuthFlowState } from '@/features/auth-flow/use-auth-flow'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -82,10 +86,43 @@ export function RootLayoutShell() {
     configureAuthFlow(realAuthFlowAdapters)
   }, [])
 
+  // Registro del entrance para el gate del min-hold (el soar jamás
+  // corta el fern growth — ver launch-splash-state).
+  useEffect(() => {
+    if (isLaunchSplashVisible) markLaunchSplashShown()
+  }, [isLaunchSplashVisible])
+
   const handleLaunchSplashComplete = useCallback(() => {
     hasShownAppLaunchSplash = true
+    markLaunchSplashGone()
     setLaunchSplashVisible(false)
   }, [])
+
+  // ─── Soberanía + salida del cold-start splash (spec 2026-06-11) ───
+  // Durante el viaje de unlock (locked/bridging) el launch NO se
+  // auto-esconde por timer: queda como LA superficie de marca (auroras
+  // y partículas vivas) — clave en Expo Go, donde la sheet de passcode
+  // tapa todo y al volver del success lo que se ve es este hero, no un
+  // fern estático. La salida la decide la máquina:
+  //   revealing → SOAR (el hero entero se eleva revelando el destino;
+  //               el min-hold garantiza que el growth ya completó)
+  //   fallback-login / bridge-error / ready → FADE clásico de 220ms
+  //   guest (sin sesión) → timer clásico intacto (handoff a welcome)
+  const machineForLaunch = useAuthFlowState()
+  const launchPhase = machineForLaunch.phase
+  const launchPersistent =
+    launchPhase === 'locked' ||
+    launchPhase === 'bridging' ||
+    launchPhase === 'revealing'
+  const launchExitMode: 'fade' | 'soar' | undefined = !isLaunchSplashVisible
+    ? undefined
+    : launchPhase === 'revealing'
+      ? 'soar'
+      : launchPhase === 'fallback-login' ||
+          launchPhase === 'bridge-error' ||
+          launchPhase === 'ready'
+        ? 'fade'
+        : undefined
 
   return (
     <RootErrorBoundary>
@@ -139,7 +176,11 @@ export function RootLayoutShell() {
             `onComplete` so we can dismount it.
           */}
           {isLaunchSplashVisible ? (
-            <AuthLaunchSplash onComplete={handleLaunchSplashComplete} />
+            <AuthLaunchSplash
+              onComplete={handleLaunchSplashComplete}
+              persistent={launchPersistent || launchExitMode !== undefined}
+              exitMode={launchExitMode}
+            />
           ) : null}
 
           {/*

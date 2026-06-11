@@ -57,12 +57,16 @@ any   ─ LOGOUT (logoutSession) → guest
 1. **Navegar solo cubierto**: `navigate` dispara al recibir `BRIDGE_OPAQUE`
    (emitido desde el callback de `withTiming` del fade-in del overlay, o de
    inmediato si el launch splash está cubriendo la pantalla).
-2. **El cold-start splash es SOBERANO**: mientras `AuthLaunchSplash` está en
-   pantalla el overlay queda suprimido — el bridge JAMÁS lo tapa (ni siquiera
-   post-success: con Face ID real el OK llega a mitad del growth). La máquina
-   navega por debajo y el fade-out propio del launch (~2.2s) revela el
-   destino ya montado. Si el auth tarda más que el growth, el launch ya se
-   fue y el bridge opera normal (fade-in + hold + soar sobre el boot fern).
+2. **El cold-start splash es SOBERANO y es el bridge del unlock**: mientras
+   `AuthLaunchSplash` está en pantalla el overlay queda suprimido (el bridge
+   JAMÁS lo tapa). Durante el viaje de unlock el launch NO se auto-esconde
+   por timer: persiste como superficie de marca (auroras + partículas vivas)
+   y SU SALIDA la decide la máquina — `revealing` → soar-away del hero
+   entero; cancel/error → fade 220ms. El min-hold del driver se estira hasta
+   `LAUNCH_ENTRANCE_MS` (gate en `launch-splash-state.ts`) para que el soar
+   jamás corte el growth. Guest (sin sesión) conserva el timer clásico
+   (handoff a welcome intacto). Sin launch (re-lock V5, login) → bridge
+   normal del overlay.
 3. Soar-away solo con `navigated ∧ minHold ∧ destinationReady`.
 4. Superficies idénticas en cada seam (BootScreen fern ≡ overlay fern,
    centro real de pantalla, sin insets).

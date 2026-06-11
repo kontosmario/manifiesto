@@ -18,6 +18,7 @@ import {
   SAFETY_TIMEOUT_MS,
   SOAR_AWAY_MS,
 } from '@/features/auth-flow/auth-flow-motion'
+import { getLaunchEntranceRemainingMs } from '@/features/auth-flow/launch-splash-state'
 
 export interface AuthFlowAdapters {
   runProbes: () => Promise<ProbesResult>
@@ -192,7 +193,11 @@ function execute(effect: AuthFlowEffect) {
       return
     case 'schedule': {
       cancelers.get(effect.timer)?.()
-      const ms = TIMER_DURATIONS[effect.timer]
+      // El min-hold nunca vence antes de que el entrance del cold-start
+      // splash termine: el reveal (soar) jamás corta el fern growth.
+      const ms = effect.timer === 'min-hold'
+        ? Math.max(TIMER_DURATIONS['min-hold'], getLaunchEntranceRemainingMs())
+        : TIMER_DURATIONS[effect.timer]
       timerDueAt.set(effect.timer, Date.now() + ms)
       const cancel = a.schedule(effect.timer, ms, () => {
         cancelers.delete(effect.timer)
