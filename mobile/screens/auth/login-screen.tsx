@@ -30,6 +30,7 @@ import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FernLogo } from '@/components/auth/fern-logo'
+import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
 import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
@@ -347,10 +348,12 @@ export function LoginScreen() {
           await triggerHaptic('success')
           markAppUnlocked()
           router.replace('/')
-          // Delay explícito: cubre la ventana de navigation + tabs mount
-          // + home first paint. Sin esto el splash hide muy temprano y
-          // el fade-out revela el forest canvas del navigator (verde).
-          setTimeout(() => hideAuthTransitionSplash(), 1200)
+          // NO setTimeout hide acá. El TransitionOverlay queda visible
+          // hasta que markAuthTransitionLoaded() fire desde el RequireAuth
+          // del home (cuando las queries terminan). Como el base layer
+          // del lock screen YA es welcomeBg + WarmFernLogo, no hay riesgo
+          // de revelar verde durante el fade-out — el surface debajo es
+          // continuo brand.
           return
         }
         // FAIL/CANCEL: hide inmediato para que el lock screen reaparezca.
@@ -618,6 +621,22 @@ export function LoginScreen() {
         contentContainerStyle={styles.screenContent}
         bodyStyle={styles.screenBody}
         scrollRef={scrollRef}
+        // Lock mode: hacer que el BASE LAYER del Screen sea welcomeBg
+        // + WarmFernLogo (no el theme.colors.background = #12211A canvas).
+        // El bug del "verde detrás del FaceID" venía de que el Screen's
+        // SafeAreaView usaba el theme.colors.background como default, y
+        // cuando el TransitionOverlay tenía opacity < 1 (durante fade-in
+        // o fade-out) se transparentaba al user el canvas verde. Con el
+        // base layer ahora siendo welcomeBg + fern, NUNCA hay verde
+        // visible — el surface es continuo brand-aware.
+        backgroundColor={isLockMode ? authTokens.welcomeBg : undefined}
+        backgroundSlot={
+          isLockMode ? (
+            <View style={styles.lockBackdrop} pointerEvents="none">
+              <WarmFernLogo size={180} />
+            </View>
+          ) : undefined
+        }
       >
         {/* Top nav */}
         <View style={styles.topNav}>
@@ -1147,6 +1166,17 @@ function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeI
 }
 
 const styles = StyleSheet.create({
+  // Lock-mode backdrop: WarmFernLogo centrado sobre welcomeBg al BASE
+  // LAYER del Screen. Garantiza que NO haya nunca verde flat visible
+  // detrás del FaceID prompt — el surface es continuo brand-aware
+  // independientemente del estado del TransitionOverlay (mid-fade, etc).
+  // Ver bloque de comentarios donde se pasa backgroundSlot.
+  lockBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: authTokens.welcomeBg,
+  },
   // Single scrollable column. `flexGrow: 1` makes the contentContainer
   // fill the ScrollView; the inner `bodyStyle` wrapper picks up the
   // flex and distributes the three sections via `space-between`.
