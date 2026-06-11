@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Linking,
   Platform,
   Pressable,
@@ -113,7 +114,7 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
                 CTA above the regular welcome controls so the rightful
                 owner can sign back in and cancel. */}
             <WelcomeCancelDeletionBanner />
-            <PrimaryCta label="Empezar" onPress={isBusy ? () => {} : onCreate} />
+            <PrimaryCta busy={isBusy} label="Empezar" onPress={isBusy ? () => {} : onCreate} />
             <SecondaryCta label="Ya tengo cuenta" onPress={isBusy ? () => {} : onLogin} />
 
             <Text style={styles.dataDisclosure}>
@@ -148,7 +149,15 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
 // ─────────────────────────────────────────────────────────────
 // CTAs
 // ─────────────────────────────────────────────────────────────
-function PrimaryCta({ label, onPress }: { label: string; onPress: () => void }) {
+function PrimaryCta({
+  label,
+  onPress,
+  busy = false,
+}: {
+  label: string
+  onPress: () => void
+  busy?: boolean
+}) {
   const scale = useSharedValue(1)
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
 
@@ -156,6 +165,7 @@ function PrimaryCta({ label, onPress }: { label: string; onPress: () => void }) 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ busy }}
       onPress={onPress}
       onPressIn={() => {
         scale.value = withTiming(0.98, { duration: motionDurations.micro })
@@ -169,15 +179,22 @@ function PrimaryCta({ label, onPress }: { label: string; onPress: () => void }) 
       <Animated.View style={[styles.primaryCta, style]}>
         <Text style={styles.primaryCtaLabel}>{label}</Text>
         <View style={styles.primaryCtaArrow}>
-          <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-            <Path
-              d="M5 3l5 5-5 5"
-              stroke={authTokens.welcomeBg}
-              strokeWidth={2.2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
+          {busy ? (
+            // Feedback del path "EMPEZAR con sesión colgada": mientras
+            // logoutSession limpia el device, la flecha gira en spinner
+            // (mismo chip, cero salto de layout).
+            <ActivityIndicator size="small" color={authTokens.welcomeBg} />
+          ) : (
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Path
+                d="M5 3l5 5-5 5"
+                stroke={authTokens.welcomeBg}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          )}
         </View>
       </Animated.View>
     </Pressable>

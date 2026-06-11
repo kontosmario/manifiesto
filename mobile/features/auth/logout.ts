@@ -1,24 +1,28 @@
+import { clearBiometricCredentials } from '@/lib/biometric-auth'
+import { supabase } from '@/lib/supabase'
+import { resetAppLock } from '@/features/auth/app-lock-state'
+import { clearLastUserProfile } from '@/lib/last-user-cache'
+import { resetAllTours } from '@/features/tours/persistence'
+import { clearAllTourPending } from '@/features/tours/tour-pending-store'
+import { deletePersistentValue } from '@/lib/persistent-kv'
+import { clearBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
+import { clearPendingNotificationRoute } from '@/lib/notification-pending-route'
+import { clearPin } from '@/lib/pin-lock'
+import { clearProtectionPromptDismissal } from '@/features/auth/protection-prompt-dismissal'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
+
+// Imports ESTÁTICOS a propósito (2026-06-11): los `await import()` que
+// había acá no ahorraban nada en producción (todos estos módulos ya
+// están en el grafo estático vía otros imports) pero en Expo Go cada
+// uno costaba un round-trip de bundling a Metro — medido ~2.5s de
+// "nada visible" al tocar EMPEZAR con sesión colgada. La única
+// excepción es push-notifications (subtree de ~745 módulos), que sigue
+// lazy más abajo.
+
 export async function logoutSession(input: {
   onError: (error: unknown) => void
   onSuccess: () => void
 }) {
-  const { clearBiometricCredentials } = await import('@/lib/biometric-auth')
-  const { supabase } = await import('@/lib/supabase')
-  const { resetAppLock } = await import('@/features/auth/app-lock-state')
-  const { clearLastUserProfile } = await import('@/lib/last-user-cache')
-  const { resetAllTours } = await import('@/features/tours/persistence')
-  const { clearAllTourPending } = await import('@/features/tours/tour-pending-store')
-  const { deletePersistentValue } = await import('@/lib/persistent-kv')
-  const { clearBiometricSetupShown } = await import(
-    '@/features/auth/biometric-setup-flag'
-  )
-  const { clearPendingNotificationRoute } = await import(
-    '@/lib/notification-pending-route'
-  )
-  const { clearPin } = await import('@/lib/pin-lock')
-  const { clearProtectionPromptDismissal } = await import(
-    '@/features/auth/protection-prompt-dismissal'
-  )
 
   // Capture userId BEFORE signOut so we can namespace the per-user
   // flag clear. After signOut the session is null and we'd lose
@@ -111,7 +115,6 @@ export async function logoutSession(input: {
   // Reset de la máquina auth-flow → `guest`. Sin esto la máquina queda
   // en `ready` y el próximo LOGIN_PENDING (re-login del mismo u otro
   // user) sería un no-op — el bridge nunca aparecería.
-  const { dispatchAuthFlow } = await import('@/features/auth-flow/auth-flow-controller')
   dispatchAuthFlow({ type: 'LOGOUT' })
 
   // ─── Phase 3: signOut LAST — fires SIGNED_OUT with clean state ─
