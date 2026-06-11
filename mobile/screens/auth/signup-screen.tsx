@@ -409,6 +409,7 @@ export function SignupScreen() {
                   setErrorMessage(null)
                   setPassword(v)
                 }}
+                helper="Mínimo 10 caracteres, combinando letras y números."
                 placeholder="••••••••"
                 ref={passwordRef}
                 returnKeyType="go"
@@ -416,7 +417,9 @@ export function SignupScreen() {
                 textContentType="newPassword"
                 value={password}
                 onSubmitEditing={() => {
-                  if (canSubmit) void submitSignup()
+                  // Sin gate de canSubmit: si falta algo, submitSignup
+                  // pinta el error y enfoca el campo.
+                  void submitSignup()
                 }}
               />
               {password.length > 0 ? (
@@ -530,10 +533,15 @@ export function SignupScreen() {
               </View>
             ) : null}
 
+            {/* SIEMPRE tappeable (fix 2026-06-11): con `disabled` el tap
+                con datos inválidos se tragaba silencioso — "presiono y
+                no pasa nada". Ahora submitSignup corre, pinta el error
+                (FeedbackPill) y enfoca el campo inválido. El estilo
+                muted via canSubmit se conserva como señal visual. */}
             <Pressable
               accessibilityLabel="Crear cuenta"
               accessibilityRole="button"
-              disabled={!canSubmit || isSubmitting}
+              disabled={isSubmitting}
               onPress={submitSignup}
               style={({ pressed }) => [
                 styles.submitCta,
