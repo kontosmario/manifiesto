@@ -22,7 +22,8 @@ import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-banner'
 import { AppProviders } from '@/providers/app-providers'
 import { recordInteraction } from '@/features/auth/inactivity-tracker'
-import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
+import { configureAuthFlow, dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
+import { realAuthFlowAdapters } from '@/features/auth-flow/auth-flow-adapters'
 import { getOverlayMode } from '@/features/auth-flow/auth-flow-machine'
 import {
   BRIDGE_FADE_IN_MS,
@@ -69,6 +70,14 @@ export function RootLayoutShell() {
   const [isLaunchSplashVisible, setLaunchSplashVisible] = useState(
     () => Platform.OS !== 'web' && !hasShownAppLaunchSplash,
   )
+  // Adapters reales configurados apenas el shell monta — ANTES de que
+  // cualquier pantalla (boot, login con deep-start) dispatchee eventos.
+  // BootScreen también configura (idempotente); los dev journeys
+  // reconfiguran con fakes y restauran al terminar.
+  useEffect(() => {
+    configureAuthFlow(realAuthFlowAdapters)
+  }, [])
+
   const authTransition = useAuthTransitionSplash()
   // Splash overlay shows for any phase that isn't 'hidden' — including
   // the error state, which renders the fallback UI inside the splash

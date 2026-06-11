@@ -1,6 +1,4 @@
-import { useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
-import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
   Dimensions,
   useWindowDimensions,
@@ -15,7 +13,7 @@ import { useAuthBiometricController } from '@/features/auth/use-auth-biometric-c
 import { useAuthKeyboardController } from '@/features/auth/use-auth-keyboard-controller'
 import { useLoginFormState } from '@/features/auth/use-login-form-state'
 import { useLoginSubmit } from '@/features/auth/use-login-submit'
-import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
@@ -31,7 +29,6 @@ interface UseLoginControllerOptions {
 }
 
 export function useLoginController(options?: UseLoginControllerOptions) {
-  const router = useRouter()
   const isReducedMotionEnabled = useReducedMotion()
   const { width } = useWindowDimensions()
   const screenHeight = Dimensions.get('screen').height
@@ -79,14 +76,12 @@ export function useLoginController(options?: UseLoginControllerOptions) {
   // rendered screen. The dead code path is gone — see commit history
   // if you need the previous implementation.
   const handleSignedInTransition = useCallback(() => {
-    authFlowLog('login-controller', 'handleSignedInTransition: markAppUnlocked + show + replace(/)')
-    markAppUnlocked()
-    // requireDestination: el splash espera a que HomeScreen llame
-    // markDestinationReady (cuando snapshot.data esté listo) para
-    // hide. Evita el "green pause" entre splash hide y home content.
-    showAuthTransitionSplash({ requireDestination: true })
-    router.replace('/')
-  }, [router])
+    // La máquina hace todo: marca unlocked, prefetchea el snapshot,
+    // espera el bridge opaco y navega al destino resuelto. Acá solo
+    // confirmamos la identidad.
+    authFlowLog('login-controller', 'handleSignedInTransition: dispatch LOGIN_SUCCESS')
+    dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })
+  }, [])
   const biometricController = useAuthBiometricController({
     clearFeedback: formActions.clearFeedback,
     isSubmitting,
@@ -108,16 +103,14 @@ export function useLoginController(options?: UseLoginControllerOptions) {
     resetAutoBiometricAttempt,
   } = biometricActions
   // Used by `useLoginSubmit` when a sign-up resolution returns the
-  // onboarding href. The name keeps "join" for back-compat with the
-  // existing call sites; the destination is now /(app)/biometric-setup
-  // (the pre-onboarding biometric activation gate; AppEntryGate falls
-  // through to /(app)/onboarding once the flag is set).
+  // onboarding href. El destino real lo resuelve el driver de la
+  // máquina (resolveDestinationRoute → biometric-setup/onboarding según
+  // flags); el href del resolver queda como dato legacy hasta Etapa 5.
   const navigateToJoin = useCallback(
-    (href: '/(app)/biometric-setup') => {
-      showAuthTransitionSplash()
-      router.replace(href)
+    (_href: '/(app)/biometric-setup') => {
+      dispatchAuthFlow({ type: 'SIGNUP_SUCCESS' })
     },
-    [router],
+    [],
   )
   const { handleSubmit } = useLoginSubmit({
     clearFeedback,

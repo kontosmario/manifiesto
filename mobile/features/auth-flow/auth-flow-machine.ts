@@ -216,7 +216,14 @@ export function transition(state: AuthFlowState, event: AuthFlowEvent): Transiti
       return fallbackLogin()
 
     case 'LOGIN_PENDING':
-      if (state.phase !== 'guest' && state.phase !== 'fallback-login' && state.phase !== 'locked') {
+      // `idle` permitido: un deep-start directo a /login (sin pasar por
+      // el boot) también debe poder mostrar el bridge al submit.
+      if (
+        state.phase !== 'guest' &&
+        state.phase !== 'fallback-login' &&
+        state.phase !== 'locked' &&
+        state.phase !== 'idle'
+      ) {
         return NOOP(state)
       }
       return enterBridging('login', { authed: false, haptic: false })
@@ -224,12 +231,24 @@ export function transition(state: AuthFlowState, event: AuthFlowEvent): Transiti
     case 'LOGIN_SUCCESS':
     case 'SIGNUP_SUCCESS': {
       const journey: AuthJourney = event.type === 'SIGNUP_SUCCESS' ? 'signup' : 'login'
+      // El prefetch del snapshot recién puede correr AHORA: en login no
+      // hay sesión hasta que el submit resuelve. El driver lo espera
+      // antes de resolver el destino (caches calientes para
+      // resolveDestinationRoute y para el primer paint del destino).
       if (state.phase === 'bridging') {
-        return advanceBridge({ ...state, authed: true })
+        const advanced = advanceBridge({ ...state, authed: true })
+        return {
+          state: advanced.state,
+          effects: [{ kind: 'prefetch-snapshot' }, ...advanced.effects],
+        }
       }
-      if (state.phase === 'guest' || state.phase === 'fallback-login') {
+      if (state.phase === 'guest' || state.phase === 'fallback-login' || state.phase === 'idle') {
         // OAuth callback / FaceID-desde-login sin LOGIN_PENDING previo.
-        return enterBridging(journey, { authed: true, haptic: true })
+        const entered = enterBridging(journey, { authed: true, haptic: true })
+        return {
+          state: entered.state,
+          effects: [{ kind: 'prefetch-snapshot' }, ...entered.effects],
+        }
       }
       return NOOP(state)
     }
