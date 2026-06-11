@@ -7,16 +7,19 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { Stack } from 'expo-router'
+import { Stack, usePathname } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
 import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
 import { BackgroundSnapshotOverlay } from '@/components/root/background-snapshot-overlay'
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
+import { InactivityRelockWatcher } from '@/components/root/inactivity-relock-watcher'
+import { InteractionTrackerProvider } from '@/components/root/interaction-tracker-provider'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-banner'
 import { AppProviders } from '@/providers/app-providers'
+import { recordInteraction } from '@/features/auth/inactivity-tracker'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -61,7 +64,17 @@ export function RootLayoutShell() {
     <RootErrorBoundary>
       <AppProviders>
         <ThemedRoot>
+          {/*
+            Sprint R-2 (2026-06-10) — global touch listener wraps the
+            entire app tree so every onTouchStart resets the inactivity
+            timer. Uses `pointerEvents="box-none"` so it observes touches
+            without consuming them. Must sit outermost (just inside the
+            ThemedRoot canvas) to catch interactions on every screen
+            including the lock screen itself.
+          */}
+          <InteractionTrackerProvider>
           <NotificationRouterBridge />
+          <NavigationInteractionRecorder />
           <ThemedRootStack />
 
           {/*
@@ -81,6 +94,17 @@ export function RootLayoutShell() {
             Renders nothing of its own.
           */}
           <BackgroundRelockWatcher />
+
+          {/*
+            Sprint R-2 (2026-06-10) — foreground inactivity re-lock.
+            Ticks every 30s while in foreground and calls
+            resetAppLock + replace('/') after >15min with no
+            interaction (touch / navigation / AppState→active).
+            Pairs with BackgroundRelockWatcher but covers the
+            distinct case of "app left unlocked in foreground while
+            user is distracted". Renders nothing of its own.
+          */}
+          <InactivityRelockWatcher />
 
           {/*
             Cold-start splash: shown ONCE per app launch, fades itself
@@ -126,6 +150,7 @@ export function RootLayoutShell() {
             active. See component for full rationale.
           */}
           <BackgroundSnapshotOverlay />
+          </InteractionTrackerProvider>
         </ThemedRoot>
       </AppProviders>
     </RootErrorBoundary>
@@ -257,6 +282,25 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
       <AuthTransitionSplash phase={phase} errorKind={errorKind} />
     </Animated.View>
   )
+}
+
+/**
+ * Sprint R-2 (2026-06-10) — records a user-interaction on every
+ * expo-router pathname change so navigation counts as activity for
+ * the inactivity tracker. Without this, a flow driven entirely by
+ * programmatic navigation (e.g. deep-link rebound, push that triggers
+ * a redirect chain) could drift toward the inactivity threshold even
+ * though the user is actively using the app.
+ *
+ * Lives inside AppProviders / ThemedRoot so the router context is
+ * mounted; renders nothing.
+ */
+function NavigationInteractionRecorder() {
+  const pathname = usePathname()
+  useEffect(() => {
+    recordInteraction()
+  }, [pathname])
+  return null
 }
 
 const styles = StyleSheet.create({
