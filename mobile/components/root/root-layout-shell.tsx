@@ -124,6 +124,15 @@ export function RootLayoutShell() {
         ? 'fade'
         : undefined
 
+  useEffect(() => {
+    if (!isLaunchSplashVisible) return
+    authFlowLog('launch', 'estado del cold-start splash', {
+      phase: launchPhase,
+      persistent: launchPersistent || launchExitMode !== undefined,
+      exitMode: launchExitMode ?? 'ninguno',
+    })
+  }, [isLaunchSplashVisible, launchPhase, launchPersistent, launchExitMode])
+
   return (
     <RootErrorBoundary>
       <AppProviders>
@@ -383,7 +392,7 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
     // shared values en el end-state de salida — re-animar es un no-op
     // visual que solo ensucia los logs.
     if (prev === 'soar' && key === 'out') return
-    authFlowLog('overlay', `animating ${key}`)
+    authFlowLog('overlay', `animating ${key}`, { suppressed, launchActive })
     if (key === 'in') {
       const config = { duration: BRIDGE_FADE_IN_MS, easing: EASE_OUT_STRONG }
       scale.value = withTiming(1, config)
@@ -399,7 +408,7 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
       scale.value = withTiming(SOAR_SCALE_TO, config)
       translateY.value = withTiming(SOAR_TRANSLATE_Y, config)
     }
-  }, [effectiveVisible, isRevealing, opacity, scale, translateY, reportOpaque])
+  }, [effectiveVisible, isRevealing, suppressed, launchActive, opacity, scale, translateY, reportOpaque])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

@@ -71,6 +71,7 @@
 
 import { useEffect, useState } from 'react'
 import { AppState, type AppStateStatus, StyleSheet, View } from 'react-native'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import Animated, {
   runOnJS,
   useAnimatedReaction,
@@ -101,6 +102,9 @@ export function BackgroundSnapshotOverlay() {
       // immediately to win the race with the snapshot capture.
       // `background` covers Android's typical lifecycle.
       // `active` returns the app to the foreground — remove the cover.
+      authFlowLog('snapshot-overlay', `AppState → ${next}`, {
+        coverWillBe: next === 'inactive' || next === 'background' ? 'ON' : next === 'active' ? 'OFF' : 'sin cambio',
+      })
       if (next === 'inactive' || next === 'background') {
         opacity.value = 1
         setCovered(true)
@@ -112,6 +116,29 @@ export function BackgroundSnapshotOverlay() {
     const sub = AppState.addEventListener('change', handleAppStateChange)
     return () => sub.remove()
   }, [opacity])
+
+  // WATCHDOG (2026-06-11): el prompt de LocalAuthentication (sheet de
+  // passcode en Expo Go, Face ID en builds) hace pasar la app por
+  // `inactive` → cover ON. Si el evento `active` del cierre del prompt
+  // se pierde o llega fuera de orden, el cover (verde sólido, z100,
+  // sobre TODO) queda pegado para siempre — el bug "pantalla solo
+  // verde post-success". Mientras el cover esté ON, verificamos cada
+  // 250ms el estado real: si iOS dice `active`, descubrimos y lo
+  // logueamos fuerte (sirve de diagnóstico además de cura).
+  useEffect(() => {
+    if (!covered) return
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        authFlowLog(
+          'snapshot-overlay',
+          '⚠ WATCHDOG: cover pegado con AppState=active (evento active perdido/desordenado) → descubriendo',
+        )
+        opacity.value = 0
+        setCovered(false)
+      }
+    }, 250)
+    return () => clearInterval(interval)
+  }, [covered, opacity])
 
   // Keep the JS-thread `covered` flag in sync if the shared value is
   // ever driven from elsewhere (defence in depth — currently nothing

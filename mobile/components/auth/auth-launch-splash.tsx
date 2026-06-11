@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FernLogo } from '@/components/auth/fern-logo'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import {
   SOAR_AWAY_MS,
   SOAR_SCALE_TO,
@@ -111,11 +112,13 @@ export function AuthLaunchSplash({
   // (cancel/error). Latched — corre una sola vez.
   const exitStartedRef = useRef(false)
   const handleExitComplete = useCallback(() => {
+    authFlowLog('launch', 'exit completado → unmount (lo que quede visible NO es el launch)')
     onComplete?.()
   }, [onComplete])
   useEffect(() => {
     if (!exitMode || exitStartedRef.current) return
     exitStartedRef.current = true
+    authFlowLog('launch', `exit ${exitMode} arrancando`)
     if (exitMode === 'soar') {
       const config = { duration: SOAR_AWAY_MS, easing: Easing.bezier(0.4, 0, 0.2, 1) }
       overlayScale.value = withTiming(SOAR_SCALE_TO, config)
