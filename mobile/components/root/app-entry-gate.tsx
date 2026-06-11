@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { markAppUnlocked, useAppLockState } from '@/features/auth/app-lock-state'
+import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -124,6 +125,33 @@ export function AppEntryGate() {
     if (isAppUnlocked) return
     markAppUnlocked()
   }, [isLoading, session, lockRequired, isAppUnlocked])
+
+  // PREMIUM cold-start lock handoff: show the auth-transition splash
+  // RIGHT NOW (before the Redirect to /(auth)/login). The lock screen
+  // takes 1-2 frames to mount + paint, during which its welcomeBg
+  // background (forest green) is visible behind the FaceID prompt.
+  // If we fire showAuthTransitionSplash() only from login-screen's
+  // mount useEffect, the 220ms TransitionOverlay fade-in races the
+  // first paint of the green lock screen → user sees green flash.
+  //
+  // Firing show() here means the TransitionOverlay starts its fade-in
+  // immediately while the AuthLaunchSplash (already mounted at root)
+  // is still visible at opacity 1. By the time the AuthLaunchSplash
+  // begins auto-fade-out (at HIDE_DELAY_MS = 2000ms), the
+  // TransitionOverlay is already at opacity 1 — seamless brand
+  // surface throughout the cold-start → lock-screen → FaceID flow.
+  //
+  // Only fire when we're ABOUT to redirect to the lock screen. The
+  // hide is handled by login-screen's triggerFaceID flow.
+  const shouldRedirectToLock =
+    !isLoading &&
+    Boolean(session) &&
+    (biometric.shouldUseBiometric || pin.isSet) &&
+    !isAppUnlocked
+  useEffect(() => {
+    if (!shouldRedirectToLock) return
+    showAuthTransitionSplash({ minVisibleMs: 0 })
+  }, [shouldRedirectToLock])
 
   if (isLoading) {
     // Always render the passive backdrop while loading. CRITICAL: do
