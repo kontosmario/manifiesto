@@ -191,17 +191,30 @@ export function useHasNestedAdvisorHost(): boolean {
 // doble-mount silencioso.
 
 let activeHostCount = 0
+let mutualExclusivityCheckTimer: ReturnType<typeof setTimeout> | null = null
 
 export function registerActiveAdvisorHost(): () => void {
   activeHostCount += 1
+  // Verificación diferida: cuando el nested host se monta + el top-level
+  // sigue activo, hay 1-2 commits transient donde ambos están registrados
+  // antes de que el top-level resuelva su step-aside via `useHasNestedAdvisorHost`.
+  // La lógica de exclusión es correcta — el conflict transient es ruido.
+  // El check diferido se cancela si el count baja a 1 antes del próximo tick,
+  // y solo dispara assertion para un conflict real persistente.
   if (__DEV__ && activeHostCount > 1) {
-    // eslint-disable-next-line no-console
-    console.error(
-      '[advisor-host] mutual exclusivity violated: ' +
-        `${activeHostCount} active hosts detected. Sólo uno debe estar ` +
-        'activo a la vez (top-level del shell o nested de Asistente). ' +
-        'Revisar el gate `isActiveHost` y los unmounts.',
-    )
+    if (mutualExclusivityCheckTimer) clearTimeout(mutualExclusivityCheckTimer)
+    mutualExclusivityCheckTimer = setTimeout(() => {
+      mutualExclusivityCheckTimer = null
+      if (activeHostCount > 1) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[advisor-host] mutual exclusivity violated: ' +
+            `${activeHostCount} active hosts detected. Sólo uno debe estar ` +
+            'activo a la vez (top-level del shell o nested de Asistente). ' +
+            'Revisar el gate `isActiveHost` y los unmounts.',
+        )
+      }
+    }, 0)
   }
   let released = false
   return () => {
