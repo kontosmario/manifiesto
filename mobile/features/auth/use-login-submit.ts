@@ -11,6 +11,10 @@ import {
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 import { isEmailNotConfirmedError } from '@/features/auth/email-confirmation-error'
+import {
+  hideAuthTransitionSplash,
+  showAuthTransitionSplash,
+} from '@/lib/auth-transition-splash'
 
 /**
  * Sprint H · H2 — generic auth-failure copy.
@@ -138,6 +142,16 @@ export function useLoginSubmit({
     submissionLockRef.current = true
     setSubmitting(true)
 
+    // Show the splash IMMEDIATELY on submit (not after the network call).
+    // Pre-fix: showAuthTransitionSplash() era llamado en handleSignedInTransition
+    // que solo fire DESPUÉS de que passwordSignIn/passwordSignUp resolvieran
+    // (~500-1500ms de network). Resultado: form locked durante el call, luego
+    // BAM splash aparece de golpe. User feedback: "aparece de manera ABRUPTA".
+    //
+    // Ahora: splash fire INSTANT al submit → fade-in 150ms cubre el network
+    // call → success path lo deja visible → error path lo esconde.
+    showAuthTransitionSplash()
+
     try {
       const signUpResponse =
         mode === 'sign-in'
@@ -172,6 +186,8 @@ export function useLoginSubmit({
       })
 
       if (resolution.type === 'email-confirmation') {
+        // No vamos a navegar — hide splash para que el user vea el info.
+        hideAuthTransitionSplash()
         onModeChange('sign-in')
         onPasswordReset()
         onInfoMessage(resolution.infoMessage)
@@ -216,6 +232,10 @@ export function useLoginSubmit({
       onSignedIn()
     } catch (error) {
       await triggerHaptic('error')
+      // Hide splash on error: el form vuelve a quedar visible con el
+      // error message. Si el call tuvo éxito, handleSignedInTransition
+      // mantiene el splash visible hasta el home.
+      hideAuthTransitionSplash()
       // H2: collapse credential-related errors to a generic message so
       // unconfirmed-account enumeration is impossible. Infra errors
       // (network, captcha, rate-limit) keep their specific copy because
