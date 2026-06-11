@@ -135,10 +135,21 @@ export function useAuthBiometricController({
       submissionLockRef.current = true
       setBiometricSubmitting(true)
 
+      // Splash visible INMEDIATO — antes del FaceID prompt + antes del
+      // network call. Cubre toda la ventana: FaceID prompt en sí, session
+      // refresh, navigation, home mount. Igual que el password flow
+      // (use-login-submit.ts) que muestra el splash al submit.
+      //
+      // Si el user cancela el FaceID o falla la auth: hideAuthTransitionSplash
+      // en los error paths para que el login screen vuelva visible.
+      showAuthTransitionSplash()
+
       try {
         const biometricResult = await authenticateBiometricAccess()
 
         if (!biometricResult.success) {
+          // Cancel/fail → hide splash + surface error en login.
+          hideAuthTransitionSplash()
           if (
             !options?.isAutomatic &&
             biometricResult.error !== 'user_cancel' &&
@@ -154,11 +165,9 @@ export function useAuthBiometricController({
           return
         }
 
-        // Optimistic feedback path: open the splash + haptic BEFORE
-        // the network round trip so the user sees instant
-        // acknowledgement of the biometric match.
+        // FaceID success: splash ya visible. Haptic + continuar al
+        // network call (refreshSession) que ya está cubierto.
         void triggerHaptic('success')
-        showAuthTransitionSplash()
 
         const credentials = await getBiometricCredentials()
 
