@@ -18,8 +18,8 @@
 import { useEffect, useRef } from 'react'
 import { AppState } from 'react-native'
 import type { AppStateStatus } from 'react-native'
-import { router } from 'expo-router'
-import { isAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
+import { isAppUnlocked } from '@/features/auth/app-lock-state'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import {
   INACTIVITY_THRESHOLD_MS,
   getLastInteractionAt,
@@ -59,10 +59,9 @@ export function InactivityRelockWatcher() {
           | 'extension',
       })
       if (lock) {
-        resetAppLock()
-        // Safe to call router here: this watcher is mounted in the root
-        // layout (RootLayoutShell), so the navigation context is ready.
-        router.replace('/')
+        // La máquina auth-flow ejecuta reset-app-lock + navigate('/')
+        // + run-probes (re-prompt de FaceID/PIN).
+        dispatchAuthFlow({ type: 'RELOCK', source: 'inactivity' })
       }
     }, TICK_INTERVAL_MS)
 

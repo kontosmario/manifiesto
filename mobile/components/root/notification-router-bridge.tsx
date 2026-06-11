@@ -1,11 +1,14 @@
 import { useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { isAppUnlocked } from '@/features/auth/app-lock-state'
+import {
+  getAuthFlowState,
+  subscribeAuthFlow,
+} from '@/features/auth-flow/auth-flow-controller'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import {
   consumePendingNotificationRoute,
   setPendingNotificationRoute,
-  subscribeToAppUnlock,
 } from '@/lib/notification-pending-route'
 import { normalizeAppRoute } from '@/utils/routes'
 
@@ -51,22 +54,24 @@ export function NotificationRouterBridge() {
 
     const openRoute = (value: unknown) => {
       const route = normalizeAppRoute(typeof value === 'string' ? value : null)
-      // J-Auth1: if the app is locked, defer the navigation until the
-      // user passes the biometric/PIN gate. We only stash the LATEST
-      // pending route — multiple taps during a lock window collapse
-      // onto the most recent intent, which matches the user's expectation.
-      if (!isAppUnlocked()) {
+      // J-Auth1 + spec 2026-06-11: if the app is locked OR the auth
+      // journey is still in flight (bridge/reveal), defer the
+      // navigation. Pushing mid-bridge sería clobbereado por el
+      // replace(destino) del driver. Solo el LATEST pending route se
+      // conserva — múltiples taps colapsan al intent más reciente.
+      if (!isAppUnlocked() || getAuthFlowState().phase !== 'ready') {
         setPendingNotificationRoute(route)
         return
       }
       router.push(route as never)
     }
 
-    // Flush any route the user tapped while the app was locked, as
-    // soon as the unlock happens. Subscribing here (not inline at the
-    // module level) ties the listener lifetime to the bridge mount.
-    const unsubscribeUnlock = subscribeToAppUnlock(() => {
+    // Flush del pending route cuando el viaje auth termina (`ready`) —
+    // DESPUÉS de la navegación del driver, así el deep link aterriza
+    // encima del destino en vez de ser pisado por el replace.
+    const unsubscribeReady = subscribeAuthFlow(() => {
       if (!isMounted) return
+      if (getAuthFlowState().phase !== 'ready') return
       const pending = consumePendingNotificationRoute()
       if (pending) {
         router.push(pending as never)
@@ -96,7 +101,7 @@ export function NotificationRouterBridge() {
     return () => {
       isMounted = false
       subscription?.remove()
-      unsubscribeUnlock()
+      unsubscribeReady()
     }
   }, [router])
 

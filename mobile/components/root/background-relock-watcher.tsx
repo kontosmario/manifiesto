@@ -14,12 +14,12 @@
 
 import { useEffect, useRef } from 'react'
 import { AppState } from 'react-native'
-import { router } from 'expo-router'
 import {
   BACKGROUND_RELOCK_THRESHOLD_MS,
   shouldRelock,
 } from '@/features/auth/background-relock'
-import { getUnlockedAt, isAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
+import { getUnlockedAt, isAppUnlocked } from '@/features/auth/app-lock-state'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { LOCK_THRESHOLDS } from '@/features/auth/lock-thresholds'
 
 export function BackgroundRelockWatcher() {
@@ -44,11 +44,10 @@ export function BackgroundRelockWatcher() {
         })
         leftActiveAtRef.current = null
         if (relock) {
-          resetAppLock()
-          // Safe to call router here: this watcher is mounted in the root
-          // layout (RootLayoutShell), so the navigation context is ready
-          // before any foreground event can fire.
-          router.replace('/')
+          // La máquina auth-flow ejecuta reset-app-lock + navigate('/')
+          // + run-probes (re-prompt de FaceID/PIN). El grace window de
+          // 30s ya fue evaluado por shouldRelock (pure fn testeada).
+          dispatchAuthFlow({ type: 'RELOCK', source: 'background' })
         }
         return
       }
