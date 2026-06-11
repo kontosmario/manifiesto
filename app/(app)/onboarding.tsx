@@ -10,6 +10,7 @@ import {
   markAuthTransitionLoaded,
 } from '@/lib/auth-transition-splash'
 import { shouldDismissAuthTransition } from '@/lib/auth-transition-dismiss-gate'
+import { useSignalDestinationReady } from '@/features/auth-flow/use-signal-destination-ready'
 import { OnboardingScreen } from '@/screens/home/onboarding-screen'
 
 export default function OnboardingRoute() {
@@ -36,6 +37,11 @@ export default function OnboardingRoute() {
       markAuthTransitionLoaded()
     }
   }, [isLoading, shouldShowAuthTransitionSplash])
+
+  // Máquina auth-flow: el onboarding como destino del bridge (signup,
+  // o unlock con onboarding pendiente) está listo cuando su data
+  // resolvió. Dual-emit con el store viejo hasta la Etapa 5.
+  useSignalDestinationReady(!isLoading)
 
   if (isLoading) {
     if (shouldShowAuthTransitionSplash) {

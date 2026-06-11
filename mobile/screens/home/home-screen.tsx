@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { markDestinationReady } from '@/lib/auth-transition-splash'
+import { useSignalDestinationReady } from '@/features/auth-flow/use-signal-destination-ready'
 import {
   Alert,
   RefreshControl,
@@ -69,7 +70,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // splash overlay que puede iniciar el fade-out. Esto evita el "green
   // pause" entre el splash hide y el home content visible — el overlay
   // queda visible hasta que el home tenga data para renderear.
+  // Dual-emit durante la migración: store viejo (login/signup) +
+  // máquina auth-flow (boot/unlock). El viejo se borra en Etapa 5.
   const hasSnapshotData = Boolean(snapshot.data)
+  useSignalDestinationReady(hasSnapshotData)
   useEffect(() => {
     if (hasSnapshotData) {
       markDestinationReady()
