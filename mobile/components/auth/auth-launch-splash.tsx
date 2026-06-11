@@ -225,6 +225,14 @@ export function AuthLaunchSplash({
           >
             <View style={styles.ctaReservePrimary} />
             <View style={styles.ctaReserveSecondary} />
+            {/* Espejo invisible del dataDisclosure del welcome (mismo
+                string + métricas para que wrappee idéntico). Sin esto
+                el bloque real es ~40px más alto que la reserva y el
+                fern del welcome aterriza ~20px más arriba que el del
+                splash — el "saltito" reportado 2026-06-11. */}
+            <Text style={styles.ctaReserveDisclosure}>
+              Solo guardamos tu email y lo que cargues acá (gastos, fijos, miembros del hogar). Nada se vende.
+            </Text>
             <Text style={styles.ctaReserveFineprint}>
               Al continuar aceptas los Términos y la Privacidad
             </Text>
@@ -665,8 +673,20 @@ const styles = StyleSheet.create({
   // según el viewport igual que el del welcome, así la altura
   // calculada coincide exacta y la alineación del wordmark/logo
   // arriba no salta cuando el splash hace fade-out.
-  ctaReserveFineprint: {
+  // Espeja welcome.styles.dataDisclosure (marginTop 22, 11/16) — texto
+  // transparente con el MISMO contenido para que la altura wrapeada
+  // coincida exacta en cualquier viewport.
+  ctaReserveDisclosure: {
     marginTop: 22,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '400',
+    color: 'transparent',
+    textAlign: 'center',
+  },
+  // Espeja welcome.styles.fineprint (marginTop 8 — debajo del disclosure).
+  ctaReserveFineprint: {
+    marginTop: 8,
     fontSize: 11,
     fontWeight: '400',
     color: 'transparent',

@@ -277,6 +277,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,251,242,0.55)',
     textAlign: 'center',
   },
+  // ⚠ Cualquier cambio de altura en este bloque (CTAs, disclosure,
+  // fineprint, márgenes) DEBE espejarse en el ctaReserve invisible de
+  // auth-launch-splash.tsx — si las alturas divergen, el fern del
+  // welcome aterriza a distinta Y que el del splash y el handoff salta
+  // (bug del 2026-06-11: el dataDisclosure se agregó solo acá y el
+  // hero quedó ~20px más arriba).
   ctaBlock: {
     paddingTop: 8,
   },
