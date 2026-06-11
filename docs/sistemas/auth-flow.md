@@ -115,5 +115,12 @@ any   ─ LOGOUT (logoutSession) → guest
   (un push mid-bridge sería pisado por el replace del driver).
 - El slow-path de sesión (refresh token del Keychain) NO borra credenciales
   al expirar — el login con password las re-arma (decisión documentada).
+- **Expo Go: gate biométrico OMITIDO en cold start** (2026-06-11). El host
+  de Expo Go no tiene NSFaceIDUsageDescription → el "prompt" degrada a la
+  sheet de passcode del sistema (full-screen, no representa el producto).
+  `runProbes` reporta `shouldUseBiometric: false` en Expo Go: con sesión
+  vas directo al bridge → home; el PIN de la app sigue gateando si está
+  seteado. El gate biométrico real se prueba en dev-client/EAS/TestFlight;
+  los viajes con prompt se simulan vía Settings → Desarrollo.
 - Expo Go: `disableDeviceFallback` se suaviza en el adapter biométrico
-  (sin NSFaceIDUsageDescription en el host binary).
+  para los prompts user-triggered que quedan (login manual, enrolamiento).
