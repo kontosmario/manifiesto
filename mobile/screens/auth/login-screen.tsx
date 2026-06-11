@@ -392,6 +392,25 @@ export function LoginScreen() {
     }
   }, [actions, isBusy, status, isLockMode, router, biometricState.label])
 
+  // PREMIUM lock-mode handoff: show the auth-transition splash AS SOON
+  // AS the lock screen mounts. This bridges the gap between the
+  // AuthLaunchSplash (cold-start splash that auto-fades after ~2s) and
+  // the FaceID prompt fire (~700ms after mount, but the AuthLaunch
+  // fade-out finishes at ~2.5s). Without this, after the AuthLaunch
+  // unmounts but before triggerFaceID() shows the TransitionOverlay,
+  // the user sees the login screen's green background behind the
+  // FaceID prompt. Calling show() on mount means TransitionOverlay is
+  // already visible BEFORE AuthLaunchSplash finishes fading — no gap.
+  //
+  // The show() call inside triggerFaceID() is a no-op when already
+  // showing (idempotent via the phase check in the store), so this
+  // doesn't double-fire.
+  useEffect(() => {
+    if (!isLockMode) return
+    if (params.autoBiometric !== '1') return
+    showAuthTransitionSplash({ minVisibleMs: 0 })
+  }, [isLockMode, params.autoBiometric])
+
   // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
   // Guarded by a ref so a setState-driven re-render (e.g. status flips
   // to 'scanning') doesn't re-enter the prompt. We also clear the
