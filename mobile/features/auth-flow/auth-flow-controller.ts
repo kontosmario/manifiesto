@@ -51,6 +51,11 @@ let state: AuthFlowState = initialAuthFlowState
 let adapters: AuthFlowAdapters | null = null
 let prefetchPromise: Promise<void> | null = null
 const cancelers = new Map<AuthTimer, () => void>()
+// Vencimiento wall-clock de cada timer agendado. setTimeout puede
+// starvearse cuando el JS thread está bloqueado (Metro lazy-bundling
+// en Expo Go dev, mount pesado del home) — medido: min-hold de 550ms
+// disparando 1.5s tarde. En cada dispatch flusheamos los vencidos.
+const timerDueAt = new Map<AuthTimer, number>()
 const listeners = new Set<() => void>()
 
 export function configureAuthFlow(next: AuthFlowAdapters) {
@@ -71,12 +76,33 @@ export function subscribeAuthFlow(listener: () => void): () => void {
 export function resetAuthFlowForTesting() {
   for (const cancel of cancelers.values()) cancel()
   cancelers.clear()
+  timerDueAt.clear()
   state = initialAuthFlowState
   adapters = null
   prefetchPromise = null
 }
 
-export function dispatchAuthFlow(event: AuthFlowEvent) {
+/**
+ * Adelanta timers vencidos por wall-clock cuyo callback sigue encolado
+ * (JS thread bloqueado). Idempotente: el evento del timer flipea su
+ * flag en la máquina, así que un doble-fire es no-op.
+ */
+function flushOverdueTimers() {
+  if (timerDueAt.size === 0) return
+  const now = Date.now()
+  for (const [timer, dueAt] of [...timerDueAt]) {
+    if (now < dueAt) continue
+    timerDueAt.delete(timer)
+    cancelers.get(timer)?.()
+    cancelers.delete(timer)
+    adapters?.log(`timer ${timer} vencido por wall-clock → flush`, {
+      lateMs: now - dueAt,
+    })
+    process(TIMER_EVENTS[timer])
+  }
+}
+
+function process(event: AuthFlowEvent) {
   if (!adapters) return
   const result = transition(state, event)
   const changed = result.state !== state
@@ -86,6 +112,12 @@ export function dispatchAuthFlow(event: AuthFlowEvent) {
   })
   if (changed) for (const listener of listeners) listener()
   for (const effect of result.effects) execute(effect)
+}
+
+export function dispatchAuthFlow(event: AuthFlowEvent) {
+  if (!adapters) return
+  flushOverdueTimers()
+  process(event)
 }
 
 function execute(effect: AuthFlowEffect) {
@@ -160,8 +192,11 @@ function execute(effect: AuthFlowEffect) {
       return
     case 'schedule': {
       cancelers.get(effect.timer)?.()
-      const cancel = a.schedule(effect.timer, TIMER_DURATIONS[effect.timer], () => {
+      const ms = TIMER_DURATIONS[effect.timer]
+      timerDueAt.set(effect.timer, Date.now() + ms)
+      const cancel = a.schedule(effect.timer, ms, () => {
         cancelers.delete(effect.timer)
+        timerDueAt.delete(effect.timer)
         dispatchAuthFlow(TIMER_EVENTS[effect.timer])
       })
       cancelers.set(effect.timer, cancel)
@@ -170,6 +205,7 @@ function execute(effect: AuthFlowEffect) {
     case 'cancel-timers':
       for (const cancel of cancelers.values()) cancel()
       cancelers.clear()
+      timerDueAt.clear()
       return
   }
 }

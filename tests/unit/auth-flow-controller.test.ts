@@ -94,6 +94,27 @@ describe('auth-flow-controller', () => {
     expect(getAuthFlowState().phase).toBe('ready')
   })
 
+  it('timer starved (JS thread bloqueado): el próximo dispatch lo flushea por wall-clock', async () => {
+    // schedule que NUNCA dispara su callback — simula setTimeout
+    // encolado detrás de un JS thread bloqueado (Metro bundling).
+    const adapters = makeAdapters({ schedule: vi.fn(() => () => {}) })
+    configureAuthFlow(adapters)
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+    try {
+      dispatchAuthFlow({ type: 'BOOT' })
+      await flush()
+      dispatchAuthFlow({ type: 'BRIDGE_OPAQUE' })
+      await flush()
+      // El min-hold (550ms) venció hace rato por wall-clock…
+      nowSpy.mockReturnValue(1_003_000)
+      // …así que este dispatch lo adelanta y el reveal arranca ya.
+      dispatchAuthFlow({ type: 'DESTINATION_READY' })
+      expect(getAuthFlowState().phase).toBe('revealing')
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
   it('prefetch que rechaza dispatchea LOAD_FAILED(network)', async () => {
     const adapters = makeAdapters({
       prefetchSnapshot: vi.fn(async () => { throw new Error('fetch failed') }),

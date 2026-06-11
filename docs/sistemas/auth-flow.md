@@ -103,6 +103,12 @@ any   ─ LOGOUT (logoutSession) → guest
 
 ## Gotchas
 
+- **Timers starved**: setTimeout puede dispararse tarde con el JS thread
+  bloqueado (Metro lazy-bundling en Expo Go dev, mount pesado del home) —
+  medido 1.5s de drift en el min-hold. El driver registra el vencimiento
+  wall-clock de cada timer y los flushea vencidos en cada dispatch
+  (`flushOverdueTimers`), así DESTINATION_READY adelanta el reveal.
+
 - `logoutSession` DEBE despachar `LOGOUT` (ya lo hace) — sin eso la máquina
   queda en `ready` y el próximo login no muestra bridge.
 - `NotificationRouterBridge` difiere deep links hasta `phase === 'ready'`
