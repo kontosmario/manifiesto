@@ -33,9 +33,13 @@ docs/ESTADO-DEL-PROYECTO/
 
 ## 📌 Foto actual
 
-→ **[`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md)** — snapshot inmediatamente actionable READY vs PENDIENTES post-ciclo de junio (CR v1+v2+v3 + Sprints A-D + Backlog + Spec B). HEAD `814925f`, 654/654 tests, 12 migrations remote-verified.
+→ **[`2026-06-11-security-hardening-FINAL.md`](2026-06-11-security-hardening-FINAL.md)** — 🟢 **TRULY 100% clean**. 11 audit passes + 14 sprints (E→Q) cerraron ~185 findings. Audit-saturated verdict. Owner action items DONE. App Store submit-ready. **Estado canónico actual de seguridad.**
 
-→ **[`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md)** — snapshot exhaustivo pantalla-por-pantalla verificado contra commit `7962ea2`. Sigue siendo la foto canónica de sistemas/UI; el doc 2026-06-08 es el delta operacional encima.
+→ **[`2026-06-11-app-store-assembled-ready-for-review.md`](2026-06-11-app-store-assembled-ready-for-review.md)** — App Store listing + screenshots + seed account para Apple Review. 7/8 H-items closed. Solo falta el click "Añadir a revisión".
+
+→ **[`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md)** — snapshot operacional READY vs PENDIENTES. Útil para entender qué se construyó pre-junio. **Status hoy: todos los H1-H8 cerrados, listo para submit.**
+
+→ **[`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md)** — snapshot exhaustivo pantalla-por-pantalla verificado contra commit `7962ea2`. Sigue siendo la foto canónica de sistemas/UI.
 
 ## 🚀 Roadmap priorizado
 
@@ -45,6 +49,12 @@ docs/ESTADO-DEL-PROYECTO/
 
 | Fecha | Doc | Cubre |
 |---|---|---|
+| **2026-06-11** | [`2026-06-11-security-hardening-FINAL.md`](2026-06-11-security-hardening-FINAL.md) | 🟢 **TRULY 100% clean — security journey end-to-end**. 11 audit passes + 14 sprints (E→Q) cerraron ~185 findings. Owner action items DONE (EXPO_UPDATE_PRIVATE_KEY, App Store password, Universal Links AASA + assetlinks, Supabase Auth config). Tests 748 verde. App Store submit-ready. Audit-saturated verdict |
+| 2026-06-11 | [`2026-06-11-app-store-assembled-ready-for-review.md`](2026-06-11-app-store-assembled-ready-for-review.md) | App Store listing copy + 9 screenshots upload + seed account `apple.review@manifiestoapp.com` para Apple Review. H1-H7 closed, solo falta H8 (click submit). Brand cover decision + risk docs |
+| 2026-06-10 | [`2026-06-10-security-hardening-DONE.md`](2026-06-10-security-hardening-DONE.md) | 🟡 **HISTÓRICO** — cubrió solo Sprints E→I. El doc FINAL del 2026-06-11 supera y reemplaza |
+| 2026-06-10 | [`2026-06-10-security-hardening-sprints.md`](2026-06-10-security-hardening-sprints.md) | Plan inicial de los 4 sprints (E-H) antes de ejecutar — útil para entender cómo arrancó el journey |
+| 2026-06-10 | [`2026-06-10-domain-and-legal-site-completed.md`](2026-06-10-domain-and-legal-site-completed.md) | Dominio `manifiestoapp.com` LIVE (Cloudflare Registrar). Privacy + Terms hosteados en repo separado. Email forwarding. Mobile OTA aplicado. H1+H2 cerrados |
+| 2026-06-09 | [`2026-06-09-apple-dev-setup-completed.md`](2026-06-09-apple-dev-setup-completed.md) | Apple Developer + EAS + TestFlight setup completo. App ID + APNs key + ASC API key + certs + provisioning profile. Build 1.0.0 (1) en device del owner |
 | 2026-06-08 | [`2026-06-08-estado-ready-pendientes.md`](2026-06-08-estado-ready-pendientes.md) | **Master READY vs PENDIENTES post-ciclo de junio**. Features completos (Spec B + Reserva + Meta wizard + Wrapped integration), 3 rondas de CR (78+46+9 findings closed), 4 sprints (A-D), backlog tests (+113), 12 migrations remote-verified. Lista accionable de pendientes high/medium/low + decisiones owner. Estado camino a App Store |
 | 2026-06-08 | [`2026-06-08-codereview-hardening-completed.md`](2026-06-08-codereview-hardening-completed.md) | **Code review + hardening sprint** (2 rondas, ~124 findings cerrados). Sprint A (data layer, 10 commits, `syncAllAfterMutation` adoption en 12 hooks), Sprint B (SQL, 2 migrations, `is_family_member` excluye blocked), Sprint C (integration tests en CI), Sprint D (cleanup, 18 archivos huérfanos eliminados, `pointerEvents` migrado a prop). Backlog tests (+113). Fix-round mobile (5 commits: data-layer refinements, streak-sheet cleanup, screens hardening, lint config). Fix-round backend (1 commit: control-advisor schema fix, multi-family guard, docs assumption, blocked-member RLS test). 29 commits, 5 migrations, 654 tests verdes |
 | 2026-06-08 | [`2026-06-08-spec-b-leftover-decision-shipped.md`](2026-06-08-spec-b-leftover-decision-shipped.md) | **Spec B — month-close leftover decision** (meta/acumular/reserva/skip persistido en `month_close_decisions`) + **Reserva management** (RPC `apply_reserve_decision` con atomic WHERE-guard, ReserveBlock en Control v2) + **Meta wizard de 4 steps + Settings simplificación** (read-only + lifecycle, nuevo `useLatestSavingsGoal`). Integración inline en la closing scene del Wrapped (pending + past read-only). Fixes UX importantes: tap zones siempre ocultas en última escena del wrapped, bridge re-trigger guard 1.5s, chip stack horizontal del hero, chip Reserva amber/gold, MetaCard post-create (userId plumbing), empty state engañoso de gastos en cycle frozen. 3 rondas de code review todas cerradas. 75 commits, 8 migrations, 544/544 tests |

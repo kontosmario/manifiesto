@@ -2,20 +2,21 @@
 
 > Hub único de toda la documentación del proyecto. Todo lo que antes estaba disperso (raíz, carpetas sueltas, audit) vive ahora acá, organizado por tema.
 >
-> **Última reorganización:** 2026-05-22.
+> **Última reorganización:** 2026-05-22 · **Última actualización TL;DR:** 2026-06-11.
 
 ---
 
 ## 🧭 Estado general del proyecto (TL;DR)
 
-**Manifiesto** es una app mobile (Expo + React Native + Supabase) de **finanzas familiares compartidas** (es-AR). Está **feature-complete desde 2026-05-09**; el foco actual es operación, hardening, performance y pulido — no scope nuevo.
+**Manifiesto** es una app mobile (Expo + React Native + Supabase) de **finanzas familiares compartidas** (es-AR). **Feature-complete desde 2026-05-09**, **security-hardened audit-saturated desde 2026-06-11**, **listo para Apple submit** (solo falta el click del owner).
 
-- ✅ **LIVE:** auth completo, onboarding, Home + Control + Fijos (V2), Gastos (V2), asistente heurístico, rachas, logros, Manifiesto Wrapped, ediciones, account deletion end-to-end, **Activity OCR + Import Review wizard** (2026-06-03 — captura de feed bancario → wizard one-by-one → bulk insert).
-- ⏸️ **En pausa:** monetización (RevenueCat/IAP), Sentry, PostHog, AI Coach LLM.
-- ⛔ **Bloqueado por Apple Developer Program** (sin comprar): submit a App Store, IAP, push iOS, widgets.
-- 🔴 **Deuda crítica abierta** (independiente de Apple): vulnerabilidad RLS en `expenses` (cualquier miembro de familia puede editar/borrar gastos de otro).
+- ✅ **LIVE en código:** auth completo (Apple Sign-In con nonce CSPRNG, PIN 4-8 dígitos + 600k PBKDF2 + weak blocklist + server lockout mirror, biometric Keychain authority), onboarding, Home + Control + Fijos (V2), Gastos (V2), asistente heurístico, rachas, logros, Manifiesto Wrapped, ediciones, account deletion end-to-end (FK fixed, owner-of-family guard), Activity OCR + Import Review wizard.
+- ✅ **LIVE en producción operacional:** dominio `manifiestoapp.com` con Privacy + Terms hosteados (Cloudflare Pages), Universal Links + App Links (`/.well-known/` para iOS/Android), email forwarding `soporte@`, EAS OTA code-signing (RSA-2048 keypair + cert↔key CI verify), seed account `apple.review@manifiestoapp.com` para Apple Review.
+- ✅ **App Store v1.0 ASSEMBLED:** build 1.0.0 (1) en TestFlight, listing copy + 9 screenshots subidos, Privacy Nutrition + Age Rating completados, seed account configurada. Solo falta el click "Añadir a revisión".
+- ⏸️ **En pausa por decisión owner:** monetización (RevenueCat/IAP), Sentry, PostHog, Google Sign-In (no nonce en SDK free), AI Coach LLM.
+- 🟢 **Security state:** TRULY 100% clean — 11 audit passes + 14 remediation sprints (E→Q) cerraron ~185 findings. Audit-saturated verdict.
 
-> **La fuente de verdad del estado real y actual** (cada vista, componente, servicio) es el snapshot fechado **[ESTADO-DEL-PROYECTO](ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/00-INDICE.md)**.
+> **Fuente de verdad para sistemas/UI**: [ESTADO-DEL-PROYECTO/2026-05-21](ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/00-INDICE.md). **Fuente de verdad para security state actual**: [ESTADO-DEL-PROYECTO/2026-06-11-security-hardening-FINAL.md](ESTADO-DEL-PROYECTO/2026-06-11-security-hardening-FINAL.md).
 
 ---
 

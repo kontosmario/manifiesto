@@ -1,8 +1,12 @@
-# Security Hardening Sprints E → I · COMPLETE
+# Security Hardening Sprints E → I · COMPLETE (HISTÓRICO)
 
-> **Fecha cierre**: 2026-06-10
+> ⚠️ **Este doc cubre solo hasta Sprint I (2026-06-10)**. El journey continuó con Sprints J → Q y Audits #3 a #11 hasta llegar al estado "audit-saturated". Ver:
+>
+> → **[`2026-06-11-security-hardening-FINAL.md`](2026-06-11-security-hardening-FINAL.md)** ← canónico actual
+>
+> **Fecha cierre original**: 2026-06-10
 > **Tipo**: milestone — red team audit + remediation completo + re-audit + residual fixes.
-> **Status**: ✅ **Verde para Apple submit**.
+> **Status**: ✅ Verde para Apple submit (parcial — siguió expandiéndose).
 
 ## TL;DR
 

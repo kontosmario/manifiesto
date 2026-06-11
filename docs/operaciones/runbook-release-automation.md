@@ -502,3 +502,27 @@ Sprint P · Audit #9 P-7 (2026-06-10) — recordatorios concentrados para evitar
 - Apple Review password: rotar antes de cada App Store submit.
 
 Cuando agregues un nuevo recurso con expiración (otro cert, otra key, un dominio), **sumá la fila acá en el mismo commit**. Si no está en esta tabla, asumí que nadie va a acordarse.
+
+## Universal Links + App Links (Sprint P · P-1)
+
+`https://manifiestoapp.com/auth/*` se intercepta automáticamente por la app mobile (iOS via Universal Links, Android via App Links). Cierra el vector de scheme hijacking documentado en Sprint P · P-1.
+
+**Setup completo**: ver [`docs/sistemas/universal-links.md`](../sistemas/universal-links.md) para arquitectura + componentes + rotación.
+
+**Highlights operacionales**:
+- AASA + assetlinks viven en repo separado [`kontosmario/manifiestoapp-site`](https://github.com/kontosmario/manifiestoapp-site) bajo `/.well-known/`.
+- `_headers` del site repo fuerza `Content-Type: application/json` (Apple lo exige; AASA sin extensión confunde el content-sniffing default).
+- Supabase Auth dashboard tiene 4 redirect URLs cargados (`manifiesto://auth/callback`, `manifiesto://auth/**`, `https://manifiestoapp.com/auth/callback`, `https://manifiestoapp.com/auth/**`).
+- Site URL en Supabase Auth = `https://manifiestoapp.com`.
+- **Android pendiente**: `assetlinks.json` tiene `PLACEHOLDER_REPLACE_WITH_PLAY_CONSOLE_SHA256` — actualizar al fingerprint real cuando se publique Android v1.0.
+
+**Verificación post-deploy** (cualquier cambio al site repo):
+```bash
+curl -sI https://manifiestoapp.com/.well-known/apple-app-site-association
+# HTTP/2 200 + content-type: application/json (sin redirect)
+
+curl -sI https://manifiestoapp.com/.well-known/assetlinks.json
+# Same
+```
+
+**NO correr** `supabase config push --linked` sin actualizar antes el local config.toml — el push sobrescribe TODA la sección [auth] en prod.

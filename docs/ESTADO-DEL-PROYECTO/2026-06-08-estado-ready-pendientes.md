@@ -1,13 +1,13 @@
-# Estado del proyecto · 2026-06-08 (actualizado 2026-06-11)
+# Estado del proyecto · 2026-06-08 (actualizado 2026-06-11 final)
 
 > **Snapshot inmediatamente actionable**: qué está READY (mergeable / shippeable hoy) vs qué queda PENDIENTE.
 >
-> **HEAD (2026-06-11)**: 🎯 **App Store v1.0 ASSEMBLED — listo para el click de Submit for Review.** Listing copy, screenshots, privacy nutrition, age rating, seed account para reviewers, build atada, todo cargado en App Store Connect. Solo falta que owner clickee "Añadir a revisión" cuando decida.
-> Branch `main`, sincronizado con `origin/main`. Sprints A-D + CR rounds + Apple Dev setup + dominio+sitio legal + listing copy + screenshots completos. 0 deuda técnica.
+> **HEAD (2026-06-11 FINAL)**: 🟢 **TRULY 100% clean.** 11 audit passes + 14 sprints (E→Q) closed ~185 security findings. Audit-saturated verdict. **Todos los owner action items DONE** — Universal Links AASA live, Supabase Auth redirect URLs configurados, GitHub Secrets cargados. Solo falta el click de "Añadir a revisión" en App Store Connect (decisión owner timing). Ver [`2026-06-11-security-hardening-FINAL.md`](2026-06-11-security-hardening-FINAL.md).
+> Branch `main`, sincronizado con `origin/main`. 0 deuda técnica, 748 tests verde, 0 lint/typecheck errors.
 >
-> **🎯 Source of truth para "qué hay que hacer ahora"**: sección 2 abajo (PENDIENTES) — solo queda el click + follow-ups post-launch.
+> **🎯 Para responder "qué falta"**: NADA técnico. Solo el click + follow-ups POST-launch (analytics tracking, conversion rate, etc).
 >
-> **Foto canónica de pantallas/sistemas**: sigue siendo [`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md). Este doc es el *delta y plan*, no reemplaza la foto exhaustiva — sólo la complementa para el período post-2026-05-21.
+> **Foto canónica de pantallas/sistemas**: sigue siendo [`2026-05-21-estado-actual/`](2026-05-21-estado-actual/00-INDICE.md). Este doc es el *delta y plan operacional*; el FINAL del 2026-06-11 cubre el journey de seguridad.
 
 ---
 

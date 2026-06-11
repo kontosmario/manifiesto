@@ -1,5 +1,13 @@
 # Security pendings — 2026-05-08
 
+> 🟢 **CERRADO 2026-06-11** — El security journey post-2026-05-08 cerró TODOS los pendientes que estaban acá + un orden de magnitud más vía 11 audit passes y 14 remediation sprints (E→Q). Estado actual: **TRULY 100% clean / audit-saturated**.
+>
+> Ver [`docs/ESTADO-DEL-PROYECTO/2026-06-11-security-hardening-FINAL.md`](../ESTADO-DEL-PROYECTO/2026-06-11-security-hardening-FINAL.md) como source of truth actual.
+>
+> Lo de abajo se mantiene como **registro histórico** del estado en 2026-05-08, no es lista activa de pendings.
+
+---
+
 Acciones diferidas del hardening del 2026-05-07/08. **Ninguna es bloqueante**: el escudo crítico (RLS, RPCs, edge functions, secure storage, PKCE) ya está en producción. Estas son mejoras de defensa-en-profundidad que requieren UI del dashboard, plan Pro, o cambios en cliente.
 
 ---

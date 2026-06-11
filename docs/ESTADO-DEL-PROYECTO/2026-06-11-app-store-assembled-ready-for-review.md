@@ -135,6 +135,11 @@ El loop suele ser: rechazo → fix → re-submit → 1-2 días más de review. T
 - Dominio + Privacy + Terms LIVE (milestone 2026-06-10)
 - Email forwarding LIVE
 - OTA Update channel activo
+- **Security hardening end-to-end completo** (milestone 2026-06-11 FINAL — 11 audits + 14 sprints + 185 findings closed)
+- **Universal Links + App Links** AASA + assetlinks LIVE en `manifiestoapp.com` (Sprint P · P-1)
+- **Supabase Auth redirect URLs** configurados (Site URL `https://manifiestoapp.com` + 4 redirect URLs)
+- **EXPO_UPDATE_PRIVATE_KEY** cargado en GitHub Secrets (OTA code signing operativo)
+- **Apple Review credentials** rotados out-of-band + actualizados en App Store Connect
 
 ## Lo que queda como follow-up (post-launch)
 
