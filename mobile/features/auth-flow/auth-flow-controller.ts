@@ -103,6 +103,7 @@ function execute(effect: AuthFlowEffect) {
               shouldUseBiometric: false,
               pinSet: false,
               hasSavedCredentials: false,
+              isUnlocked: false,
             },
           }),
       )

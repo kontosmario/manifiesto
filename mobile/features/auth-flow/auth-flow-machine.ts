@@ -16,6 +16,12 @@ export interface ProbesResult {
   shouldUseBiometric: boolean
   pinSet: boolean
   hasSavedCredentials: boolean
+  /**
+   * App-lock ya abierto en este launch (login con password / OAuth /
+   * signup ya marcaron unlocked). Evita re-promptear Face ID cuando el
+   * boot se re-entra post-login: va directo al bridge.
+   */
+  isUnlocked: boolean
 }
 
 interface BridgingState {
@@ -135,7 +141,18 @@ function fallbackLogin(): TransitionResult {
 export function transition(state: AuthFlowState, event: AuthFlowEvent): TransitionResult {
   switch (event.type) {
     case 'BOOT':
-      if (state.phase !== 'idle') return NOOP(state)
+      // Re-ejecutable desde fases TERMINALES (guest/fallback-login/ready):
+      // el boot se re-monta cuando un flujo viejo o un bounce de
+      // RequireAuth navega a '/'. Mid-journey (probing/locked/bridging/
+      // revealing) es no-op — no se interrumpe un viaje en curso.
+      if (
+        state.phase !== 'idle' &&
+        state.phase !== 'guest' &&
+        state.phase !== 'fallback-login' &&
+        state.phase !== 'ready'
+      ) {
+        return NOOP(state)
+      }
       return { state: { phase: 'probing' }, effects: [{ kind: 'run-probes' }] }
 
     case 'PROBES_RESOLVED': {
@@ -146,6 +163,17 @@ export function transition(state: AuthFlowState, event: AuthFlowEvent): Transiti
           ? '/(auth)/login?autoBiometric=1'
           : '/(auth)/welcome'
         return { state: { phase: 'guest' }, effects: [{ kind: 'navigate', to }] }
+      }
+      if (probes.isUnlocked) {
+        // Ya desbloqueado en este launch (post-login con password,
+        // OAuth, o bounce a '/'): sin re-prompt — el bridge cubre el
+        // gate → destino. Sin mark-app-unlocked (no extender el grace
+        // window del re-lock).
+        const unlocked = enterBridging('unlock', { authed: true, haptic: false })
+        return {
+          state: unlocked.state,
+          effects: [{ kind: 'prefetch-snapshot' }, ...unlocked.effects],
+        }
       }
       if (probes.shouldUseBiometric) {
         return {

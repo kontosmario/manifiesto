@@ -1,11 +1,8 @@
-import { UnlockScreen } from '@/screens/auth/unlock-screen'
+import { Redirect } from 'expo-router'
 
-// Dedicated unlock route. AppEntryGate redirects here whenever the user
-// has a valid session + biometric configured + app is locked. Replaces
-// the old `/(auth)/login?lock=1&autoBiometric=1` hack that reused the
-// sign-in screen for unlock duties.
-//
-// Ver `mobile/screens/auth/unlock-screen.tsx` para el rationale completo.
+// La superficie de unlock vive ahora en BootScreen (`/` + máquina
+// auth-flow, spec 2026-06-11). Cualquier navegación vieja a /unlock
+// rebota al boot. La ruta se elimina del árbol en la Etapa 5.
 export default function UnlockRoute() {
-  return <UnlockScreen />
+  return <Redirect href="/" />
 }

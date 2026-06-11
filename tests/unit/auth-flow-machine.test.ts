@@ -8,19 +8,22 @@ import {
 } from '@/features/auth-flow/auth-flow-machine'
 
 const PROBES_LOCKED_BIO = {
-  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true,
+  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false,
 }
 const PROBES_LOCKED_PIN = {
-  hasSession: true, shouldUseBiometric: false, pinSet: true, hasSavedCredentials: false,
+  hasSession: true, shouldUseBiometric: false, pinSet: true, hasSavedCredentials: false, isUnlocked: false,
 }
 const PROBES_NO_LOCK = {
-  hasSession: true, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false,
+  hasSession: true, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false,
 }
 const PROBES_GUEST = {
-  hasSession: false, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false,
+  hasSession: false, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false,
 }
 const PROBES_GUEST_WITH_CREDS = {
-  hasSession: false, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true,
+  hasSession: false, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false,
+}
+const PROBES_ALREADY_UNLOCKED = {
+  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: true,
 }
 
 /** Aplica eventos en secuencia, devolviendo estado final + todos los efectos. */
@@ -173,6 +176,24 @@ describe('V4 — login password / signup', () => {
     expect(r.state.phase).toBe('bridging')
     expect(r.effects).toContain('mark-app-unlocked')
     expect(r.effects).toContain('prefetch-snapshot')
+  })
+
+  it('ya desbloqueado (post-login con password) → bridging directo SIN re-prompt', () => {
+    const r = run([{ type: 'BOOT' }, { type: 'PROBES_RESOLVED', probes: PROBES_ALREADY_UNLOCKED }])
+    expect(r.state.phase).toBe('bridging')
+    expect(r.effects).not.toContain('prompt-biometric')
+    // No extiende el grace window del re-lock
+    expect(r.effects).not.toContain('mark-app-unlocked')
+  })
+
+  it('BOOT es re-ejecutable desde guest/ready, no-op mid-journey', () => {
+    const guest = run([{ type: 'BOOT' }, { type: 'PROBES_RESOLVED', probes: PROBES_GUEST }])
+    const reboot = transition(guest.state, { type: 'BOOT' })
+    expect(reboot.state.phase).toBe('probing')
+    const locked = run([{ type: 'BOOT' }, { type: 'PROBES_RESOLVED', probes: PROBES_LOCKED_BIO }])
+    const noop = transition(locked.state, { type: 'BOOT' })
+    expect(noop.state).toEqual(locked.state)
+    expect(noop.effects).toEqual([])
   })
 })
 

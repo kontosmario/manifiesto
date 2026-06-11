@@ -16,7 +16,7 @@ import {
   updateStoredRefreshToken,
 } from '@/lib/biometric-auth'
 import { getPinLockState } from '@/lib/pin-lock'
-import { markAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
+import { isAppUnlocked, markAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
 import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { prefetchHomeSnapshot } from '@/features/home/use-home-snapshot'
@@ -42,6 +42,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
       shouldUseBiometric: bio.isAvailable && bio.hasSavedCredentials,
       pinSet: pin.isSet,
       hasSavedCredentials: bio.hasSavedCredentials,
+      isUnlocked: isAppUnlocked(),
     }
   },
 

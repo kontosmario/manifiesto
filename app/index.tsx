@@ -1,5 +1,5 @@
-import { AppEntryGate } from '@/components/root/app-entry-gate'
+import { BootScreen } from '@/screens/boot/boot-screen'
 
 export default function IndexRoute() {
-  return <AppEntryGate />
+  return <BootScreen />
 }

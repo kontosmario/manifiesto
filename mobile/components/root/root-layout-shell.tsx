@@ -307,6 +307,18 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   // shared values ya nacen en el end-state correcto).
   const prevKeyRef = useRef<string | null>(null)
 
+  // Coexistencia con el store viejo: si la máquina entra a bridging
+  // cuando el overlay YA está opaco (el login viejo lo abrió antes),
+  // el fade-in no se re-dispara y su callback nunca reportaría. Acá
+  // reportamos de inmediato — el evento es idempotente (no-op si la
+  // máquina no está esperando opaque).
+  useEffect(() => {
+    if (!machineVisible) return
+    if (prevKeyRef.current === 'in' && opacity.value === 1) {
+      reportOpaque()
+    }
+  }, [machineVisible, opacity, reportOpaque])
+
   useEffect(() => {
     const key = isRevealing ? 'soar' : effectiveVisible ? 'in' : 'out'
     const prev = prevKeyRef.current
