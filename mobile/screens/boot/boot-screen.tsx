@@ -18,6 +18,7 @@
 import { useEffect, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
+import { PinLockPanel } from '@/components/auth/pin-lock-panel'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import {
   configureAuthFlow,
@@ -40,8 +41,9 @@ export function BootScreen() {
     dispatchAuthFlow({ type: 'BOOT' })
   }, [])
 
-  // Etapa 4: locked:pin renderiza el PinLockPanel acá.
-  void state
+  if (state.phase === 'locked' && state.method === 'pin') {
+    return <PinLockPanel />
+  }
 
   return (
     <View style={styles.root}>
