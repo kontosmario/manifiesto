@@ -1,5 +1,5 @@
 import '@/lib/runtime'
-import { useCallback, useEffect, useState, type PropsWithChildren } from 'react'
+import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
@@ -279,7 +279,19 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   const scale = useSharedValue(visible ? 1 : SCALE_FROM)
   const translateY = useSharedValue(0)
 
+  // Solo animar TRANSICIONES reales de visibilidad:
+  //  - prev === null (primer mount): los shared values ya se inicializan
+  //    en el end-state correcto; correr la animación OUT en el mount
+  //    inicial era un no-op visual pero ensuciaba los logs.
+  //  - prev === visible (cambió solo `phase`, p.ej. showing →
+  //    success-pending): re-disparar withTiming hacia los mismos targets
+  //    es un no-op visual y generaba el doble "animating IN" en logs.
+  const prevVisibleRef = useRef<boolean | null>(null)
+
   useEffect(() => {
+    const prev = prevVisibleRef.current
+    prevVisibleRef.current = visible
+    if (prev === null || prev === visible) return
     authFlowLog('overlay', visible ? `animating IN (${FADE_IN_MS}ms)` : `animating OUT (${FADE_OUT_MS}ms soar-away)`, { phase })
     if (visible) {
       // ENTRADA snappy: opacity 0→1 + scale 0.97→1 + translateY → 0.

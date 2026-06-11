@@ -201,11 +201,30 @@ export function markDestinationReady() {
     authReadyFired,
   })
   destinationReady = true
-  // Si auth ya fue marcado, escondemos ahora.
+  // Si auth ya fue marcado, escondemos — pero respetando el min-visible
+  // del show() actual. Con el prefetch del snapshot (unlock screen), el
+  // destination puede estar listo ~200-400ms post-show; sin este clamp
+  // el splash se cortaría a mitad del fade-in de entrada y la route
+  // swap (unlock → home) quedaría expuesta bajo un overlay translúcido.
   if (authReadyFired) {
-    authFlowLog('splash', 'destination ready + auth ready → hidden')
+    const elapsed = Math.max(0, Date.now() - showStartedAt)
+    if (elapsed >= currentMinVisibleMs) {
+      authFlowLog('splash', 'destination ready + auth ready → hidden')
+      clearAllTimers()
+      setStateAndNotify({ phase: 'hidden' })
+      return
+    }
+    const waitMs = currentMinVisibleMs - elapsed
+    authFlowLog('splash', 'destination ready + auth ready → hide scheduled', { waitMs })
     clearAllTimers()
-    setStateAndNotify({ phase: 'hidden' })
+    setStateAndNotify({ phase: 'success-pending' })
+    pendingHideTimer = setTimeout(() => {
+      pendingHideTimer = null
+      if (state.phase === 'success-pending') {
+        authFlowLog('splash', 'pendingHideTimer fired → hidden')
+        setStateAndNotify({ phase: 'hidden' })
+      }
+    }, waitMs)
   }
 }
 

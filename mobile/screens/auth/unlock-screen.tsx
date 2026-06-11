@@ -4,12 +4,25 @@
 //   COLD START ANIMATION → CREDENCIALES TRUE → FACE ID → SPLASH ANIMATION → HOME
 //
 // Implementado como:
-//   AuthLaunchSplash (cold-start fern animation) →
-//   UnlockScreen (fern surface, auto-fires FaceID) →
-//   ├─ SUCCESS → AuthTransitionSplash (visible durante session check +
-//   │           home snapshot fetch, ~3s premium fern animation) → home
+//   AuthLaunchSplash (cold-start fern animation, sigue visible/animando
+//   DEBAJO del prompt de FaceID — el splash overlay ya NO la tapa) →
+//   UnlockScreen (fern surface, auto-fires FaceID + prefetch del
+//   home_snapshot en paralelo al prompt) →
+//   ├─ SUCCESS → AuthTransitionSplash (fade-in sobre el fern idéntico
+//   │           del unlock; espera markDestinationReady del home, que
+//   │           gracias al prefetch suele estar ya cacheado) → soar-away
+//   │           → home
 //   └─ CANCEL / FAIL → /(auth)/login (con todas las opciones: Face ID,
 //                      password, Apple, etc — paridad con flow viejo)
+//
+// Por qué el splash se muestra recién al SUCCESS (2026-06-11): antes se
+// mostraba al entrar a fireUnlock, y como el overlay (zIndex 50) está
+// por encima del AuthLaunchSplash (zIndex 20), tapaba la cold-start
+// animation a los ~460ms — doble-fern jump visible y la animación de
+// arranque nunca se veía completa. Durante el prompt de FaceID la
+// superficie visible es el launch splash (y debajo, este unlock screen,
+// visualmente idéntico al contenido del overlay), así que el overlay no
+// aporta nada antes del success.
 //
 // Por qué cancel bouncea a login: el user pidió explícitamente "al cancelar
 // el face id, nos debe llegar a la pantalla de login de siempre" — preserva
@@ -18,11 +31,13 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
+import { useAuthSession } from '@/features/auth/use-auth-session'
+import { prefetchHomeSnapshot } from '@/features/home/use-home-snapshot'
 import {
   authenticateBiometricAccess,
   clearBiometricCredentials,
@@ -33,24 +48,42 @@ import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   hideAuthTransitionSplash,
-  markAuthSuccess,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
 import { authTokens } from '@/theme/palette'
 
+// Min-visible del splash post-unlock. Con el prefetch, el destination
+// puede estar listo ~200-400ms después del success; este piso garantiza
+// que el fade-in de 180ms del overlay complete y que la route swap
+// (unlock → index → home) ocurra totalmente cubierta antes del soar-away.
+const POST_UNLOCK_MIN_VISIBLE_MS = 450
+
 export function UnlockScreen() {
   const router = useRouter()
-  const insets = useSafeAreaInsets()
+  const queryClient = useQueryClient()
   const autoFiredRef = useRef(false)
+  const prefetchFiredRef = useRef(false)
+
+  // Warm-up del home snapshot EN PARALELO con el prompt de FaceID. La
+  // session ya es válida (AppEntryGate la verificó antes de redirigir
+  // acá) y el RPC tarda ~0.5-1s — el prompt tarda ~2s de interacción,
+  // así que al success el cache ya está sembrado y markDestinationReady
+  // dispara en el primer commit del home. Antes esto era serial
+  // (AppStackShell recién fetcheaba post-redirect) y costaba ~1.1s de
+  // splash muerto post-auth. El lock es un gate de UI: los datos quedan
+  // en memoria (React Query), nada se renderiza antes del unlock.
+  const session = useAuthSession()
+  const userId = session.data?.user.id
+  useEffect(() => {
+    if (!userId || prefetchFiredRef.current) return
+    prefetchFiredRef.current = true
+    authFlowLog('unlock', 'prefetching home snapshot (parallel with FaceID)')
+    void prefetchHomeSnapshot(queryClient, userId)
+  }, [userId, queryClient])
 
   const fireUnlock = useCallback(async () => {
     authFlowLog('unlock', 'fireUnlock entry')
-    // requireDestination: el splash espera a que HomeScreen llame
-    // markDestinationReady (cuando snapshot.data esté listo) para hide.
-    // Evita "green pause" entre splash hide y home content visible.
-    showAuthTransitionSplash({ requireDestination: true })
-
     try {
       authFlowLog('unlock', 'calling authenticateBiometricAccess')
       const result = await authenticateBiometricAccess({
@@ -63,21 +96,24 @@ export function UnlockScreen() {
       })
 
       if (!result.success) {
-        // Cancel o failure: hide splash + bouncear a /(auth)/login. Acá
-        // vive todo el fallback UX — Face ID retry CTA, password form,
-        // Apple, "Cambiar cuenta", etc. NO pasamos autoBiometric=1 para
-        // no re-disparar el prompt automáticamente (el user lo canceló).
-        hideAuthTransitionSplash()
+        // Cancel o failure: bouncear a /(auth)/login (el splash nunca
+        // se mostró en este path). Acá vive todo el fallback UX — Face
+        // ID retry CTA, password form, Apple, "Cambiar cuenta", etc.
+        // NO pasamos autoBiometric=1 para no re-disparar el prompt
+        // automáticamente (el user lo canceló).
         router.replace('/(auth)/login')
         return
       }
 
-      // SUCCESS: reset el timer del splash. El FaceID pudo haber tardado
-      // más que el minVisibleMs default (3s) → markLoaded escondería
-      // instant post-auth → user no ve transición premium. Con
-      // markAuthSuccess, splash queda visible POST-AUTH 1.2s (cubre
-      // navigation + snapshot fetch + home paint).
-      markAuthSuccess()
+      // SUCCESS: recién acá mostramos el splash overlay. Hace fade-in
+      // (180ms) sobre el fern idéntico de este screen — seam invisible.
+      // requireDestination: el splash espera a que HomeScreen llame
+      // markDestinationReady (cuando snapshot.data esté listo) para
+      // hide. Evita "green pause" entre splash hide y home visible.
+      showAuthTransitionSplash({
+        requireDestination: true,
+        minVisibleMs: POST_UNLOCK_MIN_VISIBLE_MS,
+      })
       void triggerHaptic('success')
 
       // FAST PATH (99% de los casos): session ya activa en el cliente
@@ -144,13 +180,13 @@ export function UnlockScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Sin safe-area padding a propósito: el AuthTransitionSplash centra su
+  // WarmFernLogo en el centro REAL de la pantalla (absoluteFill, sin
+  // insets). Si este screen aplicara paddingTop/bottom de insets, su fern
+  // quedaría ~12px corrido y el fade-in del overlay al success mostraría
+  // un salto. Acá no hay contenido que necesite respetar notch/home bar.
   return (
-    <View
-      style={[
-        styles.root,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}
-    >
+    <View style={styles.root}>
       <View style={styles.center}>
         <Animated.View entering={FadeIn.duration(400)}>
           <WarmFernLogo size={180} />

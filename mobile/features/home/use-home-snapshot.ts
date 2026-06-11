@@ -440,6 +440,57 @@ function seedCaches(
 }
 
 /**
+ * Shared queryFn body: fetch the snapshot RPC + seed every dependent
+ * cache. Used by both `useHomeSnapshot` (app shell) and
+ * `prefetchHomeSnapshot` (unlock screen warm-up) so both paths seed
+ * identically and React Query dedupes them onto one in-flight request.
+ */
+async function fetchAndSeedHomeSnapshot(
+  queryClient: QueryClient,
+  userId: string | undefined,
+): Promise<HomeSnapshotPayload> {
+  const payload = await fetchHomeSnapshot()
+  // Seed synchronously inside the queryFn so the individual caches
+  // are populated before consumer components re-render and mount
+  // their own hooks. Doing this in a useEffect would lose the race.
+  if (userId && payload.family?.familyId) {
+    seedCaches(queryClient, payload, userId, payload.family.familyId)
+  } else if (userId) {
+    // No family yet — still seed profile + family (as null) so
+    // RequireAuth can redirect without refetching.
+    queryClient.setQueryData(profileQueryKey(userId), payload.profile ?? null)
+    queryClient.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
+  }
+  return payload
+}
+
+const HOME_SNAPSHOT_STALE_TIME_MS = 60_000
+
+/**
+ * Warm the home snapshot cache ahead of navigation. Called from the
+ * unlock screen the moment it mounts, so the RPC round-trip runs in
+ * parallel with the Face ID prompt (~2s of user interaction) instead
+ * of serially after it. By the time the user authenticates, the
+ * snapshot is (usually) already cached and `markDestinationReady`
+ * fires within the home screen's first commit.
+ *
+ * `prefetchQuery` is a no-op when fresh data already exists, and if
+ * `useHomeSnapshot` mounts while this is in flight both share the
+ * same request (same query key). Errors are swallowed by design —
+ * the app-shell `useHomeSnapshot` retains error handling/retry.
+ */
+export function prefetchHomeSnapshot(
+  queryClient: QueryClient,
+  userId: string,
+): Promise<void> {
+  return queryClient.prefetchQuery({
+    queryKey: homeSnapshotQueryKey(userId),
+    staleTime: HOME_SNAPSHOT_STALE_TIME_MS,
+    queryFn: () => fetchAndSeedHomeSnapshot(queryClient, userId),
+  })
+}
+
+/**
  * Loads every slice the Home screen needs in one round-trip and seeds
  * the individual query caches. Gate your Home render on
  * `snapshot.isSuccess` so sub-hooks mount with hot caches and don't
@@ -451,7 +502,7 @@ export function useHomeSnapshot(userId?: string) {
   return useQuery<HomeSnapshotPayload>({
     queryKey: homeSnapshotQueryKey(userId),
     enabled: Boolean(userId),
-    staleTime: 60_000,
+    staleTime: HOME_SNAPSHOT_STALE_TIME_MS,
     gcTime: 5 * 60_000,
     // On iOS foreground-resume both home_snapshot + gastos_snapshot
     // were re-fetching back-to-back even with staleTime=60s, costing
@@ -460,20 +511,6 @@ export function useHomeSnapshot(userId?: string) {
     // triggers a refetch naturally.
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    queryFn: async () => {
-      const payload = await fetchHomeSnapshot()
-      // Seed synchronously inside the queryFn so the individual caches
-      // are populated before consumer components re-render and mount
-      // their own hooks. Doing this in a useEffect would lose the race.
-      if (userId && payload.family?.familyId) {
-        seedCaches(queryClient, payload, userId, payload.family.familyId)
-      } else if (userId) {
-        // No family yet — still seed profile + family (as null) so
-        // RequireAuth can redirect without refetching.
-        queryClient.setQueryData(profileQueryKey(userId), payload.profile ?? null)
-        queryClient.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
-      }
-      return payload
-    },
+    queryFn: () => fetchAndSeedHomeSnapshot(queryClient, userId),
   })
 }
