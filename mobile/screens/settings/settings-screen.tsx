@@ -643,18 +643,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         style: 'destructive',
         text: 'Salir',
         onPress: () => {
-          // Mostrar el splash ANTES de empezar el logout para cubrir
-          // la transición. El splash auto-hide cuando AppEntryGate llama
-          // a `markAuthTransitionLoaded()` después del redirect a welcome,
-          // con un piso de MIN_VISIBLE_MS (3s) para que el WarmFernLogo
-          // entrance se complete. Sin esto la transición salta abrupta:
-          // settings → welcome sin animación intermedia.
-          showAuthTransitionSplash()
+          // Logout va directo a welcome sin pasar por el WarmFernLogo
+          // splash. El splash (auth-transition-splash) tiene piso de
+          // 3s para la animación de entrada — apropiado para sign-in
+          // (esperás el cold-start de queries) pero overkill para sign-out
+          // (no hay que esperar nada al final, solo el redirect).
+          //
+          // El flow ahora: tap Salir → logoutSession corre los clears en
+          // paralelo (~200-400ms) → signOut → SIGNED_OUT event →
+          // AppEntryGate ve session=null + Keychain limpio →
+          // Redirect a /(auth)/welcome direct.
           void logoutSession({
-            onError: (error) => {
-              hideAuthTransitionSplash()
-              void showError(error, 'No se pudo cerrar sesión.')
-            },
+            onError: (error) => void showError(error, 'No se pudo cerrar sesión.'),
             onSuccess: () => router.replace('/'),
           })
         },
