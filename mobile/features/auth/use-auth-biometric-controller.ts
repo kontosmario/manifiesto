@@ -16,6 +16,7 @@ import {
   hideAuthTransitionSplash,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
@@ -135,17 +136,16 @@ export function useAuthBiometricController({
       submissionLockRef.current = true
       setBiometricSubmitting(true)
 
-      // Splash visible INMEDIATO — antes del FaceID prompt + antes del
-      // network call. Cubre toda la ventana: FaceID prompt en sí, session
-      // refresh, navigation, home mount. Igual que el password flow
-      // (use-login-submit.ts) que muestra el splash al submit.
-      //
-      // Si el user cancela el FaceID o falla la auth: hideAuthTransitionSplash
-      // en los error paths para que el login screen vuelva visible.
+      authFlowLog('controller', 'handleBiometricSignIn entry', { isAutomatic: options?.isAutomatic ?? false })
       showAuthTransitionSplash()
 
       try {
+        authFlowLog('controller', 'calling authenticateBiometricAccess')
         const biometricResult = await authenticateBiometricAccess()
+        authFlowLog('controller', 'authenticateBiometricAccess returned', {
+          success: biometricResult.success,
+          ...(biometricResult.success ? {} : { error: biometricResult.error }),
+        })
 
         if (!biometricResult.success) {
           // Cancel/fail → hide splash + surface error en login.
@@ -169,7 +169,9 @@ export function useAuthBiometricController({
         // network call (refreshSession) que ya está cubierto.
         void triggerHaptic('success')
 
+        authFlowLog('controller', 'calling getBiometricCredentials')
         const credentials = await getBiometricCredentials()
+        authFlowLog('controller', 'getBiometricCredentials returned', { hasCredentials: Boolean(credentials) })
 
         if (!credentials) {
           // Stale or legacy (password-based) credentials — surface
@@ -187,9 +189,11 @@ export function useAuthBiometricController({
         // Supabase rotates refresh tokens on each successful refresh;
         // capture the new one and update Keychain so the next
         // biometric attempt works.
+        authFlowLog('controller', 'calling refreshSession')
         const refreshResponse = await supabase.auth.refreshSession({
           refresh_token: credentials.refreshToken,
         })
+        authFlowLog('controller', 'refreshSession returned', { hasError: Boolean(refreshResponse.error), hasSession: Boolean(refreshResponse.data.session) })
 
         if (refreshResponse.error || !refreshResponse.data.session) {
           throw refreshResponse.error ?? new Error('No se pudo restaurar la sesión.')
@@ -200,6 +204,7 @@ export function useAuthBiometricController({
           await updateStoredRefreshToken(newRefreshToken)
         }
 
+        authFlowLog('controller', 'calling onSignedIn')
         onSignedIn()
       } catch (error) {
         // Supabase couldn't refresh the session — most commonly because

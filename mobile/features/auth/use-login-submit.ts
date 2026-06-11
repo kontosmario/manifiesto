@@ -15,6 +15,7 @@ import {
   hideAuthTransitionSplash,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
+import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
 
 /**
  * Sprint H · H2 — generic auth-failure copy.
@@ -142,6 +143,9 @@ export function useLoginSubmit({
     submissionLockRef.current = true
     setSubmitting(true)
 
+    resetAuthFlowTimer()
+    authFlowLog('login-submit', 'handleSubmit entry', { mode })
+
     // Show the splash IMMEDIATELY on submit (not after the network call).
     // Pre-fix: showAuthTransitionSplash() era llamado en handleSignedInTransition
     // que solo fire DESPUÉS de que passwordSignIn/passwordSignUp resolvieran
@@ -171,11 +175,13 @@ export function useLoginSubmit({
         const captchaToken = resolveCaptchaToken
           ? await resolveCaptchaToken()
           : undefined
+        authFlowLog('login-submit', 'calling passwordSignIn')
         await passwordSignIn({
           email: normalizedEmail,
           password: trimmedPassword,
           captchaToken,
         })
+        authFlowLog('login-submit', 'passwordSignIn returned ok')
       }
 
       await triggerHaptic('success')
@@ -229,6 +235,7 @@ export function useLoginSubmit({
         return
       }
 
+      authFlowLog('login-submit', 'calling onSignedIn')
       onSignedIn()
     } catch (error) {
       await triggerHaptic('error')

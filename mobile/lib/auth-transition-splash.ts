@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { InteractionManager } from 'react-native'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 
 // Reactive store for the auth-transition splash overlay.
 //
@@ -90,10 +91,14 @@ function setStateAndNotify(next: AuthTransitionState) {
  *   `markAuthTransitionLoaded` fires".
  */
 export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
-  if (state.phase === 'showing' || state.phase === 'success-pending') return
+  if (state.phase === 'showing' || state.phase === 'success-pending') {
+    authFlowLog('splash', 'show() NO-OP (already visible)', { phase: state.phase })
+    return
+  }
   clearAllTimers()
   showStartedAt = Date.now()
   currentMinVisibleMs = options?.minVisibleMs ?? MIN_VISIBLE_MS
+  authFlowLog('splash', 'show() → phase=showing', { minVisibleMs: currentMinVisibleMs })
   safetyTimer = setTimeout(() => {
     safetyTimer = null
     // Only promote to timeout if still mid-flight. If success or
@@ -112,7 +117,11 @@ export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
  * responses get held back so the animation completes naturally.
  */
 export function markAuthTransitionLoaded() {
-  if (state.phase !== 'showing') return
+  if (state.phase !== 'showing') {
+    authFlowLog('splash', 'markLoaded() NO-OP', { phase: state.phase })
+    return
+  }
+  authFlowLog('splash', 'markLoaded() called')
   // Clamp to non-negative: under backward clock skew (NTP correction,
   // user toggled date, daylight-savings glitch) `Date.now()` can move
   // backwards between `showAuthTransitionSplash` and here. Without the
@@ -124,6 +133,11 @@ export function markAuthTransitionLoaded() {
   // Treat backward skew as "elapsed = 0" and re-arm the normal
   // pending-hide path. Audit #7 7-T8 (Sprint N).
   const elapsed = Math.max(0, Date.now() - showStartedAt)
+  authFlowLog('splash', 'markLoaded check', {
+    elapsed,
+    min: currentMinVisibleMs,
+    immediate: elapsed >= currentMinVisibleMs,
+  })
   if (elapsed >= currentMinVisibleMs) {
     clearAllTimers()
     // PREMIUM: defer the hide until the JS thread is idle. The caller
@@ -144,12 +158,14 @@ export function markAuthTransitionLoaded() {
       // Re-check phase: callers can cancel via hide() between schedule
       // and fire.
       if (state.phase === 'showing') {
+        authFlowLog('splash', 'InteractionManager fired → hidden')
         setStateAndNotify({ phase: 'hidden' })
       }
     })
     return
   }
   // Min not yet reached: stay visible until it does.
+  authFlowLog('splash', 'phase → success-pending', { waitMs: currentMinVisibleMs - elapsed })
   setStateAndNotify({ phase: 'success-pending' })
   if (safetyTimer) {
     clearTimeout(safetyTimer)
@@ -206,7 +222,11 @@ export function showAuthTransitionError(
  * legacy call sites that need to silence the splash unconditionally.
  */
 export function hideAuthTransitionSplash() {
-  if (state.phase === 'hidden') return
+  if (state.phase === 'hidden') {
+    authFlowLog('splash', 'hide() NO-OP (already hidden)')
+    return
+  }
+  authFlowLog('splash', 'hide() → phase=hidden', { fromPhase: state.phase })
   clearAllTimers()
   setStateAndNotify({ phase: 'hidden' })
 }

@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAppLockState } from '@/features/auth/app-lock-state'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
@@ -40,29 +41,23 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
   useEffect(() => {
     if (!isLoading && shouldShowAuthTransitionSplash) {
+      authFlowLog('require-auth', 'firing markAuthTransitionLoaded')
       markAuthTransitionLoaded()
     }
   }, [isLoading, shouldShowAuthTransitionSplash])
 
   if (isLoading) {
-    // Always render the passive backdrop. Do NOT mount a second
-    // splash beneath the warm transition overlay (mounted at root) —
-    // see the long comment in `app-entry-gate.tsx` for the full
-    // diagnosis (duplicate fern + aurora + particle layers caused
-    // 60→<30fps drops during auth, perceived as "right-to-center
-    // entry" + "1-2s pause" on the warm fern).
+    authFlowLog('require-auth', 'render BlockingScreenView (loading)')
     return <BlockingScreenView message="Preparando tu espacio..." />
   }
 
   if (!session || !userId) {
+    authFlowLog('require-auth', 'redirect /(auth)/welcome (no session)')
     return <Redirect href="/(auth)/welcome" />
   }
 
-  // J-Auth1 defense-in-depth — if a deep link / push tap mounts a
-  // RequireAuth screen while the app-lock is still up, bounce back to
-  // `/` so AppEntryGate routes the user through the lock UI before any
-  // financial data renders.
   if (!isUnlocked) {
+    authFlowLog('require-auth', 'redirect / (locked)')
     return <Redirect href="/" />
   }
 
@@ -102,13 +97,13 @@ export function RequireGuest({
 
   useEffect(() => {
     if (!sessionQuery.isLoading && shouldShowAuthTransitionSplash) {
+      authFlowLog('require-guest', 'firing markAuthTransitionLoaded')
       markAuthTransitionLoaded()
     }
   }, [sessionQuery.isLoading, shouldShowAuthTransitionSplash])
 
   if (sessionQuery.isLoading) {
-    // Same rationale as RequireAuth above — yield to the warm
-    // overlay; don't mount a duplicate splash underneath.
+    authFlowLog('require-guest', 'render BlockingScreenView (loading)')
     return <BlockingScreenView message="Preparando tu sesión..." />
   }
 
@@ -129,8 +124,10 @@ export function RequireGuest({
   // routes siguen bloqueados por RequireAuth que valida AMBOS session
   // Y isAppUnlocked. La seguridad se preserva en RequireAuth, no acá.
   if (session && isUnlocked) {
+    authFlowLog('require-guest', 'redirect / (session + unlocked)')
     return <Redirect href="/" />
   }
 
+  authFlowLog('require-guest', 'render children', { hasSession: Boolean(session), isUnlocked })
   return children
 }

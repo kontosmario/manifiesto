@@ -16,6 +16,7 @@ import { useAuthKeyboardController } from '@/features/auth/use-auth-keyboard-con
 import { useLoginFormState } from '@/features/auth/use-login-form-state'
 import { useLoginSubmit } from '@/features/auth/use-login-submit'
 import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 interface UseLoginControllerOptions {
@@ -78,11 +79,7 @@ export function useLoginController(options?: UseLoginControllerOptions) {
   // rendered screen. The dead code path is gone — see commit history
   // if you need the previous implementation.
   const handleSignedInTransition = useCallback(() => {
-    // Any successful sign-in (password, biometric refresh, or
-    // post-onboarding wizard) also unlocks the app-lock gate.
-    // Otherwise AppEntryGate would loop the user back to the lock
-    // screen even though they just authenticated. The unlock state
-    // resets on the next cold start and on explicit logout.
+    authFlowLog('login-controller', 'handleSignedInTransition: markAppUnlocked + show + replace(/)')
     markAppUnlocked()
     showAuthTransitionSplash()
     router.replace('/')

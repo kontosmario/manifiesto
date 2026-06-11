@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Stack, usePathname } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
 import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
 import { BackgroundSnapshotOverlay } from '@/components/root/background-snapshot-overlay'
@@ -273,6 +274,7 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   const scale = useSharedValue(visible ? 1 : SCALE_FROM)
 
   useEffect(() => {
+    authFlowLog('overlay', visible ? 'animating IN (180ms)' : 'animating OUT (260ms)', { phase })
     // Combined opacity + scale entrance (emil-design-eng principle:
     // "Never animate from scale(0). Start from scale(0.95) or higher,
     // combined with opacity. Subtle initial scale makes the entrance
@@ -284,7 +286,7 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
     }
     opacity.value = withTiming(visible ? 1 : 0, config)
     scale.value = withTiming(visible ? 1 : SCALE_FROM, config)
-  }, [visible, opacity, scale])
+  }, [visible, opacity, scale, phase])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

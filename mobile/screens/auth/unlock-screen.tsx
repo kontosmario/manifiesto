@@ -35,6 +35,7 @@ import {
   hideAuthTransitionSplash,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
+import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
 import { authTokens } from '@/theme/palette'
 
 export function UnlockScreen() {
@@ -43,24 +44,18 @@ export function UnlockScreen() {
   const autoFiredRef = useRef(false)
 
   const fireUnlock = useCallback(async () => {
-    // Splash visible INMEDIATO — antes del FaceID prompt. Igual que
-    // handleBiometricSignIn (controller) y password flow (use-login-submit).
-    // El splash se queda visible cubriendo el FaceID prompt → success →
-    // session check → navigation → home snapshot fetch → first paint.
-    //
-    // El base layer de UnlockScreen también es welcomeBg + WarmFernLogo,
-    // entonces visualmente no hay seam — la entrada del splash overlay
-    // (180ms scale 0.97→1 + opacity 0→1) sobre la misma fern surface se
-    // siente como una intensificación premium en el momento de tap.
-    //
-    // 3 segundos del default minVisibleMs cubre toda la ventana hasta
-    // que el home pinte content (snapshot fetch + first paint).
+    authFlowLog('unlock', 'fireUnlock entry')
     showAuthTransitionSplash()
 
     try {
+      authFlowLog('unlock', 'calling authenticateBiometricAccess')
       const result = await authenticateBiometricAccess({
         promptMessage: 'Desbloqueá Manifiesto',
         disableDeviceFallback: true,
+      })
+      authFlowLog('unlock', 'authenticateBiometricAccess returned', {
+        success: result.success,
+        ...(result.success ? {} : { error: result.error }),
       })
 
       if (!result.success) {
@@ -80,8 +75,11 @@ export function UnlockScreen() {
       // (Supabase auto-refresh corrió en background). NO llamar
       // refreshSession — el token del Keychain puede estar invalidated
       // por una rotación previa → falso positivo "expired".
+      authFlowLog('unlock', 'calling getSession (fast path)')
       const { data: sessionData } = await supabase.auth.getSession()
+      authFlowLog('unlock', 'getSession returned', { hasSession: Boolean(sessionData.session) })
       if (sessionData.session) {
+        authFlowLog('unlock', 'markAppUnlocked + router.replace(/)')
         markAppUnlocked()
         router.replace('/')
         return
@@ -131,6 +129,8 @@ export function UnlockScreen() {
   useEffect(() => {
     if (autoFiredRef.current) return
     autoFiredRef.current = true
+    resetAuthFlowTimer()
+    authFlowLog('unlock', 'UnlockScreen mounted, auto-firing')
     void fireUnlock()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

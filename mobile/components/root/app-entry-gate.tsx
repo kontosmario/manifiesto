@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { markAppUnlocked, useAppLockState } from '@/features/auth/app-lock-state'
+import { authFlowLog } from '@/lib/auth-flow-logger'
 import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -135,44 +136,25 @@ export function AppEntryGate() {
   // unlock → home.
 
   if (isLoading) {
-    // Always render the passive backdrop while loading. CRITICAL: do
-    // NOT mount `AuthLaunchSplash` here when the warm transition
-    // splash is visible. The warm splash (mounted at root in
-    // `RootLayoutShell`) already covers the entire screen — rendering
-    // a SECOND splash beneath it doubled the GPU load (two ferns +
-    // two aurora layers + two particle fields running concurrently)
-    // exactly during the auth + query window when JS/UI threads are
-    // already at peak load. The user perceived the resulting frame
-    // drops as a "right-to-center entry" + "1-2s pause" on the warm
-    // fern. Yielding to the warm overlay alone restores 60fps.
+    authFlowLog('app-entry-gate', 'render BlockingScreenView (loading)')
     return <BlockingScreenView message="Abriendo Manifiesto..." />
   }
 
   if (!session) {
-    // Returning user with biometrics set up — go straight to the
-    // login screen with the auto-biometric flag. The login screen
-    // reads `?autoBiometric=1`, fires the Face ID / Touch ID prompt
-    // immediately on mount, and clears the param so a manual back-
-    // navigate doesn't re-trigger. Skips the entire "Crear cuenta /
-    // Ya tengo cuenta" hero for users who clearly don't need it.
     if (biometric.shouldUseBiometric) {
+      authFlowLog('app-entry-gate', 'redirect /(auth)/login?autoBiometric=1 (no session + biometric)')
       return <Redirect href="/(auth)/login?autoBiometric=1" />
     }
+    authFlowLog('app-entry-gate', 'redirect /(auth)/welcome (no session)')
     return <Redirect href="/(auth)/welcome" />
   }
 
-  // App-lock gate: a valid session still needs a per-launch unlock when
-  // EITHER biometrics or a PIN is set up. Biometrics take precedence on
-  // the lock screen (Face ID auto-fires, with a "Usar PIN" fallback);
-  // when only a PIN is set, go straight to the dedicated PIN screen.
   if ((biometric.shouldUseBiometric || pin.isSet) && !isAppUnlocked) {
     if (biometric.shouldUseBiometric) {
-      // Dedicated unlock screen — purpose-built fern surface, no chrome
-      // del login screen. Reemplaza el hack anterior de
-      // `/(auth)/login?autoBiometric=1&lock=1`. Ver
-      // `mobile/screens/auth/unlock-screen.tsx` para detalles.
+      authFlowLog('app-entry-gate', 'redirect /(auth)/unlock (locked + biometric)')
       return <Redirect href="/(auth)/unlock" />
     }
+    authFlowLog('app-entry-gate', 'redirect /(auth)/pin-unlock (locked + PIN only)')
     return <Redirect href="/(auth)/pin-unlock" />
   }
 
@@ -203,8 +185,10 @@ export function AppEntryGate() {
   }
 
   if (!family) {
+    authFlowLog('app-entry-gate', 'redirect /(auth)/join (no family)')
     return <Redirect href="/(auth)/join" />
   }
 
+  authFlowLog('app-entry-gate', 'redirect /(app)/(tabs)/home (all green)')
   return <Redirect href="/(app)/(tabs)/home" />
 }
