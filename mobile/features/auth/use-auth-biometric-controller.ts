@@ -12,11 +12,7 @@ import {
   updateStoredRefreshToken,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
-import {
-  hideAuthTransitionSplash,
-  markAuthSuccess,
-  showAuthTransitionSplash,
-} from '@/lib/auth-transition-splash'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { triggerHaptic } from '@/lib/haptics'
@@ -138,7 +134,9 @@ export function useAuthBiometricController({
       setBiometricSubmitting(true)
 
       authFlowLog('controller', 'handleBiometricSignIn entry', { isAutomatic: options?.isAutomatic ?? false })
-      showAuthTransitionSplash({ requireDestination: true })
+      // El bridge cubre el prompt + el refresh de sesión; si algo
+      // falla, LOGIN_FAILED lo esconde y el form muestra el mensaje.
+      dispatchAuthFlow({ type: 'LOGIN_PENDING' })
 
       try {
         authFlowLog('controller', 'calling authenticateBiometricAccess')
@@ -149,8 +147,8 @@ export function useAuthBiometricController({
         })
 
         if (!biometricResult.success) {
-          // Cancel/fail → hide splash + surface error en login.
-          hideAuthTransitionSplash()
+          // Cancel/fail → esconder bridge + surface error en login.
+          dispatchAuthFlow({ type: 'LOGIN_FAILED' })
           if (
             !options?.isAutomatic &&
             biometricResult.error !== 'user_cancel' &&
@@ -166,10 +164,8 @@ export function useAuthBiometricController({
           return
         }
 
-        // FaceID success: reset el timer del splash. El FaceID pudo
-        // tardar más que el minVisibleMs default → user no vería transición
-        // premium. markAuthSuccess garantiza 1.2s de fern post-auth.
-        markAuthSuccess()
+        // FaceID success: el haptic acá; LOGIN_SUCCESS (con su propio
+        // min-hold de 1.2s) recién cuando la sesión esté restaurada.
         void triggerHaptic('success')
 
         authFlowLog('controller', 'calling getBiometricCredentials')
@@ -180,7 +176,7 @@ export function useAuthBiometricController({
           // Stale or legacy (password-based) credentials — surface
           // the recovery prompt and clear so the user re-auths once
           // to re-arm biometric with a refresh token.
-          hideAuthTransitionSplash()
+          dispatchAuthFlow({ type: 'LOGIN_FAILED' })
           await clearBiometricCredentials()
           await refreshBiometricState()
           onInfoMessage(`Vuelve a ingresar manualmente para reactivar ${biometricState.label}.`)
@@ -235,7 +231,7 @@ export function useAuthBiometricController({
         // Explicit sign-out via the Settings → Cerrar sesión flow
         // still clears credentials (see `logout.ts`); this only
         // changes the implicit "session died on its own" path.
-        hideAuthTransitionSplash()
+        dispatchAuthFlow({ type: 'LOGIN_FAILED' })
         await refreshBiometricState()
         void triggerHaptic('error')
         onErrorMessage(

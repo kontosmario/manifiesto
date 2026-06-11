@@ -5,6 +5,10 @@ import { AppButton } from '@/components/ui/button'
 import { BrandedPanel } from '@/components/ui/branded-panel'
 import { Screen } from '@/components/ui/screen'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
+import {
+  dispatchAuthFlow,
+  getAuthFlowState,
+} from '@/features/auth-flow/auth-flow-controller'
 import { useCompleteAuthCallback } from '@/features/auth/use-auth-actions'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { supabase } from '@/lib/supabase'
@@ -81,11 +85,17 @@ export function AuthCallbackScreen() {
 
         if (!cancelledRef.current) {
           clearTimeout(timeoutId)
-          // J-Auth1: the OAuth callback exchange is an explicit auth
-          // event; mark the app-lock unlocked so the protected stack
-          // mounts without RequireAuth bouncing back to `/`.
-          markAppUnlocked()
-          router.replace('/')
+          // El exchange OAuth es un evento de auth explícito: la máquina
+          // entra al bridge y navega al destino resuelto (LOGIN_SUCCESS
+          // marca unlocked vía confirm-session). dispatch es sincrónico:
+          // si la máquina NO tomó el evento (fase ready u otra no-login,
+          // p.ej. un confirm-link tocado con la app ya abierta), caemos
+          // al comportamiento clásico markAppUnlocked + replace('/').
+          dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })
+          if (getAuthFlowState().phase !== 'bridging') {
+            markAppUnlocked()
+            router.replace('/')
+          }
         }
       } catch (error) {
         if (!cancelledRef.current) {
