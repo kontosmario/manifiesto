@@ -55,8 +55,14 @@ any   ─ LOGOUT (logoutSession) → guest
 ## Invariantes (anti-parpadeo)
 
 1. **Navegar solo cubierto**: `navigate` dispara al recibir `BRIDGE_OPAQUE`
-   (emitido desde el callback de `withTiming` del fade-in del overlay).
-2. El bridge nunca tapa la cold-start animation antes del success.
+   (emitido desde el callback de `withTiming` del fade-in del overlay, o de
+   inmediato si el launch splash está cubriendo la pantalla).
+2. **El cold-start splash es SOBERANO**: mientras `AuthLaunchSplash` está en
+   pantalla el overlay queda suprimido — el bridge JAMÁS lo tapa (ni siquiera
+   post-success: con Face ID real el OK llega a mitad del growth). La máquina
+   navega por debajo y el fade-out propio del launch (~2.2s) revela el
+   destino ya montado. Si el auth tarda más que el growth, el launch ya se
+   fue y el bridge opera normal (fade-in + hold + soar sobre el boot fern).
 3. Soar-away solo con `navigated ∧ minHold ∧ destinationReady`.
 4. Superficies idénticas en cada seam (BootScreen fern ≡ overlay fern,
    centro real de pantalla, sin insets).

@@ -151,7 +151,7 @@ export function RootLayoutShell() {
             continuous brand surface across redirects — no skeleton
             flashes, no FernLogo entrance replay, no remount cost.
           */}
-          <TransitionOverlay />
+          <TransitionOverlay launchActive={isLaunchSplashVisible} />
 
           {/*
             Sprint I · I-6 — captcha misconfig banner. Only renders when
@@ -245,7 +245,7 @@ function ThemedRootStack() {
   )
 }
 
-function TransitionOverlay() {
+function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
   // ⚠ ALWAYS-MOUNTED en native, CONDICIONAL en web.
   //
   // Native (iOS/Android): los children (AuthTransitionSplash →
@@ -279,12 +279,25 @@ function TransitionOverlay() {
   const offlineTakeover = useOfflineTakeover()
   const machineMode = getOverlayMode(machine)
   const machineVisible = machineMode !== 'hidden'
-  const isRevealing = machineMode === 'revealing'
   const machineError = typeof machineMode === 'object' ? machineMode.error : undefined
+
+  // SOBERANÍA DEL COLD-START SPLASH (invariante 2, corregida 2026-06-11):
+  // mientras el AuthLaunchSplash está en pantalla, el overlay queda
+  // SUPRIMIDO. Con Face ID real (~1s) el FACE_ID_OK llega a mitad del
+  // crecimiento del fern; sin esto el bridge (z50 > z20) tapaba el
+  // launch splash y cortaba la animación — "fondo verde sin animación".
+  // La máquina sigue trabajando por debajo (navega, precarga): el
+  // launch splash ES la cobertura, y su propio fade-out a los ~2.2s
+  // revela el destino ya montado. Si el auth tarda más que el growth,
+  // el launch ya se fue y el bridge opera normal (fade-in + soar).
+  // El takeover offline NO se suprime (es un error que debe verse).
+  const suppressed = launchActive && !offlineTakeover
+
+  const isRevealing = machineMode === 'revealing' && !suppressed
 
   // `revealing` mantiene el overlay montado/interactivo mientras el
   // soar-away corre; recién `hidden` lo libera.
-  const effectiveVisible = machineVisible || offlineTakeover
+  const effectiveVisible = (machineVisible && !suppressed) || offlineTakeover
   const isError = Boolean(machineError) || offlineTakeover
   const effectivePhase: AuthTransitionPhase = isError ? 'error' : 'showing'
   const effectiveErrorKind: AuthTransitionErrorKind | undefined = machineError
@@ -305,17 +318,19 @@ function TransitionOverlay() {
   // shared values ya nacen en el end-state correcto).
   const prevKeyRef = useRef<string | null>(null)
 
-  // Coexistencia con el store viejo: si la máquina entra a bridging
-  // cuando el overlay YA está opaco (el login viejo lo abrió antes),
-  // el fade-in no se re-dispara y su callback nunca reportaría. Acá
-  // reportamos de inmediato — el evento es idempotente (no-op si la
-  // máquina no está esperando opaque).
+  // Reporte inmediato de cobertura — dos casos donde el callback del
+  // fade-in no va a disparar pero la pantalla YA está cubierta:
+  //  1. Overlay suprimido por el launch splash: el launch ES la
+  //     cobertura → navegar debajo es seguro (invariante 1 satisfecha).
+  //  2. Overlay ya opaco de un viaje previo (re-entry sin re-animación).
+  // El evento es idempotente (no-op si la máquina no espera opaque).
+  const isBridging = machine.phase === 'bridging'
   useEffect(() => {
-    if (!machineVisible) return
-    if (prevKeyRef.current === 'in' && opacity.value === 1) {
+    if (!isBridging) return
+    if (suppressed || (prevKeyRef.current === 'in' && opacity.value === 1)) {
       reportOpaque()
     }
-  }, [machineVisible, opacity, reportOpaque])
+  }, [isBridging, suppressed, opacity, reportOpaque])
 
   useEffect(() => {
     const key = isRevealing ? 'soar' : effectiveVisible ? 'in' : 'out'
