@@ -46,7 +46,10 @@ export function UnlockScreen() {
 
   const fireUnlock = useCallback(async () => {
     authFlowLog('unlock', 'fireUnlock entry')
-    showAuthTransitionSplash()
+    // requireDestination: el splash espera a que HomeScreen llame
+    // markDestinationReady (cuando snapshot.data esté listo) para hide.
+    // Evita "green pause" entre splash hide y home content visible.
+    showAuthTransitionSplash({ requireDestination: true })
 
     try {
       authFlowLog('unlock', 'calling authenticateBiometricAccess')

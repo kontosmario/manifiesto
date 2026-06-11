@@ -147,7 +147,6 @@ export function useLoginSubmit({
     resetAuthFlowTimer()
     authFlowLog('login-submit', 'handleSubmit entry', { mode })
 
-    // Show the splash IMMEDIATELY on submit (not after the network call).
     // Pre-fix: showAuthTransitionSplash() era llamado en handleSignedInTransition
     // que solo fire DESPUÉS de que passwordSignIn/passwordSignUp resolvieran
     // (~500-1500ms de network). Resultado: form locked durante el call, luego
@@ -155,7 +154,9 @@ export function useLoginSubmit({
     //
     // Ahora: splash fire INSTANT al submit → fade-in 150ms cubre el network
     // call → success path lo deja visible → error path lo esconde.
-    showAuthTransitionSplash()
+    // requireDestination: el splash espera a markDestinationReady (HomeScreen
+    // cuando snapshot listo) antes de hide. Evita "green pause".
+    showAuthTransitionSplash({ requireDestination: true })
 
     try {
       const signUpResponse =

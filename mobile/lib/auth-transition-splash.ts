@@ -47,11 +47,16 @@ const MAX_VISIBLE_MS = 15000
 
 let state: AuthTransitionState = { phase: 'hidden' }
 let showStartedAt = 0
-// Per-show override of MIN_VISIBLE_MS. Default null = use module constant.
-// Set by `showAuthTransitionSplash({ minVisibleMs })` for callers like
-// the unlock flow that want a faster fade-out (no need to hold the fern
-// for the full 3s — the user just wants to be in the app).
 let currentMinVisibleMs: number = MIN_VISIBLE_MS
+// Cuando true, el splash no se esconde con markLoaded — espera a que
+// `markDestinationReady()` fire (típicamente desde HomeScreen cuando el
+// snapshot data está disponible). Garantiza zero "green gap" entre el
+// splash y el content del destination.
+let destinationRequired = false
+let destinationReady = false
+// Si markLoaded fire pero destinationReady=false todavía, marcamos esto
+// para que cuando destination ready fire, el splash se esconda.
+let authReadyFired = false
 let pendingHideTimer: ReturnType<typeof setTimeout> | null = null
 let safetyTimer: ReturnType<typeof setTimeout> | null = null
 const listeners = new Set<() => void>()
@@ -89,7 +94,16 @@ function setStateAndNotify(next: AuthTransitionState) {
  *   entrance to play through). Pass `0` for "hide as soon as
  *   `markAuthTransitionLoaded` fires".
  */
-export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
+export function showAuthTransitionSplash(options?: {
+  minVisibleMs?: number
+  /**
+   * Si true, el splash NO se esconde con markAuthTransitionLoaded.
+   * Espera a que markDestinationReady() fire. Usado en flows post-auth
+   * donde el destination (home) tiene su propio loading state que
+   * debemos esperar antes de transition.
+   */
+  requireDestination?: boolean
+}) {
   if (state.phase === 'showing' || state.phase === 'success-pending') {
     authFlowLog('splash', 'show() NO-OP (already visible)', { phase: state.phase })
     return
@@ -97,7 +111,13 @@ export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
   clearAllTimers()
   showStartedAt = Date.now()
   currentMinVisibleMs = options?.minVisibleMs ?? MIN_VISIBLE_MS
-  authFlowLog('splash', 'show() → phase=showing', { minVisibleMs: currentMinVisibleMs })
+  destinationRequired = options?.requireDestination ?? false
+  destinationReady = false
+  authReadyFired = false
+  authFlowLog('splash', 'show() → phase=showing', {
+    minVisibleMs: currentMinVisibleMs,
+    requireDestination: destinationRequired,
+  })
   safetyTimer = setTimeout(() => {
     safetyTimer = null
     // Only promote to timeout if still mid-flight. If success or
@@ -164,12 +184,48 @@ export function markAuthSuccess() {
   }, MAX_VISIBLE_MS)
 }
 
+/**
+ * Marca que el destination (home, en general) terminó de cargar
+ * (snapshot, queries, render). Esconde el splash si requireDestination
+ * estaba activo Y auth ya fue marcado loaded.
+ *
+ * Llamado típicamente desde HomeScreen cuando snapshot.data está disponible.
+ */
+export function markDestinationReady() {
+  if (state.phase !== 'showing' && state.phase !== 'success-pending') {
+    authFlowLog('splash', 'markDestinationReady() NO-OP', { phase: state.phase })
+    return
+  }
+  authFlowLog('splash', 'markDestinationReady() called', {
+    destinationRequired,
+    authReadyFired,
+  })
+  destinationReady = true
+  // Si auth ya fue marcado, escondemos ahora.
+  if (authReadyFired) {
+    authFlowLog('splash', 'destination ready + auth ready → hidden')
+    clearAllTimers()
+    setStateAndNotify({ phase: 'hidden' })
+  }
+}
+
 export function markAuthTransitionLoaded() {
   if (state.phase !== 'showing') {
     authFlowLog('splash', 'markLoaded() NO-OP', { phase: state.phase })
     return
   }
-  authFlowLog('splash', 'markLoaded() called')
+  authFlowLog('splash', 'markLoaded() called', { destinationRequired, destinationReady })
+  authReadyFired = true
+
+  // Si requireDestination=true y aún no llegó la señal del destination,
+  // mantener el splash visible. Cuando markDestinationReady fire, se
+  // esconde. Safety: MAX_VISIBLE_MS forzará hide si destination nunca llega.
+  if (destinationRequired && !destinationReady) {
+    authFlowLog('splash', 'waiting for destination ready')
+    setStateAndNotify({ phase: 'success-pending' })
+    return
+  }
+
   // Clamp to non-negative: under backward clock skew (NTP correction,
   // user toggled date, daylight-savings glitch) `Date.now()` can move
   // backwards between `showAuthTransitionSplash` and here. Without the

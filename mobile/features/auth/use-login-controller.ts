@@ -81,7 +81,10 @@ export function useLoginController(options?: UseLoginControllerOptions) {
   const handleSignedInTransition = useCallback(() => {
     authFlowLog('login-controller', 'handleSignedInTransition: markAppUnlocked + show + replace(/)')
     markAppUnlocked()
-    showAuthTransitionSplash()
+    // requireDestination: el splash espera a que HomeScreen llame
+    // markDestinationReady (cuando snapshot.data esté listo) para
+    // hide. Evita el "green pause" entre splash hide y home content.
+    showAuthTransitionSplash({ requireDestination: true })
     router.replace('/')
   }, [router])
   const biometricController = useAuthBiometricController({

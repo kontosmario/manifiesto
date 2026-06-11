@@ -138,7 +138,7 @@ export function useAuthBiometricController({
       setBiometricSubmitting(true)
 
       authFlowLog('controller', 'handleBiometricSignIn entry', { isAutomatic: options?.isAutomatic ?? false })
-      showAuthTransitionSplash()
+      showAuthTransitionSplash({ requireDestination: true })
 
       try {
         authFlowLog('controller', 'calling authenticateBiometricAccess')

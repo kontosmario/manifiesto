@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { markDestinationReady } from '@/lib/auth-transition-splash'
 import {
   Alert,
   RefreshControl,
@@ -63,6 +64,17 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // AppStackShell already fires and seeds this; here we only need the
   // refetch handle for pull-to-refresh.
   const snapshot = useHomeSnapshot(userId)
+
+  // PREMIUM transition: cuando el snapshot está listo, le decimos al
+  // splash overlay que puede iniciar el fade-out. Esto evita el "green
+  // pause" entre el splash hide y el home content visible — el overlay
+  // queda visible hasta que el home tenga data para renderear.
+  const hasSnapshotData = Boolean(snapshot.data)
+  useEffect(() => {
+    if (hasSnapshotData) {
+      markDestinationReady()
+    }
+  }, [hasSnapshotData])
 
   // Telemetry session: emits home.opened on mount, home.closed on
   // unmount, and home.left_without_tap when no element gets tapped.
