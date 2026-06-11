@@ -1,8 +1,19 @@
 # Modelo de App-Lock (3 estados)
 
-> Sprint R-1 (2026-06-10) — backbone. Reemplaza el modelo per-launch +
-> background-after-60s previo. Estados R-2/R-3 quedan referenciados pero
-> aún no implementados.
+> **Status 2026-06-11**: Sprints R-1, R-2, R-3, R-5 COMPLETE.
+> R-4 (long-session age check) deferred post-launch por decisión owner.
+
+## Sprints
+
+| Sprint | Cubrió | Commit |
+|---|---|---|
+| R-1 | Lock thresholds backbone (5min bg / 15min inactivity / 30s sensitive / 30s grace) + 3-state model docs | `fc876d7` |
+| R-2 | Foreground inactivity tracker (PanResponder global + 30s tick + AppState listener) | `6d37003` |
+| R-3 | Protection prompt banner para users sin biometric ni PIN (24h cooldown) | post-R-2 |
+| R-5 | Unlock grace window — quick bg dip (<30s post-unlock) no re-lockea | post-R-3 |
+| R-4 | Long-session age check (>7d sin password) → deferred post-launch | — |
+
+Reemplaza el modelo per-launch + background-after-60s previo.
 
 ## Estados
 

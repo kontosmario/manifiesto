@@ -33,17 +33,39 @@ function emit() {
   }
 }
 
+// Sprint R-5 · unlockGrace — record the timestamp of the most recent
+// successful unlock. The background-relock check reads this and skips
+// the re-lock when a quick background dip (notification center peek,
+// brief app switch) happens within the grace window. Reduces friction
+// for "I opened the app, glanced away for 5 seconds, and now I need to
+// FaceID again" scenarios.
+let unlockedAt: number | null = null
+
 export function isAppUnlocked() {
   return unlocked
 }
 
+/**
+ * Returns the timestamp (ms) of the most recent successful unlock, or
+ * null if the app was never unlocked in this session. Used by the
+ * background-relock decision to honour the unlock grace window.
+ */
+export function getUnlockedAt(): number | null {
+  return unlockedAt
+}
+
 export function markAppUnlocked() {
+  // Refresh `unlockedAt` even if already unlocked — a re-confirmation
+  // (e.g. user passed FaceID after a soft-lock) should reset the grace
+  // window so the next background dip is still grace-protected.
+  unlockedAt = Date.now()
   if (unlocked) return
   unlocked = true
   emit()
 }
 
 export function resetAppLock() {
+  unlockedAt = null
   if (!unlocked) return
   unlocked = false
   emit()

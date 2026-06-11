@@ -19,7 +19,8 @@ import {
   BACKGROUND_RELOCK_THRESHOLD_MS,
   shouldRelock,
 } from '@/features/auth/background-relock'
-import { isAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
+import { getUnlockedAt, isAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
+import { LOCK_THRESHOLDS } from '@/features/auth/lock-thresholds'
 
 export function BackgroundRelockWatcher() {
   // First timestamp at which the app left 'active' for the current
@@ -36,6 +37,10 @@ export function BackgroundRelockWatcher() {
           now: Date.now(),
           thresholdMs: BACKGROUND_RELOCK_THRESHOLD_MS,
           isUnlocked: isAppUnlocked(),
+          // Sprint R-5 — unlock grace window (30s). If user unlocked
+          // recently, a quick background dip won't re-lock.
+          unlockedAt: getUnlockedAt(),
+          gracePeriodMs: LOCK_THRESHOLDS.unlockGrace,
         })
         leftActiveAtRef.current = null
         if (relock) {

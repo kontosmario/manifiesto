@@ -30,6 +30,20 @@ export interface ShouldRelockInput {
   thresholdMs: number
   /** Whether the app is currently unlocked (isAppUnlocked()). */
   isUnlocked: boolean
+  /**
+   * Sprint R-5 — Timestamp (ms) of the most recent successful unlock,
+   * or null if never unlocked in this session. Combined with
+   * `gracePeriodMs` below to skip re-lock for quick background dips
+   * (notification center peek, app switch back) right after an unlock.
+   * Pass `null` to disable the grace window entirely.
+   */
+  unlockedAt: number | null
+  /**
+   * Sprint R-5 — Grace window in ms after a successful unlock during
+   * which a background dwell does NOT trigger re-lock. Reduces friction.
+   * Pass `0` to disable.
+   */
+  gracePeriodMs: number
 }
 
 export function shouldRelock({
@@ -37,6 +51,8 @@ export function shouldRelock({
   now,
   thresholdMs,
   isUnlocked,
+  unlockedAt,
+  gracePeriodMs,
 }: ShouldRelockInput): boolean {
   if (!isUnlocked) return false
   if (leftActiveAt === null) return false
@@ -47,5 +63,26 @@ export function shouldRelock({
   // re-lock; the security-conservative move is to re-arm whenever the
   // timing math stops making sense.
   const delta = now - leftActiveAt
-  return delta < 0 || delta >= thresholdMs
+  if (delta < 0) return true
+  if (delta < thresholdMs) return false
+
+  // Sprint R-5 — Unlock grace window. If the user just unlocked
+  // (e.g. opened the app, glanced at a notification, came back), we
+  // skip the re-lock for `gracePeriodMs` after the unlock timestamp.
+  // The grace window applies on top of the threshold check: even if
+  // the threshold passed, we still skip if within grace.
+  //
+  // The clock-manipulation defense from the threshold check above
+  // (delta < 0 → re-lock) covers the case where someone bumps clock
+  // backwards. For the grace window, we apply the same defense: if
+  // `now - unlockedAt` is negative (clock manipulation), don't honor
+  // the grace — re-lock.
+  if (unlockedAt !== null && gracePeriodMs > 0) {
+    const sinceUnlock = now - unlockedAt
+    if (sinceUnlock >= 0 && sinceUnlock < gracePeriodMs) {
+      return false
+    }
+  }
+
+  return true
 }
