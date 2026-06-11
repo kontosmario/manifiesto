@@ -118,18 +118,25 @@ export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
 /**
  * Marca que el auth (FaceID/password) acaba de completarse con success.
  *
- * Resetea el timer del splash para que el user vea una transición premium
- * POST-AUTH garantizada (independiente de cuánto tardó el auth en sí).
+ * Resetea el timer del splash y baja el minVisibleMs a 0. Esto significa
+ * que el splash se va a esconder apenas markAuthTransitionLoaded fire
+ * (típicamente ~30-100ms post-auth desde RequireAuth).
  *
- * Sin esto: si el FaceID tomó 4s (user tardó en autenticar), elapsed ya
- * superó MIN_VISIBLE_MS (3s) → markLoaded oculta el splash al instante
- * → user solo ve ~70ms de "transición" → feels abrupt.
+ * Por qué min=0:
+ * - El fade-out de 260ms del overlay YA ES la transición premium visible
+ * - El user pidió "al instante de autenticar" — min>0 + setTimeout drift
+ *   del JS thread agregaba 1-2s extra de delay (logs lo confirmaron)
+ * - El base layer del UnlockScreen + BlockingScreenView (ambos con fern)
+ *   garantizan que el fade-out no revele verde
  *
- * Con esto: showStartedAt se resetea al momento del auth success, y
- * currentMinVisibleMs baja a `POST_AUTH_MIN_VISIBLE_MS` (1200ms) que es
- * el tiempo premium para cubrir navigation + snapshot fetch + home paint.
+ * Total user-visible post-auth con min=0:
+ *   ~30ms markLoaded latency + 260ms fade-out = 290ms
+ *
+ * Cubre el caso: si el FaceID tomó 4s pero el original min=3000 ya pasó,
+ * markAuthSuccess garantiza que markLoaded se evalúe nuevamente con el
+ * timer reseteado (no con elapsed=4000 que dispararía immediate hide).
  */
-const POST_AUTH_MIN_VISIBLE_MS = 1200
+const POST_AUTH_MIN_VISIBLE_MS = 0
 
 export function markAuthSuccess() {
   if (state.phase !== 'showing' && state.phase !== 'success-pending') {
