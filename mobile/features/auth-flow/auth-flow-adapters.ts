@@ -38,26 +38,21 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
       getBiometricLoginState(),
       getPinLockState(),
     ])
-    // EXPO GO: el host no tiene NSFaceIDUsageDescription, así que el
-    // "prompt biométrico" degrada a la sheet de passcode del sistema
-    // (full-screen, lenta) — una experiencia que NO representa el
-    // producto. Para mantener el desarrollo limpio, en Expo Go el gate
-    // biométrico del cold start se omite: con sesión válida vas directo
-    // al bridge → home (el PIN de la app, si está seteado, sigue
-    // gateando — es UI propia y funciona perfecto en Expo Go). El gate
-    // biométrico REAL se prueba en dev-client / EAS / TestFlight, donde
-    // el prompt es el glifo nativo de Face ID. Los viajes con prompt
-    // también se pueden simular vía Settings → Desarrollo.
-    const biometricGateUsable = !isExpoGo
+    // EXPO GO: el "prompt biométrico" degrada a la sheet de passcode
+    // del sistema (el host no tiene NSFaceIDUsageDescription). Lo
+    // dejamos ACTIVO a pedido del owner (2026-06-11): el viaje de
+    // unlock comparte el mismo código que el build real, así que
+    // probarlo en Expo Go (aunque la sheet sea fea) ejercita las mismas
+    // invariantes — p.ej. la soberanía del cold-start splash.
     if (isExpoGo && bio.isAvailable && bio.hasSavedCredentials) {
       authFlowLog(
         'adapter',
-        'Expo Go: gate biométrico omitido (el host no soporta Face ID; sería la sheet de passcode). Probalo en dev-client/EAS.',
+        'Expo Go: el prompt biométrico será la sheet de passcode del sistema (Face ID real solo en dev-client/EAS)',
       )
     }
     return {
       hasSession: Boolean(data.session),
-      shouldUseBiometric: biometricGateUsable && bio.isAvailable && bio.hasSavedCredentials,
+      shouldUseBiometric: bio.isAvailable && bio.hasSavedCredentials,
       pinSet: pin.isSet,
       hasSavedCredentials: bio.hasSavedCredentials,
       isUnlocked: isAppUnlocked(),
