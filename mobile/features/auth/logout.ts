@@ -16,6 +16,9 @@ export async function logoutSession(input: {
     '@/lib/notification-pending-route'
   )
   const { clearPin } = await import('@/lib/pin-lock')
+  const { clearProtectionPromptDismissal } = await import(
+    '@/features/auth/protection-prompt-dismissal'
+  )
 
   // Capture userId BEFORE signOut so we can namespace the per-user
   // flag clear. After signOut the session is null and we'd lose
@@ -84,6 +87,12 @@ export async function logoutSession(input: {
     // signed out mid-onboarding without seeing the screen, they should
     // see it again on the next login.
     userId ? clearBiometricSetupShown(userId) : Promise.resolve(),
+    // Sprint R-3 · R-3.2 — clear the "Configurá Face ID o PIN"
+    // dismissal stamp so the next sign-in (same or different user)
+    // re-evaluates fresh. Without this, a user who dismissed the
+    // banner yesterday and logs out / back in today would skip the
+    // recommendation for up to 24h on the new session.
+    userId ? clearProtectionPromptDismissal(userId) : Promise.resolve(),
   ])
 
   // Sprint L · Audit #5 L-2 (2026-06-10): clear any pending push-tap

@@ -9,6 +9,10 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
+import { ProtectionPromptBanner } from '@/components/auth/protection-prompt-banner'
+import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
+import { usePinLockCheck } from '@/features/auth/use-pin-lock-check'
+import { useProtectionPrompt } from '@/features/auth/use-protection-prompt'
 import { HomeDashboard } from '@/components/home/home-dashboard'
 import { brand, DARK_TAB_CANVAS } from '@/theme/palette'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -119,6 +123,21 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
 
   const { data: profile } = useMyProfile(userId)
   const displayName = profile?.display_name ?? 'Usuario'
+
+  // Sprint R-3 — No-credentials defense. Surfaces a banner when the
+  // signed-in user has neither biometric nor PIN configured, the only
+  // state where Sprint R-1/R-2's lock gates fall through. Dismissible,
+  // but returns after 24h. The deletion banner takes precedence below
+  // (deletion > protection) so we never stack two banners at once.
+  const biometricCheck = useColdStartBiometricCheck(userId)
+  const pinCheck = usePinLockCheck(userId)
+  const protectionPrompt = useProtectionPrompt({
+    userId,
+    hasSession: Boolean(userId),
+    hasBiometricCredentials: biometricCheck.shouldUseBiometric,
+    pinIsSet: pinCheck.isSet,
+    onboardingCompleted: Boolean(profile?.onboarding_completed_at),
+  })
   const isSolo = useIsSolo(userId)
   const dashboard = useFamilyDashboard(familyId)
   const categoriesQuery = useCategories(familyId)
@@ -366,11 +385,21 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           {/* J-Auth2: forceful, non-dismissible banner shown whenever the
               user has a pending account deletion. CTA wired to
               `cancel_account_deletion`. Sits ABOVE the dashboard so the
-              user cannot miss it. */}
+              user cannot miss it.
+
+              Precedence (R-3): deletion > protection. Never stack both
+              banners — too noisy. The deletion case is a true alarm; the
+              protection prompt is a soft recommendation that can wait. */}
           {profile?.deletion_scheduled_at ? (
             <CancelDeletionBanner
               userId={userId}
               scheduledAt={profile.deletion_scheduled_at}
+            />
+          ) : protectionPrompt.visible ? (
+            <ProtectionPromptBanner
+              onDismiss={() => {
+                void protectionPrompt.dismiss()
+              }}
             />
           ) : null}
           <HomeDashboard
