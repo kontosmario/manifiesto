@@ -46,6 +46,11 @@ const MAX_VISIBLE_MS = 15000
 
 let state: AuthTransitionState = { phase: 'hidden' }
 let showStartedAt = 0
+// Per-show override of MIN_VISIBLE_MS. Default null = use module constant.
+// Set by `showAuthTransitionSplash({ minVisibleMs })` for callers like
+// the unlock flow that want a faster fade-out (no need to hold the fern
+// for the full 3s — the user just wants to be in the app).
+let currentMinVisibleMs: number = MIN_VISIBLE_MS
 let pendingHideTimer: ReturnType<typeof setTimeout> | null = null
 let safetyTimer: ReturnType<typeof setTimeout> | null = null
 const listeners = new Set<() => void>()
@@ -74,11 +79,20 @@ function setStateAndNotify(next: AuthTransitionState) {
  * Open the splash. Starts the min-visible timer + the max-safety
  * timer. Subsequent calls while already showing are a no-op (the
  * existing timers keep running).
+ *
+ * @param options.minVisibleMs — override the default MIN_VISIBLE_MS
+ *   (3000ms) for this show cycle. Useful for flows that need a quick
+ *   fade-out once the destination is ready (e.g. unlock — the user
+ *   already saw the fern during the FaceID prompt; after success they
+ *   want to be in the app immediately, not wait 3s for the WarmFernLogo
+ *   entrance to play through). Pass `0` for "hide as soon as
+ *   `markAuthTransitionLoaded` fires".
  */
-export function showAuthTransitionSplash() {
+export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
   if (state.phase === 'showing' || state.phase === 'success-pending') return
   clearAllTimers()
   showStartedAt = Date.now()
+  currentMinVisibleMs = options?.minVisibleMs ?? MIN_VISIBLE_MS
   safetyTimer = setTimeout(() => {
     safetyTimer = null
     // Only promote to timeout if still mid-flight. If success or
@@ -109,7 +123,7 @@ export function markAuthTransitionLoaded() {
   // Treat backward skew as "elapsed = 0" and re-arm the normal
   // pending-hide path. Audit #7 7-T8 (Sprint N).
   const elapsed = Math.max(0, Date.now() - showStartedAt)
-  if (elapsed >= MIN_VISIBLE_MS) {
+  if (elapsed >= currentMinVisibleMs) {
     clearAllTimers()
     setStateAndNotify({ phase: 'hidden' })
     return
@@ -125,7 +139,7 @@ export function markAuthTransitionLoaded() {
     if (state.phase === 'success-pending') {
       setStateAndNotify({ phase: 'hidden' })
     }
-  }, MIN_VISIBLE_MS - elapsed)
+  }, currentMinVisibleMs - elapsed)
 }
 
 /**

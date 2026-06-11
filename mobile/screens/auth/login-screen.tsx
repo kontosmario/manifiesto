@@ -315,7 +315,15 @@ export function LoginScreen() {
         // success we keep it visible through markAppUnlocked + redirect;
         // on cancel/fail we hide it so the regular lock UI re-emerges
         // for the user's escape path.
-        showAuthTransitionSplash()
+        //
+        // `minVisibleMs: 0` — para unlock NO queremos el piso default
+        // de 3000ms (que existe para que la WarmFernLogo entrance se
+        // complete en cold-start sign-in). Acá el user ya vio el fern
+        // durante el FaceID prompt; después de success quiere entrar
+        // a la app inmediato, no esperar más segundos para que el fern
+        // termine su animación. Con 0 el splash se esconde apenas
+        // markAuthTransitionLoaded() fire desde RequireAuth del home.
+        showAuthTransitionSplash({ minVisibleMs: 0 })
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
           disableDeviceFallback: true,
