@@ -2,6 +2,11 @@
 
 > **Status 2026-06-11**: Sprints R-1, R-2, R-3, R-5 COMPLETE.
 > R-4 (long-session age check) deferred post-launch por decisión owner.
+>
+> **Refactor 2026-06-11**: la ORQUESTACIÓN del lock (quién decide
+> mostrar Face ID/PIN, navegar, transicionar) pasó a la máquina
+> auth-flow — ver `docs/sistemas/auth-flow.md`. Este doc sigue siendo
+> canónico para el MODELO de lock (estados, thresholds, triggers).
 
 ## Sprints
 
@@ -31,7 +36,7 @@ invalida.
 
 | Trigger | Estado resultante | Implementado |
 |---------|-------------------|---------------|
-| Cold start con biometría/PIN configurado | Soft-lock | Sí (AppEntryGate + `app-lock-state.ts`) |
+| Cold start con biometría/PIN configurado | Soft-lock | Sí (máquina auth-flow `probing → locked` + `app-lock-state.ts`) |
 | Background > `LOCK_THRESHOLDS.background` (5 min) | Soft-lock | Sí (BackgroundRelockWatcher) |
 | Background > `LOCK_THRESHOLDS.sensitiveBackground` (30 s) en pantalla sensible | Soft-lock | Pendiente — Sprint R-2 |
 | Inactividad en foreground > `LOCK_THRESHOLDS.inactivity` (15 min) | Soft-lock | Pendiente — Sprint R-2 |
@@ -69,8 +74,8 @@ documento.
 | Wiring AppState del background-relock | `mobile/components/root/background-relock-watcher.tsx` |
 | Estado in-memory del lock | `mobile/features/auth/app-lock-state.ts` |
 | Re-enroll biometría tras sign-in | `mobile/features/auth/use-login-submit.ts` + `use-auth-biometric-controller.ts` |
-| Gate de entrada | `mobile/components/root/app-entry-gate.tsx` |
-| Logout (hard-lock) | `mobile/features/auth/logout.ts` |
+| Gate de entrada (orquestación) | `mobile/features/auth-flow/` + `mobile/screens/boot/boot-screen.tsx` |
+| Logout (hard-lock) | `mobile/features/auth/logout.ts` (despacha `LOGOUT` a la máquina) |
 
 ## Caveat conocido — declina del prompt Face ID
 

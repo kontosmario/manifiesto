@@ -1,6 +1,6 @@
 # Refactor del flujo de auth — diseño (2026-06-11)
 
-**Estado:** aprobado por el owner (diseño + demo de pacing validados).
+**Estado:** ✅ IMPLEMENTADO 2026-06-11 (Etapas 1-5 completas; doc canónico del sistema: `docs/sistemas/auth-flow.md`).
 **Demo tangible:** `docs/auth-flow-demo.html` — simula los viajes con los timings 1:1 de este spec (prompt interactivo, toggles de red lenta / offline / cámara lenta).
 **Baseline:** commit `27af905` (prefetch paralelo + splash post-success + min-visible) — esas piezas sobreviven absorbidas por este diseño.
 
