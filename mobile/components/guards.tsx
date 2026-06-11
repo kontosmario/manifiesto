@@ -97,6 +97,7 @@ export function RequireGuest({
 }) {
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
+  const isUnlocked = useAppLockState()
   const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
 
   useEffect(() => {
@@ -111,13 +112,23 @@ export function RequireGuest({
     return <BlockingScreenView message="Preparando tu sesión..." />
   }
 
-  // Route signed-in users through AppEntryGate (the `/` index) so the
-  // app-lock gate, onboarding check, family check, and home routing
-  // are all decided in ONE place. Previously this redirected straight
-  // to home/join, which let a user bypass the lock screen by
-  // navigating through any guest route (e.g. cancel Face ID →
-  // back to welcome → "Ya tengo cuenta" → bypass).
-  if (session) {
+  // Route signed-in + UNLOCKED users through AppEntryGate (the `/` index)
+  // so the onboarding check, family check, and home routing are all
+  // decided in ONE place. Previously this redirected straight to
+  // home/join, which let a user bypass the lock screen by navigating
+  // through any guest route.
+  //
+  // CRÍTICO (fix loop infinito 2026-06-11): NO redirigir si el user
+  // está locked. Razón: si UnlockScreen cancela FaceID y bouncea a
+  // /(auth)/login, y RequireGuest redirige a `/`, AppEntryGate detecta
+  // locked + biometric → vuelve a /(auth)/unlock → auto-fires FaceID
+  // → user cancela → loop infinito.
+  //
+  // Locked users con session pueden acceder a guest routes para entrar
+  // con password (que es válido como método de auth). Los protected
+  // routes siguen bloqueados por RequireAuth que valida AMBOS session
+  // Y isAppUnlocked. La seguridad se preserva en RequireAuth, no acá.
+  if (session && isUnlocked) {
     return <Redirect href="/" />
   }
 
