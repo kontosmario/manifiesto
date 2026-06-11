@@ -25,6 +25,7 @@ import {
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
+import { useLayoutTransitionGate } from '@/hooks/use-layout-transition-gate'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
   useDeleteFixedExpense,
@@ -351,6 +352,20 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
     [deleteMutation],
   )
 
+  // Gate del LinearTransition para evitar el "warp" en cold-start del tab.
+  // Pre-mounted tabs renderean su loading state al boot del app; cuando
+  // el user toca el tab por primera vez, el data resuelve → layout cambia
+  // → LinearTransition interpola → vista hace warp. El gate mantiene
+  // `sectionLayout = undefined` durante el primer paint (sin layout
+  // animation) y se activa después de que las interacciones del JS thread
+  // settlen — para los cambios subsiguientes (add/delete fijo) sí hay
+  // smoothing. Ver `use-layout-transition-gate.ts` para detalles.
+  //
+  // Declarado ARRIBA del early-return del error state porque las Rules
+  // of Hooks exigen call counts estables across renders.
+  const layoutGateOpen = useLayoutTransitionGate()
+  const sectionLayout = layoutGateOpen ? LinearTransition.duration(260) : undefined
+
   if (controller.error && controller.allItems.length === 0 && !controller.isLoading) {
     return (
       <Screen
@@ -365,8 +380,6 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       </Screen>
     )
   }
-
-  const sectionLayout = LinearTransition.duration(260)
 
   // Brand-new account: data loaded fine but there are zero fijos.
   // Render the onboarding empty state instead of the data cards (which
