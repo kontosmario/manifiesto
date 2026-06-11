@@ -7,6 +7,10 @@ import Animated, {
 } from 'react-native-reanimated'
 import NetInfo from '@react-native-community/netinfo'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
+import {
+  dispatchAuthFlow,
+  getAuthFlowState,
+} from '@/features/auth-flow/auth-flow-controller'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import {
   hideAuthTransitionSplash,
@@ -212,7 +216,14 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       const online =
         next.isConnected !== false && next.isInternetReachable !== false
       if (online) {
-        hideAuthTransitionSplash()
+        // Si el error es de la máquina auth-flow (bridge-error), el
+        // retry re-prefetchea y sigue el viaje; el store viejo solo
+        // necesita esconderse (shim hasta Etapa 5).
+        if (getAuthFlowState().phase === 'bridge-error') {
+          dispatchAuthFlow({ type: 'RETRY' })
+        } else {
+          hideAuthTransitionSplash()
+        }
       } else {
         showAuthTransitionError('network')
       }

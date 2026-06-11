@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from
 import { Platform, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -21,6 +22,16 @@ import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-banner'
 import { AppProviders } from '@/providers/app-providers'
 import { recordInteraction } from '@/features/auth/inactivity-tracker'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
+import { getOverlayMode } from '@/features/auth-flow/auth-flow-machine'
+import {
+  BRIDGE_FADE_IN_MS,
+  BRIDGE_SCALE_FROM,
+  SOAR_AWAY_MS,
+  SOAR_SCALE_TO,
+  SOAR_TRANSLATE_Y,
+} from '@/features/auth-flow/auth-flow-motion'
+import { useAuthFlowState } from '@/features/auth-flow/use-auth-flow'
 import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -28,27 +39,17 @@ let hasShownAppLaunchSplash = false
 
 // Splash overlay timing — premium fluid transitions.
 //
-// ENTRADA (180ms, snappy):
+// ENTRADA (BRIDGE_FADE_IN_MS, snappy):
 //   - cubic-bezier(0.23, 1, 0.32, 1) strong ease-out: starts FAST, settles
 //   - scale 0.97 → 1 + translateY 0
 //
-// SALIDA (550ms, dramatic soar-away):
-//   - El fern "se eleva físicamente hacia arriba" mientras se desvanece
-//     y crece, como soaring into the canopy.
-//   - translateY 0 → -60 (movimiento Y visible — el fern asciende)
-//   - scale 1 → 1.15 (crecimiento perceptible)
-//   - opacity 1 → 0 (fade out)
+// SALIDA (SOAR_AWAY_MS, dramatic soar-away):
+//   - translateY 0 → -60 + scale 1 → 1.15 + fade out
 //   - cubic-bezier(0.4, 0, 0.2, 1) Material standard — softer exit feel
 //
-// Antes el lift-away era scale 1.08 sin translateY → demasiado sutil,
-// el ojo no percibía movimiento.
-const FADE_IN_MS = 180
-const FADE_OUT_MS = 550
+// Los valores numéricos viven en auth-flow-motion.ts (spec 2026-06-11).
 const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
 const EASE_OUT_SOFT = Easing.bezier(0.4, 0, 0.2, 1)
-const SCALE_FROM = 0.97
-const SCALE_EXIT_TO = 1.15
-const TRANSLATE_Y_EXIT = -60
 
 export function RootLayoutShell() {
   // Cold-start splash:
@@ -275,49 +276,60 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   // En web los mount-races no aplican (no hay native UI thread; el
   // browser maneja todo en JS thread con concurrent rendering),
   // entonces unmount cuando hidden es safe + correcto.
-  const opacity = useSharedValue(visible ? 1 : 0)
-  const scale = useSharedValue(visible ? 1 : SCALE_FROM)
+  // Fuente NUEVA: la máquina auth-flow (boot/unlock/PIN — Etapa 2+).
+  // Fuente VIEJA: el store auth-transition-splash (login/signup hasta
+  // que la Etapa 3 los migre; el shim se borra en la Etapa 5).
+  const machine = useAuthFlowState()
+  const machineMode = getOverlayMode(machine)
+  const machineVisible = machineMode !== 'hidden'
+  const isRevealing = machineMode === 'revealing'
+  const machineError = typeof machineMode === 'object' ? machineMode.error : undefined
+
+  // `revealing` mantiene el overlay montado/interactivo mientras el
+  // soar-away corre; recién `hidden` lo libera.
+  const effectiveVisible = visible || machineVisible
+  const effectivePhase: import('@/lib/auth-transition-splash').AuthTransitionPhase =
+    machineVisible ? (machineError ? 'error' : 'showing') : phase
+  const effectiveErrorKind = machineError ?? errorKind
+
+  const opacity = useSharedValue(effectiveVisible ? 1 : 0)
+  const scale = useSharedValue(effectiveVisible ? 1 : BRIDGE_SCALE_FROM)
   const translateY = useSharedValue(0)
 
-  // Solo animar TRANSICIONES reales de visibilidad:
-  //  - prev === null (primer mount): los shared values ya se inicializan
-  //    en el end-state correcto; correr la animación OUT en el mount
-  //    inicial era un no-op visual pero ensuciaba los logs.
-  //  - prev === visible (cambió solo `phase`, p.ej. showing →
-  //    success-pending): re-disparar withTiming hacia los mismos targets
-  //    es un no-op visual y generaba el doble "animating IN" en logs.
-  const prevVisibleRef = useRef<boolean | null>(null)
+  // INVARIANTE 1 del spec: BRIDGE_OPAQUE se emite desde el callback del
+  // fade-in — la navegación al destino ocurre SOLO con el overlay opaco.
+  const reportOpaque = useCallback(() => {
+    dispatchAuthFlow({ type: 'BRIDGE_OPAQUE' })
+  }, [])
+
+  // Animar solo cuando cambia la ANIMACIÓN requerida ('in' | 'soar' |
+  // 'out'), no en cada cambio de fase. Primer mount no anima (los
+  // shared values ya nacen en el end-state correcto).
+  const prevKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const prev = prevVisibleRef.current
-    prevVisibleRef.current = visible
-    if (prev === null || prev === visible) return
-    authFlowLog('overlay', visible ? `animating IN (${FADE_IN_MS}ms)` : `animating OUT (${FADE_OUT_MS}ms soar-away)`, { phase })
-    if (visible) {
-      // ENTRADA snappy: opacity 0→1 + scale 0.97→1 + translateY → 0.
-      // Reset también el translateY si quedó en exit value.
-      const config = {
-        duration: FADE_IN_MS,
-        easing: EASE_OUT_STRONG,
-      }
-      opacity.value = withTiming(1, config)
+    const key = isRevealing ? 'soar' : effectiveVisible ? 'in' : 'out'
+    const prev = prevKeyRef.current
+    prevKeyRef.current = key
+    if (prev === key) return
+    if (prev === null && key === 'out') return
+    authFlowLog('overlay', `animating ${key}`)
+    if (key === 'in') {
+      const config = { duration: BRIDGE_FADE_IN_MS, easing: EASE_OUT_STRONG }
       scale.value = withTiming(1, config)
       translateY.value = withTiming(0, config)
+      opacity.value = withTiming(1, config, (finished) => {
+        if (finished) runOnJS(reportOpaque)()
+      })
     } else {
-      // SALIDA dramatic soar-away: el fern asciende mientras se desvanece.
-      // - translateY 0 → -60 (movimiento Y visible)
-      // - scale 1 → 1.15 (crecimiento perceptible al ojo)
-      // - opacity 1 → 0
-      // Material standard easing: empezamos sin urgencia, terminamos suave.
-      const config = {
-        duration: FADE_OUT_MS,
-        easing: EASE_OUT_SOFT,
-      }
+      // 'soar' (revealing de la máquina) y 'out' (hide del store viejo)
+      // comparten la salida soar-away.
+      const config = { duration: SOAR_AWAY_MS, easing: EASE_OUT_SOFT }
       opacity.value = withTiming(0, config)
-      scale.value = withTiming(SCALE_EXIT_TO, config)
-      translateY.value = withTiming(TRANSLATE_Y_EXIT, config)
+      scale.value = withTiming(SOAR_SCALE_TO, config)
+      translateY.value = withTiming(SOAR_TRANSLATE_Y, config)
     }
-  }, [visible, opacity, scale, translateY, phase])
+  }, [effectiveVisible, isRevealing, opacity, scale, translateY, reportOpaque])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -329,16 +341,16 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
 
   // En web, si está hidden, no rendereamos children — evita el
   // wordmark fantasma del WarmFernLogo. En native always-mounted.
-  if (Platform.OS === 'web' && !visible) {
+  if (Platform.OS === 'web' && !effectiveVisible) {
     return null
   }
 
   return (
     <Animated.View
       style={[StyleSheet.absoluteFillObject, styles.overlayShell, overlayStyle]}
-      pointerEvents={visible ? 'auto' : 'none'}
+      pointerEvents={effectiveVisible ? 'auto' : 'none'}
     >
-      <AuthTransitionSplash phase={phase} errorKind={errorKind} />
+      <AuthTransitionSplash phase={effectivePhase} errorKind={effectiveErrorKind} />
     </Animated.View>
   )
 }
