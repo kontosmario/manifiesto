@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text } from 'react-native'
+import Animated, { FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
 
@@ -11,14 +12,21 @@ export function FeedbackPill({
   message: string
 }) {
   return (
-    <View style={[styles.feedbackPill, intent === 'error' ? styles.feedbackError : styles.feedbackInfo]}>
+    // Entrada 180ms desde abajo / salida 120ms — los mensajes de
+    // validación aparecen con motion en vez de popear, y la salida es
+    // más rápida que la entrada (el sistema responde, no demora).
+    <Animated.View
+      entering={FadeInDown.duration(180).reduceMotion(ReduceMotion.System)}
+      exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)}
+      style={[styles.feedbackPill, intent === 'error' ? styles.feedbackError : styles.feedbackInfo]}
+    >
       <MaterialIcons
         color={intent === 'error' ? authPalette.feedback.error.icon : authPalette.feedback.info.icon}
         name={intent === 'error' ? 'error-outline' : 'mark-email-read'}
         size={16}
       />
       <Text style={styles.feedbackText}>{message}</Text>
-    </View>
+    </Animated.View>
   )
 }
 

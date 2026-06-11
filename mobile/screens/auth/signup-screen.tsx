@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   Platform,
@@ -11,6 +12,9 @@ import {
 } from 'react-native'
 import Animated, {
   Easing,
+  Extrapolation,
+  interpolate,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -101,6 +105,9 @@ export function SignupScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // Campo culpable del error de validación — pinta el tinte `warning`
+  // animado del TextField además del pill, así el error señala DÓNDE.
+  const [errorField, setErrorField] = useState<'name' | 'email' | 'password' | null>(null)
   const [infoMessage, setInfoMessage] = useState<string | null>(null)
   const [isSubmitting, setSubmitting] = useState(false)
   // Estado del flujo de confirmación por email. Se setea cuando
@@ -159,12 +166,14 @@ export function SignupScreen() {
 
     if (trimmedName.length < 2) {
       setErrorMessage('Agrega un nombre para tu perfil.')
+      setErrorField('name')
       await triggerHaptic('warning')
       nameRef.current?.focus?.()
       return
     }
     if (!normalizedEmail.includes('@')) {
       setErrorMessage('Ingresa un email válido.')
+      setErrorField('email')
       await triggerHaptic('warning')
       emailRef.current?.focus?.()
       return
@@ -172,6 +181,7 @@ export function SignupScreen() {
     const policy = checkPasswordPolicy(trimmedPassword)
     if (!policy.ok) {
       setErrorMessage(policy.error ?? 'La contraseña no cumple los requisitos.')
+      setErrorField('password')
       await triggerHaptic('warning')
       passwordRef.current?.focus?.()
       return
@@ -179,6 +189,7 @@ export function SignupScreen() {
 
     setSubmitting(true)
     setErrorMessage(null)
+    setErrorField(null)
     setInfoMessage(null)
     try {
       // Captcha gate (sprint B · B3). Si está configurado, abrimos el
@@ -318,14 +329,6 @@ export function SignupScreen() {
           ? 2
           : 3
   const strengthLabel = ['', 'Débil', 'Buena', 'Excelente'][strength]
-  const strengthColor =
-    strength === 1
-      ? authTokens.strengthWeak
-      : strength === 2
-        ? authTokens.strengthGood
-        : strength === 3
-          ? authTokens.strengthStrong
-          : theme.colors.textSoft
 
   return (
     <RequireGuest allowFamilylessSession>
@@ -373,8 +376,10 @@ export function SignupScreen() {
               label="Nombre"
               onChangeText={(v) => {
                 setErrorMessage(null)
+                setErrorField(null)
                 setName(v)
               }}
+              warning={errorField === 'name'}
               placeholder="Nombre completo"
               ref={nameRef}
               returnKeyType="next"
@@ -390,8 +395,10 @@ export function SignupScreen() {
               label="Email"
               onChangeText={(v) => {
                 setErrorMessage(null)
+                setErrorField(null)
                 setEmail(v)
               }}
+              warning={errorField === 'email'}
               placeholder="nombre@correo.com"
               ref={emailRef}
               returnKeyType="next"
@@ -407,8 +414,10 @@ export function SignupScreen() {
                 label="Contraseña"
                 onChangeText={(v) => {
                   setErrorMessage(null)
+                  setErrorField(null)
                   setPassword(v)
                 }}
+                warning={errorField === 'password'}
                 helper="Mínimo 10 caracteres, combinando letras y números."
                 placeholder="••••••••"
                 ref={passwordRef}
@@ -422,32 +431,13 @@ export function SignupScreen() {
                   void submitSignup()
                 }}
               />
-              {password.length > 0 ? (
-                <View style={styles.strengthRow}>
-                  <View style={styles.strengthBars}>
-                    {[1, 2, 3].map((i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.strengthBar,
-                          {
-                            backgroundColor:
-                              strength >= i ? strengthColor : theme.colors.lineSoft,
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  <Text
-                    style={[
-                      styles.strengthLabel,
-                      { color: strength === 0 ? theme.colors.textSoft : strengthColor },
-                    ]}
-                  >
-                    {strengthLabel}
-                  </Text>
-                </View>
-              ) : null}
+              <StrengthMeter
+                strength={strength}
+                label={strengthLabel}
+                visible={password.length > 0}
+                baseColor={theme.colors.lineSoft}
+                reduced={reduced}
+              />
             </View>
 
             {errorMessage ? (
@@ -533,50 +523,17 @@ export function SignupScreen() {
               </View>
             ) : null}
 
-            {/* SIEMPRE tappeable (fix 2026-06-11): con `disabled` el tap
-                con datos inválidos se tragaba silencioso — "presiono y
-                no pasa nada". Ahora submitSignup corre, pinta el error
-                (FeedbackPill) y enfoca el campo inválido. El estilo
-                muted via canSubmit se conserva como señal visual. */}
-            <Pressable
-              accessibilityLabel="Crear cuenta"
-              accessibilityRole="button"
-              disabled={isSubmitting}
+            {/* SIEMPRE tappeable (fix 2026-06-11): con datos inválidos
+                submitSignup pinta el error + enfoca el campo. Todos los
+                estados transicionan fluido (ver SubmitCta). */}
+            <SubmitCta
+              canSubmit={canSubmit}
+              isSubmitting={isSubmitting}
               onPress={submitSignup}
-              style={({ pressed }) => [
-                styles.submitCta,
-                {
-                  backgroundColor: canSubmit
-                    ? BRAND_GREEN
-                    : theme.colors.surfaceMuted,
-                  opacity: pressed && canSubmit ? 0.9 : 1,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.submitLabel,
-                  {
-                    color: canSubmit
-                      ? BRAND_CREAM_ON_GREEN
-                      : theme.colors.textSoft,
-                  },
-                ]}
-              >
-                {isSubmitting ? 'Creando…' : 'Crear cuenta'}
-              </Text>
-              {canSubmit && !isSubmitting ? (
-                <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-                  <Path
-                    d="M5 3l5 5-5 5"
-                    stroke={BRAND_CREAM_ON_GREEN}
-                    strokeWidth={2.2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
-              ) : null}
-            </Pressable>
+              mutedBg={theme.colors.surfaceMuted}
+              mutedLabel={theme.colors.textSoft}
+              reduced={reduced}
+            />
           </FadeInUp>
 
           {/* Divider */}
@@ -696,6 +653,189 @@ function GoogleIcon() {
 }
 
 // ─── FadeInUp ───────────────────────────────────────────
+
+// Ease-out fuerte para micro-interacciones (cubic-bezier 0.23,1,0.32,1)
+// — arranca rápido (feedback inmediato) y asienta suave.
+const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
+
+/**
+ * CTA "Crear cuenta" con TODOS sus estados en transiciones fluidas:
+ *  - disabled↔enabled: bg muted→verde y label soft→cream interpolados
+ *    (220ms) — el estado "ya podés enviar" se gana, no aparece.
+ *  - press: scale 0.97 en 120ms / release 160ms (feedback inmediato).
+ *  - flecha: ligada al progress (opacity + translateX −6→0) y crossfade
+ *    a spinner durante el submit. Slot de ancho fijo: cero layout shift.
+ * Siempre tappeable (salvo mid-submit): con datos inválidos el onPress
+ * pinta el error y enfoca el campo.
+ */
+function SubmitCta({
+  canSubmit,
+  isSubmitting,
+  onPress,
+  mutedBg,
+  mutedLabel,
+  reduced,
+}: {
+  canSubmit: boolean
+  isSubmitting: boolean
+  onPress: () => void
+  mutedBg: string
+  mutedLabel: string
+  reduced: boolean
+}) {
+  const progress = useSharedValue(canSubmit ? 1 : 0)
+  const busy = useSharedValue(isSubmitting ? 1 : 0)
+  const scale = useSharedValue(1)
+
+  useEffect(() => {
+    progress.value = reduced
+      ? (canSubmit ? 1 : 0)
+      : withTiming(canSubmit ? 1 : 0, { duration: 220, easing: EASE_OUT_STRONG })
+  }, [canSubmit, progress, reduced])
+
+  useEffect(() => {
+    busy.value = reduced
+      ? (isSubmitting ? 1 : 0)
+      : withTiming(isSubmitting ? 1 : 0, { duration: 160, easing: EASE_OUT_STRONG })
+  }, [busy, isSubmitting, reduced])
+
+  const containerStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [mutedBg, BRAND_GREEN]),
+    transform: [{ scale: scale.value }],
+  }))
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [mutedLabel, BRAND_CREAM_ON_GREEN]),
+  }))
+  const arrowStyle = useAnimatedStyle(() => ({
+    opacity: progress.value * (1 - busy.value),
+    transform: [{ translateX: (1 - progress.value) * -6 }],
+  }))
+  const spinnerStyle = useAnimatedStyle(() => ({
+    opacity: busy.value,
+  }))
+
+  return (
+    <Pressable
+      accessibilityLabel="Crear cuenta"
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !canSubmit, busy: isSubmitting }}
+      disabled={isSubmitting}
+      onPress={onPress}
+      onPressIn={() => {
+        if (reduced) return
+        scale.value = withTiming(0.97, { duration: 120, easing: EASE_OUT_STRONG })
+      }}
+      onPressOut={() => {
+        if (reduced) return
+        scale.value = withTiming(1, { duration: 160, easing: EASE_OUT_STRONG })
+      }}
+    >
+      <Animated.View style={[styles.submitCta, containerStyle]}>
+        <Animated.Text style={[styles.submitLabel, labelStyle]}>
+          {isSubmitting ? 'Creando…' : 'Crear cuenta'}
+        </Animated.Text>
+        <View style={styles.submitTrailing}>
+          <Animated.View style={[StyleSheet.absoluteFillObject, styles.submitTrailingCenter, arrowStyle]}>
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Path
+                d="M5 3l5 5-5 5"
+                stroke={BRAND_CREAM_ON_GREEN}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Animated.View>
+          <Animated.View style={[StyleSheet.absoluteFillObject, styles.submitTrailingCenter, spinnerStyle]}>
+            <ActivityIndicator size="small" color={BRAND_CREAM_ON_GREEN} />
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/**
+ * Medidor de fuerza de contraseña con fill en cascada: el nivel vive en
+ * un shared value animado (260ms) y cada barra se enciende cuando el
+ * valor cruza su índice — al pasar de Débil a Excelente las barras se
+ * llenan en secuencia y el tinte interpola rojo→ámbar→verde de corrido.
+ * Siempre montado (opacity animada): cero salto de layout al tipear la
+ * primera letra.
+ */
+function StrengthMeter({
+  strength,
+  label,
+  visible,
+  baseColor,
+  reduced,
+}: {
+  strength: number
+  label: string
+  visible: boolean
+  baseColor: string
+  reduced: boolean
+}) {
+  const sv = useSharedValue(strength)
+  const vis = useSharedValue(visible ? 1 : 0)
+
+  useEffect(() => {
+    sv.value = reduced
+      ? strength
+      : withTiming(strength, { duration: 260, easing: EASE_OUT_STRONG })
+  }, [reduced, strength, sv])
+
+  useEffect(() => {
+    vis.value = reduced
+      ? (visible ? 1 : 0)
+      : withTiming(visible ? 1 : 0, { duration: 180, easing: EASE_OUT_STRONG })
+  }, [reduced, vis, visible])
+
+  const rowStyle = useAnimatedStyle(() => ({ opacity: vis.value }))
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      Math.min(Math.max(sv.value, 1), 3),
+      [1, 2, 3],
+      [authTokens.strengthWeak, authTokens.strengthGood, authTokens.strengthStrong],
+    ),
+    opacity: 0.4 + 0.6 * Math.min(sv.value, 1),
+  }))
+
+  return (
+    <Animated.View style={[styles.strengthRow, rowStyle]} pointerEvents="none">
+      <View style={styles.strengthBars}>
+        {[1, 2, 3].map((i) => (
+          <StrengthBar key={i} index={i} sv={sv} baseColor={baseColor} />
+        ))}
+      </View>
+      <Animated.Text style={[styles.strengthLabel, labelStyle]}>{label}</Animated.Text>
+    </Animated.View>
+  )
+}
+
+function StrengthBar({
+  index,
+  sv,
+  baseColor,
+}: {
+  index: number
+  sv: { value: number }
+  baseColor: string
+}) {
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sv.value, [index - 0.7, index], [0, 1], Extrapolation.CLAMP),
+    backgroundColor: interpolateColor(
+      Math.min(Math.max(sv.value, 1), 3),
+      [1, 2, 3],
+      [authTokens.strengthWeak, authTokens.strengthGood, authTokens.strengthStrong],
+    ),
+  }))
+  return (
+    <View style={[styles.strengthBar, { backgroundColor: baseColor }]}>
+      <Animated.View style={[StyleSheet.absoluteFillObject, styles.strengthBarFill, fillStyle]} />
+    </View>
+  )
+}
 
 interface FadeInUpProps {
   delay?: number
@@ -833,6 +973,20 @@ const styles = StyleSheet.create({
   strengthBar: {
     flex: 1,
     borderRadius: 2,
+    overflow: 'hidden',
+  },
+  strengthBarFill: {
+    borderRadius: 2,
+  },
+  // Slot de ancho fijo para flecha/spinner — el crossfade ocurre en el
+  // mismo espacio y el label nunca se mueve (cero layout shift).
+  submitTrailing: {
+    width: 18,
+    height: 18,
+  },
+  submitTrailingCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   strengthLabel: {
     fontSize: 11,
