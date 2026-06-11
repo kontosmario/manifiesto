@@ -106,12 +106,9 @@ export function LoginScreen() {
   // clear it so a back-navigate or remount can't re-trigger.
   const params = useLocalSearchParams<{ autoBiometric?: string; lock?: string }>()
   const autoBiometricFiredRef = useRef(false)
-  // `lock=1` is set by AppEntryGate when the session is valid but
-  // we still require a biometric re-confirmation on cold start.
-  // In this mode `triggerFaceID` skips the Supabase refresh path
-  // (the session doesn't need refreshing) and instead just runs
-  // the native authenticator + flips the in-memory unlock state.
-  const isLockMode = params.lock === '1'
+  // Refactor (2026-06-11): el ex-lock-mode (`?lock=1`) se movió a
+  // /(auth)/unlock. Login solo maneja sign-in normal ahora — `params.lock`
+  // queda probado por defensa pero no se usa en lógica activa.
 
   const {
     actions,
@@ -324,16 +321,12 @@ export function LoginScreen() {
   useEffect(() => {
     if (autoBiometricFiredRef.current) return
     if (params.autoBiometric !== '1') return
-    // In lock mode we KNOW biometrics are enrolled (AppEntryGate only
-    // routes here when shouldUseBiometric === true), so don't wait on
-    // the async re-probe — fire as soon as we can. In sign-in mode we
-    // still gate on the saved-credential probe.
-    if (!isLockMode && !hasSavedBiometric) return
+    if (!hasSavedBiometric) return
     if (isBusy || status !== 'idle') return
     autoBiometricFiredRef.current = true
     router.setParams({ autoBiometric: undefined })
     void triggerFaceID()
-  }, [params.autoBiometric, hasSavedBiometric, isLockMode, isBusy, status, router, triggerFaceID])
+  }, [params.autoBiometric, hasSavedBiometric, isBusy, status, router, triggerFaceID])
 
   const handleSwitchAccount = useCallback(() => {
     void triggerHaptic('selection')
@@ -351,20 +344,6 @@ export function LoginScreen() {
   // (paridad con providers sociales ofrecidos en signup). El handler
   // delega en `signInWithApple` y deja que el AppLayout detecte la
   // sesión nueva — no necesitamos redirigir manualmente.
-  const [pinAvailable, setPinAvailable] = useState(false)
-  useEffect(() => {
-    if (!isLockMode) return
-    let cancelled = false
-    void import('@/lib/pin-lock').then(({ getPinLockState }) =>
-      getPinLockState().then((s) => {
-        if (!cancelled) setPinAvailable(s.isSet)
-      }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [isLockMode])
-
   const [appleAvailable, setAppleAvailable] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -498,7 +477,7 @@ export function LoginScreen() {
   // login-action-view.ts) is explicit and regression-tested.
   const actionView = resolveLoginActionView({
     formMode,
-    isLockMode,
+    isLockMode: false,
     hasSavedBiometric,
     isReturningUser,
   })
@@ -755,23 +734,6 @@ export function LoginScreen() {
                       Usar contraseña
                     </Text>
                   </Pressable>
-                  {isLockMode && pinAvailable ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Desbloquear con PIN"
-                      hitSlop={DEFAULT_HIT_SLOP}
-                      onPress={() => router.push('/(auth)/pin-unlock')}
-                      style={({ pressed }) => [
-                        styles.secondaryButton,
-                        { borderColor: theme.colors.line },
-                        pressed && { opacity: 0.7 },
-                      ]}
-                    >
-                      <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-                        Usar PIN
-                      </Text>
-                    </Pressable>
-                  ) : null}
                   <Pressable
                     accessibilityLabel="Cambiar cuenta"
                     accessibilityRole="button"
@@ -854,17 +816,9 @@ export function LoginScreen() {
     </>
   )
 
-  // App-lock mode: the user IS authenticated. `RequireGuest` would
-  // bounce them straight to home (session + family valid) and the
-  // biometric gate would never render. Skip the guard — the
-  // session-validity check already happened upstream in
-  // `AppEntryGate`. The lock UI is identical to the returning-user
-  // hero; only the side-effect of `triggerFaceID` differs (Face ID
-  // unlock instead of Supabase refresh).
-  if (isLockMode) {
-    return body
-  }
-
+  // Login siempre va a través de RequireGuest. El ex-path de lock-mode
+  // (skip guard) se removió en el refactor 2026-06-11 — el unlock vive
+  // en /(auth)/unlock con su propio screen dedicado.
   return (
     <RequireGuest allowFamilylessSession>{body}</RequireGuest>
   )

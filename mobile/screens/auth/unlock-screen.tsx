@@ -10,15 +10,15 @@
 //   - Full-screen welcomeBg + WarmFernLogo centered (zero green visible
 //     en ningún layer)
 //   - Auto-fires FaceID on mount
-//   - SUCCESS → AuthTransitionSplash → markAppUnlocked → home
-//   - FAIL/CANCEL → "Reintentar" + "Usar contraseña" escape
+//   - Footer SIEMPRE visible cuando no está mid-attempt (G3 fix): retry,
+//     "Usar PIN" (si PIN configurado), "Usar contraseña"
+//   - SUCCESS → refresh Supabase session (G2 fix: mint fresh tokens) →
+//     AuthTransitionSplash → markAppUnlocked → home
+//   - FAIL → error inline + footer escape
+//   - CANCEL → footer visible para retry (no dead-end)
 //
 // El flow declarado por el owner:
 //   COLD START ANIMATION → CREDENCIALES TRUE → FACE ID → SPLASH ANIMATION → HOME
-//
-// Implementado como:
-//   AuthLaunchSplash → (AppEntryGate redirige a este screen) → FaceID →
-//   AuthTransitionSplash → home tabs.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
@@ -28,10 +28,15 @@ import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
   authenticateBiometricAccess,
+  clearBiometricCredentials,
+  getBiometricCredentials,
   getBiometricLoginState,
+  updateStoredRefreshToken,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
+import { getPinLockState } from '@/lib/pin-lock'
+import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   hideAuthTransitionSplash,
@@ -41,21 +46,32 @@ import { authTokens } from '@/theme/palette'
 
 const DEFAULT_LABEL = 'Face ID / Touch ID'
 
+type Phase =
+  | 'idle' // pre-mount o post-cancel — mostrar fern + footer
+  | 'scanning' // FaceID prompt activo
+  | 'restoring' // FaceID ok, refrescando sesión Supabase
+  | 'error' // último intento falló con error genuino (no cancel)
+
 export function UnlockScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [biometricLabel, setBiometricLabel] = useState<string>(DEFAULT_LABEL)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [isAttempting, setAttempting] = useState(false)
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [hasPin, setHasPin] = useState(false)
   const autoFiredRef = useRef(false)
 
-  // Probe el label real (FaceID vs TouchID vs huella) on mount para
-  // mostrar copy correcto. Best-effort: si falla, queda el default.
+  // Probe metadata on mount: biometric label (FaceID/TouchID/huella) +
+  // PIN availability para decidir affordances del footer.
   useEffect(() => {
     let cancelled = false
-    void getBiometricLoginState().then((state: BiometricLoginState) => {
+    void Promise.all([
+      getBiometricLoginState(),
+      getPinLockState(),
+    ]).then(([bio, pin]: [BiometricLoginState, { isSet: boolean }]) => {
       if (cancelled) return
-      setBiometricLabel(state.label)
+      setBiometricLabel(bio.label)
+      setHasPin(pin.isSet)
     })
     return () => {
       cancelled = true
@@ -63,8 +79,10 @@ export function UnlockScreen() {
   }, [])
 
   const fireUnlock = useCallback(async () => {
-    if (isAttempting) return
-    setAttempting(true)
+    // Atomic gate: phase=scanning previene re-entrancy desde retry tap o
+    // doble auto-fire.
+    if (phase === 'scanning' || phase === 'restoring') return
+    setPhase('scanning')
     setErrorMessage(null)
     try {
       const result = await authenticateBiometricAccess({
@@ -72,45 +90,89 @@ export function UnlockScreen() {
         disableDeviceFallback: true,
       })
 
-      if (result.success) {
-        await triggerHaptic('success')
-        // El splash post-unlock (WarmFernLogo + fireflies) cubre la
-        // transición visual hasta que el home pinte. markLoaded del
-        // RequireAuth del home dispara el hide.
-        showAuthTransitionSplash()
-        markAppUnlocked()
-        router.replace('/')
+      if (!result.success) {
+        // Cancel paths: no error pill, vuelta a idle para mostrar footer
+        // de retry + fallbacks (G3 fix — antes el screen quedaba dead-end).
+        if (
+          result.error === 'user_cancel' ||
+          result.error === 'system_cancel'
+        ) {
+          setPhase('idle')
+          return
+        }
+        // Genuine failure → warning haptic + error pill.
+        void triggerHaptic('warning')
+        const feedback = biometricFeedbackForError(result.error, biometricLabel)
+        if (feedback) setErrorMessage(feedback.message)
+        setPhase('error')
         return
       }
 
-      // Genuine failure (no user-cancel) → warning haptic.
-      if (
-        result.error !== 'user_cancel' &&
-        result.error !== 'system_cancel'
-      ) {
-        void triggerHaptic('warning')
+      // SUCCESS: refresh la sesión de Supabase (G2 fix). El biometric solo
+      // valida que es el user del device; necesitamos un access token
+      // fresco antes de que el home dispare queries.
+      void triggerHaptic('success')
+      setPhase('restoring')
+      // Splash optimista para feedback inmediato del match. El hide lo
+      // dispara markAuthTransitionLoaded del RequireAuth del home.
+      showAuthTransitionSplash()
+
+      const credentials = await getBiometricCredentials()
+      if (!credentials) {
+        // Keychain inconsistente (clear silencioso o legacy blob). Recovery:
+        // limpiar creds + bouncear a login para sign-in manual que
+        // re-arme biometric.
+        hideAuthTransitionSplash()
+        await clearBiometricCredentials()
+        setErrorMessage(
+          `Tu acceso guardado expiró. Ingresá con tu contraseña una vez para reactivar ${biometricLabel}.`,
+        )
+        setPhase('error')
+        return
       }
-      const feedback = biometricFeedbackForError(result.error, biometricLabel)
-      if (feedback) setErrorMessage(feedback.message)
+
+      const refreshResponse = await supabase.auth.refreshSession({
+        refresh_token: credentials.refreshToken,
+      })
+
+      if (refreshResponse.error || !refreshResponse.data.session) {
+        // Refresh token expirado (Supabase rotación 30d default) o revoked.
+        // NO limpiamos creds — el usuario puede entrar con password y
+        // las creds se re-actualizan automáticamente. Surface friendly
+        // copy + escape.
+        hideAuthTransitionSplash()
+        setErrorMessage(
+          `Tu sesión expiró. Ingresá con tu contraseña una vez para reactivar ${biometricLabel}.`,
+        )
+        setPhase('error')
+        return
+      }
+
+      // Capturar el nuevo refresh token (Supabase rota en cada refresh)
+      // y actualizar Keychain. Si falla, no bloqueante.
+      const newRefreshToken = refreshResponse.data.session.refresh_token
+      if (newRefreshToken && newRefreshToken !== credentials.refreshToken) {
+        await updateStoredRefreshToken(newRefreshToken)
+      }
+
+      markAppUnlocked()
+      router.replace('/')
     } catch (_error) {
-      // Defensive: authenticateBiometricAccess no debería throw, pero si
-      // pasa, dejamos al user la opción de retry / password.
+      // Defensive: authenticateBiometricAccess o refreshSession unexpected throw.
+      hideAuthTransitionSplash()
       setErrorMessage('No pudimos verificar tu identidad. Probá de nuevo.')
-    } finally {
-      setAttempting(false)
+      setPhase('error')
     }
-  }, [biometricLabel, isAttempting, router])
+  }, [biometricLabel, phase, router])
 
   // Auto-fire FaceID en mount. Guarded ref para no re-disparar en re-renders.
+  // El cleanup que escondía el splash se removió — ahora si vamos a home
+  // exitosamente, el splash queda visible hasta markAuthTransitionLoaded
+  // (G7 fix — antes el unmount escondía el splash que acabábamos de mostrar).
   useEffect(() => {
     if (autoFiredRef.current) return
     autoFiredRef.current = true
     void fireUnlock()
-    // Limpiar el splash overlay si el user llegó acá con uno colgado
-    // de un flow previo (ej: post-logout que dejó algo en flight).
-    return () => {
-      hideAuthTransitionSplash()
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -119,37 +181,73 @@ export function UnlockScreen() {
     router.replace('/(auth)/login')
   }, [router])
 
+  const handlePinFallback = useCallback(() => {
+    void triggerHaptic('selection')
+    router.replace('/(auth)/pin-unlock')
+  }, [router])
+
+  // Footer visible siempre EXCEPTO durante scanning/restoring activo.
+  // En idle (post-cancel) y error: footer renderea para que el user tenga
+  // siempre una acción visible.
+  const showFooter = phase === 'idle' || phase === 'error'
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.root,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
+    >
       <View style={styles.center}>
         <WarmFernLogo size={180} />
       </View>
 
-      {errorMessage ? (
+      {showFooter ? (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 32 }]}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Volver a intentar con ${biometricLabel}`}
+            accessibilityLabel={
+              phase === 'error'
+                ? `Volver a intentar con ${biometricLabel}`
+                : `Desbloqueá con ${biometricLabel}`
+            }
             onPress={fireUnlock}
             style={({ pressed }) => [
               styles.retryButton,
-              { opacity: pressed || isAttempting ? 0.8 : 1 },
+              { opacity: pressed ? 0.85 : 1 },
             ]}
-            disabled={isAttempting}
           >
             <Text style={styles.retryLabel}>
-              Reintentar con {biometricLabel}
+              {phase === 'error'
+                ? `Reintentar con ${biometricLabel}`
+                : `Desbloqueá con ${biometricLabel}`}
             </Text>
           </Pressable>
+
+          {hasPin ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Usar PIN para desbloquear"
+              onPress={handlePinFallback}
+              hitSlop={8}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkLabel}>Usar PIN</Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Usar contraseña"
             onPress={handlePasswordFallback}
             hitSlop={8}
-            style={styles.passwordEscape}
+            style={styles.linkButton}
           >
-            <Text style={styles.passwordEscapeLabel}>Usar contraseña</Text>
+            <Text style={styles.linkLabel}>Usar contraseña</Text>
           </Pressable>
         </View>
       ) : null}
@@ -170,7 +268,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 32,
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
   errorText: {
     color: authTokens.surfaceCream,
@@ -178,12 +276,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
+    marginBottom: 4,
   },
   retryButton: {
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 999,
     backgroundColor: authTokens.surfaceCream,
+    minWidth: 220,
+    alignItems: 'center',
   },
   retryLabel: {
     color: authTokens.welcomeBg,
@@ -191,11 +292,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  passwordEscape: {
+  linkButton: {
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
-  passwordEscapeLabel: {
+  linkLabel: {
     color: authTokens.surfaceCream,
     fontSize: 14,
     opacity: 0.75,

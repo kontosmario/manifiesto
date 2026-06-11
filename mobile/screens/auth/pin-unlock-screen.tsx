@@ -8,7 +8,6 @@ import { isPinComplete } from '@/components/auth/pin-pad-model'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { getPinLength, verifyPin } from '@/lib/pin-lock'
-import { logoutSession } from '@/features/auth/logout'
 import { triggerHaptic } from '@/lib/haptics'
 import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -94,11 +93,14 @@ export function PinUnlockScreen() {
     [checking, pinLength, router],
   )
 
+  // G4 fix (2026-06-11): antes este handler llamaba logoutSession() que
+  // limpiaba TODO el device-local state (Keychain biometric, last-user
+  // cache, push token, tours, prompt dismissal) — destructivo y obligaba
+  // al user a re-tipear email. Ahora redirige al login para fallback con
+  // password. Si el user realmente quiere cerrar sesión, lo hace desde
+  // Settings → Cerrar sesión.
   const handleForgot = useCallback(() => {
-    void logoutSession({
-      onError: () => router.replace('/(auth)/welcome'),
-      onSuccess: () => router.replace('/(auth)/welcome'),
-    })
+    router.replace('/(auth)/login')
   }, [router])
 
   if (sessionQuery.isLoading) {
