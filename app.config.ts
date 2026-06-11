@@ -68,11 +68,12 @@ const config: ExpoConfig = {
     'expo-asset',
     'expo-secure-store',
     'expo-updates',
-    // Sprint P · Audit #9 P-3 (2026-06-10): screen-capture prevention
-    // on auth/PIN screens (login, signup, reset-password, pin-unlock,
-    // pin-setup, require-reauth-sheet). Registered as a plugin so
-    // expo prebuild keeps the native module linked.
-    'expo-screen-capture',
+    // Sprint P · Audit #9 P-3 (2026-06-10): expo-screen-capture is used at
+    // runtime in auth/PIN screens (login, signup, reset-password, pin-unlock,
+    // pin-setup, require-reauth-sheet) via preventScreenCaptureAsync(). The
+    // package does NOT export a config plugin (it's runtime-only API), so
+    // it does NOT get registered here. Expo autolinking picks up the native
+    // module from package.json dependencies directly.
     // Sprint P · Audit #9 P-4 (2026-06-10): expo-image-picker's default
     // plugin config injects `RECORD_AUDIO` permission into the Android
     // manifest because the camera API supports video. We only use the
