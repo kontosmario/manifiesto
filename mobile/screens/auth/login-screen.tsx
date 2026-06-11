@@ -309,26 +309,35 @@ export function LoginScreen() {
         // Show the auth-transition splash (WarmFernLogo + fireflies)
         // BEFORE the FaceID prompt.
         //
-        // Lifecycle del splash (premium / crossfade-natural):
-        //   1. show() → splash visible DURANTE el FaceID prompt
-        //   2. en SUCCESS: NO hide explícito. El splash queda visible
-        //      cubriendo la ventana entre router.replace y home rendered
-        //      (esa ventana mostraba BlockingScreenView verde sólido si
-        //      el splash fuera ya hidden — esa es la "pantalla verde"
-        //      que el user veía).
-        //   3. markAuthTransitionLoaded() fire desde RequireAuth del home
-        //      cuando el home termina de cargar sus queries
-        //   4. Splash hide diferido por InteractionManager (ver
-        //      auth-transition-splash.ts) → espera que el home pinte
-        //      sus primeras frames con content → fade-out 320ms revela
-        //      home YA renderizado, no green
-        //   5. en FAIL/CANCEL: hide explícito porque NO hay redirect
-        //      pendiente, queremos que el lock screen reaparezca con
-        //      el fallback "Usar contraseña"
+        // Lifecycle del splash en lock-mode (premium):
         //
-        // `minVisibleMs: 0` — sin piso de tiempo; el lifecycle del
-        // splash queda atado a "home rendered" (vía markLoaded + defer)
-        // no a un timer arbitrario.
+        //   1. show() ANTES del FaceID — splash visible durante el prompt
+        //   2. SUCCESS path: hide EXPLÍCITO con delay de 1.2s
+        //      después de markAppUnlocked + router.replace.
+        //
+        // Por qué 1.2s de delay y no markAuthTransitionLoaded:
+        //
+        //   markAuthTransitionLoaded() fire desde RequireAuth cuando las
+        //   queries de sesión terminan. Pero esas queries están cacheadas
+        //   (el user ya estaba loggeado) → markLoaded fire en ~50ms post-
+        //   replace. Eso es ANTES de que el navigator transition + tabs
+        //   layout mount + home tab focus + home content first paint estén
+        //   listos. Si el splash hide en T+50ms, durante el fade-out de
+        //   320ms el navigator todavía está animando route → user ve
+        //   forest-tinted canvas (theme.colors.canvas = #12211A) DEBAJO
+        //   del splash fading → percibido como "verde".
+        //
+        //   1.2s es un tiempo conservador que garantiza:
+        //   - Navigator route transition completo (~250ms iOS push)
+        //   - Tabs layout + home tab mount/focus (~200ms cold)
+        //   - Home initial first paint (~100ms con snapshot data hot)
+        //   - Padding extra para Expo Go overhead
+        //
+        //   Total perceived post-FaceID: 1.2s splash + 320ms fade = ~1.5s
+        //   transición continua a home. Premium pero no stuck.
+        //
+        //   3. FAIL/CANCEL path: hide inmediato para que el lock screen
+        //      reaparezca con el fallback "Usar contraseña".
         showAuthTransitionSplash({ minVisibleMs: 0 })
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
@@ -336,13 +345,15 @@ export function LoginScreen() {
         })
         if (result.success) {
           await triggerHaptic('success')
-          // NO hideAuthTransitionSplash() acá. Lo maneja markAuthTransitionLoaded
-          // del RequireAuth del home (post-render).
           markAppUnlocked()
           router.replace('/')
+          // Delay explícito: cubre la ventana de navigation + tabs mount
+          // + home first paint. Sin esto el splash hide muy temprano y
+          // el fade-out revela el forest canvas del navigator (verde).
+          setTimeout(() => hideAuthTransitionSplash(), 1200)
           return
         }
-        // FAIL/CANCEL: hide explícito para que el lock screen reaparezca.
+        // FAIL/CANCEL: hide inmediato para que el lock screen reaparezca.
         hideAuthTransitionSplash()
         // Warning haptic for genuine failures (not user-initiated cancels),
         // matching the sign-in path's feedback.
