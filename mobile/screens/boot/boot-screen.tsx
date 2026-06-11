@@ -16,10 +16,12 @@
 // tras re-lock no duplica nada.
 
 import { useEffect, useRef } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, View, useWindowDimensions } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
+import { FirefliesLayer } from '@/components/auth/auth-transition-splash'
 import { PinLockPanel } from '@/components/auth/pin-lock-panel'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import {
   configureAuthFlow,
   dispatchAuthFlow,
@@ -31,6 +33,8 @@ import { authTokens } from '@/theme/palette'
 
 export function BootScreen() {
   const state = useAuthFlowState()
+  const { width, height } = useWindowDimensions()
+  const reduced = useReducedMotion()
   const bootedRef = useRef(false)
 
   useEffect(() => {
@@ -45,8 +49,13 @@ export function BootScreen() {
     return <PinLockPanel />
   }
 
+  // Fireflies idénticos a los del bridge (CSS animations nativas, cero
+  // worklets): la superficie de lock respira en vez de ser verde
+  // estático — el seam boot ↔ bridge sigue siendo invisible porque
+  // ambas capas usan el MISMO campo determinístico de partículas.
   return (
     <View style={styles.root}>
+      <FirefliesLayer width={width} height={height} reduced={reduced} />
       <View style={styles.center}>
         <Animated.View entering={FadeIn.duration(400)}>
           <WarmFernLogo size={180} />

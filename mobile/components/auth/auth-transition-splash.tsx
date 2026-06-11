@@ -108,7 +108,7 @@ const FIREFLIES = Array.from({ length: FIREFLY_COUNT }, (_, i) => ({
   color: i % 3 === 0 ? authTokens.peach : '#C7EE9C',
 }))
 
-function FirefliesLayer({
+export function FirefliesLayer({
   width,
   height,
   reduced,
