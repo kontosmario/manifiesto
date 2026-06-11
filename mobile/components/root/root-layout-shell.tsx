@@ -30,26 +30,25 @@ let hasShownAppLaunchSplash = false
 //
 // ENTRADA (180ms, snappy):
 //   - cubic-bezier(0.23, 1, 0.32, 1) strong ease-out: starts FAST, settles
-//   - scale 0.97 → 1 (combina con opacity para "alive" entrance)
+//   - scale 0.97 → 1 + translateY 0
 //
-// SALIDA (450ms, graceful lift-away):
-//   - Larger duration que la entrada — la salida es un MOMENTO de
-//     transición premium, no un snap. Da tiempo a que home renderee y
-//     la fade-out crossfadea hacia el content que se está pintando.
-//   - cubic-bezier(0.4, 0, 0.2, 1) Material Design standard (softer
-//     que el strong out — exits beneficial from gentle deceleration)
-//   - scale 1 → 1.08 (lift-away effect: el fern crece sutil mientras
-//     se desvanece, como elevándose hacia el viewer = sensación de
-//     "transición hacia un nuevo plano", no "desaparición flat")
+// SALIDA (550ms, dramatic soar-away):
+//   - El fern "se eleva físicamente hacia arriba" mientras se desvanece
+//     y crece, como soaring into the canopy.
+//   - translateY 0 → -60 (movimiento Y visible — el fern asciende)
+//   - scale 1 → 1.15 (crecimiento perceptible)
+//   - opacity 1 → 0 (fade out)
+//   - cubic-bezier(0.4, 0, 0.2, 1) Material standard — softer exit feel
+//
+// Antes el lift-away era scale 1.08 sin translateY → demasiado sutil,
+// el ojo no percibía movimiento.
 const FADE_IN_MS = 180
-const FADE_OUT_MS = 450
+const FADE_OUT_MS = 550
 const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
-// Material Design standard ease — softer que strong-in-out, ideal
-// para salidas que se sienten "leaving" sin urgencia.
 const EASE_OUT_SOFT = Easing.bezier(0.4, 0, 0.2, 1)
-// Entrada starts from 0.97; salida grows to 1.08 (lift-away effect).
 const SCALE_FROM = 0.97
-const SCALE_EXIT_TO = 1.08
+const SCALE_EXIT_TO = 1.15
+const TRANSLATE_Y_EXIT = -60
 
 export function RootLayoutShell() {
   // Cold-start splash:
@@ -278,33 +277,42 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   // entonces unmount cuando hidden es safe + correcto.
   const opacity = useSharedValue(visible ? 1 : 0)
   const scale = useSharedValue(visible ? 1 : SCALE_FROM)
+  const translateY = useSharedValue(0)
 
   useEffect(() => {
-    authFlowLog('overlay', visible ? `animating IN (${FADE_IN_MS}ms)` : `animating OUT (${FADE_OUT_MS}ms lift-away)`, { phase })
+    authFlowLog('overlay', visible ? `animating IN (${FADE_IN_MS}ms)` : `animating OUT (${FADE_OUT_MS}ms soar-away)`, { phase })
     if (visible) {
-      // ENTRADA snappy: opacity 0→1 + scale 0.97→1 simultáneos.
+      // ENTRADA snappy: opacity 0→1 + scale 0.97→1 + translateY → 0.
+      // Reset también el translateY si quedó en exit value.
       const config = {
         duration: FADE_IN_MS,
         easing: EASE_OUT_STRONG,
       }
       opacity.value = withTiming(1, config)
       scale.value = withTiming(1, config)
+      translateY.value = withTiming(0, config)
     } else {
-      // SALIDA premium lift-away: scale 1→1.08 (grows) + opacity 1→0.
-      // El fern parece elevarse hacia el viewer mientras se desvanece,
-      // dando sensación de "transición a otro plano" en vez de un snap.
+      // SALIDA dramatic soar-away: el fern asciende mientras se desvanece.
+      // - translateY 0 → -60 (movimiento Y visible)
+      // - scale 1 → 1.15 (crecimiento perceptible al ojo)
+      // - opacity 1 → 0
+      // Material standard easing: empezamos sin urgencia, terminamos suave.
       const config = {
         duration: FADE_OUT_MS,
         easing: EASE_OUT_SOFT,
       }
       opacity.value = withTiming(0, config)
       scale.value = withTiming(SCALE_EXIT_TO, config)
+      translateY.value = withTiming(TRANSLATE_Y_EXIT, config)
     }
-  }, [visible, opacity, scale, phase])
+  }, [visible, opacity, scale, translateY, phase])
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
   }))
 
   // En web, si está hidden, no rendereamos children — evita el
