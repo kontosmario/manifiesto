@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { runDevJourney, type DevJourney } from '@/features/auth-flow/dev-journeys'
 import { useFocusEffect } from '@react-navigation/native'
 import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
@@ -720,6 +721,14 @@ const handleOpenSupport = useCallback(() => {
   // animations + error UIs without going through a full
   // logout/login + airplane-mode round-trip.
 
+  // Viajes sintéticos de la máquina auth-flow (spec 2026-06-11): corren
+  // la máquina REAL con adapters fake (FaceID 2.2s, red 0.9s simuladas)
+  // así el bridge/error se validan in-app sin repetir login/kill-app.
+  const handleDevJourney = useCallback((journey: DevJourney) => {
+    void triggerHaptic('selection')
+    runDevJourney(journey)
+  }, [])
+
   // Success preview: opens the splash, simulates a 5s slow request,
   // then marks loaded. The state machine enforces the 3000ms minimum
   // anyway, so even if you bumped this lower, the entrance would
@@ -1298,6 +1307,24 @@ const handleOpenSupport = useCallback(() => {
                   footer="Solo visibles en desarrollo. Útil para iterar animaciones."
                   title="Desarrollo"
                 >
+                  <SettingsRow
+                    helper="Viaje completo de la máquina: probes → Face ID (2.2s) → bridge → soar-away."
+                    icon="play-circle-outline"
+                    label="Probar viaje · Face ID success"
+                    onPress={() => handleDevJourney('faceid-success')}
+                  />
+                  <SettingsRow
+                    helper="Simula cancel del prompt → fallback a login (ver logs [auth-flow])."
+                    icon="do-not-disturb"
+                    label="Probar viaje · Face ID cancel"
+                    onPress={() => handleDevJourney('faceid-cancel')}
+                  />
+                  <SettingsRow
+                    helper="Simula snapshot fallido → bridge-error con Reintentar."
+                    icon="wifi-off"
+                    label="Probar viaje · error de red"
+                    onPress={() => handleDevJourney('network-error')}
+                  />
                   <SettingsRow
                     helper="Muestra el splash, simula carga 5s, transiciona a la home cuando la animación termina."
                     icon="auto-awesome"
