@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manifiesto · Demo del flujo auth (spec 2026-06-11)</title>
+<style>
+  /* ── Demo chrome ─────────────────────────────────────────────── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #14110E;
+    color: #EDE8DF;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; gap: 40px; padding: 24px;
+  }
+  .phone {
+    width: 390px; height: 844px; flex: none;
+    border-radius: 54px; border: 10px solid #2A2622;
+    overflow: hidden; position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+    background: #000;
+  }
+  @media (max-height: 940px) { .phone { transform: scale(.82); margin: -70px 0; } }
+  .panel { width: 360px; max-width: 40vw; }
+  .panel h1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .panel .sub { font-size: 12.5px; color: #9A9288; line-height: 1.5; margin-bottom: 18px; }
+  .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .btn {
+    appearance: none; border: 0; cursor: pointer; text-align: left;
+    background: #2E7D5B; color: #FFFBF2; font-size: 14px; font-weight: 600;
+    padding: 12px 16px; border-radius: 12px; transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn.secondary { background: #2A2622; color: #EDE8DF; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; font-size: 13px; }
+  .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #C9C2B8; }
+  .log {
+    background: #1C1916; border-radius: 12px; padding: 12px 14px;
+    height: 320px; overflow-y: auto;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.7;
+  }
+  .log .t { color: #7BACD4; }
+  .log .tag { color: #E0A56E; }
+  .log .state { color: #A9D57F; font-weight: 700; }
+
+  /* ── Pantalla ────────────────────────────────────────────────── */
+  .screen { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+  .layer.on { opacity: 1; }
+
+  /* Superficie de marca (launch / boot / bridge comparten lenguaje) */
+  .brand-surface { background: #0E3A26; overflow: hidden; }
+  .hero { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .wordmark { font-size: 46px; font-weight: 800; letter-spacing: -2px; color: #FFFBF2; margin-top: 24px; }
+  .wordmark .dot { color: #F2B58A; }
+  .tagline { margin-top: 10px; font-size: 15px; color: rgba(255,251,242,.55); }
+  .blob { position: absolute; border-radius: 50%; }
+  .firefly { position: absolute; width: 3px; height: 3px; border-radius: 1.5px; }
+
+  /* Home fake (destino) */
+  .home { background: #F4F2ED; padding: 64px 20px 0; }
+  .home .hi { font-size: 14px; color: #6B6459; }
+  .home .name { font-size: 24px; font-weight: 800; color: #1E1A14; margin: 2px 0 18px; }
+  .home .balance {
+    background: #0E3A26; border-radius: 22px; padding: 22px; color: #FFFBF2; margin-bottom: 14px;
+  }
+  .home .balance .label { font-size: 12px; opacity: .65; }
+  .home .balance .amount { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-top: 4px; }
+  .home .card { background: #FFFFFF; border-radius: 18px; height: 84px; margin-bottom: 12px;
+    display: flex; align-items: center; padding: 0 18px; gap: 14px; }
+  .home .pill { background: #E8E4DB; border-radius: 9px; height: 12px; }
+  .home .circ { width: 40px; height: 40px; border-radius: 12px; background: #DDE8D9; flex: none; }
+  .home .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 78px;
+    background: #FFFFFFEE; border-top: 1px solid #E5E0D6; display: flex; align-items: center; justify-content: space-around; }
+  .home .tab { width: 26px; height: 26px; border-radius: 8px; background: #D8D2C6; }
+  .home .tab.active { background: #2E7D5B; }
+
+  /* Login fake */
+  .login { background: #0E3A26; padding: 110px 28px 0; }
+  .login h2 { color: #FFFBF2; font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 26px; }
+  .login p { color: rgba(255,251,242,.6); font-size: 14px; margin: 8px 0 28px; }
+  .login .field { background: rgba(255,251,242,.08); border: 1px solid rgba(255,251,242,.16);
+    border-radius: 16px; height: 54px; margin-bottom: 12px; display: flex; align-items: center;
+    padding: 0 18px; color: rgba(255,251,242,.45); font-size: 14px; }
+  .login .cta { background: #FFFBF2; color: #0E3A26; border-radius: 16px; height: 56px;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; margin-top: 6px; }
+  .login .alt { color: rgba(255,251,242,.7); text-align: center; font-size: 14px; margin-top: 18px; }
+
+  /* Error fallback dentro del bridge */
+  .err { display: none; flex-direction: column; align-items: center; max-width: 300px; text-align: center; }
+  .err .ico { width: 64px; height: 64px; border-radius: 32px; background: #F2B58A;
+    display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 18px; }
+  .err h3 { color: #FFFBF2; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .err p { color: rgba(255,251,242,.65); font-size: 14px; line-height: 1.45; margin-bottom: 22px; }
+  .err button { appearance: none; border: 0; cursor: pointer; background: #FFFBF2; color: #0E3A26;
+    font-size: 15px; font-weight: 700; padding: 14px 28px; border-radius: 999px; }
+
+  /* Face ID sheet (mock del prompt del sistema) */
+  .faceid {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    flex-direction: column; z-index: 100;
+  }
+  .faceid .card {
+    background: rgba(40,40,44,.88); backdrop-filter: blur(18px); border-radius: 22px;
+    width: 180px; padding: 24px 16px 18px; text-align: center; color: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  }
+  .faceid .glyph { font-size: 44px; line-height: 1; }
+  .faceid .title { font-size: 15px; font-weight: 600; margin-top: 10px; }
+  .faceid .msg { font-size: 12px; opacity: .65; margin-top: 4px; }
+  .faceid .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .faceid .actions button {
+    appearance: none; border: 0; cursor: pointer; border-radius: 999px;
+    font-size: 13px; font-weight: 600; padding: 10px 16px;
+  }
+  .faceid .ok { background: #2E7D5B; color: #fff; }
+  .faceid .no { background: rgba(255,255,255,.14); color: #fff; }
+
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 54px; z-index: 90;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; }
+  .notch { width: 120px; height: 34px; background: #000; border-radius: 20px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+    <!-- Destino: home -->
+    <div class="layer home" id="home">
+      <div class="hi">Hola de nuevo</div>
+      <div class="name">Mario</div>
+      <div class="balance">
+        <div class="label">Disponible este ciclo</div>
+        <div class="amount">$ 1.284.500</div>
+      </div>
+      <div class="card"><div class="circ"></div><div style="flex:1"><div class="pill" style="width:60%"></div><div class="pill" style="width:38%; margin-top:8px"></div></div></div>
+      <div class="card"><div class="circ"></div><div style="flex:1"><div class="pill" style="width:52%"></div><div class="pill" style="width:30%; margin-top:8px"></div></div></div>
+      <div class="card"><div class="circ"></div><div style="flex:1"><div class="pill" style="width:66%"></div><div class="pill" style="width:44%; margin-top:8px"></div></div></div>
+      <div class="tabbar"><div class="tab active"></div><div class="tab"></div><div class="tab"></div><div class="tab"></div><div class="tab"></div></div>
+    </div>
+
+    <!-- Fallback: login (diseño actual, mock) -->
+    <div class="layer login" id="login">
+      <div id="login-fern"></div>
+      <h2>Hola de nuevo</h2>
+      <p>Entrá a tu espacio familiar.</p>
+      <div class="field">Email</div>
+      <div class="field">Contraseña</div>
+      <div class="cta">Entrar</div>
+      <div class="alt">Entrar con Face ID</div>
+    </div>
+
+    <!-- Boot surface (lock): fern estático idéntico al bridge -->
+    <div class="layer brand-surface" id="boot">
+      <div class="hero">
+        <div id="boot-fern"></div>
+        <div class="wordmark">Manifiesto<span class="dot">.</span></div>
+      </div>
+    </div>
+
+    <!-- Launch splash (cold start, entrance del fern INTACTO) -->
+    <div class="layer brand-surface" id="launch">
+      <div class="hero">
+        <div id="launch-fern"></div>
+        <div class="wordmark" id="launch-wordmark" style="opacity:0">Manifiesto<span class="dot">.</span></div>
+        <div class="tagline" id="launch-tagline" style="opacity:0">Finanzas para tu familia</div>
+      </div>
+    </div>
+
+    <!-- Bridge (splash success = "Probar splash · success") -->
+    <div class="layer brand-surface" id="bridge">
+      <div class="hero" id="bridge-hero">
+        <div id="bridge-fern"></div>
+        <div class="wordmark">Manifiesto<span class="dot">.</span></div>
+      </div>
+      <div class="hero">
+        <div class="err" id="bridge-err">
+          <div class="ico">☁️</div>
+          <h3>Sin conexión a internet</h3>
+          <p>Revisá tu wifi o datos móviles e intentá de nuevo.</p>
+          <button id="retry">Reintentar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Face ID prompt (mock interactivo) -->
+    <div class="faceid" id="faceid">
+      <div class="card">
+        <div class="glyph">😶</div>
+        <div class="title">Face ID</div>
+        <div class="msg">Desbloqueá Manifiesto</div>
+      </div>
+      <div class="actions">
+        <button class="ok" id="fid-ok">✓ Autenticar</button>
+        <button class="no" id="fid-no">✕ Cancelar</button>
+      </div>
+    </div>
+
+    <div class="statusbar"><div class="notch"></div></div>
+  </div>
+</div>
+
+<aside class="panel">
+  <h1>Demo · flujo auth nuevo</h1>
+  <div class="sub">
+    Timings reales del spec: probes ~400ms · Face ID inmediato con el fern
+    creciendo detrás · bridge fade-in 180ms · hold mínimo 1200ms ·
+    soar-away 550ms. El prompt es interactivo (✓ / ✕) salvo que actives auto.
+  </div>
+  <div class="controls">
+    <button class="btn" id="run-cold">▶ Viaje 1/2 · Cold start → Face ID</button>
+    <button class="btn secondary" id="run-relock">▶ Viaje 5 · Re-lock (sin cold start)</button>
+  </div>
+  <div class="toggles">
+    <label><input type="checkbox" id="opt-auto"> Auto-success (2.2s)</label>
+    <label><input type="checkbox" id="opt-slow-net"> Red lenta (snapshot 3s)</label>
+    <label><input type="checkbox" id="opt-offline"> Sin conexión (error + retry)</label>
+    <label><input type="checkbox" id="opt-slowmo"> Cámara lenta (0.35×)</label>
+  </div>
+  <div class="log" id="log"></div>
+</aside>
+
+<script>
+// ─── Fern SVG (paths reales de fern-logo.tsx / manifiesto-fern-v2) ──
+const D_SIL = 'M930.253 161.648C952.922 159.917 1062.65 162.321 1076.44 174.946C1079.49 177.73 1079.97 182.367 1080.01 186.271C1080.2 205.99 1073.97 226.042 1069.75 245.157C1050.77 331.198 1019.52 419.339 967.311 491.088C958.351 503.402 949.002 515.375 938.355 526.29C892.277 573.533 835.21 606.984 767.766 607.738C704.872 608.441 663.17 580.618 619.808 538.225C612.042 551.619 604.976 565.241 599.394 579.713C562.824 674.534 577.135 784.414 575.226 884.105C575.094 891.017 574.839 899.088 569.313 904.098C566.753 906.419 563.54 907.347 560.122 907.064C553.915 906.55 549.809 902.664 545.937 898.219C544.903 850.17 546.229 802.453 545.856 754.442C545.687 732.639 546.482 705.849 543.286 684.587C538.997 656.056 525.326 615.996 505.998 594.098C471.757 641.839 423.33 665.422 364.287 656.958C361.934 656.532 359.589 656.063 357.252 655.552C292.47 641.763 247.364 597.198 212.432 543.25C202.547 527.751 193.559 511.698 185.511 495.17C176.231 476.329 139.547 392.415 143.742 375.865C144.27 373.78 145.452 372.567 147.286 371.505C155.165 366.941 176.958 362.948 186.794 361.124C251.798 349.071 338.872 343.373 403.143 360.107C449.172 372.091 487.461 397.644 511.7 439.119C538.02 484.154 532.767 522.432 520.174 570.237C529.873 584.248 539.612 597.775 547.484 612.911C549.8 617.364 552.056 622.19 554.717 626.383C562.515 596.662 570.598 571.293 584.369 543.61C589.503 533.291 595.151 523.284 600.587 513.116C597.622 506.214 593.352 497.641 590.117 490.746C578.915 466.869 574.123 446.843 572.474 420.558C569.457 364.126 588.941 308.8 626.655 266.71C699.915 183.799 826.22 168.029 930.253 161.648Z';
+const D_BIG = 'M940.001 190.008C976.452 189.436 1012.9 191.405 1049.08 195.901C1047.96 206.133 1046.52 216.328 1044.75 226.468C1039.09 258.278 1028.32 293.779 1017.85 324.454C990.198 405.487 949.024 493.189 876.722 543.311C840.482 568.434 786.505 586.1 742.513 577.238C698.365 568.346 662.384 548.669 636.588 511.375C651.629 486.891 667.932 470.004 688.321 449.745C700.69 437.455 710.432 427.807 724.066 416.835C740.014 403.518 756.623 391.011 773.828 379.362C778.29 376.362 782.793 373.335 787.494 370.523C795.451 365.757 804.841 362.059 811.563 355.592C814.02 353.139 814.386 349.645 812.82 346.623C807.626 336.598 797.538 342.155 790.071 345.557C782.881 348.832 776.098 352.422 769.25 356.208C724.897 380.222 684.913 411.546 650.981 448.86C639.941 460.912 629.717 473.591 619.353 486.222C607.842 463.542 601.504 438.592 600.793 413.168C599.721 364.873 617.657 318.089 650.74 282.886C701.833 229.232 768.24 210.12 839.336 199.1C872.689 194.145 906.299 191.11 940.001 190.008Z';
+const D_SMALL = 'M299.425 371.216C325.942 368.849 368.616 375.554 394.913 381.185C431.308 388.979 467.255 411.085 487.374 442.889C509.898 478.492 511.072 511.978 502.224 551.543C466.873 522.344 431.932 496.886 387.985 482.014C381.25 479.735 358.193 468.482 352.419 475.503C344.307 485.366 373.887 494.667 379.659 497.195C386.443 500.186 393.14 503.367 399.744 506.736C426.763 520.381 446.339 534.016 469.306 553.437C477.807 560.605 483.531 567.102 491.042 575.382C476.584 600.7 453.484 619.958 425.978 629.626C395.077 640.598 358.147 637.769 328.735 623.233C253.52 586.058 210.161 502.676 181.261 427.685C176.412 415.103 172.678 401.625 168.179 388.882C202.606 377.39 262.485 373.148 299.425 371.216Z';
+const D_STEM = 'M 406 648.5 C 405.9 593.42, 405.45 539.96, 405.25 486.5';
+const STEM_LEN = 175;
+
+function fernSvg(size, { entrance = false } = {}) {
+  const h = size * (742 / 841);
+  return `<svg width="${size}" height="${h}" viewBox="0 0 841 742">
+    <path class="f-sil" d="${D_SIL}" fill="#FDFEF9" transform="scale(0.725 0.725318)" opacity="${entrance ? 0 : 1}"/>
+    ${entrance ? `<path class="f-stem" d="${D_STEM}" fill="none" stroke="#FDFEF9" stroke-width="21"
+      stroke-linecap="round" stroke-dasharray="${STEM_LEN}" stroke-dashoffset="${STEM_LEN}"/>` : ''}
+    <path class="f-small" d="${D_SMALL}" fill="#A9D57F" transform="scale(0.725 0.725318)" opacity="${entrance ? 0 : 1}"/>
+    <path class="f-big" d="${D_BIG}" fill="#A9D57F" transform="scale(0.725 0.725318)" opacity="${entrance ? 0 : 1}"/>
+  </svg>`;
+}
+
+document.getElementById('boot-fern').innerHTML = fernSvg(180);
+document.getElementById('bridge-fern').innerHTML = fernSvg(180);
+document.getElementById('login-fern').innerHTML = fernSvg(72);
+
+// ─── Ambient: aurora + fireflies en cada brand-surface ─────────────
+function decorate(surfaceEl) {
+  const blobs = [
+    { size: 280, color: 'rgba(242,181,138,0.18)', left: '30%', top: '18%', dur: 11000 },
+    { size: 300, color: 'rgba(199,238,156,0.16)', left: '64%', top: '76%', dur: 13000, delay: 5500 },
+  ];
+  for (const b of blobs) {
+    const el = document.createElement('div');
+    el.className = 'blob';
+    Object.assign(el.style, { width: b.size + 'px', height: b.size + 'px', background: b.color,
+      left: `calc(${b.left} - ${b.size / 2}px)`, top: `calc(${b.top} - ${b.size / 2}px)` });
+    surfaceEl.prepend(el);
+    el.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1.08)' }, { opacity: 0, transform: 'scale(.9)' }],
+      { duration: b.dur, delay: b.delay || 0, iterations: Infinity, easing: 'ease-in-out' });
+  }
+  for (let i = 0; i < 16; i++) {
+    const el = document.createElement('div');
+    el.className = 'firefly';
+    Object.assign(el.style, { left: ((i * 17 + 11) % 92) + '%', top: ((i * 23 + 9) % 78) + '%',
+      background: i % 3 === 0 ? '#F2B58A' : '#C7EE9C' });
+    surfaceEl.prepend(el);
+    el.animate([
+      { opacity: 0, transform: 'translate(0,0)' },
+      { opacity: .65, transform: 'translate(-3px,-22px)' },
+      { opacity: 0, transform: 'translate(0,0)' },
+    ], { duration: 8000 + ((i * 191) % 3000), delay: (i * 460) % 7000, iterations: Infinity, easing: 'linear' });
+  }
+}
+decorate(document.getElementById('launch'));
+decorate(document.getElementById('boot'));
+decorate(document.getElementById('bridge'));
+
+// ─── Runner ────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+let runToken = 0, t0 = 0;
+
+const speed = () => ($('opt-slowmo').checked ? 1 / 0.35 : 1);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms * speed()));
+function log(tag, msg, state) {
+  const t = Math.round((performance.now() - t0) / speed());
+  const row = document.createElement('div');
+  row.innerHTML = `<span class="t">T+${String(t).padStart(5)}ms</span> <span class="tag">[${tag}]</span> ${msg}` +
+    (state ? ` <span class="state">→ ${state}</span>` : '');
+  logEl.appendChild(row); logEl.scrollTop = logEl.scrollHeight;
+}
+function show(el, on = true) { el.classList.toggle('on', on); }
+function anim(el, frames, opts) { return el.animate(frames, { ...opts, duration: opts.duration * speed(), fill: 'forwards' }); }
+
+function resetAll() {
+  runToken++;
+  logEl.innerHTML = '';
+  for (const id of ['home', 'login', 'boot', 'launch', 'bridge']) { const el = $(id); el.getAnimations().forEach(a => a.cancel()); show(el, false); el.style.opacity = ''; el.style.transform = ''; }
+  $('faceid').style.display = 'none';
+  $('bridge-err').style.display = 'none';
+  $('bridge-hero').style.display = 'flex';
+  $('launch-wordmark').style.opacity = 0; $('launch-tagline').style.opacity = 0;
+  $('launch-fern').innerHTML = fernSvg(220, { entrance: true });
+}
+
+function playFernEntrance(delay) {
+  const root = $('launch-fern');
+  const stem = root.querySelector('.f-stem'), sil = root.querySelector('.f-sil');
+  const small = root.querySelector('.f-small'), big = root.querySelector('.f-big');
+  anim(stem, [{ strokeDashoffset: STEM_LEN }, { strokeDashoffset: 0 }], { duration: 900, delay: delay * speed(), easing: 'cubic-bezier(0.16,1,0.3,1)' });
+  anim(stem, [{ opacity: 1 }, { opacity: 0 }], { duration: 350, delay: (delay + 850) * speed(), easing: 'ease-out' });
+  anim(sil, [{ opacity: 0 }, { opacity: 1 }], { duration: 450, delay: (delay + 700) * speed(), easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+  anim(small, [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: (delay + 1000) * speed(), easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+  anim(big, [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: (delay + 1140) * speed(), easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+  anim($('launch-wordmark'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 900, delay: (delay + 800) * speed(), easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+  anim($('launch-tagline'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 900, delay: (delay + 1000) * speed(), easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+}
+
+function promptFaceId() {
+  return new Promise((resolve) => {
+    $('faceid').style.display = 'flex';
+    const done = (ok) => { $('faceid').style.display = 'none'; cleanup(); resolve(ok); };
+    const okFn = () => done(true), noFn = () => done(false);
+    $('fid-ok').addEventListener('click', okFn);
+    $('fid-no').addEventListener('click', noFn);
+    let timer = null;
+    if ($('opt-auto').checked) timer = setTimeout(okFn, 2200 * speed());
+    function cleanup() {
+      $('fid-ok').removeEventListener('click', okFn);
+      $('fid-no').removeEventListener('click', noFn);
+      if (timer) clearTimeout(timer);
+    }
+  });
+}
+
+async function runBridge(token) {
+  // FACE_ID_OK (o PIN_OK / LOGIN_SUCCESS): bridge fade-in 180ms sobre superficie idéntica
+  log('machine', 'FACE_ID_OK · haptic success', 'bridging');
+  const bridge = $('bridge'); show(bridge);
+  anim(bridge, [{ opacity: 0, transform: 'scale(0.97)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 180, easing: 'cubic-bezier(0.23,1,0.32,1)' });
+  log('driver', 'schedule(min-hold, 1200ms)');
+  const holdStart = performance.now();
+
+  // REGLA DEL SPEC: la navegación dispara recién cuando el bridge está
+  // 100% opaco. Swapear las capas de abajo antes de eso deja ver el
+  // home detrás de un overlay semitransparente → parpadeo.
+  await wait(180); if (token !== runToken) return;
+  show($('launch'), false); show($('boot'), false); show($('home'), true);
+  log('driver', 'bridge opaco → navigate(/(app)/(tabs)/home) — swap invisible');
+
+  const netMs = $('opt-slow-net').checked ? 3000 : 380;
+  const destReady = wait(netMs).then(() => {
+    if ($('opt-offline').checked) return 'offline';
+    log('machine', `DESTINATION_READY (snapshot ${$('opt-slow-net').checked ? 'lento, 3000ms' : 'prefetcheado, ~380ms'})`);
+    return 'ok';
+  });
+  const minHold = wait(1200).then(() => log('machine', 'MIN_HOLD_ELAPSED (1200ms)'));
+  const [destResult] = await Promise.all([destReady, minHold]);
+  if (token !== runToken) return;
+
+  if (destResult === 'offline') {
+    log('machine', 'LOAD_FAILED(network)', 'bridge-error');
+    $('bridge-hero').style.display = 'none';
+    $('bridge-err').style.display = 'flex';
+    await new Promise((resolve) => {
+      $('retry').onclick = () => {
+        log('ui', 'tap Reintentar · RETRY');
+        $('opt-offline').checked = false;
+        $('bridge-err').style.display = 'none';
+        $('bridge-hero').style.display = 'flex';
+        resolve();
+      };
+    });
+    if (token !== runToken) return;
+    log('machine', 'DESTINATION_READY (retry ok)', 'bridging');
+    await wait(400);
+  }
+
+  // Soar-away 550ms — la animación de "Probar splash · success"
+  log('machine', `hold total ${Math.round((performance.now() - holdStart) / speed())}ms · soar-away 550ms`, 'revealing');
+  anim(bridge, [
+    { opacity: 1, transform: 'translateY(0) scale(1)' },
+    { opacity: 0, transform: 'translateY(-60px) scale(1.15)' },
+  ], { duration: 550, easing: 'cubic-bezier(0.4,0,0.2,1)' });
+  await wait(550);
+  if (token !== runToken) return;
+  show(bridge, false); bridge.style.opacity = ''; bridge.style.transform = '';
+  log('machine', 'usuario adentro · cero tiempo muerto', 'ready');
+}
+
+async function runColdStart({ withLaunch = true } = {}) {
+  resetAll();
+  const token = runToken;
+  t0 = performance.now();
+  show($('boot'), true);
+  if (withLaunch) {
+    show($('launch'), true);
+    log('boot', 'cold start · launch splash visible desde frame 1 (entrance intacto)');
+    playFernEntrance(300);
+  } else {
+    log('boot', 're-lock · boot fern directo (sin launch animation)');
+  }
+
+  await wait(400); if (token !== runToken) return;
+  log('machine', 'PROBES_RESOLVED (sesión ✓ · biometría ✓)', 'locked:biometric');
+  log('driver', 'prefetch home_snapshot — EN PARALELO con Face ID');
+  await wait(100); if (token !== runToken) return;
+  log('driver', 'prompt Face ID (el fern sigue animando detrás)');
+
+  if (withLaunch) {
+    // Launch splash se auto-apaga a los 2.0s + 220ms fade → revela boot idéntico
+    setTimeout(() => {
+      if (token !== runToken) return;
+      anim($('launch'), [{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-out' })
+        .finished.then(() => { if (token === runToken) show($('launch'), false); });
+      log('boot', 'launch → boot (crossfade 220ms, detrás del prompt)');
+    }, (2000 - 500) * speed());
+  }
+
+  const ok = await promptFaceId(); if (token !== runToken) return;
+  if (!ok) {
+    log('machine', 'FACE_ID_FAIL/CANCEL', 'fallback:login');
+    show($('login'), true);
+    anim($('boot'), [{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease-out' });
+    anim($('launch'), [{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease-out' });
+    log('driver', 'navigate(/(auth)/login) — fade 240ms · diseño intacto, todas las affordances');
+    return;
+  }
+  await runBridge(token);
+}
+
+$('run-cold').onclick = () => runColdStart({ withLaunch: true });
+$('run-relock').onclick = () => runColdStart({ withLaunch: false });
+resetAll();
+log('demo', 'Elegí un viaje ▶ — los timings son los del spec, 1:1.');
+</script>
+</body>
+</html>
