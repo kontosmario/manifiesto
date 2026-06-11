@@ -106,7 +106,10 @@ export function RootLayoutShell() {
   // fern estático. La salida la decide la máquina:
   //   revealing → SOAR (el hero entero se eleva revelando el destino;
   //               el min-hold garantiza que el growth ya completó)
-  //   fallback-login / bridge-error / ready → FADE clásico de 220ms
+  //   fallback-login (cancel del prompt) → SOAR también — misma
+  //               transición que el success, revelando el login que ya
+  //               se montó instantáneo por debajo (pedido del owner)
+  //   bridge-error / ready → FADE clásico de 220ms
   //   guest (sin sesión) → timer clásico intacto (handoff a welcome)
   const machineForLaunch = useAuthFlowState()
   const launchPhase = machineForLaunch.phase
@@ -116,11 +119,9 @@ export function RootLayoutShell() {
     launchPhase === 'revealing'
   const launchExitMode: 'fade' | 'soar' | undefined = !isLaunchSplashVisible
     ? undefined
-    : launchPhase === 'revealing'
+    : launchPhase === 'revealing' || launchPhase === 'fallback-login'
       ? 'soar'
-      : launchPhase === 'fallback-login' ||
-          launchPhase === 'bridge-error' ||
-          launchPhase === 'ready'
+      : launchPhase === 'bridge-error' || launchPhase === 'ready'
         ? 'fade'
         : undefined
 
@@ -291,6 +292,16 @@ function ThemedRootStack() {
           does all the visual transition work on top. */}
       <Stack.Screen name="index" options={{ animation: 'none' }} />
       <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
+      {/* Post-refactor auth-flow (2026-06-11): TODA entrada root-level a
+          los grupos (auth)/(app) ocurre cubierta (launch splash o bridge
+          opaco) y el reveal lo hace el soar-away. El slide default del
+          native-stack corría DEBAJO del soar (visible en el cancel →
+          login como "slide raro") y es trabajo de UI thread que compite
+          con la animación. Las transiciones INTERNAS de cada grupo
+          conservan su animación propia ((auth) crossfade 240ms, (app)
+          su stack/tabs). */}
+      <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
+      <Stack.Screen name="(app)" options={{ animation: 'none' }} />
     </Stack>
   )
 }

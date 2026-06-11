@@ -61,12 +61,15 @@ any   ─ LOGOUT (logoutSession) → guest
    `AuthLaunchSplash` está en pantalla el overlay queda suprimido (el bridge
    JAMÁS lo tapa). Durante el viaje de unlock el launch NO se auto-esconde
    por timer: persiste como superficie de marca (auroras + partículas vivas)
-   y SU SALIDA la decide la máquina — `revealing` → soar-away del hero
-   entero; cancel/error → fade 220ms. El min-hold del driver se estira hasta
-   `LAUNCH_ENTRANCE_MS` (gate en `launch-splash-state.ts`) para que el soar
-   jamás corte el growth. Guest (sin sesión) conserva el timer clásico
-   (handoff a welcome intacto). Sin launch (re-lock V5, login) → bridge
-   normal del overlay.
+   y SU SALIDA la decide la máquina — `revealing` Y `fallback-login`
+   (cancel) → soar-away del hero entero (misma transición para success y
+   cancel, decisión owner); bridge-error/ready → fade 220ms. El min-hold
+   del driver se estira hasta `LAUNCH_ENTRANCE_MS` (gate en
+   `launch-splash-state.ts`) para que el soar jamás corte el growth. Guest
+   (sin sesión) conserva el timer clásico (handoff a welcome intacto). Sin
+   launch (re-lock V5, login) → bridge normal del overlay. Las entradas
+   root-level a (auth)/(app) usan `animation: 'none'` — siempre ocurren
+   cubiertas; el slide default del native-stack competía con el soar.
 3. Soar-away solo con `navigated ∧ minHold ∧ destinationReady`.
 4. Superficies idénticas en cada seam (BootScreen fern ≡ overlay fern,
    centro real de pantalla, sin insets).
