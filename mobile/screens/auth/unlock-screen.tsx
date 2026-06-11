@@ -24,6 +24,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import Animated, { FadeIn } from 'react-native-reanimated'
+import { RiseView } from '@/components/home/animated/rise-view'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
@@ -108,20 +110,30 @@ export function UnlockScreen() {
         return
       }
 
-      // SUCCESS: refresh la sesión de Supabase (G2 fix). El biometric solo
-      // valida que es el user del device; necesitamos un access token
-      // fresco antes de que el home dispare queries.
+      // SUCCESS: feedback inmediato + splash. El hide lo dispara
+      // markAuthTransitionLoaded del RequireAuth del home.
       void triggerHaptic('success')
       setPhase('restoring')
-      // Splash optimista para feedback inmediato del match. El hide lo
-      // dispara markAuthTransitionLoaded del RequireAuth del home.
       showAuthTransitionSplash()
 
+      // FAST PATH (caso normal): si la session sigue activa en el cliente
+      // Supabase (auto-refresh corre en background mientras la app está
+      // abierta y al hacer foreground), unlock + go. NO llamar refreshSession
+      // — el Supabase client ya rotó el token internamente y el guardado
+      // en Keychain podría estar invalid → tirar "expired" falso positivo.
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData.session) {
+        markAppUnlocked()
+        router.replace('/')
+        return
+      }
+
+      // SLOW PATH: no hay session activa (app killed por iOS, refresh
+      // background falló, cold start con session-storage limpio, etc).
+      // Intentar restaurar desde el refresh token del Keychain.
       const credentials = await getBiometricCredentials()
       if (!credentials) {
-        // Keychain inconsistente (clear silencioso o legacy blob). Recovery:
-        // limpiar creds + bouncear a login para sign-in manual que
-        // re-arme biometric.
+        // Keychain inconsistente. Recovery: limpiar creds + fallback login.
         hideAuthTransitionSplash()
         await clearBiometricCredentials()
         setErrorMessage(
@@ -136,10 +148,8 @@ export function UnlockScreen() {
       })
 
       if (refreshResponse.error || !refreshResponse.data.session) {
-        // Refresh token expirado (Supabase rotación 30d default) o revoked.
-        // NO limpiamos creds — el usuario puede entrar con password y
-        // las creds se re-actualizan automáticamente. Surface friendly
-        // copy + escape.
+        // Refresh token verdaderamente expirado/revoked. NO limpiamos
+        // creds — el user puede entrar con password y se re-arman.
         hideAuthTransitionSplash()
         setErrorMessage(
           `Tu sesión expiró. Ingresá con tu contraseña una vez para reactivar ${biometricLabel}.`,
@@ -148,8 +158,7 @@ export function UnlockScreen() {
         return
       }
 
-      // Capturar el nuevo refresh token (Supabase rota en cada refresh)
-      // y actualizar Keychain. Si falla, no bloqueante.
+      // Capturar el nuevo refresh token (Supabase rota en cada refresh).
       const newRefreshToken = refreshResponse.data.session.refresh_token
       if (newRefreshToken && newRefreshToken !== credentials.refreshToken) {
         await updateStoredRefreshToken(newRefreshToken)
@@ -198,12 +207,25 @@ export function UnlockScreen() {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
+      {/* WarmFernLogo entra con fade subtle — match el entrance del
+          AuthLaunchSplash (cold-start) para que la transición se sienta
+          como una continuación natural, no un salto a otra pantalla.
+          Premium fluid feel: cuando el AuthLaunchSplash fade-out, este
+          fern fade-in en paralelo → user percibe UNA superficie brand
+          continua. */}
       <View style={styles.center}>
-        <WarmFernLogo size={180} />
+        <Animated.View entering={FadeIn.duration(400)}>
+          <WarmFernLogo size={180} />
+        </Animated.View>
       </View>
 
       {showFooter ? (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 32 }]}>
+        <RiseView
+          delay={300}
+          duration={500}
+          translateY={16}
+          style={{ ...styles.footer, paddingBottom: insets.bottom + 32 }}
+        >
           {errorMessage ? (
             <Text style={styles.errorText}>{errorMessage}</Text>
           ) : null}
@@ -218,7 +240,7 @@ export function UnlockScreen() {
             onPress={fireUnlock}
             style={({ pressed }) => [
               styles.retryButton,
-              { opacity: pressed ? 0.85 : 1 },
+              { opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
             ]}
           >
             <Text style={styles.retryLabel}>
@@ -234,7 +256,10 @@ export function UnlockScreen() {
               accessibilityLabel="Usar PIN para desbloquear"
               onPress={handlePinFallback}
               hitSlop={8}
-              style={styles.linkButton}
+              style={({ pressed }) => [
+                styles.linkButton,
+                { opacity: pressed ? 0.5 : 1 },
+              ]}
             >
               <Text style={styles.linkLabel}>Usar PIN</Text>
             </Pressable>
@@ -245,11 +270,14 @@ export function UnlockScreen() {
             accessibilityLabel="Usar contraseña"
             onPress={handlePasswordFallback}
             hitSlop={8}
-            style={styles.linkButton}
+            style={({ pressed }) => [
+              styles.linkButton,
+              { opacity: pressed ? 0.5 : 1 },
+            ]}
           >
             <Text style={styles.linkLabel}>Usar contraseña</Text>
           </Pressable>
-        </View>
+        </RiseView>
       ) : null}
     </View>
   )
