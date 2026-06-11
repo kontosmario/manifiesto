@@ -69,7 +69,7 @@ any   ─ LOGOUT (logoutSession) → guest
 | Token | Valor | Qué controla |
 |---|---|---|
 | `BRIDGE_FADE_IN_MS` | 180 | Fade-in del bridge (scale 0.97→1, bezier 0.23/1/0.32/1) |
-| `BRIDGE_MIN_HOLD_MS` | 1200 | Piso del momento de marca post-auth |
+| `BRIDGE_MIN_HOLD_MS` | 550 | Piso post-auth (1200→550 tras feedback en device 2026-06-11: el soar-away es el feedback del éxito) |
 | `SOAR_AWAY_MS` | 550 | Salida (translateY −60, scale 1.15, bezier 0.4/0/0.2/1) |
 | `SAFETY_TIMEOUT_MS` | 15000 | Bridge colgado → error(timeout) |
 | `LOGIN_FALLBACK_FADE_MS` | 240 | Fade del auth stack al login (en `(auth)/_layout`) |

@@ -323,6 +323,10 @@ function TransitionOverlay() {
     prevKeyRef.current = key
     if (prev === key) return
     if (prev === null && key === 'out') return
+    // 'soar' → 'out' (revealing → ready): el soar-away ya dejó los
+    // shared values en el end-state de salida — re-animar es un no-op
+    // visual que solo ensucia los logs.
+    if (prev === 'soar' && key === 'out') return
     authFlowLog('overlay', `animating ${key}`)
     if (key === 'in') {
       const config = { duration: BRIDGE_FADE_IN_MS, easing: EASE_OUT_STRONG }
