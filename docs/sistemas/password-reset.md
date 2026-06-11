@@ -1,0 +1,71 @@
+# Password reset — flujo end-to-end
+
+> Implementado 2026-06-11. Complementa `universal-links.md` (la infra de
+> dominios) y `auth-flow.md` (la máquina de estados).
+
+## Flujo completo
+
+```
+Forgot password (app) → resetPasswordForEmail(redirectTo)
+        ↓ email
+https://<proyecto>.supabase.co/auth/v1/verify?token=...&type=recovery&redirect_to=...
+        ↓ tap en Mail → Safari → 302 al redirect_to
+https://manifiestoapp.com/auth/reset-password?code=...   (landing del sitio)
+        ↓ JS rebota a manifiesto://auth/reset-password?code=... (+ botón manual)
+app/auth/reset-password.tsx → ResetPasswordScreen
+        ↓ exchange PKCE + re-auth gate (PIN/biometría si existen) + form
+contraseña nueva seteada → home
+```
+
+## Piezas
+
+| Pieza | Dónde | Nota |
+|---|---|---|
+| `redirectTo` | `mobile/features/auth/auth-flow.ts` → `getPasswordResetRedirectTo()` | Builds reales: Universal Link `https://manifiestoapp.com/auth/reset-password` (en el allowlist `auth/**`). Expo Go: `exp://...` via `Linking.createURL` — ver caveat abajo. |
+| Landing web | `manifiestoapp-site/auth/reset-password.html` | Rebota a la app preservando `?code=`; botón manual + fallback sin app. **Por qué existe**: iOS NO dispara Universal Links desde redirects 302 — el verify de Supabase siempre aterriza en Safari primero. |
+| Pantalla | `mobile/screens/auth/reset-password-screen.tsx` (ruta `app/auth/reset-password.tsx`) | Exchange PKCE, re-auth gate (G-Auth1), fricción fresh-install, política de contraseña, screen-capture protection. |
+
+## Caveat Expo Go
+
+El `exp://192.168.x.x:8081/--/auth/reset-password` de dev NO está en el
+allowlist de Supabase → el 302 cae al Site URL (la home del sitio). Era
+el bug reportado 2026-06-11 ("nos redirige a manifiesto.com") — en
+builds reales ya no pasa (usa el Universal Link). Para probar el flujo
+COMPLETO en Expo Go: agregar temporalmente `exp://192.168.*.*:*/**` al
+allowlist (Dashboard → Auth → URL Configuration) y quitar al terminar.
+La pantalla en sí se puede probar siempre abriendo el deep link a mano.
+
+## Runbook — email desde soporte@manifiestoapp.com (OWNER ACTION)
+
+Hoy el mail sale del SMTP built-in de Supabase (`noreply@mail.app.supabase.io`,
+rate-limited a ~2/hora y con branding Supabase). Para que salga de
+`soporte@manifiestoapp.com`:
+
+1. **Proveedor de envío** (recomendado: Resend — free tier 3k emails/mes,
+   integra simple con Cloudflare DNS):
+   - Crear cuenta en resend.com → Domains → Add `manifiestoapp.com`.
+   - Resend muestra 3-4 registros DNS (SPF TXT, DKIM CNAME/TXT, opcional
+     DMARC). Cargarlos en Cloudflare → DNS del dominio. Verificar en
+     Resend (tarda minutos).
+   - API Keys → crear key con permiso "Sending access".
+2. **Supabase Dashboard** → Project Settings → Authentication → **SMTP
+   Settings** → Enable Custom SMTP:
+   - Host: `smtp.resend.com` · Port: `465` · Username: `resend`
+   - Password: la API key de Resend
+   - Sender email: `soporte@manifiestoapp.com` · Sender name: `Manifiesto`
+3. **Templates en español** (mismo dashboard → Auth → Email Templates →
+   "Reset password"): subject sugerido `Restablecé tu contraseña de
+   Manifiesto`, body con el botón al `{{ .ConfirmationURL }}`. Aplicar
+   también a Confirm signup / Magic Link para consistencia.
+4. **Responder a soporte@**: el email forwarding de Cloudflare ya rutea
+   `soporte@manifiestoapp.com` → inbox del owner (setup 2026-06-10), así
+   que los replies de usuarios llegan.
+5. Verificar: pedir un reset real → el mail llega de
+   `soporte@manifiestoapp.com`, sin warning de spam (SPF/DKIM verdes en
+   "mostrar original").
+
+## Deploy de la landing
+
+`manifiestoapp-site` commit `31b2220` (local). `git push` en ese repo →
+Cloudflare Pages deploya solo. Verificar:
+`curl -sI https://manifiestoapp.com/auth/reset-password | grep HTTP` → 200.

@@ -11,6 +11,7 @@ export default defineConfig({
       'expo-linking': resolve(__dirname, 'tests/stubs/expo-linking.ts'),
       '@react-navigation/native': resolve(__dirname, 'tests/stubs/react-navigation-native.ts'),
       'expo-modules-core': resolve(__dirname, 'tests/stubs/expo-modules-core.ts'),
+      'expo-constants': resolve(__dirname, 'tests/stubs/expo-constants.ts'),
     },
   },
   define: {

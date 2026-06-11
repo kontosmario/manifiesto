@@ -1,4 +1,5 @@
 import * as Linking from 'expo-linking'
+import { isExpoGo } from '@/lib/runtime-environment'
 import { checkPasswordPolicy } from '@/features/auth/password-policy'
 
 export type AuthMode = 'sign-in' | 'sign-up'
@@ -36,13 +37,30 @@ const AUTH_REDIRECT_PATH = 'auth/callback'
 // pide setear contraseña nueva — distinto del flujo de confirmación de
 // email normal que solo abre sesión y manda al home.
 const AUTH_RESET_PASSWORD_PATH = 'auth/reset-password'
+// Universal Link del reset (2026-06-11). Por qué NO Linking.createURL
+// en builds reales:
+//   1. El link del mail pasa por supabase.co/auth/v1/verify → 302 al
+//      redirect_to. iOS NO dispara Universal Links desde redirects,
+//      así que el redirect aterriza en la landing del sitio
+//      (manifiestoapp.com/auth/reset-password) que rebota a la app vía
+//      scheme + botón manual — y sirve de fallback sin app instalada.
+//   2. El https:// está en el allowlist de Supabase (auth/** wildcard);
+//      el exp:// de Expo Go NO lo está → Supabase caía al Site URL y el
+//      user terminaba en la home del sitio ("nos redirige a
+//      manifiesto.com", bug reportado).
+// En Expo Go mantenemos createURL (exp://...) para poder probar
+// end-to-end SI se agrega el exp:// al allowlist — ver
+// docs/sistemas/password-reset.md.
+const RESET_PASSWORD_UNIVERSAL_LINK =
+  'https://manifiestoapp.com/auth/reset-password'
 
 export function getEmailRedirectTo() {
   return Linking.createURL(AUTH_REDIRECT_PATH)
 }
 
 export function getPasswordResetRedirectTo() {
-  return Linking.createURL(AUTH_RESET_PASSWORD_PATH)
+  if (isExpoGo) return Linking.createURL(AUTH_RESET_PASSWORD_PATH)
+  return RESET_PASSWORD_UNIVERSAL_LINK
 }
 
 export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {
