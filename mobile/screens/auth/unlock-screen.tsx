@@ -33,6 +33,7 @@ import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   hideAuthTransitionSplash,
+  markAuthSuccess,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
@@ -68,7 +69,12 @@ export function UnlockScreen() {
         return
       }
 
-      // SUCCESS: splash YA visible. Solo haptic + continuar.
+      // SUCCESS: reset el timer del splash. El FaceID pudo haber tardado
+      // más que el minVisibleMs default (3s) → markLoaded escondería
+      // instant post-auth → user no ve transición premium. Con
+      // markAuthSuccess, splash queda visible POST-AUTH 1.2s (cubre
+      // navigation + snapshot fetch + home paint).
+      markAuthSuccess()
       void triggerHaptic('success')
 
       // FAST PATH (99% de los casos): session ya activa en el cliente

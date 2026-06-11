@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { isEmailNotConfirmedError } from '@/features/auth/email-confirmation-error'
 import {
   hideAuthTransitionSplash,
+  markAuthSuccess,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
@@ -182,6 +183,8 @@ export function useLoginSubmit({
           captchaToken,
         })
         authFlowLog('login-submit', 'passwordSignIn returned ok')
+        // Reset splash timer post-auth para garantizar transición premium.
+        markAuthSuccess()
       }
 
       await triggerHaptic('success')

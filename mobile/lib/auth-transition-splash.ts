@@ -116,6 +116,48 @@ export function showAuthTransitionSplash(options?: { minVisibleMs?: number }) {
  * actually hides only after the min-visible window elapses — fast
  * responses get held back so the animation completes naturally.
  */
+/**
+ * Marca que el auth (FaceID/password) acaba de completarse con success.
+ *
+ * Resetea el timer del splash para que el user vea una transición premium
+ * POST-AUTH garantizada (independiente de cuánto tardó el auth en sí).
+ *
+ * Sin esto: si el FaceID tomó 4s (user tardó en autenticar), elapsed ya
+ * superó MIN_VISIBLE_MS (3s) → markLoaded oculta el splash al instante
+ * → user solo ve ~70ms de "transición" → feels abrupt.
+ *
+ * Con esto: showStartedAt se resetea al momento del auth success, y
+ * currentMinVisibleMs baja a `POST_AUTH_MIN_VISIBLE_MS` (1200ms) que es
+ * el tiempo premium para cubrir navigation + snapshot fetch + home paint.
+ */
+const POST_AUTH_MIN_VISIBLE_MS = 1200
+
+export function markAuthSuccess() {
+  if (state.phase !== 'showing' && state.phase !== 'success-pending') {
+    authFlowLog('splash', 'markAuthSuccess NO-OP (splash not visible)', { phase: state.phase })
+    return
+  }
+  authFlowLog('splash', 'markAuthSuccess → timer reset', {
+    fromPhase: state.phase,
+    newMinVisibleMs: POST_AUTH_MIN_VISIBLE_MS,
+  })
+  // Si ya estaba success-pending (markLoaded ya firó), volvemos a showing
+  // para que el siguiente markLoaded cuente desde el nuevo timer.
+  clearAllTimers()
+  showStartedAt = Date.now()
+  currentMinVisibleMs = POST_AUTH_MIN_VISIBLE_MS
+  if (state.phase === 'success-pending') {
+    setStateAndNotify({ phase: 'showing' })
+  }
+  // Re-arm el safety timer
+  safetyTimer = setTimeout(() => {
+    safetyTimer = null
+    if (state.phase === 'showing') {
+      setStateAndNotify({ phase: 'error', errorKind: 'timeout' })
+    }
+  }, MAX_VISIBLE_MS)
+}
+
 export function markAuthTransitionLoaded() {
   if (state.phase !== 'showing') {
     authFlowLog('splash', 'markLoaded() NO-OP', { phase: state.phase })

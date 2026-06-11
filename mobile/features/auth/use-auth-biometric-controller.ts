@@ -14,6 +14,7 @@ import {
 } from '@/lib/biometric-auth'
 import {
   hideAuthTransitionSplash,
+  markAuthSuccess,
   showAuthTransitionSplash,
 } from '@/lib/auth-transition-splash'
 import { authFlowLog } from '@/lib/auth-flow-logger'
@@ -165,8 +166,10 @@ export function useAuthBiometricController({
           return
         }
 
-        // FaceID success: splash ya visible. Haptic + continuar al
-        // network call (refreshSession) que ya está cubierto.
+        // FaceID success: reset el timer del splash. El FaceID pudo
+        // tardar más que el minVisibleMs default → user no vería transición
+        // premium. markAuthSuccess garantiza 1.2s de fern post-auth.
+        markAuthSuccess()
         void triggerHaptic('success')
 
         authFlowLog('controller', 'calling getBiometricCredentials')
