@@ -302,7 +302,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       })
       const next = await getBiometricLoginState()
       setBiometricState(next)
-    } catch {
+    } catch (error) {
+      // Dev-only: surface the real error so future Keychain / SecureStore
+      // failures are diagnosable. The user-facing alert stays generic.
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.error('[biometric] activation failed:', error)
+      }
       Alert.alert(
         'No pudimos guardar',
         'Hubo un problema activando el acceso rápido. Probá nuevamente.',

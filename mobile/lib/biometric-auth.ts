@@ -190,11 +190,31 @@ export async function saveBiometricCredentials(input: BiometricCredentialsPayloa
   if (!input.email || !input.refreshToken) {
     return
   }
-  // H5: credentials use the AUTHED options (Face ID gate at read time).
+  // H5: credentials use the AUTHED options (Face ID gate at read time)
+  // in production. In Expo Go we soften to `credentialStoreOptions` (no
+  // `requireAuthentication`) for the SAME reason `authenticateBiometricAccess`
+  // softens `disableDeviceFallback`: Expo Go's host binary (`host.exp.Exponent`)
+  // lacks the Secure Enclave / Keychain access-control entitlements that the
+  // `requireAuthentication: true` write needs to bind the row to LAContext.
+  // Without softening, `SecureStore.setItemAsync` throws with an opaque
+  // "InvalidArgumentException" / Keychain error (-25243 / errSecParam) and
+  // the catch in settings-screen surfaces "No pudimos guardar".
+  //
+  // In every other runtime (dev client, EAS preview, store builds) the
+  // strict gate is preserved. The read path (`getBiometricCredentials`)
+  // mirrors this so dev-in-Expo-Go can save AND read.
+  const saveOptions = IS_EXPO_GO ? credentialStoreOptions : credentialStoreOptionsAuthed
+  if (__DEV__ && IS_EXPO_GO) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[biometric] Expo Go detected — saving credentials WITHOUT `requireAuthentication`. ' +
+        'The strict Secure Enclave gate is preserved in dev-client / EAS / store builds.',
+    )
+  }
   await SecureStore.setItemAsync(
     BIOMETRIC_CREDENTIALS_KEY,
     JSON.stringify(input),
-    credentialStoreOptionsAuthed,
+    saveOptions,
   )
   // Metadata stays plain because the biometric-login state probe needs
   // to read it WITHOUT prompting Face ID (otherwise the login screen
@@ -252,11 +272,18 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   // UX is unchanged. If the user cancels the OS prompt or auth fails,
   // SecureStore throws — we treat that as "no credentials available"
   // so the caller falls back to password sign-in cleanly.
+  //
+  // Expo Go softening (mirrors `saveBiometricCredentials`): the write in
+  // Expo Go used `credentialStoreOptions` (no `requireAuthentication`)
+  // because the host binary lacks the Secure Enclave entitlements. The
+  // read MUST use the same options or we'd be searching the keychain
+  // for an item that doesn't exist under the authed access-control flag.
+  const readOptions = IS_EXPO_GO ? credentialStoreOptions : credentialStoreOptionsAuthed
   let rawValue: string | null = null
   try {
     rawValue = await SecureStore.getItemAsync(
       BIOMETRIC_CREDENTIALS_KEY,
-      credentialStoreOptionsAuthed,
+      readOptions,
     )
   } catch {
     return null
