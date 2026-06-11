@@ -53,10 +53,12 @@ rate-limited a ~2/hora y con branding Supabase). Para que salga de
    - Host: `smtp.resend.com` · Port: `465` · Username: `resend`
    - Password: la API key de Resend
    - Sender email: `soporte@manifiestoapp.com` · Sender name: `Manifiesto`
-3. **Templates en español** (mismo dashboard → Auth → Email Templates →
-   "Reset password"): subject sugerido `Restablecé tu contraseña de
-   Manifiesto`, body con el botón al `{{ .ConfirmationURL }}`. Aplicar
-   también a Confirm signup / Magic Link para consistencia.
+3. ~~**Templates en español**~~ ✅ HECHO 2026-06-11 vía Management API
+   (autorización owner): subjects + bodies brandeados en español para
+   **Recovery** ("Restablecé tu contraseña de Manifiesto") y
+   **Confirmation** ("Confirmá tu email para entrar a Manifiesto") —
+   fondo `#0E3A26`, wordmark, botón cream al `{{ .ConfirmationURL }}`.
+   Editables en Dashboard → Auth → Email Templates.
 4. **Responder a soporte@**: el email forwarding de Cloudflare ya rutea
    `soporte@manifiestoapp.com` → inbox del owner (setup 2026-06-10), así
    que los replies de usuarios llegan.
@@ -66,6 +68,15 @@ rate-limited a ~2/hora y con branding Supabase). Para que salga de
 
 ## Deploy de la landing
 
-`manifiestoapp-site` commit `31b2220` (local). `git push` en ese repo →
-Cloudflare Pages deploya solo. Verificar:
-`curl -sI https://manifiestoapp.com/auth/reset-password | grep HTTP` → 200.
+✅ LIVE 2026-06-11: `manifiestoapp-site` commits `31b2220` + `5ce5c06`
+(desktop-aware) pusheados; verificado
+`curl -sI https://manifiestoapp.com/auth/reset-password` → 200.
+
+## Observaciones del config prod (2026-06-11, no tocadas)
+
+- `mailer_autoconfirm: true` — los signups por email NO requieren
+  confirmación (sesión inmediata). El template de confirmación aplica a
+  los flujos que sí la disparan. Si algún día se quiere confirmación
+  obligatoria, flipear en Dashboard → Auth → Providers → Email.
+- `password_min_length: 6` server-side — el cliente exige 10 (Sprint
+  H·H1, defensa local más estricta, decisión documentada).
