@@ -187,3 +187,16 @@ App está **materially hardened a un nivel que excede industry standard para app
 2. Click "Añadir a revisión" (arriba derecha)
 3. Respuestas finales: Export compliance **No**, IDFA **No**, Contenido terceros **No**, DSA UE comerciante **No**, UGC distribuido **No**
 4. 1-3 días hábiles → app live (publicación automática configurada)
+
+---
+
+## Addendum 2026-06-11 (tarde) — Snapshot cover DESACTIVADO por decisión owner
+
+`BackgroundSnapshotOverlay` (mitigación P·P-2, forensic disclosure del
+snapshot de multitasking) quedó **desactivado** vía la constante
+`SNAPSHOT_COVER_ENABLED = false` en el componente. Razón: el owner no
+quiere que el contenido desaparezca al deslizar al app switcher (UX).
+Trade-off consciente — blast radius forense (requiere adquisición física
+del device). **Re-evaluar antes del submit a App Store**: re-activar es
+flipear la constante; toda la lógica (incluido el skip durante prompts
+biométricos agregado en el refactor auth-flow) queda intacta.

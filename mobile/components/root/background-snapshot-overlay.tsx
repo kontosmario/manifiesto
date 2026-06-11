@@ -87,6 +87,17 @@ import Animated, {
 // (no animation) so the captured snapshot stays consistent.
 const OVERLAY_COLOR = '#12211A'
 
+// ─── Kill-switch (decisión owner 2026-06-11) ─────────────────────────
+// El owner pidió que el contenido NO desaparezca en el app switcher
+// ("deslizo hacia arriba para cambiar entre apps, el contenido
+// desaparece, no quiero eso"). Esto DESACTIVA la mitigación P-2 del
+// Audit #9: el snapshot de multitasking vuelve a mostrar (y persistir
+// en Library/Caches/Snapshots/) la pantalla real con datos financieros.
+// Trade-off aceptado conscientemente; re-evaluar antes del submit a
+// App Store — re-activar es flipear esta constante (toda la lógica,
+// incluido el skip del prompt biométrico y el watchdog, queda intacta).
+const SNAPSHOT_COVER_ENABLED = false
+
 export function BackgroundSnapshotOverlay() {
   // 0 = hidden (interactive), 1 = visible (opaque cover). Driven on
   // the UI thread by the AppState handler — we assign directly so the
@@ -112,6 +123,7 @@ export function BackgroundSnapshotOverlay() {
       // y debajo solo hay superficie de marca), así que el `inactive`
       // del prompt se ignora. Un `background` REAL (swipe a multitasking
       // mid-prompt) sigue cubriendo — esa rama no se filtra.
+      if (!SNAPSHOT_COVER_ENABLED) return
       const promptInFlight = isBiometricPromptInFlight()
       const skipForPrompt = next === 'inactive' && promptInFlight
       authFlowLog('snapshot-overlay', `AppState → ${next}`, {
