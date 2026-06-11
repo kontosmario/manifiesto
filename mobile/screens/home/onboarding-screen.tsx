@@ -47,7 +47,6 @@ import {
   useUpdateDisplayName,
 } from '@/features/profile/use-profile'
 import { logoutSession } from '@/features/auth/logout'
-import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
@@ -248,9 +247,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         )
       },
       onSuccess: () => {
-        // Same surface the rest of the auth chain hands off to.
-        // RootLayoutShell's overlay covers the transition.
-        showAuthTransitionSplash()
+        // logoutSession ya despachó LOGOUT (máquina → guest, overlay
+        // escondido); el fade del auth stack cubre la transición.
         router.replace('/(auth)/welcome')
       },
     })

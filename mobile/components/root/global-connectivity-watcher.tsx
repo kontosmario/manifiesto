@@ -29,17 +29,17 @@ import { useEffect, useRef } from 'react'
 import { AppState } from 'react-native'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import {
-  hideAuthTransitionSplash,
-  showAuthTransitionError,
-  useAuthTransitionSplash,
-} from '@/lib/auth-transition-splash'
+  hideOfflineTakeover,
+  showOfflineTakeover,
+  useOfflineTakeover,
+} from '@/features/auth-flow/offline-takeover'
 
 const OFFLINE_DEBOUNCE_MS = 2500 // require offline to persist this long
 const RESUME_GRACE_MS = 3000 // longer wait when within this many ms of foregrounding
 
 export function GlobalConnectivityWatcher() {
   const isOnline = useOnlineStatus()
-  const transition = useAuthTransitionSplash()
+  const takeoverVisible = useOfflineTakeover()
 
   // Tracks the last time the app transitioned to 'active'. We use it
   // to compute "are we still inside the resume grace window?".
@@ -86,7 +86,7 @@ export function GlobalConnectivityWatcher() {
       if (offlineTimerRef.current) clearTimeout(offlineTimerRef.current)
       offlineTimerRef.current = setTimeout(() => {
         offlineTimerRef.current = null
-        showAuthTransitionError('network')
+        showOfflineTakeover()
       }, delay)
 
       return () => {
@@ -106,12 +106,13 @@ export function GlobalConnectivityWatcher() {
 
     // Came back online while the user was staring at the network
     // error fallback. Auto-dismiss so the underlying screen reveals.
-    // Other auth-transition states (`showing`, `success-pending`, or
-    // a non-network error like `timeout`) are preserved.
-    if (transition.phase === 'error' && transition.errorKind === 'network') {
-      hideAuthTransitionSplash()
+    // Los estados de la máquina auth-flow (bridge-error de un viaje en
+    // curso) NO se tocan acá — su retry es responsabilidad del botón
+    // Reintentar (evento RETRY).
+    if (takeoverVisible) {
+      hideOfflineTakeover()
     }
-  }, [isOnline, transition.phase, transition.errorKind])
+  }, [isOnline, takeoverVisible])
 
   return null
 }

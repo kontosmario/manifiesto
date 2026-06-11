@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { runDevJourney, type DevJourney } from '@/features/auth-flow/dev-journeys'
+import {
+  forceResetAuthFlow,
+  runDevJourney,
+  type DevJourney,
+} from '@/features/auth-flow/dev-journeys'
 import { useFocusEffect } from '@react-navigation/native'
 import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
@@ -77,12 +81,6 @@ import {
   type AssistantDemoFilter,
 } from '@/features/insights/assistant-demo-filter-store'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-import {
-  hideAuthTransitionSplash,
-  markAuthTransitionLoaded,
-  reportAuthTransitionError,
-  showAuthTransitionSplash,
-} from '@/lib/auth-transition-splash'
 import {
   authenticateBiometricAccess,
   clearBiometricCredentials,
@@ -729,37 +727,11 @@ const handleOpenSupport = useCallback(() => {
     runDevJourney(journey)
   }, [])
 
-  // Success preview: opens the splash, simulates a 5s slow request,
-  // then marks loaded. The state machine enforces the 3000ms minimum
-  // anyway, so even if you bumped this lower, the entrance would
-  // still play through.
-  const handlePreviewTransitionSplash = useCallback(() => {
+  // Force-reset: escape hatch para recuperar de un viaje simulado
+  // colgado — resetea la máquina y re-instala los adapters reales.
+  const handleForceResetAuthFlow = useCallback(() => {
     void triggerHaptic('selection')
-    showAuthTransitionSplash()
-    setTimeout(() => {
-      markAuthTransitionLoaded()
-    }, 5000)
-  }, [])
-
-  // Error preview: opens the splash, simulates a 1.5s request, then
-  // reports a network failure so the fallback UI surfaces. Tap the
-  // "Reintentar" button on the fallback to dismiss + re-show the
-  // animation (in real flow this would also kick the underlying
-  // refetch).
-  const handlePreviewTransitionError = useCallback(() => {
-    void triggerHaptic('warning')
-    showAuthTransitionSplash()
-    setTimeout(() => {
-      reportAuthTransitionError('network')
-    }, 1500)
-  }, [])
-
-  // Force-hide preview: exposes the legacy `hideAuthTransitionSplash`
-  // as a dev escape hatch in case a state gets stuck (shouldn't happen
-  // in normal flow, but useful to recover from a misfired test).
-  const handleForceHideTransitionSplash = useCallback(() => {
-    void triggerHaptic('selection')
-    hideAuthTransitionSplash()
+    forceResetAuthFlow()
   }, [])
 
   // TESTING flag: when ON, the Asistente returns a curated fixture
@@ -1326,22 +1298,10 @@ const handleOpenSupport = useCallback(() => {
                     onPress={() => handleDevJourney('network-error')}
                   />
                   <SettingsRow
-                    helper="Muestra el splash, simula carga 5s, transiciona a la home cuando la animación termina."
-                    icon="auto-awesome"
-                    label="Probar splash · success"
-                    onPress={handlePreviewTransitionSplash}
-                  />
-                  <SettingsRow
-                    helper="Muestra el splash 1.5s, después dispara el fallback de error de red con botón de reintento."
-                    icon="cloud-off"
-                    label="Probar splash · error de red"
-                    onPress={handlePreviewTransitionError}
-                  />
-                  <SettingsRow
-                    helper="Force-hide para recuperar de un estado pegado."
+                    helper="Resetea la máquina auth-flow y re-instala adapters reales (recuperar de un viaje colgado)."
                     icon="cancel"
-                    label="Forzar cierre del splash"
-                    onPress={handleForceHideTransitionSplash}
+                    label="Forzar reset del flujo auth"
+                    onPress={handleForceResetAuthFlow}
                   />
                   <SettingsRow
                     helper="Reemplaza las señales del Asistente Financiero por una lista demo con un ejemplo de cada escenario y de cada acción rápida disponible."

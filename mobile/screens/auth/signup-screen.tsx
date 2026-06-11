@@ -31,7 +31,6 @@ import {
   signInWithGoogle,
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
-import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
 import { useCaptcha } from '@/features/auth/use-captcha'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
@@ -43,10 +42,7 @@ import {
   PASSWORD_POLICY,
 } from '@/features/auth/password-policy'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
-import {
-  hideAuthTransitionSplash,
-  showAuthTransitionSplash,
-} from '@/lib/auth-transition-splash'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
@@ -131,9 +127,6 @@ export function SignupScreen() {
   }, [confirmationEmail, resendCooldownSeconds, resendConfirm])
 
   const handleChangeEmail = useCallback(() => {
-    // Clear any lingering splash from the prior submit/confirmation
-    // attempt so the form re-appears cleanly.
-    hideAuthTransitionSplash()
     setConfirmationEmail(null)
     setInfoMessage(null)
     setEmail('')
@@ -153,9 +146,6 @@ export function SignupScreen() {
   )
 
   const handleBack = useCallback(() => {
-    // Clear any lingering splash from the prior submit/confirmation
-    // attempt so the form re-appears cleanly.
-    hideAuthTransitionSplash()
     void triggerHaptic('light')
     if (router.canGoBack()) router.back()
     else router.replace('/(auth)/welcome')
@@ -233,32 +223,18 @@ export function SignupScreen() {
         return
       }
 
-      // J-Auth1: a fresh signup is an explicit authentication event;
-      // mark the app-lock unlocked so RequireAuth's defense-in-depth
-      // gate doesn't bounce the user back to `/` on the first protected
-      // mount.
-      markAppUnlocked()
-      showAuthTransitionSplash()
-      // Hand off to the pre-onboarding biometric-setup gate. AppEntryGate
-      // falls through to /(app)/onboarding if the user already saw the
-      // biometric-setup screen (flag set). Apple/Google + magic-link
-      // flows hit the same gate via cold-start.
-      //
-      // We route directly instead of dispatching on `resolution.type`:
-      // `email-confirmation` returns early above (line 203), so by here
-      // `resolution.type` is provably `'onboarding'` with
-      // `href === '/(app)/biometric-setup'`. Hard-coding the destination
-      // avoids the dead-code ternary that earlier hid a routing bug
-      // (the ternary would re-resolve to `/(app)/onboarding` if the
-      // shared `resolveAuthSubmitResolution` href ever drifted again).
-      router.replace('/(app)/biometric-setup')
+      // Un signup fresco es un evento de auth explícito: la máquina
+      // entra al bridge, marca unlocked (confirm-session) y navega al
+      // destino resuelto — biometric-setup para cuentas nuevas (flag no
+      // mostrado) → onboarding, misma precedencia que el gate viejo.
+      dispatchAuthFlow({ type: 'SIGNUP_SUCCESS' })
     } catch (error) {
       await triggerHaptic('error')
       setErrorMessage(getErrorMessage(error, 'No pudimos crear tu cuenta.'))
     } finally {
       setSubmitting(false)
     }
-  }, [captcha, email, isSubmitting, name, password, passwordSignUp, router, startResendCooldown])
+  }, [captcha, email, isSubmitting, name, password, passwordSignUp, startResendCooldown])
 
   // Track availability so we can disable buttons cleanly when the
   // platform / config doesn't support a provider (e.g. Android shows
@@ -285,17 +261,11 @@ export function SignupScreen() {
         const result = await runner()
         if (result.status === 'signed-in') {
           await triggerHaptic('success')
-          // J-Auth1: same rationale as the email path above — an Apple /
-          // Google sign-in is an explicit auth event, mark the lock
-          // unlocked before routing into the protected stack.
-          markAppUnlocked()
-          showAuthTransitionSplash()
-          // Apple/Google sign-up = same as email signup → biometric-setup
-          // gate first (activate Face ID), then 5-step onboarding handles
-          // family + profile. The session arrives already email-confirmed
-          // (provider-verified), so we never need to route through
-          // /(auth)/join for these.
-          router.replace('/(app)/biometric-setup')
+          // Mismo rationale que el path de email: la máquina bridgea y
+          // resuelve el destino (biometric-setup → onboarding para
+          // cuentas nuevas; home si el provider re-logueó una cuenta
+          // existente ya onboardeada).
+          dispatchAuthFlow({ type: 'SIGNUP_SUCCESS' })
           return
         }
         if (result.status === 'cancelled') {
@@ -308,7 +278,7 @@ export function SignupScreen() {
         setSubmitting(false)
       }
     },
-    [isSubmitting, router],
+    [isSubmitting],
   )
 
   const handleAppleSignUp = useCallback(() => {

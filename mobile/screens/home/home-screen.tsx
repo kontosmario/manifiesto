@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { markDestinationReady } from '@/lib/auth-transition-splash'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useSignalDestinationReady } from '@/features/auth-flow/use-signal-destination-ready'
 import {
   Alert,
@@ -66,19 +65,11 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // refetch handle for pull-to-refresh.
   const snapshot = useHomeSnapshot(userId)
 
-  // PREMIUM transition: cuando el snapshot está listo, le decimos al
-  // splash overlay que puede iniciar el fade-out. Esto evita el "green
-  // pause" entre el splash hide y el home content visible — el overlay
-  // queda visible hasta que el home tenga data para renderear.
-  // Dual-emit durante la migración: store viejo (login/signup) +
-  // máquina auth-flow (boot/unlock). El viejo se borra en Etapa 5.
-  const hasSnapshotData = Boolean(snapshot.data)
-  useSignalDestinationReady(hasSnapshotData)
-  useEffect(() => {
-    if (hasSnapshotData) {
-      markDestinationReady()
-    }
-  }, [hasSnapshotData])
+  // PREMIUM transition: cuando el snapshot está listo, le avisamos a la
+  // máquina auth-flow (DESTINATION_READY) — eso libera el soar-away del
+  // bridge. Evita el "green pause" entre el splash hide y el home
+  // content visible: el overlay queda arriba hasta que hay data.
+  useSignalDestinationReady(Boolean(snapshot.data))
 
   // Telemetry session: emits home.opened on mount, home.closed on
   // unmount, and home.left_without_tap when no element gets tapped.

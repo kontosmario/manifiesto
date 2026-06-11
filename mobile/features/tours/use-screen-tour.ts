@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useIsFocused } from '@react-navigation/native'
-import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { useIsAuthOverlayVisible } from '@/features/auth-flow/use-auth-flow'
 import { triggerHaptic } from '@/lib/haptics'
 import { getToursEnabled } from './persistence'
 import { useMarkTourSeen } from './use-mark-tour-seen'
@@ -97,15 +97,12 @@ export function useScreenTour(
 ): { start: () => Promise<void> } {
   const ctx = useTour()
   const isFocused = useIsFocused()
-  // The auth-transition splash is a full-screen overlay that holds
-  // for ~3s after login while the home destination loads. If we
-  // start the tour while it's still up, the cutout/tooltip render on
-  // top of the splash logo (the user sees the tour modal floating
-  // over the Manifiesto wordmark instead of the actual home).
-  // Subscribe to its phase so the auto-start effect re-runs once it
-  // hides, and gate the start on `phase === 'hidden'`.
-  const splash = useAuthTransitionSplash()
-  const splashHidden = splash.phase === 'hidden'
+  // El overlay de transición (bridge auth / offline) es full-screen y
+  // se sostiene post-login mientras el destino carga. Si el tour
+  // arranca con el overlay arriba, el cutout/tooltip renderizan sobre
+  // el logo del splash. Suscribimos su visibilidad para que el
+  // auto-start re-evalúe cuando se esconde.
+  const splashHidden = !useIsAuthOverlayVisible()
   const toursSeen = useToursSeen()
   // Extract primitives BEFORE the effect so its deps reflect actual
   // changes (true→false) rather than the `toursSeen` object identity

@@ -108,6 +108,12 @@ export async function logoutSession(input: {
   // in) goes through the biometric re-confirmation again.
   resetAppLock()
 
+  // Reset de la máquina auth-flow → `guest`. Sin esto la máquina queda
+  // en `ready` y el próximo LOGIN_PENDING (re-login del mismo u otro
+  // user) sería un no-op — el bridge nunca aparecería.
+  const { dispatchAuthFlow } = await import('@/features/auth-flow/auth-flow-controller')
+  dispatchAuthFlow({ type: 'LOGOUT' })
+
   // ─── Phase 3: signOut LAST — fires SIGNED_OUT with clean state ─
   //
   // En este punto Keychain está limpio, last-user cache vacío, app-lock

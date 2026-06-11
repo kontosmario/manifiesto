@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
@@ -12,7 +12,6 @@ import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { onboardingSuccessCopy } from '@/features/onboarding/success-copy'
 import { requestNotificationPermissions } from '@/lib/push-notifications'
-import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   markPrimeDismissed,
@@ -48,11 +47,6 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
   const isSolo = useIsSolo(userId)
   const profileQuery = useMyProfile(userId)
   const profile = profileQuery.data
-
-  // Hide the auth transition splash once this screen has rendered.
-  useEffect(() => {
-    markAuthTransitionLoaded()
-  }, [])
 
   const firstName = useMemo(() => {
     const raw = profile?.display_name?.trim() ?? ''

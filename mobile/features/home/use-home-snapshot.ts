@@ -471,7 +471,7 @@ const HOME_SNAPSHOT_STALE_TIME_MS = 60_000
  * unlock screen the moment it mounts, so the RPC round-trip runs in
  * parallel with the Face ID prompt (~2s of user interaction) instead
  * of serially after it. By the time the user authenticates, the
- * snapshot is (usually) already cached and `markDestinationReady`
+ * snapshot is (usually) already cached and `DESTINATION_READY`
  * fires within the home screen's first commit.
  *
  * `prefetchQuery` is a no-op when fresh data already exists, and if

@@ -16,7 +16,6 @@ import {
   getBiometricLoginState,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
-import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   markPrimeDismissed,
@@ -77,12 +76,6 @@ function BiometricSetupBody({
   // cuando el user tapea "Activar". Si el cooldown está activo
   // (dismissed hace <7d), saltamos directo al prompt nativo.
   const [primeVisible, setPrimeVisible] = useState(false)
-
-  // Hide the auth transition splash once this screen has rendered
-  // (same pattern as onboarding-success-screen).
-  useEffect(() => {
-    markAuthTransitionLoaded()
-  }, [])
 
   useEffect(() => {
     let cancelled = false

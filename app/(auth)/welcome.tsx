@@ -4,10 +4,6 @@ import { useRouter, type Href } from 'expo-router'
 import { WelcomeScreen } from '@/screens/auth/welcome-screen'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { logoutSession } from '@/features/auth/logout'
-import {
-  hideAuthTransitionSplash,
-  showAuthTransitionSplash,
-} from '@/lib/auth-transition-splash'
 
 // The signup route is being added by another agent; until it lands the
 // router types don't know about it. We cast the href to keep this route
@@ -40,7 +36,6 @@ export default function WelcomeRoute() {
     // biometric credentials, lastUserProfile, and re-arms app-lock.
     inFlightRef.current = true
     setIsBusy(true)
-    showAuthTransitionSplash()
     let didError = false
     await logoutSession({
       onError: () => {
@@ -48,7 +43,6 @@ export default function WelcomeRoute() {
       },
       onSuccess: () => {},
     })
-    hideAuthTransitionSplash()
     inFlightRef.current = false
     setIsBusy(false)
 

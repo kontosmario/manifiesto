@@ -11,14 +11,14 @@ import {
   dispatchAuthFlow,
   getAuthFlowState,
 } from '@/features/auth-flow/auth-flow-controller'
+import type { BridgeErrorKind } from '@/features/auth-flow/auth-flow-machine'
+import { hideOfflineTakeover } from '@/features/auth-flow/offline-takeover'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import {
-  hideAuthTransitionSplash,
-  showAuthTransitionError,
-  type AuthTransitionErrorKind,
-  type AuthTransitionPhase,
-} from '@/lib/auth-transition-splash'
 import { motionDurations } from '@/lib/motion'
+
+/** Modo visual del splash: fern contemplativo o fallback de error. */
+export type AuthTransitionPhase = 'showing' | 'error'
+export type AuthTransitionErrorKind = BridgeErrorKind
 import { triggerHaptic } from '@/lib/haptics'
 import { authTokens } from '@/theme/palette'
 
@@ -216,19 +216,18 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       const online =
         next.isConnected !== false && next.isInternetReachable !== false
       if (online) {
-        // Si el error es de la máquina auth-flow (bridge-error), el
-        // retry re-prefetchea y sigue el viaje; el store viejo solo
-        // necesita esconderse (shim hasta Etapa 5).
+        // Error de la máquina (viaje en curso) → RETRY re-prefetchea y
+        // sigue el viaje. Takeover offline global → simplemente se
+        // esconde y la pantalla de abajo se revela.
         if (getAuthFlowState().phase === 'bridge-error') {
           dispatchAuthFlow({ type: 'RETRY' })
-        } else {
-          hideAuthTransitionSplash()
         }
-      } else {
-        showAuthTransitionError('network')
+        hideOfflineTakeover()
       }
+      // Sigue offline: el fallback queda visible; el haptic del tap ya
+      // dio feedback de que el intento ocurrió.
     } catch {
-      showAuthTransitionError('network')
+      // NetInfo falló — tratamos como "sigue offline" (fallback queda).
     } finally {
       setChecking(false)
     }

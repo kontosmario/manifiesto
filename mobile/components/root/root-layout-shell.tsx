@@ -11,7 +11,11 @@ import Animated, {
 import { Stack, usePathname } from 'expo-router'
 import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
 import { authFlowLog } from '@/lib/auth-flow-logger'
-import { AuthTransitionSplash } from '@/components/auth/auth-transition-splash'
+import {
+  AuthTransitionSplash,
+  type AuthTransitionErrorKind,
+  type AuthTransitionPhase,
+} from '@/components/auth/auth-transition-splash'
 import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
 import { BackgroundSnapshotOverlay } from '@/components/root/background-snapshot-overlay'
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
@@ -32,8 +36,8 @@ import {
   SOAR_SCALE_TO,
   SOAR_TRANSLATE_Y,
 } from '@/features/auth-flow/auth-flow-motion'
+import { useOfflineTakeover } from '@/features/auth-flow/offline-takeover'
 import { useAuthFlowState } from '@/features/auth-flow/use-auth-flow'
-import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useAppTheme } from '@/theme/theme-provider'
 
 let hasShownAppLaunchSplash = false
@@ -77,13 +81,6 @@ export function RootLayoutShell() {
   useEffect(() => {
     configureAuthFlow(realAuthFlowAdapters)
   }, [])
-
-  const authTransition = useAuthTransitionSplash()
-  // Splash overlay shows for any phase that isn't 'hidden' — including
-  // the error state, which renders the fallback UI inside the splash
-  // canvas. The phase value is also passed down so the inner content
-  // can swap between WarmFernLogo and the error fallback.
-  const isAuthTransitionVisible = authTransition.phase !== 'hidden'
 
   const handleLaunchSplashComplete = useCallback(() => {
     hasShownAppLaunchSplash = true
@@ -154,11 +151,7 @@ export function RootLayoutShell() {
             continuous brand surface across redirects — no skeleton
             flashes, no FernLogo entrance replay, no remount cost.
           */}
-          <TransitionOverlay
-            visible={isAuthTransitionVisible}
-            phase={authTransition.phase}
-            errorKind={authTransition.errorKind}
-          />
+          <TransitionOverlay />
 
           {/*
             Sprint I · I-6 — captcha misconfig banner. Only renders when
@@ -252,13 +245,7 @@ function ThemedRootStack() {
   )
 }
 
-interface TransitionOverlayProps {
-  visible: boolean
-  phase: import('@/lib/auth-transition-splash').AuthTransitionPhase
-  errorKind?: import('@/lib/auth-transition-splash').AuthTransitionErrorKind
-}
-
-function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps) {
+function TransitionOverlay() {
   // ⚠ ALWAYS-MOUNTED en native, CONDICIONAL en web.
   //
   // Native (iOS/Android): los children (AuthTransitionSplash →
@@ -285,10 +272,11 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   // En web los mount-races no aplican (no hay native UI thread; el
   // browser maneja todo en JS thread con concurrent rendering),
   // entonces unmount cuando hidden es safe + correcto.
-  // Fuente NUEVA: la máquina auth-flow (boot/unlock/PIN — Etapa 2+).
-  // Fuente VIEJA: el store auth-transition-splash (login/signup hasta
-  // que la Etapa 3 los migre; el shim se borra en la Etapa 5).
+  // Dos fuentes: la máquina auth-flow (viajes de auth) y el takeover
+  // offline global (device sin red, cualquier pantalla). Renderizan el
+  // mismo canvas; el error del viaje tiene precedencia en el copy.
   const machine = useAuthFlowState()
+  const offlineTakeover = useOfflineTakeover()
   const machineMode = getOverlayMode(machine)
   const machineVisible = machineMode !== 'hidden'
   const isRevealing = machineMode === 'revealing'
@@ -296,10 +284,11 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
 
   // `revealing` mantiene el overlay montado/interactivo mientras el
   // soar-away corre; recién `hidden` lo libera.
-  const effectiveVisible = visible || machineVisible
-  const effectivePhase: import('@/lib/auth-transition-splash').AuthTransitionPhase =
-    machineVisible ? (machineError ? 'error' : 'showing') : phase
-  const effectiveErrorKind = machineError ?? errorKind
+  const effectiveVisible = machineVisible || offlineTakeover
+  const isError = Boolean(machineError) || offlineTakeover
+  const effectivePhase: AuthTransitionPhase = isError ? 'error' : 'showing'
+  const effectiveErrorKind: AuthTransitionErrorKind | undefined = machineError
+    ?? (offlineTakeover ? 'network' : undefined)
 
   const opacity = useSharedValue(effectiveVisible ? 1 : 0)
   const scale = useSharedValue(effectiveVisible ? 1 : BRIDGE_SCALE_FROM)

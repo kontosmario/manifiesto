@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   Linking,
   Platform,
@@ -24,7 +23,6 @@ import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { markAuthTransitionLoaded } from '@/lib/auth-transition-splash'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import { authTokens } from '@/theme/palette'
 import { motionDurations } from '@/lib/motion/tokens'
@@ -56,18 +54,9 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
   const { width, height } = useWindowDimensions()
   const reduced = useReducedMotion()
 
-  // This is a destination route reached after `router.replace` from
-  // logout (and from the cold-start cascade when there's no session).
-  // Hide the auth-transition splash on mount so the overlay fades out
-  // and the user sees the CTAs underneath. Without this, the overlay
-  // stays visible forever on the welcome screen because no guard
-  // wraps this route to clear the flag.
-  useEffect(() => {
-    // Welcome rendered means we've reached a destination — let the
-    // splash module decide whether to hide now (min visible elapsed)
-    // or buffer until it does.
-    markAuthTransitionLoaded()
-  }, [])
+  // Destino guest: la máquina auth-flow nunca muestra el bridge en el
+  // camino a welcome (probes → guest → navigate), y LOGOUT la deja en
+  // `guest` con el overlay escondido — no hay splash que dismissear acá.
 
   return (
     <View style={styles.root}>

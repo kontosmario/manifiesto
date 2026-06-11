@@ -34,7 +34,6 @@ import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-
 import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
-import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import { resolveLoginActionView } from '@/features/auth/login-action-view'
 import { useLoginController } from '@/features/auth/use-login-controller'
 import {
@@ -42,7 +41,7 @@ import {
   signInWithApple,
 } from '@/features/auth/social-sign-in'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
-import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
 import { triggerHaptic } from '@/lib/haptics'
@@ -412,14 +411,10 @@ export function LoginScreen() {
       const result = await signInWithApple()
       if (result.status === 'signed-in') {
         await triggerHaptic('success')
-        // J-Auth1: a successful Apple sign-in is an explicit auth
-        // event; mark the app-lock unlocked so RequireAuth's
-        // defense-in-depth gate doesn't bounce the user back to `/`.
-        markAppUnlocked()
-        showAuthTransitionSplash()
-        // La sesión queda persistida por Supabase → AppEntryGate / root
-        // layout detectan el cambio y nos sacan a /(app). No
-        // navegamos manualmente para evitar pisar el splash.
+        // Apple sign-in es un evento de auth explícito: la máquina
+        // entra al bridge, marca unlocked (confirm-session) y navega
+        // al destino resuelto cuando el overlay está opaco.
+        dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })
         return
       }
       if (result.status === 'cancelled') return

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Redirect } from 'expo-router'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAppLockState } from '@/features/auth/app-lock-state'
@@ -6,10 +6,6 @@ import { authFlowLog } from '@/lib/auth-flow-logger'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { useMyProfile } from '@/features/profile/use-profile'
-import {
-  getIsAuthTransitionSplashVisible,
-  markAuthTransitionLoaded,
-} from '@/lib/auth-transition-splash'
 
 interface RequireAuthProps {
   children: (input: {
@@ -37,14 +33,6 @@ export function RequireAuth({ children }: RequireAuthProps) {
     sessionQuery.isLoading ||
     (Boolean(userId) && familyQuery.isLoading) ||
     (Boolean(userId) && profileQuery.isLoading)
-  const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
-
-  useEffect(() => {
-    if (!isLoading && shouldShowAuthTransitionSplash) {
-      authFlowLog('require-auth', 'firing markAuthTransitionLoaded')
-      markAuthTransitionLoaded()
-    }
-  }, [isLoading, shouldShowAuthTransitionSplash])
 
   if (isLoading) {
     authFlowLog('require-auth', 'render BlockingScreenView (loading)')
@@ -80,10 +68,9 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
 export function RequireGuest({
   // Accepted for backward compatibility — no longer affects routing.
-  // `AppEntryGate` (the destination of the redirect below) is the
-  // single source of truth for signed-in routing (lock / onboarding /
-  // join / home), so this flag is no-op here.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // El BootScreen (destino del redirect de abajo, vía máquina auth-flow)
+  // es el single source of truth del ruteo con sesión (lock /
+  // onboarding / join / home), así que este flag es no-op acá.
   allowFamilylessSession: _allowFamilylessSession = false,
   children,
 }: {
@@ -93,14 +80,6 @@ export function RequireGuest({
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
   const isUnlocked = useAppLockState()
-  const shouldShowAuthTransitionSplash = getIsAuthTransitionSplashVisible()
-
-  useEffect(() => {
-    if (!sessionQuery.isLoading && shouldShowAuthTransitionSplash) {
-      authFlowLog('require-guest', 'firing markAuthTransitionLoaded')
-      markAuthTransitionLoaded()
-    }
-  }, [sessionQuery.isLoading, shouldShowAuthTransitionSplash])
 
   if (sessionQuery.isLoading) {
     authFlowLog('require-guest', 'render BlockingScreenView (loading)')

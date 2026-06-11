@@ -17,6 +17,17 @@ import { authFlowLog } from '@/lib/auth-flow-logger'
 
 export type DevJourney = 'faceid-success' | 'faceid-cancel' | 'network-error'
 
+/**
+ * Escape hatch dev: resetea la máquina (cancela timers, estado idle,
+ * overlay escondido) y re-instala los adapters reales. Para recuperar
+ * de un viaje simulado colgado o un estado pegado.
+ */
+export function forceResetAuthFlow() {
+  if (!__DEV__) return
+  resetAuthFlowForTesting()
+  configureAuthFlow(realAuthFlowAdapters)
+}
+
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export function runDevJourney(journey: DevJourney) {

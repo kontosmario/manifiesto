@@ -12,7 +12,7 @@ import {
   useMonthCloseDecisionPending,
   type ApplyDecisionInput,
 } from '@/features/month-close/use-month-close-decision'
-import { useAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { useIsAuthOverlayVisible } from '@/features/auth-flow/use-auth-flow'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { MetaCard } from '@/components/home/meta-card'
 import {
@@ -180,9 +180,9 @@ export function HomeDashboard({
 
   // Splash visibility — gate compartido entre el cycle balance prompt
   // y la decisión standalone para que NINGÚN sheet/modal aparezca
-  // mientras el warm-fern entrance del splash todavía está visible.
-  const authSplash = useAuthTransitionSplash()
-  const splashIsHidden = authSplash.phase === 'hidden'
+  // mientras el overlay de transición (bridge auth / offline) está
+  // visible.
+  const splashIsHidden = !useIsAuthOverlayVisible()
 
   // ─── Tour targets that can't be wrapped via <TourTarget> ────────
   // Some targets live inside leaf components (HomeHeader's actions

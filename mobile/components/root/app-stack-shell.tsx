@@ -17,12 +17,7 @@ import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
 import { useRegisterPushToken } from '@/features/push/use-register-push-token'
 import { useOnlineStatus } from '@/hooks/use-online-status'
-import {
-  getIsAuthTransitionSplashVisible,
-  markAuthTransitionLoaded,
-  reportAuthTransitionError,
-} from '@/lib/auth-transition-splash'
-import { shouldDismissAuthTransition } from '@/lib/auth-transition-dismiss-gate'
+import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { motionDurations } from '@/lib/motion'
 
 // ─── Navigation timing tokens ────────────────────────────────────
@@ -108,43 +103,24 @@ export function AppStackShell() {
   // Re-corre cuando cambia familyId para llevar la columna al día.
   useRegisterPushToken(userId ?? null, snapshot.data?.family?.familyId ?? null)
 
-  // Bridge home_snapshot errors to the auth transition splash so the
-  // user sees a "no internet" fallback instead of the splash hanging
-  // forever. We classify by NetInfo first (offline trumps everything),
-  // then fall back to the message text from the snapshot error.
+  // Bridge home_snapshot errors a la máquina auth-flow: si un viaje
+  // está en `bridging` esperando el destino, el LOAD_FAILED muestra el
+  // fallback de error con Reintentar. Fuera de bridging la máquina lo
+  // ignora (no-op) — un refetch fallido en background no debe tapar la
+  // app; el takeover offline global lo maneja GlobalConnectivityWatcher.
   useEffect(() => {
     if (!snapshot.isError) return
-    if (!getIsAuthTransitionSplashVisible()) return
     if (!isOnline) {
-      reportAuthTransitionError('network')
+      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'network' })
       return
     }
     const message = String(snapshot.error?.message ?? '').toLowerCase()
     if (message.includes('network') || message.includes('fetch')) {
-      reportAuthTransitionError('network')
+      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'network' })
     } else {
-      reportAuthTransitionError('unknown')
+      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'unknown' })
     }
   }, [snapshot.isError, snapshot.error, isOnline])
-
-  // Dismiss the post-signup / post-login splash as soon as the snapshot
-  // resolves successfully. This is the success counterpart of the
-  // error bridge above: without it, a freshly signed-up user (no
-  // family yet) lands here, the snapshot succeeds with `family: null`,
-  // the stack renders the onboarding route — but the splash overlay
-  // sits on top until the 15s safety timer fires and surfaces
-  // "La conexión está demorando".
-  const splashVisible = getIsAuthTransitionSplashVisible()
-  useEffect(() => {
-    if (
-      shouldDismissAuthTransition({
-        isLoading: !snapshot.isSuccess,
-        splashVisible,
-      })
-    ) {
-      markAuthTransitionLoaded()
-    }
-  }, [snapshot.isSuccess, splashVisible])
 
   // If the user is authenticated, block the whole app tree until the
   // snapshot is seeded. Everything downstream (RequireAuth, tabs,
