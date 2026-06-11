@@ -43,7 +43,7 @@ import {
   signInWithApple,
 } from '@/features/auth/social-sign-in'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
-import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
+import { hideAuthTransitionSplash, showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { authenticateBiometricAccess } from '@/lib/biometric-auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
@@ -305,17 +305,30 @@ export function LoginScreen() {
         // fallback). On success mark unlocked + route home. On failure we
         // stay on the lock screen (idle) with the CTA + "Usar contraseña"
         // escape; surface differentiated copy for a lockout.
+        //
+        // Show the auth-transition splash (WarmFernLogo + fireflies)
+        // BEFORE the FaceID prompt. Previously the splash only fired on
+        // SUCCESS, so during the FaceID prompt the user saw the green
+        // login-screen background while the hero was still loading
+        // async — "pantalla verde vacía". Now the splash is up first:
+        // FaceID prompt opens on top of the fern brand surface. On
+        // success we keep it visible through markAppUnlocked + redirect;
+        // on cancel/fail we hide it so the regular lock UI re-emerges
+        // for the user's escape path.
+        showAuthTransitionSplash()
         const result = await authenticateBiometricAccess({
           promptMessage: 'Desbloqueá Manifiesto',
           disableDeviceFallback: true,
         })
         if (result.success) {
           await triggerHaptic('success')
-          showAuthTransitionSplash()
           markAppUnlocked()
           router.replace('/')
           return
         }
+        // FaceID failed/cancelled → hide the splash so the user can see
+        // the lock screen's escape (Usar contraseña / retry).
+        hideAuthTransitionSplash()
         // Warning haptic for genuine failures (not user-initiated cancels),
         // matching the sign-in path's feedback.
         if (
@@ -342,7 +355,9 @@ export function LoginScreen() {
       // Defensive: handleBiometricSignIn doesn't throw today. In sign-in
       // mode fall back to the password form so the user has a path
       // forward; in lock mode stay on the lock screen (the password
-      // escape is already visible there).
+      // escape is already visible there). Hide the splash in case it was
+      // shown (lock mode opens it before authenticateBiometricAccess).
+      hideAuthTransitionSplash()
       setStatus('idle')
       if (!isLockMode) {
         userPickedModeRef.current = true
