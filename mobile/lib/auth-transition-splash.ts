@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { InteractionManager } from 'react-native'
 
 // Reactive store for the auth-transition splash overlay.
 //
@@ -125,7 +126,27 @@ export function markAuthTransitionLoaded() {
   const elapsed = Math.max(0, Date.now() - showStartedAt)
   if (elapsed >= currentMinVisibleMs) {
     clearAllTimers()
-    setStateAndNotify({ phase: 'hidden' })
+    // PREMIUM: defer the hide until the JS thread is idle. The caller
+    // (typically RequireAuth) fires markLoaded as soon as its queries
+    // resolve, but the destination screen hasn't painted yet — there's
+    // still a render commit + native layout pass + first paint pending.
+    // If we hide immediately, the splash fade-out (320ms) starts while
+    // the destination is still mid-render, and during that fade the
+    // BlockingScreenView green is visible behind the fading splash =
+    // "pantalla verde" the user complained about.
+    //
+    // InteractionManager.runAfterInteractions waits for the JS thread
+    // to be idle, which typically means: queries done + reconciliation
+    // committed + first paint pushed to native. By the time the hide
+    // fires, the destination is rendered → fade-out crossfades to
+    // content, not to green.
+    InteractionManager.runAfterInteractions(() => {
+      // Re-check phase: callers can cancel via hide() between schedule
+      // and fire.
+      if (state.phase === 'showing') {
+        setStateAndNotify({ phase: 'hidden' })
+      }
+    })
     return
   }
   // Min not yet reached: stay visible until it does.
@@ -137,7 +158,13 @@ export function markAuthTransitionLoaded() {
   pendingHideTimer = setTimeout(() => {
     pendingHideTimer = null
     if (state.phase === 'success-pending') {
-      setStateAndNotify({ phase: 'hidden' })
+      // Same InteractionManager defer as above so the elapsed >= min
+      // path and the pending-timer path behave identically.
+      InteractionManager.runAfterInteractions(() => {
+        if (state.phase === 'success-pending') {
+          setStateAndNotify({ phase: 'hidden' })
+        }
+      })
     }
   }, currentMinVisibleMs - elapsed)
 }
