@@ -22,6 +22,7 @@ import { Platform } from 'react-native'
 import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
 import Constants from 'expo-constants'
+import { setBiometricPromptInFlight } from '@/lib/biometric-prompt-state'
 import {
   clearBiometricEnabledFlag,
   isBiometricEnabledFlagSet,
@@ -358,12 +359,21 @@ export async function authenticateBiometricAccess(
       '[biometric] Expo Go detected — softening disableDeviceFallback to false so the device-passcode fallback can be tested. The strict gate is preserved in dev-client / EAS / store builds.',
     )
   }
-  return await LocalAuthentication.authenticateAsync({
-    promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
-    cancelLabel: 'Cancelar',
-    fallbackLabel:
-      disableDeviceFallback || Platform.OS !== 'ios' ? undefined : 'Usar código',
-    disableDeviceFallback,
-    biometricsSecurityLevel: ANDROID_REQUIRES_WEAK_BIOMETRIC ? 'weak' : 'strong',
-  })
+  // Marcar el prompt en vuelo ANTES de presentarlo: el AppState pasa a
+  // `inactive` mientras el prompt está arriba (y hasta ~1.4s después de
+  // resolver) — el BackgroundSnapshotOverlay consulta este flag para NO
+  // cubrir la pantalla con el cover anti-screenshot durante el prompt.
+  setBiometricPromptInFlight(true)
+  try {
+    return await LocalAuthentication.authenticateAsync({
+      promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
+      cancelLabel: 'Cancelar',
+      fallbackLabel:
+        disableDeviceFallback || Platform.OS !== 'ios' ? undefined : 'Usar código',
+      disableDeviceFallback,
+      biometricsSecurityLevel: ANDROID_REQUIRES_WEAK_BIOMETRIC ? 'weak' : 'strong',
+    })
+  } finally {
+    setBiometricPromptInFlight(false)
+  }
 }

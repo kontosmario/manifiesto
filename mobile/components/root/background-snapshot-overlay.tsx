@@ -72,6 +72,7 @@
 import { useEffect, useState } from 'react'
 import { AppState, type AppStateStatus, StyleSheet, View } from 'react-native'
 import { authFlowLog } from '@/lib/auth-flow-logger'
+import { isBiometricPromptInFlight } from '@/lib/biometric-prompt-state'
 import Animated, {
   runOnJS,
   useAnimatedReaction,
@@ -102,9 +103,27 @@ export function BackgroundSnapshotOverlay() {
       // immediately to win the race with the snapshot capture.
       // `background` covers Android's typical lifecycle.
       // `active` returns the app to the foreground — remove the cover.
+      // PROMPT BIOMÉTRICO EN VUELO (2026-06-11): presentar Face ID (o la
+      // sheet de passcode en Expo Go) pone la app en `inactive` durante
+      // TODO el prompt y ~1.4s después de resolver (medido en device).
+      // Cubrir ahí tapaba el viaje de unlock entero — incluido el
+      // soar-away — con verde sólido. No hay snapshot de multitasking
+      // que proteger durante un prompt (la app no se está backgroundeando
+      // y debajo solo hay superficie de marca), así que el `inactive`
+      // del prompt se ignora. Un `background` REAL (swipe a multitasking
+      // mid-prompt) sigue cubriendo — esa rama no se filtra.
+      const promptInFlight = isBiometricPromptInFlight()
+      const skipForPrompt = next === 'inactive' && promptInFlight
       authFlowLog('snapshot-overlay', `AppState → ${next}`, {
-        coverWillBe: next === 'inactive' || next === 'background' ? 'ON' : next === 'active' ? 'OFF' : 'sin cambio',
+        coverWillBe: skipForPrompt
+          ? 'SKIP (prompt biométrico en vuelo)'
+          : next === 'inactive' || next === 'background'
+            ? 'ON'
+            : next === 'active'
+              ? 'OFF'
+              : 'sin cambio',
       })
+      if (skipForPrompt) return
       if (next === 'inactive' || next === 'background') {
         opacity.value = 1
         setCovered(true)
