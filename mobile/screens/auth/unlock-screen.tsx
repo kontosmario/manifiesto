@@ -43,6 +43,20 @@ export function UnlockScreen() {
   const autoFiredRef = useRef(false)
 
   const fireUnlock = useCallback(async () => {
+    // Splash visible INMEDIATO — antes del FaceID prompt. Igual que
+    // handleBiometricSignIn (controller) y password flow (use-login-submit).
+    // El splash se queda visible cubriendo el FaceID prompt → success →
+    // session check → navigation → home snapshot fetch → first paint.
+    //
+    // El base layer de UnlockScreen también es welcomeBg + WarmFernLogo,
+    // entonces visualmente no hay seam — la entrada del splash overlay
+    // (180ms scale 0.97→1 + opacity 0→1) sobre la misma fern surface se
+    // siente como una intensificación premium en el momento de tap.
+    //
+    // 3 segundos del default minVisibleMs cubre toda la ventana hasta
+    // que el home pinte content (snapshot fetch + first paint).
+    showAuthTransitionSplash()
+
     try {
       const result = await authenticateBiometricAccess({
         promptMessage: 'Desbloqueá Manifiesto',
@@ -50,31 +64,17 @@ export function UnlockScreen() {
       })
 
       if (!result.success) {
-        // Cancel o failure: bouncear a /(auth)/login. Acá vive todo el
-        // fallback UX — Face ID retry CTA, password form, Apple, "Cambiar
-        // cuenta", etc. NO pasamos autoBiometric=1 para no re-disparar
-        // el prompt automáticamente (el user lo canceló).
+        // Cancel o failure: hide splash + bouncear a /(auth)/login. Acá
+        // vive todo el fallback UX — Face ID retry CTA, password form,
+        // Apple, "Cambiar cuenta", etc. NO pasamos autoBiometric=1 para
+        // no re-disparar el prompt automáticamente (el user lo canceló).
+        hideAuthTransitionSplash()
         router.replace('/(auth)/login')
         return
       }
 
-      // SUCCESS: feedback inmediato + splash con default minVisibleMs (3000ms).
-      // El splash cubre toda la ventana de:
-      //   - session check / refresh
-      //   - router navigation
-      //   - AppEntryGate evaluation
-      //   - tabs layout mount
-      //   - home snapshot fetch
-      //   - first paint del home
-      //
-      // 3 segundos es el piso para que la WarmFernLogo entrance + idle
-      // breath se complete sin clipping. Para snapshots rápidos, el
-      // markAuthTransitionLoaded() de RequireAuth lo flippea a success-
-      // pending y el hide ocurre exactamente a los 3000ms. Para
-      // snapshots lentos, el splash se queda hasta que el ciclo natural
-      // de fade-out arranque.
+      // SUCCESS: splash YA visible. Solo haptic + continuar.
       void triggerHaptic('success')
-      showAuthTransitionSplash()
 
       // FAST PATH (99% de los casos): session ya activa en el cliente
       // (Supabase auto-refresh corrió en background). NO llamar
