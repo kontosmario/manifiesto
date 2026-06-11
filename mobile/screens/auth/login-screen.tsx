@@ -30,13 +30,11 @@ import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FernLogo } from '@/components/auth/fern-logo'
-import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
 import { Screen } from '@/components/ui/screen'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { markAppUnlocked } from '@/features/auth/app-lock-state'
-import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { resolveLoginActionView } from '@/features/auth/login-action-view'
 import { useLoginController } from '@/features/auth/use-login-controller'
 import {
@@ -44,8 +42,7 @@ import {
   signInWithApple,
 } from '@/features/auth/social-sign-in'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
-import { hideAuthTransitionSplash, showAuthTransitionSplash } from '@/lib/auth-transition-splash'
-import { authenticateBiometricAccess } from '@/lib/biometric-auth'
+import { showAuthTransitionSplash } from '@/lib/auth-transition-splash'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
 import { triggerHaptic } from '@/lib/haptics'
@@ -301,79 +298,9 @@ export function LoginScreen() {
     actions.clearFeedback()
     setStatus('scanning')
     try {
-      if (isLockMode) {
-        // App-lock unlock path: strict biometric gate (no device-passcode
-        // fallback). On success mark unlocked + route home. On failure we
-        // stay on the lock screen (idle) with the CTA + "Usar contraseña"
-        // escape; surface differentiated copy for a lockout.
-        //
-        // Show the auth-transition splash (WarmFernLogo + fireflies)
-        // BEFORE the FaceID prompt.
-        //
-        // Lifecycle del splash en lock-mode (premium):
-        //
-        //   1. show() ANTES del FaceID — splash visible durante el prompt
-        //   2. SUCCESS path: hide EXPLÍCITO con delay de 1.2s
-        //      después de markAppUnlocked + router.replace.
-        //
-        // Por qué 1.2s de delay y no markAuthTransitionLoaded:
-        //
-        //   markAuthTransitionLoaded() fire desde RequireAuth cuando las
-        //   queries de sesión terminan. Pero esas queries están cacheadas
-        //   (el user ya estaba loggeado) → markLoaded fire en ~50ms post-
-        //   replace. Eso es ANTES de que el navigator transition + tabs
-        //   layout mount + home tab focus + home content first paint estén
-        //   listos. Si el splash hide en T+50ms, durante el fade-out de
-        //   320ms el navigator todavía está animando route → user ve
-        //   forest-tinted canvas (theme.colors.canvas = #12211A) DEBAJO
-        //   del splash fading → percibido como "verde".
-        //
-        //   1.2s es un tiempo conservador que garantiza:
-        //   - Navigator route transition completo (~250ms iOS push)
-        //   - Tabs layout + home tab mount/focus (~200ms cold)
-        //   - Home initial first paint (~100ms con snapshot data hot)
-        //   - Padding extra para Expo Go overhead
-        //
-        //   Total perceived post-FaceID: 1.2s splash + 320ms fade = ~1.5s
-        //   transición continua a home. Premium pero no stuck.
-        //
-        //   3. FAIL/CANCEL path: hide inmediato para que el lock screen
-        //      reaparezca con el fallback "Usar contraseña".
-        showAuthTransitionSplash({ minVisibleMs: 0 })
-        const result = await authenticateBiometricAccess({
-          promptMessage: 'Desbloqueá Manifiesto',
-          disableDeviceFallback: true,
-        })
-        if (result.success) {
-          await triggerHaptic('success')
-          markAppUnlocked()
-          router.replace('/')
-          // NO setTimeout hide acá. El TransitionOverlay queda visible
-          // hasta que markAuthTransitionLoaded() fire desde el RequireAuth
-          // del home (cuando las queries terminan). Como el base layer
-          // del lock screen YA es welcomeBg + WarmFernLogo, no hay riesgo
-          // de revelar verde durante el fade-out — el surface debajo es
-          // continuo brand.
-          return
-        }
-        // FAIL/CANCEL: hide inmediato para que el lock screen reaparezca.
-        hideAuthTransitionSplash()
-        // Warning haptic for genuine failures (not user-initiated cancels),
-        // matching the sign-in path's feedback.
-        if (
-          result.error !== 'user_cancel' &&
-          result.error !== 'system_cancel'
-        ) {
-          void triggerHaptic('warning')
-        }
-        const feedback = biometricFeedbackForError(result.error, biometricState.label)
-        // A lockout is a warning state — surface it as an error pill so the
-        // icon/colour match its severity (the face-id view only has
-        // error/info intents).
-        if (feedback) actions.setErrorMessage(feedback.message)
-        setStatus('idle')
-        return
-      }
+      // Refactor (2026-06-11): el lock mode path se movió a
+      // mobile/screens/auth/unlock-screen.tsx (dedicated route
+      // /(auth)/unlock). El login screen ahora solo maneja sign-in normal.
       await actions.handleBiometricSignIn()
       // handleBiometricSignIn swallows every non-success path internally
       // (cancel / stale creds / network) and returns. On success it
@@ -381,38 +308,13 @@ export function LoginScreen() {
       // or failed silently → reset to idle so the user can retry.
       setStatus('idle')
     } catch {
-      // Defensive: handleBiometricSignIn doesn't throw today. In sign-in
-      // mode fall back to the password form so the user has a path
-      // forward; in lock mode stay on the lock screen (the password
-      // escape is already visible there). Hide the splash in case it was
-      // shown (lock mode opens it before authenticateBiometricAccess).
-      hideAuthTransitionSplash()
+      // Defensive: handleBiometricSignIn doesn't throw today. Fall back
+      // to the password form so the user has a path forward.
       setStatus('idle')
-      if (!isLockMode) {
-        userPickedModeRef.current = true
-        setFormMode('use-password')
-      }
+      userPickedModeRef.current = true
+      setFormMode('use-password')
     }
-  }, [actions, isBusy, status, isLockMode, router, biometricState.label])
-
-  // PREMIUM lock-mode handoff: show the auth-transition splash AS SOON
-  // AS the lock screen mounts. This bridges the gap between the
-  // AuthLaunchSplash (cold-start splash that auto-fades after ~2s) and
-  // the FaceID prompt fire (~700ms after mount, but the AuthLaunch
-  // fade-out finishes at ~2.5s). Without this, after the AuthLaunch
-  // unmounts but before triggerFaceID() shows the TransitionOverlay,
-  // the user sees the login screen's green background behind the
-  // FaceID prompt. Calling show() on mount means TransitionOverlay is
-  // already visible BEFORE AuthLaunchSplash finishes fading — no gap.
-  //
-  // The show() call inside triggerFaceID() is a no-op when already
-  // showing (idempotent via the phase check in the store), so this
-  // doesn't double-fire.
-  useEffect(() => {
-    if (!isLockMode) return
-    if (params.autoBiometric !== '1') return
-    showAuthTransitionSplash({ minVisibleMs: 0 })
-  }, [isLockMode, params.autoBiometric])
+  }, [actions, isBusy, status])
 
   // Auto-fire Face ID once when arriving with `?autoBiometric=1`.
   // Guarded by a ref so a setState-driven re-render (e.g. status flips
@@ -621,22 +523,6 @@ export function LoginScreen() {
         contentContainerStyle={styles.screenContent}
         bodyStyle={styles.screenBody}
         scrollRef={scrollRef}
-        // Lock mode: hacer que el BASE LAYER del Screen sea welcomeBg
-        // + WarmFernLogo (no el theme.colors.background = #12211A canvas).
-        // El bug del "verde detrás del FaceID" venía de que el Screen's
-        // SafeAreaView usaba el theme.colors.background como default, y
-        // cuando el TransitionOverlay tenía opacity < 1 (durante fade-in
-        // o fade-out) se transparentaba al user el canvas verde. Con el
-        // base layer ahora siendo welcomeBg + fern, NUNCA hay verde
-        // visible — el surface es continuo brand-aware.
-        backgroundColor={isLockMode ? authTokens.welcomeBg : undefined}
-        backgroundSlot={
-          isLockMode ? (
-            <View style={styles.lockBackdrop} pointerEvents="none">
-              <WarmFernLogo size={180} />
-            </View>
-          ) : undefined
-        }
       >
         {/* Top nav */}
         <View style={styles.topNav}>
@@ -1166,17 +1052,6 @@ function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeI
 }
 
 const styles = StyleSheet.create({
-  // Lock-mode backdrop: WarmFernLogo centrado sobre welcomeBg al BASE
-  // LAYER del Screen. Garantiza que NO haya nunca verde flat visible
-  // detrás del FaceID prompt — el surface es continuo brand-aware
-  // independientemente del estado del TransitionOverlay (mid-fade, etc).
-  // Ver bloque de comentarios donde se pasa backgroundSlot.
-  lockBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: authTokens.welcomeBg,
-  },
   // Single scrollable column. `flexGrow: 1` makes the contentContainer
   // fill the ScrollView; the inner `bodyStyle` wrapper picks up the
   // flex and distributes the three sections via `space-between`.
