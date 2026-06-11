@@ -26,24 +26,30 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 let hasShownAppLaunchSplash = false
 
-// Splash overlay timing — premium transition (emil-design-eng principles).
+// Splash overlay timing — premium fluid transitions.
 //
-// 180ms fade-in con strong ease-out cubic-bezier(0.23, 1, 0.32, 1):
-//   - Built-in Easing.cubic es weak — lacks punch
-//   - cubic-bezier(0.23, 1, 0.32, 1) es el strong ease-out curve para UI:
-//     starts FAST (visible movement instant) + settles slowly
-//   - Combina con scale 0.97 → 1 para entrada "alive" (no estática)
+// ENTRADA (180ms, snappy):
+//   - cubic-bezier(0.23, 1, 0.32, 1) strong ease-out: starts FAST, settles
+//   - scale 0.97 → 1 (combina con opacity para "alive" entrance)
 //
-// 260ms fade-out con strong ease-in-out: exit slightly shorter than enter
-// felt natural per "exit-faster-than-enter" principle.
+// SALIDA (450ms, graceful lift-away):
+//   - Larger duration que la entrada — la salida es un MOMENTO de
+//     transición premium, no un snap. Da tiempo a que home renderee y
+//     la fade-out crossfadea hacia el content que se está pintando.
+//   - cubic-bezier(0.4, 0, 0.2, 1) Material Design standard (softer
+//     que el strong out — exits beneficial from gentle deceleration)
+//   - scale 1 → 1.08 (lift-away effect: el fern crece sutil mientras
+//     se desvanece, como elevándose hacia el viewer = sensación de
+//     "transición hacia un nuevo plano", no "desaparición flat")
 const FADE_IN_MS = 180
-const FADE_OUT_MS = 260
-// emil-design-eng strong easing curves
+const FADE_OUT_MS = 450
 const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
-const EASE_IN_OUT_STRONG = Easing.bezier(0.77, 0, 0.175, 1)
-// Scale entrance starts from 0.97 (no scale(0) per Emil rule). Combined
-// with opacity, the fern "settles in" instead of "appearing flat".
+// Material Design standard ease — softer que strong-in-out, ideal
+// para salidas que se sienten "leaving" sin urgencia.
+const EASE_OUT_SOFT = Easing.bezier(0.4, 0, 0.2, 1)
+// Entrada starts from 0.97; salida grows to 1.08 (lift-away effect).
 const SCALE_FROM = 0.97
+const SCALE_EXIT_TO = 1.08
 
 export function RootLayoutShell() {
   // Cold-start splash:
@@ -274,18 +280,26 @@ function TransitionOverlay({ visible, phase, errorKind }: TransitionOverlayProps
   const scale = useSharedValue(visible ? 1 : SCALE_FROM)
 
   useEffect(() => {
-    authFlowLog('overlay', visible ? 'animating IN (180ms)' : 'animating OUT (260ms)', { phase })
-    // Combined opacity + scale entrance (emil-design-eng principle:
-    // "Never animate from scale(0). Start from scale(0.95) or higher,
-    // combined with opacity. Subtle initial scale makes the entrance
-    // feel more natural, like a balloon that has a visible shape even
-    // when deflated.").
-    const config = {
-      duration: visible ? FADE_IN_MS : FADE_OUT_MS,
-      easing: visible ? EASE_OUT_STRONG : EASE_IN_OUT_STRONG,
+    authFlowLog('overlay', visible ? `animating IN (${FADE_IN_MS}ms)` : `animating OUT (${FADE_OUT_MS}ms lift-away)`, { phase })
+    if (visible) {
+      // ENTRADA snappy: opacity 0→1 + scale 0.97→1 simultáneos.
+      const config = {
+        duration: FADE_IN_MS,
+        easing: EASE_OUT_STRONG,
+      }
+      opacity.value = withTiming(1, config)
+      scale.value = withTiming(1, config)
+    } else {
+      // SALIDA premium lift-away: scale 1→1.08 (grows) + opacity 1→0.
+      // El fern parece elevarse hacia el viewer mientras se desvanece,
+      // dando sensación de "transición a otro plano" en vez de un snap.
+      const config = {
+        duration: FADE_OUT_MS,
+        easing: EASE_OUT_SOFT,
+      }
+      opacity.value = withTiming(0, config)
+      scale.value = withTiming(SCALE_EXIT_TO, config)
     }
-    opacity.value = withTiming(visible ? 1 : 0, config)
-    scale.value = withTiming(visible ? 1 : SCALE_FROM, config)
   }, [visible, opacity, scale, phase])
 
   const overlayStyle = useAnimatedStyle(() => ({
