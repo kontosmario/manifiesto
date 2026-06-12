@@ -159,9 +159,45 @@ Si tarda más de 2-3 force-restarts:
 
 Si tocaste `package.json` (incluso dep no-native): el workflow lo skipea por seguridad. Forzá con `workflow_dispatch` después de confirmar que no agregaste deps nativas.
 
+## ⚠️ TBD / TO-DO — OTA firmado bloqueado por plan (2026-06-12)
+
+> **Estado**: el OTA NO funciona hoy. **Decisión pendiente del owner.**
+>
+> El primer `eas update` real desde que se agregó el code signing (Sprint F)
+> falló en el step de publish con:
+> `EAS Update code signing requires a subscription to the EAS Enterprise plan`.
+> Expo gatea la **publicación de updates firmados** detrás del plan Enterprise
+> (pago), aunque la firma sea local con nuestra propia key. La cuenta
+> `markon07` está en el plan gratuito.
+>
+> **Implicancia**: cada cambio de JS necesita **build nueva de TestFlight**
+> hasta resolver esto (el OTA, que tardaría ~3 min, no está disponible).
+> El workflow `ota-update.yml` va a salir en **rojo en cada push** a `main`
+> hasta entonces — es esperable, no rompe la build.
+>
+> **Por qué la build instalada no acepta un OTA sin firma**: el binario se
+> compila con `codeSigningCertificate` bundleado, así que `expo-updates`
+> rechaza cualquier manifest sin firma. No se puede "apagar la firma y
+> republicar" sobre una build existente — requiere build nueva sin el cert.
+>
+> **Opciones (a decidir)**:
+> 1. **Sacar el code signing del OTA** → `eas update` gratis sin firma. Hay
+>    que: borrar `updates.codeSigningCertificate` + `codeSigningMetadata` de
+>    `app.config.ts`, sacar los steps de firma de `ota-update.yml`, y cortar
+>    **una build nueva** (la primera sin cert; de ahí en más los OTA fluyen).
+>    Costo: se pierde la protección anti-token-robado de Sprint F · F1
+>    (riesgo bajo pre-lanzamiento; se puede re-activar al escalar / pagar).
+> 2. **Pagar EAS Enterprise** → se mantiene la firma, el OTA funciona ya.
+>    Costo: suscripción Enterprise (el tier más caro de Expo).
+>
+> Build 4 (2026-06-12) se cortó con los fixes horneados justamente porque el
+> OTA estaba bloqueado. Mientras esto siga TBD, todo cambio de JS = build.
+
 ## EAS Update code signing (Sprint F · F1)
 
 > Threat model: red team audit 2026-06-10 (Mobile H3 + Infra H-1). Si alguien filtra `EXPO_TOKEN` (dep comprometida en GitHub Actions, sesión `~/.expo` robada, phishing del dashboard de EAS), puede publicar un JS bundle malicioso al canal `production` y RCE-ear a todos los users en el próximo cold start (`fallbackToCacheTimeout: 0`). El code signing levanta la barrera: el atacante también necesita la **private key**, que vive offline en la máquina del owner + como GitHub Secret para CI.
+>
+> **⚠️ 2026-06-12: este mecanismo está bloqueado — ver la sección TBD de arriba.**
 
 ### Cómo funciona
 
