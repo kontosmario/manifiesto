@@ -26,9 +26,13 @@
 export const HCAPTCHA_SITE_KEY: string =
   process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 
-// Base URL del widget. hCaptcha hostea el dispatch en su CDN; este es
-// el endpoint estándar usado por `@hcaptcha/react-native-hcaptcha`.
-export const HCAPTCHA_BASE_URL = 'https://hcaptcha.com'
+// Base URL del widget — el "hostname" con el que el WebView del
+// captcha se presenta ante hCaptcha. Debe estar en la lista de
+// hostnames del site en dashboard.hcaptcha.com (registramos
+// manifiestoapp.com al configurarlo, 2026-06-12). Usar el dominio
+// propio en vez del genérico hcaptcha.com evita el hostname-mismatch
+// cuando el site tiene enforcement activado.
+export const HCAPTCHA_BASE_URL = 'https://manifiestoapp.com'
 
 /** Devuelve true si hay site key configurada (siempre debería ser true
  *  en producción una vez que el owner cargue la secret en EAS). */
