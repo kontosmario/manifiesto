@@ -155,6 +155,9 @@ const config: ExpoConfig = {
     // al usuario (solo Apple/EAS lo ven), lo aceptamos así para evitar
     // un eventual cooldown de 30+ días sobre `com.manifiesto.mobile`.
     bundleIdentifier: 'com.manifiesto.mobile.ZKYQF7UNYA',
+    // Bump manual por release de TestFlight. Build 2 = share-to-import
+    // (Share Extension nueva — requiere binario, no llega por OTA).
+    buildNumber: '2',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
