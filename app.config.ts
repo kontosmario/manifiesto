@@ -81,6 +81,22 @@ const config: ExpoConfig = {
     // inflates the Play Store privacy disclosure for no functional gain.
     // Setting microphonePermission: false drops it from the manifest.
     ['expo-image-picker', { microphonePermission: false }],
+    // Share-to-import (2026-06-12): la Share Extension de iOS y los
+    // intent-filters de Android los genera este plugin en prebuild.
+    // iOS activa SOLO para imágenes y máximo 1 (decisión spec: una
+    // captura por share en v1). Android queda configurado pero sin QA
+    // hasta el launch de Play Store. Requiere build nativa nueva — un
+    // OTA no alcanza para que Manifiesto aparezca en el share sheet.
+    // Versión pineada ~5.1.1: la línea 5.x es la de SDK 54 (6=55, 7=56).
+    [
+      'expo-share-intent',
+      {
+        iosActivationRules: {
+          NSExtensionActivationSupportsImageWithMaxCount: 1,
+        },
+        androidIntentFilters: ['image/*'],
+      },
+    ],
     [
       'expo-local-authentication',
       {
