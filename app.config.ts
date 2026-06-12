@@ -175,11 +175,11 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.manifiesto.mobile.ZKYQF7UNYA',
     // Bump manual por release de TestFlight (appVersionSource: local;
     // con config dinámica el autoIncrement de EAS no puede escribir
-    // este archivo). Build 4 = fixes horneados (el OTA firmado quedó
-    // bloqueado: requiere plan EAS Enterprise — decisión de firma/OTA
-    // pendiente del owner): guard de mes cerrado usa period_end, no
-    // fechas futuras en el wizard, share en caliente (app abierta).
-    buildNumber: '4',
+    // este archivo). Build 5 = warm-share v2 (poll del App Group +
+    // Modal seguro + dedupe) + suscripciones Fase 1 (entitlement,
+    // SubscriptionGate, cap check). El OTA sigue bloqueado (plan EAS) —
+    // todo cambio de JS requiere build.
+    buildNumber: '5',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
