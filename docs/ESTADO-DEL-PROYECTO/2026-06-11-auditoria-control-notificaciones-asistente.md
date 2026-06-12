@@ -39,12 +39,20 @@ el cron SQL legacy (visibles in-app); "hardcodeada" = la fórmula estática.
 | A3.1 | Claude AI y Expensas (pagados hace días) como "SIN USO RECIENTE" | `last_used_at` **no lo escribe ningún flujo** → siempre NULL → TODO fijo activo calificaba de zombie; `zombie_candidates` tomaba el top-3 por monto. (El cron de zombies además filtraba `kind='periodic'` que jamás matchea — los fijos reales son `'recurring'`) | Condición **payment-aware** en `compute_control_snapshot` y `cron_detect_zombies`: `greatest(last_used_at, last_paid_at) < now()−60d` — un fijo pagado hace <60 días no es zombie. **Verificado: zombie_candidates = [] para tu familia.** Copy del signal actualizado ("sin movimiento hace 2+ meses", CTA "Revisar"). RPC `rpc_mark_fixed_expense_used` creado para la futura affordance "lo sigo usando" |
 | A3.2 | Señal de velocity con datos stale | Mismo A1.2 | La velocity fresca alimenta `buildVelocityWarning` |
 
+### A4 · Ingresos extra del ciclo (follow-up del owner)
+
+| # | Hallazgo | Root cause | Fix |
+|---|---|---|---|
+| A4.1 | Control ignoraba los `income_events` del ciclo (Home sí los sumaba) — una transferencia real de $640k no movía ni el cupo ni la proyección de Control, y las dos vistas reportaban presupuestos distintos | El adapter solo miraba `monthly_income` / override; nadie le pasaba los ingresos extra | `extraIncome` en `buildControlDataFromSnapshot` (mismo idiom que `effectiveCycleIncome + cycleExtraIncome` de Home): se suma al ingreso efectivo → libre → cupo → proyección → score. El hook usa `useCycleIncomeEventsTotal` con la MISMA ventana accounting que Home |
+| A4.2 | Sin visualización de ingresos en Control | No existía surface | **Card nueva "Entró este ciclo"** (`control-v2-ingresos-card.tsx`): solo se monta con ingresos > 0, estado `positive`, headline narrativo ("entraron $X — suman +$Y/día a tu cupo"), lista inset máx 3 movimientos (+N más), anatomía idéntica al resto de las cards (eyebrow + BreatheDot + statePill + well oscuro). Ubicada después de "hasta cuándo te alcanza" porque explica por qué el cupo subió |
+| A4.3 | El checkin matinal también ignoraba los ingresos extra | Mismo gap server-side en `list_pending_notifications` | Migración `20260615020000`: `libre = greatest(0, sueldo + sum(income_events del ciclo) − fijos − ahorro)`, ventana half-open idéntica al cliente. **Verificado en prod: restante $707.287 → $1.347.287 (+$640.000 exacto), cupo $47.152 → $89.819** |
+
 ## Artefactos
 
-- **Migración**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` (aplicada a prod vía `db push`, historia en paridad)
+- **Migraciones**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` y `20260615020000_checkin_incluye_ingresos_extra.sql` (aplicadas a prod vía `db push`, historia en paridad)
 - **Edge function**: `notifications-orchestrator` redeployado (cron secret + push_backlog)
-- **Cliente**: `control-v2-mock.ts` (proyección + clamp), `use-control-v2-data.ts` (velocity fresca), `control-signals.ts` (copy zombie)
-- **Tests**: `tests/unit/control-projection-honesta.test.ts` (escenario real de la cuenta como regresión)
+- **Cliente**: `control-v2-mock.ts` (proyección + clamp), `use-control-v2-data.ts` (velocity fresca + ingresos del ciclo), `control-signals.ts` (copy zombie), `control-v2-adapter.ts` (extraIncome), `control-v2-ingresos-card.tsx` (card nueva), `control-v2-screen.tsx` (montaje condicional)
+- **Tests**: `tests/unit/control-projection-honesta.test.ts` + `tests/unit/control-adapter-extra-income.test.ts` (escenarios reales de la cuenta como regresión)
 
 ## Verificaciones en prod (post-fix)
 

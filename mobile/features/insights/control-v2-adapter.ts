@@ -103,6 +103,15 @@ interface BuildControlDataArgs {
    *  Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
    */
   monthlyAccounting: MonthlyAccountingWindow
+  /**
+   * Ingresos extra del ciclo (`income_events`: transferencias, bonos,
+   * regalos) — auditoría 2026-06-11: Home ya los sumaba al disponible
+   * (`totalAvailable + cycleExtraIncome`) pero Control los ignoraba,
+   * así que las dos vistas reportaban presupuestos distintos (caso
+   * real: una transferencia de $640k invisible para el cupo y la
+   * proyección de Control). Se suman al ingreso efectivo del ciclo.
+   */
+  extraIncome?: number
   /** Override for testing — defaults to new Date(). */
   now?: Date
 }
@@ -279,9 +288,13 @@ export function buildControlDataFromSnapshot(
       ? storedBalance
       : null
   const hasCycleOverride = cycleStartingBalanceOverride !== null
-  const ingresoMes = hasCycleOverride
-    ? (cycleStartingBalanceOverride as number)
-    : monthlyIncomeRaw
+  // Ingresos extra del ciclo sumados al ingreso efectivo — mismo
+  // tratamiento que Home (use-home-metrics): el extra impacta de
+  // inmediato en libreMes → cupoDiario → proyección → score.
+  const extraIncome = Math.max(0, args.extraIncome ?? 0)
+  const ingresoMes =
+    (hasCycleOverride ? (cycleStartingBalanceOverride as number) : monthlyIncomeRaw) +
+    extraIncome
   const cupoDays = hasCycleOverride
     ? Math.max(1, monthlyAccounting.daysRemaining)
     : Math.max(1, diasMes)

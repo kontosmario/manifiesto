@@ -43,6 +43,11 @@ import {
 } from '@/features/insights/control-signals'
 import { computeUserBaselines } from '@/features/insights/user-baselines'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
+import {
+  useCycleIncomeEventsTotal,
+  useIncomeEvents,
+  type IncomeEventKind,
+} from '@/features/income/use-income-events'
 import { buildForecast7Day, type Forecast7Day } from '@/features/insights/forecast-engine'
 import { detectCausalLinks, type CausalLink } from '@/features/insights/causal-engine'
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
@@ -105,9 +110,26 @@ function coerceSignalsToReadOnly(
   }))
 }
 
+/** Ingresos extra del ciclo para la card "Entró este ciclo". */
+export interface IngresosCiclo {
+  /** Total de income_events del ciclo (misma query que Home). */
+  total: number
+  /** Movimientos del ciclo, más reciente primero. */
+  movimientos: Array<{
+    id: string
+    /** event_date en formato YYYY-MM-DD. */
+    fecha: string
+    kind: IncomeEventKind
+    descripcion: string | null
+    monto: number
+  }>
+}
+
 export interface ControlV2ViewModel {
   data: ControlMockData
   view: ControlView
+  /** Ingresos extra del ciclo — la card se monta solo si total > 0. */
+  ingresosCiclo: IngresosCiclo
   signals: ControlAdvisorTask[]
   /** Optional 7-day forecast — `null` while data is hydrating or
    *  when the user is still using the mock dataset. */
@@ -358,6 +380,34 @@ export function useControlV2Data(
   const { cycle: payCycle, isSalaryPendingConfirmation } = usePayCycle(familyId)
   const monthlyAccounting = useMonthlyAccounting(familyId)
   const dismissedHikes = useDismissedHikes()
+
+  // Ingresos extra del ciclo (auditoría 2026-06-11): misma ventana y
+  // misma query que Home usa para `cycleExtraIncome` — las dos vistas
+  // reportan EL MISMO presupuesto. El total alimenta el adapter
+  // (ingreso efectivo) y la lista alimenta la card "Entró este ciclo".
+  const incomeStartKey = formatLocalDateKey(monthlyAccounting.start)
+  const incomeEndKey = formatLocalDateKey(monthlyAccounting.end)
+  const cycleIncomeQuery = useCycleIncomeEventsTotal(
+    familyId,
+    incomeStartKey,
+    incomeEndKey,
+  )
+  const extraIncome = cycleIncomeQuery.data ?? 0
+  const incomeEventsQuery = useIncomeEvents(familyId)
+  const ingresosCiclo = useMemo<IngresosCiclo>(() => {
+    const all = incomeEventsQuery.data ?? []
+    const movimientos = all
+      .filter((e) => e.event_date >= incomeStartKey && e.event_date < incomeEndKey)
+      .map((e) => ({
+        id: e.id,
+        fecha: e.event_date,
+        kind: e.kind,
+        descripcion: e.description ?? null,
+        monto: Number(e.amount ?? 0),
+      }))
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
+    return { total: extraIncome, movimientos }
+  }, [incomeEventsQuery.data, incomeStartKey, incomeEndKey, extraIncome])
   // Each `useMemo` here delegates to a module-level LRU(1) cache via
   // `singleEntryMemoize`. With three Home-tree invocations sharing the
   // same React Query data identities, the second and third invocations
@@ -377,8 +427,9 @@ export function useControlV2Data(
       summaries,
       payCycle,
       monthlyAccounting,
+      extraIncome,
     })
-  }, [noConfig, expenses, fixedExpenses, finance, summaries, payCycle, monthlyAccounting])
+  }, [noConfig, expenses, fixedExpenses, finance, summaries, payCycle, monthlyAccounting, extraIncome])
 
   const view = useMemo<ControlView>(() => memoizedComputeView(data), [data])
 
@@ -559,6 +610,7 @@ export function useControlV2Data(
   return {
     data,
     view,
+    ingresosCiclo,
     signals,
     forecast,
     isLoading,

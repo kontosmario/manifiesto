@@ -14,6 +14,7 @@ import { ControlV2CoberturaCard } from '@/components/control-v2/control-v2-cober
 import { ControlV2EmptyState } from '@/components/control-v2/control-v2-empty-state'
 import { ControlV2Header } from '@/components/control-v2/control-v2-header'
 import { ControlV2Hero } from '@/components/control-v2/control-v2-hero'
+import { ControlV2IngresosCard } from '@/components/control-v2/control-v2-ingresos-card'
 // ControlV2HoyCard reemplazada por ControlV2Hero (variante A · El
 // Titular). HoyCard sigue en código para rollback rápido si fuera
 // necesario. Ver REAL-VALUE-SUGGESTIONS/CONTROL-HERO-REFACTOR.md
@@ -87,7 +88,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
-  const { data, view, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
+  const { data, view, ingresosCiclo, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
     useControlV2Data(familyId)
   const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
   // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
@@ -548,6 +549,16 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 />
               </ControlV2Anchor>
             </TourTarget>
+
+            {/* Ingresos extra del ciclo — solo cuando existen. La card
+                vive pegada a "alcanza" porque explica POR QUÉ el cupo
+                subió (los income_events ya están sumados al adapter). */}
+            {ingresosCiclo.total > 0 ? (
+              <ControlV2IngresosCard
+                ingresos={ingresosCiclo}
+                diasMes={data.diasMes}
+              />
+            ) : null}
 
             <TourTarget
               tour={CONTROL_TOUR}
