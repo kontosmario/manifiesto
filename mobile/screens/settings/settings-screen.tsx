@@ -26,7 +26,10 @@ import { SettingsProtectionDismissRow } from '@/components/settings/protection-d
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
-import { buildPreviewReviewState } from '@/features/import-review/preview-mock-state'
+import {
+  buildPreviewReviewState,
+  buildRealInsertTestState,
+} from '@/features/import-review/preview-mock-state'
 import type { ReviewState } from '@/features/import-review/types'
 import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-sheet'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
@@ -215,6 +218,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // mount. `null` while closed so the sheet doesn't render with stale
   // rows from a previous open.
   const [importPreviewState, setImportPreviewState] =
+    useState<ReviewState | null>(null)
+  // Diagnóstico 2026-06-12: mismo wizard pero con inserts REALES
+  // (sin previewMode) sobre 5 filas [TEST]. Reproduce el fallo de
+  // confirm del import sin necesitar OCR ni build nueva.
+  const [importRealTestState, setImportRealTestState] =
     useState<ReviewState | null>(null)
 
   // Motion preference — drives `useReducedMotion()` for every consumer
@@ -1110,10 +1118,18 @@ const handleOpenSupport = useCallback(() => {
                 <SettingsRow
                   helper="Abrí el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
                   icon="preview"
-                  isLast
                   label="Vista previa: wizard de importación"
                   onPress={() => {
                     setImportPreviewState(buildPreviewReviewState())
+                  }}
+                />
+                <SettingsRow
+                  helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Borralas después desde Gastos."
+                  icon="bug-report"
+                  isLast
+                  label="Test import: carga REAL con mocks"
+                  onPress={() => {
+                    setImportRealTestState(buildRealInsertTestState())
                   }}
                 />
               </SettingsGroup>
@@ -1571,6 +1587,13 @@ const handleOpenSupport = useCallback(() => {
         userId={userId}
         onClose={() => setImportPreviewState(null)}
         previewMode
+      />
+      <ImportReviewSheet
+        visible={importRealTestState !== null}
+        initialState={importRealTestState}
+        familyId={familyId}
+        userId={userId}
+        onClose={() => setImportRealTestState(null)}
       />
     </Screen>
   )

@@ -143,3 +143,41 @@ export function buildPreviewReviewState(): ReviewState {
     ],
   }
 }
+
+/**
+ * Mock state para el diagnóstico de inserts REALES desde Settings
+ * (device report 2026-06-12: "No se pudo cargar ningún movimiento" en
+ * ambos paths de import, cero POSTs en edge logs — la excepción es
+ * client-side y el OCR no hace falta para reproducirla).
+ *
+ * 5 filas con descripciones [TEST] y montos chicos e identificables
+ * para borrarlas fácil después. A diferencia del preview, este state
+ * se monta SIN `previewMode`: el confirm ejecuta los inserts de
+ * verdad contra la familia del owner.
+ */
+export function buildRealInsertTestState(): ReviewState {
+  const base = buildPreviewReviewState()
+  const todayIso = base.rows[0].date
+  const row = (
+    overrides: Partial<ReviewRow> &
+      Pick<ReviewRow, 'id' | 'amount' | 'description' | 'date' | 'kind'>,
+  ): ReviewRow => ({
+    ...base.rows[0],
+    notes: null,
+    categoryId: null,
+    incomeKind: 'other',
+    warnings: [],
+    ...overrides,
+  })
+  return {
+    imageUri: '',
+    unmatched: 0,
+    rows: [
+      row({ id: 'real-test-01', kind: 'expense', amount: 111, description: '[TEST] Gasto uno', date: todayIso }),
+      row({ id: 'real-test-02', kind: 'expense', amount: 222, description: '[TEST] Gasto dos', date: todayIso }),
+      row({ id: 'real-test-03', kind: 'expense', amount: 333, description: '[TEST] Gasto tres', date: todayIso }),
+      row({ id: 'real-test-04', kind: 'expense', amount: 444, description: '[TEST] Gasto cuatro', date: todayIso }),
+      row({ id: 'real-test-05', kind: 'income', amount: 555, description: '[TEST] Ingreso uno', date: todayIso, incomeKind: 'other' }),
+    ],
+  }
+}
