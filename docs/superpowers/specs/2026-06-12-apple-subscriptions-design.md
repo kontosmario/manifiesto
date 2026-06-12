@@ -42,52 +42,114 @@
 
 ---
 
-## 1. Modelo de datos (Supabase)
+## 1. Modelo de datos y resolución de entitlement (Supabase)
 
-### Tabla nueva `family_entitlements`
+> **Principio rector (refinamiento del owner 2026-06-12):** la suscripción
+> **nunca se transfiere**; el acceso se **resuelve en runtime** desde varias
+> fuentes con prioridad. Y el trial es un **reloj de calendario monotónico**
+> que nunca se pausa ni se reinicia. Esto elimina por diseño el exploit de
+> "entro a una familia paga, salgo, y reinicio mi prueba".
+
+### Modelo híbrido: trial per-usuario, suscripción per-familia
+
+- **Trial: per-usuario, derivado** de `profiles.created_at` (ya existe).
+  No se guarda un contador de "días restantes" — se calcula
+  `now() − profiles.created_at`. Sin estado que resetear → sin exploit.
+  Una columna opcional `profiles.trial_days int default 30` permite variar
+  la duración por cohorte sin tocar la lógica.
+- **Suscripción: per-familia**, almacenada en `family_entitlements`. El owner
+  compra *para el hogar* (`appAccountToken = family_id`), que es como factura
+  un plan de hogar. Todos los miembros activos heredan la cobertura.
+
+### Tabla nueva `family_entitlements` (solo estado de suscripción)
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `family_id` | uuid PK FK | `families(id) on delete cascade` |
-| `free_access_until` | timestamptz | `families.created_at + interval '30 days'`. Calculado server-side (nunca el reloj del device). |
-| `plan` | text | `'free' \| 'monthly' \| 'yearly' \| 'expired'` — el "valor en la cuenta" que el owner pidió. Derivado del estado real. |
 | `subscription_status` | text | `'none' \| 'active' \| 'grace' \| 'expired'` |
 | `original_transaction_id` | text null | Ancla estable de la suscripción en Apple (sobrevive renovaciones). |
 | `product_id` | text null | `com.manifiesto.app.subscription.monthly` / `.yearly` |
+| `purchaser_user_id` | uuid null | Quién disparó la compra (para soporte/auditoría; la cobertura es de la familia, no de este user). |
 | `expires_at` | timestamptz null | Vencimiento de la suscripción pagada. |
 | `auto_renew` | boolean | Default true; puede pausarse desde Ajustes de iOS. |
 | `environment` | text | `'Sandbox' \| 'Production'` — viene firmado en cada payload. |
 | `last_notification_uuid` | text null | Dedup de ASSN v2 (Apple reintenta). |
-| `comped` | boolean | Default false. True = acceso otorgado manualmente (cuenta demo de review, soporte). Saltea el gate. |
+| `comped` | boolean | Default false. True = acceso manual (cuenta demo de review, soporte). |
 | `updated_at` | timestamptz | |
 
-### Función de acceso efectivo
+> Nota: el `family_entitlements` ya no guarda `free_access_until` ni un `plan`
+> per-familia — el trial se deriva del usuario y el "plan" se computa en la
+> resolución (abajo).
+
+### Resolución de acceso (cascada, server-side, solo DB)
+
+La resolución es un **cálculo puro de DB** — NO consulta StoreKit (el recibo
+de Apple se valida una sola vez al comprar; ver §2). Función SQL
+`public.resolve_entitlement(user_id) returns table(source text, plan text, days_left int, has_access boolean)`:
 
 ```
-acceso_efectivo(family) =
-  comped
-  OR now() < free_access_until
-  OR subscription_status IN ('active', 'grace')
+resolve_entitlement(user) =
+  1. comped                         → { source:'comped',  has_access:true }
+  2. familia tiene sub activa/gracia → { source:'family',  plan, has_access:true }
+        familia = family_members activo del user; sub = family_entitlements
+        de esa familia con subscription_status IN ('active','grace')
+  3. dentro del trial monotónico    → { source:'trial', days_left, has_access:true }
+        days_left = greatest(0, trial_days − (now()::date − profiles.created_at::date))
+  4. else                           → { source:'free',   has_access:false }  ← bloqueado
 ```
 
-Si es false → **bloqueado** (paywall duro). Esta función vive en SQL
-(`public.family_has_access(family_id) returns boolean`) y la consume tanto
-el snapshot del cliente como las RLS si hiciera falta.
+La cascada `own_subscription > family_membership` del modelo conceptual
+**colapsa en el nivel 2** porque en billing de hogar la sub del owner ES la
+de la familia (el purchaser compra para su familia actual). El "plan" que el
+owner pidió como valor de cuenta = el `source` + `product_id` de esta
+resolución (`free` / `monthly` / `yearly`, o `family`/`comped`/`trial`).
+
+### Snapshot del cliente
+
+`family_entitlement_snapshot(user_id)` envuelve `resolve_entitlement` y
+devuelve lo que la UI necesita: `{ source, plan, has_access, days_left,
+expires_at, subscription_status }`. Se cachea con React Query; el gate y los
+nudges lo consumen. **El cliente nunca decide su propio acceso** — solo
+refleja lo que la función server-side resolvió.
 
 ### RLS
 
-- `SELECT`: miembros activos de la familia leen su propio entitlement.
+- `SELECT`: miembros activos de la familia leen el entitlement de su familia.
 - `INSERT`/`UPDATE`: **bloqueado a nivel policy** (`with check (false)`).
   Toda escritura pasa por las edge functions (security definer) — el cliente
   nunca puede declarar su propio plan.
 
-### Seed
+### Seed / backfill
 
-Un trigger en `families` (o backfill) crea la fila de entitlement con
-`free_access_until = created_at + 30 días`, `plan = 'free'`. Las familias
-existentes se backfillan: `free_access_until = greatest(created_at + 30d, now() + 30d)`
-para no bloquear retroactivamente a nadie que ya usa la app (decisión:
-todos arrancan con 30 días desde el deploy como piso).
+- Trial: no necesita seed — se deriva de `profiles.created_at` que ya existe.
+  Para no bloquear retroactivamente a usuarios actuales cuyo `created_at` ya
+  pasó los 30 días, el deploy aplica un **piso**: `profiles.trial_days`
+  backfilleado a `greatest(30, (now()::date − created_at::date) + 30)` para
+  las cuentas existentes (todos arrancan con ≥30 días desde el deploy). Las
+  cuentas nuevas usan el default 30.
+- `family_entitlements`: trigger en `families` crea la fila con
+  `subscription_status='none'`. Familias existentes se backfillan a `'none'`.
+
+### El sistema de familias/invitaciones YA EXISTE
+
+No hay que construir invitaciones ni el RLS de owner — está implementado y
+RPC-gated: `bootstrap_family`, `create_family_invite`, `consume_family_invite`,
+`peek_family_invite`, `generate_invite_code`, `family_remove_member`,
+`family_transfer_ownership`, `leave_current_family`, `convert_family_to_solo`,
+`is_family_owner`, `is_family_member_active`, `family_block_member`. Esta
+feature solo **conecta** la resolución de entitlement a esa membresía
+existente. (Verificar en implementación que el RLS de `family_members` es
+owner-gated — el patrón RPC sugiere que sí.)
+
+### Edge case conocido (limitación v1)
+
+La sub está anclada a `family_id`. Si el purchaser **transfiere ownership**
+o **se va del hogar** mientras la sub sigue activa, la sub sigue cubriendo a
+esa familia (Apple factura al Apple ID del comprador sin importar nuestros
+roles). El comprador que se fue cae a trial/free en su nuevo hogar aunque
+siga pagando. Es un caso rarísimo pre-lanzamiento; se documenta y se aborda
+en v2 si aparece (posible: anclar la sub al `purchaser_user_id` y resolver la
+familia por "algún miembro/owner con sub activa").
 
 ---
 
@@ -174,9 +236,11 @@ NO corre en Expo Go ni viaja por OTA. Guard de entorno como los otros.
 
 ### Snapshot del entitlement
 
-Un query/RPC `family_entitlement_snapshot(family_id)` que devuelve
-`{ plan, acceso_efectivo, free_access_until, expires_at, subscription_status }`.
-Se cachea con React Query e invalida tras compra/restore. El gate lo consume.
+Un RPC `family_entitlement_snapshot(user_id)` que envuelve
+`resolve_entitlement` (§1) y devuelve
+`{ source, plan, has_access, days_left, expires_at, subscription_status }`.
+Se cachea con React Query e invalida tras compra/restore/cambio de familia.
+El gate y los nudges lo consumen. `appAccountToken = family_id` en la compra.
 
 Fuentes: [expo-iap](https://github.com/hyochan/expo-iap) (ahora OpenIAP)
 
@@ -187,12 +251,13 @@ Fuentes: [expo-iap](https://github.com/hyochan/expo-iap) (ahora OpenIAP)
 Patrón espejo del overlay de auth-flow que ya existe (`auth-flow-machine` +
 `TransitionOverlay`). Un `SubscriptionGate` montado alto en el árbol:
 
-- Al entrar (y al volver de background), lee `acceso_efectivo` del snapshot.
-- Si **bloqueado**: monta el paywall como overlay **no descartable** sobre
-  la app. La única salida es suscribirse (o restaurar una compra previa).
-- Si **en ventana libre**: acceso normal + un recordatorio sutil de cuántos
-  días quedan (no intrusivo).
-- Si **pago activo**: acceso normal, sin overlay.
+- Al entrar (y al volver de background), lee `has_access` del snapshot.
+- Si **bloqueado** (`source:'free'`): monta el paywall como overlay **no
+  descartable** sobre la app. La única salida es suscribirse (o restaurar).
+- Si **`source:'trial'`**: acceso normal + nudge por umbrales (§6.3).
+- Si **`source:'family'` o `'comped'`**: acceso normal, **sin nudge ni
+  contador** (su acceso no depende del trial — mostrarlo confundiría).
+- Si **`source:'subscription'`** (pago activo propio): acceso normal.
 
 Interacción con el auth-flow: el gate de suscripción corre **después** del
 unlock (igual que el share-import gate) — primero autenticás, después se
@@ -233,11 +298,30 @@ Superficies:
 2. **Overlay de bloqueo** — el paywall montado como gate no-descartable.
    Entrada con el feel de auth (reveal suave), copy cálido y honesto
    ("Tu mes gratis terminó. Elegí tu plan para seguir.").
-3. **Recordatorio de días restantes** — chip sutil en Home/Settings durante
-   la ventana libre ("Acceso completo hasta el DD/MM"). Sin presión.
+3. **Comunicación del trial — sin spam (§6.3)** — SOLO cuando
+   `source === 'trial'`. Un miembro de familia o un pago activo NUNCA ve el
+   contador (sería confuso — su acceso no depende del trial). Reglas:
+   - **Badge pasivo permanente** en Settings: "Prueba: N días restantes".
+   - **Banner dismissible** solo en los umbrales `[7, 3, 1]` días, una vez
+     por umbral (se guarda el último umbral mostrado). Nada de recordatorio
+     diario.
+   - **Cero push** salvo el día 1 (el único con urgencia real).
+   ```ts
+   const TRIAL_NUDGE_THRESHOLDS = [7, 3, 1]
+   function shouldShowTrialBanner(snap, lastShownThreshold) {
+     if (snap.source !== 'trial') return false
+     const t = TRIAL_NUDGE_THRESHOLDS.find((x) => snap.days_left <= x)
+     return t !== undefined && t !== lastShownThreshold
+   }
+   ```
 4. **Estado del plan en Settings** — la `billing-screen` muestra el plan
    activo, vencimiento, y "Administrar en Ajustes de iOS" (cancelar es
-   responsabilidad de Apple, no nuestra).
+   responsabilidad de Apple, no nuestra). Si `source:'family'`, muestra
+   "Tu acceso viene de tu hogar" en vez de un plan propio.
+5. **Edge al salir de la familia** — en el flujo `leave_current_family`, si
+   el trial del usuario ya venció, advertir ANTES de confirmar: *"Si salís de
+   la familia pasás al plan gratuito (tu período de prueba ya finalizó)."*
+   Evita la sorpresa y comunica implícitamente que re-entrar no reinicia nada.
 
 Las mejoras concretas de cada pantalla se diseñan en la fase de
 implementación con las skills, partiendo de lo que ya hay (no rehacer).
@@ -322,12 +406,14 @@ Fuentes: [Testing subscriptions (sandbox/StoreKit config)](https://developer.app
 
 ## 9. Fases de implementación
 
-1. **Modelo + free-window + enforcement**: tabla `family_entitlements`,
-   trigger/backfill, `family_has_access`, snapshot RPC, `SubscriptionGate` +
-   overlay. Testeable con un unlock mock (sin IAP real todavía).
+1. **Modelo + resolución + enforcement**: tabla `family_entitlements`,
+   `profiles.trial_days` + backfill (piso de 30 días), `resolve_entitlement`
+   + `family_entitlement_snapshot`, `SubscriptionGate` + overlay, nudge por
+   umbrales, edge de leave-family. Testeable con un unlock/comped mock (sin
+   IAP real todavía). **Conecta** a la membresía existente, no la reconstruye.
 2. **expo-iap + `validate-purchase`**: dependencia nativa, `use-billing`
-   real, edge function de validación con verificación JWS. Compra
-   end-to-end en sandbox.
+   real, edge function de validación con verificación JWS (`appAccountToken =
+   family_id`). Compra end-to-end en sandbox.
 3. **Webhook ASSN v2 + reconciliación**: edge function de notificaciones,
    manejo del ciclo de vida completo, Server API para reconciliar.
 4. **App Store Connect + compliance**: crear productos + grupo de
