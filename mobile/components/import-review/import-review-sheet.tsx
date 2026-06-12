@@ -252,9 +252,13 @@ export function ImportReviewSheet({
           ? `Vista previa: ${parts.join(' y ')} (no se cargó nada).`
           : `Cargué ${parts.join(' y ')}.`
         if (result.failed.length > 0) {
+          const firstReason = result.failed[0]?.reason ?? ''
+          const reasonSuffix = firstReason
+            ? ` Motivo: ${firstReason.slice(0, 120)}`
+            : ''
           toast.error(
-            `${baseMsg} ${result.failed.length} no se pudieron cargar.`,
-            { durationMs: 6000 },
+            `${baseMsg} ${result.failed.length} no se pudieron cargar.${reasonSuffix}`,
+            { durationMs: 9000 },
           )
         } else {
           toast.success(baseMsg)
