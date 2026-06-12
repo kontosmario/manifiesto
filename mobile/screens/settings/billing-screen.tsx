@@ -29,12 +29,15 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   BILLING_PLANS,
-  BILLING_TRIAL_DAYS,
   type BillingCycle,
   type BillingPlan,
   type BillingPlanId,
 } from '@/features/billing/billing-plans'
 import { useBilling } from '@/features/billing/use-billing'
+import { useEntitlement } from '@/features/billing/use-entitlement'
+import { freeAccessBadgeLabel } from '@/features/billing/free-access-nudge'
+import { useAuthSession } from '@/features/auth/use-auth-session'
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 import { BillingCyclePicker } from '@/components/billing/billing-cycle-picker'
@@ -55,6 +58,12 @@ const CREAM = '#F2EAD3'
 export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {}) {
   const { theme } = useAppTheme()
   const billing = useBilling()
+  const userId = useAuthSession().data?.user.id
+  const entitlement = useEntitlement(userId).data
+  // Badge del período libre: SOLO cuando el acceso viene del trial
+  // personal (un pago activo o cobertura de hogar no lo ven — spec §6.3).
+  const showFreeBadge =
+    !lockMode && entitlement?.source === 'trial' && (entitlement.daysLeft ?? 0) > 0
 
   const initialId: BillingPlanId = billing.status.activePlanId ?? 'hogar-anual'
   const [selectedId, setSelectedId] = useState<BillingPlanId>(initialId)
@@ -78,16 +87,6 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
       void triggerHaptic('error')
       Alert.alert('Algo salió mal', result.reason)
     }
-  }, [billing, selectedPlan])
-
-  const handleStartTrial = useCallback(async () => {
-    void triggerHaptic('selection')
-    await billing.startFreeTrial(selectedPlan)
-    void triggerHaptic('success')
-    Alert.alert(
-      `${BILLING_TRIAL_DAYS} días gratis`,
-      'Prueba Manifiesto sin tarjeta. Te avisaremos antes de cualquier cobro.',
-    )
   }, [billing, selectedPlan])
 
   const handleRestorePurchases = useCallback(() => {
@@ -132,6 +131,12 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
           </RiseView>
         ) : null}
 
+        {showFreeBadge ? (
+          <RiseView>
+            <FreeAccessBadge daysLeft={entitlement!.daysLeft!} />
+          </RiseView>
+        ) : null}
+
         <RiseView>
           <CompactHero status={billing.status} />
         </RiseView>
@@ -156,7 +161,6 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
             isCurrentPlan={isCurrentPlan}
             isPurchasing={billing.isPurchasing}
             onSubscribe={handleSubscribe}
-            onStartTrial={handleStartTrial}
           />
         </RiseView>
 
@@ -222,13 +226,11 @@ function PrimaryCTA({
   isCurrentPlan,
   isPurchasing,
   onSubscribe,
-  onStartTrial,
 }: {
   plan: BillingPlan
   isCurrentPlan: boolean
   isPurchasing: boolean
   onSubscribe: () => void
-  onStartTrial: () => void
 }) {
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
@@ -286,13 +288,16 @@ function PrimaryCTA({
 
   return (
     <View style={styles.ctaStack}>
-      {/* PRIMARY: trial — same offer aplica a Mensual o Anual */}
+      {/* ÚNICO CTA: suscribir. NO hay botón de "prueba gratis" — el
+          período libre de 30 días es automático (no opt-in) y Apple
+          rechaza la palabra "trial" sin una oferta de App Store Connect.
+          El precio + período van EN el botón (requisito de compliance
+          3.1.2: precio y duración prominentes). */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Probar ${BILLING_TRIAL_DAYS} días gratis del ${plan.name}`}
-        accessibilityHint="Empieza una prueba gratuita sin pedir tarjeta."
+        accessibilityLabel={`Suscribirme al ${plan.name} por USD ${plan.priceUsd.toFixed(2)}${cycleSuffix}, renovación automática`}
         disabled={isPurchasing}
-        onPress={onStartTrial}
+        onPress={onSubscribe}
         onLayout={(e) => setCtaWidth(e.nativeEvent.layout.width)}
         style={({ pressed }) => [
           styles.primaryCta,
@@ -302,61 +307,36 @@ function PrimaryCTA({
           },
         ]}
       >
-        <MaterialIcons name="redeem" size={18} color="#0F2D06" />
         <Text style={styles.primaryCtaLead} numberOfLines={1}>
-          Probar {BILLING_TRIAL_DAYS} días gratis
+          Suscribirme por USD{' '}
         </Text>
-        {!isPurchasing ? (
-          <MaterialIcons name="arrow-forward" size={18} color="#0F2D06" />
-        ) : null}
+        <BillingPriceDigits
+          value={plan.priceUsd}
+          fractionDigits={2}
+          digitStyle={{
+            fontSize: 15,
+            fontWeight: '900',
+            color: '#0F2D06',
+            letterSpacing: -0.2,
+            fontVariant: ['tabular-nums'],
+            lineHeight: 19,
+          }}
+          separatorStyle={{
+            fontSize: 15,
+            fontWeight: '900',
+            color: '#0F2D06',
+            lineHeight: 19,
+          }}
+        />
+        <Text style={styles.primaryCtaLead} numberOfLines={1}>
+          {cycleSuffix}
+        </Text>
         <Animated.View pointerEvents="none" style={[styles.shimmer, shimmerStyle]} />
       </Pressable>
 
-      {/* SECONDARY: pay now con digit-roll del precio del plan elegido */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Empezar ahora por USD ${plan.priceUsd.toFixed(2)}${cycleSuffix}`}
-        disabled={isPurchasing}
-        onPress={onSubscribe}
-        style={({ pressed }) => [
-          styles.secondaryCta,
-          {
-            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-            borderColor: theme.colors.line,
-            opacity: isPurchasing ? 0.7 : pressed ? 0.85 : 1,
-          },
-        ]}
-      >
-        <View style={styles.ctaLabel}>
-          <Text style={[styles.secondaryCtaLead, { color: theme.colors.text }]} numberOfLines={1}>
-            Empezar ahora por USD{' '}
-          </Text>
-          <BillingPriceDigits
-            value={plan.priceUsd}
-            fractionDigits={2}
-            digitStyle={{
-              fontSize: 14,
-              fontWeight: '900',
-              color: theme.colors.text,
-              letterSpacing: -0.2,
-              fontVariant: ['tabular-nums'],
-              lineHeight: 18,
-            }}
-            separatorStyle={{
-              fontSize: 14,
-              fontWeight: '900',
-              color: theme.colors.text,
-              lineHeight: 18,
-            }}
-          />
-          <Text style={[styles.secondaryCtaLead, { color: theme.colors.text }]} numberOfLines={1}>
-            {cycleSuffix}
-          </Text>
-        </View>
-      </Pressable>
-
+      {/* Disclosure de auto-renovación JUNTO al CTA (requisito 3.1.2). */}
       <Text style={[styles.ctaReassurance, { color: theme.colors.textMuted }]}>
-        Sin tarjeta para la prueba. Cancelas cuando quieras.
+        Se renueva automáticamente {plan.cycle === 'yearly' ? 'cada año' : 'cada mes'} hasta que canceles. Cancelás desde Ajustes de iOS cuando quieras.
       </Text>
     </View>
   )
@@ -505,13 +485,15 @@ function FooterMicro({
   return (
     <View style={styles.footerStack}>
       <View style={styles.footerLinks}>
+        {/* Restaurar compras — OBLIGATORIO y visible (Apple 3.1.1). */}
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Restaurar compras"
           onPress={onRestore}
           hitSlop={6}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Ya compré antes</Text>
+          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Restaurar compras</Text>
         </Pressable>
         {hasActivePlan ? (
           <>
@@ -527,8 +509,54 @@ function FooterMicro({
           </>
         ) : null}
       </View>
+
+      {/* Links a Términos (EULA) + Privacidad — OBLIGATORIOS en el
+          paywall, no solo en la web (Apple 3.1.2). Funcionales. */}
+      <View style={styles.footerLinks}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Términos de uso"
+          onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
+          hitSlop={6}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Términos de uso</Text>
+        </Pressable>
+        <View style={[styles.footerSep, { backgroundColor: theme.colors.line }]} />
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Política de privacidad"
+          onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+          hitSlop={6}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text style={[styles.footerLinkText, { color: theme.colors.textMuted }]}>Privacidad</Text>
+        </Pressable>
+      </View>
+
       <Text style={[styles.legal, { color: theme.colors.textSoft }]}>
-        El plan se renueva solo al final del período. Puedes cancelar desde la tienda cuando quieras. Los precios pueden variar según tu país.
+        La suscripción se renueva automáticamente al final de cada período hasta que la canceles desde Ajustes de iOS. Los precios pueden variar según tu país.
+      </Text>
+    </View>
+  )
+}
+
+// ─── Badge pasivo del período libre (solo source==='trial') ────────
+function FreeAccessBadge({ daysLeft }: { daysLeft: number }) {
+  const { theme } = useAppTheme()
+  return (
+    <View
+      style={[
+        styles.freeAccessBadge,
+        {
+          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
+      ]}
+    >
+      <MaterialIcons name="lock-open" size={16} color={theme.colors.primary} />
+      <Text style={[styles.freeAccessText, { color: theme.colors.text }]}>
+        {freeAccessBadgeLabel(daysLeft)}
       </Text>
     </View>
   )
@@ -552,6 +580,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
+  },
+  freeAccessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  freeAccessText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
 
   hero: {
