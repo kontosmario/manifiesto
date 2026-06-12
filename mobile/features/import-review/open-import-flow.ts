@@ -9,6 +9,31 @@ export type OpenImportResult =
   | { kind: 'permission-denied' }
   | { kind: 'error'; message: string }
 
+/**
+ * Pipeline OCR → review state desde una URI ya conocida. Lo comparten
+ * el flujo del picker (abajo) y share-to-import (la captura llega por
+ * la Share Extension, sin picker). Extraído 2026-06-12.
+ */
+export async function openImportFromUri(
+  uri: string,
+  ctx: MapContext,
+): Promise<OpenImportResult> {
+  try {
+    const result = await parseActivity(uri)
+    const rows = mapToReviewRows(result.transactions, ctx)
+    return {
+      kind: 'opened',
+      state: {
+        rows,
+        unmatched: result.unmatched.length,
+        imageUri: uri,
+      },
+    }
+  } catch (e) {
+    return { kind: 'error', message: errorMessage(e) }
+  }
+}
+
 export async function openImportFlow(
   ctx: MapContext,
 ): Promise<OpenImportResult> {
@@ -33,22 +58,7 @@ export async function openImportFlow(
 
   if (pick.canceled || pick.assets.length === 0) return { kind: 'cancelled' }
 
-  const uri = pick.assets[0].uri
-
-  try {
-    const result = await parseActivity(uri)
-    const rows = mapToReviewRows(result.transactions, ctx)
-    return {
-      kind: 'opened',
-      state: {
-        rows,
-        unmatched: result.unmatched.length,
-        imageUri: uri,
-      },
-    }
-  } catch (e) {
-    return { kind: 'error', message: errorMessage(e) }
-  }
+  return openImportFromUri(pick.assets[0].uri, ctx)
 }
 
 function errorMessage(e: unknown): string {
