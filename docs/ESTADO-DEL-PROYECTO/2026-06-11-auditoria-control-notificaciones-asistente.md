@@ -65,6 +65,13 @@ Dos bugs más en `apply_month_close_decision` (server):
 | A5b.2 | Ventana del anchor `[hoy−7, hoy+45]` (guard F10/J-DB1) rompe el flujo real: en 'acumular' el cliente manda el inicio del CICLO VIGENTE (necesario para que el override matchee), que puede estar hasta ~31 días atrás. Cualquier decisión después del día 7 del ciclo fallaba — no solo la retroactiva | El guard se diseñó contra fechas basura (9999-12-31) sin contemplar la semántica del anchor | Límite inferior ampliado a −45 días (cubre cualquier inicio de ciclo + margen; sigue bloqueando la clase 1900/9999). Constraint defense-in-depth de family_finance (±400d) intacto |
 | A5b.3 | `Uncaught (in promise)` en consola — el error del RPC no llegaba al usuario | `handleApplyDecision` (sheet standalone) y `onApplyLeftoverDecision` (wrapped CTA) sin catch con feedback | try/catch + `toast.error` en ambos paths; el sheet queda abierto para reintentar; el wrapped re-throws para no disparar confetti en error |
 
+### A5c · "Sumarlo al mes" inflaba el sueldo (reportado por owner post-A5b)
+
+| # | Hallazgo | Root cause | Fix |
+|---|---|---|---|
+| A5c.1 | Tras aplicar 'acumular' el Home pasó de ~$1.6M a ~$7.7M "disponibles" — el sobrante se sumó sobre el sueldo bruto, no sobre el saldo | El branch 'acumular' seteaba `current_cycle_starting_balance = coalesce(override, monthly_income) + sobrante` = 6.4M + 1.727M = 8.127M. Pero la semántica del override es "plata disponible HOY" (reemplaza al sueldo y solo descuenta gasto desde hoy) — sembrarlo con el sueldo bruto a mitad de ciclo ignora los $4.3M ya gastados | Migración `20260615040000`: **'acumular' inserta un `income_event`** (kind other, "Sobrante de <periodo>", event_date hoy) y no toca el override. Reusa el pipeline A4 completo: disponible Home + cupo/proyección Control + checkin + card "Entró este ciclo". `p_new_cycle_anchor` queda aceptado por back-compat pero ignorado. Copy del sheet ("Queda como disponible extra este mes") ya describía esto |
+| A5c.2 | Datos del owner inconsistentes por el write malo | — | Reparación directa en prod: override revertido a `null` (anchor intacto) + income_event insertado (`da59b4df…`, $1.727.195, 2026-06-11). Verificado: disponible = saldo real + sobrante |
+
 ## Artefactos
 
 - **Migraciones**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` y `20260615020000_checkin_incluye_ingresos_extra.sql` (aplicadas a prod vía `db push`, historia en paridad)
