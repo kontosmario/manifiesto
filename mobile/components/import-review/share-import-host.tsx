@@ -1,0 +1,103 @@
+import { useCallback, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { openImportFromUri } from '@/features/import-review/open-import-flow'
+import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
+import { useShareImportGate } from '@/features/share-import/use-share-import-gate'
+import type { ReviewState } from '@/features/import-review/types'
+import { toast } from '@/lib/toast-bus'
+import { useAppTheme } from '@/theme/theme-provider'
+
+/**
+ * Host del flujo share-to-import. Vive en el layout de tabs (solo
+ * existe con sesión + app desbloqueada) y es dueño de SU instancia de
+ * ImportReviewSheet — el tab button conserva la suya para el path del
+ * picker; no comparten estado.
+ *
+ * Ciclo: gate entrega URI → overlay "Leyendo tu captura…" → OCR+parse
+ * (openImportFromUri) → wizard. Cualquier error → toast y a idle.
+ */
+export function ShareImportHost() {
+  const { theme } = useAppTheme()
+  const { familyId, userId, makeMapContext } = useImportWizardContext()
+  const [phase, setPhase] = useState<'idle' | 'parsing'>('idle')
+  const [reviewState, setReviewState] = useState<ReviewState | null>(null)
+
+  const busy = phase === 'parsing' || reviewState !== null
+
+  const handleShare = useCallback(
+    (uri: string) => {
+      setPhase('parsing')
+      void (async () => {
+        const result = await openImportFromUri(uri, makeMapContext())
+        setPhase('idle')
+        if (result.kind === 'opened') {
+          setReviewState(result.state)
+          return
+        }
+        if (result.kind === 'error') {
+          toast.error(`No pude leer esa captura: ${result.message}`)
+        }
+      })()
+    },
+    [makeMapContext],
+  )
+
+  useShareImportGate({ familyId, userId, busy, onShare: handleShare })
+
+  return (
+    <>
+      {phase === 'parsing' ? (
+        <View style={styles.overlay} pointerEvents="auto">
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.isDark
+                  ? theme.colors.surfaceMuted
+                  : theme.colors.creamCard,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Leyendo tu captura…
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      <ImportReviewSheet
+        visible={reviewState !== null}
+        initialState={reviewState}
+        familyId={familyId ?? ''}
+        userId={userId ?? ''}
+        onClose={() => setReviewState(null)}
+      />
+    </>
+  )
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    zIndex: 50,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+})

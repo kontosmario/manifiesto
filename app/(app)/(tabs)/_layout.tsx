@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AppTabs } from '@/components/navigation/app-tabs'
+import { ShareImportHost } from '@/components/import-review/share-import-host'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   homeSnapshotQueryKey,
@@ -27,5 +28,10 @@ export default function TabsLayout() {
   // tap Gastos/Control, cache hot → screen renderea en 1 frame.
   useWarmTabsSnapshots()
 
-  return <AppTabs />
+  return (
+    <>
+      <AppTabs />
+      <ShareImportHost />
+    </>
+  )
 }
