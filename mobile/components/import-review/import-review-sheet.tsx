@@ -260,9 +260,16 @@ export function ImportReviewSheet({
           toast.success(baseMsg)
         }
       } else if (result.failed.length > 0) {
+        // Mostrar la PRIMERA razón real — "(N errores)" a secas dejaba
+        // al usuario (y a nosotros) sin nada accionable. Device report
+        // 2026-06-12: import falló completo y la causa era invisible.
+        const firstReason = result.failed[0]?.reason ?? ''
+        const reasonSuffix = firstReason
+          ? ` Motivo: ${firstReason.slice(0, 120)}`
+          : ''
         toast.error(
-          `No se pudo cargar ningún movimiento (${result.failed.length} errores).`,
-          { durationMs: 6000 },
+          `No se pudo cargar ningún movimiento (${result.failed.length} ${result.failed.length === 1 ? 'error' : 'errores'}).${reasonSuffix}`,
+          { durationMs: 9000 },
         )
       }
       onClose()
