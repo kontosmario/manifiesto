@@ -28,7 +28,7 @@ import {
 } from '@/components/navigation/add-expense-tab-button-no-spend-decision'
 import { openImportFlow } from '@/features/import-review/open-import-flow'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
-import { useFamilyFinance } from '@/features/finance/use-family-finance'
+import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import type { ReviewState } from '@/features/import-review/types'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useExpenses } from '@/features/expenses/use-expenses'
@@ -219,7 +219,7 @@ export function AddExpenseTabButton({
   const ACCENT_IMPORT = theme.isDark ? '#B894FA' : '#7E50CC'   // púrpura
 
   const [importState, setImportState] = useState<ReviewState | null>(null)
-  const financeQuery = useFamilyFinance(familyId)
+  const { makeMapContext } = useImportWizardContext()
 
   const handleOpenImport = async () => {
     if (!familyId || !userId) {
@@ -235,14 +235,7 @@ export function AddExpenseTabButton({
     await new Promise<void>((resolve) => {
       InteractionManager.runAfterInteractions(() => resolve())
     })
-    const rate = financeQuery.data?.usd_exchange_rate ?? 1000
-    const today = new Date().toISOString().slice(0, 10)
-    let idCounter = 0
-    const result = await openImportFlow({
-      today,
-      usdToArsRate: rate,
-      generateRowId: () => `r-${++idCounter}`,
-    })
+    const result = await openImportFlow(makeMapContext())
 
     switch (result.kind) {
       case 'opened':
