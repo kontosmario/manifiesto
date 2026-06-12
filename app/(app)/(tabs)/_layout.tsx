@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AppTabs } from '@/components/navigation/app-tabs'
 import { ShareImportHost } from '@/components/import-review/share-import-host'
+import { SubscriptionGate } from '@/components/billing/subscription-gate'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   homeSnapshotQueryKey,
@@ -32,6 +33,7 @@ export default function TabsLayout() {
     <>
       <AppTabs />
       <ShareImportHost />
+      <SubscriptionGate />
     </>
   )
 }

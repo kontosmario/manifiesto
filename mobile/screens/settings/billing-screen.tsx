@@ -46,7 +46,13 @@ const HERO_GLOW = 'rgba(166,239,143,0.18)'
 const ACCENT = '#A6EF8F'
 const CREAM = '#F2EAD3'
 
-export function BillingScreen() {
+/**
+ * `lockMode`: cuando el paywall se monta como gate duro (período libre
+ * vencido sin pago), oculta el botón de volver y muestra el copy de
+ * bloqueo. La única salida es suscribirse o restaurar. Lo usa
+ * `SubscriptionGate`.
+ */
+export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {}) {
   const { theme } = useAppTheme()
   const billing = useBilling()
 
@@ -108,12 +114,23 @@ export function BillingScreen() {
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      canGoBack
-      title="Tu plan"
+      canGoBack={!lockMode}
+      title={lockMode ? 'Elegí tu plan' : 'Tu plan'}
       contentContainerStyle={styles.screenContent}
     >
       <View style={styles.stack}>
         <AmbientBlobs tone={ambientTone} />
+
+        {lockMode ? (
+          <RiseView>
+            <View style={styles.lockBanner}>
+              <MaterialIcons name="lock-outline" size={18} color={theme.colors.text} />
+              <Text style={[styles.lockBannerText, { color: theme.colors.text }]}>
+                Tu mes gratis terminó. Elegí tu plan para seguir usando Manifiesto.
+              </Text>
+            </View>
+          </RiseView>
+        ) : null}
 
         <RiseView>
           <CompactHero status={billing.status} />
@@ -520,6 +537,22 @@ function FooterMicro({
 const styles = StyleSheet.create({
   screenContent: { paddingTop: 4 },
   stack: { gap: 16, position: 'relative' },
+  lockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(127,127,127,0.25)',
+  },
+  lockBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
 
   hero: {
     flexDirection: 'row',
