@@ -15,7 +15,11 @@ export function shouldShowFreeAccessBanner(
 ): boolean {
   if (snap.source !== 'trial' || snap.daysLeft == null) return false
   const days = snap.daysLeft
-  const t = TRIAL_NUDGE_THRESHOLDS.find((x) => days <= x)
+  // Umbral aplicable = el MÁS chico cruzado. Como el array es
+  // descendente [7,3,1], es el último match (find devolvería 7 para
+  // days=3, pero queremos 3 — el umbral más urgente alcanzado).
+  const matched = TRIAL_NUDGE_THRESHOLDS.filter((x) => days <= x)
+  const t = matched.at(-1)
   return t !== undefined && t !== lastShownThreshold
 }
 
