@@ -53,6 +53,18 @@ el cron SQL legacy (visibles in-app); "hardcodeada" = la fórmula estática.
 |---|---|---|---|
 | A5.1 | El wrapped de Abril 2026 se vio (29-may) con sobrante real de $1.727.195 pero la sección "Y TE SOBRARON" no apareció y `month_close_decisions` está vacía — la decisión nunca se pidió | **Doble resta estructural**: el server define `savings_delta = max(0, income − total_spent)` (el sobrante mismo) y el cliente calculaba `sobrante = income − total_spent − savings_delta` ≡ 0 para CUALQUIER familia, siempre. Dos call-sites con la fórmula rota: `use-month-close-decision.ts` (sheet standalone) y `home-dashboard.tsx` (sección del wrapped). El spec pedía restar el ahorro comprometido, no `savings_delta` | Fórmula canónica extraída a `mobile/features/month-close/sobrante.ts`: `sobrante = income − total_spent − savings_goal_amount`, consumida por ambos call-sites. `savings_goal_amount` agregado al select del hook y al de `control-intelligence` + `MonthlySummaryHistory`. Tests con el row real de Abril. **Efecto retroactivo deliberado**: el summary de Abril queda detectado como pendiente → el sheet se abre en la próxima visita al Home (la plata existió y nadie decidió) |
 
+### A5b · El RPC del cierre también estaba roto (descubierto al aplicar la decisión)
+
+Al intentar "Sumarlo al mes" con la decisión retroactiva de Abril, el RPC tiró
+`P0001 invalid anchor: must be within [today - 7 days, today + 45 days]`.
+Dos bugs más en `apply_month_close_decision` (server):
+
+| # | Hallazgo | Root cause | Fix |
+|---|---|---|---|
+| A5b.1 | El RPC calculaba `v_sobrante` con la MISMA doble resta del cliente (`income − total_spent − savings_delta` ≡ 0) — aunque la decisión se persistiera, acreditaba **$0** a la meta/reserva/ciclo | Mismo malentendido de `savings_delta` que A5.1, duplicado server-side | Migración `20260615030000`: `v_sobrante = income − total_spent − savings_goal_amount`. Verificado en prod: $1.727.195 para el row de Abril |
+| A5b.2 | Ventana del anchor `[hoy−7, hoy+45]` (guard F10/J-DB1) rompe el flujo real: en 'acumular' el cliente manda el inicio del CICLO VIGENTE (necesario para que el override matchee), que puede estar hasta ~31 días atrás. Cualquier decisión después del día 7 del ciclo fallaba — no solo la retroactiva | El guard se diseñó contra fechas basura (9999-12-31) sin contemplar la semántica del anchor | Límite inferior ampliado a −45 días (cubre cualquier inicio de ciclo + margen; sigue bloqueando la clase 1900/9999). Constraint defense-in-depth de family_finance (±400d) intacto |
+| A5b.3 | `Uncaught (in promise)` en consola — el error del RPC no llegaba al usuario | `handleApplyDecision` (sheet standalone) y `onApplyLeftoverDecision` (wrapped CTA) sin catch con feedback | try/catch + `toast.error` en ambos paths; el sheet queda abierto para reintentar; el wrapped re-throws para no disparar confetti en error |
+
 ## Artefactos
 
 - **Migraciones**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` y `20260615020000_checkin_incluye_ingresos_extra.sql` (aplicadas a prod vía `db push`, historia en paridad)

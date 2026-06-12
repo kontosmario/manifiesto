@@ -66,6 +66,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast-bus'
 
 interface HomeDashboardProps {
   dashboard: FamilyDashboard
@@ -414,8 +415,16 @@ export function HomeDashboard({
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
-      await applyDecision.mutateAsync(input)
-      setDecisionSheetOpen(false)
+      // Sin catch esto era un unhandled rejection: el RPC puede fallar
+      // (rate limit, anchor guard, red) y el sheet quedaba colgado con
+      // un "Uncaught (in promise)" en consola. El sheet queda abierto
+      // para reintentar.
+      try {
+        await applyDecision.mutateAsync(input)
+        setDecisionSheetOpen(false)
+      } catch {
+        toast.error('No pudimos guardar tu decisión. Probá de nuevo en un rato.')
+      }
     },
     [applyDecision],
   )
@@ -557,7 +566,15 @@ export function HomeDashboard({
         nextCycleAnchor: formatLocalDateKey(dashboard.monthlyAccounting.start),
         onApplyLeftoverDecision: pendingForWrapped
           ? async (input) => {
-              await applyDecision.mutateAsync(input)
+              // El catch de la CTA solo resetea su spinner — el
+              // feedback al user sale de acá. Re-throw para que la
+              // CTA NO dispare confetti en el path de error.
+              try {
+                await applyDecision.mutateAsync(input)
+              } catch (err) {
+                toast.error('No pudimos guardar tu decisión. Probá de nuevo en un rato.')
+                throw err
+              }
             }
           : undefined,
       }),
