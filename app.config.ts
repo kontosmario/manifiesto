@@ -81,6 +81,24 @@ const config: ExpoConfig = {
     // inflates the Play Store privacy disclosure for no functional gain.
     // Setting microphonePermission: false drops it from the manifest.
     ['expo-image-picker', { microphonePermission: false }],
+    // Fix build EAS 2026-06-12: GoogleSignIn 9.x declara
+    // `AppCheckCore ~> 11.0` (flota). AppCheckCore 11.3.0 sumó la dep
+    // RecaptchaInterop y dispara la validación de Swift-estático
+    // contra GoogleUtilities/RecaptchaInterop, que no definen módulos
+    // — `pod install` muere en EAS (local resolvió 11.2.0 y pasó).
+    // El fix que sugiere el propio error: modular headers para esos
+    // dos pods. Sobrevive a futuras versiones de AppCheckCore.
+    [
+      'expo-build-properties',
+      {
+        ios: {
+          extraPods: [
+            { name: 'GoogleUtilities', modular_headers: true },
+            { name: 'RecaptchaInterop', modular_headers: true },
+          ],
+        },
+      },
+    ],
     // Share-to-import (2026-06-12): la Share Extension de iOS y los
     // intent-filters de Android los genera este plugin en prebuild.
     // iOS activa SOLO para imágenes y máximo 1 (decisión spec: una
