@@ -159,6 +159,63 @@ Si tarda más de 2-3 force-restarts:
 
 Si tocaste `package.json` (incluso dep no-native): el workflow lo skipea por seguridad. Forzá con `workflow_dispatch` después de confirmar que no agregaste deps nativas.
 
+## Builds locales — sin consumir el free tier de EAS (2026-06-12)
+
+> El free tier da **15 builds cloud de iOS por mes**. Todo lo de abajo corre
+> en la Mac del owner y **no consume ese quota** (verificado contra docs de
+> Expo: los builds locales no crean jobs en los workers; solo verifican el
+> proyecto y bajan credenciales managed). `eas submit` es gratis siempre.
+
+### Regla de oro: ¿necesitás una build siquiera?
+
+| Cambio | Qué hace falta |
+|---|---|
+| **Solo JS/TS** (pantallas, lógica, hooks) | **NADA de builds.** Con el dev client instalado, `npx expo start` y los cambios recargan por Metro (misma WiFi). |
+| Dep nativa nueva / config plugin / Info.plist / icons | Rebuild del dev client: `npx expo run:ios --device` (local, gratis) |
+| Release a TestFlight | `./scripts/build-local.sh` (local, gratis) o el pipeline cloud (consume quota) |
+
+### Loop diario (cero builds)
+
+1. **Una vez**: `npx expo run:ios --device` con el iPhone conectado — compila
+   y firma con el cert de desarrollo (Xcode automatic signing; la primera vez
+   abrir Xcode y setear el Team en los DOS targets: Manifiesto y
+   ShareExtension). Eso instala el **dev client** con todos los módulos
+   nativos (share-intent, ML Kit, expo-iap cuando entre).
+2. **Después**: `npx expo start` → abrir el dev client → los cambios de JS
+   recargan al instante. El gotcha conocido: CocoaPods/fastlane necesitan
+   `LANG=en_US.UTF-8` (los scripts ya lo exportan).
+3. Metro por **LAN** (misma WiFi). USB-Metro no existe en iOS físico; si la
+   red bloquea, `npx expo start --tunnel`.
+
+### Release a TestFlight local — `scripts/build-local.sh`
+
+```bash
+# bump ios.buildNumber en app.config.ts PRIMERO (ASC rechaza repetidos)
+SUBMIT=1 ./scripts/build-local.sh
+```
+
+Qué hace: `eas env:pull --environment production` (materializa los
+EXPO_PUBLIC_* en `.env.local` — los builds locales NO bajan los env de EAS
+solos, expo/expo#36288) → `eas build --local` (mismo pipeline que el cloud;
+baja los provisioning profiles per-target ya creados, Share Extension
+incluida; tarda 10-25 min) → `eas submit --path` (gratis).
+
+Requisitos one-time (instalados 2026-06-12): `brew install fastlane`
+(2.236.1), CocoaPods 1.16.1 (ya estaba), sesión `eas login`, ≥12 GB de disco
+(el script lo chequea; liberar con `rm -rf ~/Library/Developer/Xcode/DerivedData/*`).
+
+Limitaciones conocidas de `eas build --local`: env vars con visibilidad
+**Secret** no bajan (exportarlas en el shell si hicieran falta); una
+plataforma por corrida; sin caching remoto. El flag sigue marcado
+experimental — si el toolchain local se rompe (Xcode/fastlane update),
+los 15 builds cloud del mes son el fallback.
+
+### Cuándo SÍ usar el pipeline cloud
+
+- Releases "oficiales" donde querés trazabilidad de CI (tag `v*`).
+- Si la Mac no está disponible o el toolchain local está roto.
+- Quota mensual: 15 builds — usarlos como fallback, no como default.
+
 ## ⚠️ TBD / TO-DO — OTA firmado bloqueado por plan (2026-06-12)
 
 > **Estado**: el OTA NO funciona hoy. **Decisión pendiente del owner.**
