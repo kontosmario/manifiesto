@@ -37,4 +37,20 @@ describe('pending-share-store (share-to-import)', () => {
     setPendingShare('file:///c.png')
     expect(listener).toHaveBeenCalledTimes(2)
   })
+
+  it('dedupe: re-depositar el uri RECIÉN consumido es no-op (doble onChange del mismo share)', () => {
+    setPendingShare('file:///x.png')
+    expect(consumePendingShare()).toBe('file:///x.png')
+    // La lib emite onChange dos veces (refresh + poll) → mismo uri.
+    setPendingShare('file:///x.png')
+    expect(peekPendingShare()).toBeNull()
+    expect(consumePendingShare()).toBeNull()
+  })
+
+  it('dedupe NO bloquea un share genuinamente nuevo (otro uri)', () => {
+    setPendingShare('file:///x.png')
+    consumePendingShare()
+    setPendingShare('file:///y.png')
+    expect(consumePendingShare()).toBe('file:///y.png')
+  })
 })

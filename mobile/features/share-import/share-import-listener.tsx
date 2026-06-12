@@ -10,6 +10,22 @@ import { toast } from '@/lib/toast-bus'
  * TestFlight). En Expo Go el módulo nativo no está linkeado: el guard
  * de require + isExpoGo convierte todo en no-op para que la app bootee
  * (mismo trato que ML Kit en activity-ocr).
+ *
+ * ── Entrega del share: 3 canales (device report 2026-06-12 v2) ──────
+ * La extensión guarda la imagen en el App Group y abre el host con
+ * `manifiesto://dataUrl=manifiestoShareKey#media` vía el hack del
+ * responder-chain — cuya entrega del evento de URL al host YA CORRIENDO
+ * es flaky. La imagen, en cambio, SIEMPRE queda en el App Group. Por eso:
+ *   1. Evento `Linking` crudo (multicast, no lo intercepta expo-router):
+ *      cubre cold y los warm donde iOS sí entrega el evento.
+ *   2. **Poll en foreground con URL sintetizada**: en cada `active`
+ *      llamamos getShareIntent con la URL canónica — el nativo lee el
+ *      App Group directo y responde "empty" gratis si no hay nada.
+ *      CERO dependencia de eventos: aunque iOS no entregue la URL, el
+ *      share se levanta al volver la app al frente. (El intento anterior
+ *      usaba getInitialURL(), que es null si la app no fue LANZADA por
+ *      una URL → el fallback nunca corría con la app abierta.)
+ *   3. Poll inicial al montar (cold sin evento).
  */
 
 type NativeShareModule = {
@@ -25,8 +41,9 @@ type ShareIntentModule = {
     resetShareIntent: () => void
     error: string | null
   }
-  /** Acceso directo al módulo nativo (AsyncFunction getShareIntent). */
   ShareIntentModule?: NativeShareModule | null
+  getShareExtensionKey?: () => string
+  getScheme?: () => string | null
 }
 
 const shareIntentModule: ShareIntentModule | null = (() => {
@@ -44,50 +61,54 @@ export function ShareImportListenerBridge() {
   return <ShareImportListenerNative mod={shareIntentModule} />
 }
 
-/** El share extension relanza la app con `<scheme>://dataUrl=<key>#media`. */
 const SHARE_URL_MARKER = 'dataUrl='
+
+/** URL canónica que el handleUrl nativo espera para media. El scheme y
+ *  la key se resuelven de la lib (con fallback hardcodeado idéntico al
+ *  que genera el config plugin). */
+function syntheticMediaUrl(mod: ShareIntentModule): string {
+  const scheme = mod.getScheme?.() ?? 'manifiesto'
+  const key = mod.getShareExtensionKey?.() ?? `${scheme}ShareKey`
+  return `${scheme}://${SHARE_URL_MARKER}${key}#media`
+}
 
 function ShareImportListenerNative({ mod }: { mod: ShareIntentModule }) {
   const { hasShareIntent, shareIntent, resetShareIntent, error } =
     mod.useShareIntent()
 
-  // ── Warm-share fix (device report 2026-06-12) ─────────────────────
-  // Con la app abierta, compartir una captura NO arrancaba el flujo.
-  // La entrega de la imagen depende ENTERAMENTE de que JS llame a
-  // `getShareIntent(url)`; la lib la dispara desde `useLinkingURL()`,
-  // pero en warm ese URL (a) lo consume/redirige expo-router vía
-  // `+native-intent.ts`, o (b) es idéntico al del share anterior (la
-  // key es constante) y React no detecta cambio → la cadena no
-  // arranca. El evento `Linking` CRUDO de React Native es multicast y
-  // NO pasa por el redirect de expo-router, así que lo usamos para
-  // forzar el re-read del App Group en cada URL de share + en cada
-  // foreground. El resultado vuelve por el `onChange` del hook → el
-  // effect de abajo lo procesa. Idempotente: el store es un slot único.
   useEffect(() => {
     const native = mod.ShareIntentModule
     if (!native?.getShareIntent) return
 
-    const pump = (url: string | null | undefined) => {
-      if (url && url.includes(SHARE_URL_MARKER)) {
-        try {
-          native.getShareIntent(url)
-        } catch {
-          // handleUrl nativo devuelve "error"/"empty" sin emitir para
-          // URLs no-share; cualquier throw acá es no-fatal.
-        }
+    // Poll directo del App Group. "empty" no emite evento → gratis.
+    const poll = () => {
+      try {
+        native.getShareIntent(syntheticMediaUrl(mod))
+      } catch {
+        // no-fatal: el handleUrl nativo devuelve "error"/"empty" sin
+        // emitir para URLs que no resuelven.
       }
     }
 
-    // Cold / ya-presente al montar.
-    void Linking.getInitialURL().then(pump)
+    // Canal 3: cold/mount sin evento.
+    poll()
 
-    // Warm: cada deep link nuevo (incluido el mismo URL repetido).
-    const urlSub = Linking.addEventListener('url', (e) => pump(e.url))
+    // Canal 1: evento crudo (cubre cuando iOS sí lo entrega). Si la URL
+    // del share trae otro fragment (#text/#weburl) la pasamos tal cual.
+    const urlSub = Linking.addEventListener('url', (e) => {
+      if (e.url && e.url.includes(SHARE_URL_MARKER)) {
+        try {
+          native.getShareIntent(e.url)
+        } catch {
+          // no-fatal
+        }
+      }
+    })
 
-    // Foreground: por si el share llega sin re-emitir el evento `url`
-    // (mismo string que la vez anterior) — re-leemos el App Group.
+    // Canal 2: poll en cada foreground — la red de seguridad que NO
+    // depende de que iOS entregue el evento de URL al host corriendo.
     const appSub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void Linking.getInitialURL().then(pump)
+      if (next === 'active') poll()
     })
 
     return () => {
@@ -113,6 +134,8 @@ function ShareImportListenerNative({ mod }: { mod: ShareIntentModule }) {
     }
     const raw = images[0].path
     const uri = raw.startsWith('file://') ? raw : `file://${raw}`
+    // El store dedupea re-entregas del mismo share (la lib puede emitir
+    // onChange dos veces: refresh propio + nuestro poll).
     setPendingShare(uri)
     resetShareIntent()
   }, [hasShareIntent, shareIntent, resetShareIntent])

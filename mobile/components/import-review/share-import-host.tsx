@@ -1,5 +1,11 @@
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import {
+  ActivityIndicator,
+  InteractionManager,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { openImportFromUri } from '@/features/import-review/open-import-flow'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
@@ -32,6 +38,17 @@ export function ShareImportHost() {
         const result = await openImportFromUri(uri, makeMapContext())
         setPhase('idle')
         if (result.kind === 'opened') {
+          // En warm-share el unlock (Face ID) recién terminó y su overlay
+          // puede estar cerrándose. iOS DESCARTA silenciosamente un
+          // <Modal> presentado mientras otro se dismissea (memoria del
+          // proyecto: ios-modal-chain-dismiss; el FAB hace lo mismo con
+          // el picker). Esperamos a que terminen las interacciones antes
+          // de montar el wizard — esto era el "no inicia el flujo" del
+          // device report 2026-06-12 v2: el OCR corría (la app se sentía
+          // lenta) pero el Modal del wizard se descartaba.
+          await new Promise<void>((resolve) => {
+            InteractionManager.runAfterInteractions(() => resolve())
+          })
           setReviewState(result.state)
           return
         }

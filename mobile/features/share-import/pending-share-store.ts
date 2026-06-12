@@ -13,6 +13,7 @@
 type Listener = () => void
 
 let pendingUri: string | null = null
+let lastConsumedUri: string | null = null
 const listeners = new Set<Listener>()
 
 function notify() {
@@ -20,8 +21,16 @@ function notify() {
 }
 
 /** Deposita una captura compartida. Si había una sin consumir, la pisa
- *  (el último share gana — v1 es single-slot por spec). */
+ *  (el último share gana — v1 es single-slot por spec).
+ *
+ *  Dedupe: la lib puede emitir `onChange` DOS veces para el mismo share
+ *  (su refresh interno + nuestro poll de foreground disparan ambos
+ *  getShareIntent antes del clear). Re-depositar el uri recién consumido
+ *  re-abriría el wizard con la misma captura — lo ignoramos. Un share
+ *  genuinamente nuevo siempre tiene otro path (la extensión escribe un
+ *  archivo nuevo por share). */
 export function setPendingShare(uri: string): void {
+  if (uri === lastConsumedUri) return
   pendingUri = uri
   notify()
 }
@@ -35,7 +44,10 @@ export function peekPendingShare(): string | null {
 export function consumePendingShare(): string | null {
   const uri = pendingUri
   pendingUri = null
-  if (uri !== null) notify()
+  if (uri !== null) {
+    lastConsumedUri = uri
+    notify()
+  }
   return uri
 }
 
@@ -49,5 +61,6 @@ export function subscribePendingShare(listener: Listener): () => void {
 /** Solo para tests. */
 export function __resetPendingShareForTests(): void {
   pendingUri = null
+  lastConsumedUri = null
   listeners.clear()
 }
