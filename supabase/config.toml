@@ -412,6 +412,16 @@ verify_jwt = false
 [functions.control-advisor]
 verify_jwt = false
 
+# appstore-notifications is Apple's App Store Server Notifications v2 webhook
+# (server-to-server). Apple does NOT send a Supabase JWT — trust comes 100%
+# from the signed JWS payload (x5c chain → pinned Apple Root CA-G3 + ES256
+# signature, verified inside the function via _shared/apple-jws.ts). There is
+# no bearer token to validate at the gateway, so verify_jwt MUST be off or
+# every legitimate Apple call would be rejected with 401 before reaching the
+# function.
+[functions.appstore-notifications]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

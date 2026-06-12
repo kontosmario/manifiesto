@@ -6,6 +6,11 @@
 # (sbp_*) — kept in sync with `.githooks/pre-commit` so CI and the local
 # hook share the same scope.
 #
+# Rule IDs are prefixed `manifiesto-` to avoid silent collisions with the
+# upstream default ruleset (gitleaks dedupes by id and the first definition
+# wins; without the prefix our looser rules were being swallowed by the
+# stricter upstream `anthropic-api-key`, etc.).
+#
 # Run locally:
 #   gitleaks detect --config .gitleaks.toml --no-banner --redact
 #
@@ -28,12 +33,14 @@ useDefault = true
 id = "manifiesto-supabase-jwt-hs256"
 description = "Supabase JWT (HS256 — anon or service_role key)"
 regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+keywords = ["eyJhbGciOiJIUzI1NiI"]
 tags = ["key", "supabase", "jwt"]
 
 [[rules]]
 id = "manifiesto-supabase-jwt-rs256"
 description = "Supabase JWT (RS256 — newer asymmetric keys)"
 regex = '''eyJhbGciOiJSUzI1NiI[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+keywords = ["eyJhbGciOiJSUzI1NiI"]
 tags = ["key", "supabase", "jwt"]
 
 # Newer Supabase keys follow the `sb_secret_*` / `sb_publishable_*` prefix
@@ -42,12 +49,14 @@ tags = ["key", "supabase", "jwt"]
 id = "manifiesto-supabase-sb-secret"
 description = "Supabase sb_secret_* key"
 regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
+keywords = ["sb_secret_"]
 tags = ["key", "supabase"]
 
 [[rules]]
 id = "manifiesto-supabase-sb-publishable"
 description = "Supabase sb_publishable_* key"
 regex = '''sb_publishable_[A-Za-z0-9_-]{20,}'''
+keywords = ["sb_publishable_"]
 tags = ["key", "supabase"]
 
 # Supabase Management API personal access token (sbp_*).
@@ -57,6 +66,7 @@ tags = ["key", "supabase"]
 id = "manifiesto-supabase-sbp-token"
 description = "Supabase Management API personal access token (sbp_*)"
 regex = '''sbp_[A-Za-z0-9]{30,}'''
+keywords = ["sbp_"]
 tags = ["key", "supabase"]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +77,7 @@ tags = ["key", "supabase"]
 id = "manifiesto-anthropic-api-key"
 description = "Anthropic API key (sk-ant-*). Looser than upstream `anthropic-api-key` so we catch legacy + sk-ant-admin01 + future subtype prefixes; upstream rule (already enabled via [extend]) handles the strict 93-char + 'AA' suffix form."
 regex = '''sk-ant-[A-Za-z0-9_-]{30,}'''
+keywords = ["sk-ant-"]
 tags = ["key", "anthropic"]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,6 +88,7 @@ tags = ["key", "anthropic"]
 id = "manifiesto-aws-access-key-id"
 description = "AWS access key ID (AKIA...)"
 regex = '''(?:^|[^A-Z0-9])(AKIA[0-9A-Z]{16})(?:[^A-Z0-9]|$)'''
+keywords = ["AKIA"]
 tags = ["key", "aws"]
 
 # Expo access token — used in CI for EAS Build / Submit / Update.
@@ -84,6 +96,7 @@ tags = ["key", "aws"]
 id = "manifiesto-expo-access-token"
 description = "Expo access token"
 regex = '''(?i)expo[_-]?(?:access[_-]?)?token['"\s:=]+[A-Za-z0-9_-]{32,}'''
+keywords = ["expo"]
 tags = ["key", "expo"]
 
 # ─────────────────────────────────────────────────────────────────────────────
