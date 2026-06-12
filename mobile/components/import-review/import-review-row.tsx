@@ -387,6 +387,8 @@ function warningLabel(w: ReviewRow['warnings'][number]): string {
       return 'Sin fecha clara. Asumimos hoy.'
     case 'value-zero':
       return 'Monto 0. Editá antes de confirmar.'
+    case 'future-date':
+      return 'La fecha era futura. La ajustamos a hoy — revisala.'
   }
 }
 

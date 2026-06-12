@@ -87,7 +87,9 @@ export function CycleDateSlider({
             day={d}
             isSelected={d.iso === value}
             onPress={() => {
-              if (d.iso === value) return
+              // Un gasto no puede ser futuro — el tile está atenuado y
+              // este guard es la red de seguridad.
+              if (d.isFuture || d.iso === value) return
               void triggerHaptic('selection')
               onChange(d.iso)
               scrollRef.current?.scrollTo({
@@ -123,6 +125,8 @@ function DayTile({
   mutedColor,
 }: TileProps) {
   const press = useSharedValue(1)
+  // Días futuros: no seleccionables (un gasto no puede ser de mañana).
+  const disabled = day.isFuture
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: press.value }],
@@ -132,23 +136,26 @@ function DayTile({
     <Animated.View style={[styles.tileWrap, animatedStyle]}>
       <Pressable
         onPress={onPress}
+        disabled={disabled}
         onPressIn={() => {
+          if (disabled) return
           press.value = withTiming(0.94, {
             duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}
         onPressOut={() => {
+          if (disabled) return
           press.value = withTiming(1, {
             duration: motionDurations.micro,
             easing: Easing.bezier(0.32, 0.72, 0, 1),
           })
         }}
         accessibilityRole="button"
-        accessibilityLabel={`día ${day.day}`}
-        accessibilityState={{ selected: isSelected }}
+        accessibilityLabel={`día ${day.day}${disabled ? ', fecha futura no disponible' : ''}`}
+        accessibilityState={{ selected: isSelected, disabled }}
         hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
-        style={styles.tile}
+        style={[styles.tile, disabled ? styles.tileDisabled : null]}
       >
         <Text
           style={[
@@ -205,6 +212,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 4,
     gap: 4,
+  },
+  tileDisabled: {
+    opacity: 0.32,
   },
   weekday: {
     fontSize: 10,

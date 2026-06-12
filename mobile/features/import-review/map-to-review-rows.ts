@@ -47,6 +47,15 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
   if (tx.date === null) warnings.push('no-date')
   if (tx.primaryAmount.value === 0) warnings.push('value-zero')
 
+  // Un gasto no puede ser futuro. Si el OCR parseó mal y devolvió una
+  // fecha posterior a hoy, la anclamos a hoy (comparación lexicográfica
+  // válida para YYYY-MM-DD) y marcamos un warning para que el usuario
+  // la revise en el wizard. El slider además deshabilita los días
+  // futuros, pero esto cubre el valor INICIAL de la fila.
+  const rawDate = tx.date ?? ctx.today
+  const date = rawDate > ctx.today ? ctx.today : rawDate
+  if (date !== rawDate) warnings.push('future-date')
+
   const ambiguous =
     warnings.includes('foreign-currency') || warnings.includes('swap-ambiguous')
 
@@ -61,7 +70,7 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     kind,
     amount,
     description: hasMerchant ? merchant : '(sin descripción)',
-    date: tx.date ?? ctx.today,
+    date,
     notes: null,
     // Category intentionally left unset. Pre-selecting "first available"
     // led to silent miscategorization — users sailed past the picker

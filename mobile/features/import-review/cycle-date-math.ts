@@ -7,6 +7,9 @@ export interface CycleDay {
   weekday: number
   /** True iff this day matches `todayISO`. */
   isToday: boolean
+  /** True iff this day is AFTER `todayISO`. Un gasto no puede ser
+   *  futuro — el slider deshabilita estos tiles. */
+  isFuture: boolean
 }
 
 /** Format a local Date to YYYY-MM-DD (local TZ). */
@@ -67,6 +70,8 @@ export function buildCycleDays(
       day: d.getDate(),
       weekday: d.getDay(),
       isToday: iso === todayISO,
+      // Comparación lexicográfica válida para YYYY-MM-DD.
+      isFuture: iso > todayISO,
     })
   }
   return out

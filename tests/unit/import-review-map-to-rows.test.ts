@@ -28,6 +28,24 @@ const mkTx = (overrides: Partial<Transaction> = {}): Transaction => ({
 })
 
 describe('mapToReviewRows', () => {
+  it('ancla fechas futuras a hoy y marca el warning future-date', () => {
+    resetIds()
+    // TODAY = 2026-06-02; el OCR devuelve una fecha posterior.
+    const result = mapToReviewRows([mkTx({ date: '2026-06-10' })], ctx())
+    expect(result[0].date).toBe(TODAY)
+    expect(result[0].warnings).toContain('future-date')
+  })
+
+  it('no toca fechas pasadas ni de hoy (sin future-date)', () => {
+    resetIds()
+    const past = mapToReviewRows([mkTx({ date: '2026-05-30' })], ctx())
+    expect(past[0].date).toBe('2026-05-30')
+    expect(past[0].warnings).not.toContain('future-date')
+    const todayRow = mapToReviewRows([mkTx({ date: TODAY })], ctx())
+    expect(todayRow[0].date).toBe(TODAY)
+    expect(todayRow[0].warnings).not.toContain('future-date')
+  })
+
   it('maps a basic ARS expense with sign=-1 to kind=expense', () => {
     resetIds()
     const result = mapToReviewRows([mkTx()], ctx())

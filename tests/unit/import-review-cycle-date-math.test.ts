@@ -28,6 +28,7 @@ describe('buildCycleDays', () => {
       day: 1,
       weekday: new Date(2026, 4, 1).getDay(),
       isToday: false,
+      isFuture: false,
     })
     expect(result[30]).toMatchObject({
       iso: '2026-05-31',
@@ -41,6 +42,19 @@ describe('buildCycleDays', () => {
     const todays = result.filter((d) => d.isToday)
     expect(todays).toHaveLength(1)
     expect(todays[0].iso).toBe('2026-05-15')
+  })
+
+  it('marks isFuture for days strictly after today (un gasto no es futuro)', () => {
+    const start = new Date(2026, 4, 1) // May 1
+    const result = buildCycleDays(start, 31, '2026-05-15')
+    // Hoy y días previos: no futuros.
+    expect(result.find((d) => d.iso === '2026-05-15')?.isFuture).toBe(false)
+    expect(result.find((d) => d.iso === '2026-05-14')?.isFuture).toBe(false)
+    expect(result.find((d) => d.iso === '2026-05-01')?.isFuture).toBe(false)
+    // Días posteriores: futuros, no seleccionables.
+    expect(result.find((d) => d.iso === '2026-05-16')?.isFuture).toBe(true)
+    expect(result.find((d) => d.iso === '2026-05-31')?.isFuture).toBe(true)
+    expect(result.filter((d) => d.isFuture)).toHaveLength(16) // 16..31
   })
 
   it('handles a cycle that spans two months', () => {

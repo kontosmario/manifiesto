@@ -8,6 +8,9 @@ export type ReviewRowWarning =
   | 'no-merchant'
   | 'no-date'
   | 'value-zero'
+  // El OCR parseó una fecha futura (imposible para un gasto) → la
+  // anclamos a hoy y avisamos al usuario que la revise.
+  | 'future-date'
 
 export type IncomeKind = 'transfer' | 'bonus' | 'gift' | 'other'
 
