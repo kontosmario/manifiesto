@@ -97,6 +97,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import { useEntitlement } from '@/features/billing/use-entitlement'
 import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatCycleSummary } from '@/utils/format-cycle-label'
 import {
@@ -125,6 +126,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const role = roleQuery.data
   const isOwner = role === 'owner'
   const isSolo = useIsSolo(userId)
+  // Entitlement: para advertir al salir de familia si el período libre
+  // personal ya venció (al salir caería a bloqueado). Spec §6.6.
+  const entitlementQuery = useEntitlement(userId)
   const memberStatsQuery = useFamilyMemberStats()
   // Active members = role !== 'blocked'. We use the RPC which gives
   // blocked_at status; fall back to 0 while loading. We only need this
@@ -616,9 +620,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       setDestroyFamilySheetOpen(true)
       return
     }
+    // Aviso extra: si su acceso viene del hogar y su período libre
+    // personal ya venció, al salir pasa al plan gratuito (bloqueo). Lo
+    // comunicamos antes — y de paso implica que re-entrar no reinicia nada.
+    const ent = entitlementQuery.data
+    const willLoseAccess = ent?.source === 'family' && ent.trialDaysLeft === 0
+    const baseMsg =
+      'Vas a salir del grupo familiar actual. Tus gastos y configuración compartida quedan con el hogar — sólo se desvincula tu cuenta.'
+    const message = willLoseAccess
+      ? `${baseMsg}\n\nAdemás, tu período de prueba ya finalizó: al salir pasás al plan gratuito y deberás suscribirte para seguir usando la app.`
+      : baseMsg
     Alert.alert(
       'Salir del hogar',
-      'Vas a salir del grupo familiar actual. Tus gastos y configuración compartida quedan con el hogar — sólo se desvincula tu cuenta.',
+      message,
       [
         { style: 'cancel', text: 'Cancelar' },
         {
@@ -628,7 +642,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         },
       ],
     )
-  }, [isOwnerDestroyFlow, runLeaveFamily])
+  }, [isOwnerDestroyFlow, runLeaveFamily, entitlementQuery.data])
 
   const handleConfirmConvertToSolo = useCallback(() => {
     Alert.alert(

@@ -17,7 +17,12 @@ export interface EntitlementSnapshot {
   source: EntitlementSource
   plan: string
   hasAccess: boolean
+  /** Días restantes del período libre cuando `source==='trial'` (null si no). */
   daysLeft: number | null
+  /** Estado del período libre PERSONAL del usuario, gane o no la cascada.
+   *  Lo usa el aviso de salir-de-familia (si viene del hogar pero su trial
+   *  ya venció, al salir cae a bloqueado). */
+  trialDaysLeft: number
   expiresAt: string | null
   subscriptionStatus: string
   memberCap: number
@@ -32,6 +37,7 @@ export const BLOCKED_ENTITLEMENT: EntitlementSnapshot = {
   plan: 'free',
   hasAccess: false,
   daysLeft: 0,
+  trialDaysLeft: 0,
   expiresAt: null,
   subscriptionStatus: 'none',
   memberCap: 2,
@@ -48,6 +54,7 @@ export function normalizeEntitlementSnapshot(
     plan: String(row.plan ?? 'free'),
     hasAccess: Boolean(row.has_access),
     daysLeft: row.days_left == null ? null : Number(row.days_left),
+    trialDaysLeft: Number(row.trial_days_left ?? 0),
     expiresAt: (row.expires_at as string) ?? null,
     subscriptionStatus: String(row.subscription_status ?? 'none'),
     memberCap: Number(row.member_cap ?? 2),
