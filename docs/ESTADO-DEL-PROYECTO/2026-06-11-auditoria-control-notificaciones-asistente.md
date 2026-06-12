@@ -47,6 +47,12 @@ el cron SQL legacy (visibles in-app); "hardcodeada" = la fórmula estática.
 | A4.2 | Sin visualización de ingresos en Control | No existía surface | **Card nueva "Entró este ciclo"** (`control-v2-ingresos-card.tsx`): solo se monta con ingresos > 0, estado `positive`, headline narrativo ("entraron $X — suman +$Y/día a tu cupo"), lista inset máx 3 movimientos (+N más), anatomía idéntica al resto de las cards (eyebrow + BreatheDot + statePill + well oscuro). Ubicada después de "hasta cuándo te alcanza" porque explica por qué el cupo subió |
 | A4.3 | El checkin matinal también ignoraba los ingresos extra | Mismo gap server-side en `list_pending_notifications` | Migración `20260615020000`: `libre = greatest(0, sueldo + sum(income_events del ciclo) − fijos − ahorro)`, ventana half-open idéntica al cliente. **Verificado en prod: restante $707.287 → $1.347.287 (+$640.000 exacto), cupo $47.152 → $89.819** |
 
+### A5 · Sobrante del cierre de mes nunca se disparó (follow-up del owner)
+
+| # | Hallazgo | Root cause | Fix |
+|---|---|---|---|
+| A5.1 | El wrapped de Abril 2026 se vio (29-may) con sobrante real de $1.727.195 pero la sección "Y TE SOBRARON" no apareció y `month_close_decisions` está vacía — la decisión nunca se pidió | **Doble resta estructural**: el server define `savings_delta = max(0, income − total_spent)` (el sobrante mismo) y el cliente calculaba `sobrante = income − total_spent − savings_delta` ≡ 0 para CUALQUIER familia, siempre. Dos call-sites con la fórmula rota: `use-month-close-decision.ts` (sheet standalone) y `home-dashboard.tsx` (sección del wrapped). El spec pedía restar el ahorro comprometido, no `savings_delta` | Fórmula canónica extraída a `mobile/features/month-close/sobrante.ts`: `sobrante = income − total_spent − savings_goal_amount`, consumida por ambos call-sites. `savings_goal_amount` agregado al select del hook y al de `control-intelligence` + `MonthlySummaryHistory`. Tests con el row real de Abril. **Efecto retroactivo deliberado**: el summary de Abril queda detectado como pendiente → el sheet se abre en la próxima visita al Home (la plata existió y nadie decidió) |
+
 ## Artefactos
 
 - **Migraciones**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` y `20260615020000_checkin_incluye_ingresos_extra.sql` (aplicadas a prod vía `db push`, historia en paridad)

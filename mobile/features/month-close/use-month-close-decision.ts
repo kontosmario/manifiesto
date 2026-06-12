@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
-
-const SOBRANTE_THRESHOLD = 1000
+import {
+  computeSobranteFromSummary,
+  SOBRANTE_THRESHOLD,
+} from '@/features/month-close/sobrante'
 
 export const monthCloseDecisionQueryKey = (familyId?: string) =>
   ['month-close-decision', familyId] as const
@@ -26,7 +28,7 @@ interface PendingRow {
   period_end: string
   monthly_income: number | string
   total_spent: number | string
-  savings_delta: number | string
+  savings_goal_amount: number | string
 }
 
 /**
@@ -57,7 +59,7 @@ export function useMonthCloseDecisionPending(familyId?: string): PendingDecision
       // 1) Traer summaries reciente sin decision matching.
       const { data: summaries, error: sErr } = await supabase
         .from('monthly_summaries')
-        .select('id, period_label, period_start, period_end, monthly_income, total_spent, savings_delta')
+        .select('id, period_label, period_start, period_end, monthly_income, total_spent, savings_goal_amount')
         .eq('family_id', familyId)
         .order('period_end', { ascending: false })
         .limit(3)
@@ -83,12 +85,10 @@ export function useMonthCloseDecisionPending(familyId?: string): PendingDecision
 
   if (!query.data) return null
   const row = query.data
-  const sobrante = Math.max(
-    0,
-    Number(row.monthly_income ?? 0)
-      - Number(row.total_spent ?? 0)
-      - Number(row.savings_delta ?? 0),
-  )
+  // Fórmula canónica — antes restaba `savings_delta` (que el server
+  // define como el sobrante mismo) y daba 0 idéntico: la decisión no
+  // se disparó nunca para ninguna familia. Ver sobrante.ts.
+  const sobrante = computeSobranteFromSummary(row)
   if (sobrante < SOBRANTE_THRESHOLD) return null
   return {
     monthlySummaryId: row.id,

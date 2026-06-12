@@ -12,6 +12,7 @@ import {
   useMonthCloseDecisionPending,
   type ApplyDecisionInput,
 } from '@/features/month-close/use-month-close-decision'
+import { computeSobranteFromSummary } from '@/features/month-close/sobrante'
 import { useIsAuthOverlayVisible } from '@/features/auth-flow/use-auth-flow'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { MetaCard } from '@/components/home/meta-card'
@@ -486,11 +487,15 @@ export function HomeDashboard({
     // payload para que la closing scene del wrapped maneje la decisión
     // inline en vez del MonthCloseDecisionSheet standalone.
     const summaryId = (latest as { id?: string }).id ?? null
-    const sobranteFromSummary = Math.max(
-      0,
-      Number((latest as { monthly_income?: number | string }).monthly_income ?? 0)
-        - Number((latest as { total_spent?: number | string }).total_spent ?? 0)
-        - Number((latest as { savings_delta?: number | string }).savings_delta ?? 0),
+    // Fórmula canónica (sobrante.ts) — antes restaba `savings_delta`
+    // (el sobrante mismo según el server) y daba 0 siempre: la sección
+    // "Y TE SOBRARON" del wrapped no aparecía para nadie.
+    const sobranteFromSummary = computeSobranteFromSummary(
+      latest as {
+        monthly_income?: number | string
+        total_spent?: number | string
+        savings_goal_amount?: number | string
+      },
     )
     // Query DB fresca (no React state) — el `pendingDecision` del
     // closure es stale: este callback se arma antes del refetch y no

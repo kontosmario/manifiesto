@@ -67,6 +67,9 @@ export interface MonthlySummaryHistory {
   expenses_count: number
   monthly_income: number
   savings_delta: number
+  /** Meta de ahorro comprometida del mes — input de la fórmula del
+   *  sobrante decidible (sobrante.ts). */
+  savings_goal_amount: number
   category_breakdown:
     | MonthlyCategoryBreakdownEntry[]
     | Record<string, { amount: number; count: number }>
