@@ -74,18 +74,28 @@ Dos bugs más en `apply_month_close_decision` (server):
 
 ## Artefactos
 
-- **Migraciones**: `supabase/migrations/20260615010000_audit_notifications_y_zombies.sql` y `20260615020000_checkin_incluye_ingresos_extra.sql` (aplicadas a prod vía `db push`, historia en paridad)
+- **Migraciones** (todas aplicadas a prod vía `db push`, historia en paridad):
+  - `20260615010000_audit_notifications_y_zombies.sql` — A1-A3 (push backlog, checkin real, zombies payment-aware)
+  - `20260615020000_checkin_incluye_ingresos_extra.sql` — A4.3 (checkin suma income_events)
+  - `20260615030000_fix_month_close_sobrante_y_anchor_window.sql` — A5b (fórmula sobrante server + ventana anchor; superseded por la siguiente)
+  - `20260615040000_acumular_es_income_event.sql` — A5c (**vigente**: acumular = income_event)
 - **Edge function**: `notifications-orchestrator` redeployado (cron secret + push_backlog)
-- **Cliente**: `control-v2-mock.ts` (proyección + clamp), `use-control-v2-data.ts` (velocity fresca + ingresos del ciclo), `control-signals.ts` (copy zombie), `control-v2-adapter.ts` (extraIncome), `control-v2-ingresos-card.tsx` (card nueva), `control-v2-screen.tsx` (montaje condicional)
-- **Tests**: `tests/unit/control-projection-honesta.test.ts` + `tests/unit/control-adapter-extra-income.test.ts` (escenarios reales de la cuenta como regresión)
+- **Cliente**: `control-v2-mock.ts` (proyección + clamp), `use-control-v2-data.ts` (velocity fresca + ingresos del ciclo), `control-signals.ts` (copy zombie), `control-v2-adapter.ts` (extraIncome), `control-v2-ingresos-card.tsx` (card nueva), `control-v2-screen.tsx` (montaje condicional), `month-close/sobrante.ts` (fórmula canónica nueva), `use-month-close-decision.ts` + `home-dashboard.tsx` (fórmula + manejo de errores con toast)
+- **Tests**: `tests/unit/control-projection-honesta.test.ts`, `tests/unit/control-adapter-extra-income.test.ts`, `tests/unit/month-close-sobrante.test.ts` (escenarios reales de la cuenta como regresión)
+- **Docs**: `docs/sistemas/month-close-decision.md` re-sincronizado (fórmula, branch acumular, gates, archivos)
+- **Commits**: `b74ca3d` (A1-A3) · `5a14835` (A4) · `a42cf7b` (A5) · `3e583e2` (A5b) · `dea1276` (A5c)
 
 ## Verificaciones en prod (post-fix)
 
 ```
 dispatch_notifications_kind('midday_checkins') → 200 {processed:156, sent:9}
 compute_control_snapshot(familia owner) → zombie_candidates: []
-list_pending_notifications('morning_checkins') → "~$47.152 para gustos. Quedan $707.287 del mes"
+list_pending_notifications('morning_checkins') A4 → "~$89.819 para gustos. Quedan $1.347.287"
+  (antes $707.287 — diff exacto = los $640k de income_events)
 cron.job → morning-checkins/fixed-upcoming legacy fuera; notifications-push-backlog */30 activo
+sobrante Abril (fórmula nueva, server) → $1.727.195 (antes 0)
+family_finance owner → override null (revertido de 8.127M), anchor 2026-05-20 intacto
+income_events owner → "Sobrante de Abril 2026" $1.727.195 (da59b4df…) + "Transferencia" $640.000
 ```
 
 ## Pendientes / seguimiento
@@ -95,3 +105,5 @@ cron.job → morning-checkins/fixed-upcoming legacy fuera; notifications-push-ba
 - Las preferencias de HORA de checkin (`checkin_morning_hour`) siguen sin honrarse (el dispatch es a hora fija 9 AR); requeriría dispatcher horario — anotado, no bloqueante.
 - Affordance "¿Lo seguís usando?" para zombies reales (RPC listo, falta UI slot de acción secundaria en las cards del asistente).
 - `mailer_autoconfirm: true` y `password_min_length: 6` server-side — observaciones del config, decisión pendiente del owner.
+- **El rollup de cierre (`try_close_previous_cycle`) no suma `income_events`** al `monthly_income` del summary: el sobrante del ciclo que cierra el 20-jun no va a contar los $640k + $1.727k acreditados este ciclo. Misma clase de fix que A4.3 (una migración al rollup). Decisión de producto pendiente: ¿el sobrante de un mes debería incluir los ingresos extra de ese mes? (probablemente sí).
+- **`apply_reserve_decision` destino `cycle` tiene el MISMO idiom roto que A5c**: `current_cycle_starting_balance = coalesce(balance, monthly_income) + monto` — usar la reserva "en el ciclo" inflaría el sueldo igual que acumular. Mismo fix disponible: insertar income_event ("Desde tu reserva"). Sin reportes aún (reserva del owner = $0), pero es una mina pisada.

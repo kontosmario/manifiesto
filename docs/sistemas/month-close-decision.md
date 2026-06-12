@@ -1,17 +1,31 @@
 # Month-close leftover decision (Spec B) — comportamiento real
 
 > Estado: vivo en prod desde 2026-06-08. Persistencia de la decisión del user sobre el sobrante de un mes cerrado.
+>
+> **2026-06-11 — overhaul completo (auditoría A5/A5b/A5c)**: la fórmula
+> del sobrante estaba rota en cliente Y server (doble resta de
+> `savings_delta` → 0 idéntico, la decisión NUNCA se disparó desde el
+> ship), y el branch `acumular` inflaba el sueldo en vez de sumar al
+> saldo. Ambos rediseñados — ver secciones marcadas.
 
 ## Problema que resuelve
 
-Cuando un mes cierra con sobrante (ingreso − gastado − ahorrado proyectado > 0), antes de Spec B ese dinero quedaba "implícito en libre" y se diluía sin trazabilidad en el siguiente cycle. Spec B le da al user 4 caminos explícitos:
+Cuando un mes cierra con sobrante (ingreso − gastado − ahorro comprometido > 0), antes de Spec B ese dinero quedaba "implícito en libre" y se diluía sin trazabilidad en el siguiente cycle. Spec B le da al user 4 caminos explícitos:
 
 | Opción | Side effect | Cuándo elegirla |
 |---|---|---|
 | `meta` | suma a `savings_goals.current_amount` de la meta activa | quiere acelerar la meta |
-| `acumular` | suma al `current_cycle_starting_balance` del nuevo mes | quiere usarlo este mes como margen extra |
+| `acumular` | **inserta un `income_event`** (kind `other`, "Sobrante de <periodo>", `event_date` hoy AR) — entra al pipeline de ingresos extra del ciclo: disponible Home, cupo/proyección Control, checkin matinal, card "Entró este ciclo" | quiere usarlo este mes como margen extra |
 | `reserva` | suma a `family_finance.monthly_reserve_amount` (stash) | aparta sin destino, decide después |
 | `skip` | sólo persiste el row (audit + idempotencia) | "no quiero decidir hoy" |
+
+> Historia de `acumular` (2026-06-11, A5c): antes seteaba
+> `current_cycle_starting_balance = coalesce(balance, monthly_income) + sobrante`.
+> La semántica del override es "plata disponible HOY" (reemplaza al
+> sueldo y solo descuenta gasto desde hoy) — sembrarlo con el sueldo
+> BRUTO a mitad de ciclo ignoraba todo lo ya gastado (caso real owner:
+> Home pasó de ~$1.6M a ~$7.7M "disponibles"). El income_event produce
+> el efecto que el copy siempre prometió: disponible = saldo actual + sobrante.
 
 ## Trigger
 
@@ -85,45 +99,56 @@ Acumula los sobrantes guardados como `reserva`. Su administración se documenta 
 
 ## RPC `apply_month_close_decision`
 
-Migración canónica vigente: [`20260608030000_harden_reserve_and_acumular_atomic.sql`](../../supabase/migrations/20260608030000_harden_reserve_and_acumular_atomic.sql) (V3 con atomic UPDATE).
+Migración canónica vigente: [`20260615040000_acumular_es_income_event.sql`](../../supabase/migrations/20260615040000_acumular_es_income_event.sql).
 
 ```sql
 apply_month_close_decision(
   p_monthly_summary_id uuid,
   p_decision text,
   p_meta_goal_id uuid default null,
-  p_new_cycle_anchor text default null
+  p_new_cycle_anchor text default null  -- aceptado por back-compat, IGNORADO desde 2026-06-11
 ) returns void
 ```
 
 ### Garantías
 
-1. **Auth**: requiere `auth.uid()`; valida que el caller sea miembro no-bloqueado de la familia del summary.
+1. **Auth**: requiere `auth.uid()`; membership no-bloqueado + **owner-only** (Sprint F-DB F3). Lookup con mensaje genérico `'monthly_summary not accessible'` (Sprint I-DB1: no distingue "no existe" de "es de otra familia").
 2. **Sobrante server-side**: derivado canónicamente desde el `monthly_summaries` referenciado:
    ```sql
-   greatest(0, monthly_income - total_spent - savings_delta)
+   greatest(0, monthly_income - total_spent - savings_goal_amount)
    ```
    El cliente no puede mentir el monto.
+
+   > ⚠ Historia (2026-06-11, A5b): hasta `20260615030000` restaba
+   > `savings_delta`, pero el rollup define `savings_delta =
+   > greatest(0, income − total_spent)` — **el sobrante mismo**. La
+   > doble resta daba 0 idéntico: toda decisión acreditaba $0. La
+   > fórmula correcta resta el ahorro COMPROMETIDO (`savings_goal_amount`).
 3. **Atomic insert**: la insertion en `month_close_decisions` es el lock — si la UNIQUE constraint salta, el RPC retorna error sin ejecutar side-effects.
-4. **Atomic update en `acumular`**: V3 collapsa el read+write en un solo UPDATE referenciando `current_cycle_starting_balance` y `monthly_income` en la misma row → elimina la race window con el trigger de confirm-salary.
+4. **Rate limit**: `check_rate_limit('apply_month_close_decision', 5, 3600)`.
+5. **Audit log**: write explícito a `audit_log` con decision + sobrante (Sprint G-DB1).
 
 ### Branches
 
 | `p_decision` | Validación extra | Side effect |
 |---|---|---|
-| `meta` | `p_meta_goal_id IS NOT NULL` | `savings_goals.current_amount += sobrante` (gated por `family_id` match) |
-| `acumular` | `p_new_cycle_anchor IS NOT NULL` | `family_finance.current_cycle_starting_balance = coalesce(balance, coalesce(monthly_income, 0)) + sobrante`; `current_cycle_anchor = p_new_cycle_anchor::date` |
+| `meta` | `p_meta_goal_id IS NOT NULL` + pertenece a la familia | `savings_goals.current_amount += sobrante` |
+| `acumular` | `sobrante > 0` | `INSERT INTO income_events (kind 'other', 'Sobrante de <period_label>', event_date hoy AR, amount capeado al constraint 1e9)` — el trigger `trg_income_notification` avisa a la familia como con cualquier ingreso |
 | `reserva` | — | `family_finance.monthly_reserve_amount += sobrante` |
 | `skip` | — | sólo persiste el row de decisión |
 
-El idiom `coalesce(balance, monthly_income)` en acumular preserva el sueldo cuando el user no overrideó previamente el cycle balance (ver [migración 20260607230000](../../supabase/migrations/20260607230000_fix_acumular_preserves_salary.sql) para el bug histórico que motivó el fix).
+> `p_new_cycle_anchor` ya no se valida ni se escribe (el guard de
+> ventana F10/J-DB1 murió con el branch que lo necesitaba). El
+> constraint defense-in-depth `family_finance_current_cycle_anchor_sane`
+> (±400d) sigue vigente para el flujo de confirm-salary que sí escribe
+> el anchor.
 
 ## Threshold de $1000
 
-Constante client-side: [`mobile/features/month-close/use-month-close-decision.ts:4`](../../mobile/features/month-close/use-month-close-decision.ts):
+Constante client-side: [`mobile/features/month-close/sobrante.ts`](../../mobile/features/month-close/sobrante.ts):
 
 ```ts
-const SOBRANTE_THRESHOLD = 1000
+export const SOBRANTE_THRESHOLD = 1000
 ```
 
 Sobrantes por debajo no disparan el prompt — son ruido de redondeo / lints / fees pequeños que no ameritan interrupción.
@@ -147,10 +172,16 @@ Sobrantes por debajo no disparan el prompt — son ruido de redondeo / lints / f
 `staleTime: 0` + `refetchOnMount: 'always'` garantiza que al volver al Home (e.g. tras confirmar cobro, que dispara el trigger DB que crea el summary), el hook re-evalúa la presencia de decisión pendiente. Sin esto, el cache stale enmascaraba el nuevo summary.
 
 Estrategia:
-1. Trae las 3 `monthly_summaries` más recientes de la familia.
+1. Trae las 3 `monthly_summaries` más recientes de la familia (select incluye `savings_goal_amount` desde 2026-06-11).
 2. Trae las decisiones existentes para esos summary ids.
-3. Devuelve el primero SIN decisión, calcula `sobrante` cliente-side y compara contra `SOBRANTE_THRESHOLD`.
+3. Devuelve el primero SIN decisión, calcula `sobrante` cliente-side con **`computeSobranteFromSummary`** ([`sobrante.ts`](../../mobile/features/month-close/sobrante.ts) — fórmula canónica compartida con `home-dashboard.tsx`) y compara contra `SOBRANTE_THRESHOLD`.
 4. Si pasa el threshold → `PendingDecision { monthlySummaryId, sobrante, periodLabel, periodStart, periodEnd }`. Si no → `null`.
+
+> ⚠ Historia (2026-06-11, A5): la fórmula vivía duplicada en los dos
+> call-sites restando `savings_delta` → 0 idéntico → el prompt no se
+> mostró NUNCA desde el ship de Spec B. Regresión cubierta en
+> [`tests/unit/month-close-sobrante.test.ts`](../../tests/unit/month-close-sobrante.test.ts)
+> con el row real de Abril 2026.
 
 ### `useApplyMonthCloseDecision(familyId)`
 
@@ -187,13 +218,20 @@ La race standalone vs wrapped se resuelve con un gate en home-dashboard: si el w
 | Condición | Decisión |
 |---|---|
 | No hay sesión | ⛔ RPC raise `'No session'` |
-| Caller no es miembro de la familia del summary | ⛔ RPC raise `'Not a family member'` |
+| Summary inexistente O de otra familia | ⛔ RPC raise `'monthly_summary not accessible'` (genérico, I-DB1) |
+| Caller no es OWNER de la familia | ⛔ RPC raise `'only family owner can apply month close decision'` |
 | `decision` no en el enum | ⛔ RPC raise `'invalid decision'` |
-| `decision='meta'` sin `meta_goal_id` | ⛔ RPC raise `'meta decision requires meta_goal_id'` |
-| `decision='acumular'` sin `new_cycle_anchor` | ⛔ RPC raise `'acumular decision requires new_cycle_anchor'` |
+| `decision='meta'` sin `meta_goal_id` o meta de otra familia | ⛔ RPC raise |
+| Rate limit 5/hora | ⛔ `check_rate_limit` raise |
 | Sobrante < $1000 (calculado cliente) | ⛔ Hook devuelve null, no se muestra prompt |
 | Ya hay decisión para ese `monthly_summary_id` | ⛔ UNIQUE constraint salta — RPC retorna error |
 | Onboarding flow (primer cobro) | ⛔ no hay summary cerrado → no hay pending |
+
+**Errores en el cliente** (2026-06-11, A5b.3): los dos paths de apply
+tienen try/catch con `toast.error` ("No pudimos guardar tu decisión…").
+El sheet standalone queda abierto para reintentar; la CTA del wrapped
+re-throws para no disparar confetti en error. Antes eran unhandled
+rejections silenciosas.
 
 ## Compatibilidad con replay
 
@@ -205,6 +243,7 @@ El wrapped soporta replay desde Control v2 → card "vs mes anterior". Cuando el
 
 ### Cliente
 
+- Fórmula canónica del sobrante: [`mobile/features/month-close/sobrante.ts`](../../mobile/features/month-close/sobrante.ts)
 - Hooks: [`mobile/features/month-close/use-month-close-decision.ts`](../../mobile/features/month-close/use-month-close-decision.ts)
 - Standalone sheet: [`mobile/components/home/sheets/month-close-decision-sheet.tsx`](../../mobile/components/home/sheets/month-close-decision-sheet.tsx)
 - Wrapped closing scene (Spec B integration): [`mobile/components/wrapped/cycle-wrapped-modal.tsx:884+`](../../mobile/components/wrapped/cycle-wrapped-modal.tsx)
@@ -218,9 +257,12 @@ El wrapped soporta replay desde Control v2 → card "vs mes anterior". Cuando el
 - V2 schema (monthly_summary_id): [`20260605140000_month_close_v2_summary_ref.sql`](../../supabase/migrations/20260605140000_month_close_v2_summary_ref.sql)
 - Fix acumular preserves salary: [`20260607230000_fix_acumular_preserves_salary.sql`](../../supabase/migrations/20260607230000_fix_acumular_preserves_salary.sql)
 - V3 atomic UPDATE: [`20260608030000_harden_reserve_and_acumular_atomic.sql`](../../supabase/migrations/20260608030000_harden_reserve_and_acumular_atomic.sql)
+- Fix fórmula sobrante + ventana anchor: [`20260615030000_fix_month_close_sobrante_y_anchor_window.sql`](../../supabase/migrations/20260615030000_fix_month_close_sobrante_y_anchor_window.sql)
+- **Vigente** — acumular = income_event: [`20260615040000_acumular_es_income_event.sql`](../../supabase/migrations/20260615040000_acumular_es_income_event.sql)
 
 ### Tests
 
+- Unit (fórmula canónica, row real de Abril 2026): `tests/unit/month-close-sobrante.test.ts`
 - Integration: `tests/integration/month-close-decision-flow.test.ts`
 
-<!-- ✓ Sincronizado contra código el 2026-06-08 -->
+<!-- ✓ Sincronizado contra código el 2026-06-11 (auditoría A5/A5b/A5c) -->
