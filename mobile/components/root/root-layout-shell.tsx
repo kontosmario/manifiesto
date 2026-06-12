@@ -22,6 +22,7 @@ import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity
 import { InactivityRelockWatcher } from '@/components/root/inactivity-relock-watcher'
 import { InteractionTrackerProvider } from '@/components/root/interaction-tracker-provider'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
+import { ShareImportListenerBridge } from '@/features/share-import/share-import-listener'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
 import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-banner'
 import { AppProviders } from '@/providers/app-providers'
@@ -148,6 +149,7 @@ export function RootLayoutShell() {
           */}
           <InteractionTrackerProvider>
           <NotificationRouterBridge />
+          <ShareImportListenerBridge />
           <NavigationInteractionRecorder />
           <ThemedRootStack />
 
