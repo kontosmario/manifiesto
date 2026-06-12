@@ -89,13 +89,20 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     }
   }, [billing, selectedPlan])
 
-  const handleRestorePurchases = useCallback(() => {
+  const handleRestorePurchases = useCallback(async () => {
     void triggerHaptic('selection')
-    Alert.alert(
-      'Restaurar compras',
-      'Si ya pagaste antes con esta cuenta de App Store o Google Play, vamos a recuperar tu suscripción automáticamente.',
-    )
-  }, [])
+    const result = await billing.restore()
+    if (result.ok) {
+      void triggerHaptic('success')
+      Alert.alert(
+        'Listo',
+        'Recuperamos tu suscripción. Ya tenés acceso a tu plan.',
+      )
+    } else {
+      void triggerHaptic('error')
+      Alert.alert('No pudimos restaurar', result.reason)
+    }
+  }, [billing])
 
   const handleManageSubscription = useCallback(() => {
     void triggerHaptic('selection')

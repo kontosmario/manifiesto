@@ -115,6 +115,12 @@ const config: ExpoConfig = {
         androidIntentFilters: ['image/*'],
       },
     ],
+    // Suscripciones de Apple (StoreKit 2 vía expo-iap). Sin opciones:
+    // NO usamos alternative billing / external purchase link (vamos con
+    // IAP nativo puro). El plugin cablea el módulo nativo; la capability
+    // "In-App Purchase" del App ID la administra EAS al firmar.
+    // Requiere build nativa (como share-intent / ML Kit).
+    'expo-iap',
     [
       'expo-local-authentication',
       {
