@@ -125,7 +125,7 @@ const EXPO_GO_REASON = 'IAP no disponible en Expo Go'
 // Mensajes accionables (ES, sin tecnicismos) por código de la edge function.
 const PURCHASE_FALLBACK_REASON =
   'No pudimos confirmar tu compra. Reintentá en un momento.'
-const CANCELLED_REASON = 'Cancelaste la compra.'
+export const CANCELLED_REASON = 'Cancelaste la compra.'
 const BOUND_TO_OTHER_FAMILY_REASON =
   'Tu suscripción está asociada a otro hogar. Contactanos.'
 
