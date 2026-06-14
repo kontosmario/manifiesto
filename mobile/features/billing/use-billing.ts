@@ -246,6 +246,7 @@ export function useBilling() {
           void handlePurchaseUpdate(purchase)
         })
         const failed = iap.purchaseErrorListener((error) => {
+          if (__DEV__) console.log('[billing] purchaseError', error)
           // Resolvemos la compra pendiente (si la hay) con un motivo amigable.
           resolvePending({ ok: false, reason: reasonForPurchaseError(error) })
         })
@@ -281,15 +282,32 @@ export function useBilling() {
     async (purchase: IapPurchase) => {
       if (!iap) return
       const jws = purchase.purchaseToken
+      if (__DEV__) {
+        console.log('[billing] purchaseUpdated', {
+          productId: purchase.productId,
+          otx: purchase.originalTransactionIdentifierIOS,
+          txId: purchase.transactionId,
+          hasJws: Boolean(jws),
+        })
+      }
       if (!jws) {
         resolvePending({ ok: false, reason: PURCHASE_FALLBACK_REASON })
         return
       }
 
       const result = await validatePurchaseOnServer(jws)
+      if (__DEV__) console.log('[billing] validate result', result)
       if (!result.ok) {
-        // Compra bound a otro hogar (purchaser que se mudó): mensaje accionable.
+        // Compra bound a otro hogar: falla PERMANENTE (la sub pertenece a otra
+        // familia; reintentar no cambia nada). Cerramos la transacción para que
+        // NO se re-dispare en cada reconexión (replay leak). El acceso real lo
+        // decide el server vía el snapshot, no esta transacción.
         if (result.code === 'SUBSCRIPTION_BOUND_TO_OTHER_FAMILY') {
+          try {
+            await iap.finishTransaction({ purchase, isConsumable: false })
+          } catch {
+            // no-fatal: si falla, reaparecerá y se cerrará en el próximo intento.
+          }
           resolvePending({ ok: false, reason: BOUND_TO_OTHER_FAMILY_REASON })
           return
         }
@@ -333,6 +351,12 @@ export function useBilling() {
       setIsPurchasing(true)
       return new Promise<PurchaseResult>((resolve) => {
         pendingRef.current = { resolve }
+        if (__DEV__) {
+          console.log('[billing] requestPurchase', {
+            sku: plan.productId,
+            appAccountToken: familyId,
+          })
+        }
         // requestPurchase NO devuelve el recibo: el resultado llega por el
         // listener (o el errorListener) → no esperamos su return.
         iap
