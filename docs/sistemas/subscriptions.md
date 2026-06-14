@@ -32,6 +32,29 @@ luciérnagas + confetti; gotcha modal-chain con `InteractionManager`),
 `free-period-nudge` (Home). Identidad: A+C + luciérnagas (`CardParticles`) + logo
 helecho + light/dark. El snapshot RPC suma `auto_renew` + `grace_expires_at`.
 
+### Cambiar de plan: upgrade inmediato vs downgrade diferido
+
+`ChangePlanSheet` (selector de tiles) → `onConfirmChange` clasifica el destino
+contra el plan actual (anual es el Nivel superior en App Store Connect):
+
+- **Upgrade** (mensual→anual): StoreKit emite transacción → `purchaseUpdated` →
+  `validate-purchase` → sheet `planChanged` + invalidación del entitlement. Es
+  inmediato y prorrateado.
+- **Downgrade** (anual→mensual): StoreKit **solo cambia la preferencia de
+  renovación, NO crea transacción** → el cliente nunca recibe `purchaseUpdated`
+  ni `purchaseError`. Por eso `purchasePlan(plan, { deferred: true })` usa un
+  timeout corto (8s) que resuelve con `DEFERRED_REASON` (libera el single-flight
+  rápido — evita el falso "Ya hay una compra en curso" al re-cambiar — y lo
+  distingue de un cancel real). Apple ya muestra su confirmación nativa, así que
+  **no abrimos otro modal**: el feedback es el **banner de cambio agendado**.
+
+Patrón **optimista + reconciliación**: al confirmar un downgrade, `billing-screen`
+setea `optimisticPending` (el banner aparece al instante con la fecha de
+renovación) y agenda `refetch` del entitlement (+4s/+9s) para que, cuando el
+webhook escriba `pending_product_id`, el banner pase a venir del server (fuente
+de verdad — `ManageView` hace `snap.pendingProductId ?? optimistic`). Cancelar la
+hoja nativa (`CANCELLED_REASON`) o volver al plan mayor limpia el optimista.
+
 ## Qué resuelve
 
 Monetización con suscripciones nativas de Apple. Período libre de 30 días por

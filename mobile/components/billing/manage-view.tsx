@@ -12,7 +12,7 @@ import {
   formatDate,
 } from '@/features/billing/membership-state'
 import { useHouseholdInitials } from '@/features/billing/use-household-initials'
-import { BILLING_PLANS } from '@/features/billing/billing-plans'
+import { BILLING_PLANS, type BillingPlanId } from '@/features/billing/billing-plans'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
 
@@ -24,6 +24,12 @@ import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapsho
 export interface ManageViewProps {
   snap: EntitlementSnapshot
   familyId?: string
+  /**
+   * Cambio agendado de forma OPTIMISTA por el host (downgrade recién
+   * confirmado, antes de que el webhook escriba `pending_product_id`). El
+   * server es la fuente de verdad: si trae `pendingProductId`, manda él.
+   */
+  optimisticPendingPlanId?: BillingPlanId | null
   onChangePlan: () => void
   onRestore: () => void
 }
@@ -31,6 +37,7 @@ export interface ManageViewProps {
 export const ManageView = memo(function ManageView({
   snap,
   familyId,
+  optimisticPendingPlanId,
   onChangePlan,
   onRestore,
 }: ManageViewProps) {
@@ -44,15 +51,25 @@ export const ManageView = memo(function ManageView({
   const priceLabel = `$${plan.priceUsd.toFixed(2)} / ${plan.cycle === 'yearly' ? 'año' : 'mes'}`
 
   // Cambio de plan agendado para la próxima renovación (StoreKit difiere los
-  // downgrades). El server lo registra en pending_product_id vía el webhook.
+  // downgrades). El server lo registra en pending_product_id vía el webhook;
+  // hasta que llega, usamos el plan optimista para mostrar el banner al
+  // instante. El server, si lo trae, tiene prioridad.
   // Guard: si el pendiente es el plan ACTUAL (p.ej. cancelaste un downgrade
   // volviendo a tu plan), no hay cambio real → no mostramos banner.
+  const pendingProductId =
+    snap.pendingProductId ??
+    (optimisticPendingPlanId
+      ? BILLING_PLANS[optimisticPendingPlanId].productId
+      : null)
   const pendingPlanName =
-    snap.pendingProductId && snap.pendingProductId !== plan.productId
+    pendingProductId && pendingProductId !== plan.productId
       ? (Object.values(BILLING_PLANS).find(
-          (p) => p.productId === snap.pendingProductId,
+          (p) => p.productId === pendingProductId,
         )?.name ?? null)
       : null
+  // "Cuándo" pasa el cambio: la fecha de renovación (cuando vence el ciclo
+  // actual). Da el aviso concreto que el banner antes no comunicaba.
+  const renewDateLabel = formatDate(snap.expiresAt)
 
   const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
 
@@ -86,7 +103,9 @@ export const ManageView = memo(function ManageView({
                 { color: theme.colors.text, flex: 1 },
               ]}
             >
-              Cambia a {pendingPlanName} en la próxima renovación
+              {renewDateLabel === '—'
+                ? `Cambia a ${pendingPlanName} en tu próxima renovación`
+                : `Cambia a ${pendingPlanName} el ${renewDateLabel}`}
             </Text>
           </View>
         </RiseView>

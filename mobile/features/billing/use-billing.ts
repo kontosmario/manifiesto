@@ -126,6 +126,11 @@ const EXPO_GO_REASON = 'IAP no disponible en Expo Go'
 const PURCHASE_FALLBACK_REASON =
   'No pudimos confirmar tu compra. Reintentá en un momento.'
 export const CANCELLED_REASON = 'Cancelaste la compra.'
+// Centinela INTERNO (no se muestra): un cambio de plan DIFERIDO (downgrade)
+// confirmado no emite transacción → no llega purchaseUpdated/purchaseError.
+// Lo resolvemos con este motivo para distinguirlo de un cancel real y NO
+// mostrar sheet de error. El feedback lo da el banner optimista + el server.
+export const DEFERRED_REASON = '__deferred_change__'
 const BOUND_TO_OTHER_FAMILY_REASON =
   'Tu suscripción está asociada a otro hogar. Contactanos.'
 
@@ -338,7 +343,10 @@ export function useBilling() {
 
   // ─── purchasePlan: dispara la compra y espera la resolución del listener ──
   const purchasePlan = useCallback(
-    async (plan: BillingPlan): Promise<PurchaseResult> => {
+    async (
+      plan: BillingPlan,
+      opts?: { deferred?: boolean },
+    ): Promise<PurchaseResult> => {
       if (!iap) return { ok: false, reason: EXPO_GO_REASON }
       if (!familyId) {
         return {
@@ -352,15 +360,21 @@ export function useBilling() {
       }
 
       setIsPurchasing(true)
+      // Un cambio diferido (downgrade) NO dispara purchaseUpdated ni
+      // purchaseError al confirmarse: la pendiente solo la cierra el timer.
+      // Por eso usamos un timeout corto + motivo DEFERRED (libera el
+      // single-flight rápido para poder re-cambiar, y lo distingue de un
+      // cancel real). Una compra/upgrade normal sí resuelve por el listener;
+      // su timer largo (30s) es solo red de seguridad → motivo CANCELLED.
+      const deferred = opts?.deferred === true
       return new Promise<PurchaseResult>((resolve) => {
-        // Safety: un cambio diferido (downgrade) NO dispara purchaseUpdated ni
-        // purchaseError, así que la pendiente podría no resolverse nunca y
-        // bloquear el single-flight ("Ya hay una compra en curso"). Este timer
-        // la limpia en silencio (reason CANCELLED → sin sheet). 30s cubre el
-        // flujo nativo + la validación de una compra real.
         const timer = setTimeout(
-          () => resolvePending({ ok: false, reason: CANCELLED_REASON }),
-          30_000,
+          () =>
+            resolvePending({
+              ok: false,
+              reason: deferred ? DEFERRED_REASON : CANCELLED_REASON,
+            }),
+          deferred ? 8_000 : 30_000,
         )
         pendingRef.current = { resolve, timer }
         if (__DEV__) {

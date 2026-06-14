@@ -2,7 +2,12 @@ import { useCallback, useState } from 'react'
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { triggerHaptic } from '@/lib/haptics'
-import { useBilling, CANCELLED_REASON } from '@/features/billing/use-billing'
+import {
+  useBilling,
+  CANCELLED_REASON,
+  DEFERRED_REASON,
+  type PurchaseResult,
+} from '@/features/billing/use-billing'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
@@ -67,6 +72,11 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const [changeOpen, setChangeOpen] = useState(false)
   const [changeSelected, setChangeSelected] =
     useState<BillingPlanId>('hogar-anual')
+  // Cambio agendado de forma OPTIMISTA: un downgrade no emite evento de
+  // StoreKit, así que mostramos el banner al instante y dejamos que el server
+  // (webhook → pending_product_id) tome la posta en la reconciliación.
+  const [optimisticPending, setOptimisticPending] =
+    useState<BillingPlanId | null>(null)
 
   const isManage =
     snap.source === 'subscription' ||
@@ -82,29 +92,41 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         )?.id
       : undefined) ?? (snap.plan === 'yearly' ? 'hogar-anual' : 'hogar-mensual')
 
+  // kind: 'new' (alta desde paywall) · 'upgrade' (mensual→anual, inmediato) ·
+  // 'downgrade' (anual→mensual, DIFERIDO: Apple ya confirma de forma nativa y
+  // no emite transacción, así que NO abrimos otro modal — el banner lo cubre).
   const doPurchase = useCallback(
-    async (plan: BillingPlan, isChange = false) => {
+    async (
+      plan: BillingPlan,
+      kind: 'new' | 'upgrade' | 'downgrade' = 'new',
+    ): Promise<PurchaseResult> => {
       void triggerHaptic('selection')
       setRetryPlan(plan)
-      const result = await billing.purchasePlan(plan)
+      const result = await billing.purchasePlan(plan, {
+        deferred: kind === 'downgrade',
+      })
       if (result.ok) {
         void triggerHaptic('success')
-        // Un "Cambiar de plan" es un crossgrade DIFERIDO (no inmediato): el
-        // sheet lo comunica como "programado", no como "¡Bienvenido!".
-        presentAfterNativeUI(() =>
-          setSheet({
-            variant: isChange ? 'planChanged' : 'success',
-            planName: plan.name,
-          }),
-        )
+        if (kind !== 'downgrade') {
+          presentAfterNativeUI(() =>
+            setSheet({
+              variant: kind === 'new' ? 'success' : 'planChanged',
+              planName: plan.name,
+            }),
+          )
+        }
       } else if (result.reason === CANCELLED_REASON) {
-        // Cancelar NO es error → sin sheet (toast opcional, fuera de scope).
+        // Cancelar (incl. cerrar la hoja nativa de un cambio) → sin sheet.
+      } else if (result.reason === DEFERRED_REASON) {
+        // Downgrade confirmado sin transacción: el banner optimista + la
+        // reconciliación con el server comunican el cambio. Sin sheet.
       } else {
         void triggerHaptic('error')
         presentAfterNativeUI(() =>
           setSheet({ variant: 'error', reason: result.reason }),
         )
       }
+      return result
     },
     [billing],
   )
@@ -128,12 +150,45 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     setChangeSelected(scheduledPlanId)
     setChangeOpen(true)
   }, [scheduledPlanId])
+
+  // El downgrade lo registra el webhook (pending_product_id) unos segundos
+  // después de confirmarlo. Refrescamos el entitlement para que el banner pase
+  // a venir del server (no del estado optimista) sin pull-to-refresh manual.
+  const scheduleReconcile = useCallback(() => {
+    setTimeout(() => void entQuery.refetch(), 4000)
+    setTimeout(() => void entQuery.refetch(), 9000)
+  }, [entQuery])
+
   const onConfirmChange = useCallback(
-    (planId: BillingPlanId) => {
+    async (planId: BillingPlanId) => {
       setChangeOpen(false)
-      void doPurchase(BILLING_PLANS[planId], true)
+      const target = BILLING_PLANS[planId]
+      // Anual está por encima de mensual (Niveles en App Store Connect): bajar a
+      // mensual es DIFERIDO; subir a anual es inmediato.
+      const kind: 'upgrade' | 'downgrade' =
+        snap.plan === 'yearly' && target.cycle === 'monthly'
+          ? 'downgrade'
+          : 'upgrade'
+      if (kind === 'downgrade') {
+        setOptimisticPending(planId) // feedback inmediato
+        scheduleReconcile()
+      } else {
+        // Upgrade, o cancelar un downgrade pendiente volviendo al plan mayor:
+        // el banner de "cambio agendado" ya no aplica.
+        setOptimisticPending(null)
+      }
+      const result = await doPurchase(target, kind)
+      // Si cerró la hoja nativa sin confirmar, el cambio no ocurrió → limpiamos
+      // el banner optimista. Un downgrade confirmado resuelve con DEFERRED.
+      if (
+        kind === 'downgrade' &&
+        !result.ok &&
+        result.reason === CANCELLED_REASON
+      ) {
+        setOptimisticPending(null)
+      }
     },
-    [doPurchase],
+    [doPurchase, snap.plan, scheduleReconcile],
   )
 
   const closeSheet = useCallback(() => setSheet(null), [])
@@ -164,6 +219,7 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
           <ManageView
             snap={snap}
             familyId={familyId}
+            optimisticPendingPlanId={optimisticPending}
             onChangePlan={onChangePlan}
             onRestore={doRestore}
           />
