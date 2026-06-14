@@ -84,6 +84,8 @@ export const ManageView = memo(function ManageView({
       {pendingPlanName ? (
         <RiseView delay={60}>
           <View
+            accessible
+            accessibilityRole="text"
             style={[
               styles.pending,
               {

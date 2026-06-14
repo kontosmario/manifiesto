@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { triggerHaptic } from '@/lib/haptics'
@@ -39,6 +39,14 @@ interface SheetState {
 }
 
 /**
+ * Naturaleza de la compra — determina el timeout/feedback:
+ *   'new'       alta desde el paywall (sheet de éxito celebratorio).
+ *   'upgrade'   mensual→anual: inmediato, emite transacción (sheet planChanged).
+ *   'downgrade' anual→mensual: DIFERIDO, sin transacción (banner, sin sheet).
+ */
+type PurchaseKind = 'new' | 'upgrade' | 'downgrade'
+
+/**
  * Presenta el sheet DESPUÉS de que se cierre la UI nativa de StoreKit (hoja de
  * compra + alert "Suscrito"). Esa UI corre en una `UIWindow` por encima del
  * `Modal` de RN, así que `InteractionManager` no la detecta y nuestro sheet
@@ -68,7 +76,13 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const snap = entQuery.data ?? BLOCKED_ENTITLEMENT
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
-  const [retryPlan, setRetryPlan] = useState<BillingPlan | null>(null)
+  // Guardamos el `kind` junto al plan: el retry desde el sheet de error debe
+  // re-disparar la MISMA naturaleza de compra (un upgrade no debe reintentarse
+  // como alta 'new', o mostraría el sheet equivocado).
+  const [retryState, setRetryState] = useState<{
+    plan: BillingPlan
+    kind: PurchaseKind
+  } | null>(null)
   const [changeOpen, setChangeOpen] = useState(false)
   const [changeSelected, setChangeSelected] =
     useState<BillingPlanId>('hogar-anual')
@@ -83,12 +97,18 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     snap.source === 'family' ||
     snap.source === 'comped'
 
-  // Plan al que renovaría hoy (pending si hay, si no el actual) → default del
-  // selector de "Cambiar de plan".
+  // Plan al que renovaría hoy → default del selector de "Cambiar de plan".
+  // Prioridad: pending del server > pending optimista (downgrade recién
+  // confirmado, aún sin webhook) > plan actual. Así, si reabrís el selector
+  // durante la ventana optimista, ya aparece el plan agendado (no el actual),
+  // consistente con el banner.
+  const scheduledProductId =
+    snap.pendingProductId ??
+    (optimisticPending ? BILLING_PLANS[optimisticPending].productId : null)
   const scheduledPlanId: BillingPlanId =
-    (snap.pendingProductId
+    (scheduledProductId
       ? Object.values(BILLING_PLANS).find(
-          (p) => p.productId === snap.pendingProductId,
+          (p) => p.productId === scheduledProductId,
         )?.id
       : undefined) ?? (snap.plan === 'yearly' ? 'hogar-anual' : 'hogar-mensual')
 
@@ -98,10 +118,10 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const doPurchase = useCallback(
     async (
       plan: BillingPlan,
-      kind: 'new' | 'upgrade' | 'downgrade' = 'new',
+      kind: PurchaseKind = 'new',
     ): Promise<PurchaseResult> => {
       void triggerHaptic('selection')
-      setRetryPlan(plan)
+      setRetryState({ plan, kind })
       const result = await billing.purchasePlan(plan, {
         deferred: kind === 'downgrade',
       })
@@ -154,10 +174,20 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   // El downgrade lo registra el webhook (pending_product_id) unos segundos
   // después de confirmarlo. Refrescamos el entitlement para que el banner pase
   // a venir del server (no del estado optimista) sin pull-to-refresh manual.
+  // Guardamos los timers para cancelarlos si la pantalla se desmonta antes
+  // (evita refetch huérfano).
+  const reconcileTimers = useRef<Array<ReturnType<typeof setTimeout>>>([])
   const scheduleReconcile = useCallback(() => {
-    setTimeout(() => void entQuery.refetch(), 4000)
-    setTimeout(() => void entQuery.refetch(), 9000)
+    reconcileTimers.current.forEach(clearTimeout)
+    reconcileTimers.current = [
+      setTimeout(() => void entQuery.refetch(), 4000),
+      setTimeout(() => void entQuery.refetch(), 9000),
+    ]
   }, [entQuery])
+  useEffect(
+    () => () => reconcileTimers.current.forEach(clearTimeout),
+    [],
+  )
 
   const onConfirmChange = useCallback(
     async (planId: BillingPlanId) => {
@@ -178,8 +208,14 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         setOptimisticPending(null)
       }
       const result = await doPurchase(target, kind)
-      // Si cerró la hoja nativa sin confirmar, el cambio no ocurrió → limpiamos
-      // el banner optimista. Un downgrade confirmado resuelve con DEFERRED.
+      // Limpieza del banner optimista según cómo resolvió:
+      //  · CANCELLED → cerró la hoja nativa sin confirmar → el cambio no
+      //    ocurrió → limpiamos.
+      //  · DEFERRED → downgrade CONFIRMADO (sin transacción) → MANTENEMOS el
+      //    banner hasta que el server reconcilie (es el objetivo del fix; no lo
+      //    limpiamos acá o desaparecería antes de tiempo en sandbox/prod-lag).
+      // Edge raro: un cancel >8s resuelve por timeout como DEFERRED y deja el
+      // banner pegado; se auto-cura al remontar la pantalla (refetch del server).
       if (
         kind === 'downgrade' &&
         !result.ok &&
@@ -194,8 +230,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const closeSheet = useCallback(() => setSheet(null), [])
   const retry = useCallback(() => {
     setSheet(null)
-    if (retryPlan) void doPurchase(retryPlan)
-  }, [retryPlan, doPurchase])
+    if (retryState) void doPurchase(retryState.plan, retryState.kind)
+  }, [retryState, doPurchase])
 
   const isErrorSheet =
     sheet?.variant === 'error' || sheet?.variant === 'restoreError'
