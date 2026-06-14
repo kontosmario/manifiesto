@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { InteractionManager, StyleSheet, View } from 'react-native'
+import { AppState, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { triggerHaptic } from '@/lib/haptics'
 import { useBilling, CANCELLED_REASON } from '@/features/billing/use-billing'
@@ -32,6 +32,28 @@ interface SheetState {
   reason?: string
 }
 
+/**
+ * Presenta el sheet DESPUÉS de que se cierre la UI nativa de StoreKit (hoja de
+ * compra + alert "Suscrito"). Esa UI corre en una `UIWindow` por encima del
+ * `Modal` de RN, así que `InteractionManager` no la detecta y nuestro sheet
+ * aparecía DETRÁS. Cuando la UI nativa se descarta, la app vuelve a AppState
+ * 'active' — ese es el momento. Fallback a un delay por si nunca dejó 'active'.
+ */
+function presentAfterNativeUI(show: () => void) {
+  let fired = false
+  const fire = () => {
+    if (fired) return
+    fired = true
+    sub.remove()
+    clearTimeout(timer)
+    setTimeout(show, 250) // respiro tras cerrarse la UI nativa
+  }
+  const sub = AppState.addEventListener('change', (state) => {
+    if (state === 'active') fire()
+  })
+  const timer = setTimeout(fire, 1500)
+}
+
 export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {}) {
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
@@ -53,16 +75,16 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
       const result = await billing.purchasePlan(plan)
       if (result.ok) {
         void triggerHaptic('success')
-        // Gotcha modal-chain iOS: la hoja de StoreKit se está cerrando;
-        // presentar nuestro sheet sin esperar lo descarta en silencio.
-        InteractionManager.runAfterInteractions(() => {
-          setSheet({ variant: 'success', planName: plan.name })
-        })
+        presentAfterNativeUI(() =>
+          setSheet({ variant: 'success', planName: plan.name }),
+        )
       } else if (result.reason === CANCELLED_REASON) {
         // Cancelar NO es error → sin sheet (toast opcional, fuera de scope).
       } else {
         void triggerHaptic('error')
-        setSheet({ variant: 'error', reason: result.reason })
+        presentAfterNativeUI(() =>
+          setSheet({ variant: 'error', reason: result.reason }),
+        )
       }
     },
     [billing],
