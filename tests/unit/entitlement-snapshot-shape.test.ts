@@ -31,7 +31,18 @@ describe('normalizeEntitlementSnapshot', () => {
       pendingProductId: null,
       autoRenew: true,
       graceExpiresAt: null,
+      isPurchaser: true,
     })
+  })
+
+  it('is_purchaser: ausente → true (default); false → false', () => {
+    expect(normalizeEntitlementSnapshot({ source: 'family' }).isPurchaser).toBe(
+      true,
+    )
+    expect(
+      normalizeEntitlementSnapshot({ source: 'family', is_purchaser: false })
+        .isPurchaser,
+    ).toBe(false)
   })
 
   it('mapea auto_renew y grace_expires_at de la fila', () => {

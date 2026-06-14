@@ -44,18 +44,34 @@ export const MembershipActions = memo(function MembershipActions({
         />
       ) : null}
 
-      <AppButton
-        variant="secondary"
-        label="Cambiar de plan"
-        fullWidth
-        onPress={onChangePlan}
-      />
-      <AppButton
-        variant="ghost"
-        label="Administrar o cancelar en App Store"
-        fullWidth
-        onPress={openManage}
-      />
+      {/* Cambiar/administrar SOLO para quien contrató la sub. Un miembro
+          cubierto por el hogar (o cortesía) no gestiona un plan ajeno. */}
+      {variant.canManage ? (
+        <>
+          <AppButton
+            variant="secondary"
+            label="Cambiar de plan"
+            fullWidth
+            onPress={onChangePlan}
+          />
+          <AppButton
+            variant="ghost"
+            label="Administrar o cancelar en App Store"
+            fullWidth
+            onPress={openManage}
+          />
+        </>
+      ) : variant.note ? (
+        <Text
+          style={[
+            theme.typography.bodySmall,
+            styles.note,
+            { color: theme.colors.textMuted },
+          ]}
+        >
+          {variant.note}
+        </Text>
+      ) : null}
 
       {/* Link discreto — recupera compras previas sin volver a pagar. */}
       <Pressable
@@ -76,4 +92,5 @@ export const MembershipActions = memo(function MembershipActions({
 const styles = StyleSheet.create({
   restoreHit: { alignSelf: 'center', paddingVertical: 6 },
   restore: { fontWeight: '700', textAlign: 'center' },
+  note: { textAlign: 'center', paddingHorizontal: 8, paddingVertical: 4 },
 })

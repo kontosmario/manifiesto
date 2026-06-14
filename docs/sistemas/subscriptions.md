@@ -18,11 +18,18 @@ según `useEntitlement().source` muestra:
 - **PaywallView** (Estado A, no-suscripto): trial/free. En período libre agrega
   `FreePeriodBanner` ("Acceso completo · N días" — NUNCA "prueba/gratis",
   compliant). `lockMode` = gate duro (chip "ACCESO PAUSADO", sin back).
-- **ManageView** (Estado B, suscripto): subscription/family/comped. Hero de
-  membresía + filas (renovación, miembros con avatares, auto-renovación, precio)
-  + acciones (cambiar plan, administrar/cancelar en App Store, restaurar). La
-  variante de estado (activa / "Habilitado hasta" / gracia / cortesía) la calcula
-  `membership-state.ts`.
+- **ManageView** (Estado B, con acceso): family/comped. Hero de membresía + filas
+  (renovación, miembros con avatares, auto-renovación, precio) + acciones (cambiar
+  plan, administrar/cancelar en App Store, restaurar). La variante de estado
+  (activa / "Habilitado hasta" / gracia / cortesía / **miembro cubierto**) la
+  calcula `membership-state.ts`.
+  - **Comprador vs miembro cubierto:** una sub propia y la cobertura de hogar
+    resuelven ambas `source='family'`. El snapshot expone `is_purchaser`
+    (`purchaser_user_id = auth.uid()`); `membershipVariant` setea `canManage`.
+    Un **miembro cubierto** (`!isPurchaser`) ve estado "MIEMBRO DEL HOGAR" + "Tu
+    hogar cubre tu acceso", SIN cambiar/cancelar (es plan ajeno), sin fila de
+    precio ni banner de cambio pendiente, con la nota "El plan lo administra quien
+    lo contrató en tu hogar". `comped` también es `canManage=false`.
 
 Componentes (`mobile/components/billing/`): `fern-mark`, `brand-lockup`,
 `member-avatars`, `plan-tiles`, `savings-ribbon`, `free-period-banner`,

@@ -61,8 +61,10 @@ export const ManageView = memo(function ManageView({
     (optimisticPendingPlanId
       ? BILLING_PLANS[optimisticPendingPlanId].productId
       : null)
+  // El banner de cambio pendiente es del COMPRADOR; un miembro cubierto no lo ve
+  // (no puede accionar el cambio de plan del hogar).
   const pendingPlanName =
-    pendingProductId && pendingProductId !== plan.productId
+    variant.canManage && pendingProductId && pendingProductId !== plan.productId
       ? (Object.values(BILLING_PLANS).find(
           (p) => p.productId === pendingProductId,
         )?.name ?? null)
@@ -119,7 +121,7 @@ export const ManageView = memo(function ManageView({
           memberCount={snap.memberCount}
           memberCap={snap.memberCap}
           autoRenew={snap.autoRenew}
-          priceLabel={priceLabel}
+          priceLabel={variant.canManage ? priceLabel : undefined}
         />
       </RiseView>
       <RiseView delay={120}>

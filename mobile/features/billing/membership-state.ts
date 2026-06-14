@@ -12,6 +12,11 @@ export interface MembershipVariant {
   statusLabel: string
   heroLine: string
   primaryAction: 'change' | 'reactivate' | 'fixPayment' | null
+  /** ¿Este usuario puede gestionar la sub? false para un miembro CUBIERTO por
+   *  el hogar (no la contrató) y para cortesía: ocultan cambiar/cancelar. */
+  canManage: boolean
+  /** Nota aclaratoria opcional (p.ej. para el miembro cubierto). */
+  note?: string
 }
 
 const MESES = [
@@ -31,23 +36,45 @@ export function formatDate(iso: string | null): string {
 export function membershipVariant(
   snap: Pick<
     EntitlementSnapshot,
-    'source' | 'subscriptionStatus' | 'autoRenew' | 'expiresAt' | 'graceExpiresAt'
+    | 'source'
+    | 'subscriptionStatus'
+    | 'autoRenew'
+    | 'expiresAt'
+    | 'graceExpiresAt'
+    | 'isPurchaser'
   >,
 ): MembershipVariant {
+  // Cortesía (acceso manual): no hay sub que gestionar.
   if (snap.source === 'comped') {
     return {
       tone: 'comped',
       statusLabel: 'CORTESÍA',
       heroLine: 'Acceso de cortesía',
       primaryAction: null,
+      canManage: false,
     }
   }
+  // Miembro CUBIERTO por el hogar (no contrató la sub): ve su acceso pero no
+  // puede cambiar/cancelar un plan ajeno. Va ANTES de grace/auto-renew porque
+  // esos estados son del comprador y el miembro no puede accionarlos.
+  if (snap.source === 'family' && !snap.isPurchaser) {
+    return {
+      tone: 'active',
+      statusLabel: 'MIEMBRO DEL HOGAR',
+      heroLine: 'Tu hogar cubre tu acceso',
+      primaryAction: null,
+      canManage: false,
+      note: 'El plan lo administra quien lo contrató en tu hogar.',
+    }
+  }
+  // De acá en adelante: el COMPRADOR (gestiona su propia sub).
   if (snap.subscriptionStatus === 'grace') {
     return {
       tone: 'warn',
       statusLabel: 'PROBLEMA DE PAGO',
       heroLine: `Reintentando hasta ${formatDate(snap.graceExpiresAt)}`,
       primaryAction: 'fixPayment',
+      canManage: true,
     }
   }
   if (!snap.autoRenew) {
@@ -56,6 +83,7 @@ export function membershipVariant(
       statusLabel: 'NO SE RENOVARÁ',
       heroLine: `Habilitado hasta ${formatDate(snap.expiresAt)}`,
       primaryAction: 'reactivate',
+      canManage: true,
     }
   }
   return {
@@ -63,5 +91,6 @@ export function membershipVariant(
     statusLabel: 'ACTIVA',
     heroLine: `Se renueva el ${formatDate(snap.expiresAt)}`,
     primaryAction: 'change',
+    canManage: true,
   }
 }

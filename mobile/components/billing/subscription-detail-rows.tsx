@@ -18,8 +18,9 @@ export interface SubscriptionDetailRowsProps {
   memberCount: number
   memberCap: number
   autoRenew: boolean
-  /** Precio ya formateado, ej. "$39.99 / año". */
-  priceLabel: string
+  /** Precio ya formateado, ej. "$39.99 / año". Omitido para un miembro cubierto
+   *  por el hogar (no es quien paga) → la fila de precio no se muestra. */
+  priceLabel?: string
 }
 
 export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
@@ -64,8 +65,10 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
         divider
       />
 
-      {/* (4) Precio */}
-      <Row icon="sell" label="Precio" value={priceLabel} divider />
+      {/* (4) Precio — solo para quien paga (omitido al miembro cubierto). */}
+      {priceLabel ? (
+        <Row icon="sell" label="Precio" value={priceLabel} divider />
+      ) : null}
     </View>
   )
 })

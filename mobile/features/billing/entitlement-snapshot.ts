@@ -33,6 +33,10 @@ export interface EntitlementSnapshot {
   autoRenew: boolean
   /** Fin del período de gracia (pago fallido) cuando aplica; null si no. */
   graceExpiresAt: string | null
+  /** ¿El usuario actual es QUIEN CONTRATÓ la sub? Un miembro cubierto por el
+   *  hogar (source='family' pero !isPurchaser) no debe ver cambiar/cancelar.
+   *  Default true (caso común: el que mira es el comprador). */
+  isPurchaser: boolean
 }
 
 /** Default a prueba de fallos: si el RPC no devuelve fila, BLOQUEAMOS.
@@ -50,6 +54,7 @@ export const BLOCKED_ENTITLEMENT: EntitlementSnapshot = {
   pendingProductId: null,
   autoRenew: true,
   graceExpiresAt: null,
+  isPurchaser: true,
 }
 
 export function normalizeEntitlementSnapshot(
@@ -69,5 +74,6 @@ export function normalizeEntitlementSnapshot(
     pendingProductId: (row.pending_product_id as string) ?? null,
     autoRenew: row.auto_renew == null ? true : Boolean(row.auto_renew),
     graceExpiresAt: (row.grace_expires_at as string) ?? null,
+    isPurchaser: row.is_purchaser == null ? true : Boolean(row.is_purchaser),
   }
 }
