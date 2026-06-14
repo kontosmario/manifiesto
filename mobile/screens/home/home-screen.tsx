@@ -41,6 +41,8 @@ import { HOME_TOUR, useRegisterTourScrollView } from '@/features/tours'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { useEntitlement } from '@/features/billing/use-entitlement'
+import { FreePeriodNudge } from '@/components/billing/free-period-nudge'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface HomeScreenProps {
@@ -64,6 +66,13 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // AppStackShell already fires and seeds this; here we only need the
   // refetch handle for pull-to-refresh.
   const snapshot = useHomeSnapshot(userId)
+  // Nudge del período libre (Estado A1): informativo, solo en los últimos
+  // 7 días, dismissible. NUNCA dice "prueba/gratis".
+  const freeEnt = useEntitlement(userId).data
+  const showFreeNudge =
+    freeEnt?.source === 'trial' &&
+    freeEnt.daysLeft != null &&
+    freeEnt.daysLeft <= 7
 
   // PREMIUM transition: cuando el snapshot está listo, le avisamos a la
   // máquina auth-flow (DESTINATION_READY) — eso libera el soar-away del
@@ -407,6 +416,12 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             <CancelDeletionBanner
               userId={userId}
               scheduledAt={profile.deletion_scheduled_at}
+            />
+          ) : null}
+          {showFreeNudge ? (
+            <FreePeriodNudge
+              daysLeft={freeEnt?.daysLeft ?? 0}
+              onSeePlans={() => router.push('/(app)/settings/plan')}
             />
           ) : null}
           <HomeDashboard
