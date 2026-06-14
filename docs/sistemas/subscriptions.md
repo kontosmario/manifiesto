@@ -4,6 +4,33 @@
 > Backbone de entitlement + enforcement. **Sin IAP real todavía** (Fases 2-4
 > pendientes: expo-iap, validate-purchase, webhook ASSN v2, App Store Connect).
 > Spec canónico: [docs/superpowers/specs/2026-06-12-apple-subscriptions-design.md](../superpowers/specs/2026-06-12-apple-subscriptions-design.md).
+>
+> **Update 2026-06-14**: IAP real verificado e2e en sandbox (compra / webhook /
+> restore / renovación) y **UI de suscripciones rediseñada** (branch
+> `feature/subscription-ui-redesign`). Ver §"UI de suscripciones" abajo + spec
+> [2026-06-14-subscription-ui-redesign-design.md](../superpowers/specs/2026-06-14-subscription-ui-redesign-design.md).
+
+## UI de suscripciones (rediseño 2026-06-14)
+
+Una ruta adaptativa — Ajustes → "Plan del hogar" (`billing-screen.tsx`) — que
+según `useEntitlement().source` muestra:
+
+- **PaywallView** (Estado A, no-suscripto): trial/free. En período libre agrega
+  `FreePeriodBanner` ("Acceso completo · N días" — NUNCA "prueba/gratis",
+  compliant). `lockMode` = gate duro (chip "ACCESO PAUSADO", sin back).
+- **ManageView** (Estado B, suscripto): subscription/family/comped. Hero de
+  membresía + filas (renovación, miembros con avatares, auto-renovación, precio)
+  + acciones (cambiar plan, administrar/cancelar en App Store, restaurar). La
+  variante de estado (activa / "Habilitado hasta" / gracia / cortesía) la calcula
+  `membership-state.ts`.
+
+Componentes (`mobile/components/billing/`): `fern-mark`, `brand-lockup`,
+`member-avatars`, `plan-tiles`, `savings-ribbon`, `free-period-banner`,
+`membership-hero`, `subscription-detail-rows`, `membership-actions`,
+`purchase-result-sheet` (sheets via `ModalCard`; success celebra con helecho +
+luciérnagas + confetti; gotcha modal-chain con `InteractionManager`),
+`free-period-nudge` (Home). Identidad: A+C + luciérnagas (`CardParticles`) + logo
+helecho + light/dark. El snapshot RPC suma `auto_renew` + `grace_expires_at`.
 
 ## Qué resuelve
 
