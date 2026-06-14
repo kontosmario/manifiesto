@@ -132,6 +132,8 @@ const BOUND_TO_OTHER_FAMILY_REASON =
 /** Promesa pendiente de una compra en curso (single-flight). */
 interface PendingPurchase {
   resolve: (result: PurchaseResult) => void
+  /** Safety timer: limpia la pendiente si nunca llega un resultado. */
+  timer?: ReturnType<typeof setTimeout>
 }
 
 /**
@@ -269,6 +271,7 @@ export function useBilling() {
   const resolvePending = useCallback((result: PurchaseResult) => {
     const pending = pendingRef.current
     if (!pending) return
+    if (pending.timer) clearTimeout(pending.timer)
     pendingRef.current = null
     setIsPurchasing(false)
     pending.resolve(result)
@@ -350,7 +353,16 @@ export function useBilling() {
 
       setIsPurchasing(true)
       return new Promise<PurchaseResult>((resolve) => {
-        pendingRef.current = { resolve }
+        // Safety: un cambio diferido (downgrade) NO dispara purchaseUpdated ni
+        // purchaseError, así que la pendiente podría no resolverse nunca y
+        // bloquear el single-flight ("Ya hay una compra en curso"). Este timer
+        // la limpia en silencio (reason CANCELLED → sin sheet). 30s cubre el
+        // flujo nativo + la validación de una compra real.
+        const timer = setTimeout(
+          () => resolvePending({ ok: false, reason: CANCELLED_REASON }),
+          30_000,
+        )
+        pendingRef.current = { resolve, timer }
         if (__DEV__) {
           console.log('[billing] requestPurchase', {
             sku: plan.productId,
