@@ -44,12 +44,15 @@ export const ManageView = memo(function ManageView({
   const priceLabel = `$${plan.priceUsd.toFixed(2)} / ${plan.cycle === 'yearly' ? 'año' : 'mes'}`
 
   // Cambio de plan agendado para la próxima renovación (StoreKit difiere los
-  // crossgrades). El server lo registra en pending_product_id vía el webhook.
-  const pendingPlanName = snap.pendingProductId
-    ? (Object.values(BILLING_PLANS).find(
-        (p) => p.productId === snap.pendingProductId,
-      )?.name ?? null)
-    : null
+  // downgrades). El server lo registra en pending_product_id vía el webhook.
+  // Guard: si el pendiente es el plan ACTUAL (p.ej. cancelaste un downgrade
+  // volviendo a tu plan), no hay cambio real → no mostramos banner.
+  const pendingPlanName =
+    snap.pendingProductId && snap.pendingProductId !== plan.productId
+      ? (Object.values(BILLING_PLANS).find(
+          (p) => p.productId === snap.pendingProductId,
+        )?.name ?? null)
+      : null
 
   const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
 

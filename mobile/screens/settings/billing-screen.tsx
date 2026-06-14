@@ -12,6 +12,7 @@ import {
   PurchaseResultSheet,
   type PurchaseResultVariant,
 } from '@/components/billing/purchase-result-sheet'
+import { ChangePlanSheet } from '@/components/billing/change-plan-sheet'
 import {
   BILLING_PLANS,
   type BillingPlan,
@@ -63,11 +64,23 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
   const [retryPlan, setRetryPlan] = useState<BillingPlan | null>(null)
+  const [changeOpen, setChangeOpen] = useState(false)
+  const [changeSelected, setChangeSelected] =
+    useState<BillingPlanId>('hogar-anual')
 
   const isManage =
     snap.source === 'subscription' ||
     snap.source === 'family' ||
     snap.source === 'comped'
+
+  // Plan al que renovaría hoy (pending si hay, si no el actual) → default del
+  // selector de "Cambiar de plan".
+  const scheduledPlanId: BillingPlanId =
+    (snap.pendingProductId
+      ? Object.values(BILLING_PLANS).find(
+          (p) => p.productId === snap.pendingProductId,
+        )?.id
+      : undefined) ?? (snap.plan === 'yearly' ? 'hogar-anual' : 'hogar-mensual')
 
   const doPurchase = useCallback(
     async (plan: BillingPlan, isChange = false) => {
@@ -108,13 +121,20 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     }
   }, [billing])
 
-  // "Cambiar de plan": compra el OTRO plan; StoreKit maneja la proration
-  // dentro del grupo de suscripción.
+  // "Cambiar de plan": abre el selector. Confirmar compra el plan elegido
+  // (StoreKit maneja upgrade inmediato / downgrade diferido / cancelar un
+  // downgrade pendiente al volver al plan actual).
   const onChangePlan = useCallback(() => {
-    const otherId: BillingPlanId =
-      snap.plan === 'yearly' ? 'hogar-mensual' : 'hogar-anual'
-    void doPurchase(BILLING_PLANS[otherId], true)
-  }, [snap.plan, doPurchase])
+    setChangeSelected(scheduledPlanId)
+    setChangeOpen(true)
+  }, [scheduledPlanId])
+  const onConfirmChange = useCallback(
+    (planId: BillingPlanId) => {
+      setChangeOpen(false)
+      void doPurchase(BILLING_PLANS[planId], true)
+    },
+    [doPurchase],
+  )
 
   const closeSheet = useCallback(() => setSheet(null), [])
   const retry = useCallback(() => {
@@ -165,6 +185,16 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         reason={sheet?.reason}
         onClose={closeSheet}
         onRetry={isErrorSheet ? retry : undefined}
+      />
+
+      <ChangePlanSheet
+        visible={changeOpen}
+        selected={changeSelected}
+        onSelect={setChangeSelected}
+        scheduledPlanId={scheduledPlanId}
+        isPurchasing={billing.isPurchasing}
+        onConfirm={onConfirmChange}
+        onClose={() => setChangeOpen(false)}
       />
     </Screen>
   )
