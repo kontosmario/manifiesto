@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeEntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
+import {
+  normalizeEntitlementSnapshot,
+  BLOCKED_ENTITLEMENT,
+} from '@/features/billing/entitlement-snapshot'
 
 describe('normalizeEntitlementSnapshot', () => {
   it('coacciona la fila del RPC a la forma del cliente (camelCase)', () => {
@@ -26,7 +29,32 @@ describe('normalizeEntitlementSnapshot', () => {
       memberCap: 2,
       memberCount: 1,
       pendingProductId: null,
+      autoRenew: true,
+      graceExpiresAt: null,
     })
+  })
+
+  it('mapea auto_renew y grace_expires_at de la fila', () => {
+    const snap = normalizeEntitlementSnapshot({
+      source: 'subscription',
+      plan: 'yearly',
+      has_access: true,
+      auto_renew: false,
+      grace_expires_at: '2026-06-18T00:00:00Z',
+    })
+    expect(snap.autoRenew).toBe(false)
+    expect(snap.graceExpiresAt).toBe('2026-06-18T00:00:00Z')
+  })
+
+  it('auto_renew ausente → default true; grace ausente → null', () => {
+    const snap = normalizeEntitlementSnapshot({ source: 'subscription' })
+    expect(snap.autoRenew).toBe(true)
+    expect(snap.graceExpiresAt).toBeNull()
+  })
+
+  it('default bloqueado: autoRenew true, graceExpiresAt null', () => {
+    expect(BLOCKED_ENTITLEMENT.autoRenew).toBe(true)
+    expect(BLOCKED_ENTITLEMENT.graceExpiresAt).toBeNull()
   })
 
   it('default seguro cuando el RPC no devuelve fila → BLOQUEA', () => {

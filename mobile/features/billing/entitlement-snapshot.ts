@@ -28,6 +28,10 @@ export interface EntitlementSnapshot {
   memberCap: number
   memberCount: number
   pendingProductId: string | null
+  /** Renovación automática de la sub (true por defecto si el dato falta). */
+  autoRenew: boolean
+  /** Fin del período de gracia (pago fallido) cuando aplica; null si no. */
+  graceExpiresAt: string | null
 }
 
 /** Default a prueba de fallos: si el RPC no devuelve fila, BLOQUEAMOS.
@@ -43,6 +47,8 @@ export const BLOCKED_ENTITLEMENT: EntitlementSnapshot = {
   memberCap: 2,
   memberCount: 1,
   pendingProductId: null,
+  autoRenew: true,
+  graceExpiresAt: null,
 }
 
 export function normalizeEntitlementSnapshot(
@@ -60,5 +66,7 @@ export function normalizeEntitlementSnapshot(
     memberCap: Number(row.member_cap ?? 2),
     memberCount: Number(row.member_count ?? 1),
     pendingProductId: (row.pending_product_id as string) ?? null,
+    autoRenew: row.auto_renew == null ? true : Boolean(row.auto_renew),
+    graceExpiresAt: (row.grace_expires_at as string) ?? null,
   }
 }
