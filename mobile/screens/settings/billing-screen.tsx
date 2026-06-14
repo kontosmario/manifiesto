@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { AppState, StyleSheet, View } from 'react-native'
+import { AppState, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { triggerHaptic } from '@/lib/haptics'
 import { useBilling, CANCELLED_REASON } from '@/features/billing/use-billing'
@@ -58,7 +58,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
   const { familyId } = useImportWizardContext()
-  const snap = useEntitlement(userId).data ?? BLOCKED_ENTITLEMENT
+  const entQuery = useEntitlement(userId)
+  const snap = entQuery.data ?? BLOCKED_ENTITLEMENT
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
   const [retryPlan, setRetryPlan] = useState<BillingPlan | null>(null)
@@ -120,7 +121,19 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     sheet?.variant === 'error' || sheet?.variant === 'restoreError'
 
   return (
-    <Screen canGoBack={!lockMode} title="Plan del hogar" scrollable>
+    <Screen
+      canGoBack={!lockMode}
+      title="Plan del hogar"
+      scrollable
+      refreshControl={
+        <RefreshControl
+          refreshing={entQuery.isFetching}
+          onRefresh={() => {
+            void entQuery.refetch()
+          }}
+        />
+      }
+    >
       <View style={styles.body}>
         {isManage ? (
           <ManageView

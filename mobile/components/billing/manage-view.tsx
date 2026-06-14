@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { BrandLockup } from '@/components/billing/brand-lockup'
@@ -42,6 +43,14 @@ export const ManageView = memo(function ManageView({
       : BILLING_PLANS['hogar-mensual']
   const priceLabel = `$${plan.priceUsd.toFixed(2)} / ${plan.cycle === 'yearly' ? 'año' : 'mes'}`
 
+  // Cambio de plan agendado para la próxima renovación (StoreKit difiere los
+  // crossgrades). El server lo registra en pending_product_id vía el webhook.
+  const pendingPlanName = snap.pendingProductId
+    ? (Object.values(BILLING_PLANS).find(
+        (p) => p.productId === snap.pendingProductId,
+      )?.name ?? null)
+    : null
+
   const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
 
   return (
@@ -52,6 +61,33 @@ export const ManageView = memo(function ManageView({
       <RiseView delay={40}>
         <MembershipHero planName={plan.name} variant={variant} />
       </RiseView>
+      {pendingPlanName ? (
+        <RiseView delay={60}>
+          <View
+            style={[
+              styles.pending,
+              {
+                backgroundColor: theme.colors.primarySurface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <MaterialIcons
+              name="schedule"
+              size={16}
+              color={theme.colors.primary}
+            />
+            <Text
+              style={[
+                theme.typography.bodySmall,
+                { color: theme.colors.text, flex: 1 },
+              ]}
+            >
+              Cambia a {pendingPlanName} en la próxima renovación
+            </Text>
+          </View>
+        </RiseView>
+      ) : null}
       <RiseView delay={80}>
         <SubscriptionDetailRows
           renewValue={formatDate(snap.expiresAt)}
@@ -86,6 +122,14 @@ export const ManageView = memo(function ManageView({
 
 const styles = StyleSheet.create({
   root: { gap: 14 },
+  pending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 11,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
