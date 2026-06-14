@@ -365,6 +365,7 @@ export function useBilling() {
             type: 'subs',
           })
           .catch((error: unknown) => {
+            if (__DEV__) console.log('[billing] requestPurchase rejected', error)
             // Rechazo sincrónico de la store (p.ej. no preparada): resolvemos
             // la pendiente acá; el errorListener puede no disparar.
             const reason =
