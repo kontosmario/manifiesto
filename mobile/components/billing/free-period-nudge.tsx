@@ -65,14 +65,25 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
           {subtitle}
         </Text>
       </View>
-      <Pressable onPress={handleCta} hitSlop={8}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={ctaLabel}
+        onPress={handleCta}
+        hitSlop={8}
+      >
         <View style={[styles.cta, { backgroundColor: theme.colors.heroAccent }]}>
           <Text style={[styles.ctaText, { color: theme.colors.heroGradient[1] }]}>
             {ctaLabel}
           </Text>
         </View>
       </Pressable>
-      <Pressable onPress={handleDismiss} hitSlop={10} style={styles.close}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Cerrar"
+        onPress={handleDismiss}
+        hitSlop={10}
+        style={styles.close}
+      >
         <MaterialIcons
           name="close"
           size={15}

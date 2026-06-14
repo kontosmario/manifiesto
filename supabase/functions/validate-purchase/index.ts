@@ -242,7 +242,20 @@ export async function handler(request: Request): Promise<Response> {
   const productId = tx.productId
   const expiresAt = tx.expiresDate ? tx.expiresDate.toISOString() : null
   const environment = tx.environment
-  const signedAt = (tx.signedDate ?? new Date()).toISOString()
+  // signed_date gobierna el ORDERING en apply_subscription_transaction
+  // (p_signed_date > last_applied_signed_date). Apple SIEMPRE incluye signedDate
+  // en el JWS de la transacción; si falta, el recibo es anómalo → 400. NUNCA
+  // fabricar un timestamp: un `new Date()` (futuro) haría que el webhook legítimo
+  // posterior, con su signed_date REAL (anterior), sea rechazado por "viejo",
+  // dejando el entitlement permanentemente stale e irrecuperable sin intervención.
+  if (!tx.signedDate) {
+    return jsonResponse(
+      { error: 'INVALID_RECEIPT', reason: 'missing_signed_date' },
+      400,
+      cors,
+    )
+  }
+  const signedAt = tx.signedDate.toISOString()
   // appAccountToken = family_id en la compra. Autoritativo SOLO para el
   // bootstrap de la compra nueva (§2); en restore ruteamos por OTID.
   const appAccountToken = tx.appAccountToken

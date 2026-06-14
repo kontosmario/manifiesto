@@ -117,7 +117,7 @@ const YearlyTile = memo(function YearlyTile({
           styles.tile,
           styles.tileBorderless,
           {
-            borderColor: selected ? theme.colors.heroAccent : 'rgba(166,239,143,0.25)',
+            borderColor: selected ? theme.colors.heroAccent : theme.colors.auroraA,
             borderWidth: selected ? 2 : 1,
           },
           highlight.style,

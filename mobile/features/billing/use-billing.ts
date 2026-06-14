@@ -206,6 +206,14 @@ export function useBilling() {
   // esta ref (no estado, para no re-suscribir el listener en cada compra).
   const pendingRef = useRef<PendingPurchase | null>(null)
 
+  // El listener de StoreKit se registra UNA sola vez (deps []), pero
+  // handlePurchaseUpdate depende de userId. Para no invalidar el query del
+  // usuario EQUIVOCADO si la sesión cambió, el listener llama siempre la última
+  // versión a través de este ref (se mantiene actualizado abajo).
+  const handlePurchaseUpdateRef = useRef<
+    ((purchase: IapPurchase) => Promise<void>) | null
+  >(null)
+
   // ─── status DERIVADO del snapshot del server (no de StoreKit) ────────────
   const status = useMemo<BillingStatus>(() => {
     const snap = entitlementQuery.data
@@ -214,7 +222,9 @@ export function useBilling() {
     // Hay sub activa (pago propio o cobertura de hogar) cuando la cascada
     // resuelve a 'subscription' o 'family'. plan: 'monthly'→mensual,
     // 'yearly'→anual. Cualquier otra cosa → sin plan activo.
-    const hasActiveSub = snap.source === 'subscription' || snap.source === 'family'
+    // Una sub propia o cobertura de hogar resuelven ambas como 'family' (la
+    // familia es la unidad de facturación; no hay source 'subscription').
+    const hasActiveSub = snap.source === 'family'
     let activePlanId: BillingPlanId | null = null
     if (hasActiveSub) {
       if (snap.plan === 'monthly') activePlanId = 'hogar-mensual'
@@ -250,7 +260,7 @@ export function useBilling() {
         // Compra OK desde StoreKit → validamos en el server, y SOLO con el OK
         // del server hacemos finishTransaction + invalidamos el entitlement.
         const updated = iap.purchaseUpdatedListener((purchase) => {
-          void handlePurchaseUpdate(purchase)
+          void handlePurchaseUpdateRef.current?.(purchase)
         })
         const failed = iap.purchaseErrorListener((error) => {
           if (__DEV__) console.log('[billing] purchaseError', error)
@@ -340,6 +350,12 @@ export function useBilling() {
     },
     [queryClient, userId, resolvePending],
   )
+
+  // Mantenemos el ref apuntando a la última versión de handlePurchaseUpdate
+  // (captura el userId actual) sin tener que re-registrar el listener nativo.
+  useEffect(() => {
+    handlePurchaseUpdateRef.current = handlePurchaseUpdate
+  }, [handlePurchaseUpdate])
 
   // ─── purchasePlan: dispara la compra y espera la resolución del listener ──
   const purchasePlan = useCallback(

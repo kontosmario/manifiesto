@@ -73,7 +73,7 @@ export const PaywallView = memo(function PaywallView({
 
       <RiseView delay={60}>
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          {lockMode ? 'Tu mes gratis\nterminó.' : 'Todo tu hogar,\nen una cuenta.'}
+          {lockMode ? 'Tu acceso\nestá pausado.' : 'Todo tu hogar,\nen una cuenta.'}
         </Text>
       </RiseView>
 
@@ -115,22 +115,52 @@ export const PaywallView = memo(function PaywallView({
           loading={isPurchasing}
           onPress={() => onPurchase(plan)}
         />
-        <Text style={[theme.typography.caption, styles.micro, { color: theme.colors.textMuted }]}>
-          Renovación automática · cancelás cuando quieras
+        {/* Disclosure de auto-renovación EXIGIDO por Apple (Guideline 3.1.2):
+            cargo a Apple ID al confirmar · renovación salvo cancelación 24hs
+            antes · gestión/cancelación desde Ajustes de la cuenta. Visible
+            ANTES de comprar. No achicar por debajo de caption (legibilidad). */}
+        <Text
+          style={[
+            theme.typography.caption,
+            styles.disclosure,
+            { color: theme.colors.textMuted },
+          ]}
+        >
+          El pago se cargará a tu cuenta de Apple ID al confirmar la compra. La
+          suscripción se renueva automáticamente al mismo precio salvo que la
+          canceles al menos 24 horas antes de que termine el período actual; el
+          cargo de renovación se hace dentro de esas 24 horas. Podés gestionarla
+          o cancelarla cuando quieras desde los Ajustes de tu cuenta en la App
+          Store.
         </Text>
       </RiseView>
 
       <RiseView delay={160}>
         <View style={styles.footer}>
-          <Pressable onPress={onRestore}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Restaurar compras"
+            hitSlop={8}
+            onPress={onRestore}
+          >
             <Text style={linkStyle}>Restaurar compras</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
-          <Pressable onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Términos de uso"
+            hitSlop={8}
+            onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
+          >
             <Text style={linkStyle}>Términos</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
-          <Pressable onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Política de privacidad"
+            hitSlop={8}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          >
             <Text style={linkStyle}>Privacidad</Text>
           </Pressable>
         </View>
@@ -154,7 +184,7 @@ const styles = StyleSheet.create({
   headline: { fontSize: 23, fontWeight: '900', letterSpacing: -0.9, lineHeight: 26 },
   features: { gap: 7 },
   feat: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  micro: { textAlign: 'center', marginTop: 9 },
+  disclosure: { textAlign: 'center', marginTop: 10, lineHeight: 16 },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

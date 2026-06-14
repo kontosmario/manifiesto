@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CardParticles } from '@/components/ui/card-particles'
 import { FernMark } from '@/components/billing/fern-mark'
-import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
+import { getStateTokens, hexAlpha, type SemanticState } from '@/theme/state-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { MembershipVariant } from '@/features/billing/membership-state'
 
@@ -40,7 +40,10 @@ export const MembershipHero = memo(function MembershipHero({
       }
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
-      style={[styles.card, { overflow: 'hidden', borderColor: 'rgba(166,239,143,0.22)' }]}
+      style={[
+        styles.card,
+        { overflow: 'hidden', borderColor: hexAlpha(theme.colors.heroAccent, 0.22) },
+      ]}
     >
       {/* Campo de luciérnagas — detrás del contenido (z implícito 1). */}
       <CardParticles count={5} color="#FFFBF2" accentColor="#A6EF8F" />

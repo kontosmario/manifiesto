@@ -594,6 +594,11 @@ export async function handler(request: Request): Promise<Response> {
     originalTransactionId: extractedTx.originalTransactionId,
     productId: extractedTx.productId,
     expiresAt: extractedTx.expiresDate,
+    // Fallback DELIBERADO al signed_date del envelope (note.signedDate): ambos
+    // son timestamps REALES de Apple, nunca fabricados. A diferencia de
+    // validate-purchase (que RECHAZA si falta signedDate, porque una compra
+    // user-initiated sin él es anómala), el webhook es lenient para no DESCARTAR
+    // eventos del ciclo de vida — y el envelope siempre trae un signed_date real.
     signedDate: extractedTx.signedDate ?? note.signedDate,
     environment: extractedTx.environment ?? note.environment,
     appAccountToken: extractedTx.appAccountToken,

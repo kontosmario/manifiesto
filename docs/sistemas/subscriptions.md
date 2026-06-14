@@ -32,6 +32,23 @@ luciérnagas + confetti; gotcha modal-chain con `InteractionManager`),
 `free-period-nudge` (Home). Identidad: A+C + luciérnagas (`CardParticles`) + logo
 helecho + light/dark. El snapshot RPC suma `auto_renew` + `grace_expires_at`.
 
+### Compliance Apple (Guideline 3.1.2) — paywall
+
+La paywall (`paywall-view.tsx`) muestra, ANTES de comprar, todo lo que Apple
+exige para suscripciones auto-renovables:
+
+- Nombre/contenido del plan + duración (`PlanTiles`) y precio + período en el CTA.
+- **Disclosure de auto-renovación** (texto legal completo): el pago se carga a la
+  cuenta de Apple ID al confirmar; renovación automática salvo cancelación ≥24hs
+  antes del fin del período; cargo dentro de las 24hs previas; gestión/cancelación
+  desde Ajustes de la cuenta en la App Store. Visible, ≥ caption (legible).
+- Links funcionales a **Términos** y **Privacidad** (`manifiestoapp.com`) + **Restaurar
+  compras**. Gestión/cancelación SIEMPRE vía deep-link oficial de App Store
+  (`apps.apple.com/account/subscriptions`), nunca flujo propio (3.1.1).
+- El "período libre" es server-side, NO un intro offer de Apple → el copy dice
+  "Acceso completo", nunca "prueba/gratis"; el headline de gate es neutral
+  ("Tu acceso está pausado"), sin representar una oferta de Apple inexistente.
+
 ### Cambiar de plan: upgrade inmediato vs downgrade diferido
 
 `ChangePlanSheet` (selector de tiles) → `onConfirmChange` clasifica el destino

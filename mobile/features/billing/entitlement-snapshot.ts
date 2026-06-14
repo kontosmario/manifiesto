@@ -6,12 +6,13 @@
  * Spec: docs/superpowers/specs/2026-06-12-apple-subscriptions-design.md
  */
 
-export type EntitlementSource =
-  | 'comped'
-  | 'family'
-  | 'trial'
-  | 'subscription'
-  | 'free'
+/**
+ * Valores que emite la RPC `resolve_entitlement` (cascada server-side). Una
+ * suscripción PROPIA resuelve como 'family' (la familia es la unidad de
+ * facturación), NO existe un source 'subscription' — el acceso pagado siempre
+ * llega vía 'family'. Orden de precedencia: comped > family > trial > free.
+ */
+export type EntitlementSource = 'comped' | 'family' | 'trial' | 'free'
 
 export interface EntitlementSnapshot {
   source: EntitlementSource

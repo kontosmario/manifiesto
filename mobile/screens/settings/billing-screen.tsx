@@ -92,10 +92,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const [optimisticPending, setOptimisticPending] =
     useState<BillingPlanId | null>(null)
 
-  const isManage =
-    snap.source === 'subscription' ||
-    snap.source === 'family' ||
-    snap.source === 'comped'
+  // Vista de gestión = tiene acceso pagado/cubierto (familia) o cortesía.
+  const isManage = snap.source === 'family' || snap.source === 'comped'
 
   // Plan al que renovaría hoy → default del selector de "Cambiar de plan".
   // Prioridad: pending del server > pending optimista (downgrade recién

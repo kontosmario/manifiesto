@@ -111,7 +111,11 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
     >
       <View style={styles.body}>
         {isCelebration ? (
-          <CelebrationMark reduced={reduced} heroGradient={theme.colors.heroGradient} />
+          <CelebrationMark
+            reduced={reduced}
+            heroGradient={theme.colors.heroGradient}
+            heroAccent={theme.colors.heroAccent}
+          />
         ) : (
           <SimpleMark variant={variant} theme={theme} />
         )}
@@ -128,9 +132,11 @@ function isError(v: PurchaseResultVariant): boolean {
 function CelebrationMark({
   reduced,
   heroGradient,
+  heroAccent,
 }: {
   reduced: boolean
   heroGradient: readonly string[]
+  heroAccent: string
 }) {
   const scale = useSharedValue(reduced ? 1 : 0.9)
   const opacity = useSharedValue(reduced ? 1 : 0)
@@ -149,7 +155,7 @@ function CelebrationMark({
   return (
     <View style={styles.celebrateWrap}>
       {!reduced ? <ConfettiBurst /> : null}
-      <Animated.View style={[styles.circle, animated]}>
+      <Animated.View style={[styles.circle, { shadowColor: heroAccent }, animated]}>
         <LinearGradient
           colors={[...heroGradient] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
@@ -195,7 +201,6 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 999,
     overflow: 'hidden',
-    shadowColor: '#A6EF8F',
     shadowOpacity: 0.5,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },

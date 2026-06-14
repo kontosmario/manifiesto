@@ -131,11 +131,21 @@ export const ManageView = memo(function ManageView({
       </RiseView>
       <RiseView delay={160}>
         <View style={styles.footer}>
-          <Pressable onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Términos de uso"
+            hitSlop={8}
+            onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
+          >
             <Text style={linkStyle}>Términos de uso</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
-          <Pressable onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Política de privacidad"
+            hitSlop={8}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          >
             <Text style={linkStyle}>Privacidad</Text>
           </Pressable>
         </View>
