@@ -27,6 +27,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  */
 export type PurchaseResultVariant =
   | 'success'
+  | 'planScheduled'
   | 'error'
   | 'restored'
   | 'restoreError'
@@ -48,6 +49,11 @@ const COPY: Record<
     title: '¡Bienvenido al hogar!',
     body: (planName) =>
       `Tu ${planName ?? 'plan'} ya está activo. Acceso completo para vos y tu hogar.`,
+  },
+  planScheduled: {
+    title: 'Cambio de plan programado',
+    body: (planName) =>
+      `Tu ${planName ?? 'nuevo plan'} empieza en tu próxima renovación. Hasta entonces seguís con tu plan actual.`,
   },
   restored: {
     title: 'Recuperamos tu suscripción',
@@ -77,7 +83,12 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
   const reduced = useReducedMotion()
   const copy = COPY[variant]
   const isCelebration = variant === 'success'
-  const isPositive = variant === 'success' || variant === 'restored'
+  const ctaLabel =
+    variant === 'success'
+      ? 'Empezar'
+      : variant === 'planScheduled'
+        ? 'Entendido'
+        : 'Listo'
 
   const footer = isError(variant) ? (
     <View style={styles.footerCol}>
@@ -87,12 +98,7 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
       <AppButton label="Cerrar" variant="ghost" fullWidth onPress={onClose} />
     </View>
   ) : (
-    <AppButton
-      label={isCelebration ? 'Empezar' : 'Listo'}
-      variant="primary"
-      fullWidth
-      onPress={onClose}
-    />
+    <AppButton label={ctaLabel} variant="primary" fullWidth onPress={onClose} />
   )
 
   return (
@@ -107,7 +113,7 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
         {isCelebration ? (
           <CelebrationMark reduced={reduced} heroGradient={theme.colors.heroGradient} />
         ) : (
-          <SimpleMark positive={isPositive} theme={theme} />
+          <SimpleMark variant={variant} theme={theme} />
         )}
       </View>
     </ModalCard>
@@ -158,22 +164,24 @@ function CelebrationMark({
   )
 }
 
-/** Ícono simple para error/restore (sin celebración). */
+/** Ícono simple para error / restore / cambio programado (sin celebración). */
 function SimpleMark({
-  positive,
+  variant,
   theme,
 }: {
-  positive: boolean
+  variant: PurchaseResultVariant
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
-  const state = getStateTokens(positive ? 'positive' : 'caution', theme)
+  const isErr = variant === 'error' || variant === 'restoreError'
+  const state = getStateTokens(isErr ? 'caution' : 'positive', theme)
+  const icon = isErr
+    ? 'error-outline'
+    : variant === 'planScheduled'
+      ? 'event-available'
+      : 'check'
   return (
     <View style={[styles.simpleCircle, { backgroundColor: state.bg }]}>
-      <MaterialIcons
-        name={positive ? 'check' : 'error-outline'}
-        size={26}
-        color={state.fg}
-      />
+      <MaterialIcons name={icon} size={26} color={state.fg} />
     </View>
   )
 }

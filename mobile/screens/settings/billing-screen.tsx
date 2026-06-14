@@ -70,14 +70,19 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     snap.source === 'comped'
 
   const doPurchase = useCallback(
-    async (plan: BillingPlan) => {
+    async (plan: BillingPlan, isChange = false) => {
       void triggerHaptic('selection')
       setRetryPlan(plan)
       const result = await billing.purchasePlan(plan)
       if (result.ok) {
         void triggerHaptic('success')
+        // Un "Cambiar de plan" es un crossgrade DIFERIDO (no inmediato): el
+        // sheet lo comunica como "programado", no como "¡Bienvenido!".
         presentAfterNativeUI(() =>
-          setSheet({ variant: 'success', planName: plan.name }),
+          setSheet({
+            variant: isChange ? 'planScheduled' : 'success',
+            planName: plan.name,
+          }),
         )
       } else if (result.reason === CANCELLED_REASON) {
         // Cancelar NO es error → sin sheet (toast opcional, fuera de scope).
@@ -108,7 +113,7 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
   const onChangePlan = useCallback(() => {
     const otherId: BillingPlanId =
       snap.plan === 'yearly' ? 'hogar-mensual' : 'hogar-anual'
-    void doPurchase(BILLING_PLANS[otherId])
+    void doPurchase(BILLING_PLANS[otherId], true)
   }, [snap.plan, doPurchase])
 
   const closeSheet = useCallback(() => setSheet(null), [])
