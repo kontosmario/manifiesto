@@ -80,7 +80,7 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         // sheet lo comunica como "programado", no como "¡Bienvenido!".
         presentAfterNativeUI(() =>
           setSheet({
-            variant: isChange ? 'planScheduled' : 'success',
+            variant: isChange ? 'planChanged' : 'success',
             planName: plan.name,
           }),
         )

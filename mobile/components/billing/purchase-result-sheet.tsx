@@ -27,7 +27,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  */
 export type PurchaseResultVariant =
   | 'success'
-  | 'planScheduled'
+  | 'planChanged'
   | 'error'
   | 'restored'
   | 'restoreError'
@@ -50,10 +50,10 @@ const COPY: Record<
     body: (planName) =>
       `Tu ${planName ?? 'plan'} ya está activo. Acceso completo para vos y tu hogar.`,
   },
-  planScheduled: {
-    title: 'Cambio de plan programado',
-    body: (planName) =>
-      `Tu ${planName ?? 'nuevo plan'} empieza en tu próxima renovación. Hasta entonces seguís con tu plan actual.`,
+  planChanged: {
+    title: 'Plan actualizado',
+    body: () =>
+      'Listo. Vas a ver el cambio reflejado en "Mi suscripción" — al instante si fue una mejora, o en tu próxima renovación si fue un cambio a un plan menor.',
   },
   restored: {
     title: 'Recuperamos tu suscripción',
@@ -86,7 +86,7 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
   const ctaLabel =
     variant === 'success'
       ? 'Empezar'
-      : variant === 'planScheduled'
+      : variant === 'planChanged'
         ? 'Entendido'
         : 'Listo'
 
@@ -176,7 +176,7 @@ function SimpleMark({
   const state = getStateTokens(isErr ? 'caution' : 'positive', theme)
   const icon = isErr
     ? 'error-outline'
-    : variant === 'planScheduled'
+    : variant === 'planChanged'
       ? 'event-available'
       : 'check'
   return (
