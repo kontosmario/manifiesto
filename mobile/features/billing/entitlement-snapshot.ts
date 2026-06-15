@@ -10,9 +10,10 @@
  * Valores que emite la RPC `resolve_entitlement` (cascada server-side). Una
  * suscripción PROPIA resuelve como 'family' (la familia es la unidad de
  * facturación), NO existe un source 'subscription' — el acceso pagado siempre
- * llega vía 'family'. Orden de precedencia: comped > family > trial > free.
+ * llega vía 'family'. `mvp` = super cuenta (acceso total de por vida, otorgado
+ * por el super admin). Orden de precedencia: mvp > comped > family > trial > free.
  */
-export type EntitlementSource = 'comped' | 'family' | 'trial' | 'free'
+export type EntitlementSource = 'mvp' | 'comped' | 'family' | 'trial' | 'free'
 
 export interface EntitlementSnapshot {
   source: EntitlementSource

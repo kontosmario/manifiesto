@@ -44,6 +44,17 @@ export function membershipVariant(
     | 'isPurchaser'
   >,
 ): MembershipVariant {
+  // MVP — super cuenta: acceso total de por vida, sin sub ni cobro.
+  if (snap.source === 'mvp') {
+    return {
+      tone: 'active',
+      statusLabel: 'MVP',
+      heroLine: 'Acceso total de por vida',
+      primaryAction: null,
+      canManage: false,
+      note: 'Tu cuenta tiene acceso completo, sin vencimiento.',
+    }
+  }
   // Cortesía (acceso manual): no hay sub que gestionar.
   if (snap.source === 'comped') {
     return {

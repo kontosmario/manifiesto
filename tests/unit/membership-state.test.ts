@@ -82,4 +82,12 @@ describe('membershipVariant', () => {
     expect(v.primaryAction).toBeNull()
     expect(v.canManage).toBe(false)
   })
+
+  it('mvp → MVP / acceso total de por vida / sin acción / !canManage', () => {
+    const v = membershipVariant({ ...base, source: 'mvp' })
+    expect(v.statusLabel).toBe('MVP')
+    expect(v.heroLine).toBe('Acceso total de por vida')
+    expect(v.primaryAction).toBeNull()
+    expect(v.canManage).toBe(false)
+  })
 })

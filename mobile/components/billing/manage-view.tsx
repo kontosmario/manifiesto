@@ -44,6 +44,8 @@ export const ManageView = memo(function ManageView({
 }: ManageViewProps) {
   const { theme } = useAppTheme()
   const variant = membershipVariant(snap)
+  // MVP (super cuenta) no tiene sub: ocultamos renovación/precio/auto-renovación.
+  const isMvp = snap.source === 'mvp'
   const { initials } = useHouseholdInitials(familyId)
   const plan =
     snap.plan === 'yearly'
@@ -115,16 +117,18 @@ export const ManageView = memo(function ManageView({
           </View>
         </RiseView>
       ) : null}
-      <RiseView delay={80}>
-        <SubscriptionDetailRows
-          renewValue={formatDate(snap.expiresAt)}
-          initials={initials}
-          memberCount={snap.memberCount}
-          memberCap={snap.memberCap}
-          autoRenew={snap.autoRenew}
-          priceLabel={variant.canManage ? priceLabel : undefined}
-        />
-      </RiseView>
+      {!isMvp ? (
+        <RiseView delay={80}>
+          <SubscriptionDetailRows
+            renewValue={formatDate(snap.expiresAt)}
+            initials={initials}
+            memberCount={snap.memberCount}
+            memberCap={snap.memberCap}
+            autoRenew={snap.autoRenew}
+            priceLabel={variant.canManage ? priceLabel : undefined}
+          />
+        </RiseView>
+      ) : null}
       <RiseView delay={100}>
         <HouseholdMembersList familyId={familyId} />
       </RiseView>
