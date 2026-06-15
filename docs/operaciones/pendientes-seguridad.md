@@ -39,7 +39,7 @@ Acciones diferidas del hardening del 2026-05-07/08. **Ninguna es bloqueante**: e
 | 5 | Verificar usuario `aye.tello18` en prod | Medium | 1 min | [§5](#5-verificación-del-usuario-de-test-ayetello18gmailcom) |
 | 9 | Universal Links iOS (en lugar de custom scheme) | Medium | requiere dominio | [§9](#9-universal-links-en-lugar-de-custom-scheme-ios--m-2) |
 | 11 | Android prebuild + audit del manifest | Medium | antes de Play Store | [§11](#11-android-prebuild--audit-del-manifest) |
-| 2 | Captcha (con build update) | Medium | 15 min + build | [§2](#2-captcha-en-auth-dashboard--cambios-en-cliente) |
+| 2 | ~~Captcha en auth~~ | ~~Medium~~ | ✅ Decisión 2026-06-15: DESHABILITADO a propósito — ver §2 |
 | 14 | Verificación manual vía SQL Editor | Low | 5 min | [§14](#14-verificar-manualmente-vía-sql-editor-cobertura-del-cli) |
 | 3 | HIBP (plan Pro) | Low | 1 toggle | [§3](#3-hibp-leaked-password-protection-dashboard-10s) |
 | 4 | Realtime private channels (confirmar) | Low | 1 click | [§4](#4-realtime-private-channels--rls-aware-subscriptions-dashboard-1-click) |
@@ -71,23 +71,29 @@ Acciones diferidas del hardening del 2026-05-07/08. **Ninguna es bloqueante**: e
 
 ---
 
-## 2. Captcha en Auth (dashboard + cambios en cliente)
+## 2. Captcha en Auth — DESHABILITADO (decisión owner 2026-06-15)
 
-**Estado:** diferido — requiere build nueva del cliente
-**Ubicación:** Auth → Settings → Attack Protection → Captcha
-**Cambios:**
-- Activar hCaptcha o Cloudflare Turnstile (recomendado: Turnstile, gratis, sin friction visible)
-- Pegar el secret key del provider en el dashboard
+**Estado:** ✅ resuelto por decisión — captcha **deshabilitado a propósito** en los
+3 flujos (login / signup / reset).
 
-**Cliente (necesario antes de habilitarlo en producción):**
-- Integrar el SDK del provider (Turnstile tiene RN binding nativo)
-- Pasar el captcha token a `supabase.auth.signUp({ ..., options: { captchaToken } })` y `signInWithPassword({ ..., options: { captchaToken } })`
-- Pasarlo también a `resetPasswordForEmail`
-- Probar el fallback cuando el captcha no resuelve (red lenta, reintentos)
+**Por qué:** el modal de hCaptcha YA estaba integrado en el cliente (login,
+signup, reset) pero Supabase Auth tenía `security_captcha_enabled=false` → el
+token nunca se validaba server-side. Era **fricción visible sin protección real**.
+El owner decidió sacarlo en vez de activar el enforcement (que metería captcha en
+CADA login). Kill-switch: `CAPTCHA_ENABLED=false` en `mobile/lib/captcha-config.ts`
+→ `isCaptchaConfigured()` devuelve false → el modal nunca se abre.
 
-**Cierra:** AB-7 (signup abuse vía botnet) + email enumeration parcial.
-**Riesgo si no se hace:** medio. Sin captcha, un atacante puede mintear cuentas anónimas y enumerar emails. Combinado con `enable_signup = true` esto facilita reconocimiento.
-**⚠️ No habilitar sin el cliente actualizado:** rompe todos los signups y logins inmediatamente.
+**Mitigación que queda:** rate-limiting nativo de Supabase Auth
+(`rate_limit_otp=30`, `rate_limit_token_refresh=150`, etc.) + password policy (§1).
+
+**Para reactivar (si cambia la postura):** poner `CAPTCHA_ENABLED=true` + prender
+el enforcement en Supabase (Auth → Bot and Abuse Protection) + cargar el secret +
+build nueva. ⚠️ Activar el enforcement server SIN el cliente pasando token rompe
+todos los signups/logins. El scaffolding del cliente (`useCaptcha`, `CaptchaModal`,
+`captcha-config`) sigue en su lugar, inerte detrás del flag.
+
+**Riesgo residual:** bajo-medio. Sin captcha, un bot puede mintear cuentas y
+enumerar emails; el rate-limiting frena la velocidad. Aceptado para v1.0.
 
 ---
 

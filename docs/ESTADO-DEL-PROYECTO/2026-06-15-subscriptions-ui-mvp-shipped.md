@@ -59,5 +59,6 @@ del rediseño hasta el super-admin MVP y el fix defensivo del chip de acceso.
 
 ## Pendiente para LANZAR
 Ver [`docs/PRE-LAUNCH.md`](../PRE-LAUNCH.md): build nuevo, Paid Apps Agreement,
-enviar la suscripción a revisión, `APP_ENV→production`, limpiar test states,
-re-habilitar captcha.
+enviar la suscripción a revisión, `APP_ENV→production`, limpiar test states.
+(Captcha: deshabilitado a propósito el 2026-06-15 — era fricción sin protección;
+ya no es blocker.)
