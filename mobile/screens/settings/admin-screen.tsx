@@ -126,7 +126,9 @@ export function AdminScreen() {
                 {u.email}
               </Text>
               {(() => {
-                const chip = ACCESS_CHIP[u.access]
+                // Defensivo: cualquier `access` desconocido (p.ej. datos viejos
+                // en cache) cae a 'none' en vez de crashear.
+                const chip = ACCESS_CHIP[u.access] ?? ACCESS_CHIP.none
                 const t = getStateTokens(chip.state, theme)
                 return (
                   <View style={styles.statusRow}>
