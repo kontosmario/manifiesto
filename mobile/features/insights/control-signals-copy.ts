@@ -25,11 +25,11 @@ export function recoveryHardBody(
 ): string {
   switch (framing) {
     case 'loss':
-      return `Sin recortar a ${args.newCupo}/día, el cierre del mes vas a perderlo: el sobregiro de ${args.overspend} se acumula y arrastra al próximo ciclo.`
+      return `Si no bajás a ${args.newCupo} por día, el mes te va a cerrar ${args.overspend} más caro de lo que tenías pensado, y eso te complica el mes que viene.`
     case 'gain':
-      return `Recortando a ${args.newCupo}/día durante ${args.diasRestantes} días recuperás el ritmo y cierras dentro del presupuesto.`
+      return `Gastando menos de ${args.newCupo} por día estos ${args.diasRestantes} días, llegás a fin de mes sin pasarte.`
     default:
-      return `Para recuperar el ritmo habría que gastar menos de ${args.newCupo}/día los próximos ${args.diasRestantes} días — es muy difícil. Mejor reajustar la meta o reordenar algún gasto fijo.`
+      return `Para llegar bien a fin de mes tendrías que gastar menos de ${args.newCupo} por día — es muy poco. Mejor bajá un poco lo que querés ahorrar, o corré algún pago grande para más adelante.`
   }
 }
 
@@ -44,20 +44,25 @@ export function velocityBody(
   framing: CopyFraming,
   args: VelocityCopyArgs,
 ): string {
-  const base = args.faster
-    ? `Es ${args.momentumPct}% más rápido que el promedio del mes.`
-    : 'El ritmo bajó respecto al promedio del mes.'
+  // `over` = cuántos pesos de más vas a gastar respecto a lo planeado (o null).
+  if (!args.faster) {
+    return args.over
+      ? `Aunque venís más tranqui que otras veces, todavía vas ${args.over} arriba de lo que tenías pensado. Seguí cuidándote y llegás.`
+      : `Venís gastando más tranqui que de costumbre — así llegás bien a fin de mes.`
+  }
   switch (framing) {
     case 'loss':
       return args.over
-        ? `Si no frenas, el cierre estimado es ${args.forecast}: te vas ${args.over} por encima del presupuesto. ${base}`
-        : `Cierre estimado a este ritmo: ${args.forecast}. ${base}`
+        ? `Si seguís gastando así, el mes te va a cerrar ${args.over} más caro de lo que tenías pensado. Aflojá un poco estos días y llegás bien.`
+        : `Vas un poco acelerado para esta altura del mes, pero todavía llegás. Ojo con los próximos días.`
     case 'gain':
       return args.over
-        ? `Si bajas el ritmo ${args.over} en lo que queda, el cierre vuelve a presupuesto. ${base}`
-        : `Estás dentro de margen. ${base}`
+        ? `Gastando ${args.over} menos en lo que queda del mes, llegás justo a lo que tenías pensado.`
+        : `Vas bien, dentro de lo que tenías pensado para este mes.`
     default:
-      return `Al ritmo de los últimos 7 días, el cierre estimado es ${args.forecast}. ${base}`
+      return args.over
+        ? `A este paso, el mes te va a cerrar ${args.over} más caro de lo que tenías pensado. Bajá un poco y llegás.`
+        : `Si seguís así, llegás a fin de mes sin pasarte de lo que tenías pensado.`
   }
 }
 
@@ -73,11 +78,11 @@ export function fijosRatioBody(
 ): string {
   switch (framing) {
     case 'loss':
-      return `Estás perdiendo flexibilidad: con fijos al ${args.ratioPct}% del ingreso, cada imprevisto pega más fuerte. Excedente saludable comprometido: ${args.excess}.`
+      return `Tus pagos fijos (alquiler, servicios, suscripciones) se comen una parte muy grande del sueldo: si aparece un gasto inesperado, casi no te queda colchón. Bajar el más grande te libera ${args.excess} por mes.`
     case 'gain':
-      return `Bajando los fijos al 50% del ingreso recuperás ${args.excess}/mes para gasto variable o ahorro. Vale renegociar el más grande.`
+      return `Si bajás tus pagos fijos (alquiler, servicios, suscripciones), te quedan ${args.excess} más por mes para el día a día o para guardar. El más grande es el que más mueve la aguja.`
     default:
-      return `Lo saludable es ≤50%. Hoy, de cada $100 que entran, $${args.comprometidoPct} ya están comprometidos.`
+      return `Tus pagos fijos (alquiler, servicios, suscripciones) se llevan una parte muy grande del sueldo: te queda poco para comer, salir y ahorrar. Bajar el más grande te libera ${args.excess} por mes.`
   }
 }
 
@@ -95,19 +100,19 @@ export function positiveForecastBody(
   if (args.goalTitle && args.proposed) {
     switch (framing) {
       case 'loss':
-        return `Si no mueves el excedente ahora, ${args.sobra} se diluyen el próximo ciclo. Sugerencia: pasar ${args.proposed} a "${args.goalTitle}" antes que se evapore.`
+        return `Si no la guardás ahora, esa plata que te va a sobrar (${args.sobra}) se va a ir en gastos del mes que viene. Pasá ${args.proposed} a "${args.goalTitle}" antes de que desaparezca.`
       case 'gain':
-        return `Vas adelantado: en ${args.diasRestantes} días el ciclo cierra con ${args.sobra} a favor. Mover ${args.proposed} a "${args.goalTitle}" capitaliza el momentum.`
+        return `Vas adelantado: a fin de mes te sobran ${args.sobra}. Aprovechá y pasá ${args.proposed} a "${args.goalTitle}".`
       default:
-        return `Si el ritmo se mantiene los ${args.diasRestantes} días que quedan, el ciclo cierra con saldo a favor. Sugerencia: mover ${args.proposed} a "${args.goalTitle}" ahora y dejar el resto como reserva.`
+        return `Si seguís así, a fin de mes te sobran ${args.sobra}. Una buena: pasá ${args.proposed} a "${args.goalTitle}" y dejá el resto guardado por las dudas.`
     }
   }
   switch (framing) {
     case 'loss':
-      return `El excedente proyectado de ${args.sobra} es fácil de perder si no lo destinás antes del cierre.`
+      return `Te van a sobrar ${args.sobra} a fin de mes — fáciles de gastar sin querer. Mejor decidí ya dónde guardarlos.`
     case 'gain':
-      return `Cierre del mes con ${args.sobra} a favor — buen momento para definir una meta de ahorro y capitalizar la racha.`
+      return `Buen mes: te sobran ${args.sobra}. Buen momento para arrancar una meta de ahorro.`
     default:
-      return `Si el ritmo se mantiene los ${args.diasRestantes} días que quedan, el ciclo cierra con saldo a favor. Ese excedente puede ir a una meta de ahorro o quedar como reserva.`
+      return `Si seguís así, a fin de mes te sobran ${args.sobra}. Esa plata puede ir a una meta de ahorro o quedar guardada por las dudas.`
   }
 }
