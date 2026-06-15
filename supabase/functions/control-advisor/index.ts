@@ -8,6 +8,26 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.5
  * Anthropic caches the identical tokens across every family call (prompt
  * caching is our only cache layer; there is no DB cache table).
  *
+ * ┌─ ESTADO: DORMIDO (capa OPCIONAL, preparada para el futuro) ──────────────┐
+ * │ Decisión owner 2026-06-15: el asistente es 100% HEURÍSTICO (las señales  │
+ * │ se calculan en el cliente, control-signals.ts). Este LLM es una capa     │
+ * │ opcional que REEMPLAZA las tareas heurísticas, gateada por el feature    │
+ * │ flag `ai_coach` (default FALSE) — ver mobile/features/flags.             │
+ * │ Hoy NO corre: falta el secret ANTHROPIC_API_KEY (isServerReady() = false │
+ * │ sin él → 500). El SYSTEM_PROMPT ya está escrito con la voz comprensible  │
+ * │ (ver docs/superpowers/specs/2026-06-15-asistente-voz-comprensible).      │
+ * │                                                                          │
+ * │ PARA ACTIVARLO EN EL FUTURO (3 pasos):                                   │
+ * │  1. supabase secrets set ANTHROPIC_API_KEY=sk-ant-...  (vía Management    │
+ * │     API o `supabase secrets set`).                                       │
+ * │  2. Prender el flag `ai_coach` (FEATURE_FLAGS en feature-flag-keys.ts,   │
+ * │     o el override remoto si existe).                                     │
+ * │  3. Redeployar: npm run supabase:remote:functions:deploy (config.toml ya │
+ * │     fija verify_jwt; la función valida el JWT con auth.getUser).         │
+ * │ Costo: Claude Sonnet ~1500 tokens/llamada, rate-limited 5/h por usuario  │
+ * │ y 8/h por familia.                                                       │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
  * POST  /functions/v1/control-advisor
  * Body  { familyId: string }
  * Auth  Supabase JWT (user must be a member of familyId)

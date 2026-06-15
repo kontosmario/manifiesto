@@ -66,6 +66,15 @@ leer lo que el asistente dice y ENTENDER sus finanzas. Test de cada texto:
 
 Cada tanda: typecheck + lint (+ expo export si toca render); commit.
 
+## Estado del LLM (control-advisor) — decisión 2026-06-15
+El asistente es **100% heurístico** (señales en el cliente, control-signals.ts).
+El LLM (control-advisor + Claude) es una capa **opcional, DORMIDA**, gateada por
+el flag `ai_coach` (default false) y hoy sin `ANTHROPIC_API_KEY` → no corre. El
+SYSTEM_PROMPT ya quedó con la voz comprensible (#1) para el día que se active.
+Runbook de activación en el header de `supabase/functions/control-advisor/index.ts`
+(setear la key + prender el flag + redeployar). NO se activa ahora.
+
 ## No-goals
 - No tocar el motor heurístico (los cálculos están bien) — solo la presentación.
 - Onboarding/glosario como pantalla aparte (decisión: inline, no pantalla nueva).
+- Activar el LLM (queda preparado, no encendido).
