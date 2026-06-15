@@ -195,7 +195,7 @@ export function useCreateIncomeEvent(userId?: string) {
       const pushBody = `${desc} · +$${created.amount}`
       void sendFamilyPush({
         familyId: input.familyId,
-        title: 'Nuevo ingreso registrado',
+        title: '{actor} registró un ingreso',
         body: pushBody,
         kind: 'income_logged',
         url: '/home',

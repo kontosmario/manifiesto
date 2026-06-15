@@ -148,9 +148,9 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
         void sendFamilyPush({
           familyId,
-          title: 'Nuevo gasto fijo',
+          title: '{actor} sumó un gasto fijo',
           body: pushBody,
-          kind: 'fixed_expense',
+          kind: 'fixed_created',
           url: '/fixed-expenses',
         }).catch(() => {})
       }
@@ -233,9 +233,9 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
         void sendFamilyPush({
           familyId,
-          title: 'Gasto fijo actualizado',
+          title: '{actor} editó un gasto fijo',
           body: pushBody,
-          kind: 'fixed_expense',
+          kind: 'fixed_edited',
           url: '/fixed-expenses',
         }).catch(() => {})
       }
@@ -612,9 +612,9 @@ export function useDeleteFixedExpense(familyId?: string, userId?: string) {
       if (familyId) {
         void sendFamilyPush({
           familyId,
-          title: 'Gasto fijo eliminado',
-          body: 'Se eliminó un gasto fijo.',
-          kind: 'fixed_expense',
+          title: '{actor} eliminó un gasto fijo',
+          body: '',
+          kind: 'fixed_deleted',
           url: '/fixed-expenses',
         }).catch(() => {})
       }

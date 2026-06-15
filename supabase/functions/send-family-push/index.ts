@@ -207,6 +207,7 @@ export function sanitizeText(value: string | undefined, maxLen: number): string 
 const ALLOWED_PUSH_KINDS = new Set([
   'info',
   'expense_logged',
+  'income_logged',
   'fixed_paid',
   'fixed_created',
   'fixed_edited',

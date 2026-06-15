@@ -499,9 +499,9 @@ export function useCreateExpense(familyId?: string, userId?: string) {
         const pushBody = `${variables.description.trim()} · $${variables.price}`
         void sendFamilyPush({
           familyId,
-          title: 'Nuevo gasto cargado',
+          title: '{actor} cargó un gasto',
           body: pushBody,
-          kind: 'expense',
+          kind: 'expense_logged',
           url: '/home',
         }).catch(() => {})
       }
