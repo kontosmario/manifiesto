@@ -8,10 +8,12 @@
 //     `user_advisor_prefs` table or when persona becomes a
 //     local-stored override).
 //
-//  2. Familias bloqueadas: list of `user_signal_blocklist` rows
-//     with an unblock CTA each.
+//  2. "Avisos que ocultaste" (UI) = `user_signal_blocklist` rows
+//     with an unblock CTA each. User-facing copy avoids "familia"
+//     (collides with household members) and "señal" — see the
+//     comprehensibility audit (2026-06-15).
 //
-//  3. Borrar mi historial: hard delete of own
+//  3. "Borrar lo que aprendió de mí" (UI): hard delete of own
 //     `advisor_interactions` rows (gated by RLS — requires the
 //     `delete_own` policy from migration 20260501010000).
 
@@ -117,9 +119,9 @@ const PERSONA_OPTIONS: { value: UserPersona; label: string }[] = (
 
 // Umbral de urgencia que dispara push (orden baja<media<alta).
 const URGENCY_OPTIONS: { value: AdvisorPushUrgency; label: string }[] = [
-  { value: 'alta', label: 'Solo alta' },
-  { value: 'media', label: 'Media+' },
-  { value: 'baja', label: 'Todas' },
+  { value: 'alta', label: 'Solo urgencias' },
+  { value: 'media', label: 'Importantes' },
+  { value: 'baja', label: 'Todo' },
 ]
 
 function formatHour(h: number): string {
@@ -211,12 +213,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const handleUnblock = useCallback(
     (family: string) => {
       Alert.alert(
-        'Volver a mostrar',
-        `${familyLabel(family)} va a empezar a aparecer cuando el patrón se detecte.`,
+        'Volver a mostrar este aviso',
+        `"${familyLabel(family)}" va a volver a aparecer cuando haga falta.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Desbloquear',
+            text: 'Mostrar de nuevo',
             onPress: () => {
               void triggerHaptic('selection')
               unblockMutation.mutate(
@@ -225,8 +227,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                   onError: () => {
                     void triggerHaptic('error')
                     Alert.alert(
-                      'No pudimos desbloquear',
-                      'Prueba de nuevo en unos segundos.',
+                      'No pudimos mostrarlo',
+                      'Probá de nuevo en unos segundos.',
                     )
                   },
                 },
@@ -242,8 +244,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
   const handleClearHistory = useCallback(() => {
     Alert.alert(
-      'Borrar historial del asistente',
-      'Esto borra el registro de interacciones (lo que viste, lo que actuaste, lo que descartaste). El asistente vuelve a "modo planner" hasta acumular datos nuevos. La acción no se puede deshacer.',
+      'Borrar lo que el asistente aprendió',
+      'Borra todo lo que el asistente fue aprendiendo de cómo usás la app. Va a arrancar de cero y tratarte como a alguien nuevo hasta volver a conocerte. No se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -264,11 +266,11 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               queryClient.invalidateQueries({
                 queryKey: ['advisor-interaction-stats', userId ?? null],
               })
-              Alert.alert('Listo', 'Tu historial fue borrado.')
+              Alert.alert('Listo', 'El asistente arranca de cero.')
             } catch {
               Alert.alert(
                 'No pudimos borrar',
-                'Si el problema persiste, escribinos para intervenir manualmente.',
+                'Probá de nuevo. Si sigue igual, escribinos.',
               )
             }
           },
@@ -282,7 +284,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Asistente"
-      subtitle="Cómo se comporta y qué patrones priorizar"
+      subtitle="Cómo te avisa y qué mira primero"
       canGoBack
     >
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
@@ -305,7 +307,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               </View>
             </View>
             <Text style={[styles.cardFootnote, { color: theme.colors.textSoft }]}>
-              {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de señal`}
+              {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de aviso`}
             </Text>
           </View>
         </RiseView>
@@ -335,16 +337,16 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
             {prefs.useInferredPersona
               ? totalShown < 10
-                ? `Inferencia preliminar (${totalShown} interacción${totalShown === 1 ? '' : 'es'} registrada${totalShown === 1 ? '' : 's'}). Después de 10 empieza a calibrarse a tu comportamiento.`
-                : `Inferido de tus ${totalShown} interacciones. Podés fijarlo vos abajo.`
+                ? `Recién te empiezo a conocer. Con el uso me voy ajustando a cómo manejás tu plata.`
+                : 'Lo elegí mirando cómo venís usando la app. Si querés, cambialo vos abajo.'
               : 'Lo elegiste vos. Volvé a automático cuando quieras.'}
           </Text>
         </View>
 
         <View style={styles.personaControls}>
           <SettingsSwitchRow
-            label="Usar perfil inferido automáticamente"
-            description="Si lo apagás, elegís vos cómo se comporta el asistente."
+            label="Elegir el estilo por mí"
+            description="Si lo apagás, lo elegís vos abajo."
             value={prefs.useInferredPersona}
             onValueChange={handleToggleInferred}
           />
@@ -361,8 +363,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       {showStats ? (
         <RiseView delay={140} style={styles.section}>
           <SectionHeader
-            title="Tus señales"
-            subtitle="Qué tanto actuás en cada tipo de aviso."
+            title="Tus avisos"
+            subtitle="Cuánto le hacés caso a cada tipo."
           />
           <View
             style={[
@@ -398,21 +400,21 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       <RiseView delay={200} style={styles.section}>
         <SectionHeader
-          title="Notificaciones del asistente"
-          subtitle="Cuándo y cómo te avisa fuera de la app."
+          title="Avisos del asistente"
+          subtitle="Cuándo y cómo te avisa."
         />
         <View style={styles.personaControls}>
           <SettingsSwitchRow
             label="Asistente financiero"
-            description="Si lo apagás, deja de calcular y mostrar señales."
+            description="Si lo apagás, deja de darte avisos y consejos."
             value={advisorEnabled}
             onValueChange={(v) => updatePrefs.mutate({ advisorEnabled: v })}
           />
           {advisorEnabled ? (
             <>
               <SettingsSwitchRow
-                label="Notificaciones push"
-                description="Apagado: las señales solo aparecen dentro de la app, sin push."
+                label="Notificaciones en el celular"
+                description="Si lo apagás, los avisos aparecen solo cuando abrís la app."
                 value={pushEnabled}
                 onValueChange={(v) => updateNotifPrefs.mutate({ advisorPushEnabled: v })}
               />
@@ -428,10 +430,10 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                       onPress={() => setQuietPicker('start')}
                       style={({ pressed }) => [styles.statRow, pressed && { opacity: 0.6 }]}
                       accessibilityRole="button"
-                      accessibilityLabel="Cambiar inicio del silencio"
+                      accessibilityLabel="Cambiar desde qué hora no molestar"
                     >
                       <Text style={[styles.statLabel, { color: theme.colors.text }]}>
-                        Silencio desde
+                        No molestar desde
                       </Text>
                       <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
                         {formatHour(quietStart)}
@@ -448,9 +450,9 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                         pressed && { opacity: 0.6 },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel="Cambiar fin del silencio"
+                      accessibilityLabel="Cambiar hasta qué hora no molestar"
                     >
-                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>Hasta</Text>
+                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>hasta</Text>
                       <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
                         {formatHour(quietEnd)}
                       </Text>
@@ -458,7 +460,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                   </View>
                   <View style={styles.urgencyWrap}>
                     <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
-                      Avisarme por push cuando la urgencia sea:
+                      ¿Cuándo te aviso al celular?
                     </Text>
                     <SegmentedControl
                       options={URGENCY_OPTIONS}
@@ -475,11 +477,11 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       <RiseView delay={260} style={styles.section}>
         <SectionHeader
-          title="Familias bloqueadas"
+          title="Avisos que ocultaste"
           subtitle={
             blocklistQuery.data && blocklistQuery.data.length > 0
-              ? 'Toca una para desbloquear.'
-              : 'Cuando bloqueas una familia desde el chat, aparece aquí.'
+              ? 'Tocá uno para que ese aviso vuelva a aparecer.'
+              : 'Si ocultás un tipo de aviso, aparece acá.'
           }
         />
         {blocklistQuery.data && blocklistQuery.data.length > 0 ? (
@@ -502,7 +504,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                   pressed && { opacity: 0.7 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`Desbloquear ${familyLabel(entry.signal_family)}`}
+                accessibilityLabel={`Volver a mostrar ${familyLabel(entry.signal_family)}`}
               >
                 <View style={styles.blocklistLeft}>
                   <MaterialIcons name="block" size={18} color={theme.colors.textMuted} />
@@ -526,7 +528,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           </View>
         ) : (
           <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-            No tienes familias bloqueadas.
+            No ocultaste ningún aviso.
           </Text>
         )}
       </RiseView>
@@ -534,7 +536,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       <RiseView delay={320} style={styles.section}>
         <SectionHeader
           title="Privacidad"
-          subtitle="Tu historial de interacciones se usa solo para calibrar el asistente."
+          subtitle="Lo que hacés en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
         />
         <Pressable
           onPress={handleClearHistory}
@@ -544,16 +546,16 @@ export function AsistentePreferencesScreen({ userId }: Props) {
             pressed && { opacity: 0.7 },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Borrar mi historial del asistente"
+          accessibilityLabel="Borrar lo que el asistente aprendió de mí"
         >
           <MaterialIcons name="delete-outline" size={18} color="#B33A1F" />
-          <Text style={styles.dangerLabel}>Borrar mi historial</Text>
+          <Text style={styles.dangerLabel}>Borrar lo que aprendió de mí</Text>
         </Pressable>
       </RiseView>
 
       <ModalCard
         visible={quietPicker !== null}
-        title={quietPicker === 'start' ? 'Silencio desde' : 'Silencio hasta'}
+        title={quietPicker === 'start' ? 'No molestar desde' : 'No molestar hasta'}
         onClose={() => setQuietPicker(null)}
       >
         <View style={styles.hourList}>
