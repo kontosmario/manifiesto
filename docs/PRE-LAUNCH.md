@@ -98,6 +98,15 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
   (no fabrica timestamps → no brickea entitlements).
 - ✅ Captcha deshabilitado a propósito (C3); rate-limiting nativo de Supabase
   activo (`rate_limit_otp`, etc.).
+- ✅ **Push pipeline hardening (2026-06-15)**: auditoría adversarial (44 findings)
+  + fixes. Ver `docs/sistemas/notifications.md` (sección "Pipeline de entrega").
+  Edge functions deployadas + migración `20260620180000` aplicada. **Causa raíz
+  histórica**: `register-push-subscription` nunca estuvo deployada (no estaba en
+  config.toml ni en los scripts) → push roto en silencio ~7-10 semanas.
+- ⚠️ **Antes de cada release, correr `npm run supabase:functions:check`** — verifica
+  que las 6 edge functions tengan entry en `config.toml` (con `verify_jwt` explícito)
+  y no quede ninguna sin deployar/configurar. Los scripts npm de deploy ahora
+  deployan TODAS, no una hardcodeada.
 
 ---
 
