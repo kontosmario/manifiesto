@@ -1,33 +1,36 @@
 // Asistente Financiero — preferences screen.
 //
-// Three controls in one place:
+// Rebuilt on the app's canonical grouped-settings system
+// (SettingsGroup / SettingsRow / SettingsSwitchRow) so it looks and
+// behaves exactly like the rest of Ajustes: icon + chevron affordances,
+// press-scale feedback, haptics, grouped cards with eyebrow titles.
+// Intuitiveness pass (2026-06-15): controls before passive info, push
+// sub-settings grouped under their switch, persona pickable as an
+// iOS-style checklist. Copy follows the comprehensibility standard
+// (no "familia" — collides with household members — no internal terms).
 //
-//  1. Persona (planner / firefighter / avoider / optimizer):
-//     read-only inferred persona + override (just an explanation
-//     today; the override write-path lands when we add a
-//     `user_advisor_prefs` table or when persona becomes a
-//     local-stored override).
-//
-//  2. "Avisos que ocultaste" (UI) = `user_signal_blocklist` rows
-//     with an unblock CTA each. User-facing copy avoids "familia"
-//     (collides with household members) and "señal" — see the
-//     comprehensibility audit (2026-06-15).
-//
-//  3. "Borrar lo que aprendió de mí" (UI): hard delete of own
-//     `advisor_interactions` rows (gated by RLS — requires the
-//     `delete_own` policy from migration 20260501010000).
+// Controls in one place:
+//  1. Avisos: master on/off + push (cuándo / no molestar / nivel).
+//  2. Tu estilo: persona inferida o elegida a mano (checklist).
+//  3. Tus avisos: resumen de a cuáles les hacés caso (solo lectura).
+//  4. "Avisos que ocultaste" = `user_signal_blocklist` rows + unblock.
+//  5. "Borrar lo que aprendió de mí": hard delete of own
+//     `advisor_interactions` rows (gated by RLS — `delete_own` policy,
+//     migration 20260501010000).
 
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 
 import { Screen } from '@/components/ui/screen'
-import { SectionHeader } from '@/components/ui/section-header'
-import { SegmentedControl } from '@/components/ui/segmented-control'
-import { SettingsSwitchRow } from '@/components/settings/settings-primitives'
 import { ModalCard } from '@/components/ui/modal-card'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import {
+  SettingsGroup,
+  SettingsRow,
+  SettingsSwitchRow,
+} from '@/components/settings/settings-grouped-list'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { formatMoney } from '@/utils/money'
@@ -52,6 +55,8 @@ import {
   useUnblockSignalFamily,
 } from '@/features/insights/use-signal-blocklist'
 import { useQueryClient } from '@tanstack/react-query'
+
+type IconName = keyof typeof MaterialIcons.glyphMap
 
 interface Props {
   userId: string
@@ -103,26 +108,49 @@ function familyLabel(family: string): string {
 // porcentajes crudos, que se sienten fríos / invitan a "gamear" el número).
 function engagementPhrase(ctr: number, acted: number): string {
   if (acted === 0) return 'todavía no'
-  if (ctr >= 0.5) return 'actuás seguido'
+  if (ctr >= 0.5) return 'seguido'
   if (ctr >= 0.2) return 'a veces'
   return 'rara vez'
 }
 
-// Mínimo de muestras para que una familia entre en "Tus señales" (evita
+// El mismo dato como ícono de tendencia: refuerza "le hacés caso / no" de un
+// vistazo, sin pedir leer.
+function engagementIcon(ctr: number, acted: number): IconName {
+  if (acted === 0) return 'remove'
+  if (ctr >= 0.5) return 'trending-up'
+  if (ctr >= 0.2) return 'trending-flat'
+  return 'trending-down'
+}
+
+// Mínimo de muestras para que una familia entre en "Tus avisos" (evita
 // mostrar ruido con 1-2 apariciones).
 const MIN_FAMILY_SAMPLE = 3
 const TOP_FAMILIES = 5
 
-const PERSONA_OPTIONS: { value: UserPersona; label: string }[] = (
-  ['planner', 'firefighter', 'avoider', 'optimizer'] as UserPersona[]
-).map((p) => ({ value: p, label: PERSONA_PROFILES[p].label }))
-
-// Umbral de urgencia que dispara push (orden baja<media<alta).
-const URGENCY_OPTIONS: { value: AdvisorPushUrgency; label: string }[] = [
-  { value: 'alta', label: 'Solo urgencias' },
-  { value: 'media', label: 'Importantes' },
-  { value: 'baja', label: 'Todo' },
+// Personas elegibles a mano, en orden, con su ícono.
+const PERSONA_PICKS: { value: UserPersona; icon: IconName }[] = [
+  { value: 'planner', icon: 'fact-check' },
+  { value: 'firefighter', icon: 'bolt' },
+  { value: 'avoider', icon: 'spa' },
+  { value: 'optimizer', icon: 'trending-up' },
 ]
+const PERSONA_ICON: Record<UserPersona, IconName> = {
+  planner: 'fact-check',
+  firefighter: 'bolt',
+  avoider: 'spa',
+  optimizer: 'trending-up',
+}
+
+// Umbral de urgencia que dispara push (orden baja<media<alta) → frase llana.
+const URGENCY_OPTIONS: { value: AdvisorPushUrgency; label: string; helper: string }[] = [
+  { value: 'alta', label: 'Solo urgencias', helper: 'Solo lo que no puede esperar.' },
+  { value: 'media', label: 'Importantes', helper: 'Las urgencias y los cambios que conviene saber.' },
+  { value: 'baja', label: 'Todo', helper: 'Cualquier aviso, apenas pasa.' },
+]
+
+function urgencyLabel(value: AdvisorPushUrgency): string {
+  return URGENCY_OPTIONS.find((o) => o.value === value)?.label ?? 'Todo'
+}
 
 function formatHour(h: number): string {
   return `${String(h).padStart(2, '0')}:00`
@@ -175,6 +203,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const updateNotifPrefs = useUpdateNotificationPreferences()
   const notifPrefs = notifPrefsQuery.data
   const [quietPicker, setQuietPicker] = useState<'start' | 'end' | null>(null)
+  const [urgencyOpen, setUrgencyOpen] = useState(false)
 
   const advisorEnabled = prefs.advisorEnabled
   const pushEnabled = notifPrefs?.advisorPushEnabled ?? true
@@ -193,12 +222,21 @@ export function AsistentePreferencesScreen({ userId }: Props) {
     [quietPicker, updateNotifPrefs],
   )
 
+  const handlePickUrgency = useCallback(
+    (value: AdvisorPushUrgency) => {
+      void triggerHaptic('selection')
+      updateNotifPrefs.mutate({ advisorPushMinUrgency: value })
+      setUrgencyOpen(false)
+    },
+    [updateNotifPrefs],
+  )
+
   // #1 Card de valor: solo si hay ahorro realizado (decisión: ocultar si 0
   // para no mostrar un $0 desmotivador). saved_quarter ≥ saved_month siempre.
   const value = valueQuery.data
   const showValueCard = Boolean(value && value.savedQuarter > 0)
 
-  // #3 "Tus señales": top familias por CTR con muestra mínima. Oculta hasta
+  // "Tus avisos": top familias por CTR con muestra mínima. Oculta hasta
   // calibrar (mismo umbral de 10 que el footnote de la persona).
   const topFamilies = useMemo(() => {
     const perFamily = statsQuery.data?.perFamily
@@ -209,6 +247,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       .slice(0, TOP_FAMILIES)
   }, [statsQuery.data])
   const showStats = totalShown >= 10 && topFamilies.length > 0
+
+  const blocklist = blocklistQuery.data ?? []
 
   const handleUnblock = useCallback(
     (family: string) => {
@@ -226,10 +266,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 {
                   onError: () => {
                     void triggerHaptic('error')
-                    Alert.alert(
-                      'No pudimos mostrarlo',
-                      'Probá de nuevo en unos segundos.',
-                    )
+                    Alert.alert('No pudimos mostrarlo', 'Probá de nuevo en unos segundos.')
                   },
                 },
               )
@@ -261,17 +298,13 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               if (error) throw error
               // Key shape real es `['advisor-interaction-stats', userId
               // ?? null]` (ver use-interaction-stats). Pasar el userId
-              // hace el invalidate target-only en vez de prefix-match,
-              // que era el intent original. Code review screens-B6.
+              // hace el invalidate target-only en vez de prefix-match.
               queryClient.invalidateQueries({
                 queryKey: ['advisor-interaction-stats', userId ?? null],
               })
               Alert.alert('Listo', 'El asistente arranca de cero.')
             } catch {
-              Alert.alert(
-                'No pudimos borrar',
-                'Probá de nuevo. Si sigue igual, escribinos.',
-              )
+              Alert.alert('No pudimos borrar', 'Probá de nuevo. Si sigue igual, escribinos.')
             }
           },
         },
@@ -279,6 +312,13 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       { cancelable: true },
     )
   }, [userId, queryClient])
+
+  // Footnote de "Tu estilo" según el modo.
+  const styleFooter = prefs.useInferredPersona
+    ? totalShown < 10
+      ? 'Recién te empiezo a conocer. Con el uso me ajusto a cómo manejás tu plata.'
+      : 'Lo elegí mirando cómo venís usando la app. Si querés, cambialo vos.'
+    : 'Lo elegiste vos. Tocá otro para cambiarlo, o volvé a automático arriba.'
 
   return (
     <Screen
@@ -290,275 +330,193 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
       {showValueCard && value ? (
-        <RiseView delay={40} style={styles.section}>
-          <SectionHeader title="Lo que te ahorré" />
+        <RiseView delay={40} style={styles.block}>
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>LO QUE TE AHORRÉ</Text>
           <View style={[styles.heroCard, { backgroundColor: theme.colors.primarySurface }]}>
-            <View style={styles.cardRow}>
+            <View style={styles.heroRow}>
               <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]}>
                 <MaterialIcons name="savings" size={22} color={theme.colors.primary} />
               </View>
-              <View style={styles.cardText}>
+              <View style={styles.heroText}>
                 <Text style={[styles.heroAmount, { color: theme.colors.text }]}>
                   {formatMoney(value.savedQuarter)}
                 </Text>
-                <Text style={[styles.cardBody, { color: theme.colors.textSoft }]}>
+                <Text style={[styles.heroCaption, { color: theme.colors.textSoft }]}>
                   este trimestre
                 </Text>
               </View>
             </View>
-            <Text style={[styles.cardFootnote, { color: theme.colors.textSoft }]}>
+            <Text style={[styles.heroFootnote, { color: theme.colors.textSoft }]}>
               {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de aviso`}
             </Text>
           </View>
         </RiseView>
       ) : null}
 
-      <RiseView delay={80} style={styles.section}>
-        <SectionHeader title="Tu perfil" />
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
+      {/* 1. Controles: encender el asistente y sus notificaciones. */}
+      <RiseView delay={80} style={styles.block}>
+        <SettingsGroup
+          title="Avisos"
+          footer={
+            advisorEnabled && pushEnabled
+              ? 'Entre las horas de "no molestar" no te llega nada al celular.'
+              : undefined
+          }
         >
-          <View style={styles.cardRow}>
-            <View style={[styles.iconWrap, { backgroundColor: theme.colors.primarySurface }]}>
-              <MaterialIcons name="auto-awesome" size={20} color={theme.colors.primary} />
-            </View>
-            <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                {personaProfile.label}
-              </Text>
-              <Text style={[styles.cardBody, { color: theme.colors.textSoft }]}>
-                {personaProfile.description}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
-            {prefs.useInferredPersona
-              ? totalShown < 10
-                ? `Recién te empiezo a conocer. Con el uso me voy ajustando a cómo manejás tu plata.`
-                : 'Lo elegí mirando cómo venís usando la app. Si querés, cambialo vos abajo.'
-              : 'Lo elegiste vos. Volvé a automático cuando quieras.'}
-          </Text>
-        </View>
-
-        <View style={styles.personaControls}>
           <SettingsSwitchRow
-            label="Elegir el estilo por mí"
-            description="Si lo apagás, lo elegís vos abajo."
-            value={prefs.useInferredPersona}
-            onValueChange={handleToggleInferred}
-          />
-          {!prefs.useInferredPersona ? (
-            <SegmentedControl
-              options={PERSONA_OPTIONS}
-              value={effectivePersona}
-              onChange={handleSelectPersona}
-            />
-          ) : null}
-        </View>
-      </RiseView>
-
-      {showStats ? (
-        <RiseView delay={140} style={styles.section}>
-          <SectionHeader
-            title="Tus avisos"
-            subtitle="Cuánto le hacés caso a cada tipo."
-          />
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            {topFamilies.map(([family, s], i) => (
-              <View
-                key={family}
-                style={[
-                  styles.statRow,
-                  i > 0 && {
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: theme.colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.statLabel, { color: theme.colors.text }]}
-                  numberOfLines={1}
-                >
-                  {familyLabel(family)}
-                </Text>
-                <Text style={[styles.statPhrase, { color: theme.colors.textMuted }]}>
-                  {engagementPhrase(s.ctr, s.acted)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </RiseView>
-      ) : null}
-
-      <RiseView delay={200} style={styles.section}>
-        <SectionHeader
-          title="Avisos del asistente"
-          subtitle="Cuándo y cómo te avisa."
-        />
-        <View style={styles.personaControls}>
-          <SettingsSwitchRow
+            icon="auto-awesome"
             label="Asistente financiero"
-            description="Si lo apagás, deja de darte avisos y consejos."
+            helper="Si lo apagás, deja de darte avisos y consejos."
             value={advisorEnabled}
             onValueChange={(v) => updatePrefs.mutate({ advisorEnabled: v })}
+            isLast={!advisorEnabled}
           />
           {advisorEnabled ? (
             <>
               <SettingsSwitchRow
+                icon="notifications"
                 label="Notificaciones en el celular"
-                description="Si lo apagás, los avisos aparecen solo cuando abrís la app."
+                helper="Si lo apagás, los avisos aparecen solo cuando abrís la app."
                 value={pushEnabled}
                 onValueChange={(v) => updateNotifPrefs.mutate({ advisorPushEnabled: v })}
+                isLast={!pushEnabled}
               />
               {pushEnabled ? (
                 <>
-                  <View
-                    style={[
-                      styles.card,
-                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-                    ]}
-                  >
-                    <Pressable
-                      onPress={() => setQuietPicker('start')}
-                      style={({ pressed }) => [styles.statRow, pressed && { opacity: 0.6 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Cambiar desde qué hora no molestar"
-                    >
-                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>
-                        No molestar desde
-                      </Text>
-                      <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
-                        {formatHour(quietStart)}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setQuietPicker('end')}
-                      style={({ pressed }) => [
-                        styles.statRow,
-                        {
-                          borderTopWidth: StyleSheet.hairlineWidth,
-                          borderTopColor: theme.colors.border,
-                        },
-                        pressed && { opacity: 0.6 },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Cambiar hasta qué hora no molestar"
-                    >
-                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>hasta</Text>
-                      <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
-                        {formatHour(quietEnd)}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <View style={styles.urgencyWrap}>
-                    <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
-                      ¿Cuándo te aviso al celular?
-                    </Text>
-                    <SegmentedControl
-                      options={URGENCY_OPTIONS}
-                      value={minUrgency}
-                      onChange={(v) => updateNotifPrefs.mutate({ advisorPushMinUrgency: v })}
-                    />
-                  </View>
+                  <SettingsRow
+                    icon="tune"
+                    label="¿Cuándo te aviso?"
+                    value={urgencyLabel(minUrgency)}
+                    onPress={() => setUrgencyOpen(true)}
+                  />
+                  <SettingsRow
+                    icon="bedtime"
+                    label="No molestar desde"
+                    value={formatHour(quietStart)}
+                    onPress={() => setQuietPicker('start')}
+                  />
+                  <SettingsRow
+                    icon="wb-twilight"
+                    label="Volver a avisar a las"
+                    value={formatHour(quietEnd)}
+                    onPress={() => setQuietPicker('end')}
+                    isLast
+                  />
                 </>
               ) : null}
             </>
           ) : null}
-        </View>
+        </SettingsGroup>
       </RiseView>
 
-      <RiseView delay={260} style={styles.section}>
-        <SectionHeader
+      {/* 2. Tu estilo: automático (resumen) o elegido a mano (checklist). */}
+      <RiseView delay={140} style={styles.block}>
+        <SettingsGroup title="Tu estilo" footer={styleFooter}>
+          <SettingsSwitchRow
+            icon="auto-fix-high"
+            label="Elegir el estilo por mí"
+            helper="Si lo apagás, lo elegís vos abajo."
+            value={prefs.useInferredPersona}
+            onValueChange={handleToggleInferred}
+          />
+          {prefs.useInferredPersona ? (
+            <SettingsRow
+              icon={PERSONA_ICON[effectivePersona]}
+              label={personaProfile.label}
+              helper={personaProfile.description}
+              isLast
+            />
+          ) : (
+            PERSONA_PICKS.map((p, i) => {
+              const selected = p.value === effectivePersona
+              return (
+                <SettingsRow
+                  key={p.value}
+                  icon={p.icon}
+                  label={PERSONA_PROFILES[p.value].label}
+                  helper={PERSONA_PROFILES[p.value].description}
+                  onPress={() => handleSelectPersona(p.value)}
+                  isLast={i === PERSONA_PICKS.length - 1}
+                  trailing={
+                    <MaterialIcons
+                      name={selected ? 'check-circle' : 'radio-button-unchecked'}
+                      size={22}
+                      color={selected ? theme.colors.primary : theme.colors.textSoft}
+                    />
+                  }
+                />
+              )
+            })
+          )}
+        </SettingsGroup>
+      </RiseView>
+
+      {/* 3. Tus avisos: solo lectura, a cuáles les hacés caso. */}
+      {showStats ? (
+        <RiseView delay={200} style={styles.block}>
+          <SettingsGroup title="Tus avisos" footer="Cuánto le hacés caso a cada tipo.">
+            {topFamilies.map(([family, s], i) => (
+              <SettingsRow
+                key={family}
+                icon={engagementIcon(s.ctr, s.acted)}
+                label={familyLabel(family)}
+                value={engagementPhrase(s.ctr, s.acted)}
+                isLast={i === topFamilies.length - 1}
+              />
+            ))}
+          </SettingsGroup>
+        </RiseView>
+      ) : null}
+
+      {/* 4. Avisos ocultados. */}
+      <RiseView delay={260} style={styles.block}>
+        <SettingsGroup
           title="Avisos que ocultaste"
-          subtitle={
-            blocklistQuery.data && blocklistQuery.data.length > 0
+          footer={
+            blocklist.length > 0
               ? 'Tocá uno para que ese aviso vuelva a aparecer.'
               : 'Si ocultás un tipo de aviso, aparece acá.'
           }
-        />
-        {blocklistQuery.data && blocklistQuery.data.length > 0 ? (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            {blocklistQuery.data.map((entry, i) => (
-              <Pressable
+        >
+          {blocklist.length > 0 ? (
+            blocklist.map((entry, i) => (
+              <SettingsRow
                 key={entry.signal_family}
+                icon="visibility-off"
+                label={familyLabel(entry.signal_family)}
+                helper={entry.reason ?? undefined}
                 onPress={() => handleUnblock(entry.signal_family)}
-                style={({ pressed }) => [
-                  styles.blocklistRow,
-                  i > 0 && {
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: theme.colors.border,
-                  },
-                  pressed && { opacity: 0.7 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Volver a mostrar ${familyLabel(entry.signal_family)}`}
-              >
-                <View style={styles.blocklistLeft}>
-                  <MaterialIcons name="block" size={18} color={theme.colors.textMuted} />
-                  <View style={styles.blocklistText}>
-                    <Text style={[styles.blocklistTitle, { color: theme.colors.text }]}>
-                      {familyLabel(entry.signal_family)}
-                    </Text>
-                    {entry.reason ? (
-                      <Text
-                        style={[styles.blocklistReason, { color: theme.colors.textMuted }]}
-                        numberOfLines={1}
-                      >
-                        {entry.reason}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-                <MaterialIcons name="chevron-right" size={18} color={theme.colors.textMuted} />
-              </Pressable>
-            ))}
-          </View>
-        ) : (
-          <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-            No ocultaste ningún aviso.
-          </Text>
-        )}
+                isLast={i === blocklist.length - 1}
+              />
+            ))
+          ) : (
+            <SettingsRow icon="visibility" label="No ocultaste ningún aviso" isLast />
+          )}
+        </SettingsGroup>
       </RiseView>
 
-      <RiseView delay={320} style={styles.section}>
-        <SectionHeader
+      {/* 5. Privacidad. */}
+      <RiseView delay={320} style={styles.block}>
+        <SettingsGroup
           title="Privacidad"
-          subtitle="Lo que hacés en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
-        />
-        <Pressable
-          onPress={handleClearHistory}
-          style={({ pressed }) => [
-            styles.dangerButton,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            pressed && { opacity: 0.7 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Borrar lo que el asistente aprendió de mí"
+          footer="Lo que hacés en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
         >
-          <MaterialIcons name="delete-outline" size={18} color="#B33A1F" />
-          <Text style={styles.dangerLabel}>Borrar lo que aprendió de mí</Text>
-        </Pressable>
+          <SettingsRow
+            icon="delete-outline"
+            label="Borrar lo que aprendió de mí"
+            destructive
+            onPress={handleClearHistory}
+            isLast
+          />
+        </SettingsGroup>
       </RiseView>
 
       <ModalCard
         visible={quietPicker !== null}
-        title={quietPicker === 'start' ? 'No molestar desde' : 'No molestar hasta'}
+        title={quietPicker === 'start' ? 'No molestar desde' : 'Volver a avisar a las'}
         onClose={() => setQuietPicker(null)}
       >
-        <View style={styles.hourList}>
+        <View style={styles.optionList}>
           {Array.from({ length: 24 }).map((_, hour) => {
             const selected = hour === (quietPicker === 'start' ? quietStart : quietEnd)
             return (
@@ -566,7 +524,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 key={hour}
                 onPress={() => handlePickQuietHour(hour)}
                 style={({ pressed }) => [
-                  styles.hourRow,
+                  styles.optionRow,
                   {
                     backgroundColor: selected ? theme.colors.primary : 'transparent',
                     opacity: pressed ? 0.7 : 1,
@@ -575,8 +533,9 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               >
                 <Text
                   style={[
-                    styles.hourLabel,
+                    styles.optionLabel,
                     {
+                      textAlign: 'center',
                       color: selected
                         ? theme.isDark
                           ? '#12211A'
@@ -592,40 +551,64 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           })}
         </View>
       </ModalCard>
+
+      <ModalCard
+        visible={urgencyOpen}
+        title="¿Cuándo te aviso al celular?"
+        onClose={() => setUrgencyOpen(false)}
+      >
+        <View style={styles.optionList}>
+          {URGENCY_OPTIONS.map((opt) => {
+            const selected = opt.value === minUrgency
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => handlePickUrgency(opt.value)}
+                style={({ pressed }) => [
+                  styles.urgencyOption,
+                  {
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    backgroundColor: selected ? theme.colors.primarySurface : 'transparent',
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.urgencyCopy}>
+                  <Text style={[styles.optionLabel, { color: theme.colors.text }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.urgencyHelper, { color: theme.colors.textMuted }]}>
+                    {opt.helper}
+                  </Text>
+                </View>
+                {selected ? (
+                  <MaterialIcons name="check-circle" size={22} color={theme.colors.primary} />
+                ) : null}
+              </Pressable>
+            )
+          })}
+        </View>
+      </ModalCard>
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 10,
+  // Separación entre bloques (cada RiseView). Se suma al gap del Screen.
+  block: { marginTop: 6, gap: 8 },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+    paddingHorizontal: 4,
   },
-  cardRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardText: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 16, fontWeight: '600' },
-  cardBody: { fontSize: 13, lineHeight: 18 },
-  cardFootnote: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  // Aire dentro de cada sección (header → contenido) + un respiro extra
-  // entre secciones (se suma al gap 22 del Screen → ~28). Evita el
-  // "todo pegado" y separa cada bloque como un capítulo.
-  section: { gap: 14, marginTop: 6 },
-  // Card hero del valor — tinte de marca + más padding + número grande para
-  // que sea el ancla visual y rompa la monotonía de cards neutras apiladas.
+  // Card hero del valor — tinte de marca + número grande como ancla visual.
   heroCard: {
-    borderRadius: radii.lg,
+    borderRadius: radii.xl,
     padding: 20,
     gap: 12,
   },
+  heroRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   heroIcon: {
     width: 44,
     height: 44,
@@ -633,47 +616,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroText: { flex: 1, gap: 2 },
   heroAmount: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
-  // Grupos de controles dentro de una sección (toggles, segmented, quiet).
-  personaControls: { gap: 12 },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  statLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
-  statPhrase: { fontSize: 14, fontWeight: '600' },
-  urgencyWrap: { gap: 10, paddingTop: 2 },
-  hourList: { paddingVertical: 4 },
-  hourRow: {
+  heroCaption: { fontSize: 13, lineHeight: 18 },
+  heroFootnote: { fontSize: 12, lineHeight: 16 },
+  // Listas dentro de los ModalCard (horas / nivel de aviso).
+  optionList: { paddingVertical: 4, gap: 2 },
+  optionRow: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: radii.md,
   },
-  hourLabel: { fontSize: 15, fontWeight: '500', textAlign: 'center' },
-  blocklistRow: {
+  optionLabel: { fontSize: 15, fontWeight: '600' },
+  urgencyOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  blocklistLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  blocklistText: { flex: 1 },
-  blocklistTitle: { fontSize: 14, fontWeight: '500' },
-  blocklistReason: { fontSize: 12, marginTop: 2 },
-  emptyText: { fontSize: 13, paddingHorizontal: 16, paddingVertical: 12 },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 12,
     paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: radii.lg,
+    borderWidth: 1,
   },
-  dangerLabel: { fontSize: 14, fontWeight: '600', color: '#B33A1F' },
+  urgencyCopy: { flex: 1, gap: 3 },
+  urgencyHelper: { fontSize: 13, lineHeight: 18 },
 })
