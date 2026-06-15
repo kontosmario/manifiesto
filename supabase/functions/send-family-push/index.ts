@@ -35,6 +35,13 @@ interface PushResult {
   removed: number
 }
 
+// Per-message outcome in the orchestrator batch path, aligned positionally
+// with the input messages so the orchestrator can mark only delivered rows.
+//   'ok'      — Expo accepted the push (delivered to APNs/FCM)
+//   'removed' — DeviceNotRegistered; the subscription was pruned
+//   'error'   — transient (rate-limit / 5xx / network); NOT marked, retried
+type ExpoBatchStatus = 'ok' | 'error' | 'removed'
+
 interface ExpoTicket {
   status?: 'ok' | 'error'
   details?: {
@@ -279,6 +286,13 @@ async function sendExpoPush(
     const ticket = data.data?.[0]
 
     if (ticket?.status === 'ok') {
+      // Push audit (2026-06-15): refresh last_used_at on every successful
+      // send so the 90-day retention cron doesn't reap tokens of devices
+      // that are active but haven't re-registered recently.
+      await adminClient
+        .from('push_subscriptions')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', subscription.id)
       return { sent: 1, failed: 0, removed: 0 }
     }
 
@@ -334,15 +348,33 @@ async function sendWebPush(
 }
 
 // Bulk Expo Push fan-out used by notifications-orchestrator.
-// Splits into batches of 100 (Expo's per-request cap) and fires
-// them sequentially. We don't propagate per-ticket errors here —
-// the orchestrator counts attempts, not deliveries; DeviceNotRegistered
-// cleanup happens in the per-subscription Expo path elsewhere.
-async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<void> {
+// Splits into batches of 100 (Expo's per-request cap) and fires them
+// sequentially.
+//
+// Push audit (2026-06-15): the previous version discarded the Expo
+// response entirely — it never checked `response.ok`, never parsed the
+// per-message tickets, so a 429/500/503 or a `DeviceNotRegistered`
+// looked identical to a clean delivery. Two consequences: dead tokens
+// accumulated forever (the orchestrator's batch path never pruned them,
+// despite the comment claiming "elsewhere"), and the orchestrator could
+// not tell which notifications actually shipped.
+//
+// Now we parse the tickets positionally (Expo guarantees ticket[i] maps
+// to message[i]), return a `statuses` array aligned with the input so
+// the orchestrator marks only delivered rows, prune `DeviceNotRegistered`
+// endpoints, and refresh `last_used_at` for the endpoints that shipped.
+async function sendExpoBatch(
+  adminClient: SupabaseClient,
+  messages: ExpoPushMessage[],
+): Promise<{ result: PushResult; statuses: ExpoBatchStatus[] }> {
+  const statuses: ExpoBatchStatus[] = new Array(messages.length).fill('error')
+  const deadEndpoints = new Set<string>()
+  const deliveredEndpoints = new Set<string>()
+
   for (let i = 0; i < messages.length; i += 100) {
     const batch = messages.slice(i, i + 100)
     try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -351,12 +383,63 @@ async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<void> {
         },
         body: JSON.stringify(batch),
       })
+
+      if (!response.ok) {
+        // Transient (rate-limit / 5xx). Leave the whole batch as 'error'
+        // so the orchestrator does NOT mark these rows pushed — the
+        // backlog retries allow-listed kinds on the next run.
+        console.error('[send-family-push] Expo batch non-ok', response.status)
+        continue
+      }
+
+      const data = (await response.json()) as ExpoPushResponse
+      const tickets = data.data ?? []
+      for (let j = 0; j < batch.length; j++) {
+        const ticket = tickets[j]
+        const endpoint = batch[j].to
+        if (ticket?.status === 'ok') {
+          statuses[i + j] = 'ok'
+          deliveredEndpoints.add(endpoint)
+        } else if (ticket?.details?.error === 'DeviceNotRegistered') {
+          statuses[i + j] = 'removed'
+          deadEndpoints.add(endpoint)
+        } else {
+          statuses[i + j] = 'error'
+        }
+      }
     } catch (error) {
-      // Swallow — the orchestrator logs based on the response status,
-      // and a network failure on one batch shouldn't abort the rest.
-      console.error('sendExpoBatch failed', error)
+      // Network failure on one batch shouldn't abort the rest; those
+      // messages stay 'error' (not marked pushed → retried).
+      console.error('[send-family-push] Expo batch fetch failed', error)
     }
   }
+
+  let removed = 0
+  if (deadEndpoints.size > 0) {
+    const del = await adminClient
+      .from('push_subscriptions')
+      .delete()
+      .in('endpoint', [...deadEndpoints])
+      .select('id')
+    removed = del.error ? 0 : Array.isArray(del.data) ? del.data.length : 0
+    if (del.error) {
+      console.error('[send-family-push] dead-token prune failed', del.error)
+    }
+  }
+
+  if (deliveredEndpoints.size > 0) {
+    const upd = await adminClient
+      .from('push_subscriptions')
+      .update({ last_used_at: new Date().toISOString() })
+      .in('endpoint', [...deliveredEndpoints])
+    if (upd.error) {
+      console.error('[send-family-push] last_used_at refresh failed', upd.error)
+    }
+  }
+
+  const sent = statuses.filter((s) => s === 'ok').length
+  const failed = statuses.filter((s) => s === 'error').length
+  return { result: { sent, failed, removed }, statuses }
 }
 
 export async function handler(request: Request): Promise<Response> {
@@ -419,10 +502,22 @@ export async function handler(request: Request): Promise<Response> {
       sound: m.sound,
     }))
     if (messages.length === 0) {
-      return jsonResponse({ ok: true, count: 0 }, 200, cors)
+      return jsonResponse({ ok: true, count: 0, sent: 0, failed: 0, removed: 0, statuses: [] }, 200, cors)
     }
-    await sendExpoBatch(messages)
-    return jsonResponse({ ok: true, count: messages.length }, 200, cors)
+    const batchAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
+    const { result, statuses } = await sendExpoBatch(batchAdmin, messages)
+    return jsonResponse(
+      {
+        ok: true,
+        count: messages.length,
+        sent: result.sent,
+        failed: result.failed,
+        removed: result.removed,
+        statuses,
+      },
+      200,
+      cors,
+    )
   }
 
   // Sanitize + length-cap user-controlled strings BEFORE any auth /
@@ -626,9 +721,36 @@ export async function handler(request: Request): Promise<Response> {
       blockedUserIds.add(row.user_id)
     }
   }
-  const subscriptions = (
+  const subscriptionsAfterBlock = (
     (subscriptionsResponse.data ?? []) as PushSubscriptionRow[]
   ).filter((s) => !blockedUserIds.has(s.user_id))
+
+  // Push audit (2026-06-15): respect the recipient's channel_push
+  // preference. This is the PUSH channel only — the in-app feed row is
+  // emitted separately and is gated by channel_inapp upstream, so muting
+  // push here never suppresses the feed. Fail-open on a query error
+  // (better a stray push than dropping every notification on a blip).
+  const recipientUserIds = [...new Set(subscriptionsAfterBlock.map((s) => s.user_id))]
+  const mutedPushUserIds = new Set<string>()
+  if (recipientUserIds.length > 0) {
+    const prefsResponse = await adminClient
+      .from('notification_preferences')
+      .select('user_id, channel_push')
+      .in('user_id', recipientUserIds)
+    if (prefsResponse.error) {
+      console.error('[send-family-push] channel_push prefs fetch failed', prefsResponse.error)
+    } else {
+      for (const row of (prefsResponse.data ?? []) as Array<{
+        user_id: string
+        channel_push: boolean | null
+      }>) {
+        if (row.channel_push === false) mutedPushUserIds.add(row.user_id)
+      }
+    }
+  }
+  const subscriptions = subscriptionsAfterBlock.filter(
+    (s) => !mutedPushUserIds.has(s.user_id),
+  )
   if (subscriptions.length === 0) {
     return jsonResponse({ sent: 0, failed: 0, removed: 0 }, 200, cors)
   }

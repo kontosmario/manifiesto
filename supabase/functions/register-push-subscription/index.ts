@@ -371,7 +371,12 @@ export async function handler(request: Request): Promise<Response> {
     )
   }
 
-  const userAgent = clip(body.userAgent, MAX_USER_AGENT_LEN) ?? 'unknown'
+  // Push audit (2026-06-15) V-001: the user-agent string is shown in
+  // admin / debug UIs; strip control + bidi chars so a planted U+202E
+  // can't reverse digits there. (The token already runs through
+  // stripControlChars above; the userAgent was missing it.)
+  const userAgentRaw = clip(body.userAgent, MAX_USER_AGENT_LEN)
+  const userAgent = (userAgentRaw && stripControlChars(userAgentRaw)) || 'unknown'
   // For web-push we expect keys; for expo we hard-code the sentinel
   // values the table uses to mark "this is an expo push token, not a
   // web-push subscription". Trusting the client's p256dh/auth for

@@ -422,6 +422,32 @@ verify_jwt = false
 [functions.appstore-notifications]
 verify_jwt = false
 
+# notifications-orchestrator is invoked by pg_cron (via pg_net), which
+# authenticates with a DEDICATED opaque secret (ORCHESTRATOR_CRON_SECRET in
+# the function env + vault), NOT a Supabase JWT — chosen deliberately for a
+# smaller blast radius than the project's service-role god-key. That secret
+# is not a JWT, so a gateway verify_jwt=true rejects every cron call with
+# 401 UNAUTHORIZED_INVALID_JWT_FORMAT before the function runs (this exact
+# regression happened on 2026-06-15 when the function was redeployed without
+# this config entry). The function validates the bearer itself via
+# timingSafeEqual against the cron secret / service-role key. Same category
+# as appstore-notifications above: no JWT to validate at the gateway, so
+# verify_jwt MUST be off.
+[functions.notifications-orchestrator]
+verify_jwt = false
+
+# register-push-subscription + validate-purchase are called from the mobile
+# client with the user's ES256 session JWT and do their own auth.getUser()
+# server-side. They run with gateway verify_jwt=true (the gateway now
+# validates ES256, unlike the Sprint O era — see send-family-push note).
+# Pinned here so a future deploy doesn't drift; the function-side
+# auth.getUser check is the real gate regardless.
+[functions.register-push-subscription]
+verify_jwt = true
+
+[functions.validate-purchase]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

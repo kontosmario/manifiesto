@@ -6,10 +6,11 @@
 //
 //   1. Calls list_pending_notifications(p_kind) to get candidates.
 //   2. Chunks results into groups of 200.
-//   3. For each chunk: emit_notifications_bulk to insert with dedup,
-//      resolve push tokens for the relevant family/user pairs, and
-//      hand the resulting ExpoPushMessage[] to send-family-push v2
-//      in a single invocation (which itself batches to Expo at 100/req).
+//   3. For each chunk: emit_notifications_bulk_returning to insert with
+//      dedup (returns the inserted rows' ids + content), resolve push
+//      tokens, build one ExpoPushMessage per (row × token), hand them to
+//      send-family-push v2 (which batches to Expo at 100/req and returns
+//      per-message statuses), and mark pushed_at on exactly what shipped.
 //
 // POST /functions/v1/notifications-orchestrator
 // Body { kind: Kind }
@@ -158,9 +159,46 @@ async function fetchPushTokens(
   // every chunk row is family-scoped (user_id null), so all family
   // tokens are valid recipients. Otherwise filter to {family-scoped
   // rows that match family_id} ∪ {user-scoped rows that match user_id}.
-  if (userIds.length === 0) return filtered
-  const userSet = new Set(userIds)
-  return filtered.filter((r) => userSet.has(r.user_id))
+  const afterUser =
+    userIds.length === 0
+      ? filtered
+      : (() => {
+          const userSet = new Set(userIds)
+          return filtered.filter((r) => userSet.has(r.user_id))
+        })()
+
+  // Push audit (2026-06-15): respect the channel_push preference. Drop
+  // tokens whose owner muted the push channel. This is push-only — the
+  // in-app feed row is emitted separately (gated by channel_inapp
+  // upstream in list_pending_notifications), so muting push never
+  // suppresses the feed.
+  return dropMutedPushTokens(admin, afterUser)
+}
+
+// Drops push tokens whose owner has channel_push=false. Fail-open on a
+// query error: a stray push beats dropping every notification on a blip.
+async function dropMutedPushTokens(
+  admin: ReturnType<typeof adminClient>,
+  rows: PushSubscriptionRow[],
+): Promise<PushSubscriptionRow[]> {
+  if (rows.length === 0) return rows
+  const userIds = [...new Set(rows.map((r) => r.user_id))]
+  const { data, error } = await admin
+    .from('notification_preferences')
+    .select('user_id, channel_push')
+    .in('user_id', userIds)
+  if (error) {
+    console.error('[notifications-orchestrator] channel_push prefs fetch failed', error)
+    return rows
+  }
+  const muted = new Set<string>()
+  for (const row of (data ?? []) as Array<{
+    user_id: string
+    channel_push: boolean | null
+  }>) {
+    if (row.channel_push === false) muted.add(row.user_id)
+  }
+  return muted.size === 0 ? rows : rows.filter((r) => !muted.has(r.user_id))
 }
 
 async function fetchBlockedMembershipKeys(
@@ -194,6 +232,79 @@ async function fetchBlockedMembershipKeys(
   return out
 }
 
+// A notification row ready to fan out to devices. `id` is the row's
+// notifications.id (so we can mark exactly the rows that shipped).
+interface OutRow {
+  id: string
+  family_id: string
+  user_id: string | null
+  title: string
+  body: string
+  metadata: Record<string, unknown>
+}
+
+// Build one Expo message per (row × matching token). A family-broadcast
+// row (user_id null) fans out to every member's token; a user-scoped row
+// only to that user's tokens. `rowIdByIndex[i]` is the source row id for
+// `messages[i]`, kept aligned so we can map Expo's positional tickets
+// back to rows.
+//
+// Push audit (2026-06-15): the previous code used a Map keyed by token
+// endpoint and `rows.find(...)`, so each device received only the FIRST
+// matching row and any co-occurring notifications were silently dropped
+// (and then marked pushed). Iterating rows×tokens fixes that.
+function buildMessages(
+  rows: OutRow[],
+  tokens: PushSubscriptionRow[],
+): { messages: ExpoPushMessage[]; rowIdByIndex: string[] } {
+  const messages: ExpoPushMessage[] = []
+  const rowIdByIndex: string[] = []
+  for (const row of rows) {
+    for (const sub of tokens) {
+      if (sub.family_id !== row.family_id) continue
+      if (row.user_id !== null && row.user_id !== sub.user_id) continue
+      messages.push({
+        to: sub.endpoint,
+        sound: 'default',
+        title: row.title,
+        body: row.body,
+        data: row.metadata,
+      })
+      rowIdByIndex.push(row.id)
+    }
+  }
+  return { messages, rowIdByIndex }
+}
+
+// Invoke send-family-push (batch path) and reduce its positional
+// `statuses` into the set of row ids that hit a transient 'error' (worth
+// retrying). Returns null on a total invocation failure so the caller
+// marks nothing and the next run retries. 'removed' (DeviceNotRegistered)
+// is NOT an error — the device is gone, retrying won't help.
+async function sendMessages(
+  admin: ReturnType<typeof adminClient>,
+  messages: ExpoPushMessage[],
+  rowIdByIndex: string[],
+): Promise<{ erroredRowIds: Set<string>; sent: number } | null> {
+  const sendResponse = await admin.functions.invoke('send-family-push', {
+    body: { messages },
+  })
+  if (sendResponse.error) {
+    console.error('send-family-push failed', sendResponse.error)
+    return null
+  }
+  const statuses = ((sendResponse.data as { statuses?: unknown } | null)?.statuses ??
+    []) as Array<'ok' | 'error' | 'removed'>
+  const erroredRowIds = new Set<string>()
+  let sent = 0
+  for (let i = 0; i < rowIdByIndex.length; i++) {
+    const st = statuses[i]
+    if (st === 'ok') sent++
+    else if (st === 'error') erroredRowIds.add(rowIdByIndex[i])
+  }
+  return { erroredRowIds, sent }
+}
+
 // Auditoría 2026-06-11 (H1): los crons SQL legacy (rachas, zombies,
 // price hikes, weekly insights) insertan filas en `notifications` pero
 // no pushean — quedaban in-app-only para siempre. Este kind relayea
@@ -223,47 +334,45 @@ async function processPushBacklog() {
       .filter((id): id is string => typeof id === 'string')
     const tokens = await fetchPushTokens(admin, familyIds, userIds)
 
-    const tokenToMsg = new Map<string, ExpoPushMessage>()
-    for (const sub of tokens) {
-      const row = c.find(
-        (r) =>
-          r.family_id === sub.family_id &&
-          (r.user_id === null || r.user_id === sub.user_id),
-      )
-      if (!row) continue
-      tokenToMsg.set(sub.endpoint, {
-        to: sub.endpoint,
-        sound: 'default',
-        title: row.title,
-        body: row.body,
-        data: row.metadata,
-      })
-    }
+    const outRows: OutRow[] = c.map((r) => ({
+      id: r.id,
+      family_id: r.family_id,
+      user_id: r.user_id,
+      title: r.title,
+      body: r.body,
+      metadata: r.metadata,
+    }))
+    const { messages, rowIdByIndex } = buildMessages(outRows, tokens)
 
-    if (tokenToMsg.size > 0) {
-      const messages = [...tokenToMsg.values()]
-      const sendResponse = await admin.functions.invoke('send-family-push', {
-        body: { messages },
-      })
-      if (sendResponse.error) {
-        console.error('send-family-push failed (backlog)', sendResponse.error)
-        // No marcamos: el próximo run del backlog reintenta (24h window).
+    let erroredRowIds = new Set<string>()
+    if (messages.length > 0) {
+      const outcome = await sendMessages(admin, messages, rowIdByIndex)
+      if (outcome === null) {
+        // Total send failure → mark nothing; the next 30-min run retries
+        // (rows stay inside the 24h window).
         continue
       }
-      sent += messages.length
+      erroredRowIds = outcome.erroredRowIds
+      sent += outcome.sent
     }
 
-    // Marcar TODO el chunk como pusheado — incluso filas sin token
-    // (usuario sin push subscription): reintentar cada 30' no les va a
-    // inventar un device; quedan como notificación in-app, que es su
-    // canal real.
-    const markResponse = await admin.rpc('mark_notifications_pushed', {
-      p_ids: c.map((r) => r.id),
-    })
-    if (markResponse.error) {
-      console.error('mark_notifications_pushed failed', markResponse.error)
-    } else {
-      marked += typeof markResponse.data === 'number' ? markResponse.data : 0
+    // Mark every row that did NOT hit a transient error. Covers:
+    //   · no-token rows (in-app-only — retrying won't invent a device)
+    //   · delivered rows (≥1 'ok' ticket)
+    //   · rows whose only tokens were dead (pruned; no point retrying)
+    // Rows with a transient 'error' stay unpushed and are retried.
+    const idsToMark = c
+      .filter((r) => !erroredRowIds.has(r.id))
+      .map((r) => r.id)
+    if (idsToMark.length > 0) {
+      const markResponse = await admin.rpc('mark_notifications_pushed', {
+        p_ids: idsToMark,
+      })
+      if (markResponse.error) {
+        console.error('mark_notifications_pushed failed', markResponse.error)
+      } else {
+        marked += typeof markResponse.data === 'number' ? markResponse.data : 0
+      }
     }
   }
 
@@ -288,65 +397,68 @@ async function processKind(kind: Kind) {
   const chunks = chunk(pending, CHUNK_SIZE)
   let processed = 0
   let sent = 0
+  let marked = 0
 
   for (const c of chunks) {
-    // 1. Persist with dedup. emit_notifications_bulk returns the
-    //    count of rows actually inserted (post-dedup), not the count
-    //    we handed it.
-    const insertResponse = await admin.rpc('emit_notifications_bulk', { p_rows: c })
+    // 1. Persist with dedup. The *returning* variant hands back the rows
+    //    actually inserted (post-dedup) with their new ids + content, so
+    //    we (a) push only fresh rows — no duplicate push for a row that
+    //    already existed today — and (b) can mark pushed_at on exactly
+    //    what shipped (previously processKind never marked at all,
+    //    leaving thousands of rows pushed_at=NULL forever).
+    const insertResponse = await admin.rpc('emit_notifications_bulk_returning', {
+      p_rows: c,
+    })
     if (insertResponse.error) {
-      console.error('emit_notifications_bulk failed', insertResponse.error)
+      console.error('emit_notifications_bulk_returning failed', insertResponse.error)
       continue
     }
-    const insertedCount =
-      typeof insertResponse.data === 'number' ? insertResponse.data : 0
-    processed += insertedCount
+    const inserted = (insertResponse.data ?? []) as OutRow[]
+    processed += inserted.length
+    if (inserted.length === 0) continue
 
-    // 2. Resolve push tokens for the chunk's recipients.
-    const familyIds = [...new Set(c.map((r) => r.family_id))]
-    const userIds = c
+    // 2. Resolve push tokens for the inserted rows' recipients.
+    const familyIds = [...new Set(inserted.map((r) => r.family_id))]
+    const userIds = inserted
       .map((r) => r.user_id)
       .filter((id): id is string => typeof id === 'string')
     const tokens = await fetchPushTokens(admin, familyIds, userIds)
-    if (tokens.length === 0) continue
 
-    // 3. Map token -> message. A chunk may contain multiple rows for
-    //    the same family with different titles/bodies (morning_checkin
-    //    is per-user), so we match by family + user_id (null = family
-    //    broadcast, which fans out to every member's token).
-    const tokenToMsg = new Map<string, ExpoPushMessage>()
-    for (const sub of tokens) {
-      const row = c.find(
-        (r) =>
-          r.family_id === sub.family_id &&
-          (r.user_id === null || r.user_id === sub.user_id),
-      )
-      if (!row) continue
-      tokenToMsg.set(sub.endpoint, {
-        to: sub.endpoint,
-        sound: 'default',
-        title: row.title,
-        body: row.body,
-        data: row.metadata,
-      })
+    // 3. One message per (row × matching token). A family-broadcast row
+    //    (user_id null) fans out to every member's token; a user-scoped
+    //    row only to that user's tokens.
+    const { messages, rowIdByIndex } = buildMessages(inserted, tokens)
+
+    let erroredRowIds = new Set<string>()
+    if (messages.length > 0) {
+      const outcome = await sendMessages(admin, messages, rowIdByIndex)
+      if (outcome === null) {
+        // Total send failure: leave inserted rows unpushed. Allow-listed
+        // kinds get retried by the backlog; the rest stay in-app-only.
+        continue
+      }
+      erroredRowIds = outcome.erroredRowIds
+      sent += outcome.sent
     }
 
-    if (tokenToMsg.size === 0) continue
-
-    // 4. Single Edge invocation; send-family-push handles the
-    //    100-per-request Expo cap internally.
-    const messages = [...tokenToMsg.values()]
-    const sendResponse = await admin.functions.invoke('send-family-push', {
-      body: { messages },
-    })
-    if (sendResponse.error) {
-      console.error('send-family-push failed', sendResponse.error)
-    } else {
-      sent += messages.length
+    // 4. Mark pushed_at on inserted rows that didn't hit a transient
+    //    error (delivered, no-token, or only-dead-token rows).
+    const idsToMark = inserted
+      .filter((r) => !erroredRowIds.has(r.id))
+      .map((r) => r.id)
+    if (idsToMark.length > 0) {
+      const markResponse = await admin.rpc('mark_notifications_pushed', {
+        p_ids: idsToMark,
+      })
+      if (markResponse.error) {
+        console.error('mark_notifications_pushed failed', markResponse.error)
+      } else {
+        marked += typeof markResponse.data === 'number' ? markResponse.data : 0
+      }
     }
   }
 
-  return { kind, processed, sent, chunks: chunks.length }
+  return { kind, processed, sent, marked, chunks: chunks.length }
 }
 
 // Constant-time string equality. The naive `a === b` short-circuits
