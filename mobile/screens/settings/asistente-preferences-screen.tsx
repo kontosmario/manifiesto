@@ -285,20 +285,15 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
       {showValueCard && value ? (
-        <RiseView delay={40}>
+        <RiseView delay={40} style={styles.section}>
           <SectionHeader title="Lo que te ahorré" />
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
+          <View style={[styles.heroCard, { backgroundColor: theme.colors.primarySurface }]}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconWrap, { backgroundColor: theme.colors.primarySurface }]}>
-                <MaterialIcons name="savings" size={20} color={theme.colors.primary} />
+              <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]}>
+                <MaterialIcons name="savings" size={22} color={theme.colors.primary} />
               </View>
               <View style={styles.cardText}>
-                <Text style={[styles.valueAmount, { color: theme.colors.text }]}>
+                <Text style={[styles.heroAmount, { color: theme.colors.text }]}>
                   {formatMoney(value.savedQuarter)}
                 </Text>
                 <Text style={[styles.cardBody, { color: theme.colors.textSoft }]}>
@@ -306,14 +301,14 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 </Text>
               </View>
             </View>
-            <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.cardFootnote, { color: theme.colors.textSoft }]}>
               {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de señal`}
             </Text>
           </View>
         </RiseView>
       ) : null}
 
-      <RiseView delay={80}>
+      <RiseView delay={80} style={styles.section}>
         <SectionHeader title="Tu perfil" />
         <View
           style={[
@@ -361,7 +356,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       </RiseView>
 
       {showStats ? (
-        <RiseView delay={140}>
+        <RiseView delay={140} style={styles.section}>
           <SectionHeader
             title="Tus señales"
             subtitle="Qué tanto actuás en cada tipo de aviso."
@@ -398,7 +393,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         </RiseView>
       ) : null}
 
-      <RiseView delay={200}>
+      <RiseView delay={200} style={styles.section}>
         <SectionHeader
           title="Notificaciones del asistente"
           subtitle="Cuándo y cómo te avisa fuera de la app."
@@ -475,7 +470,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         </View>
       </RiseView>
 
-      <RiseView delay={260}>
+      <RiseView delay={260} style={styles.section}>
         <SectionHeader
           title="Familias bloqueadas"
           subtitle={
@@ -533,7 +528,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         )}
       </RiseView>
 
-      <RiseView delay={320}>
+      <RiseView delay={320} style={styles.section}>
         <SectionHeader
           title="Privacidad"
           subtitle="Tu historial de interacciones se usa solo para calibrar el asistente."
@@ -615,19 +610,38 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { fontSize: 13, lineHeight: 18 },
   cardFootnote: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  valueAmount: { fontSize: 24, fontWeight: '700', letterSpacing: -0.4 },
-  personaControls: { gap: 10, marginTop: 10 },
+  // Aire dentro de cada sección (header → contenido) + un respiro extra
+  // entre secciones (se suma al gap 22 del Screen → ~28). Evita el
+  // "todo pegado" y separa cada bloque como un capítulo.
+  section: { gap: 14, marginTop: 6 },
+  // Card hero del valor — tinte de marca + más padding + número grande para
+  // que sea el ancla visual y rompa la monotonía de cards neutras apiladas.
+  heroCard: {
+    borderRadius: radii.lg,
+    padding: 20,
+    gap: 12,
+  },
+  heroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroAmount: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
+  // Grupos de controles dentro de una sección (toggles, segmented, quiet).
+  personaControls: { gap: 12 },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 12,
   },
   statLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
-  statPhrase: { fontSize: 13, fontWeight: '500' },
-  urgencyWrap: { gap: 8 },
+  statPhrase: { fontSize: 14, fontWeight: '600' },
+  urgencyWrap: { gap: 10, paddingTop: 2 },
   hourList: { paddingVertical: 4 },
   hourRow: {
     paddingVertical: 12,
