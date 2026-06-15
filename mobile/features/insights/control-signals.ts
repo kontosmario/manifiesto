@@ -160,10 +160,14 @@ export function buildControlSignals(
   const now = args.now ?? new Date()
   const signals: ControlAdvisorTask[] = []
 
+  // Curación 2026-06-15 (set para usuario común, supervivencia primero):
+  // se descartaron start-splurge, undetected-sub, member-imbalance,
+  // forecast-tomorrow-risk, forecast-storm-week y las 3 causal-* (complejas/
+  // nicho/avanzadas). Ver docs/superpowers/specs/...-senales-curadas.
+
   // Group 1 — Cycle mechanics
   pushIfDefined(signals, buildStressWeek(args, now))
   pushIfDefined(signals, buildPaydayProximity(args))
-  pushIfDefined(signals, buildStartOfCycleSplurge(args))
   pushIfDefined(signals, buildEndOfCycleAcceleration(args))
   pushIfDefined(signals, buildRecoveryPath(args))
   pushIfDefined(signals, buildVelocityWarning(args))
@@ -178,7 +182,6 @@ export function buildControlSignals(
   // Group 3 — Expense hygiene
   pushIfDefined(signals, buildSmallLeaksInsight(args))
   pushIfDefined(signals, buildNightImpulse(args))
-  pushIfDefined(signals, buildUndetectedSubscription(args))
 
   // Group 4 — Pattern insights (dow + weekend merged into weekly-pattern)
   pushIfDefined(signals, buildWeeklyPattern(args))
@@ -193,9 +196,6 @@ export function buildControlSignals(
   pushIfDefined(signals, buildSavingsFeasibility(args))
   pushIfDefined(signals, buildSavingsOverachievement(args))
 
-  // Group 7 — Family dynamics
-  pushIfDefined(signals, buildMemberContributionImbalance(args))
-
   // Group 8 — Positive reinforcement
   pushIfDefined(signals, buildStreakEncouragement(args))
 
@@ -208,14 +208,7 @@ export function buildControlSignals(
   pushIfDefined(signals, buildIncomeMissing(args))
 
   // Group 10 — Forecast (P1)
-  pushIfDefined(signals, buildForecastTomorrowRisk(args))
-  pushIfDefined(signals, buildForecastStormWeek(args))
   pushIfDefined(signals, buildForecastPaydayGap(args))
-
-  // Group 11 — Causal patterns (P3)
-  pushIfDefined(signals, buildCausalFridayCascade(args))
-  pushIfDefined(signals, buildCausalPairedImpulse(args))
-  pushIfDefined(signals, buildCausalStressSpending(args))
 
   // Drop low-confidence, fuse related signals into richer single
   // cards, then rerank by urgency × annualizedImpact × confidence
@@ -336,8 +329,6 @@ function applyDiversityBudget(
 // reads as "this is the real pattern" instead of two disjoint warnings.
 //
 // Patterns we fuse today:
-//  · start-splurge + velocity (any tier) → keep velocity, prepend
-//    "arrancaste fuerte" context to its body.
 //  · cat-accel + cat-dominance on same category → keep accel,
 //    prepend "ya pesa N% del mes" context.
 //  · recovery-hard + velocity → drop velocity (recovery-hard is
@@ -346,25 +337,6 @@ function fuseSignals(
   tasks: ControlAdvisorTask[],
 ): ControlAdvisorTask[] {
   const byId = new Map(tasks.map((t) => [t.id, t]))
-
-  // start-splurge ⊕ velocity
-  const startSplurge = byId.get('start-splurge')
-  const velocity = byId.get('velocity')
-  if (startSplurge && velocity) {
-    // start-splurge title is "${pct}% del mes gastado en los primeros 3 días" —
-    // pull the percentage out by regex so the merged copy carries the
-    // real number (the previous `split(': ')` always missed and fell
-    // back to a generic phrase).
-    const pctMatch = startSplurge.title.match(/(\d+%)/)
-    const pctText = pctMatch ? `${pctMatch[1]} del mes en los primeros días` : 'porcentaje alto en los primeros días'
-    const merged: ControlAdvisorTask = {
-      ...velocity,
-      body: `Arranque elevado (${pctText}). ${velocity.body}`,
-      confidence: Math.max(velocity.confidence, startSplurge.confidence),
-    }
-    byId.set('velocity', merged)
-    byId.delete('start-splurge')
-  }
 
   // cat-accel ⊕ cat-dominance (same category)
   const catAccel = byId.get('cat-accel')
@@ -410,16 +382,6 @@ function fuseSignals(
 // composition rule matches, we generate a single richer card and drop
 // the constituents — that single card communicates the gestalt better
 // than three separate ones, and frees space in the diversity budget.
-
-function findFirst(
-  byId: Map<string, ControlAdvisorTask>,
-  predicate: (id: string, t: ControlAdvisorTask) => boolean,
-): { id: string; task: ControlAdvisorTask } | null {
-  for (const [id, task] of byId) {
-    if (predicate(id, task)) return { id, task }
-  }
-  return null
-}
 
 function tryComposePerfectStorm(
   byId: Map<string, ControlAdvisorTask>,
@@ -503,55 +465,20 @@ function tryComposeSavingsMomentum(
   }
 }
 
-function tryComposeHiddenDrain(
-  byId: Map<string, ControlAdvisorTask>,
-): ControlAdvisorTask | null {
-  const leaks = byId.get('small-leaks')
-  const dominance = findFirst(byId, (id) => id.startsWith('cat-dominance-'))
-  const undetectedSub = findFirst(byId, (id) => id.startsWith('undetected-sub-'))
-  // Need ≥2 of the three.
-  const present = [leaks, dominance?.task, undetectedSub?.task].filter(
-    (t): t is ControlAdvisorTask => Boolean(t),
-  )
-  if (present.length < 2) return null
-  const composedOf = present.map((t) => t.id)
-  if (leaks) byId.delete(leaks.id)
-  if (dominance) byId.delete(dominance.id)
-  if (undetectedSub) byId.delete(undetectedSub.id)
-  const annualizedSum = present.reduce((sum, t) => sum + t.impactRaw * 12, 0)
-  return {
-    id: 'super-hidden-drain',
-    emoji: '💧',
-    cat: 'Drenaje',
-    title: 'Drenaje invisible',
-    body: 'Filtraciones chicas, una categoría dominante y/o un monto repetido sin registrar como fijo. Tres señales que en conjunto suelen explicar el goteo del mes.',
-    impact: `Goteo anual estimado: ${fmt(annualizedSum)}`,
-    impactRaw: Math.round(annualizedSum),
-    impactScope: 'oneTime',
-    cta: 'Auditar',
-    urgency: 'media',
-    confidence: Math.min(...present.map((t) => t.confidence)),
-    dataDays: Math.max(...present.map((t) => t.dataDays)),
-    dummyExplanation:
-      'Cuando varios patrones de gasto chico coinciden, el problema no está en una compra — está en la dinámica. Una auditoría guiada ayuda a ver qué cancelar, qué reasignar y qué dejar pasar.',
-    composedOf,
-    action: { kind: 'open-coach-mode', signalId: 'super-hidden-drain', topic: 'leaks' },
-  }
-}
-
 function composeSuperSignals(
   tasks: ControlAdvisorTask[],
 ): ControlAdvisorTask[] {
   const byId = new Map(tasks.map((t) => [t.id, t]))
   const supers: ControlAdvisorTask[] = []
-  // Order matters: critical confluence first, then positive momentum,
-  // finally hidden drain (which competes for `small-leaks` etc.).
+  // Curación 2026-06-15: solo 2 meta-señales (colapsan señales hijas en 1
+  // card → bajan ruido, no lo suman). super-hidden-drain ("drenaje
+  // invisible") descartado: framing pseudo-técnico que no le dice a la
+  // persona qué auditar; sus hijas (small-leaks, cat-dominance) ya viven
+  // claras y sueltas.
   const storm = tryComposePerfectStorm(byId)
   if (storm) supers.push(storm)
   const momentum = tryComposeSavingsMomentum(byId)
   if (momentum) supers.push(momentum)
-  const drain = tryComposeHiddenDrain(byId)
-  if (drain) supers.push(drain)
   return [...supers, ...byId.values()]
 }
 
@@ -620,42 +547,6 @@ function buildPaydayProximity(
     dummyExplanation:
       'Divide el saldo restante del mes por los días que faltan al próximo cobro. El resultado es el monto máximo a gastar por día para no quedar en cero antes del cierre.',
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
-  }
-}
-
-/** First 3 days of cycle consumed >15% of monthly libre. */
-function buildStartOfCycleSplurge(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  if (args.view.detalleDias.length < 4) return null
-  if (args.view.detalleDias.length + 1 > 10) return null // too late to act
-  const first3 = args.view.detalleDias.slice(0, 3)
-  const spent = first3.reduce((s, d) => s + d.gasto, 0)
-  const libreMes = args.cupoDiario * (args.view.diasRestantes + args.view.detalleDias.length)
-  if (libreMes <= 0) return null
-  const pct = (spent / libreMes) * 100
-  if (pct < 15) return null
-  return {
-    id: 'start-splurge',
-    emoji: '🚀',
-    cat: 'Arranque',
-    title: `${Math.round(pct)}% del mes gastado en los primeros 3 días`,
-    body: `Los primeros 3 días representan ${fmt(spent)}, equivalente a más de ${Math.round(pct / 3.3)} días de cupo. Si el ritmo se mantiene, el resto del mes queda ajustado.`,
-    // The $X is the 3-day OVERAGE the user already spent vs the daily
-    // cap × 3 days — it's a one-time recovery target, NOT a recurring
-    // monthly amount. Earlier copy said "+$X/mes" which conflated the
-    // two and inflated perceived severity. Now the label is honest
-    // about what the number represents.
-    impact: `Recuperar: +${fmt(spent - args.cupoDiario * 3)}`,
-    impactRaw: Math.max(0, Math.round(spent - args.cupoDiario * 3)),
-    impactScope: 'oneTime',
-    cta: 'Entendido',
-    urgency: 'media',
-    confidence: 0.9,
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'Es normal gastar con menos restricción los días después del cobro, cuando hay saldo fresco. Si los primeros 3 días se llevan una porción grande del presupuesto, el resto del mes queda ajustado.',
-    action: { kind: 'dismiss', dismissId: 'start-splurge' },
   }
 }
 
@@ -1108,79 +999,6 @@ function buildNightImpulse(
   }
 }
 
-/** Same amount repeating on different days, NOT already a fijo. */
-function buildUndetectedSubscription(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const discretionary = args.expenses.filter((e) => !e.commitment_id)
-  if (discretionary.length < 4) return null
-  // Group by *relative* tolerance (±5%) instead of fixed-width buckets.
-  // Fixed $50 buckets miss obvious matches like $900 vs $950 (5% apart
-  // but split across buckets) and miss anything below the old $1000
-  // floor (Spotify/Apple Music sit at $700-$900). We anchor each
-  // bucket on the first matching price and accept anything within
-  // ±5% — looser than 50/100 grouping at low magnitudes, tighter at
-  // high ones, which matches how subscription pricing actually works.
-  interface Bucket {
-    anchor: number
-    entries: Array<{ amount: number; day: number; desc: string }>
-  }
-  const buckets: Bucket[] = []
-  for (const e of discretionary) {
-    const amount = Number(e.price ?? 0)
-    if (amount < 500) continue
-    const day = new Date(e.created_at).getDate()
-    const desc = e.description ?? ''
-    const bucket = buckets.find(
-      (b) => Math.abs(amount - b.anchor) / b.anchor <= 0.05,
-    )
-    if (bucket) {
-      bucket.entries.push({ amount, day, desc })
-    } else {
-      buckets.push({ anchor: amount, entries: [{ amount, day, desc }] })
-    }
-  }
-  // Look for a bucket that fires ≥2 times on different days. Use the
-  // bucket's median amount as the canonical price so a slightly noisy
-  // run (e.g. $895 + $905 + $900) reports the typical value, not a
-  // tail observation.
-  for (const { entries } of buckets) {
-    if (entries.length < 2) continue
-    const uniqueDays = new Set(entries.map((e) => e.day)).size
-    if (uniqueDays < 2) continue
-    const sorted = [...entries].sort((a, b) => a.amount - b.amount)
-    const median = sorted[Math.floor(sorted.length / 2)]!.amount
-    const amount = Math.round(median)
-    const desc = entries.find((e) => e.desc)?.desc ?? ''
-    return {
-      id: `undetected-sub-${amount}`,
-      emoji: '🔁',
-      cat: 'Suscripciones',
-      title: `Posible suscripción no registrada: ${fmt(amount)}`,
-      body: `Encontramos ${entries.length} gastos por un monto similar${desc ? ` ("${desc.slice(0, 40)}")` : ''}. Si se repite todos los meses, mejor registrarlo como gasto fijo para hacer seguimiento.`,
-      impact: `Mejor seguimiento mensual`,
-      // Monthly magnitude (ranking convention: every signal's
-      // impactRaw is in MONTHLY equivalent so the score formula
-      // `urgencyWeight × impactRaw × confidence` compares apples to
-      // apples). The annual context lives in the body ("Si se repite
-      // todos los meses…"), not in the rank-driving number.
-      impactRaw: Math.round(amount),
-      cta: 'Registrar',
-      urgency: 'baja',
-      confidence: rampThreeWeeks(args.view.detalleDias.length),
-      dataDays: args.view.detalleDias.length,
-      dummyExplanation:
-        'Detecta montos que se repiten en días distintos — patrón típico de suscripciones cargadas como gasto variable. Si las registras como gasto fijo, puedes seguir aumentos y detectar las que dejas de usar.',
-      action: {
-        kind: 'open-add-fixed-prefilled',
-        amount,
-        description: desc || undefined,
-      },
-    }
-  }
-  return null
-}
-
 // ─── Group 4 — Pattern insights (merged dow + weekend) ──────────────
 
 /**
@@ -1513,49 +1331,6 @@ function buildSavingsOverachievement(
 
 // ─── Group 7 — Family ───────────────────────────────────────────────
 
-/** One member covers >70% of discretionary. */
-function buildMemberContributionImbalance(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const discretionary = args.expenses.filter((e) => !e.commitment_id)
-  if (discretionary.length < 5) return null
-  const byMember = new Map<string, number>()
-  for (const e of discretionary) {
-    if (!e.created_by) continue
-    byMember.set(
-      e.created_by,
-      (byMember.get(e.created_by) ?? 0) + Number(e.price ?? 0),
-    )
-  }
-  if (byMember.size < 2) return null
-  const total = [...byMember.values()].reduce((s, v) => s + v, 0)
-  if (total === 0) return null
-  const sorted = [...byMember.entries()].sort((a, b) => b[1] - a[1])
-  const [topId, topAmount] = sorted[0]!
-  const pct = (topAmount / total) * 100
-  if (pct < 70) return null
-  return {
-    id: `member-imbalance-${topId}`,
-    emoji: '👥',
-    cat: 'Familia',
-    title: `Distribución desbalanceada: ${Math.round(pct)}% en un miembro`,
-    body: `Del total de ${fmt(total)} gastado este mes, ${fmt(topAmount)} los puso una sola persona. Vale la pena revisar si el reparto refleja el acuerdo del hogar.`,
-    impact: `Reparto equitativo: ${fmt(total / 2)} cada uno`,
-    impactRaw: 0,
-    cta: 'Avisar',
-    urgency: 'baja',
-    confidence: rampOneCycle(args.view.detalleDias.length),
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'En hogares compartidos, la distribución del gasto suele desviarse del acuerdo sin que nadie lo note. Mostrar el reparto real ayuda a hablarlo entre todos.',
-    action: {
-      kind: 'send-member-warning',
-      targetUserId: topId,
-      message: `Aviso del asistente: este mes concentraste el ${Math.round(pct)}% del gasto del hogar (${fmt(topAmount)} de ${fmt(total)}).`,
-    },
-  }
-}
-
 // ─── Group 9 — Atomic awareness (P1) ────────────────────────────────
 //
 // Signals that don't depend on the cognitive layer (memory / causal /
@@ -1783,98 +1558,11 @@ function buildCycleStartProjection(
 
 // ─── Group 10 — Forecast (P1) ───────────────────────────────────────
 //
-// The three predictive signals consume the optional `args.forecast`
-// snapshot. They return null when the forecast is absent or doesn't
-// carry the data the rule needs — the system degrades gracefully on
-// older deploys / cold starts.
+// forecast-payday-gap consume el `args.forecast` opcional (los otros 2
+// pronósticos se descartaron en la curación 2026-06-15 por abstractos).
+// Devuelve null si no hay forecast — degrada elegante en cold starts.
 
-const PROJECT_DOW_FROM_NAME: Record<string, number> = {
-  Lun: 0,
-  Mar: 1,
-  Mié: 2,
-  Jue: 3,
-  Vie: 4,
-  Sáb: 5,
-  Dom: 6,
-}
-
-/** Tomorrow falls on the user's worst-historical DoW with a thin margin. */
-function buildForecastTomorrowRisk(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const peor = args.view.peorDow
-  if (!peor || peor.count < 2) return null
-  const peorDowIdx = PROJECT_DOW_FROM_NAME[peor.name]
-  if (peorDowIdx == null) return null
-  const now = args.now ?? new Date()
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const tomorrowDow = (tomorrow.getDay() + 6) % 7
-  if (tomorrowDow !== peorDowIdx) return null
-  const remaining = args.view.restanteMes
-  const expected = peor.avg
-  if (expected <= 0) return null
-  if (remaining > expected * 1.5) return null
-  const buffer = Math.max(0, remaining - expected)
-  return {
-    id: 'forecast-tomorrow-risk',
-    emoji: '📅',
-    cat: 'Predicción',
-    title: `Mañana suele ser tu peor día`,
-    body: `Mañana es ${peor.name.toLowerCase()}, históricamente promediás ${fmt(expected)}. Hoy te queda ${fmt(remaining)} libre — gastá menos de ${fmt(buffer)} para no arrancar mañana en rojo.`,
-    impact: `Margen mañana: ${fmt(buffer)}`,
-    impactRaw: Math.round(expected),
-    impactScope: 'oneTime',
-    cta: 'Ver semana',
-    urgency: 'media',
-    confidence: rampThreeWeeks(args.view.detalleDias.length),
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'El sistema mira tus gastos por día de la semana y detecta cuál suele ser el más caro. Si mañana es ese día, conviene cerrar hoy con margen.',
-    action: { kind: 'scroll-to-section', section: 'semana' },
-  }
-}
-
-/** Three or more DISTINCT inflection days in next 7 → "storm week". */
-function buildForecastStormWeek(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const f = args.forecast
-  if (!f) return null
-  // Count distinct dates so a single date that triggers both
-  // `fixed_payment` and `historical_high_dow` doesn't double-count
-  // toward the threshold. We keep the highest expectedAmount per day
-  // for the impact total.
-  const byDay = new Map<string, number>()
-  for (const ev of f.inflectionDays) {
-    const prev = byDay.get(ev.day) ?? 0
-    if (ev.expectedAmount > prev) byDay.set(ev.day, ev.expectedAmount)
-  }
-  const distinctDays = byDay.size
-  if (distinctDays < 3) return null
-  // Sum only the top 5 distinct-day amounts to keep the impact bounded.
-  const sorted = Array.from(byDay.values()).sort((a, b) => b - a)
-  const totalImpact = sorted.slice(0, 5).reduce((s, v) => s + v, 0)
-  if (totalImpact <= 0) return null
-  return {
-    id: 'forecast-storm-week',
-    emoji: '🌩️',
-    cat: 'Predicción',
-    title: `Semana cargada: ${distinctDays} días`,
-    body: `Próximos 7 días: ${distinctDays} días con cargos importantes (${fmt(totalImpact)} en total). Reservá margen antes de que lleguen.`,
-    impact: `A reservar: ${fmt(totalImpact)}`,
-    impactRaw: Math.round(totalImpact),
-    impactScope: 'oneTime',
-    cta: 'Ver semana',
-    urgency: 'alta',
-    confidence: rampOneCycle(args.view.detalleDias.length),
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'Cuando se acumulan vencimientos de fijos, días caros y caps cerca, conviene reservar el monto antes que reaccionar después. El forecast detecta ese cluster.',
-    action: { kind: 'scroll-to-section', section: 'semana' },
-  }
-}
-
-/** Pessimistic track exhausts `restanteMes` before payday → recovery urgent. */
+/** Proyección pesimista llega a $0 antes del cobro → aviso de supervivencia. */
 function buildForecastPaydayGap(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
@@ -1914,112 +1602,6 @@ function buildForecastPaydayGap(
 // and converts it into an INSIGHT card. We require a minimum
 // `confidence` of 0.4 (same as the global floor) so brand-new patterns
 // stay invisible until they stabilize.
-
-function buildCausalFridayCascade(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const links = args.causalLinks
-  if (!links || links.length === 0) return null
-  const link = links.find(
-    (l) =>
-      l.cause.type === 'day' &&
-      l.cause.value === 'friday' &&
-      l.effect.type === 'spending_spike',
-  )
-  if (!link) return null
-  if (link.confidence < 0.4) return null
-  // Only nudge on Thursday — by then the user can still adjust before
-  // the cascade kicks in.
-  const now = args.now ?? new Date()
-  const projectDow = (now.getDay() + 6) % 7
-  if (projectDow !== 3) return null
-  const pct = Math.round(link.effect.magnitude * 100)
-  return {
-    id: 'causal-friday-cascade',
-    emoji: '🪢',
-    cat: 'Patrón causal',
-    title: 'Patrón viernes → sábado',
-    body: `Detecté ${link.occurrences} veces que un viernes con gasto alto dispara un sábado ${pct}% más caro de lo habitual. Hoy es jueves: si mañana hay salida, atención el sábado.`,
-    impact: `+${pct}% en sábados gatillados`,
-    impactRaw: Math.round(link.effect.magnitude * 5000),
-    impactScope: 'monthly',
-    cta: 'Entendido',
-    urgency: 'baja',
-    confidence: link.confidence,
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'Cuando dos días seguidos suelen "encadenarse" (un día caro dispara el siguiente), avisarlo el día anterior te da margen para frenar el rebote sin esfuerzo.',
-    action: { kind: 'dismiss', dismissId: 'causal-friday-cascade' },
-  }
-}
-
-function buildCausalPairedImpulse(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const links = args.causalLinks
-  if (!links || links.length === 0) return null
-  const link = links.find(
-    (l) => l.cause.type === 'category' && l.effect.type === 'spending_spike',
-  )
-  if (!link) return null
-  if (link.confidence < 0.4) return null
-  const cat = args.categoriesExpense.find((c) => c.id === link.cause.value)
-  const catName = cat?.name ?? 'esa categoría'
-  const pct = Math.round(link.effect.magnitude * 100)
-  return {
-    id: `causal-paired-${link.cause.value}`,
-    emoji: '🪞',
-    cat: catName,
-    title: 'Compras pareadas',
-    body: `Cuando compras en ${catName}, el ${pct}% de las veces hay otro gasto similar en menos de 3 horas. Si te pasa hoy, espera 24h antes del segundo.`,
-    impact: 'Pausa de 24h sugerida',
-    impactRaw: Math.round(link.effect.magnitude * 8000),
-    impactScope: 'monthly',
-    cta: 'Entendido',
-    urgency: 'baja',
-    confidence: link.confidence,
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'Las compras pareadas suelen ser impulsos seguidos (algo + el "vamos a aprovechar"). Detectamos el patrón cuando se repite y sugerimos romperlo con una pausa explícita.',
-    action: {
-      kind: 'dismiss',
-      dismissId: `causal-paired-${link.cause.value}`,
-    },
-  }
-}
-
-function buildCausalStressSpending(
-  args: BuildSignalsArgs,
-): ControlAdvisorTask | null {
-  const links = args.causalLinks
-  if (!links || links.length === 0) return null
-  const link = links.find(
-    (l) =>
-      l.cause.type === 'time' &&
-      l.cause.value === 'multi-tx-day' &&
-      l.effect.type === 'spending_spike',
-  )
-  if (!link) return null
-  if (link.confidence < 0.4) return null
-  const pct = Math.round(link.effect.magnitude * 100)
-  return {
-    id: 'causal-stress-spending',
-    emoji: '🌪️',
-    cat: 'Patrón causal',
-    title: 'Días de muchas compras chicas',
-    body: `Detecté ${link.occurrences} días con 4+ transacciones — esos días gastas ${pct}% más en promedio, casi todo discrecional. Prueba una pausa antes de la 5ª compra del día.`,
-    impact: `+${pct}% en días de stress`,
-    impactRaw: Math.round(link.effect.magnitude * 8000),
-    impactScope: 'monthly',
-    cta: 'Entendido',
-    urgency: 'baja',
-    confidence: link.confidence,
-    dataDays: args.view.detalleDias.length,
-    dummyExplanation:
-      'Los días con muchas transacciones chicas suelen ser días "altos" en discrecional. Avisar a partir de la cuarta tx del día corta el patrón antes que escale.',
-    action: { kind: 'dismiss', dismissId: 'causal-stress-spending' },
-  }
-}
 
 // ─── Group 8 — Positive reinforcement ───────────────────────────────
 
