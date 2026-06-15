@@ -28,7 +28,9 @@
     "supabase:remote:login": "node scripts/supabase-remote.mjs login",
     "supabase:remote:link": "node scripts/supabase-remote.mjs link",
     "supabase:remote:db:push": "node scripts/supabase-remote.mjs db push",
-    "supabase:remote:functions:deploy": "node scripts/supabase-remote.mjs functions deploy send-family-push",
+    "supabase:functions:check": "node scripts/check-edge-functions-deployed.mjs",
+    "supabase:remote:functions:deploy": "node scripts/check-edge-functions-deployed.mjs && node scripts/supabase-remote.mjs functions deploy",
+    "supabase:remote:functions:deploy:one": "node scripts/supabase-remote.mjs functions deploy",
     "supabase:login": "supabase login",
     "supabase:link": "supabase link",
     "supabase:start": "supabase start",
@@ -38,7 +40,7 @@
     "supabase:db:push": "supabase db push",
     "supabase:db:pull": "supabase db pull",
     "supabase:functions:serve": "supabase functions serve",
-    "supabase:functions:deploy": "supabase functions deploy send-family-push"
+    "supabase:functions:deploy": "node scripts/check-edge-functions-deployed.mjs && supabase functions deploy"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
