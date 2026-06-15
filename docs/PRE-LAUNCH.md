@@ -53,7 +53,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 | # | Item | Detalle |
 |---|---|---|
 | S1 | ✅ **Paid Apps Agreement activo** | HECHO (2026-06-15) — banking vía DolarApp, agreement firmado. Sin esto Apple no permite vender. |
-| S2 | **Primer producto de suscripción → "Submit for Review"** | Los productos `com.manifiesto.app.subscription.monthly`/`.yearly` deben enviarse a revisión JUNTO con la versión de la app. Requiere: screenshot de review de la paywall + descripción del producto + (el grupo "Manifiesto Hogar" ya tiene localización — se arregló el `skuNotFound`). |
+| S2 | **Primer producto de suscripción → "Submit for Review"** | Los productos `...monthly`/`.yearly` se mandan a revisión ATADOS a la versión de la app (Apple lo exige; sin eso → rechazo). **Paso a paso en §9.B.** |
 | S3 | **EU DSA / trader status** | Apple pregunta en el submit. Respuesta conocida (no comerciante UE). |
 
 ### 🟡 Recomendado antes de Submit
@@ -132,7 +132,50 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 ## 8. Orden sugerido de ejecución
 1. ✅ Paid Apps Agreement (S1) — hecho.
 2. ✅ `APP_ENV → production` (C1) + test states limpiados (C2) + captcha off (C3) — hecho.
-3. **[SIGUIENTE]** Bump buildNumber → `eas build` + `eas submit` (B1/B2).
-4. Atar build a la versión + enviar productos de suscripción a revisión (S2/S3).
+3. **[SIGUIENTE]** Bump buildNumber → `eas build` + `eas submit` (B1/B2). Ver §9.A.
+4. Atar build a la versión + enviar productos de suscripción a revisión. Ver §9.B.
 5. Smoke test en TestFlight (happy-path de compra).
 6. **Submit for Review** (el click).
+
+---
+
+## 9. Runbook del owner — las 2 acciones manuales que quedan
+
+### 9.A · Build nuevo + submit del binario
+El binario en App Store Connect (1.0 build 1) es ANTERIOR a TODO el trabajo de
+suscripciones (código nativo, no viaja por OTA). Hay que generar uno nuevo:
+1. Bump `buildNumber` (lo gobierna `app.config.ts`).
+2. `eas build --platform ios --profile production`.
+3. `eas submit --platform ios` (sube el `.ipa` a App Store Connect).
+4. En App Store Connect → versión 1.0 → atar el build nuevo (reemplaza el (1)).
+
+### 9.B · Enviar la suscripción a revisión (lo que más confunde)
+En App Store Connect se revisan DOS cosas por separado: (1) la app/versión y
+(2) los **productos de suscripción**, cada uno con su propio estado de review
+(*Missing Metadata → Ready to Submit → Waiting for Review → Approved*).
+
+**Apple exige que el PRIMER producto auto-renovable se mande a revisión ATADO a
+una versión de la app.** No se revisa solo. Y no se puede vender hasta que esté
+"Approved" — si mandás la app sin las subs adjuntas, el reviewer abre la paywall,
+StoreKit no puede traer los productos no aprobados → **rechazo**.
+
+Pasos:
+1. App Store Connect → app → **Suscripciones** → grupo "Manifiesto Hogar"
+   (la localización del grupo ya está — fue el fix del `skuNotFound`).
+2. Por cada plan (Mensual / Anual): confirmá **precio**, **duración**,
+   **nombre + descripción localizados**, y subí el **screenshot de review** de
+   la paywall (lo que más se olvida) → el estado pasa a *"Ready to Submit"*.
+3. Andá a la **versión 1.0** → sección **"In-App Purchases and Subscriptions"** →
+   **`+` y agregá los 2 productos** a esta versión.
+4. Al hacer **"Submit for Review"** de la versión, las subs van a revisión JUNTO
+   con la app.
+
+**⚠️ Gotcha:** si NO adjuntás los productos a la versión (paso 3), no se revisan
+→ la app puede aprobarse pero el IAP queda roto. Siempre adjuntarlos antes del
+submit.
+
+**Nota APP_ENV:** está en `production` → el webhook saltea eventos de **sandbox**.
+Para el smoke-test en TestFlight, la **compra inicial igual funciona**
+(`validate-purchase` no tiene ese guard); solo los eventos de ciclo de vida
+sandbox (renovaciones) se saltean. Si querés re-testear renovaciones en
+TestFlight, volvé `APP_ENV` a `sandbox` temporalmente.
