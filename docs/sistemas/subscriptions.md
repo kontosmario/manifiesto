@@ -33,11 +33,15 @@ según `useEntitlement().source` muestra:
 
 Componentes (`mobile/components/billing/`): `fern-mark`, `brand-lockup`,
 `member-avatars`, `plan-tiles`, `savings-ribbon`, `free-period-banner`,
-`membership-hero`, `subscription-detail-rows`, `membership-actions`,
-`purchase-result-sheet` (sheets via `ModalCard`; success celebra con helecho +
-luciérnagas + confetti; gotcha modal-chain con `InteractionManager`),
-`free-period-nudge` (Home). Identidad: A+C + luciérnagas (`CardParticles`) + logo
-helecho + light/dark. El snapshot RPC suma `auto_renew` + `grace_expires_at`.
+`membership-hero`, `subscription-detail-rows`, `household-members-list`
+(integrantes del hogar: avatar + nombre + "Se unió el …" + badge "Dueño"),
+`membership-actions`, `purchase-result-sheet` (sheets via `ModalCard`; success
+celebra con helecho + luciérnagas + confetti; gotcha modal-chain con
+`InteractionManager`), `free-period-nudge` (Home). El surface de planes usa la
+paleta calma de Ajustes (`DARK_TAB_CANVAS` + `AmbientBlobs`, `surfaceMuted`/
+`creamCard` + `line`); el gradiente forest queda solo en los plan-tiles y el mark
+de celebración. El snapshot RPC suma `auto_renew`, `grace_expires_at`,
+`is_purchaser`, `mvp`.
 
 ### Compliance Apple (Guideline 3.1.2) — paywall
 

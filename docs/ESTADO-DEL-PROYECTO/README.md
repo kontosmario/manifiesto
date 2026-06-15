@@ -49,6 +49,7 @@ docs/ESTADO-DEL-PROYECTO/
 
 | Fecha | Doc | Cubre |
 |---|---|---|
+| **2026-06-15** | [`2026-06-15-subscriptions-ui-mvp-shipped.md`](2026-06-15-subscriptions-ui-mvp-shipped.md) | 🟢 **Suscripciones — UI redesign + estados + MVP super-admin**. Paywall/ManageView rediseñados y alineados a Ajustes, compliance Apple 3.1.2, downgrade diferido, comprador vs cubierto, integrantes del hogar, super-admin MVP (gate kontosmario). Backend vivo en prod + verificado. **Para LANZAR ver [`../PRE-LAUNCH.md`](../PRE-LAUNCH.md)** |
 | **2026-06-11** | [`2026-06-11-security-hardening-FINAL.md`](2026-06-11-security-hardening-FINAL.md) | 🟢 **TRULY 100% clean — security journey end-to-end**. 11 audit passes + 14 sprints (E→Q) cerraron ~185 findings. Owner action items DONE (EXPO_UPDATE_PRIVATE_KEY, App Store password, Universal Links AASA + assetlinks, Supabase Auth config). Tests 748 verde. App Store submit-ready. Audit-saturated verdict |
 | 2026-06-11 | [`2026-06-11-app-store-assembled-ready-for-review.md`](2026-06-11-app-store-assembled-ready-for-review.md) | App Store listing copy + 9 screenshots upload + seed account `apple.review@manifiestoapp.com` para Apple Review. H1-H7 closed, solo falta H8 (click submit). Brand cover decision + risk docs |
 | 2026-06-10 | [`2026-06-10-security-hardening-DONE.md`](2026-06-10-security-hardening-DONE.md) | 🟡 **HISTÓRICO** — cubrió solo Sprints E→I. El doc FINAL del 2026-06-11 supera y reemplaza |
