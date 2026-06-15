@@ -21,6 +21,8 @@ import { MaterialIcons } from '@expo/vector-icons'
 
 import { Screen } from '@/components/ui/screen'
 import { SectionHeader } from '@/components/ui/section-header'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { SettingsSwitchRow } from '@/components/settings/settings-primitives'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { triggerHaptic } from '@/lib/haptics'
@@ -31,7 +33,12 @@ import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { useAdvisorValueSummary } from '@/features/insights/use-advisor-value-summary'
-import { inferPersona, PERSONA_PROFILES } from '@/features/insights/persona'
+import {
+  ADVISOR_PREFERENCES_DEFAULTS,
+  useAdvisorPreferences,
+  useUpdateAdvisorPreferences,
+} from '@/features/insights/use-advisor-preferences'
+import { inferPersona, PERSONA_PROFILES, type UserPersona } from '@/features/insights/persona'
 import {
   useSignalBlocklistEntries,
   useUnblockSignalFamily,
@@ -95,6 +102,10 @@ function engagementPhrase(ctr: number, acted: number): string {
 const MIN_FAMILY_SAMPLE = 3
 const TOP_FAMILIES = 5
 
+const PERSONA_OPTIONS: { value: UserPersona; label: string }[] = (
+  ['planner', 'firefighter', 'avoider', 'optimizer'] as UserPersona[]
+).map((p) => ({ value: p, label: PERSONA_PROFILES[p].label }))
+
 export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
   const queryClient = useQueryClient()
@@ -103,10 +114,39 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const unblockMutation = useUnblockSignalFamily()
 
   const valueQuery = useAdvisorValueSummary(userId)
+  const advisorPrefsQuery = useAdvisorPreferences()
+  const updatePrefs = useUpdateAdvisorPreferences()
+  const prefs = advisorPrefsQuery.data ?? ADVISOR_PREFERENCES_DEFAULTS
 
-  const persona = statsQuery.data ? inferPersona(statsQuery.data) : 'planner'
-  const personaProfile = PERSONA_PROFILES[persona]
+  const inferredPersona = statsQuery.data ? inferPersona(statsQuery.data) : 'planner'
+  // Persona efectiva: override manual gana sobre la inferencia.
+  const effectivePersona: UserPersona =
+    !prefs.useInferredPersona && prefs.personaOverride
+      ? prefs.personaOverride
+      : inferredPersona
+  const personaProfile = PERSONA_PROFILES[effectivePersona]
   const totalShown = statsQuery.data?.overall.totalShown ?? 0
+
+  const handleToggleInferred = useCallback(
+    (next: boolean) => {
+      // Al pasar a manual sin override previo, sembramos el override con la
+      // persona inferida actual para que el control quede seleccionado.
+      updatePrefs.mutate(
+        next || prefs.personaOverride
+          ? { useInferredPersona: next }
+          : { useInferredPersona: next, personaOverride: inferredPersona },
+      )
+    },
+    [updatePrefs, prefs.personaOverride, inferredPersona],
+  )
+
+  const handleSelectPersona = useCallback(
+    (p: UserPersona) => {
+      void triggerHaptic('selection')
+      updatePrefs.mutate({ personaOverride: p, useInferredPersona: false })
+    },
+    [updatePrefs],
+  )
 
   // #1 Card de valor: solo si hay ahorro realizado (decisión: ocultar si 0
   // para no mostrar un $0 desmotivador). saved_quarter ≥ saved_month siempre.
@@ -234,7 +274,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       ) : null}
 
       <RiseView delay={80}>
-        <SectionHeader title="Perfil inferido" />
+        <SectionHeader title="Tu perfil" />
         <View
           style={[
             styles.card,
@@ -255,10 +295,28 @@ export function AsistentePreferencesScreen({ userId }: Props) {
             </View>
           </View>
           <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
-            {totalShown < 10
-              ? `Inferencia preliminar (${totalShown} interacción${totalShown === 1 ? '' : 'es'} registrada${totalShown === 1 ? '' : 's'}). Después de 10 empieza a calibrarse a tu comportamiento.`
-              : `Calibrado con ${totalShown} interacciones registradas.`}
+            {prefs.useInferredPersona
+              ? totalShown < 10
+                ? `Inferencia preliminar (${totalShown} interacción${totalShown === 1 ? '' : 'es'} registrada${totalShown === 1 ? '' : 's'}). Después de 10 empieza a calibrarse a tu comportamiento.`
+                : `Inferido de tus ${totalShown} interacciones. Podés fijarlo vos abajo.`
+              : 'Lo elegiste vos. Volvé a automático cuando quieras.'}
           </Text>
+        </View>
+
+        <View style={styles.personaControls}>
+          <SettingsSwitchRow
+            label="Usar perfil inferido automáticamente"
+            description="Si lo apagás, elegís vos cómo se comporta el asistente."
+            value={prefs.useInferredPersona}
+            onValueChange={handleToggleInferred}
+          />
+          {!prefs.useInferredPersona ? (
+            <SegmentedControl
+              options={PERSONA_OPTIONS}
+              value={effectivePersona}
+              onChange={handleSelectPersona}
+            />
+          ) : null}
         </View>
       </RiseView>
 
@@ -401,6 +459,7 @@ const styles = StyleSheet.create({
   cardBody: { fontSize: 13, lineHeight: 18 },
   cardFootnote: { fontSize: 12, lineHeight: 16, marginTop: 4 },
   valueAmount: { fontSize: 24, fontWeight: '700', letterSpacing: -0.4 },
+  personaControls: { gap: 10, marginTop: 10 },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',

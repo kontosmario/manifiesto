@@ -51,6 +51,7 @@ import {
 import { buildForecast7Day, type Forecast7Day } from '@/features/insights/forecast-engine'
 import { detectCausalLinks, type CausalLink } from '@/features/insights/causal-engine'
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
+import { useAdvisorPreferences } from '@/features/insights/use-advisor-preferences'
 import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
 import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
@@ -258,6 +259,7 @@ export function useControlV2Data(
   )
   const intelligenceQuery = useControlIntelligence(heavyEnabled ? familyId : '')
   const interactionStatsQuery = useInteractionStats(userId ?? null)
+  const advisorPrefsQuery = useAdvisorPreferences()
   const blocklistQuery = useSignalBlocklist(userId ?? null)
   const controlSnapshotQuery = useControlSnapshot(userId ?? undefined)
 
@@ -482,10 +484,15 @@ export function useControlV2Data(
   )
 
   const persona = useMemo<UserPersona>(() => {
+    // Override manual (user_advisor_prefs) gana sobre la inferencia.
+    const prefs = advisorPrefsQuery.data
+    if (prefs && !prefs.useInferredPersona && prefs.personaOverride) {
+      return prefs.personaOverride
+    }
     const stats = interactionStatsQuery.data
     if (!stats) return 'planner'
     return memoizedInferPersona(stats)
-  }, [interactionStatsQuery.data])
+  }, [advisorPrefsQuery.data, interactionStatsQuery.data])
 
   const causalLinks = useMemo<CausalLink[]>(() => {
     if (usingMock) return []
@@ -523,6 +530,9 @@ export function useControlV2Data(
         applyAssistantDemoFilter(getAssistantDemoSignals(), demoFilter),
       )
     }
+    // Kill-switch del asistente (user_advisor_prefs.advisor_enabled).
+    // Off = no se computan señales; la pantalla muestra "en pausa".
+    if (advisorPrefsQuery.data && !advisorPrefsQuery.data.advisorEnabled) return []
     if (usingMock) return resolveControlSignals({ usingMock: true, computedSignals: [] })
     return coerceSignalsToReadOnly(
       memoizedBuildSignals({
@@ -553,6 +563,7 @@ export function useControlV2Data(
     demoMode,
     demoFilter,
     usingMock,
+    advisorPrefsQuery.data,
     view,
     expenses,
     fixedExpenses,
