@@ -20,10 +20,11 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 **Lo que BLOQUEA el launch hoy** (resumen):
 1. 🔴 **Build nuevo** — el binario en App Store Connect (1.0 build 1) es ANTERIOR
    a TODO el trabajo de suscripciones. Hay que generar y subir un build nuevo.
-2. 🔴 **Paid Apps Agreement activo** — sin él no se pueden vender suscripciones.
+2. ✅ **Paid Apps Agreement activo** — hecho (banking vía DolarApp, 2026-06-15).
 3. 🔴 **Primera suscripción enviada a revisión** con la versión de la app (Apple
-   lo exige para el primer producto auto-renovable).
-4. 🟡 **APP_ENV → production** + limpieza de estados de test (ver §3).
+   lo exige para el primer producto auto-renovable). Ver §1.
+4. ✅ **APP_ENV → production** — hecho (2026-06-15, webhook redeployado) + test
+   states limpiados.
 5. ✅ **Captcha**: DESHABILITADO a propósito (decisión 2026-06-15) — era fricción
    sin protección (Supabase no lo enforce-aba). Ya no es un blocker.
 6. 🔵 **Submit for Review** — el click final (owner decide cuándo).
@@ -51,7 +52,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 ### 🔴 Blockers de launch (suscripciones)
 | # | Item | Detalle |
 |---|---|---|
-| S1 | **Paid Apps Agreement activo** | Banking + tax (W-8BEN) + agreement firmado (setup vía DolarApp). Sin esto Apple no permite vender. Verificar estado en App Store Connect → Agreements. |
+| S1 | ✅ **Paid Apps Agreement activo** | HECHO (2026-06-15) — banking vía DolarApp, agreement firmado. Sin esto Apple no permite vender. |
 | S2 | **Primer producto de suscripción → "Submit for Review"** | Los productos `com.manifiesto.app.subscription.monthly`/`.yearly` deben enviarse a revisión JUNTO con la versión de la app. Requiere: screenshot de review de la paywall + descripción del producto + (el grupo "Manifiesto Hogar" ya tiene localización — se arregló el `skuNotFound`). |
 | S3 | **EU DSA / trader status** | Apple pregunta en el submit. Respuesta conocida (no comerciante UE). |
 
@@ -79,7 +80,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 
 | # | Item | Estado | Acción |
 |---|---|---|---|
-| C1 | **`APP_ENV` → `production`** | 🟡 PENDIENTE | Está en `sandbox` (se flipeó para testear). En prod el webhook DEBE saltar eventos de sandbox (`isSandboxUnderProd`) para no pisar entitlements reales. **Revertir antes de lanzar.** |
+| C1 | **`APP_ENV` → `production`** | ✅ HECHO (2026-06-15) | Seteado a `production` + webhook `appstore-notifications` redeployado para tomar el secret. El webhook ahora salta eventos de sandbox (`isSandboxUnderProd`). **Nota:** para un test de ciclo de vida (renovaciones) en TestFlight sandbox habría que volver a `sandbox` temporal; el e2e de ciclo ya se verificó. |
 | C2 | **Limpiar estado fabricado de test** | 🟡 PENDIENTE | mario7 / family `351cf218` quedó en active-yearly-2027 de un test → volver a `none`. |
 | C3 | **Captcha deshabilitado (decisión)** | ✅ | Kill-switch `CAPTCHA_ENABLED=false` en `mobile/lib/captcha-config.ts` — el modal era fricción sin protección (Supabase `security_captcha_enabled=false`). Quedamos con el rate-limiting nativo de Supabase. Para reactivar: flag a true + enforcement en Supabase. |
 | C4 | Seed account de Apple Review | ✅ | `apple.review@manifiestoapp.com` lista (password rotado out-of-band). |
@@ -129,9 +130,9 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 ---
 
 ## 8. Orden sugerido de ejecución
-1. Activar Paid Apps Agreement (S1) si no está.
-2. `APP_ENV → production` (C1) + limpiar test states (C2). [Captcha ya resuelto: deshabilitado.]
-3. Bump buildNumber → `eas build` + `eas submit` (B1/B2).
+1. ✅ Paid Apps Agreement (S1) — hecho.
+2. ✅ `APP_ENV → production` (C1) + test states limpiados (C2) + captcha off (C3) — hecho.
+3. **[SIGUIENTE]** Bump buildNumber → `eas build` + `eas submit` (B1/B2).
 4. Atar build a la versión + enviar productos de suscripción a revisión (S2/S3).
 5. Smoke test en TestFlight (happy-path de compra).
 6. **Submit for Review** (el click).
