@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -12,6 +12,7 @@ import {
   useDeleteNotification,
   useFamilyNotifications,
   useFamilyNotificationsRealtime,
+  useMarkNotificationsSeen,
   type FamilyNotification,
 } from '@/features/notifications/use-notifications'
 import { triggerHaptic } from '@/lib/haptics'
@@ -33,8 +34,20 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
   const notifications = useMemo(() => notificationsData ?? [], [notificationsData])
   const deleteOne = useDeleteNotification(familyId)
   const deleteAll = useDeleteAllNotifications(familyId, userId)
+  const markSeen = useMarkNotificationsSeen(familyId, userId)
 
   useFamilyNotificationsRealtime(familyId)
+
+  // Mark-on-open: abrir esta pantalla = "viste tus notificaciones" → marca todo
+  // leído (el badge del bell se va a 0). Una sola vez por apertura; las filas
+  // siguen visibles para accionarlas y el cron diario las poda a las 48h.
+  const seenFiredRef = useRef(false)
+  useEffect(() => {
+    if (seenFiredRef.current || !familyId) return
+    seenFiredRef.current = true
+    markSeen.mutate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyId])
 
   const count = notifications.length
 
@@ -96,7 +109,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
               {count > 0 ? (
                 <View style={styles.subRow}>
                   <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>
-                    {`${count} sin leer`}
+                    {`${count} pendiente${count === 1 ? '' : 's'}`}
                   </Text>
                   <Pressable
                     onPress={handleMarkAll}

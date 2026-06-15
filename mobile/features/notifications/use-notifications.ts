@@ -200,6 +200,51 @@ export function useUnreadNotificationsCount(familyId?: string, userId?: string) 
 }
 
 /**
+ * Mark-on-open: al abrir el feed marcamos como leídas (read_at = now) todas las
+ * no-leídas de la familia (family-wide o propias) → el badge del bell se va a 0,
+ * patrón estándar de "abriste tus notificaciones". NO borra: las filas siguen
+ * visibles esa sesión para accionarlas; el cron diario las poda a las 48h. El
+ * dismiss explícito (✓/swipe) sigue haciendo hard delete.
+ * Optimista: bajamos el unread count a 0 al instante, rollback en onError.
+ */
+export function useMarkNotificationsSeen(familyId?: string, userId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      if (!familyId) return
+      let query = supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('family_id', familyId)
+        .is('read_at', null)
+        .not('kind', 'like', 'advisor_%')
+      query = userId
+        ? query.or(`user_id.is.null,user_id.eq.${userId}`)
+        : query.is('user_id', null)
+      const { error } = await query
+      if (error && !isMissingNotificationsTableError(error)) throw error
+    },
+    onMutate: async () => {
+      const unreadKey = notificationQueryKeys.unreadCount(familyId, userId ?? null)
+      await queryClient.cancelQueries({ queryKey: unreadKey })
+      const prev = queryClient.getQueryData<number>(unreadKey)
+      queryClient.setQueryData<number>(unreadKey, 0)
+      return { unreadKey, prev }
+    },
+    onError: (_error, _vars, context) => {
+      if (context) queryClient.setQueryData(context.unreadKey, context.prev)
+    },
+    onSettled: () => {
+      void syncAllAfterMutation(queryClient, {
+        familyId,
+        userId,
+        scopes: ['notifications'],
+      })
+    },
+  })
+}
+
+/**
  * Notificaciones V2: marcar una notificación como leída = HARD DELETE
  * de la fila. No se conservan una vez leídas, así que el feed solo
  * muestra pendientes. La eliminación es optimista: sacamos la fila de
