@@ -1,17 +1,18 @@
 import { memo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
-import { CardParticles } from '@/components/ui/card-particles'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
- * Recordatorio del período libre en Home. Escala suave según los días que
- * quedan: 7+ calmo (crema) · 3-6 mint · 1-2 forest + luciérnagas (nunca
- * alarmista). Informativo — NUNCA dice "prueba/gratis". Dismissible por
- * sesión. El gate de cuándo mostrarlo lo decide el host (Home).
+ * Recordatorio del período libre en Home. Paleta CALMA alineada con Settings:
+ * superficie `primarySurface` (≤6 días) o `creamCard` (7+) con borde estándar,
+ * ícono/texto en tokens neutros y CTA `primary`. Sin gradiente forest ni
+ * luciérnagas (esos quedan para el hero de membresía y los tiles del plan).
+ * Informativo — NUNCA dice "prueba/gratis". La urgencia la comunica el COPY,
+ * no el color. Dismissible por sesión; el gate de cuándo mostrarlo lo decide
+ * el host (Home).
  */
 export interface FreePeriodNudgeProps {
   daysLeft: number
@@ -33,7 +34,7 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
   const subtitle = urgent
     ? 'Seguí sin cortes · desde $3.33/mes'
     : 'de acceso completo'
-  const ctaLabel = daysLeft <= 2 ? 'Suscribirme' : 'Ver planes'
+  const ctaLabel = urgent ? 'Suscribirme' : 'Ver planes'
 
   const handleCta = () => {
     void triggerHaptic('selection')
@@ -44,87 +45,64 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
     setDismissed(true)
   }
 
-  // Forest + luciérnagas para urgente; mint/crema calmo para el resto.
-  const Body = (
-    <View style={styles.inner}>
-      {urgent ? (
-        <CardParticles count={2} color="#FFFBF2" accentColor="#A6EF8F" />
-      ) : null}
-      <View style={[styles.icon, { backgroundColor: urgent ? 'rgba(166,239,143,0.18)' : theme.colors.primarySurface }]}>
-        <MaterialIcons
-          name="lock-open"
-          size={15}
-          color={urgent ? theme.colors.heroAccent : theme.colors.primary}
-        />
-      </View>
-      <View style={styles.txt}>
-        <Text style={[styles.t1, { color: urgent ? theme.colors.heroText : theme.colors.text }]}>
-          {title}
-        </Text>
-        <Text style={[styles.t2, { color: urgent ? theme.colors.heroText : theme.colors.textMuted }]}>
-          {subtitle}
-        </Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={ctaLabel}
-        onPress={handleCta}
-        hitSlop={8}
-      >
-        <View style={[styles.cta, { backgroundColor: theme.colors.heroAccent }]}>
-          <Text style={[styles.ctaText, { color: theme.colors.heroGradient[1] }]}>
-            {ctaLabel}
-          </Text>
-        </View>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Cerrar"
-        onPress={handleDismiss}
-        hitSlop={10}
-        style={styles.close}
-      >
-        <MaterialIcons
-          name="close"
-          size={15}
-          color={urgent ? theme.colors.heroText : theme.colors.textMuted}
-        />
-      </Pressable>
-    </View>
-  )
-
   return (
     <RiseView>
-      {urgent ? (
-        <LinearGradient
-          colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.card, styles.cardForest]}
-        >
-          {Body}
-        </LinearGradient>
-      ) : (
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: daysLeft <= 6 ? theme.colors.primarySurface : theme.colors.creamCard,
-              borderColor: theme.colors.border,
-              borderWidth: StyleSheet.hairlineWidth,
-            },
-          ]}
-        >
-          {Body}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor:
+              daysLeft <= 6
+                ? theme.colors.primarySurface
+                : theme.colors.creamCard,
+            borderColor: theme.colors.border,
+            borderWidth: StyleSheet.hairlineWidth,
+          },
+        ]}
+      >
+        <View style={styles.inner}>
+          <View style={[styles.icon, { backgroundColor: theme.colors.creamCard }]}>
+            <MaterialIcons
+              name="lock-open"
+              size={15}
+              color={theme.colors.primary}
+            />
+          </View>
+          <View style={styles.txt}>
+            <Text style={[styles.t1, { color: theme.colors.text }]}>{title}</Text>
+            <Text style={[styles.t2, { color: theme.colors.textMuted }]}>
+              {subtitle}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ctaLabel}
+            onPress={handleCta}
+            hitSlop={8}
+          >
+            <View style={[styles.cta, { backgroundColor: theme.colors.primary }]}>
+              <Text style={[styles.ctaText, { color: theme.colors.creamCard }]}>
+                {ctaLabel}
+              </Text>
+            </View>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+            onPress={handleDismiss}
+            hitSlop={10}
+            style={styles.close}
+          >
+            <MaterialIcons name="close" size={15} color={theme.colors.textMuted} />
+          </Pressable>
         </View>
-      )}
+      </View>
     </RiseView>
   )
 })
 
 const styles = StyleSheet.create({
   card: { borderRadius: 16, overflow: 'hidden' },
-  cardForest: {},
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -138,12 +116,11 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2,
   },
-  txt: { flex: 1, zIndex: 2 },
+  txt: { flex: 1 },
   t1: { fontSize: 12, fontWeight: '800' },
   t2: { fontSize: 9, marginTop: 1, opacity: 0.85 },
-  cta: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, zIndex: 2 },
+  cta: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999 },
   ctaText: { fontSize: 10, fontWeight: '800' },
-  close: { padding: 2, zIndex: 2 },
+  close: { padding: 2 },
 })

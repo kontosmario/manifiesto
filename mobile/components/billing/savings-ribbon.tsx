@@ -1,12 +1,11 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
-import { hexAlpha } from '@/theme/state-tokens'
 
 /**
- * Banda de ahorro anual del ciclo yearly. Tinte mint sobre crema/forest
- * con borde mint — replica `.rb` del mockup 03-paywall-AC-fireflies-v2.
- * Texto en forest (claro) / mint (oscuro). Si no hay ahorro real
+ * Banda de ahorro anual del ciclo yearly. Paleta CALMA alineada con Settings
+ * (superficie `primarySurface` + borde estándar + texto verde primary); el
+ * acento mint queda reservado para el hero y los tiles. Si no hay ahorro real
  * (`savingsUsd <= 0`) no renderea nada.
  */
 export interface SavingsRibbonProps {
@@ -30,11 +29,11 @@ export const SavingsRibbon = memo(function SavingsRibbon({
   // Sin ahorro → sin banda. La vista no debe insinuar un beneficio inexistente.
   if (savingsUsd <= 0) return null
 
-  // Tinte mint keyed por tema: claro .20 / oscuro .13 (mockup .rb).
-  const fill = hexAlpha(theme.colors.heroAccent, theme.isDark ? 0.13 : 0.2)
-  const border = hexAlpha(theme.colors.heroAccent, theme.isDark ? 0.28 : 0.4)
-  // Texto forest sobre crema, mint sobre forest.
-  const fg = theme.isDark ? theme.colors.heroAccent : theme.colors.primaryStrong
+  // Superficie calma (mismos tokens que Settings): tinte primarySurface + borde
+  // estándar + texto verde primaryStrong (claro) / primary (oscuro).
+  const fill = theme.colors.primarySurface
+  const border = theme.colors.border
+  const fg = theme.isDark ? theme.colors.primary : theme.colors.primaryStrong
 
   return (
     <View style={[styles.ribbon, { backgroundColor: fill, borderColor: border }]}>
