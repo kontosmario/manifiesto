@@ -31,22 +31,22 @@ export const PERSONA_PROFILES: Record<UserPersona, PersonaProfile> = {
   planner: {
     framing: 'neutral',
     label: 'Planificador',
-    description: 'Priorizo análisis sobre alertas. Datos primero.',
+    description: 'Te muestro los números y el detalle: te gusta entender antes de moverte.',
   },
   firefighter: {
     framing: 'loss',
     label: 'Reactivo',
-    description: 'Te aviso cuando hay algo urgente; el resto del tiempo, pocas interrupciones.',
+    description: 'Te aviso solo cuando hay algo importante; el resto del tiempo, te dejo tranqui.',
   },
   avoider: {
     framing: 'gain',
     label: 'Conservador',
-    description: 'Tono suave y enfoque en pequeñas mejoras posibles.',
+    description: 'Te hablo con calma y de a poco, con pasos chicos que sí podés dar.',
   },
   optimizer: {
     framing: 'gain',
     label: 'Optimizador',
-    description: 'Busco oportunidades de ahorro y momentum positivo.',
+    description: 'Te busco oportunidades para ahorrar y aprovechar los meses buenos.',
   },
 }
 

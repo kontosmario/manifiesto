@@ -33,66 +33,66 @@ export function buildHeroState({
 
   if (isSalaryPendingConfirmation) {
     return {
-      detail: 'Confirmar el cobro reinicia el ciclo y vuelve consistentes las proyecciones.',
-      eyebrow: 'Nuevo ciclo',
-      title: 'Confirma el cobro para reordenar el control',
+      detail: 'Confirma tu ultimo cobro y pongo al dia tus numeros del mes.',
+      eyebrow: 'Nuevo mes',
+      title: 'Confirma tu cobro para ponerte al dia',
       variant: 'accent',
     }
   }
 
   if (dailyBudgetSummary.remainingToday < 0) {
     return {
-      detail: `Ya consumiste parte del margen de manana y faltan ${formatRemainingDays(
+      detail: `Hoy gastaste mas de lo que tenias para hoy, y faltan ${formatRemainingDays(
         remainingUntilPayday,
       )} para el proximo cobro.`,
-      eyebrow: 'Atencion hoy',
-      title: 'Hoy ya entraste en deuda diaria',
+      eyebrow: 'Ojo hoy',
+      title: 'Hoy gastaste de mas',
       variant: 'accent',
     }
   }
 
   if (commitmentSummary.overdueCount > 0) {
     return {
-      detail: `Tenes ${commitmentSummary.overdueCount} compromiso${
+      detail: `Tenes ${commitmentSummary.overdueCount} pago${
         commitmentSummary.overdueCount === 1 ? '' : 's'
-      } vencido${commitmentSummary.overdueCount === 1 ? '' : 's'} y ${currencyFormatter.format(
-        commitmentSummary.reservedTotal,
-      )} todavia por cubrir.`,
-      eyebrow: 'Atencion del mes',
-      title: 'Los compromisos fijos necesitan orden ya',
+      } fijo${commitmentSummary.overdueCount === 1 ? '' : 's'} vencido${
+        commitmentSummary.overdueCount === 1 ? '' : 's'
+      } y ${currencyFormatter.format(commitmentSummary.reservedTotal)} todavia sin pagar.`,
+      eyebrow: 'Ojo del mes',
+      title: 'Tenes pagos fijos vencidos',
       variant: 'accent',
     }
   }
 
   if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
     return {
-      detail: `Con un ajuste cercano a ${currencyFormatter.format(
+      detail: `Bajando como ${currencyFormatter.format(
         expenseAnalytics.adjustmentNeededPerDay,
-      )} por dia todavia podes llegar prolijo al cierre.`,
-      eyebrow: 'Ajuste sugerido',
-      title: 'El resto del mes necesita una correccion simple',
+      )} por dia, llegas bien a fin de mes.`,
+      eyebrow: 'Ajuste chico',
+      title: 'Con un ajuste chico llegas bien',
       variant: 'accent',
     }
   }
 
   if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
     return {
-      detail: `Hay ${commitmentSummary.dueSoonCount} compromiso${
+      detail: `Se vienen ${commitmentSummary.dueSoonCount} pago${
         commitmentSummary.dueSoonCount === 1 ? '' : 's'
-      } cerca y conviene separar ${currencyFormatter.format(
+      } fijo${commitmentSummary.dueSoonCount === 1 ? '' : 's'} y conviene apartar ${currencyFormatter.format(
         commitmentSummary.reservedTotal,
-      )} para no tensar el cierre.`,
+      )} para no quedar corto a fin de mes.`,
       eyebrow: 'Proximos dias',
-      title: 'Vienen gastos fijos que ya conviene anticipar',
+      title: 'Se vienen gastos fijos: conviene apartar plata',
       variant: 'hero',
     }
   }
 
   if (dailyBudgetSummary.zeroSpendStreak >= 2) {
     return {
-      detail: `Llevas ${dailyBudgetSummary.zeroSpendStreak} dias seguidos construyendo aire para el resto del mes.`,
-      eyebrow: 'Lectura rapida',
-      title: 'Vienes acumulando margen real',
+      detail: `Llevas ${dailyBudgetSummary.zeroSpendStreak} dias seguidos sin gastar — asi te queda mas plata para el resto del mes.`,
+      eyebrow: 'Buena noticia',
+      title: 'Venis sumando plata sin gastar',
       variant: 'hero',
     }
   }

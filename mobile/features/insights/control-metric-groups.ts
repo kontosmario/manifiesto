@@ -109,9 +109,9 @@ export function buildTodayMetrics({
       value: currencyFormatter.format(dailyBudgetSummary.todaySpent),
     },
     {
-      helper: 'Comparado con el ritmo ideal del mes.',
+      helper: 'Comparado con lo que deberias gastar por dia.',
       icon: dailyBudgetSummary.carryoverAmount >= 0 ? 'insights' : 'bolt',
-      label: dailyBudgetSummary.carryoverAmount >= 0 ? 'Aire acumulado' : 'Deuda diaria',
+      label: dailyBudgetSummary.carryoverAmount >= 0 ? 'Te queda a favor' : 'Te pasaste',
       tone: carryoverTone,
       value: currencyFormatter.format(Math.abs(dailyBudgetSummary.carryoverAmount)),
     },
