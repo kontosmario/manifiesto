@@ -17,13 +17,32 @@ export function useIsSuperAdmin(): boolean {
   return (email ?? '').toLowerCase() === SUPER_ADMIN_EMAIL
 }
 
+/**
+ * Estado de acceso del usuario (distingue quién PAGA de quién está cubierto):
+ *   mvp       super cuenta (acceso de por vida)
+ *   comped    cortesía
+ *   purchaser TITULAR — la sub está atada a su Apple ID (paga)
+ *   covered   CUBIERTO por el hogar (no paga; vive del plan del titular)
+ *   trial     en período de prueba
+ *   none      sin plan
+ */
+export type AdminAccess =
+  | 'mvp'
+  | 'comped'
+  | 'purchaser'
+  | 'covered'
+  | 'trial'
+  | 'none'
+
 export interface AdminUserResult {
   userId: string
   email: string
   displayName: string | null
   familyId: string | null
   isMvp: boolean
-  hasSub: boolean
+  access: AdminAccess
+  /** Email del titular que paga, cuando access==='covered'. */
+  purchaserEmail: string | null
 }
 
 export const adminSearchKey = (query: string) =>
@@ -48,7 +67,8 @@ export function useAdminSearchUsers(query: string) {
           displayName: (r.display_name as string) ?? null,
           familyId: (r.family_id as string) ?? null,
           isMvp: Boolean(r.is_mvp),
-          hasSub: Boolean(r.has_sub),
+          access: (String(r.access ?? 'none') as AdminAccess),
+          purchaserEmail: (r.purchaser_email as string) ?? null,
         }),
       )
     },
