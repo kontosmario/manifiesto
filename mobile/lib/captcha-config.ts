@@ -23,6 +23,14 @@
 // importante, en `getCaptchaBootError()` para que el shell pueda
 // reaccionar.
 
+// ─── KILL-SWITCH (decisión owner 2026-06-15) ───────────────────────────────
+// Captcha DESHABILITADO en los 3 flujos (login / signup / reset). El modal era
+// fricción sin protección: Supabase Auth tenía `security_captcha_enabled=false`
+// (no validaba el token server-side). Quedamos con el rate-limiting nativo de
+// Supabase. Para reactivarlo: poner CAPTCHA_ENABLED=true Y prender el enforcement
+// en Supabase (Auth → Bot and Abuse Protection). Ver docs/PRE-LAUNCH.md.
+export const CAPTCHA_ENABLED = false
+
 export const HCAPTCHA_SITE_KEY: string =
   process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 
@@ -34,10 +42,11 @@ export const HCAPTCHA_SITE_KEY: string =
 // cuando el site tiene enforcement activado.
 export const HCAPTCHA_BASE_URL = 'https://manifiestoapp.com'
 
-/** Devuelve true si hay site key configurada (siempre debería ser true
- *  en producción una vez que el owner cargue la secret en EAS). */
+/** Captcha activo = kill-switch ON Y site key cargada. Con `CAPTCHA_ENABLED`
+ *  en false (decisión 2026-06-15) devuelve false → el modal NUNCA se abre en
+ *  login/signup/reset (el `request()` resuelve null al toque). */
 export function isCaptchaConfigured(): boolean {
-  return HCAPTCHA_SITE_KEY.length > 0
+  return CAPTCHA_ENABLED && HCAPTCHA_SITE_KEY.length > 0
 }
 
 let cachedBootError: string | null = null
@@ -58,7 +67,9 @@ export function getCaptchaBootError(): string | null {
 // without captcha. A high-severity log is loud enough to flag in any
 // crash reporter and survives prod minification (console.error is kept
 // in RN release bundles).
-if (!__DEV__ && HCAPTCHA_SITE_KEY.length === 0) {
+// Solo aplica si el captcha está HABILITADO: con el kill-switch en false la
+// ausencia de site key es esperada (decisión owner), no un error de release.
+if (CAPTCHA_ENABLED && !__DEV__ && HCAPTCHA_SITE_KEY.length === 0) {
   cachedBootError =
     'EXPO_PUBLIC_HCAPTCHA_SITE_KEY is empty in a non-dev build. ' +
     'Sign-up / password-reset will ship without bot protection. ' +

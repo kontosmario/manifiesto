@@ -24,7 +24,8 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 3. 🔴 **Primera suscripción enviada a revisión** con la versión de la app (Apple
    lo exige para el primer producto auto-renovable).
 4. 🟡 **APP_ENV → production** + limpieza de estados de test (ver §3).
-5. 🟡 **Re-habilitar captcha** (se apagó para validar builds).
+5. ✅ **Captcha**: DESHABILITADO a propósito (decisión 2026-06-15) — era fricción
+   sin protección (Supabase no lo enforce-aba). Ya no es un blocker.
 6. 🔵 **Submit for Review** — el click final (owner decide cuándo).
 
 ---
@@ -80,7 +81,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 |---|---|---|---|
 | C1 | **`APP_ENV` → `production`** | 🟡 PENDIENTE | Está en `sandbox` (se flipeó para testear). En prod el webhook DEBE saltar eventos de sandbox (`isSandboxUnderProd`) para no pisar entitlements reales. **Revertir antes de lanzar.** |
 | C2 | **Limpiar estado fabricado de test** | 🟡 PENDIENTE | mario7 / family `351cf218` quedó en active-yearly-2027 de un test → volver a `none`. |
-| C3 | **Re-habilitar captcha** | 🟡 PENDIENTE | Se apagó deliberadamente para validar builds. Re-enforce antes de prod. |
+| C3 | **Captcha deshabilitado (decisión)** | ✅ | Kill-switch `CAPTCHA_ENABLED=false` en `mobile/lib/captcha-config.ts` — el modal era fricción sin protección (Supabase `security_captcha_enabled=false`). Quedamos con el rate-limiting nativo de Supabase. Para reactivar: flag a true + enforcement en Supabase. |
 | C4 | Seed account de Apple Review | ✅ | `apple.review@manifiestoapp.com` lista (password rotado out-of-band). |
 
 ---
@@ -94,7 +95,8 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
   (`forbidden` si no). **Verificado**: sin ser kontosmario → forbidden.
 - ✅ `signed_date` ordering: `validate-purchase` rechaza receipts sin signedDate
   (no fabrica timestamps → no brickea entitlements).
-- 🟡 Captcha / rate limiting (C3) — re-enforce.
+- ✅ Captcha deshabilitado a propósito (C3); rate-limiting nativo de Supabase
+  activo (`rate_limit_otp`, etc.).
 
 ---
 
@@ -128,7 +130,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 
 ## 8. Orden sugerido de ejecución
 1. Activar Paid Apps Agreement (S1) si no está.
-2. `APP_ENV → production` (C1) + limpiar test states (C2) + re-habilitar captcha (C3).
+2. `APP_ENV → production` (C1) + limpiar test states (C2). [Captcha ya resuelto: deshabilitado.]
 3. Bump buildNumber → `eas build` + `eas submit` (B1/B2).
 4. Atar build a la versión + enviar productos de suscripción a revisión (S2/S3).
 5. Smoke test en TestFlight (happy-path de compra).
