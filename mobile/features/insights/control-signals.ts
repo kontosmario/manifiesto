@@ -41,7 +41,6 @@ import type { ControlAction } from '@/features/insights/control-action'
 import { composeMomentumImpact } from '@/features/insights/momentum-impact'
 import type { UserBaselines } from '@/features/insights/user-baselines'
 import type { Forecast7Day } from '@/features/insights/forecast-engine'
-import type { CausalLink } from '@/features/insights/causal-engine'
 import type { UserPersona } from '@/features/insights/persona'
 import { framingFor } from '@/features/insights/persona'
 import { signalFamilyOf } from '@/features/insights/signal-family'
@@ -108,9 +107,6 @@ interface BuildSignalsArgs {
    *  whose `signalFamilyOf(id)` matches any entry are dropped from
    *  the surface entirely — the user has explicitly opted out. */
   blockedFamilies?: ReadonlySet<string>
-  /** Causal links detected by `detectCausalLinks()` (P3). Builders
-   *  for the `causal-*` family consume them. */
-  causalLinks?: CausalLink[]
   /** Persisted per-device dismiss map keyed by fixed_expense_id →
    *  price-at-dismissal. */
   dismissedHikes?: Record<string, number>
@@ -253,7 +249,34 @@ export function buildControlSignals(
       if (ub !== ua) return ub - ua
       return a.id.localeCompare(b.id)
     })
-  return applyDiversityBudget(ranked).slice(0, 5)
+  return reserveProgressSlot(applyDiversityBudget(ranked), 5).slice(0, 5)
+}
+
+// Señales de "progreso" (victorias). Curación 2026-06-15: reservamos 1 lugar
+// visible para una de estas cuando exista, para no abrumar con puras alertas
+// rojas — el usuario tiene que ver que TAMBIÉN progresa, no solo problemas.
+const PROGRESS_IDS = new Set([
+  'streak-ok',
+  'positive-forecast',
+  'savings-milestone',
+  'cat-win',
+  'super-savings-momentum',
+])
+
+// Si el top visible no trae ninguna señal de progreso pero hay una más abajo,
+// la sube al último lugar visible (empuja la alerta menos prioritaria fuera).
+function reserveProgressSlot(
+  list: ControlAdvisorTask[],
+  cap: number,
+): ControlAdvisorTask[] {
+  if (list.length <= cap) return list
+  if (list.slice(0, cap).some((s) => PROGRESS_IDS.has(s.id))) return list
+  const idx = list.findIndex((s) => PROGRESS_IDS.has(s.id))
+  if (idx < 0) return list
+  const next = [...list]
+  const [progress] = next.splice(idx, 1)
+  next.splice(cap - 1, 0, progress)
+  return next
 }
 
 // ─── annualized impact ──────────────────────────────────────────────
@@ -534,10 +557,10 @@ function buildPaydayProximity(
   return {
     id: 'payday-proximity',
     emoji: '📆',
-    cat: 'Ciclo',
-    title: `Quedan ${args.diasRestantes} días con ${fmt(remaining)} disponibles`,
-    body: `Para llegar al próximo cobro sin quedar en cero, el tope diario sugerido es ${fmt(sustainable)} (antes ${fmt(args.cupoDiario)}).`,
-    impact: `Nuevo tope diario: ${fmt(sustainable)}`,
+    cat: 'Hasta el cobro',
+    title: `Te quedan ${fmt(remaining)} y faltan ${args.diasRestantes} días al cobro`,
+    body: `Para llegar bien al próximo cobro, gastá hasta ${fmt(sustainable)} por día.`,
+    impact: `Hasta ${fmt(sustainable)} por día`,
     impactRaw: Math.round((args.cupoDiario - sustainable) * args.diasRestantes),
     impactScope: 'cycle',
     cta: 'Entendido',
@@ -545,7 +568,7 @@ function buildPaydayProximity(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Divide el saldo restante del mes por los días que faltan al próximo cobro. El resultado es el monto máximo a gastar por día para no quedar en cero antes del cierre.',
+      'Es lo que te queda dividido por los días hasta el próximo cobro: cuánto podés gastar por día para no quedar en cero.',
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
   }
 }
@@ -762,8 +785,8 @@ function buildCategoryAcceleration(
   const spike = isCategorySpike(args.expenses, topNow.id, args.now ?? new Date())
   const titleSuffix = spike ? ' (gasto puntual)' : ''
   const body = spike
-    ? `Llevas ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. Casi todo es de los últimos 7 días — probablemente un gasto único (viaje, regalo, compra grande). Si se repite, el próximo mes va a ser ajustado.`
-    : `Llevas ${fmt(topNow.amount)} este mes vs ${fmt(historicalAvg)} habitual. La suba es gradual, parece un cambio de hábito.`
+    ? `Gastaste ${fmt(topNow.amount)} en ${topNow.name} este mes, contra ${fmt(historicalAvg)} de costumbre. Casi todo fue esta última semana — capaz algo puntual (un viaje, un regalo, una compra grande). ¿Fue eso o cambió algo?`
+    : `Gastaste ${fmt(topNow.amount)} en ${topNow.name} este mes, contra ${fmt(historicalAvg)} de costumbre. Vino subiendo de a poco. ¿Querés frenarlo o ya es parte de tus gastos?`
   return {
     id: 'cat-accel',
     emoji: spike ? '🎯' : '📈',
@@ -783,7 +806,7 @@ function buildCategoryAcceleration(
       Math.max(0.5, rampSummaries(args.summaries.length)),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara el gasto actual en una categoría contra su promedio histórico. Una suba marcada puede ser puntual (un evento único) o el inicio de un cambio de hábito. Detectarla a tiempo ayuda a ajustar antes de que afecte el cierre.',
+      'Compara lo que gastás ahora en una categoría con lo que solés gastar. Verlo a tiempo te deja decidir si frenar o si es algo puntual.',
     action: {
       kind: 'open-expenses-filtered',
       filter: { categoryId: topNow.id },
@@ -994,7 +1017,7 @@ function buildNightImpulse(
     confidence: rampThreeWeeks(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Las compras nocturnas (delivery, apps) suelen ser más impulsivas — varios estudios lo muestran. Esperar al día siguiente para decidir suele cortar la mitad de esas compras.',
+      'Comprar de noche, relajado en casa, suele llevar a gastar de más. Dejar la compra para el día siguiente ayuda a cortar varias de esas.',
     action: { kind: 'dismiss', dismissId: 'night-impulse' },
   }
 }
@@ -1158,11 +1181,11 @@ function buildIncomeVolatility(
     emoji: better ? '📈' : '📉',
     cat: 'Ingreso',
     title: better
-      ? `Ingreso +${pct.toFixed(0)}% vs promedio histórico`
-      : `Ingreso −${Math.abs(pct).toFixed(0)}% vs promedio histórico`,
+      ? `Cobraste ${fmt(args.ingresoMes)} este mes — más que de costumbre`
+      : `Cobraste ${fmt(args.ingresoMes)} este mes — menos que de costumbre`,
     body: better
-      ? `Tu ingreso pasó de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. El presupuesto libre creció — buen momento para subir el ahorro mensual.`
-      : `Tu ingreso pasó de ${fmt(historicalAvg)} a ${fmt(args.ingresoMes)}. Los fijos pesan más en proporción — momento de revisarlos.`,
+      ? `Otros meses cobrabas cerca de ${fmt(historicalAvg)}; este mes te entró ${fmt(Math.abs(delta))} más. Buen momento para guardar un poco de esa diferencia.`
+      : `Otros meses cobrabas cerca de ${fmt(historicalAvg)}; este mes te entró ${fmt(Math.abs(delta))} menos. Cuidá los gastos hasta que se recupere.`,
     impact: fmtDelta(delta),
     impactRaw: Math.abs(Math.round(delta)),
     cta: better ? 'Ver meta' : 'Ver fijos',
@@ -1170,7 +1193,7 @@ function buildIncomeVolatility(
     confidence: rampSummaries(args.summaries.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara el ingreso del mes contra el promedio de los últimos 3 meses. Una variación significativa cambia el peso relativo de los gastos fijos y la capacidad de ahorro disponible.',
+      'Compara lo que cobraste este mes con lo que solés cobrar. Si entra bastante menos, conviene cuidar los gastos; si entra más, guardá la diferencia.',
     action,
   }
 }
@@ -1281,16 +1304,16 @@ function buildSavingsFeasibility(
     id: 'savings-feasibility',
     emoji: '🎯',
     cat: goal.title,
-    title: `Meta "${goal.title}": faltan ${fmt(shortfall)} este mes`,
-    body: `El plan necesita ${fmt(monthlyNeeded)}/mes para llegar al objetivo. Este mes vas por ${fmt(monthlyActual)}. Si no se recupera la diferencia, la fecha se aleja.`,
-    impact: `Cubrir ${fmt(shortfall)} este mes`,
+    title: `Para "${goal.title}" te faltan ${fmt(shortfall)} este mes`,
+    body: `Para llegar a tiempo tendrías que guardar como ${fmt(monthlyNeeded / 4)} por semana. Este mes vas por ${fmt(monthlyActual)} — guardá un poco más y llegás.`,
+    impact: `Te faltan ${fmt(shortfall)} este mes`,
     impactRaw: Math.round(shortfall),
     cta: 'Ver meta',
     urgency: 'media',
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara el ahorro mensual actual contra el monto que pide el plan. Detectar el desvío en los primeros meses ayuda a ajustar antes de que se extienda mucho el plazo.',
+      'Compara lo que estás guardando este mes con lo que necesitás para llegar a tu meta a tiempo. Ajustar temprano hace el esfuerzo más chico.',
     action: { kind: 'open-savings-goal' },
   }
 }
@@ -1595,13 +1618,6 @@ function buildForecastPaydayGap(
     action: { kind: 'navigate', route: '/(app)/(tabs)/control' },
   }
 }
-
-// ─── Group 11 — Causal patterns (P3) ────────────────────────────────
-//
-// Each builder consumes a single `CausalLink` from `detectCausalLinks`
-// and converts it into an INSIGHT card. We require a minimum
-// `confidence` of 0.4 (same as the global floor) so brand-new patterns
-// stay invisible until they stabilize.
 
 // ─── Group 8 — Positive reinforcement ───────────────────────────────
 

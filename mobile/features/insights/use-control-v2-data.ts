@@ -49,7 +49,6 @@ import {
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
 import { buildForecast7Day, type Forecast7Day } from '@/features/insights/forecast-engine'
-import { detectCausalLinks, type CausalLink } from '@/features/insights/causal-engine'
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { useAdvisorPreferences } from '@/features/insights/use-advisor-preferences'
 import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
@@ -86,7 +85,6 @@ const memoizedBuildData = singleEntryMemoize(buildControlDataFromSnapshot)
 const memoizedComputeView = singleEntryMemoize(computeControlView)
 const memoizedComputeBaselines = singleEntryMemoize(computeUserBaselines)
 const memoizedInferPersona = singleEntryMemoize(inferPersona)
-const memoizedDetectCausal = singleEntryMemoize(detectCausalLinks)
 const memoizedBuildForecast = singleEntryMemoize(buildForecast7Day)
 const memoizedBuildSignals = singleEntryMemoize(buildControlSignals)
 
@@ -494,15 +492,6 @@ export function useControlV2Data(
     return memoizedInferPersona(stats)
   }, [advisorPrefsQuery.data, interactionStatsQuery.data])
 
-  const causalLinks = useMemo<CausalLink[]>(() => {
-    if (usingMock) return []
-    if (view.detalleDias.length < 14) return []
-    return memoizedDetectCausal({
-      expenses,
-      closedDays: view.detalleDias.length,
-    })
-  }, [usingMock, expenses, view.detalleDias.length])
-
   const forecast = useMemo<Forecast7Day | null>(() => {
     if (usingMock) return null
     if (view.detalleDias.length === 0) return null
@@ -556,7 +545,6 @@ export function useControlV2Data(
         persona,
         paydayPending: isSalaryPendingConfirmation,
         blockedFamilies: blocklistQuery.data,
-        causalLinks,
       }),
     )
   }, [
@@ -583,7 +571,6 @@ export function useControlV2Data(
     persona,
     isSalaryPendingConfirmation,
     blocklistQuery.data,
-    causalLinks,
   ])
 
   const isLoading =
