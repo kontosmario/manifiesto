@@ -1,18 +1,15 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
-import { CardParticles } from '@/components/ui/card-particles'
-import { FernMark } from '@/components/billing/fern-mark'
-import { getStateTokens, hexAlpha, type SemanticState } from '@/theme/state-tokens'
+import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { MembershipVariant } from '@/features/billing/membership-state'
 
 /**
- * Hero de "Mi suscripción" — card forest con luciérnagas + helecho de
- * watermark. Refleja el estado del entitlement vía `variant`: el pill de
- * estado toma su color del sistema unificado (getStateTokens) según el
- * `tone`, y el `heroLine` matiza la nuance (renovación / grace / cortesía).
- * Mockups: 06-mi-suscripcion-v2.html (.hero6) y 08-con-logo.html (.hero).
+ * Hero de "Mi suscripción". Misma superficie que el card "TU HOGAR" de Ajustes
+ * (`surfaceMuted` en oscuro / `creamCard` en claro + borde `line`), para que el
+ * panel de planes pertenezca a la misma paleta que Settings. El estado lo refleja
+ * el pill (`getStateTokens` según `tone`) y el `heroLine` matiza la nuance
+ * (renovación / grace / cortesía / miembro cubierto).
  */
 export interface MembershipHeroProps {
   planName: string
@@ -34,47 +31,38 @@ export const MembershipHero = memo(function MembershipHero({
   const pill = getStateTokens(TONE_TO_STATE[variant.tone], theme)
 
   return (
-    <LinearGradient
-      colors={
-        [...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]
-      }
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
+    <View
       style={[
         styles.card,
-        { overflow: 'hidden', borderColor: hexAlpha(theme.colors.heroAccent, 0.22) },
+        {
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+          borderColor: theme.colors.line,
+        },
       ]}
     >
-      {/* Campo de luciérnagas — detrás del contenido (z implícito 1). */}
-      <CardParticles count={5} color="#FFFBF2" accentColor="#A6EF8F" />
-
-      {/* Helecho watermark: esquina sup-derecha con bleed, casi imperceptible. */}
-      <FernMark variant="cream" size={104} style={styles.watermark} />
-
-      {/* Contenido por encima de partículas y watermark. */}
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={[theme.typography.eyebrow, { color: theme.colors.heroAccent }]}>
-            Tu membresía
+      <View style={styles.headerRow}>
+        <Text style={[theme.typography.eyebrow, { color: theme.colors.textMuted }]}>
+          Tu membresía
+        </Text>
+        <View
+          style={[styles.pill, { backgroundColor: pill.bg, borderColor: pill.border }]}
+        >
+          <View style={[styles.pillDot, { backgroundColor: pill.fg }]} />
+          <Text style={[styles.pillLabel, { color: pill.fg }]}>
+            {variant.statusLabel}
           </Text>
-          <View
-            style={[styles.pill, { backgroundColor: pill.bg, borderColor: pill.border }]}
-          >
-            <View style={[styles.pillDot, { backgroundColor: pill.fg }]} />
-            <Text style={[styles.pillLabel, { color: pill.fg }]}>
-              {variant.statusLabel}
-            </Text>
-          </View>
         </View>
-
-        <Text style={[styles.planName, { color: theme.colors.heroText }]}>
-          {planName}
-        </Text>
-        <Text style={[styles.heroLine, { color: theme.colors.heroText }]}>
-          {variant.heroLine}
-        </Text>
       </View>
-    </LinearGradient>
+
+      <Text style={[styles.planName, { color: theme.colors.text }]}>
+        {planName}
+      </Text>
+      <Text style={[styles.heroLine, { color: theme.colors.textMuted }]}>
+        {variant.heroLine}
+      </Text>
+    </View>
   )
 })
 
@@ -83,18 +71,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     padding: 16,
-    position: 'relative',
-  },
-  watermark: {
-    position: 'absolute',
-    right: -22,
-    top: -18,
-    opacity: 0.13,
-    zIndex: 1,
-  },
-  content: {
-    position: 'relative',
-    zIndex: 2,
   },
   headerRow: {
     flexDirection: 'row',
@@ -130,6 +106,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 3,
-    opacity: 0.82,
   },
 })

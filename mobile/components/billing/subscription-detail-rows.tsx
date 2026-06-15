@@ -38,8 +38,12 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
       style={[
         styles.card,
         {
-          backgroundColor: theme.colors.creamCard,
-          borderColor: theme.colors.border,
+          // Misma superficie que las cards de Ajustes (surfaceMuted oscuro /
+          // creamCard claro + borde `line`).
+          backgroundColor: theme.isDark
+            ? theme.colors.surfaceMuted
+            : theme.colors.creamCard,
+          borderColor: theme.colors.line,
         },
       ]}
     >
@@ -52,7 +56,12 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
         label="Miembros del hogar"
         value={`${memberCount} de ${memberCap} personas`}
         trailing={
-          <MemberAvatars initials={initials} borderColor={theme.colors.creamCard} />
+          <MemberAvatars
+            initials={initials}
+            borderColor={
+              theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+            }
+          />
         }
         divider
       />

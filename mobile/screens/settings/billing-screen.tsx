@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { useAppTheme } from '@/theme/theme-provider'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   useBilling,
@@ -69,6 +73,7 @@ function presentAfterNativeUI(show: () => void) {
 }
 
 export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {}) {
+  const { theme } = useAppTheme()
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
   const { familyId } = useImportWizardContext()
@@ -236,6 +241,9 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
 
   return (
     <Screen
+      // Mismo fondo que Ajustes: canvas casi-negro DARK_TAB_CANVAS + halos
+      // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack={!lockMode}
       title="Plan del hogar"
       scrollable
@@ -248,6 +256,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         />
       }
     >
+      {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       <View style={styles.body}>
         {isManage ? (
           <ManageView
