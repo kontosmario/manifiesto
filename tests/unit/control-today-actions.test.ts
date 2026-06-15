@@ -83,7 +83,7 @@ describe('control-today-actions', () => {
       variableSpentInCurrentCycle: 30_000,
     })
 
-    expect(actions[1]?.title).toBe('El flexible ya se pasó del objetivo del mes')
-    expect(actions[1]?.detail).toContain('50/25/25')
+    expect(actions[1]?.title).toBe('Ya te pasaste de lo del dia a dia')
+    expect(actions[1]?.detail).toContain('para el dia a dia')
   })
 })

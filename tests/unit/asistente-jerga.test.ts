@@ -11,10 +11,10 @@
 // variables internas como `newCupo`/`forecast`), extrae los strings de display
 // y los escanea normalizados (sin acentos, minúsculas).
 //
-// Alcance: superficies saneadas en Tandas A/B. control-signals.ts (las ~30
-// señales restantes) y el SYSTEM_PROMPT del LLM quedan FUERA a propósito (el
-// prompt enumera la lista negra; sumar control-signals.ts pide el barrido
-// completo de sus señales — próxima tanda).
+// Alcance: las superficies de copy saneadas (Tandas A/B) MÁS el orquestador de
+// señales control-signals.ts (barrido completo 2026-06-15: las 24 señales que
+// quedaron tras la curación, en lenguaje sin jerga). Sólo el SYSTEM_PROMPT del
+// LLM queda FUERA a propósito (enumera la lista negra como ejemplos a evitar).
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -53,6 +53,7 @@ const BLACKLIST_PHRASES = [
 
 // Archivos de copy ya saneados (Tandas A/B). Rutas relativas al repo root.
 const COPY_FILES = [
+  'mobile/features/insights/control-signals.ts',
   'mobile/features/insights/control-signals-copy.ts',
   'mobile/features/insights/persona.ts',
   'mobile/features/insights/control-hero-state.ts',
@@ -77,6 +78,7 @@ function looksLikeIdentifier(s: string): boolean {
   const t = s.trim()
   if (t.length === 0) return true
   if (t.startsWith('/')) return true // rutas
+  if (!/\s/.test(t) && t.includes('/')) return true // import paths / module specifiers ('@/features/…')
   if (/^[a-z0-9]+([-_][a-z0-9]+)+$/.test(t)) return true // kebab/snake
   if (!/[a-záéíóúñ]/i.test(t)) return true // sin letras (números, símbolos)
   return false

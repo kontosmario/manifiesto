@@ -86,7 +86,7 @@ describe('control-metric-groups', () => {
     expect(metrics[2]?.tone).toBe('warning')
   })
 
-  it('muestra el desvío flexible cuando no hay fijo reservado', () => {
+  it('muestra el gasto del dia a dia cuando no hay fijo reservado', () => {
     const metrics = buildHeroMetrics({
       commitmentSummary: buildCommitmentSummary(),
       dailyBudgetSummary: buildDailySummary(),
@@ -99,12 +99,12 @@ describe('control-metric-groups', () => {
       variableSpentInCurrentCycle: 19_000,
     })
 
-    expect(metrics[2]?.label).toBe('Desvio flexible')
+    expect(metrics[2]?.label).toBe('Gasto del dia a dia')
     expect(metrics[2]?.tone).toBe('success')
     expect(metrics[2]?.value).toContain('-$')
   })
 
-  it('arma métricas diarias con deuda cuando el arrastre es negativo', () => {
+  it('arma métricas diarias mostrando "Te pasaste" cuando el arrastre es negativo', () => {
     const metrics = buildTodayMetrics({
       dailyBudgetSummary: buildDailySummary({
         carryoverAmount: -2_500,
@@ -115,7 +115,7 @@ describe('control-metric-groups', () => {
       hasDailyBudgetBase: true,
     })
 
-    expect(metrics[1]?.label).toBe('Deuda diaria')
+    expect(metrics[1]?.label).toBe('Te pasaste')
     expect(metrics[1]?.tone).toBe('warning')
     expect(metrics[3]?.label).toBe('Manana abre')
   })

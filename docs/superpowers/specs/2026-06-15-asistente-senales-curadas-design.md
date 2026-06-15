@@ -40,14 +40,28 @@ income-missing · data-gap-warning · income-volatility (simplificada)
 streak-ok · positive-forecast · savings-milestone · cat-win · cat-dominance ·
 super-savings-momentum
 
-## ~ SIMPLIFICAR (5) — pendiente
+## ~ SIMPLIFICAR (5) — HECHO (commit 84e3456)
 - `payday-proximity`: un solo número (tope diario nuevo), sin comparar con el viejo.
 - `savings-feasibility`: sin "shortfall/plan requerido"; el próximo paso chico en pesos.
-- `night-impulse`: sin "impulsos"; neutro + bajar umbral a 60%.
+- `night-impulse`: copy neutra (sin "impulsos"). El umbral se mantuvo en 70%
+  (bajarlo dispara MÁS seguido, lo opuesto a "menos falsos positivos").
 - `cat-accel`: sin "pico vs cambio de hábito"; una sola pregunta.
 - `income-volatility`: sin estadística; "tu ingreso de este mes fue $X menos que otros meses".
 
-## +1 slot de progreso — pendiente
-En el ranking/cap de señales visibles, reservar ≥1 lugar para una señal de
-progreso (streak/positive-forecast/savings-milestone/cat-win/super-savings-momentum)
-cuando exista, para equilibrar alertas con "vas bien".
+## +1 slot de progreso — HECHO (commit 84e3456)
+En el ranking/cap de señales visibles se reserva ≥1 lugar para una señal de
+progreso (`PROGRESS_IDS` = streak-ok / positive-forecast / savings-milestone /
+cat-win / super-savings-momentum) vía `reserveProgressSlot(list, cap)`: si las
+primeras `cap` señales son todas alertas y hay una de progreso más abajo, la
+sube al último slot visible. Equilibra el muro de rojos con un "vas bien".
+
+## Barrido de jerga en las señales que quedaron — HECHO (2026-06-15)
+Las 24 señales sobrevivientes todavía tenían jerga en sus strings de usuario
+(`Sobregiro fuerte hoy`, `Excedente proyectado`, `Momentum positivo`,
+`Racha: N días bajo cupo`, `Aceleración del X%`, `Cupo diario reajustado`,
+`punto de apalancamiento`, …). Se reescribieron title/body/impact/cat/
+dummyExplanation de todas ellas al estándar de voz (pesos primero, sin lista
+negra, sin matemática mental, umbral como consecuencia y no número mágico).
+Guardarraíl: `tests/unit/asistente-jerga.test.ts` ahora **también escanea
+`control-signals.ts`** (antes quedaba fuera), así la jerga no puede volver a
+entrar sin romper CI.

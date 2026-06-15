@@ -89,7 +89,7 @@ describe('control-model helpers', () => {
     })
 
     expect(hero.variant).toBe('accent')
-    expect(hero.title).toContain('Confirma el cobro')
+    expect(hero.title).toContain('Confirma tu cobro')
   })
 
   it('marca ajuste sugerido cuando la proyección exige recorte diario', () => {
@@ -103,6 +103,6 @@ describe('control-model helpers', () => {
     })
 
     expect(hero.variant).toBe('accent')
-    expect(hero.eyebrow).toBe('Ajuste sugerido')
+    expect(hero.eyebrow).toBe('Ajuste chico')
   })
 })
