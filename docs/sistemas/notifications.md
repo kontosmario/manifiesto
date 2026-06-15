@@ -1,7 +1,8 @@
 # Notificaciones — sistema
 
 > Última revisión: 2026-06-15 (efímeras + auditoría de cron + hardening
-> del pipeline de push). Branch `feature/notifications-ephemeral`.
+> del pipeline de push + atribución del actor en pushes sociales).
+> **Mergeado a `main`** (commits `f4ed119`→`68559d2`).
 
 ## Modelo
 
@@ -83,6 +84,35 @@ config.toml vuelve al default `true` y el gateway tira 401 sobre el secret
 opaco → **todo el push agendado cae en silencio**. Esto pasó durante la
 auditoría; el guard de cobertura + las entries explícitas lo previenen.
 
+## Pushes sociales (client-driven) — gasto/ingreso/fijo de un familiar
+
+Distinto del pipeline cron/orchestrator de arriba. Cuando un miembro
+**carga/edita/borra** un movimiento, la app (no la DB) dispara un push a
+los **OTROS** miembros vía `mobile/lib/send-family-push.ts` →
+`sendFamilyPush()` → **path directo** de la edge `send-family-push` (JWT
+del usuario, no service-role).
+
+- **A quién:** la query del path directo hace `.neq('user_id', actorUserId)`
+  → pushea a todos menos a quien lo cargó. Respeta blocked + `channel_push`.
+- **Atribución del actor (2026-06-15):** `sendFamilyPush` resuelve el nombre
+  de quien dispara (cache de perfil → `user_metadata.display_name` →
+  fallback `"Un familiar"`) y reemplaza el token `{actor}` en title/body.
+  Cada call site elige el verbo:
+  - gasto → `"{actor} cargó un gasto"` · `"Almuerzo · $8.900"`
+  - ingreso → `"{actor} registró un ingreso"`
+  - fijo +/✎/✕ → `"{actor} sumó / editó / eliminó un gasto fijo"`
+  Pushes sin el token (zombie/advisor) quedan intactos.
+- **kinds:** `expense_logged / income_logged / fixed_created|edited|deleted`
+  (todos en `ALLOWED_PUSH_KINDS` de send-family-push; antes caían a `'info'`).
+- **NO crea fila** en `notifications`: el push es efímero. La **fila del feed**
+  la crea por separado el trigger `notify_expense_change` (family-wide,
+  guarda `created_by` → la UI renderiza el autor). O sea: feed = trigger,
+  push = cliente; dos mecanismos distintos para el mismo evento.
+- **Caveats:** (a) el push solo se dispara **desde la app** (un INSERT crudo
+  en la DB dispara el feed pero NO el push); (b) si el receptor no tiene
+  token registrado, no recibe (solo lo ve en el feed); (c) errores se tragan
+  con `.catch(() => {})` (best-effort — no rompe el guardado del gasto).
+
 ## Deuda / futuro
 - **Expo receipts (segunda llamada)**: hoy parseamos los *tickets* inmediatos
   (capturan `DeviceNotRegistered` para podar). NO poleamos los *receipts*
@@ -95,5 +125,11 @@ auditoría; el guard de cobertura + las entries explícitas lo previenen.
   El **push** de esos kinds ya respeta `channel_push` (filtro en `fetchPushTokens`),
   pero el feed in-app no respeta `channel_inapp`/mute en el trigger. Refactor
   pendiente. Riesgo moderado → testear antes.
-- "Nuevo gasto cargado" / "Pago registrado" notifican también a quien lo cargó
-  (redundante para el logger); evaluar notificar solo a OTROS miembros.
+- El **push** social ya excluye al que cargó (path directo `.neq` actor). Pero
+  la **fila del feed** (trigger `notify_expense_change`, family-wide) le aparece
+  también a quien lo cargó — redundante para el logger. Evaluar emitir el feed
+  solo a OTROS miembros.
+- `notify_expense_change` (feed) **no atribuye el actor en el texto** del título
+  (sí guarda `created_by`, que la UI renderiza). El **push** sí lo nombra
+  ("{actor} cargó un gasto"). Si se quiere paridad, sumar el nombre al título
+  del feed también.
