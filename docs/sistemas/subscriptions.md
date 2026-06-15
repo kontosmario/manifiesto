@@ -112,6 +112,7 @@ solo service_role.
 `resolve_entitlement(user_id)` — cálculo puro de DB, NO consulta StoreKit:
 
 ```
+0. mvp (super cuenta)              → acceso total de por vida (source 'mvp')
 1. comped                          → acceso
 2. familia con sub active/grace    → acceso (source 'family')
 3. trial monotónico (days_left>0)  → acceso (source 'trial')
@@ -120,7 +121,23 @@ solo service_role.
 
 `family_entitlement_snapshot()` lo envuelve y agrega `member_cap`,
 `member_count`, `pending_product_id`, `trial_days_left` (estado del período
-libre personal aunque el acceso venga del hogar — lo usa el aviso de salir).
+libre personal aunque el acceso venga del hogar — lo usa el aviso de salir),
+`auto_renew`, `grace_expires_at`, `is_purchaser`.
+
+### Super admin + estado MVP
+
+`mvp` (boolean en `family_entitlements`) = super cuenta con acceso completo de
+por vida (sin cobro, sin expiración), para amigos/familia elegidos. Resuelve por
+ENCIMA de todo (escalón 0). En la UI: ManageView con badge "MVP" / "Acceso total
+de por vida", sin filas de sub ni controles de cobro.
+
+Lo gestiona el **super admin** — SOLO `kontosmario@gmail.com`:
+- `is_super_admin()` (gate por email de `auth.users`); `admin_search_users(email)`
+  y `admin_set_mvp(user, on/off)` son SECURITY DEFINER con ese gate como PRIMERA
+  línea (`raise 'forbidden'` si no). Migración `20260620140000`.
+- Cliente: Ajustes → grupo "Super admin" (visible solo si `useIsSuperAdmin`) →
+  `admin-screen.tsx` (buscar por email + toggle). El gate de UI NO autoriza nada;
+  la seguridad la enforcea el server en cada RPC.
 
 ### Path de escritura unificado
 

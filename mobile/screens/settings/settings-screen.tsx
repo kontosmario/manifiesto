@@ -43,6 +43,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useIsSuperAdmin } from '@/features/admin/use-super-admin'
 import { useProtectionPrompt } from '@/features/auth/use-protection-prompt'
 import { useRequireReauth } from '@/features/auth/use-require-reauth'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
@@ -116,6 +117,7 @@ const DISABLED_HINT = 'Solo el dueño puede editar'
 
 export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const router = useRouter()
+  const isSuperAdmin = useIsSuperAdmin()
   const isNavSettled = useIsNavigationSettled()
   const { preference, setPreference, theme } = useAppTheme()
   const { data: session } = useAuthSession()
@@ -1448,6 +1450,21 @@ const handleOpenSupport = useCallback(() => {
                 />
               </SettingsGroup>
             </RiseView>
+
+            {/* 8b. SUPER ADMIN — solo kontosmario@gmail.com. */}
+            {isSuperAdmin ? (
+              <RiseView delay={320}>
+                <SettingsGroup title="Super admin">
+                  <SettingsRow
+                    helper="Activá acceso MVP (completo, de por vida) por email."
+                    icon="admin-panel-settings"
+                    isLast
+                    label="Cuentas MVP"
+                    onPress={() => router.push('/(app)/settings/admin' as never)}
+                  />
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
 
             {/* 9. AYUDA Y LEGAL */}
             <RiseView delay={320}>
