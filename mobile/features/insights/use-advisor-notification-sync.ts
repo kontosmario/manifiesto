@@ -23,6 +23,8 @@
 import { useEffect } from 'react'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
+import { useNotificationPreferences } from '@/features/notifications/use-notification-preferences'
+import { useAdvisorPreferences } from '@/features/insights/use-advisor-preferences'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { DAY_MS } from '@/utils/time'
 
@@ -93,14 +95,25 @@ function cooldownHoursFor(signalId: string): number {
 }
 
 /**
- * Quiet hours filter — block push delivery between 22:00 and 08:00
- * local time. The in-app notifications still get inserted (silent)
- * so the feed reflects the signal next time the user opens the app,
- * but no push wakes the device at night.
+ * Quiet hours filter — bloquea el push entre `start` y `end` (hora local).
+ * Configurable desde notification_preferences (antes fijo 22→08). La señal
+ * igual vive en la pantalla del asistente; solo no despierta el device.
+ * Ventana que cruza medianoche (start>end, p.ej. 22→8) vs misma jornada
+ * (start<end); start===end = sin quiet hours.
  */
-function isQuietHour(now: Date): boolean {
+function isQuietHour(now: Date, start: number, end: number): boolean {
   const h = now.getHours()
-  return h >= 22 || h < 8
+  if (start === end) return false
+  if (start < end) return h >= start && h < end
+  return h >= start || h < end
+}
+
+// Umbral de urgencia configurable (notification_preferences). Orden
+// baja < media < alta: el push se dispara si la urgencia de la señal es
+// >= al mínimo elegido. Default 'alta' (comportamiento previo).
+const URGENCY_RANK: Record<string, number> = { baja: 0, media: 1, alta: 2 }
+function urgencyMeetsThreshold(urgency: string, min: string): boolean {
+  return (URGENCY_RANK[urgency] ?? 2) >= (URGENCY_RANK[min] ?? 2)
 }
 
 /**
@@ -186,8 +199,20 @@ export function useAdvisorNotificationSync({
   familyId,
   userId,
 }: SyncArgs): void {
+  // Prefs cross-device (notification_preferences + user_advisor_prefs).
+  // Se leen acá adentro para no tocar los 2 call sites; react-query
+  // deduplica con las mismas queries que ya usa la pantalla.
+  const notifPrefs = useNotificationPreferences().data
+  const advisorEnabled = useAdvisorPreferences().data?.advisorEnabled ?? true
+  const pushEnabled = notifPrefs?.advisorPushEnabled ?? true
+  const quietStart = notifPrefs?.advisorQuietStart ?? 22
+  const quietEnd = notifPrefs?.advisorQuietEnd ?? 8
+  const minUrgency = notifPrefs?.advisorPushMinUrgency ?? 'alta'
+
   useEffect(() => {
     if (!familyId || !userId) return
+    // Kill-switch total + "solo dentro de la app" (sin push).
+    if (!advisorEnabled || !pushEnabled) return
     if (signals.length === 0) return
 
     let cancelled = false
@@ -196,14 +221,13 @@ export function useAdvisorNotificationSync({
       await hydrate()
       if (cancelled) return
 
-      // Only high-confidence + high-urgency signals trigger a push.
-      // Everything else lives inside the asistente screen and is
-      // visible only when the user opens it.
+      // Solo señales que superan el umbral de urgencia elegido (default
+      // 'alta') + alta confianza, fuera de quiet hours y con cooldown.
       const eligible = signals.filter(
         (s) =>
-          s.urgency === 'alta' &&
+          urgencyMeetsThreshold(s.urgency, minUrgency) &&
           s.confidence >= 0.85 &&
-          !isQuietHour(new Date()) &&
+          !isQuietHour(new Date(), quietStart, quietEnd) &&
           shouldPush(s.id),
       )
       if (eligible.length === 0) return
@@ -237,5 +261,14 @@ export function useAdvisorNotificationSync({
     return () => {
       cancelled = true
     }
-  }, [signals, familyId, userId])
+  }, [
+    signals,
+    familyId,
+    userId,
+    advisorEnabled,
+    pushEnabled,
+    quietStart,
+    quietEnd,
+    minUrgency,
+  ])
 }

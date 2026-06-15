@@ -15,7 +15,7 @@
 //     `advisor_interactions` rows (gated by RLS — requires the
 //     `delete_own` policy from migration 20260501010000).
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 
@@ -23,6 +23,7 @@ import { Screen } from '@/components/ui/screen'
 import { SectionHeader } from '@/components/ui/section-header'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { SettingsSwitchRow } from '@/components/settings/settings-primitives'
+import { ModalCard } from '@/components/ui/modal-card'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { triggerHaptic } from '@/lib/haptics'
@@ -38,6 +39,11 @@ import {
   useAdvisorPreferences,
   useUpdateAdvisorPreferences,
 } from '@/features/insights/use-advisor-preferences'
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+  type AdvisorPushUrgency,
+} from '@/features/notifications/use-notification-preferences'
 import { inferPersona, PERSONA_PROFILES, type UserPersona } from '@/features/insights/persona'
 import {
   useSignalBlocklistEntries,
@@ -106,6 +112,17 @@ const PERSONA_OPTIONS: { value: UserPersona; label: string }[] = (
   ['planner', 'firefighter', 'avoider', 'optimizer'] as UserPersona[]
 ).map((p) => ({ value: p, label: PERSONA_PROFILES[p].label }))
 
+// Umbral de urgencia que dispara push (orden baja<media<alta).
+const URGENCY_OPTIONS: { value: AdvisorPushUrgency; label: string }[] = [
+  { value: 'alta', label: 'Solo alta' },
+  { value: 'media', label: 'Media+' },
+  { value: 'baja', label: 'Todas' },
+]
+
+function formatHour(h: number): string {
+  return `${String(h).padStart(2, '0')}:00`
+}
+
 export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
   const queryClient = useQueryClient()
@@ -146,6 +163,29 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       updatePrefs.mutate({ personaOverride: p, useInferredPersona: false })
     },
     [updatePrefs],
+  )
+
+  // ── Notificaciones del asistente (notification_preferences) ──
+  const notifPrefsQuery = useNotificationPreferences()
+  const updateNotifPrefs = useUpdateNotificationPreferences()
+  const notifPrefs = notifPrefsQuery.data
+  const [quietPicker, setQuietPicker] = useState<'start' | 'end' | null>(null)
+
+  const advisorEnabled = prefs.advisorEnabled
+  const pushEnabled = notifPrefs?.advisorPushEnabled ?? true
+  const quietStart = notifPrefs?.advisorQuietStart ?? 22
+  const quietEnd = notifPrefs?.advisorQuietEnd ?? 8
+  const minUrgency: AdvisorPushUrgency = notifPrefs?.advisorPushMinUrgency ?? 'alta'
+
+  const handlePickQuietHour = useCallback(
+    (hour: number) => {
+      void triggerHaptic('selection')
+      updateNotifPrefs.mutate(
+        quietPicker === 'start' ? { advisorQuietStart: hour } : { advisorQuietEnd: hour },
+      )
+      setQuietPicker(null)
+    },
+    [quietPicker, updateNotifPrefs],
   )
 
   // #1 Card de valor: solo si hay ahorro realizado (decisión: ocultar si 0
@@ -360,6 +400,83 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       <RiseView delay={200}>
         <SectionHeader
+          title="Notificaciones del asistente"
+          subtitle="Cuándo y cómo te avisa fuera de la app."
+        />
+        <View style={styles.personaControls}>
+          <SettingsSwitchRow
+            label="Asistente financiero"
+            description="Si lo apagás, deja de calcular y mostrar señales."
+            value={advisorEnabled}
+            onValueChange={(v) => updatePrefs.mutate({ advisorEnabled: v })}
+          />
+          {advisorEnabled ? (
+            <>
+              <SettingsSwitchRow
+                label="Notificaciones push"
+                description="Apagado: las señales solo aparecen dentro de la app, sin push."
+                value={pushEnabled}
+                onValueChange={(v) => updateNotifPrefs.mutate({ advisorPushEnabled: v })}
+              />
+              {pushEnabled ? (
+                <>
+                  <View
+                    style={[
+                      styles.card,
+                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                    ]}
+                  >
+                    <Pressable
+                      onPress={() => setQuietPicker('start')}
+                      style={({ pressed }) => [styles.statRow, pressed && { opacity: 0.6 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Cambiar inicio del silencio"
+                    >
+                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>
+                        Silencio desde
+                      </Text>
+                      <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
+                        {formatHour(quietStart)}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setQuietPicker('end')}
+                      style={({ pressed }) => [
+                        styles.statRow,
+                        {
+                          borderTopWidth: StyleSheet.hairlineWidth,
+                          borderTopColor: theme.colors.border,
+                        },
+                        pressed && { opacity: 0.6 },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Cambiar fin del silencio"
+                    >
+                      <Text style={[styles.statLabel, { color: theme.colors.text }]}>Hasta</Text>
+                      <Text style={[styles.statPhrase, { color: theme.colors.primary }]}>
+                        {formatHour(quietEnd)}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.urgencyWrap}>
+                    <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
+                      Avisarme por push cuando la urgencia sea:
+                    </Text>
+                    <SegmentedControl
+                      options={URGENCY_OPTIONS}
+                      value={minUrgency}
+                      onChange={(v) => updateNotifPrefs.mutate({ advisorPushMinUrgency: v })}
+                    />
+                  </View>
+                </>
+              ) : null}
+            </>
+          ) : null}
+        </View>
+      </RiseView>
+
+      <RiseView delay={260}>
+        <SectionHeader
           title="Familias bloqueadas"
           subtitle={
             blocklistQuery.data && blocklistQuery.data.length > 0
@@ -416,7 +533,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         )}
       </RiseView>
 
-      <RiseView delay={260}>
+      <RiseView delay={320}>
         <SectionHeader
           title="Privacidad"
           subtitle="Tu historial de interacciones se usa solo para calibrar el asistente."
@@ -435,6 +552,46 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           <Text style={styles.dangerLabel}>Borrar mi historial</Text>
         </Pressable>
       </RiseView>
+
+      <ModalCard
+        visible={quietPicker !== null}
+        title={quietPicker === 'start' ? 'Silencio desde' : 'Silencio hasta'}
+        onClose={() => setQuietPicker(null)}
+      >
+        <View style={styles.hourList}>
+          {Array.from({ length: 24 }).map((_, hour) => {
+            const selected = hour === (quietPicker === 'start' ? quietStart : quietEnd)
+            return (
+              <Pressable
+                key={hour}
+                onPress={() => handlePickQuietHour(hour)}
+                style={({ pressed }) => [
+                  styles.hourRow,
+                  {
+                    backgroundColor: selected ? theme.colors.primary : 'transparent',
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.hourLabel,
+                    {
+                      color: selected
+                        ? theme.isDark
+                          ? '#12211A'
+                          : theme.colors.creamCard
+                        : theme.colors.text,
+                    },
+                  ]}
+                >
+                  {formatHour(hour)}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      </ModalCard>
     </Screen>
   )
 }
@@ -470,6 +627,14 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
   statPhrase: { fontSize: 13, fontWeight: '500' },
+  urgencyWrap: { gap: 8 },
+  hourList: { paddingVertical: 4 },
+  hourRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: radii.md,
+  },
+  hourLabel: { fontSize: 15, fontWeight: '500', textAlign: 'center' },
   blocklistRow: {
     flexDirection: 'row',
     alignItems: 'center',
