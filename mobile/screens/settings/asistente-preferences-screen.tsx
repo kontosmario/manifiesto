@@ -15,7 +15,7 @@
 //     `advisor_interactions` rows (gated by RLS — requires the
 //     `delete_own` policy from migration 20260501010000).
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 
@@ -25,10 +25,12 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
+import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
 
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
+import { useAdvisorValueSummary } from '@/features/insights/use-advisor-value-summary'
 import { inferPersona, PERSONA_PROFILES } from '@/features/insights/persona'
 import {
   useSignalBlocklistEntries,
@@ -79,6 +81,20 @@ function familyLabel(family: string): string {
   return FAMILY_LABELS[family] ?? family
 }
 
+// CTR → frase en lenguaje natural (decisión owner 2026-06-15: nada de
+// porcentajes crudos, que se sienten fríos / invitan a "gamear" el número).
+function engagementPhrase(ctr: number, acted: number): string {
+  if (acted === 0) return 'todavía no'
+  if (ctr >= 0.5) return 'actuás seguido'
+  if (ctr >= 0.2) return 'a veces'
+  return 'rara vez'
+}
+
+// Mínimo de muestras para que una familia entre en "Tus señales" (evita
+// mostrar ruido con 1-2 apariciones).
+const MIN_FAMILY_SAMPLE = 3
+const TOP_FAMILIES = 5
+
 export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
   const queryClient = useQueryClient()
@@ -86,9 +102,28 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const blocklistQuery = useSignalBlocklistEntries(userId)
   const unblockMutation = useUnblockSignalFamily()
 
+  const valueQuery = useAdvisorValueSummary(userId)
+
   const persona = statsQuery.data ? inferPersona(statsQuery.data) : 'planner'
   const personaProfile = PERSONA_PROFILES[persona]
   const totalShown = statsQuery.data?.overall.totalShown ?? 0
+
+  // #1 Card de valor: solo si hay ahorro realizado (decisión: ocultar si 0
+  // para no mostrar un $0 desmotivador). saved_quarter ≥ saved_month siempre.
+  const value = valueQuery.data
+  const showValueCard = Boolean(value && value.savedQuarter > 0)
+
+  // #3 "Tus señales": top familias por CTR con muestra mínima. Oculta hasta
+  // calibrar (mismo umbral de 10 que el footnote de la persona).
+  const topFamilies = useMemo(() => {
+    const perFamily = statsQuery.data?.perFamily
+    if (!perFamily) return []
+    return Object.entries(perFamily)
+      .filter(([, s]) => s.shown >= MIN_FAMILY_SAMPLE)
+      .sort((a, b) => b[1].ctr - a[1].ctr || b[1].shown - a[1].shown)
+      .slice(0, TOP_FAMILIES)
+  }, [statsQuery.data])
+  const showStats = totalShown >= 10 && topFamilies.length > 0
 
   const handleUnblock = useCallback(
     (family: string) => {
@@ -168,6 +203,36 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       canGoBack
     >
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
+
+      {showValueCard && value ? (
+        <RiseView delay={40}>
+          <SectionHeader title="Lo que te ahorré" />
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          >
+            <View style={styles.cardRow}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.colors.primarySurface }]}>
+                <MaterialIcons name="savings" size={20} color={theme.colors.primary} />
+              </View>
+              <View style={styles.cardText}>
+                <Text style={[styles.valueAmount, { color: theme.colors.text }]}>
+                  {formatMoney(value.savedQuarter)}
+                </Text>
+                <Text style={[styles.cardBody, { color: theme.colors.textSoft }]}>
+                  este trimestre
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.cardFootnote, { color: theme.colors.textMuted }]}>
+              {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de señal`}
+            </Text>
+          </View>
+        </RiseView>
+      ) : null}
+
       <RiseView delay={80}>
         <SectionHeader title="Perfil inferido" />
         <View
@@ -197,7 +262,45 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         </View>
       </RiseView>
 
-      <RiseView delay={140}>
+      {showStats ? (
+        <RiseView delay={140}>
+          <SectionHeader
+            title="Tus señales"
+            subtitle="Qué tanto actuás en cada tipo de aviso."
+          />
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          >
+            {topFamilies.map(([family, s], i) => (
+              <View
+                key={family}
+                style={[
+                  styles.statRow,
+                  i > 0 && {
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.statLabel, { color: theme.colors.text }]}
+                  numberOfLines={1}
+                >
+                  {familyLabel(family)}
+                </Text>
+                <Text style={[styles.statPhrase, { color: theme.colors.textMuted }]}>
+                  {engagementPhrase(s.ctr, s.acted)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </RiseView>
+      ) : null}
+
+      <RiseView delay={200}>
         <SectionHeader
           title="Familias bloqueadas"
           subtitle={
@@ -255,7 +358,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         )}
       </RiseView>
 
-      <RiseView delay={200}>
+      <RiseView delay={260}>
         <SectionHeader
           title="Privacidad"
           subtitle="Tu historial de interacciones se usa solo para calibrar el asistente."
@@ -297,6 +400,17 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600' },
   cardBody: { fontSize: 13, lineHeight: 18 },
   cardFootnote: { fontSize: 12, lineHeight: 16, marginTop: 4 },
+  valueAmount: { fontSize: 24, fontWeight: '700', letterSpacing: -0.4 },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  statLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
+  statPhrase: { fontSize: 13, fontWeight: '500' },
   blocklistRow: {
     flexDirection: 'row',
     alignItems: 'center',
