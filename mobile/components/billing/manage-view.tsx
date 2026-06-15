@@ -6,6 +6,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { BrandLockup } from '@/components/billing/brand-lockup'
 import { MembershipHero } from '@/components/billing/membership-hero'
 import { SubscriptionDetailRows } from '@/components/billing/subscription-detail-rows'
+import { HouseholdMembersList } from '@/components/billing/household-members-list'
 import { MembershipActions } from '@/components/billing/membership-actions'
 import {
   membershipVariant,
@@ -123,6 +124,9 @@ export const ManageView = memo(function ManageView({
           autoRenew={snap.autoRenew}
           priceLabel={variant.canManage ? priceLabel : undefined}
         />
+      </RiseView>
+      <RiseView delay={100}>
+        <HouseholdMembersList familyId={familyId} />
       </RiseView>
       <RiseView delay={120}>
         <MembershipActions

@@ -17,6 +17,13 @@ export interface FamilyMemberDetail {
   /** Monthly income contributed to the household (ARS). 0 means
    *  the member doesn't contribute. */
   monthlyIncomeContribution: number
+  /** ISO date en que el usuario se unió al hogar (family_members.created_at).
+   *  Opcional: solo lo trae este hook desde el RPC; otros constructores (p.ej.
+   *  el snapshot de Home) no lo proveen. */
+  joinedAt?: string | null
+  /** El dueño del hogar (role='owner') — el resto son 'member'. Opcional por
+   *  la misma razón que `joinedAt`. */
+  isOwner?: boolean
 }
 
 export const familyMembersDetailKey = (familyId?: string) =>
@@ -32,7 +39,7 @@ export function useFamilyMembersDetail(familyId?: string) {
 
       const membersResponse = await supabase
         .from('family_members')
-        .select('user_id, monthly_income_contribution')
+        .select('user_id, monthly_income_contribution, created_at, role')
         .eq('family_id', familyId)
       if (membersResponse.error) throw membersResponse.error
 
@@ -75,6 +82,9 @@ export function useFamilyMembersDetail(familyId?: string) {
               ? (rawAvatar as AvatarSlug)
               : null,
           monthlyIncomeContribution: Number(row.monthly_income_contribution ?? 0),
+          joinedAt:
+            typeof row.created_at === 'string' ? (row.created_at as string) : null,
+          isOwner: (row as { role?: unknown }).role === 'owner',
         }
       })
     },
