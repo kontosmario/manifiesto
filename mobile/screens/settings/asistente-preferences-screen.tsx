@@ -24,6 +24,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 
 import { Screen } from '@/components/ui/screen'
 import { ModalCard } from '@/components/ui/modal-card'
+import { HourStripSlider } from '@/components/ui/hour-strip-slider'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import {
@@ -516,39 +517,14 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         title={quietPicker === 'start' ? 'No molestar desde' : 'Volver a avisar a las'}
         onClose={() => setQuietPicker(null)}
       >
-        <View style={styles.optionList}>
-          {Array.from({ length: 24 }).map((_, hour) => {
-            const selected = hour === (quietPicker === 'start' ? quietStart : quietEnd)
-            return (
-              <Pressable
-                key={hour}
-                onPress={() => handlePickQuietHour(hour)}
-                style={({ pressed }) => [
-                  styles.optionRow,
-                  {
-                    backgroundColor: selected ? theme.colors.primary : 'transparent',
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.optionLabel,
-                    {
-                      textAlign: 'center',
-                      color: selected
-                        ? theme.isDark
-                          ? '#12211A'
-                          : theme.colors.creamCard
-                        : theme.colors.text,
-                    },
-                  ]}
-                >
-                  {formatHour(hour)}
-                </Text>
-              </Pressable>
-            )
-          })}
+        <View style={styles.sliderWrap}>
+          <HourStripSlider
+            value={quietPicker === 'start' ? quietStart : quietEnd}
+            onChange={handlePickQuietHour}
+            accessibilityLabel={
+              quietPicker === 'start' ? 'Hora de inicio del no molestar' : 'Hora de volver a avisar'
+            }
+          />
         </View>
       </ModalCard>
 
@@ -620,13 +596,10 @@ const styles = StyleSheet.create({
   heroAmount: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
   heroCaption: { fontSize: 13, lineHeight: 18 },
   heroFootnote: { fontSize: 12, lineHeight: 16 },
-  // Listas dentro de los ModalCard (horas / nivel de aviso).
+  // Slider de horas (no molestar) dentro del ModalCard.
+  sliderWrap: { paddingVertical: 8 },
+  // Lista de opciones dentro del ModalCard de nivel de aviso.
   optionList: { paddingVertical: 4, gap: 2 },
-  optionRow: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: radii.md,
-  },
   optionLabel: { fontSize: 15, fontWeight: '600' },
   urgencyOption: {
     flexDirection: 'row',
