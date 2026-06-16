@@ -38,7 +38,12 @@ export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSpa
 
   const min = Math.min(...points)
   const max = Math.max(...points)
-  const range = max - min || 1
+  // Sin variación real entre pagos (p. ej. un único pago, cuyo precio se
+  // duplica con el monto actual) no hay nada que graficar. Dibujar una línea
+  // plana pegada al borde lee como un gráfico roto, así que no renderizamos
+  // nada: la spark aparece recién cuando hubo un cambio de precio.
+  if (max === min) return null
+  const range = max - min
   const padY = 3
   const padX = 2
   const innerW = width - padX * 2
