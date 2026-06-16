@@ -407,11 +407,21 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     () => Array.from(controller.categoriesById.values()),
     [controller.categoriesById],
   )
-  // Defer the heavy intelligence + notifications queries past first
-  // paint — the chip is below the fold and tolerates a ~600ms wait
-  // without UX cost (audit §3.4 / item 18).
+  // NO deferimos acá: el GastosAdvisorChip NO está "below the fold" — vive
+  // en el header del SectionList (gastos-list-header), arriba de los
+  // movimientos. Con `defer: true` las signals resolvían ~600ms después del
+  // primer paint → el chip montaba de null (altura 0 → ~52px) → el
+  // ListHeaderComponent crecía → el SectionList VIRTUALIZADO corregía su
+  // content-size → "salto" visible en el primer attach del tab (solo Gastos
+  // lo sufre porque Fijos/Control usan ScrollView que solo reflowea).
+  // La query ya viene prefetcheada/warm (useWarmTabsSnapshots) y dedupeada
+  // por React Query (misma queryKey que Control), así que leerla en el
+  // primer paint es cache-read + buildControlSignals (lo mismo que hace el
+  // tab Control sin defer): costo mínimo, altura del header estable, sin
+  // salto. (Antes: audit §3.4 / item 18, con la premisa errónea de "below
+  // the fold".)
   const { signals: advisorSignals } = useControlV2Data(familyId, undefined, {
-    defer: true,
+    defer: false,
   })
   const categoryNameById = useMemo(() => {
     const m = new Map<string, string>()
