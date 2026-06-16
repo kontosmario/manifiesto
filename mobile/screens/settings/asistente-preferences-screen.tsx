@@ -24,7 +24,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 
 import { Screen } from '@/components/ui/screen'
 import { ModalCard } from '@/components/ui/modal-card'
-import { HourCarousel } from '@/components/ui/hour-carousel'
+import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import {
@@ -513,44 +513,17 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         </SettingsGroup>
       </RiseView>
 
-      <ModalCard
+      <HourPickerSheet
         visible={quietPicker !== null}
         title={quietPicker === 'start' ? 'No molestar desde' : 'Volver a avisar a las'}
-        subtitle="Deslizá hasta la hora que quieras."
+        value={quietPicker === 'start' ? quietStart : quietEnd}
+        instanceKey={quietPicker ?? 'closed'}
+        onChange={handleSetQuietHour}
         onClose={() => setQuietPicker(null)}
-      >
-        <View style={styles.sliderWrap}>
-          <HourCarousel
-            key={quietPicker ?? 'closed'}
-            value={quietPicker === 'start' ? quietStart : quietEnd}
-            onChange={handleSetQuietHour}
-            accessibilityLabel={
-              quietPicker === 'start' ? 'Hora de inicio del no molestar' : 'Hora de volver a avisar'
-            }
-          />
-          <Pressable
-            onPress={() => {
-              void triggerHaptic('selection')
-              setQuietPicker(null)
-            }}
-            style={({ pressed }) => [
-              styles.doneButton,
-              { backgroundColor: theme.colors.primary, opacity: pressed ? 0.85 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Listo"
-          >
-            <Text
-              style={[
-                styles.doneLabel,
-                { color: theme.isDark ? theme.colors.background : '#FFFFFF' },
-              ]}
-            >
-              Listo
-            </Text>
-          </Pressable>
-        </View>
-      </ModalCard>
+        accessibilityLabel={
+          quietPicker === 'start' ? 'Hora de inicio del no molestar' : 'Hora de volver a avisar'
+        }
+      />
 
       <ModalCard
         visible={urgencyOpen}
@@ -620,15 +593,6 @@ const styles = StyleSheet.create({
   heroAmount: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
   heroCaption: { fontSize: 13, lineHeight: 18 },
   heroFootnote: { fontSize: 12, lineHeight: 16 },
-  // Carrusel de horas (no molestar) dentro del ModalCard + CTA "Listo".
-  sliderWrap: { gap: 16 },
-  doneButton: {
-    height: 48,
-    borderRadius: radii.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneLabel: { fontSize: 15, fontWeight: '700' },
   // Lista de opciones dentro del ModalCard de nivel de aviso.
   optionList: { paddingVertical: 4, gap: 2 },
   optionLabel: { fontSize: 15, fontWeight: '600' },

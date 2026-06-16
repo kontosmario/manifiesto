@@ -1,14 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Alert, StyleSheet, View } from 'react-native'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ModalCard } from '@/components/ui/modal-card'
+import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
 import { SectionHeader } from '@/components/ui/section-header'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -22,7 +15,7 @@ import {
 import { NOTIFICATION_GROUP_LABELS, type NotificationGroup } from '@/utils/notifications'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS } from '@/theme/palette'
 
 type CheckinSlot = 'morning' | 'midday' | 'evening'
 
@@ -143,17 +136,17 @@ export function NotificationsPreferencesScreen() {
 
   const closePicker = useCallback(() => setPickerSlot(null), [])
 
-  const handlePickHour = useCallback(
+  // El carrusel commitea al asentar (mientras se explora); solo actualiza el
+  // valor, NO cierra. El usuario cierra con "Listo". El haptic por hora lo
+  // dispara el propio carrusel.
+  const handleSetCheckinHour = useCallback(
     (hour: number) => {
       if (!pickerSlot) return
       const slotConfig = CHECKIN_SLOTS.find((s) => s.slot === pickerSlot)
       if (!slotConfig) return
-      const patch: Partial<NotificationPreferences> = { [slotConfig.field]: hour }
-      submitPatch(patch)
-      void triggerHaptic('success')
-      closePicker()
+      submitPatch({ [slotConfig.field]: hour })
     },
-    [closePicker, pickerSlot, submitPatch],
+    [pickerSlot, submitPatch],
   )
 
   const currentPickerValue = (() => {
@@ -267,52 +260,15 @@ export function NotificationsPreferencesScreen() {
         </RiseView>
       </View>
 
-      <ModalCard
+      <HourPickerSheet
         visible={pickerSlot !== null}
         title={pickerTitle}
+        value={currentPickerValue}
+        instanceKey={pickerSlot ?? 'closed'}
+        onChange={handleSetCheckinHour}
         onClose={closePicker}
-      >
-        <View style={styles.hourList}>
-          {Array.from({ length: 24 }).map((_, hour) => {
-            const selected = hour === currentPickerValue
-            return (
-              <Pressable
-                key={hour}
-                onPress={() => handlePickHour(hour)}
-                style={({ pressed }) => [
-                  styles.hourRow,
-                  {
-                    backgroundColor: selected ? theme.colors.primary : 'transparent',
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.hourLabel,
-                    {
-                      color: selected
-                        ? theme.isDark
-                          ? '#12211A'
-                          : theme.colors.creamCard
-                        : theme.colors.text,
-                    },
-                  ]}
-                >
-                  {formatHour(hour)}
-                </Text>
-                {selected ? (
-                  <MaterialIcons
-                    name="check"
-                    size={18}
-                    color={theme.isDark ? '#12211A' : theme.colors.creamCard}
-                  />
-                ) : null}
-              </Pressable>
-            )
-          })}
-        </View>
-      </ModalCard>
+        accessibilityLabel={pickerTitle || 'Hora del check-in'}
+      />
     </Screen>
   )
 }
@@ -327,21 +283,5 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 12,
-  },
-  hourList: {
-    gap: 2,
-    paddingVertical: 4,
-  },
-  hourRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radii.lg,
-  },
-  hourLabel: {
-    fontSize: 15,
-    fontWeight: '700',
   },
 })
