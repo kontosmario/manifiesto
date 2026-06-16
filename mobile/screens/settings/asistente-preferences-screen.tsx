@@ -516,6 +516,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       <ModalCard
         visible={quietPicker !== null}
         title={quietPicker === 'start' ? 'No molestar desde' : 'Volver a avisar a las'}
+        subtitle="Deslizá hasta la hora que quieras."
         onClose={() => setQuietPicker(null)}
       >
         <View style={styles.sliderWrap}>
@@ -620,7 +621,7 @@ const styles = StyleSheet.create({
   heroCaption: { fontSize: 13, lineHeight: 18 },
   heroFootnote: { fontSize: 12, lineHeight: 16 },
   // Carrusel de horas (no molestar) dentro del ModalCard + CTA "Listo".
-  sliderWrap: { paddingTop: 4, gap: 12 },
+  sliderWrap: { gap: 16 },
   doneButton: {
     height: 48,
     borderRadius: radii.lg,

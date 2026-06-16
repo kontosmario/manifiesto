@@ -29,9 +29,10 @@ import {
 import { triggerHaptic } from '@/lib/haptics'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
+import { radii } from '@/theme/palette'
 
 const ITEM_WIDTH = 62
-const HEIGHT = 104
+const HEIGHT = 88
 const COPIES = 5 // odd → a real middle copy. 5×24 = 120 tiles of buffer.
 const MIDDLE = Math.floor(COPIES / 2)
 const BASE_HOURS = Array.from({ length: 24 }, (_, h) => h)
@@ -117,10 +118,17 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
   )
 
   return (
-    <View style={styles.container} onLayout={onLayout}>
-      {/* Focus ring: marks the centre slot the reel snaps into. */}
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
+      ]}
+      onLayout={onLayout}
+    >
+      {/* Center slot: a filled band marks where the selection lands, so the
+          reel reads as anchored to the centre (not floating). */}
       <View pointerEvents="none" style={styles.focusLayer}>
-        <View style={[styles.focusRing, { borderColor: theme.colors.border }]} />
+        <View style={[styles.focusSlot, { backgroundColor: theme.colors.primarySurface }]} />
       </View>
 
       {width > 0 ? (
@@ -245,17 +253,19 @@ const styles = StyleSheet.create({
     width: '100%',
     height: HEIGHT,
     justifyContent: 'center',
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
   focusLayer: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  focusRing: {
-    width: ITEM_WIDTH - 6,
-    height: 52,
-    borderRadius: 999,
-    borderWidth: 1,
+  focusSlot: {
+    width: ITEM_WIDTH - 4,
+    height: 56,
+    borderRadius: radii.md,
   },
   tileTap: {
     width: ITEM_WIDTH,
