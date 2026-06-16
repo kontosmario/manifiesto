@@ -39,16 +39,17 @@ export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingH
       </View>
       <Text
         style={[styles.name, { color: theme.colors.text }]}
-        // Una sola línea + auto-shrink: el título nunca rompe ni empuja el
-        // layout aunque el nombre sea largo. minimumFontScale frena el
-        // encogido en ~24px para que siga teniendo peso de hero.
+        // El saludo lo da el eyebrow ("buenas noches,") — la línea grande es
+        // solo el nombre, el foco visual del header. Una sola línea +
+        // auto-shrink: nunca rompe ni empuja el layout aunque el nombre sea
+        // largo. minimumFontScale frena el encogido en ~24px (peso de hero).
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.72}
         maxFontSizeMultiplier={1.3}
-        accessibilityLabel={`Hola, ${fullName}`}
+        accessibilityLabel={fullName}
       >
-        Hola, {greetingName}
+        {greetingName}
       </Text>
     </RiseView>
   )
