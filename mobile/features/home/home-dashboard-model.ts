@@ -113,3 +113,32 @@ export function getGreeting(hour: number): string {
   return 'Buenas noches'
 }
 
+/** Tope de caracteres del nombre mostrado en el saludo del Home. Es la
+ *  guardia semántica; el componente además aplica adjustsFontSizeToFit. */
+export const GREETING_NAME_MAX_CHARS = 22
+
+/**
+ * Acota un `display_name` arbitrario al nombre que se muestra en el título
+ * del Home ("Hola, {nombre}") para que no rompa el layout con nombres
+ * largos o compuestos:
+ *
+ *  - colapsa whitespace + trimea
+ *  - conserva los primeros DOS tokens → mantiene nombres compuestos
+ *    ("Juan Cruz", "Octavio Benjamín") intactos, pero descarta los
+ *    apellidos de un nombre legal largo ("Octavio Benjamín Pérez García"
+ *    → "Octavio Benjamín")
+ *  - guardia final por largo: si aún así es demasiado (un único token
+ *    gigante), trunca con elipsis
+ *
+ * El componente usa esto como primera línea de defensa (semántica) y el
+ * auto-shrink (adjustsFontSizeToFit) como segunda (visual). El nombre
+ * completo se preserva siempre en el accessibilityLabel.
+ */
+export function getGreetingName(displayName?: string | null): string {
+  const cleaned = (displayName ?? '').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return 'Usuario'
+  const givenNames = cleaned.split(' ').slice(0, 2).join(' ')
+  if (givenNames.length <= GREETING_NAME_MAX_CHARS) return givenNames
+  return `${givenNames.slice(0, GREETING_NAME_MAX_CHARS - 1).trimEnd()}…`
+}
+

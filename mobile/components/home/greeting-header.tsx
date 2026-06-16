@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Path, G } from 'react-native-svg'
-import { getGreeting } from '@/features/home/home-dashboard-model'
+import { getGreeting, getGreetingName } from '@/features/home/home-dashboard-model'
 import { FloatView } from '@/components/home/animated/float-view'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -13,6 +13,10 @@ interface GreetingHeaderProps {
 export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingHeaderProps) {
   const { theme } = useAppTheme()
   const greeting = getGreeting(hour)
+  // Nombre acotado para el título (nombres compuestos intactos, apellidos
+  // largos descartados). El nombre completo queda en el accessibilityLabel.
+  const greetingName = getGreetingName(name)
+  const fullName = name.trim()
   const Icon = hour < 6 || hour >= 19 ? MoonIcon : hour < 12 ? SunIcon : SunLowIcon
 
   return (
@@ -21,7 +25,7 @@ export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingH
         style={styles.row}
         accessible
         accessibilityRole="header"
-        accessibilityLabel={`${greeting}, ${name}`}
+        accessibilityLabel={`${greeting},`}
       >
         <FloatView amplitude={4} periodMs={5000} style={styles.iconWrap}>
           <Icon />
@@ -35,9 +39,16 @@ export function GreetingHeader({ name, hour = new Date().getHours() }: GreetingH
       </View>
       <Text
         style={[styles.name, { color: theme.colors.text }]}
-        maxFontSizeMultiplier={1.4}
+        // Una sola línea + auto-shrink: el título nunca rompe ni empuja el
+        // layout aunque el nombre sea largo. minimumFontScale frena el
+        // encogido en ~24px para que siga teniendo peso de hero.
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
+        maxFontSizeMultiplier={1.3}
+        accessibilityLabel={`Hola, ${fullName}`}
       >
-        Hola, {name}
+        Hola, {greetingName}
       </Text>
     </RiseView>
   )

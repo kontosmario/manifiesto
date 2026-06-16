@@ -3,6 +3,7 @@ import {
   classifyDashboardError,
   daysUntilPayday,
   getGreeting,
+  getGreetingName,
   getPaydayCycle,
   isPaydayPending,
 } from '@/features/home/home-dashboard-model'
@@ -117,6 +118,38 @@ describe('getGreeting', () => {
     expect(getGreeting(8)).toBe('Buen día')
     expect(getGreeting(15)).toBe('Buenas tardes')
     expect(getGreeting(22)).toBe('Buenas noches')
+  })
+})
+
+describe('getGreetingName', () => {
+  it('keeps a simple name as-is', () => {
+    expect(getGreetingName('Mario')).toBe('Mario')
+  })
+
+  it('preserves compound first names (two tokens)', () => {
+    expect(getGreetingName('Juan Cruz')).toBe('Juan Cruz')
+    expect(getGreetingName('Octavio Benjamín')).toBe('Octavio Benjamín')
+  })
+
+  it('drops trailing surnames from a long legal name', () => {
+    expect(getGreetingName('Octavio Benjamín Pérez García')).toBe('Octavio Benjamín')
+  })
+
+  it('collapses extra whitespace and trims', () => {
+    expect(getGreetingName('  Juan   Cruz  ')).toBe('Juan Cruz')
+  })
+
+  it('truncates a single absurdly long token with an ellipsis', () => {
+    const out = getGreetingName('Wolfeschlegelsteinhausenbergerdorff')
+    expect(out.endsWith('…')).toBe(true)
+    expect(out.length).toBeLessThanOrEqual(22)
+  })
+
+  it('falls back to "Usuario" for empty / nullish input', () => {
+    expect(getGreetingName('')).toBe('Usuario')
+    expect(getGreetingName('   ')).toBe('Usuario')
+    expect(getGreetingName(null)).toBe('Usuario')
+    expect(getGreetingName(undefined)).toBe('Usuario')
   })
 })
 
