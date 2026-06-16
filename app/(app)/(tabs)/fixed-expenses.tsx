@@ -13,7 +13,7 @@ export default function FixedExpensesRoute() {
     <RequireAuth>
       {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <LayoutTransitionGateProvider>
+          <LayoutTransitionGateProvider label="Fijos">
             <FijosV2Screen familyId={familyId} userId={userId} />
           </LayoutTransitionGateProvider>
         </RiseViewGate>

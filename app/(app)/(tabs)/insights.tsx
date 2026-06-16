@@ -13,7 +13,7 @@ export default function InsightsRoute() {
     <RequireAuth>
       {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <LayoutTransitionGateProvider>
+          <LayoutTransitionGateProvider label="Control">
             <ControlV2Screen familyId={familyId} userId={userId} />
           </LayoutTransitionGateProvider>
         </RiseViewGate>

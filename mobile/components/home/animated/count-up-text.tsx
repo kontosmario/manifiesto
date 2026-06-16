@@ -8,6 +8,7 @@ import {
   runOnJS,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { animLog } from '@/lib/dev/anim-log'
 
 interface CountUpTextProps {
   value: number
@@ -15,6 +16,9 @@ interface CountUpTextProps {
   format: (n: number) => string
   style?: StyleProp<TextStyle>
   accessibilityLabel?: string
+  /** Etiqueta para el log dev de cambios de valor (solo __DEV__). Ayuda a
+   *  identificar qué número del hero cambió (Gastos/Control/etc). */
+  debugLabel?: string
   /** Cap on system font scaling. Avoids overflow when iOS Dynamic
    *  Type or Android Larger Text inflate large hero figures past
    *  their container. Defaults to 1.4 — generous enough for
@@ -34,6 +38,7 @@ export function CountUpText({
   format,
   style,
   accessibilityLabel,
+  debugLabel,
   maxFontSizeMultiplier = 1.4,
 }: CountUpTextProps) {
   const reduced = useReducedMotion()
@@ -65,17 +70,21 @@ export function CountUpText({
   // se leía como un flicker aleatorio al navegar a esos tabs.
   const hasRevealedRef = useRef(false)
   useEffect(() => {
+    const first = !hasRevealedRef.current
+    // DEV: un `first:false` justo después de navegar a una vista = el número
+    // del hero cambió de valor sin acción del usuario → posible flicker.
+    animLog('countup', debugLabel ?? 'value', { value, first })
     if (reduced) {
       progress.value = value
       setDisplay(formatRef.current(value))
       return
     }
-    if (!hasRevealedRef.current) {
+    if (first) {
       hasRevealedRef.current = true
       progress.value = 0
     }
     progress.value = withTiming(value, { duration, easing: Easing.out(Easing.cubic) })
-  }, [value, duration, reduced, progress])
+  }, [value, duration, reduced, progress, debugLabel])
 
   // Quantize updates so setState fires at most ~20×/sec on the JS thread.
   // A tween from 0 to a large integer would otherwise call runOnJS 60×/sec,

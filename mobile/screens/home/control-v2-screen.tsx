@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
@@ -84,6 +85,7 @@ const DOW_FULL = [
  * and we stack everything ourselves.
  */
 export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
+  useScreenLifecycleLog('Control')
   const router = useRouter()
   const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.

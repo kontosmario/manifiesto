@@ -1,4 +1,5 @@
 import { Alert, RefreshControl, StyleSheet, View, type ScrollView } from 'react-native'
+import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -51,6 +52,7 @@ interface FijosV2ScreenProps {
  * upcoming strip, status tabs and the per-category list.
  */
 export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
+  useScreenLifecycleLog('Fijos')
   const router = useRouter()
   const { theme } = useAppTheme()
   // Auto-start the Fijos guided tour on first visit. No-op once seen.

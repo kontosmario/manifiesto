@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { InteractionManager } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
+import { animLog } from '@/lib/dev/anim-log'
 
 /**
  * Gate para `LinearTransition` (Reanimated) en screens de tabs pre-mounted.
@@ -58,7 +59,7 @@ import { useFocusEffect } from '@react-navigation/native'
  * empieza la ventana del warp. Si el user nunca visita el tab, el gate
  * nunca abre y no hay costo.
  */
-export function useLayoutTransitionGate(): boolean {
+export function useLayoutTransitionGate(label?: string): boolean {
   const [open, setOpen] = useState(false)
 
   useFocusEffect(
@@ -70,12 +71,13 @@ export function useLayoutTransitionGate(): boolean {
       // ANTES de habilitar las transiciones.
       const handle = InteractionManager.runAfterInteractions(() => {
         setOpen(true)
+        animLog('gate', 'open', label ? { screen: label } : undefined)
       })
       return () => {
         // `cancel` puede no existir en runtimes web → safe-guard.
         handle.cancel?.()
       }
-    }, [open]),
+    }, [open, label]),
   )
 
   return open
@@ -100,8 +102,15 @@ export function useLayoutTransitionGate(): boolean {
 // (sheets, onboarding, modales): se comportan como hoy, sin gating.
 const LayoutTransitionGateContext = createContext<boolean>(true)
 
-export function LayoutTransitionGateProvider({ children }: { children: ReactNode }) {
-  const open = useLayoutTransitionGate()
+export function LayoutTransitionGateProvider({
+  children,
+  label,
+}: {
+  children: ReactNode
+  /** Nombre de la vista para el log dev del gate (solo __DEV__). */
+  label?: string
+}) {
+  const open = useLayoutTransitionGate(label)
   return createElement(LayoutTransitionGateContext.Provider, { value: open }, children)
 }
 

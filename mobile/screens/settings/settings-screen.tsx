@@ -93,6 +93,7 @@ import {
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
 import { triggerHaptic } from '@/lib/haptics'
+import { isAnimLogEnabled, setAnimLogEnabled } from '@/lib/dev/anim-log'
 import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
@@ -725,6 +726,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     void triggerHaptic('selection')
     void setAssistantDemoMode(next)
   }, [])
+  // Logs dev de animaciones/navegación (focus/blur, gate, CountUpText,
+  // frame-drops). Default ON en dev; el toggle silencia la consola sin
+  // rebuild. In-memory (se resetea al recargar).
+  const [animLogsOn, setAnimLogsOn] = useState(isAnimLogEnabled())
+  const handleToggleAnimLogs = useCallback((next: boolean) => {
+    void triggerHaptic('selection')
+    setAnimLogEnabled(next)
+    setAnimLogsOn(next)
+  }, [])
   // Companion filter: narrows the demo fixture to a single behavior
   // class so each bucket (read-only / routing / mutation / sin
   // acción) can be tested in isolation. Only meaningful while
@@ -1245,6 +1255,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   footer="Solo visibles en desarrollo. Útil para iterar animaciones."
                   title="Desarrollo"
                 >
+                  <SettingsRow
+                    helper="Loguea en consola las transiciones entre vistas (focus/blur, gate, CountUpText) + frames caídos por transición. Para diagnosticar saltos/flicker."
+                    icon="speed"
+                    label="Logs de animaciones"
+                    trailing={
+                      <Switch
+                        accessibilityLabel="Activar logs de animaciones"
+                        onValueChange={handleToggleAnimLogs}
+                        value={animLogsOn}
+                      />
+                    }
+                  />
                   <SettingsRow
                     helper="Viaje completo de la máquina: probes → Face ID (2.2s) → bridge → soar-away."
                     icon="play-circle-outline"

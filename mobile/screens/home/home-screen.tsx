@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useSignalDestinationReady } from '@/features/auth-flow/use-signal-destination-ready'
 import {
   Alert,
@@ -51,6 +52,7 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ userId, familyId }: HomeScreenProps) {
+  useScreenLifecycleLog('Inicio')
   const router = useRouter()
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)

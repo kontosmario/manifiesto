@@ -10,6 +10,7 @@ import {
 } from '@/components/navigation/app-tabs-ui'
 import { TabBarPressable } from '@/components/navigation/tab-bar-pressable'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
+import { withNavDevLog } from '@/lib/dev/anim-log'
 import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
@@ -94,6 +95,9 @@ const renderAddIcon = () => null
 export function AppTabs() {
   const { theme } = useAppTheme()
   const tabHaptics = useTabHaptics()
+  // DEV-only: agrega logging de focus/blur/tabPress + sampler de frames por
+  // transición. En release devuelve `tabHaptics` sin tocar (no-op).
+  const screenListeners = useMemo(() => withNavDevLog(tabHaptics), [tabHaptics])
 
   // Theme-dependent option chunks are the only thing that should
   // recompute on theme change. Everything else (icon renderers, tab
@@ -157,7 +161,7 @@ export function AppTabs() {
   )
 
   return (
-    <Tabs screenListeners={tabHaptics} screenOptions={screenOptions}>
+    <Tabs screenListeners={screenListeners} screenOptions={screenOptions}>
       <Tabs.Screen
         name="home"
         options={{ title: 'Inicio', tabBarIcon: renderHomeIcon, tabBarButton: renderTabBarButton }}

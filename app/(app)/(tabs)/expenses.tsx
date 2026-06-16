@@ -16,7 +16,7 @@ export default function ExpensesRoute() {
     <RequireAuth>
       {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <LayoutTransitionGateProvider>
+          <LayoutTransitionGateProvider label="Gastos">
             <ExpensesScreen familyId={familyId} userId={userId} />
           </LayoutTransitionGateProvider>
         </RiseViewGate>

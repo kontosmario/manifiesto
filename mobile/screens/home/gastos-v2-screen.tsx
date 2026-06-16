@@ -47,6 +47,7 @@ import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { computeCupoDiario } from '@/features/gastos/cupo-diario'
+import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
@@ -130,6 +131,7 @@ function GastosScreenSkeleton() {
 }
 
 export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
+  useScreenLifecycleLog('Gastos')
   const { cycle, today } = usePayCycle(familyId)
   const dashboard = useFamilyDashboard(familyId)
   const cupoDiario = useMemo(
