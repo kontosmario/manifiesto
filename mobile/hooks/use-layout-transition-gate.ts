@@ -101,6 +101,10 @@ export function useLayoutTransitionGate(label?: string): boolean {
 // Default `true` (gate abierto) para componentes FUERA de un provider
 // (sheets, onboarding, modales): se comportan como hoy, sin gating.
 const LayoutTransitionGateContext = createContext<boolean>(true)
+// Opener imperativo — el screen lo dispara en su PRIMERA interacción
+// (scroll/tap) para abrir el gate. Default no-op (componentes fuera de un
+// provider).
+const LayoutGateOpenerContext = createContext<() => void>(() => {})
 
 export function LayoutTransitionGateProvider({
   children,
@@ -110,8 +114,59 @@ export function LayoutTransitionGateProvider({
   /** Nombre de la vista para el log dev del gate (solo __DEV__). */
   label?: string
 }) {
-  const open = useLayoutTransitionGate(label)
-  return createElement(LayoutTransitionGateContext.Provider, { value: open }, children)
+  const [open, setOpen] = useState(false)
+
+  const openGate = useCallback(() => {
+    setOpen((prev) => {
+      if (prev) return prev
+      animLog('gate', 'open', label ? { screen: label } : undefined)
+      return true
+    })
+  }, [label])
+
+  // # Por qué open-on-INTERACTION en vez de un timer
+  //
+  // Antes el gate abría con `InteractionManager.runAfterInteractions`
+  // (~72ms post-focus). Pero el SectionList VIRTUALIZADO de Gastos y el
+  // ScrollView de Control siguen asentando su layout DESPUÉS de ese
+  // momento (virtualización, data async que llega 1-2 frames tarde). El
+  // `LinearTransition` —ya armado al abrir el gate— interpolaba ese settle
+  // = el "warp/salto" del primer attach. Fijos/Home no lo sufren porque su
+  // data es warm y asienta en el primer frame (no hay delta que interpolar).
+  //
+  // Las transiciones de layout existen para cambios que CAUSA el usuario
+  // (filtrar, agregar/borrar). Esos requieren interacción. Así que el gate
+  // abre con la primera interacción: hasta entonces el settle del primer
+  // attach (y cualquier delta tardío) SNAPEA, sin warp. Re-cierra en blur
+  // para que cada visita arranque protegida. Fallback: abrir igual tras una
+  // espera generosa por si el user nunca toca la pantalla (para que un
+  // update en background eventualmente transicione suave).
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(openGate, 1500)
+      return () => {
+        clearTimeout(timer)
+        setOpen(false)
+      }
+    }, [openGate]),
+  )
+
+  return createElement(
+    LayoutGateOpenerContext.Provider,
+    { value: openGate },
+    createElement(LayoutTransitionGateContext.Provider, { value: open }, children),
+  )
+}
+
+/**
+ * Devuelve un callback que abre el gate de layout. El screen lo dispara en
+ * su PRIMERA interacción (p. ej. `onScrollBeginDrag` / `onTouchStart` del
+ * SectionList/ScrollView) para que las transiciones de layout recién se
+ * armen cuando el usuario empieza a interactuar — nunca durante el settle
+ * del primer attach. No-op fuera de un provider.
+ */
+export function useOpenLayoutGate(): () => void {
+  return useContext(LayoutGateOpenerContext)
 }
 
 /**
@@ -123,4 +178,14 @@ export function LayoutTransitionGateProvider({
 export function useGatedLayout<T>(transition: T): T | undefined {
   const open = useContext(LayoutTransitionGateContext)
   return open ? transition : undefined
+}
+
+/**
+ * Versión booleana del gate — para animaciones que NO son `layout`/
+ * `entering` (p. ej. un `useSharedValue` que crece una barra): con el gate
+ * cerrado se inicializa el valor en su estado FINAL (sin animar en el
+ * primer attach) y solo se anima cuando el gate abre.
+ */
+export function useLayoutGateOpen(): boolean {
+  return useContext(LayoutTransitionGateContext)
 }

@@ -61,6 +61,10 @@ export function GastosAdvisorChip({
   const { theme } = useAppTheme()
   const press = usePressScale({ pressedScale: 0.97 })
   const chipLayout = useGatedLayout(LinearTransition.duration(220))
+  // Gateado: si el chip aparece en el primer attach (sus signals llegan
+  // tarde), NO hace FadeIn — entra asentado. El fade solo corre después
+  // del gate (cuando cambiás de filtro y aparece otro signal).
+  const chipEntering = useGatedLayout(FadeIn.duration(220))
 
   const target = useMemo<ControlAdvisorTask | null>(() => {
     // Filter to category-domain signals first.
@@ -100,7 +104,7 @@ export function GastosAdvisorChip({
 
   return (
     <Animated.View
-      entering={FadeIn.duration(220)}
+      entering={chipEntering}
       exiting={FadeOut.duration(160)}
       layout={chipLayout}
     >

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Instrumentación DEV-ONLY de animaciones/navegación entre vistas.
@@ -19,7 +19,11 @@ import { useEffect } from 'react'
  *    vista. Así el ruido es mínimo y el dato queda ligado a la transición.
  */
 
-let enabled = __DEV__
+// Default OFF — incluso en dev. Cada `console.log` cruza el bridge a Metro
+// y ralentiza notablemente el debug build, así que la instrumentación se
+// prende a demanda desde Ajustes → Desarrollo → "Logs de animaciones"
+// cuando se quiere depurar transiciones, no siempre.
+let enabled = false
 
 export function setAnimLogEnabled(value: boolean): void {
   enabled = value && __DEV__
@@ -27,6 +31,19 @@ export function setAnimLogEnabled(value: boolean): void {
 
 export function isAnimLogEnabled(): boolean {
   return enabled
+}
+
+// Verbose: logs de alta frecuencia (entradas SlideIn, branches skeleton↔
+// contenido, lifecycle de Content). Default = on en dev; se puede apagar
+// aparte para bajar ruido sin matar los logs de nav/frames.
+let verbose = __DEV__
+
+export function setAnimLogVerbose(value: boolean): void {
+  verbose = value && __DEV__
+}
+
+export function isAnimLogVerbose(): boolean {
+  return verbose
 }
 
 function now(): number {
@@ -185,4 +202,59 @@ export function useScreenLifecycleLog(name: string): void {
       animLog('screen', 'unmount', { name })
     }
   }, [name])
+}
+
+/** Variante verbose de animLog — para eventos de alta frecuencia. */
+export function animLogV(
+  scope: string,
+  event: string,
+  data?: Record<string, unknown>,
+): void {
+  if (!verbose) return
+  animLog(scope, event, data)
+}
+
+/**
+ * Loguea cuando un componente cambia de "rama" de render (p.ej. Gastos
+ * `skeleton` ↔ `content`). Solo emite en el CAMBIO, no en cada render.
+ * Es la sonda para cazar el swap skeleton→contenido que se ve como un
+ * parpadeo al entrar a una vista.
+ */
+export function useBranchLog(scope: string, branch: string): void {
+  const prev = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!enabled) return
+    if (prev.current === branch) return
+    animLog(
+      scope,
+      'branch',
+      prev.current === undefined ? { to: branch } : { from: prev.current, to: branch },
+    )
+    prev.current = branch
+  }, [scope, branch])
+}
+
+/**
+ * Compositor de `screenListeners` para el Stack de la app (AppStackShell).
+ * Loguea focus/blur de las pantallas de STACK (settings, asistente,
+ * (tabs), modales) + samplea frames de cada una. Antes estas transiciones
+ * eran invisibles (el logger solo veía los tabs). Tag aparte (`stack:`)
+ * para no colisionar con el estado del compositor de tabs. No-op en
+ * release.
+ */
+export function withStackDevLog(base: ListenerMap): ListenerMap {
+  if (!enabled) return base
+  return {
+    ...base,
+    focus: (e) => {
+      base.focus?.(e)
+      const route = routeNameFromTarget(e?.target)
+      animLog('stack', 'focus', { route })
+      sampleTransitionFrames(`stack:${route}`)
+    },
+    blur: (e) => {
+      base.blur?.(e)
+      animLog('stack', 'blur', { route: routeNameFromTarget(e?.target) })
+    },
+  }
 }

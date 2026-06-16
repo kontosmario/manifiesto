@@ -19,6 +19,7 @@ import { useRegisterPushToken } from '@/features/push/use-register-push-token'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { motionDurations } from '@/lib/motion'
+import { withStackDevLog } from '@/lib/dev/anim-log'
 
 // ─── Navigation timing tokens ────────────────────────────────────
 // Single source of truth for stack/modal animation pacing. Values
@@ -60,6 +61,11 @@ const STACK_PUSH_ANIMATION =
   Platform.OS === 'ios' ? ('default' as const) : ('ios_from_right' as const)
 const MODAL_ANIMATION =
   Platform.OS === 'ios' ? ('default' as const) : ('slide_from_bottom' as const)
+
+// DEV-only: loguea focus/blur + frames de las pantallas de STACK (settings,
+// asistente, modales, (tabs)) para ver las transiciones que el logger de
+// tabs no captura. No-op en release.
+const STACK_DEV_LISTENERS = withStackDevLog({})
 
 export function AppStackShell() {
   // Theme se lee acá para inyectar `contentStyle.backgroundColor` en el
@@ -151,6 +157,7 @@ export function AppStackShell() {
         </>
       ) : null}
       <Stack
+        screenListeners={STACK_DEV_LISTENERS}
         screenOptions={{
           headerShown: false,
           animation: STACK_PUSH_ANIMATION,

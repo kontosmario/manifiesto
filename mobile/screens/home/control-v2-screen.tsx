@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
+import { useBranchLog, useScreenLifecycleLog } from '@/lib/dev/anim-log'
+import { useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
@@ -86,12 +87,18 @@ const DOW_FULL = [
  */
 export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   useScreenLifecycleLog('Control')
+  // Abre el gate de layout en el primer scroll (ver gastos).
+  const openLayoutGate = useOpenLayoutGate()
   const router = useRouter()
   const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
   const { data, view, ingresosCiclo, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
     useControlV2Data(familyId)
+  // Sonda de la rama de render de Control. Un cambio al entrar (p.ej.
+  // loading→content o noConfig→content) = el contenido aparece/cambia =
+  // posible parpadeo.
+  useBranchLog('control', noConfig ? 'noConfig' : data ? 'content' : 'loading')
   const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
   // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
   // Control debe disparar el flujo de decisión sobre el sobrante si el
@@ -470,6 +477,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           onScroll={onTourScroll}
+          onScrollBeginDrag={openLayoutGate}
           onContentSizeChange={onTourContentSizeChange}
           // 16ms throttle = 1 evento/frame a 60fps · matchea Home,
           // Gastos y Fijos. Antes era 64ms (1 evento cada ~4 frames)

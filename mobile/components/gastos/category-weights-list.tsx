@@ -13,6 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { formatMoney } from '@/utils/money'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useGatedLayout, useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface CategoryWeight {
@@ -43,16 +44,22 @@ export function CategoryWeightsList({
   const resolvedText = textColor ?? theme.colors.heroText
   const resolvedMuted = mutedColor ?? theme.colors.heroMuted
   const resolvedTrack = trackColor ?? 'rgba(255,255,255,0.12)'
+  // Gateadas: en el primer attach de la vista el gate está cerrado →
+  // `undefined` → las barras/filas aparecen asentadas (sin warp). El
+  // crossfade/relayout solo corre después (cambios de filtro/data).
+  const listLayout = useGatedLayout(LinearTransition.duration(260))
+  const rowLayout = useGatedLayout(LinearTransition.duration(260))
+  const rowEntering = useGatedLayout(FadeIn.duration(220))
   if (items.length === 0) return null
   return (
-    <Animated.View style={styles.list} layout={LinearTransition.duration(260)}>
+    <Animated.View style={styles.list} layout={listLayout}>
       {items.map((item, index) => (
         <Animated.View
           key={item.id}
           style={styles.row}
-          entering={FadeIn.duration(220)}
+          entering={rowEntering}
           exiting={FadeOut.duration(160)}
-          layout={LinearTransition.duration(260)}
+          layout={rowLayout}
         >
           <View style={styles.rowHeader}>
             <View style={styles.rowLeft}>
@@ -88,15 +95,23 @@ function AnimatedBar({
   delay: number
 }) {
   const reduced = useReducedMotion()
-  const scale = useSharedValue(reduced ? 1 : 0)
+  // Con el gate cerrado (primer attach de la vista) la barra arranca en su
+  // ancho FINAL (scale=1, sin crecer) — el crecimiento 0→1 solo corre
+  // cuando el gate ya abrió (data settle / cambio de % posterior).
+  const gateOpen = useLayoutGateOpen()
+  const animateGrow = !reduced && gateOpen
+  const scale = useSharedValue(animateGrow ? 0 : 1)
   useEffect(() => {
-    if (reduced) return
+    if (!animateGrow) {
+      scale.value = 1
+      return
+    }
     scale.value = withDelay(
       delay,
       // @motion-allow: 1000ms category-bar growth on stagger-in; deliberately slower than pulse (1200) for staggered reveal
       withTiming(1, { duration: 1000, easing: Easing.bezier(0.2, 0.9, 0.2, 1) }),
     )
-  }, [delay, reduced, scale])
+  }, [delay, animateGrow, scale])
   const style = useAnimatedStyle(() => ({
     transform: [{ scaleX: scale.value }],
     transformOrigin: 'left' as const,

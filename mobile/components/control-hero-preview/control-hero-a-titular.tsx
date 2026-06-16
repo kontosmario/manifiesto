@@ -13,6 +13,7 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
@@ -228,10 +229,19 @@ function Divider() {
 
 function RiseRow({ delay, children }: { delay: number; children: React.ReactNode }) {
   const reduced = useReducedMotion()
-  const y = useSharedValue(reduced ? 0 : 10)
-  const opacity = useSharedValue(reduced ? 1 : 0)
+  const gateOpen = useLayoutGateOpen()
+  // Gateado: en el primer attach de Control el gate está cerrado → la fila
+  // arranca asentada (y=0, opacity=1) sin animar. La entrada slide+fade solo
+  // corre si el gate ya abrió.
+  const animate = !reduced && gateOpen
+  const y = useSharedValue(animate ? 10 : 0)
+  const opacity = useSharedValue(animate ? 0 : 1)
   useEffect(() => {
-    if (reduced) return
+    if (!animate) {
+      y.value = 0
+      opacity.value = 1
+      return
+    }
     // @motion-allow: 460ms RiseRow entrance — designer-tuned para hero preview; matches el feel del control-hero source-of-truth deck. Entre standard (240) y slow (480).
     y.value = withDelay(delay, withTiming(0, { duration: 460, easing: ENTER }))
     // @motion-allow: 460ms — paired with the y above to ride the same curve.
@@ -240,7 +250,7 @@ function RiseRow({ delay, children }: { delay: number; children: React.ReactNode
       cancelAnimation(y)
       cancelAnimation(opacity)
     }
-  }, [delay, reduced, y, opacity])
+  }, [delay, animate, y, opacity])
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: y.value }],
@@ -250,10 +260,18 @@ function RiseRow({ delay, children }: { delay: number; children: React.ReactNode
 
 function RuleScale({ color, delay }: { color: string; delay: number }) {
   const reduced = useReducedMotion()
-  const scale = useSharedValue(reduced ? 1 : 0)
-  const opacity = useSharedValue(reduced ? 1 : 0)
+  const gateOpen = useLayoutGateOpen()
+  // Gateado: en el primer attach el trazo arranca dibujado (scale=1,
+  // opacity=1); el draw solo corre si el gate ya abrió.
+  const animate = !reduced && gateOpen
+  const scale = useSharedValue(animate ? 0 : 1)
+  const opacity = useSharedValue(animate ? 0 : 1)
   useEffect(() => {
-    if (reduced) return
+    if (!animate) {
+      scale.value = 1
+      opacity.value = 1
+      return
+    }
     // @motion-allow: 540ms RuleScale draw — el trazo del rule debe ser apenas más lento que la opacity para que se "dibuje" antes de aparecer del todo.
     scale.value = withDelay(delay, withTiming(1, { duration: 540, easing: ENTER }))
     opacity.value = withDelay(delay, withTiming(1, { duration: motionDurations.deliberate, easing: ENTER }))
@@ -261,7 +279,7 @@ function RuleScale({ color, delay }: { color: string; delay: number }) {
       cancelAnimation(scale)
       cancelAnimation(opacity)
     }
-  }, [delay, reduced, scale, opacity])
+  }, [delay, animate, scale, opacity])
   const animStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scaleX: scale.value }],

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { type ViewStyle } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withDelay, withTiming, Easing } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { animLogV } from '@/lib/dev/anim-log'
 
 interface SlideInViewProps {
   delay?: number
@@ -26,6 +27,9 @@ export function SlideInView({ delay = 0, duration = 600, translateX = -10, style
     if (reduced) return
     if (hasAnimatedRef.current) return
     hasAnimatedRef.current = true
+    // Si esto re-dispara al entrar a una vista = las filas re-deslizan
+    // (un re-mount del subtree) = posible parpadeo.
+    animLogV('slide', 'enter', { delay })
     x.value = withDelay(delay, withTiming(0, { duration, easing: Easing.out(Easing.cubic) }))
     // Match the translateX easing — without it the opacity interpolated
     // linearly while the position eased out, so the fade and the slide

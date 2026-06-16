@@ -3,6 +3,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import type { GastosDayMood } from '@/features/gastos/gastos-aggregates.model'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
@@ -115,6 +116,10 @@ export function GastosMonthCalendar({
   // between them triggers both a fade-out of the old view AND a
   // fade-in of the new one — the transition reads as a single soft
   // dissolve instead of a hard swap.
+  // Gateado: en el primer attach de la vista el FadeIn se omite (gate
+  // cerrado → undefined) para que la grilla aparezca asentada sin fade;
+  // el crossfade grid↔focus solo corre después (al seleccionar un día).
+  const modeEntering = useGatedLayout(FadeIn.duration(220))
   // Empty preview always renders the grid (never focus mode) and is
   // inert — no tap-to-filter. The grid itself is honestly empty (no
   // spend marks), so nothing is fabricated.
@@ -137,7 +142,7 @@ export function GastosMonthCalendar({
       {selectedDay != null ? (
         <Animated.View
           key="focus"
-          entering={FadeIn.duration(220)}
+          entering={modeEntering}
           exiting={FadeOut.duration(160)}
         >
           <FocusMode
@@ -191,7 +196,7 @@ export function GastosMonthCalendar({
       ) : (
         <Animated.View
           key="grid"
-          entering={FadeIn.duration(220)}
+          entering={modeEntering}
           exiting={FadeOut.duration(160)}
         >
           <GridMode

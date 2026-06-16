@@ -47,7 +47,8 @@ import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { computeCupoDiario } from '@/features/gastos/cupo-diario'
-import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
+import { useBranchLog, useScreenLifecycleLog } from '@/lib/dev/anim-log'
+import { useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
@@ -160,6 +161,10 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
     daysPerPage: 7,
   })
 
+  // Sonda del swap skeleton↔contenido. Un `content→skeleton→content` al
+  // entrar = el snapshot se puso frío = el parpadeo.
+  useBranchLog('gastos', snapshot.data ? 'content' : 'skeleton')
+
   if (!snapshot.data) {
     // Snapshot pending. Antes devolvíamos `null` → ~400ms de canvas en
     // blanco → el "flicker/salto" al entrar a Gastos la primera vez (el
@@ -175,6 +180,12 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
 }
 
 function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
+  // Si esto re-monta al entrar (sin que GastosV2Screen re-monte) = el
+  // contenido se re-construye → re-dispara entradas = parpadeo.
+  useScreenLifecycleLog('Gastos·Content')
+  // Abre el gate de layout en el primer scroll → las transiciones recién se
+  // arman cuando el user interactúa, nunca durante el settle del primer attach.
+  const openLayoutGate = useOpenLayoutGate()
   const router = useRouter()
   const { theme } = useAppTheme()
   const safeAreaInsets = useSafeAreaInsets()
@@ -888,6 +899,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={ListHeader}
         onScroll={onTourScroll}
+        onScrollBeginDrag={openLayoutGate}
         onContentSizeChange={onTourContentSizeChange}
         scrollEventThrottle={16}
         ListEmptyComponent={
