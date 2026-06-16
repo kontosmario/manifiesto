@@ -122,7 +122,11 @@ function routeNameFromTarget(target?: string): string {
   return (target ?? '').split('-')[0] || 'unknown'
 }
 
-let lastFocusRoute: string | null = null
+// Route actualmente focuseado (null cuando está blurreado). Sirve para
+// distinguir un DUP real (focus sobre un route YA focuseado, sin blur en el
+// medio) de un re-focus legítimo al volver a un tab tras cerrar un
+// modal/stack (ahí hubo blur → quedó null).
+let focusedRoute: string | null = null
 let lastFocusAt = 0
 
 /**
@@ -145,18 +149,22 @@ export function withNavDevLog(base: ListenerMap): ListenerMap {
       const route = routeNameFromTarget(e?.target)
       const t = now()
       const sinceLastMs = lastFocusAt ? Math.round(t - lastFocusAt) : null
-      const dup = lastFocusRoute === route
+      // DUP real = focus disparó sobre el route que YA estaba focuseado, sin
+      // blur en el medio (doble-transición). Volver a un tab tras cerrar un
+      // modal/stack NO es DUP (hubo blur → focusedRoute quedó null).
+      const dup = focusedRoute === route
       animLog('nav', 'focus', {
         route,
         sinceLastMs,
         ...(dup ? { DUP: true } : null),
       })
-      lastFocusRoute = route
+      focusedRoute = route
       lastFocusAt = t
       sampleTransitionFrames(route)
     },
     blur: (e) => {
       base.blur?.(e)
+      focusedRoute = null
       animLog('nav', 'blur', { route: routeNameFromTarget(e?.target) })
     },
   }
