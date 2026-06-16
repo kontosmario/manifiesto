@@ -46,6 +46,7 @@ import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
+import { computeCupoDiario } from '@/features/gastos/cupo-diario'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
 import { logScreenEvent } from '@/features/telemetry/log-screen-event'
@@ -131,20 +132,21 @@ function GastosScreenSkeleton() {
 export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   const { cycle, today } = usePayCycle(familyId)
   const dashboard = useFamilyDashboard(familyId)
-  const cupoDiario = useMemo(() => {
-    const libre = Math.max(
-      0,
-      dashboard.monthlyIncome -
-        dashboard.fixedExpensesMonthlyTotal -
-        dashboard.savingsGoal,
-    )
-    return cycle.days > 0 ? libre / cycle.days : 0
-  }, [
-    dashboard.monthlyIncome,
-    dashboard.fixedExpensesMonthlyTotal,
-    dashboard.savingsGoal,
-    cycle.days,
-  ])
+  const cupoDiario = useMemo(
+    () =>
+      computeCupoDiario({
+        monthlyIncome: dashboard.monthlyIncome,
+        fixedExpensesMonthlyTotal: dashboard.fixedExpensesMonthlyTotal,
+        savingsGoal: dashboard.savingsGoal,
+        cycleDays: cycle.days,
+      }),
+    [
+      dashboard.monthlyIncome,
+      dashboard.fixedExpensesMonthlyTotal,
+      dashboard.savingsGoal,
+      cycle.days,
+    ],
+  )
 
   const snapshot = useGastosSnapshot({
     familyId,

@@ -7,6 +7,7 @@ import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { prefetchGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { prefetchControlIntelligence } from '@/features/insights/use-control-v2-data'
+import { computeCupoDiario } from '@/features/gastos/cupo-diario'
 
 /**
  * Warm-up de los snapshots de los tabs Gastos y Control después que
@@ -46,11 +47,17 @@ export function useWarmTabsSnapshots(): void {
 
   useEffect(() => {
     if (!familyId || !userId || cycleDays <= 0) return
-    const libre = Math.max(0, monthlyIncome - fixedExpensesMonthlyTotal - savingsGoal)
-    // Misma fórmula EXACTA que GastosV2Screen (cycleDays > 0 ? ... : 0). El
-    // queryKey del gastos_snapshot incluye cupoDiario; si el warm calculara
-    // distinto que el screen, el cache no haría hit → cold-start → null-gate.
-    const cupoDiario = cycleDays > 0 ? libre / cycleDays : 0
+    // Mismo helper compartido que GastosV2Screen + el controller. El queryKey
+    // del gastos_snapshot incluye cupoDiario; si el warm calculara distinto
+    // que el screen, el cache no haría hit → cold-start → null-gate. El
+    // redondeo (computeCupoDiario) absorbe el drift sub-peso entre el momento
+    // del warm-prefetch y el del mount.
+    const cupoDiario = computeCupoDiario({
+      monthlyIncome,
+      fixedExpensesMonthlyTotal,
+      savingsGoal,
+      cycleDays,
+    })
 
     // Defer hasta que la UI thread idle · evita competir con el
     // first-paint de Home + la cascade de cards animadas.

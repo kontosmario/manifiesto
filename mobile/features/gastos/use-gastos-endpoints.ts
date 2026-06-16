@@ -4,7 +4,7 @@
 // (`use-gastos-controller.ts`) los compone para mantener una API
 // pública estable hacia el screen.
 
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type {
   GastosCalendarSummary,
@@ -190,6 +190,9 @@ export function useGastosCalendarSummary(args: UseGastosCalendarSummaryArgs) {
     // 5 min — mismo razonamiento que useGastosHeroSummary: el seed
     // del snapshot + mutations/realtime cubren los cambios reales.
     staleTime: 5 * 60_000,
+    // El cupoDiario es parte de la key; si se mueve, mantené el calendario
+    // anterior visible mientras llega el nuevo (no parpadear a vacío).
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!args.familyId) return { days: [] }
       const { data, error } = await supabase.rpc('gastos_calendar_summary', {

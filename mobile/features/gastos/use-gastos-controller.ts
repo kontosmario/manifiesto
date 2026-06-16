@@ -15,6 +15,7 @@ import {
   useGastosHeroSummary,
 } from '@/features/gastos/use-gastos-endpoints'
 import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
+import { computeCupoDiario } from '@/features/gastos/cupo-diario'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
@@ -110,21 +111,24 @@ export function useGastosController(
     [cycle, cycleType],
   )
 
-  // Cupo diario canónico — pasado al server para anchorar moods.
-  const cupoDiario = useMemo(() => {
-    const libre = Math.max(
-      0,
-      dashboard.monthlyIncome -
-        dashboard.fixedExpensesMonthlyTotal -
-        dashboard.savingsGoal,
-    )
-    return cycleDays > 0 ? libre / cycleDays : 0
-  }, [
-    dashboard.monthlyIncome,
-    dashboard.fixedExpensesMonthlyTotal,
-    dashboard.savingsGoal,
-    cycleDays,
-  ])
+  // Cupo diario canónico — pasado al server para anchorar moods. Redondeado
+  // vía helper compartido para que la queryKey del calendar coincida con la
+  // del snapshot y el warm-prefetch (ver cupo-diario.ts).
+  const cupoDiario = useMemo(
+    () =>
+      computeCupoDiario({
+        monthlyIncome: dashboard.monthlyIncome,
+        fixedExpensesMonthlyTotal: dashboard.fixedExpensesMonthlyTotal,
+        savingsGoal: dashboard.savingsGoal,
+        cycleDays,
+      }),
+    [
+      dashboard.monthlyIncome,
+      dashboard.fixedExpensesMonthlyTotal,
+      dashboard.savingsGoal,
+      cycleDays,
+    ],
+  )
 
   // ── Hooks de los 5 endpoints ────────────────────────────────────
   const heroQuery = useGastosHeroSummary({

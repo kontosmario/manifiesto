@@ -57,13 +57,23 @@ export function CountUpText({
     setDisplay(formatRef.current(n))
   }, [])
 
+  // El primer reveal cuenta desde 0 (el efecto buscado). Los cambios
+  // POSTERIORES de `value` se interpolan desde el valor actual, nunca
+  // reseteando a 0. Antes hacíamos `progress.value = 0` en cada cambio: si
+  // una slice de data async resolvía después del primer paint (el hero de
+  // Control / Gastos), el número grande saltaba a 0 y volvía a trepar — eso
+  // se leía como un flicker aleatorio al navegar a esos tabs.
+  const hasRevealedRef = useRef(false)
   useEffect(() => {
     if (reduced) {
       progress.value = value
       setDisplay(formatRef.current(value))
       return
     }
-    progress.value = 0
+    if (!hasRevealedRef.current) {
+      hasRevealedRef.current = true
+      progress.value = 0
+    }
     progress.value = withTiming(value, { duration, easing: Easing.out(Easing.cubic) })
   }, [value, duration, reduced, progress])
 

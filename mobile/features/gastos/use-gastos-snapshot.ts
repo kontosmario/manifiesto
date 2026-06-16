@@ -14,6 +14,7 @@
 // fire en paralelo con el snapshot).
 
 import {
+  keepPreviousData,
   useQuery,
   useQueryClient,
   type InfiniteData,
@@ -251,6 +252,12 @@ export function useGastosSnapshot(args: UseGastosSnapshotArgs) {
     // re-fetchea en remount-with-stale.
     staleTime: 60_000,
     gcTime: 5 * 60_000,
+    // Si la queryKey cambia (p.ej. cupoDiario se movió ≥1 peso por una
+    // mutación/realtime real), mantené la data anterior en pantalla en vez
+    // de devolver undefined → el gate `if (!snapshot.data)` NO cae al
+    // skeleton, el contenido se queda quieto y la nueva data entra en
+    // background. Mata el swap contenido↔skeleton (el "flicker" de Gastos).
+    placeholderData: keepPreviousData,
     // On iOS foreground-resume both home_snapshot + gastos_snapshot
     // were re-fetching back-to-back even with staleTime=60s, costing
     // 300-600ms of blocking re-hydration. `staleTime` alone is enough:
