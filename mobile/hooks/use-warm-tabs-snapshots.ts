@@ -47,7 +47,10 @@ export function useWarmTabsSnapshots(): void {
   useEffect(() => {
     if (!familyId || !userId || cycleDays <= 0) return
     const libre = Math.max(0, monthlyIncome - fixedExpensesMonthlyTotal - savingsGoal)
-    const cupoDiario = libre / cycleDays
+    // Misma fórmula EXACTA que GastosV2Screen (cycleDays > 0 ? ... : 0). El
+    // queryKey del gastos_snapshot incluye cupoDiario; si el warm calculara
+    // distinto que el screen, el cache no haría hit → cold-start → null-gate.
+    const cupoDiario = cycleDays > 0 ? libre / cycleDays : 0
 
     // Defer hasta que la UI thread idle · evita competir con el
     // first-paint de Home + la cascade de cards animadas.

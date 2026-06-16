@@ -16,6 +16,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
+import { CardSkeleton, HeroSkeleton, ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { GastosEmptyState } from '@/components/gastos/gastos-empty-state'
 import { GastosHeader } from '@/components/gastos/gastos-header'
@@ -103,6 +104,30 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
  * red porque sus dependencias (family_finance, fixed_expenses,
  * expenses) ya están seeded por home_snapshot.
  */
+/**
+ * Skeleton mostrado mientras el `gastos_snapshot` resuelve (en vez del
+ * canvas en blanco). Misma Screen + bg + AmbientBlobs y una estructura
+ * que aproxima el layout real (hero, calendario, filas) para que el
+ * primer frame ya tenga forma y el swap a contenido no parpadee.
+ */
+function GastosScreenSkeleton() {
+  const { theme } = useAppTheme()
+  return (
+    <Screen
+      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      scrollable={false}
+      contentContainerStyle={styles.screenContent}
+    >
+      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
+      <View style={styles.skeletonStack}>
+        <HeroSkeleton />
+        <CardSkeleton height={300} />
+        <ListRowSkeleton rows={5} />
+      </View>
+    </Screen>
+  )
+}
+
 export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   const { cycle, today } = usePayCycle(familyId)
   const dashboard = useFamilyDashboard(familyId)
@@ -132,11 +157,14 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   })
 
   if (!snapshot.data) {
-    // Snapshot pending → pantalla en blanco breve (~400ms). Mismo
-    // patrón que `<HomeScreen>` cuando espera home_snapshot. Evita
-    // mountear el controller con caches vacías y disparar 6 RPCs en
-    // paralelo.
-    return null
+    // Snapshot pending. Antes devolvíamos `null` → ~400ms de canvas en
+    // blanco → el "flicker/salto" al entrar a Gastos la primera vez (el
+    // resto de los tabs no lo sufren porque renderean del home_snapshot
+    // warm). Ahora mostramos un skeleton estable con la MISMA estructura
+    // (hero + calendario + filas) para que el primer frame ya tenga forma
+    // y el swap a contenido real no se lea como un parpadeo. Seguimos sin
+    // mountear el controller (evita los 6 RPCs en paralelo).
+    return <GastosScreenSkeleton />
   }
 
   return <GastosV2ScreenContent familyId={familyId} userId={userId} />
@@ -1004,6 +1032,7 @@ const styles = StyleSheet.create({
   // SectionList. Lo movemos al `contentContainerStyle` del list así el
   // usuario puede scrollear hasta el borde del tab bar.
   screenContent: { paddingTop: 14, paddingBottom: 0 },
+  skeletonStack: { paddingHorizontal: 20, gap: 16, paddingTop: 8 },
   // Empty-state branch: scrollable Screen con bottom-padding default (no
   // el override paddingBottom:0 del SectionList), + gap entre el header
   // y el contenido del empty state para que no queden pegados.
