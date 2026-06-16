@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Text, type StyleProp, type TextStyle } from 'react-native'
 import {
   useSharedValue,
@@ -40,24 +40,32 @@ export function CountUpText({
   const [display, setDisplay] = useState(() => format(reduced ? value : 0))
   const progress = useSharedValue(reduced ? value : 0)
 
+  // Keep the latest formatter in a ref so the count-up effect below does NOT
+  // depend on `format`. Callers almost always pass an inline
+  // `format={(n) => formatMoney(n)}` (a NEW reference every render); if that
+  // were an effect dependency, every parent re-render would reset progress to
+  // 0 and restart the count-up — the "empieza y se reinicia" jitter on first
+  // paint, when the hero card re-renders several times while data loads.
+  const formatRef = useRef(format)
+  useEffect(() => {
+    formatRef.current = format
+  }, [format])
+
   // Format on the JS thread — calling Intl.* inside a worklet crashes Expo Go.
-  const applyDisplay = useCallback(
-    (n: number) => {
-      setDisplay(format(n))
-    },
-    [format],
-  )
+  // Stable identity (reads the ref), so the animated reaction never re-subscribes.
+  const applyDisplay = useCallback((n: number) => {
+    setDisplay(formatRef.current(n))
+  }, [])
 
   useEffect(() => {
     if (reduced) {
       progress.value = value
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync of display when reduced-motion flips on
-      setDisplay(format(value))
+      setDisplay(formatRef.current(value))
       return
     }
     progress.value = 0
     progress.value = withTiming(value, { duration, easing: Easing.out(Easing.cubic) })
-  }, [value, duration, reduced, format, progress])
+  }, [value, duration, reduced, progress])
 
   // Quantize updates so setState fires at most ~20×/sec on the JS thread.
   // A tween from 0 to a large integer would otherwise call runOnJS 60×/sec,
