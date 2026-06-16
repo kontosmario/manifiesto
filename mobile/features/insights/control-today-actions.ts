@@ -73,25 +73,25 @@ export function buildTodayActions({
       detail: `Hay ${commitmentSummary.overdueCount} caso${
         commitmentSummary.overdueCount === 1 ? '' : 's'
       } vencido${commitmentSummary.overdueCount === 1 ? '' : 's'} y eso ya esta empujando el ciclo.`,
-      title: 'Pon al dia primero los compromisos vencidos',
+      title: 'Paga primero los fijos vencidos',
       tone: 'warning',
     })
   } else if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
     actions.push({
-      detail: `Separar ${currencyFormatter.format(
+      detail: `Apartar ${currencyFormatter.format(
         commitmentSummary.reservedTotal,
-      )} te evita llegar ajustado a los proximos vencimientos.`,
-      title: 'Reserva para los compromisos que vienen cerca',
+      )} te evita quedar corto cuando venzan los proximos pagos fijos.`,
+      title: 'Aparta plata para los pagos fijos que vienen',
       tone: 'primary',
     })
   }
 
   if (flexibleTargetAmount > 0 && flexibleDelta > 0) {
     actions.push({
-      detail: `El mix 50/${targetFlexiblePercent}/${savingsGoalPercent} te dejaba ${currencyFormatter.format(
+      detail: `Tu plan (mitad para los pagos fijos, ${targetFlexiblePercent}% para el dia a dia y ${savingsGoalPercent}% para ahorrar) te dejaba ${currencyFormatter.format(
         flexibleTargetAmount,
-      )} para flexible y ya llevas ${currencyFormatter.format(variableSpentInCurrentCycle)}.`,
-      title: 'El flexible ya se pasó del objetivo del mes',
+      )} para el dia a dia, y ya llevas ${currencyFormatter.format(variableSpentInCurrentCycle)}.`,
+      title: 'Ya te pasaste de lo del dia a dia',
       tone: 'warning',
     })
   } else if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
@@ -99,23 +99,23 @@ export function buildTodayActions({
       detail: `Desde manana intenta bajar alrededor de ${currencyFormatter.format(
         expenseAnalytics.adjustmentNeededPerDay,
       )} por dia.`,
-      title: 'Hay que aflojar un poco el ritmo diario',
+      title: 'Conviene gastar un poco menos por dia',
       tone: 'warning',
     })
   } else if (dailyBudgetSummary.zeroSpendStreak > 0) {
     actions.push({
-      detail: `Ya construiste ${dailyBudgetSummary.zeroSpendStreak} dia${
+      detail: `Ya llevas ${dailyBudgetSummary.zeroSpendStreak} dia${
         dailyBudgetSummary.zeroSpendStreak === 1 ? '' : 's'
-      } en fila sin gasto.`,
-      title: 'Protege el aire que ya ganaste',
+      } seguido${dailyBudgetSummary.zeroSpendStreak === 1 ? '' : 's'} sin gastar.`,
+      title: 'Cuida la plata que ya ahorraste',
       tone: 'success',
     })
   } else if (flexibleTargetAmount > 0 && savingsRemaining > 0) {
     actions.push({
-      detail: `Todavia quedan ${currencyFormatter.format(
+      detail: `Todavia te quedan ${currencyFormatter.format(
         Math.max(0, flexibleTargetAmount - variableSpentInCurrentCycle),
-      )} dentro del flexible objetivo (${targetFlexiblePercent}% del ingreso).`,
-      title: `El mix 50/${targetFlexiblePercent}/${savingsGoalPercent} sigue sano`,
+      )} para gastos del dia a dia este mes.`,
+      title: 'Vas bien con tu plan del mes',
       tone: 'success',
     })
   } else if (savingsGoal > 0 && savingsRemaining > 0) {

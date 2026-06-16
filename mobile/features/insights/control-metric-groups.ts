@@ -47,11 +47,13 @@ export function buildHeroMetrics({
           value: currencyFormatter.format(commitmentSummary.reservedTotal),
         }
       : {
-          helper: `Mix 50/${targetFlexiblePercent}/${savingsGoalPercent} · ${currencyFormatter.format(
+          helper: `Llevas ${currencyFormatter.format(
             variableSpentInCurrentCycle,
-          )} de ${currencyFormatter.format(flexibleTargetAmount)}.`,
+          )} de ${currencyFormatter.format(
+            flexibleTargetAmount,
+          )} para el dia a dia (tu plan: ${targetFlexiblePercent}% para gastos, ${savingsGoalPercent}% para ahorrar).`,
           icon: flexibleDelta > 0 ? 'bolt' : 'insights',
-          label: 'Desvio flexible',
+          label: 'Gasto del dia a dia',
           tone: flexibleDelta > 0 ? 'warning' : flexibleTargetAmount > 0 ? 'success' : 'default',
           value: formatSignedCurrency(flexibleDelta),
         }
@@ -109,9 +111,9 @@ export function buildTodayMetrics({
       value: currencyFormatter.format(dailyBudgetSummary.todaySpent),
     },
     {
-      helper: 'Comparado con el ritmo ideal del mes.',
+      helper: 'Comparado con lo que deberias gastar por dia.',
       icon: dailyBudgetSummary.carryoverAmount >= 0 ? 'insights' : 'bolt',
-      label: dailyBudgetSummary.carryoverAmount >= 0 ? 'Aire acumulado' : 'Deuda diaria',
+      label: dailyBudgetSummary.carryoverAmount >= 0 ? 'Te queda a favor' : 'Te pasaste',
       tone: carryoverTone,
       value: currencyFormatter.format(Math.abs(dailyBudgetSummary.carryoverAmount)),
     },

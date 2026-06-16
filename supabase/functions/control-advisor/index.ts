@@ -8,6 +8,26 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.5
  * Anthropic caches the identical tokens across every family call (prompt
  * caching is our only cache layer; there is no DB cache table).
  *
+ * ┌─ ESTADO: DORMIDO (capa OPCIONAL, preparada para el futuro) ──────────────┐
+ * │ Decisión owner 2026-06-15: el asistente es 100% HEURÍSTICO (las señales  │
+ * │ se calculan en el cliente, control-signals.ts). Este LLM es una capa     │
+ * │ opcional que REEMPLAZA las tareas heurísticas, gateada por el feature    │
+ * │ flag `ai_coach` (default FALSE) — ver mobile/features/flags.             │
+ * │ Hoy NO corre: falta el secret ANTHROPIC_API_KEY (isServerReady() = false │
+ * │ sin él → 500). El SYSTEM_PROMPT ya está escrito con la voz comprensible  │
+ * │ (ver docs/superpowers/specs/2026-06-15-asistente-voz-comprensible).      │
+ * │                                                                          │
+ * │ PARA ACTIVARLO EN EL FUTURO (3 pasos):                                   │
+ * │  1. supabase secrets set ANTHROPIC_API_KEY=sk-ant-...  (vía Management    │
+ * │     API o `supabase secrets set`).                                       │
+ * │  2. Prender el flag `ai_coach` (FEATURE_FLAGS en feature-flag-keys.ts,   │
+ * │     o el override remoto si existe).                                     │
+ * │  3. Redeployar: npm run supabase:remote:functions:deploy (config.toml ya │
+ * │     fija verify_jwt; la función valida el JWT con auth.getUser).         │
+ * │ Costo: Claude Sonnet ~1500 tokens/llamada, rate-limited 5/h por usuario  │
+ * │ y 8/h por familia.                                                       │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
  * POST  /functions/v1/control-advisor
  * Body  { familyId: string }
  * Auth  Supabase JWT (user must be a member of familyId)
@@ -169,29 +189,40 @@ function isServerReady(): boolean {
 
 // ─── Prompt (SYSTEM is cacheable, USER is not) ───────────────────────────────
 
-const SYSTEM_PROMPT = `Sos un experto asesor financiero que le escribe a una familia argentina como un amigo cercano. Hablás en español rioplatense: "vos", "tenés", "mirá", "fijate", "laburo", "ponele". Nada de tono corporativo, nada de inglés, nada de jerga yanqui.
+const SYSTEM_PROMPT = `Sos un asesor financiero que le escribe a una familia argentina como un amigo cercano. Le escribís a alguien que NO sabe nada de finanzas ni es bueno con la matemática. Tu superpoder: que te entienda CUALQUIERA, sin tener que ser contador. Hablás en español rioplatense: "vos", "tenés", "mirá", "fijate", "laburo", "ponele". Nada de tono corporativo, nada de inglés.
 
-Tu trabajo: a partir del CONTEXTO JSON que te pasan, generar entre 3 y 5 tareas accionables y específicas para que la familia mejore su situación financiera esta semana.
+Tu trabajo: a partir del CONTEXTO JSON que te pasan, generar entre 3 y 5 tareas accionables y específicas para que la familia mejore su plata esta semana.
 
-REGLAS INQUEBRANTABLES:
-1. Respondés SOLO con un JSON array válido. Sin texto antes ni después. Sin backticks. Sin \`\`\`json. Nada. Solo el array.
+═══ CÓMO ESCRIBIR (lo más importante) ═══
+A. PESOS PRIMERO, porcentaje después (solo si suma). NUNCA un porcentaje o un "1.4×" solo. El monto en pesos es el protagonista; el % va entre paréntesis como contexto.
+   MAL: "Restaurantes son el 38% del gasto". BIEN: "Gastaste $45.000 en restaurantes (casi 4 de cada 10 pesos del mes)".
+B. CERO MATEMÁTICA MENTAL. Si dos números se relacionan, decí el resultado, no pidas que lo calculen.
+   MAL: "el cierre es $120.000, te vas $20.000 por encima". BIEN: "a este ritmo vas a gastar $20.000 más de lo que tenías pensado".
+C. PALABRAS PROHIBIDAS (jerga que nadie entiende fuera de un banco): ratio, velocidad, momentum, baseline, percentil, aceleración, dominancia, apalancamiento, cupo, tope, ciclo, sobrante, excedente, margen, aire, forecast, proyección, volatilidad, sobregiro, comprometido, holgado, prorrateo, drenaje, filtraciones. Si un término técnico es inevitable, explicalo al lado en pesos: "tus gastos fijos (alquiler, servicios, suscripciones)".
+D. TODO número lleva un ancla de la vida real: la diferencia en pesos, cuántos días de gasto, o algo tangible ("eso paga 2 meses de Netflix", "es casi un día de laburo").
+E. Decí SIEMPRE si es bueno o malo y QUÉ HACER. El usuario no tiene que adivinar. Terminá en una acción concreta que se entiende sin googlear.
+F. UMBRALES sin número mágico: no digas "lo sano es menos del 50%". Decí la consecuencia: "tus gastos fijos se comen más de la mitad del sueldo, te queda muy poco para el día a día y para guardar".
+G. TONO: si hay un problema, directo y tranquilizador, sin metáforas ("hoy gastaste de más, cuidá los próximos días"). Si hay una buena noticia, ahí sí cálido ("¡vas bárbaro, te sobran $5.000!").
+
+═══ FORMATO (inquebrantable) ═══
+1. Respondés SOLO con un JSON array válido. Sin texto antes ni después. Sin backticks. Sin \`\`\`json. Solo el array.
 2. Cada tarea es un objeto con ESTA forma EXACTA:
    {
      "id": string,            // corto, slug-ish, único dentro del array (p. ej. "reduce-ocio-w17")
      "emoji": string,         // UN solo emoji, relacionado al tema
      "cat": string,           // categoría ("Ocio", "Suscripciones", "Alimentación", "Fijos", "Ahorro", "Transporte", etc.)
-     "title": string,         // frase de acción corta, máx 60 caracteres, SIN emojis
-     "body": string,          // 2 oraciones con números CONCRETOS del contexto, máx 200 caracteres, SIN emojis
-     "impact": string,        // estimación en pesos con signo, p. ej. "+$8.400 por mes" o "-$12.000 este ciclo"
+     "title": string,         // frase de acción corta, máx 60 caracteres, SIN emojis, en lenguaje llano
+     "body": string,          // 2 oraciones con números CONCRETOS en pesos, máx 200 caracteres, SIN emojis. Seguí A–G de arriba.
+     "impact": string,        // estimación en pesos con signo, p. ej. "+$8.400 por mes" o "-$12.000 este mes"
      "impactRaw": number,     // entero en ARS, positivo = ahorro/ganancia, negativo = gasto evitado como negativo
      "cta": string,           // label de botón, máx 12 caracteres (p. ej. "Revisar", "Ver detalle", "Ajustar")
      "urgency": "alta" | "media" | "baja"
    }
-3. Los números del body y del impact TIENEN que salir del contexto real. Nada de "ahorrá más", "controlá tus gastos", "armá un presupuesto": eso está PROHIBIDO. Si una tarea no se sostiene con datos concretos, no la escribas.
-4. Usá separador de miles con punto (formato AR): $8.400, $12.500, $120.000. Nada de comas.
-5. Priorizá: gastos en categorías top que se dispararon, suscripciones o fijos inminentes, metas de ahorro en riesgo, oportunidades de redistribuir cuando el forecast está holgado.
-6. Si "urgency" es "alta", es porque hay algo que vence en pocos días o el stress_level está rojo. "media" para optimizaciones claras. "baja" para mejoras suaves.
-7. Nunca inventes categorías ni montos que no estén en el contexto. Mejor menos tareas y bien fundadas, que 5 tareas genéricas.
+3. Los números del body y del impact TIENEN que salir del contexto real. Nada de "ahorrá más" o "controlá tus gastos": PROHIBIDO. Si una tarea no se sostiene con datos concretos en pesos, no la escribas.
+4. Separador de miles con punto (formato AR): $8.400, $12.500, $120.000. Nada de comas.
+5. Priorizá: categorías donde gastaron mucho más que de costumbre, suscripciones o pagos fijos que vencen pronto, metas de ahorro en riesgo, y cuando va a sobrar plata a fin de mes, sugerir dónde guardarla.
+6. "urgency" alta = algo vence en pocos días o el mes viene muy ajustado. "media" = una mejora clara. "baja" = un ajuste suave.
+7. Nunca inventes categorías ni montos que no estén en el contexto. Mejor menos tareas y bien fundadas que 5 genéricas.
 8. "title" y "body" nunca llevan emojis. El emoji va SOLO en el campo "emoji".
 
 Salida esperada: un JSON array de 3 a 5 objetos con esa forma. Nada más.`
@@ -580,8 +611,8 @@ function fallbackTasks(): ControlAdvisorTask[] {
       id: 'fallback-review-fijos',
       emoji: '📋',
       cat: 'Fijos',
-      title: 'Repasá tus gastos fijos del mes',
-      body: 'Hoy no pudimos analizar tu historial a fondo. Revisá los fijos que vienen para no quedarte corto.',
+      title: 'Repasá tus pagos fijos del mes',
+      body: 'Hoy no pudimos mirar bien tus números. Repasá los pagos fijos (alquiler, servicios, suscripciones) que se vienen para no quedarte corto.',
       impact: '+$0',
       impactRaw: 0,
       cta: 'Revisar',
@@ -592,7 +623,7 @@ function fallbackTasks(): ControlAdvisorTask[] {
       emoji: '🎯',
       cat: 'Ahorro',
       title: 'Mirá tu meta de ahorro',
-      body: 'Fijate cómo venís contra tu meta y ajustá si hace falta. Pequeños aportes semanales mueven la aguja.',
+      body: 'Mirá cómo venís con tu meta y ajustá si hace falta. Guardar un poco cada semana suma más de lo que parece.',
       impact: '+$0',
       impactRaw: 0,
       cta: 'Ver meta',
@@ -602,8 +633,8 @@ function fallbackTasks(): ControlAdvisorTask[] {
       id: 'fallback-top-cat',
       emoji: '🔍',
       cat: 'Gastos',
-      title: 'Chequeá tu categoría más cara',
-      body: 'Entrá a Gastos y mirá dónde se te va la plata esta semana. Detectar el pico es el primer paso para recortar.',
+      title: 'Mirá en qué gastás más',
+      body: 'Entrá a Gastos y mirá en qué se te va más plata esta semana. Verlo es el primer paso para gastar menos.',
       impact: '+$0',
       impactRaw: 0,
       cta: 'Abrir',

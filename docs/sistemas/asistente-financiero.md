@@ -3472,6 +3472,32 @@ describe('cross-family leak prevention', () => {
 
 ---
 
+## 29.5 — Preferencias del usuario (Settings → Asistente) · SHIPPED 2026-06-15
+
+Antes la pantalla `asistente-preferences-screen.tsx` era read-only/destructiva
+(persona inferida + desbloquear familias + borrar historial). Auditoría
+multi-agente + 3 tandas (branch `feature/asistente-preferencias`, spec en
+`docs/superpowers/specs/2026-06-15-asistente-preferencias-design.md`):
+
+- **Card "Lo que te ahorré"** — lee la view `advisor_value_summary` (ahorro
+  REALIZADO mes/trimestre); antes nadie la leía. Oculta si $0.
+- **"Tus señales"** — top familias por CTR (de `useInteractionStats`) en
+  lenguaje natural. Cero backend.
+- **Override de persona** (cierra el P4-C del §29) — tabla nueva
+  `user_advisor_prefs` (`use_inferred_persona`, `persona_override`,
+  `advisor_enabled`) + hook `useAdvisorPreferences`. El override gana sobre
+  `inferPersona` en `use-control-v2-data.ts`.
+- **Notificaciones del asistente** — kill-switch total (`advisor_enabled` →
+  `signals=[]`), "solo in-app", quiet hours configurables y umbral de urgencia
+  para push. Las prefs de delivery viven en `notification_preferences`
+  (cross-device); el sync (`use-advisor-notification-sync.ts`) las lee y
+  reemplazó los hardcodes (22→08, urgency==='alta').
+
+Persistencia por dominio: comportamiento → `user_advisor_prefs`; delivery de
+push → `notification_preferences`. Toma efecto en el próximo build (cliente).
+
+---
+
 ## 30. Apéndices
 
 ### Apéndice A — Glosario

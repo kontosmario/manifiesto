@@ -8,6 +8,8 @@ import {
 
 export { NOTIFICATION_KIND_GROUPS, type NotificationGroup }
 
+export type AdvisorPushUrgency = 'alta' | 'media' | 'baja'
+
 export interface NotificationPreferences {
   userId: string | null
   channelPush: boolean
@@ -17,6 +19,10 @@ export interface NotificationPreferences {
   checkinMiddayHour: number
   checkinEveningHour: number
   nudgesEnabled: boolean
+  advisorPushEnabled: boolean
+  advisorQuietStart: number
+  advisorQuietEnd: number
+  advisorPushMinUrgency: AdvisorPushUrgency
   updatedAt: string | null
 }
 
@@ -29,6 +35,10 @@ interface NotificationPreferencesRow {
   checkin_midday_hour: number | null
   checkin_evening_hour: number | null
   nudges_enabled: boolean | null
+  advisor_push_enabled: boolean | null
+  advisor_quiet_start: number | null
+  advisor_quiet_end: number | null
+  advisor_push_min_urgency: string | null
   updated_at: string | null
 }
 
@@ -41,7 +51,19 @@ export const NOTIFICATION_PREFERENCES_DEFAULTS: NotificationPreferences = {
   checkinMiddayHour: 14,
   checkinEveningHour: 20,
   nudgesEnabled: true,
+  advisorPushEnabled: true,
+  advisorQuietStart: 22,
+  advisorQuietEnd: 8,
+  advisorPushMinUrgency: 'alta',
   updatedAt: null,
+}
+
+const ADVISOR_URGENCY_VALUES: readonly string[] = ['alta', 'media', 'baja']
+
+function normalizeUrgency(value: string | null): AdvisorPushUrgency {
+  return value && ADVISOR_URGENCY_VALUES.includes(value)
+    ? (value as AdvisorPushUrgency)
+    : 'alta'
 }
 
 export const NOTIFICATION_PREFERENCES_QUERY_KEY = ['notification-preferences'] as const
@@ -65,6 +87,10 @@ function normalizeRow(row: NotificationPreferencesRow | null): NotificationPrefe
     checkinMiddayHour: row.checkin_midday_hour ?? 14,
     checkinEveningHour: row.checkin_evening_hour ?? 20,
     nudgesEnabled: row.nudges_enabled ?? true,
+    advisorPushEnabled: row.advisor_push_enabled ?? true,
+    advisorQuietStart: row.advisor_quiet_start ?? 22,
+    advisorQuietEnd: row.advisor_quiet_end ?? 8,
+    advisorPushMinUrgency: normalizeUrgency(row.advisor_push_min_urgency),
     updatedAt: row.updated_at,
   }
 }
@@ -78,6 +104,10 @@ function toDbPatch(patch: Partial<NotificationPreferences>): Record<string, unkn
   if (patch.checkinMiddayHour !== undefined) out.checkin_midday_hour = patch.checkinMiddayHour
   if (patch.checkinEveningHour !== undefined) out.checkin_evening_hour = patch.checkinEveningHour
   if (patch.nudgesEnabled !== undefined) out.nudges_enabled = patch.nudgesEnabled
+  if (patch.advisorPushEnabled !== undefined) out.advisor_push_enabled = patch.advisorPushEnabled
+  if (patch.advisorQuietStart !== undefined) out.advisor_quiet_start = patch.advisorQuietStart
+  if (patch.advisorQuietEnd !== undefined) out.advisor_quiet_end = patch.advisorQuietEnd
+  if (patch.advisorPushMinUrgency !== undefined) out.advisor_push_min_urgency = patch.advisorPushMinUrgency
   return out
 }
 
@@ -94,7 +124,7 @@ export function useNotificationPreferences() {
       const { data, error } = await supabase
         .from('notification_preferences')
         .select(
-          'user_id, channel_push, channel_inapp, kinds_muted, checkin_morning_hour, checkin_midday_hour, checkin_evening_hour, nudges_enabled, updated_at',
+          'user_id, channel_push, channel_inapp, kinds_muted, checkin_morning_hour, checkin_midday_hour, checkin_evening_hour, nudges_enabled, advisor_push_enabled, advisor_quiet_start, advisor_quiet_end, advisor_push_min_urgency, updated_at',
         )
         .eq('user_id', userId)
         .maybeSingle()
@@ -136,7 +166,7 @@ export function useUpdateNotificationPreferences() {
         .from('notification_preferences')
         .upsert({ user_id: userId, ...dbPatch }, { onConflict: 'user_id' })
         .select(
-          'user_id, channel_push, channel_inapp, kinds_muted, checkin_morning_hour, checkin_midday_hour, checkin_evening_hour, nudges_enabled, updated_at',
+          'user_id, channel_push, channel_inapp, kinds_muted, checkin_morning_hour, checkin_midday_hour, checkin_evening_hour, nudges_enabled, advisor_push_enabled, advisor_quiet_start, advisor_quiet_end, advisor_push_min_urgency, updated_at',
         )
         .single()
 
