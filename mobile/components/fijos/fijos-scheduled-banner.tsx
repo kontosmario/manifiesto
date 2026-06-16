@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -46,6 +47,7 @@ interface FijosScheduledBannerProps {
  */
 export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
   const { theme } = useAppTheme()
+  const bannerLayout = useGatedLayout(LinearTransition.duration(260))
   const reduced = useReducedMotion()
   const [expanded, setExpanded] = useState(false)
 
@@ -84,7 +86,7 @@ export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
 
   return (
     <Animated.View
-      layout={LinearTransition.duration(260)}
+      layout={bannerLayout}
       style={[
         styles.banner,
         { backgroundColor: accentBg, borderColor: accentBorder },

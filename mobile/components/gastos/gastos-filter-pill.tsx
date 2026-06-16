@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { darkenForLightBg } from '@/utils/category-color'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -44,6 +45,7 @@ function GastosFilterPillImpl({
   onSelect,
 }: GastosFilterPillProps) {
   const { theme } = useAppTheme()
+  const pillLayout = useGatedLayout(LinearTransition.duration(220))
   // Estabilidad: useCallback baked sobre selectId (primitivo string|null)
   // + onSelect (stable useCallback'd upstream). Reemplaza la arrow
   // inline del parent que rompía el memo.
@@ -153,8 +155,9 @@ function GastosFilterPillImpl({
   return (
     <Animated.View
       // LinearTransition handles width changes when the count badge
-      // mounts/unmounts so the pill doesn't jump.
-      layout={LinearTransition.duration(220)}
+      // mounts/unmounts so the pill doesn't jump. Gateado en el primer
+      // attach del tab para no warpear cuando el data warm se asienta.
+      layout={pillLayout}
     >
       <Pressable
         onPress={handlePress}

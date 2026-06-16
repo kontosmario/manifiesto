@@ -14,6 +14,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations, motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
@@ -102,8 +103,9 @@ function CategoryGroup({
   // Press scale subtle 0.98 — toda la row es tap-target grande, escala
   // sutil para no competir con la rotation del chevron.
   const press = usePressScale({ pressedScale: 0.98 })
+  const groupLayout = useGatedLayout(LinearTransition.duration(240))
   return (
-    <Animated.View layout={LinearTransition.duration(240)}>
+    <Animated.View layout={groupLayout}>
       <Pressable
         onPress={() => setExpanded((v) => !v)}
         onPressIn={press.onPressIn}

@@ -1,4 +1,11 @@
-import { useCallback, useState } from 'react'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from 'react'
 import { InteractionManager } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 
@@ -72,4 +79,39 @@ export function useLayoutTransitionGate(): boolean {
   )
 
   return open
+}
+
+// ─── Versión por contexto (cobertura completa del árbol) ─────────────
+//
+// `useLayoutTransitionGate()` resuelve el warp SÓLO en el componente que
+// lo llama (p. ej. el screen y sus secciones). Pero los hijos —hero cards,
+// rows, chips, banners— tienen sus PROPIOS `layout={LinearTransition}`
+// hardcodeados, y cada uno warpea en el primer attach. En vez de pasar el
+// boolean por props a cada uno, exponemos el gate por contexto:
+//
+//   · `LayoutTransitionGateProvider` envuelve el screen (en la route file).
+//     Calcula `open` con el mismo mecanismo (focus + InteractionManager).
+//   · `useGatedLayout(transition)` lo lee y devuelve `undefined` hasta que
+//     el gate abre → el primer paint NO tiene layout animation (sin warp).
+//     Después abre y los cambios siguientes (pagar fijo, expandir, etc.)
+//     vuelven a transicionar suave.
+//
+// Default `true` (gate abierto) para componentes FUERA de un provider
+// (sheets, onboarding, modales): se comportan como hoy, sin gating.
+const LayoutTransitionGateContext = createContext<boolean>(true)
+
+export function LayoutTransitionGateProvider({ children }: { children: ReactNode }) {
+  const open = useLayoutTransitionGate()
+  return createElement(LayoutTransitionGateContext.Provider, { value: open }, children)
+}
+
+/**
+ * Devuelve la `transition` recibida sólo cuando el gate de layout está
+ * abierto (post primer-attach idle); `undefined` mientras está cerrado.
+ * Usar en cualquier `<Animated.View layout={useGatedLayout(LinearTransition...)}>`
+ * dentro de un screen de tab para matar el warp del primer attach.
+ */
+export function useGatedLayout<T>(transition: T): T | undefined {
+  const open = useContext(LayoutTransitionGateContext)
+  return open ? transition : undefined
 }

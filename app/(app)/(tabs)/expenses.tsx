@@ -1,5 +1,6 @@
 import { RequireAuth } from '@/components/guards'
 import { RiseViewGate } from '@/components/home/animated/rise-view'
+import { LayoutTransitionGateProvider } from '@/hooks/use-layout-transition-gate'
 import { ExpensesScreen } from '@/screens/home/expenses-screen'
 
 export default function ExpensesRoute() {
@@ -15,7 +16,9 @@ export default function ExpensesRoute() {
     <RequireAuth>
       {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <ExpensesScreen familyId={familyId} userId={userId} />
+          <LayoutTransitionGateProvider>
+            <ExpensesScreen familyId={familyId} userId={userId} />
+          </LayoutTransitionGateProvider>
         </RiseViewGate>
       )}
     </RequireAuth>

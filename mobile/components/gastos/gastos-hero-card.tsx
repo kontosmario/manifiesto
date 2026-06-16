@@ -8,6 +8,7 @@ import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CategoryWeightsList, type CategoryWeight } from '@/components/gastos/category-weights-list'
 import { GastosAverageBars } from '@/components/gastos/gastos-average-bars'
 import { CardParticles } from '@/components/ui/card-particles'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -55,6 +56,10 @@ function GastosHeroCardImpl({
   empty = false,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
+  // Gateado: el primer attach del tab (pre-mounted + detached) NO debe
+  // disparar la layout transition del hero — sino la card warpea. Se
+  // habilita después del idle para los cambios reales (filtro de día, etc).
+  const heroLayout = useGatedLayout(LinearTransition.duration(260))
 
   // ── Empty / preview mode ─────────────────────────────────────────
   // Same gradient shell + section labels as the real hero, but every
@@ -82,7 +87,7 @@ function GastosHeroCardImpl({
         the hero's height animates smoothly instead of snapping to the
         new size. The weights block itself also fades each row in/out.
       */}
-      <Animated.View layout={LinearTransition.duration(260)}>
+      <Animated.View layout={heroLayout}>
         <LinearGradient
           colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0.1, y: 0 }}
@@ -150,7 +155,7 @@ function GastosHeroCardImpl({
             <Animated.View
               key="weights"
               style={styles.weightsBlock}
-              layout={LinearTransition.duration(260)}
+              layout={heroLayout}
             >
               <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted }]}>
                 MÁS PESO POR CATEGORÍA

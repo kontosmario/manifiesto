@@ -14,6 +14,7 @@ import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -59,6 +60,7 @@ export function GastosAdvisorChip({
 }: GastosAdvisorChipProps) {
   const { theme } = useAppTheme()
   const press = usePressScale({ pressedScale: 0.97 })
+  const chipLayout = useGatedLayout(LinearTransition.duration(220))
 
   const target = useMemo<ControlAdvisorTask | null>(() => {
     // Filter to category-domain signals first.
@@ -100,7 +102,7 @@ export function GastosAdvisorChip({
     <Animated.View
       entering={FadeIn.duration(220)}
       exiting={FadeOut.duration(160)}
-      layout={LinearTransition.duration(220)}
+      layout={chipLayout}
     >
       <Pressable
         accessibilityRole="button"

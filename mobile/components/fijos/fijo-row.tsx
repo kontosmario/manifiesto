@@ -7,6 +7,7 @@ import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
@@ -88,6 +89,10 @@ function FijoRowReal({
 }: FijoRowProps) {
   const theme = useThemeTokens()
   const [open, setOpen] = useState(false)
+  // Gateado: el primer attach del tab no debe disparar la layout
+  // transition de la fila (warp). Tras el idle se habilita para expandir/
+  // colapsar y para add/delete de fijos.
+  const rowLayout = useGatedLayout(LinearTransition.duration(240))
   const emoji = pickIconForFixedExpenseCategory(categoryName)
   // FijoRowReal is only rendered for non-placeholder rows, where `item`
   // is always supplied by the parent. The non-null assertion keeps the
@@ -175,7 +180,7 @@ function FijoRowReal({
       // bordes redondeados del panel de acción terminen en la misma curva.
       borderRadius={16}
     >
-      <Animated.View layout={LinearTransition.duration(240)}>
+      <Animated.View layout={rowLayout}>
         <Pressable
           onPress={() => setOpen((v) => !v)}
           onPressIn={cardPress.onPressIn}

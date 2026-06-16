@@ -9,6 +9,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { GastosAdvisorChip } from '@/components/gastos/gastos-advisor-chip'
 import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
@@ -73,10 +74,13 @@ export interface GastosListHeaderProps {
   sectionsLength: number
 }
 
-const sectionLayout = LinearTransition.duration(260)
-
 export function GastosListHeader(props: GastosListHeaderProps) {
   const { theme } = useAppTheme()
+  // Gateado: en el primer attach del tab (pre-mounted + detached) NO
+  // disparamos las layout transitions de las secciones del header — sino
+  // toda la cabecera warpea cuando el data warm se asienta. Se habilita
+  // tras el idle para los cambios reales (cambiar filtro, día, etc).
+  const sectionLayout = useGatedLayout(LinearTransition.duration(260))
   const {
     streakData,
     onPressStreak,

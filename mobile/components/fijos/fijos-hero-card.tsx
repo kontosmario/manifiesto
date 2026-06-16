@@ -15,6 +15,7 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CardParticles } from '@/components/ui/card-particles'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
@@ -77,6 +78,10 @@ function FijosHeroCardImpl({
   empty = false,
 }: FijosHeroCardProps) {
   const { theme } = useAppTheme()
+  // Gateado: el primer attach del tab no debe disparar la layout
+  // transition del hero (warp). Se habilita tras el idle para los cambios
+  // reales (pagar un fijo → el total/porcentaje transicionan suave).
+  const heroLayout = useGatedLayout(LinearTransition.duration(260))
   const porcentaje = totalFijos > 0 ? Math.round((montoPagado / totalFijos) * 100) : 0
   const montoPendiente = Math.max(0, totalFijos - montoPagado)
   // Derived state — el hero se viste según urgencia:
@@ -150,7 +155,7 @@ function FijosHeroCardImpl({
 
   return (
     <RiseView delay={40}>
-      <Animated.View layout={LinearTransition.duration(260)}>
+      <Animated.View layout={heroLayout}>
         <LinearGradient
           colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0.1, y: 0 }}
