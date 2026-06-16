@@ -17,6 +17,9 @@ interface HomeActivitySectionProps {
    *  timestamp desc; positivos en verde con ícono distinto. */
   incomeEvents?: IncomeEvent[]
   categoryNameById: Map<string, string>
+  /** category_id → color (hex). Tinta el icon tile de cada gasto por
+   *  categoría, igual que en Gastos · Movimientos. */
+  categoryColorById: Map<string, string>
   familyMembers?: Array<{ id: string; name: string; color: string }>
   isLoading: boolean
   errorKind?: DashboardErrorKind
@@ -65,6 +68,13 @@ const INCOME_KIND_ICON: Record<IncomeEventKind, string> = {
   other: '💵',
 }
 
+// Verde de crédito para el icon tile de los ingresos — no tienen categoría,
+// así que matchean el color del monto positivo (success). Los gastos usan el
+// color real de su categoría.
+const INCOME_TILE_COLOR = '#329315'
+// Fallback neutro para un gasto sin categoría conocida.
+const NO_CATEGORY_COLOR = '#888888'
+
 /**
  * Renders the body of the Home activity section — list of ActivityRowV2
  * cards, or the empty / error / loading state. The section header
@@ -81,6 +91,7 @@ function HomeActivitySectionImpl({
   expenses,
   incomeEvents = [],
   categoryNameById,
+  categoryColorById,
   familyMembers = [],
   isLoading,
   errorKind,
@@ -156,6 +167,7 @@ function HomeActivitySectionImpl({
               icon={INCOME_KIND_ICON[income.kind]}
               title={title}
               category={`Ingreso · ${kindLabel}`}
+              categoryColor={INCOME_TILE_COLOR}
               whoName={memberById.get(income.created_by)?.name ?? 'Alguien'}
               whoColor={memberById.get(income.created_by)?.color ?? '#329315'}
               amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
@@ -201,6 +213,7 @@ function HomeActivitySectionImpl({
               icon={pickIconForCategory(categoryName)}
               title={expense.description || categoryName}
               category={categoryName}
+              categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}
               whoName={memberById.get(expense.created_by)?.name ?? 'Alguien'}
               whoColor={memberById.get(expense.created_by)?.color ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}

@@ -202,6 +202,16 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       ),
     [categoriesQuery.data],
   )
+  // category_id → color (hex) para tintar el icon tile de cada gasto del
+  // activity feed por categoría, igual que en Gastos · Movimientos. El
+  // color ya viene resuelto por useCategories (DB o fallbackCategoryColor).
+  const categoryColorById = useMemo(
+    () =>
+      new Map(
+        (categoriesQuery.data ?? []).map((category) => [category.id, category.color] as const),
+      ),
+    [categoriesQuery.data],
+  )
   // Activity feed shows only variable gastos (manual entries). Rows
   // with `commitment_id` are auto-recorded payments of fixed
   // expenses — those live exclusively on the Fijos screen.
@@ -429,6 +439,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           recentExpenses={recentExpenses}
           recentIncome={recentIncome}
           categoryNameById={categoryNameById}
+          categoryColorById={categoryColorById}
           familyId={familyId}
           isSolo={isSolo}
           displayName={displayName}

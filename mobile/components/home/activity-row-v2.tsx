@@ -1,23 +1,41 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { formatMoneyWithSign } from '@/utils/money'
+import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface ActivityRowV2Props {
   icon: string
   title: string
   category: string
+  /** Color (hex) de la categoría — tinta el icon tile igual que en
+   *  Gastos · Movimientos (GastoRow). Para ingresos se pasa el verde de
+   *  crédito. */
+  categoryColor: string
   whoName: string
   whoColor: string
   amount: number          // negative = expense, positive = credit
   delay?: number
 }
 
-function ActivityRowV2Impl({ icon, title, category, whoName, whoColor, amount, delay = 0 }: ActivityRowV2Props) {
+function ActivityRowV2Impl({ icon, title, category, categoryColor, whoName, whoColor, amount, delay = 0 }: ActivityRowV2Props) {
   const { theme } = useAppTheme()
   const amountColor = amount < 0 ? theme.colors.text : theme.colors.success
+  // Icon tile tinted por categoría — mismo patrón que GastoRow (bg 14% +
+  // borde 22% del color de la categoría). Memoizado: el row vive en lista
+  // y se re-renderea seguido; sin esto se parsea el hex en cada render.
+  const iconTileStyle = useMemo(
+    () => [
+      styles.iconTile,
+      {
+        backgroundColor: withAlpha(categoryColor, 0.14),
+        borderColor: withAlpha(categoryColor, 0.22),
+      },
+    ],
+    [categoryColor],
+  )
   return (
     <SlideInView delay={delay}>
       <View
@@ -35,7 +53,7 @@ function ActivityRowV2Impl({ icon, title, category, whoName, whoColor, amount, d
         ]}
       >
         <View style={styles.iconWrap}>
-          <View style={[styles.iconTile, { backgroundColor: theme.colors.peachBand }]}>
+          <View style={iconTileStyle}>
             <Text style={styles.iconText}>{icon}</Text>
           </View>
           <WhoPaidAvatar name={whoName} color={whoColor} />
@@ -77,7 +95,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconWrap: { position: 'relative' },
-  iconTile: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconTile: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 18 },
   flex: { flex: 1 },
   title: { fontSize: 14, fontWeight: '700' },

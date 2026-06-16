@@ -75,6 +75,9 @@ interface HomeDashboardProps {
    *  los gastos por timestamp desc. */
   recentIncome?: IncomeEvent[]
   categoryNameById: Map<string, string>
+  /** category_id → color (hex). Tinta el icon tile de cada gasto del feed
+   *  por categoría, igual que en Gastos · Movimientos. */
+  categoryColorById: Map<string, string>
   familyId: string
   /** Modo solo: el usuario es una familia invisible de 1 (kind='solo').
    *  Oculta los avatares de miembros en el FamilyStrip. */
@@ -136,6 +139,7 @@ export function HomeDashboard({
   recentExpenses,
   recentIncome = [],
   categoryNameById,
+  categoryColorById,
   familyId,
   isSolo,
   displayName,
@@ -947,6 +951,7 @@ export function HomeDashboard({
           expenses={recentExpenses}
           incomeEvents={recentIncome}
           categoryNameById={categoryNameById}
+          categoryColorById={categoryColorById}
           familyMembers={familyMembers}
           isLoading={isLoadingActivity}
           errorKind={activityErrorKind}
