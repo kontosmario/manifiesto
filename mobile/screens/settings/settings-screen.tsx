@@ -5,7 +5,7 @@ import {
   type DevJourney,
 } from '@/features/auth-flow/dev-journeys'
 import { useFocusEffect } from '@react-navigation/native'
-import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { useRouter } from 'expo-router'
@@ -101,11 +101,6 @@ import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatCycleSummary } from '@/utils/format-cycle-label'
-import {
-  PRIVACY_POLICY_URL,
-  TERMS_OF_SERVICE_URL,
-  buildSupportMailto,
-} from '@/lib/legal-urls'
 
 interface SettingsScreenProps {
   userId: string
@@ -550,20 +545,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     setShareInviteSheetVisible(true)
   }, [])
 
-  // Re-arm the per-screen guided tours so they auto-start the next
-  // time the user lands on Home / Gastos / Fijos / Control. Useful
-  // after a long break or for users who want a refresher.
-  const handleResetTours = useCallback(async () => {
-    void triggerHaptic('selection')
-    await tourResets.resetAll()
-    await resetAllTours()
-    void triggerHaptic('success')
-    Alert.alert(
-      'Listo',
-      'La próxima vez que abras Inicio, Gastos, Fijos y Control vas a ver el tutorial guiado.',
-    )
-  }, [tourResets])
-
   // Ayuda · Tutoriales — re-watch a single tour or all four.
   // Resets the "seen" flag then navigates to the relevant tab so
   // `useScreenTour` fires the auto-start on next focus.
@@ -706,29 +687,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       },
     ])
   }, [router, showError])
-
-const handleOpenSupport = useCallback(() => {
-    const url = buildSupportMailto({
-      appVersion: Constants.expoConfig?.version ?? null,
-      buildNumber: Application.nativeBuildVersion,
-      platform: Platform.OS,
-      userId,
-    })
-    void Linking.openURL(url).catch(() => {
-      Alert.alert(
-        'No pudimos abrir tu mail',
-        'Escribinos a soporte@manifiesto.app desde la app de correo que prefieras.',
-      )
-    })
-  }, [userId])
-
-  const handleOpenPrivacy = useCallback(() => {
-    void Linking.openURL(PRIVACY_POLICY_URL)
-  }, [])
-
-  const handleOpenTerms = useCallback(() => {
-    void Linking.openURL(TERMS_OF_SERVICE_URL)
-  }, [])
 
   // Footer "Manifiesto X.Y.Z (build N)" — Apple Review usa el build
   // number para identificar la versión que está revisando.
@@ -1120,33 +1078,9 @@ const handleOpenSupport = useCallback(() => {
               <SettingsGroup title="Asistente">
                 <SettingsRow
                   icon="auto-awesome"
+                  isLast
                   label="Preferencias del asistente"
                   onPress={() => router.push('/settings/asistente' as never)}
-                />
-                <SettingsRow
-                  helper="Vuelve a disparar los tutoriales guiados de Inicio, Gastos, Fijos y Control la próxima vez que entres a cada pantalla."
-                  icon="school"
-                  label="Reactivar visitas guiadas"
-                  onPress={() => {
-                    void handleResetTours()
-                  }}
-                />
-                <SettingsRow
-                  helper="Abrí el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
-                  icon="preview"
-                  label="Vista previa: wizard de importación"
-                  onPress={() => {
-                    setImportPreviewState(buildPreviewReviewState())
-                  }}
-                />
-                <SettingsRow
-                  helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Borralas después desde Gastos."
-                  icon="bug-report"
-                  isLast
-                  label="Test import: carga REAL con mocks"
-                  onPress={() => {
-                    setImportRealTestState(buildRealInsertTestState())
-                  }}
                 />
               </SettingsGroup>
             </RiseView>
@@ -1362,34 +1296,29 @@ const handleOpenSupport = useCallback(() => {
                   <SettingsRow
                     helper="Dispara el Manifiesto Wrapped (recap del mes cerrado) con datos sintéticos: cerraste con margen / empatado / excedido."
                     icon="auto-stories"
-                    isLast
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
+                  />
+                  <SettingsRow
+                    helper="Abrí el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
+                    icon="preview"
+                    label="Vista previa: wizard de importación"
+                    onPress={() => {
+                      setImportPreviewState(buildPreviewReviewState())
+                    }}
+                  />
+                  <SettingsRow
+                    helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Borralas después desde Gastos."
+                    icon="bug-report"
+                    isLast
+                    label="Test import: carga REAL con mocks"
+                    onPress={() => {
+                      setImportRealTestState(buildRealInsertTestState())
+                    }}
                   />
                 </SettingsGroup>
               </RiseView>
             ) : null}
-
-            {/* TEMPORAL — Phase B sideload build (2026-06-02). Mostramos
-                el preview del OCR aún en release para poder ejercitar
-                el pipeline en device via IPA sideloaded. Revertir cuando
-                Phase D entregue la UI productiva: borrar este RiseView
-                y volver a poner la SettingsRow dentro del grupo
-                __DEV__ "Desarrollo" arriba con su isLast original. */}
-            <RiseView delay={325}>
-              <SettingsGroup
-                footer="Activa solo durante el desarrollo de la feature. Se va a sacar cuando la UI productiva esté lista."
-                title="Beta · Activity OCR"
-              >
-                <SettingsRow
-                  helper="Selecciona una captura de actividad bancaria/wallet. Corre OCR on-device + parser. Muestra el ParseResult en JSON."
-                  icon="text-fields"
-                  isLast
-                  label="Activity OCR · preview"
-                  onPress={() => router.push('/(app)/settings/dev/activity-ocr' as never)}
-                />
-              </SettingsGroup>
-            </RiseView>
 
             {/* 7b. Filtro del modo demo. Solo aparece cuando el modo
                 demo está encendido — en la lista normal de señales no
@@ -1465,29 +1394,6 @@ const handleOpenSupport = useCallback(() => {
                 </SettingsGroup>
               </RiseView>
             ) : null}
-
-            {/* 9. AYUDA Y LEGAL */}
-            <RiseView delay={320}>
-              <SettingsGroup title="Ayuda y legal">
-                <SettingsRow
-                  helper="Te respondemos por mail."
-                  icon="mail-outline"
-                  label="Contactar soporte"
-                  onPress={handleOpenSupport}
-                />
-                <SettingsRow
-                  icon="policy"
-                  label="Política de privacidad"
-                  onPress={handleOpenPrivacy}
-                />
-                <SettingsRow
-                  icon="description"
-                  isLast
-                  label="Términos de uso"
-                  onPress={handleOpenTerms}
-                />
-              </SettingsGroup>
-            </RiseView>
 
             {/* 9b. ACERCA DE — versión, info legal y soporte. La
                 pantalla dedicada centraliza el footer "Hecho con ♥",
