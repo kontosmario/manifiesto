@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -38,7 +39,7 @@ import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { selectAsistenteEmptyCopy } from '@/features/insights/asistente-empty-copy'
 import {
   dismissCard,
-  useDismissedIds,
+  dismissKeyFor,
 } from '@/features/insights/control-dismiss-store'
 import {
   TYPE_TONES,
@@ -80,8 +81,10 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const t = useAsistenteTheme()
-  const { signals, usingMock } = useControlV2Data(familyId, userId)
-  const dismissed = useDismissedIds()
+  // `signals` ya viene filtrado (blocklist + dismissed) y vacío hasta que los
+  // filtros cargaron (signalsReady) — el filtrado es central en useControlV2Data,
+  // no acá. Así el push (abajo) tampoco dispara sobre señales descartadas.
+  const { signals, signalsReady, usingMock } = useControlV2Data(familyId, userId)
 
   // Pipe high-confidence signals into push notifications. The hook is
   // device-deduplicated with an 18h cooldown per signal id, so it's
@@ -112,9 +115,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   )
   const dispatch = useControlActionDispatcher({ familyId, userId })
 
-  const visible = signals.filter(
-    (t) => !dismissed.has(dismissKeyFor(t)),
-  )
+  const visible = signals
   const totalImpact = visible.reduce((s, t) => s + t.impactRaw, 0)
 
   const scrollRef = useRef<ScrollView | null>(null)
@@ -255,7 +256,12 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           <Header count={visible.length} totalImpact={totalImpact} t={t} />
 
           <View style={styles.cardsList}>
-            {visible.length === 0 ? (
+            {!signalsReady ? (
+              // Filtros (blocklist + dismissals) cargando → loading, NO la lista
+              // sin filtrar (que después se achicaría = el "cards que aparecen y
+              // desaparecen").
+              <LoadingState t={t} />
+            ) : visible.length === 0 ? (
               <EmptyState usingMock={usingMock} t={t} />
             ) : (
               visible.map((task, i) => (
@@ -298,10 +304,6 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
       />
     </ControlAnchorsContext.Provider>
   )
-}
-
-function dismissKeyFor(task: ControlAdvisorTask): string {
-  return task.action?.kind === 'dismiss' ? task.action.dismissId : task.id
 }
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────
@@ -516,6 +518,19 @@ function EmptyState({
       </Text>
       <Text style={[styles.emptyBody, { color: t.headerSubtitle }]}>
         {copy.body}
+      </Text>
+    </Animated.View>
+  )
+}
+
+// Loading mientras los filtros (blocklist + dismissals) cargan — evita
+// mostrar la lista sin filtrar que después se achica.
+function LoadingState({ t }: { t: AsistenteTokens }) {
+  return (
+    <Animated.View entering={FadeIn.duration(220)} style={styles.emptyState}>
+      <ActivityIndicator color={t.headerSubtitle} />
+      <Text style={[styles.emptyBody, { color: t.headerSubtitle, marginTop: 12 }]}>
+        Revisando tus señales…
       </Text>
     </Animated.View>
   )

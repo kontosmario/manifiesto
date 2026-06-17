@@ -31,15 +31,19 @@ export function useAdvisorBadge(): AdvisorBadgeState {
   const userId = sessionQuery.data?.user.id
   const familyQuery = useFamily(userId)
   const familyId = familyQuery.data?.familyId
-  const { signals } = useControlV2Data(familyId ?? '')
+  // userId → `signals` ya viene filtrado por blocklist + dismissed (no
+  // contamos el dot por señales bloqueadas/descartadas). `signalsReady`
+  // evita prender el dot con datos sin filtrar (flash). Deduped con las
+  // demás llamadas a useControlV2Data.
+  const { signals, signalsReady } = useControlV2Data(familyId ?? '', userId)
   const lastVisit = useLastControlVisit()
 
   return useMemo<AdvisorBadgeState>(() => {
-    if (!familyId) return { show: false, altaCount: 0 }
+    if (!familyId || !signalsReady) return { show: false, altaCount: 0 }
     const altaCount = signals.filter((s) => s.urgency === 'alta').length
     if (altaCount === 0) return { show: false, altaCount: 0 }
     if (lastVisit == null) return { show: true, altaCount }
     const fresh = Date.now() - lastVisit < VISIT_FRESHNESS_HOURS * HOUR_MS
     return { show: !fresh, altaCount }
-  }, [familyId, signals, lastVisit])
+  }, [familyId, signalsReady, signals, lastVisit])
 }

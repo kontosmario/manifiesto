@@ -55,6 +55,11 @@ import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
 import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import {
+  dismissKeyFor,
+  useDismissalsHydrated,
+  useDismissedIds,
+} from '@/features/insights/control-dismiss-store'
 import { resolveControlSignals } from '@/features/insights/control-v2-empty-fallback'
 import {
   useControlSnapshot,
@@ -129,7 +134,15 @@ export interface ControlV2ViewModel {
   view: ControlView
   /** Ingresos extra del ciclo — la card se monta solo si total > 0. */
   ingresosCiclo: IngresosCiclo
+  /** Señales VISIBLES del asistente: ya filtradas por blocklist (familias
+   *  bloqueadas) Y por dismissed (descartadas), y vacías hasta que ambos
+   *  filtros cargaron (`signalsReady`). Source of truth único — todos los
+   *  consumidores leen de acá, no re-filtran. */
   signals: ControlAdvisorTask[]
+  /** `true` cuando los filtros async (blocklist + dismissals) ya cargaron y
+   *  `signals` es confiable. Las superficies que LISTAN señales deben mostrar
+   *  loading mientras es `false` (evita el flash aparecer→desaparecer). */
+  signalsReady: boolean
   /** Optional 7-day forecast — `null` while data is hydrating or
    *  when the user is still using the mock dataset. */
   forecast: Forecast7Day | null
@@ -226,6 +239,10 @@ export interface UseControlV2DataOptions {
  * builders with copy variants can adapt their framing. Without it,
  * the persona defaults to `'planner'` (neutral framing).
  */
+// Referencia estable para el caso "no listo" — evita un array nuevo por
+// render (que rompería la memo de los consumidores).
+const EMPTY_SIGNALS: ControlAdvisorTask[] = []
+
 export function useControlV2Data(
   familyId: string,
   userId?: string | null,
@@ -505,7 +522,7 @@ export function useControlV2Data(
 
   const demoMode = useAssistantDemoMode()
   const demoFilter = useAssistantDemoFilter()
-  const signals = useMemo<ControlAdvisorTask[]>(() => {
+  const computedSignals = useMemo<ControlAdvisorTask[]>(() => {
     // TESTING flag (Settings → Desarrollo → "Modo demo del asistente").
     // When ON, replace computed signals with a curated fixture
     // covering every scenario + CTA action kind. The flag is gated
@@ -573,6 +590,25 @@ export function useControlV2Data(
     blocklistQuery.data,
   ])
 
+  // ── Source of truth de las señales VISIBLES ───────────────────────────
+  // El filtro de `dismissed` + la noción de "listo" viven ACÁ, no en cada
+  // consumidor — así Control, el chip de Gastos, el dot del tab, el push y el
+  // asistente reciben EXACTAMENTE el mismo set, consistente. Antes solo el
+  // asistente y el badge filtraban dismissed → el resto mostraba/pusheaba
+  // señales descartadas. La blocklist ya se aplica arriba (computedSignals).
+  const dismissed = useDismissedIds()
+  const dismissalsHydrated = useDismissalsHydrated()
+  // `signalsReady`: las DOS fuentes async que filtran señales cargaron — la
+  // blocklist (solo si hay userId; sin userId no aplica) y los dismissals.
+  // Hasta entonces las señales no están filtradas, así que no se exponen (si
+  // no, aparecen y desaparecen al cargar los filtros).
+  const signalsReady =
+    (!userId || blocklistQuery.data !== undefined) && dismissalsHydrated
+  const signals = useMemo<ControlAdvisorTask[]>(() => {
+    if (!signalsReady) return EMPTY_SIGNALS
+    return computedSignals.filter((t) => !dismissed.has(dismissKeyFor(t)))
+  }, [signalsReady, computedSignals, dismissed])
+
   const isLoading =
     expensesQuery.isLoading ||
     fixedExpensesQuery.isLoading ||
@@ -610,6 +646,7 @@ export function useControlV2Data(
     view,
     ingresosCiclo,
     signals,
+    signalsReady,
     forecast,
     isLoading,
     usingMock,

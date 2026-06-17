@@ -36,7 +36,6 @@ import { useHomeRealtime } from '@/features/home/use-home-realtime'
 import { useHomeTelemetry } from '@/features/home/use-home-telemetry'
 import { logHomeEvent } from '@/features/home/log-home-event'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-import { useDismissedIds } from '@/features/insights/control-dismiss-store'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { HOME_TOUR, useRegisterTourScrollView } from '@/features/tours'
 import { errorMessages } from '@/lib/copy/states'
@@ -180,22 +179,19 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // into Home without the user having to pull-to-refresh.
   useHomeRealtime(familyId)
 
-  // Assistant pending count — same source the Control card uses, so the
-  // badge stays in sync with what the user will see when they open the
-  // sheet. Filter dismissed in case some were swiped away from Control.
-  //
-  // `defer: true` · la badge no es decision-grade en la primera frame
-  // (queda en 0 hasta que cargue, ~600ms después del mount). Defer evita
-  // que el chain de queries pesado (controlIntelligence + summaries +
-  // limits + velocity + notifications) compita por JS thread con la
-  // navegación / first-paint del Home. Cuando Home tira prefetch en
-  // tabs layout, esto se vuelve casi-instantáneo igual.
-  const { signals: assistantSignals } = useControlV2Data(familyId, null, { defer: true })
-  const assistantDismissed = useDismissedIds()
-  const assistantPendingCount = assistantSignals.filter((t) => {
-    const key = t.action?.kind === 'dismiss' ? t.action.dismissId : t.id
-    return !assistantDismissed.has(key)
-  }).length
+  // Assistant pending count — MISMO source (y mismo filtrado) que la pantalla
+  // del asistente: `useControlV2Data` ya devuelve `signals` filtrado por
+  // blocklist + dismissed, y `signalsReady=false` hasta que esos filtros
+  // cargaron. Por eso el conteo es directo (`signals.length`) y 0 hasta estar
+  // listo — sin re-filtrar acá, sin provisorios que después bajan, y siempre
+  // matcheando lo que el usuario ve adentro. userId real → aplica su blocklist.
+  // `defer: true` evita que el chain pesado compita con el first-paint del Home.
+  const { signals: assistantSignals, signalsReady: assistantReady } = useControlV2Data(
+    familyId,
+    userId,
+    { defer: true },
+  )
+  const assistantPendingCount = assistantReady ? assistantSignals.length : 0
 
   const categoryNameById = useMemo(
     () =>

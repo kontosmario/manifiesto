@@ -21,13 +21,25 @@
 // signal builders). Hydrating once and keeping the cache hot lets us
 // preserve that surface without a big consumer rewrite.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   fetchAdvisorDismissals,
   upsertAdvisorDismissal,
   type AdvisorDismissalRow,
 } from '@/features/insights/advisor-dismiss-repository'
+import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { DAY_MS } from '@/utils/time'
+
+/**
+ * Key canónica de dismiss para una señal del asistente. Las señales con
+ * acción `dismiss` se descartan por su `dismissId` (puede agrupar varias
+ * señales bajo un mismo dismiss); el resto por su `id`. ÚNICA fuente de esta
+ * lógica — la usan el filtro central (useControlV2Data), el asistente (acción
+ * de descartar) y el badge. No duplicar inline en ningún lado.
+ */
+export function dismissKeyFor(task: ControlAdvisorTask): string {
+  return task.action?.kind === 'dismiss' ? task.action.dismissId : task.id
+}
 
 /** Default cooldown for signals not listed in `BASE_TTL_DAYS`. */
 const COOLDOWN_DAYS = 7
@@ -229,6 +241,29 @@ export function useDismissedIds(): ReadonlySet<string> {
     }
   }, [])
   return state
+}
+
+/**
+ * `true` cuando la cache de dismissals ya fue hidratada (seedeada por
+ * home_snapshot o cargada por `useAdvisorDismissalsSync`). Hasta entonces
+ * el set está VACÍO, así que cualquier consumidor que CUENTE señales no
+ * dismisseadas (p. ej. el badge del asistente) sobre-cuenta — debe gatear
+ * en este flag para no mostrar un número provisorio que después baja.
+ */
+export function useDismissalsHydrated(): boolean {
+  // useSyncExternalStore: el snapshot es un boolean primitivo (comparación
+  // por valor, estable) y emit() ya notifica en cada cambio de `hydrated`
+  // (seed / hidratación async / reset por cambio de user).
+  return useSyncExternalStore(
+    (onChange) => {
+      const listener = () => onChange()
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    () => hydrated,
+  )
 }
 
 // ─── Hydration hook ────────────────────────────────────────────────

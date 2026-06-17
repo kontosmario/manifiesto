@@ -93,8 +93,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const { theme } = useAppTheme()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
+  // userId → aplica la blocklist del usuario (consistente con el asistente).
+  // `signals` ya viene filtrado por blocklist + dismissed desde el hook.
   const { data, view, ingresosCiclo, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
-    useControlV2Data(familyId)
+    useControlV2Data(familyId, userId)
   // Sonda de la rama de render de Control. Un cambio al entrar (p.ej.
   // loading→content o noConfig→content) = el contenido aparece/cambia =
   // posible parpadeo.
