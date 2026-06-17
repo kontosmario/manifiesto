@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import {
   KeyboardAvoidingView,
@@ -83,7 +84,22 @@ export function Screen({
   const segments = useSegments()
   const { theme } = useAppTheme()
   const isReducedMotionEnabled = useReducedMotion()
-  const isTabScreen = (segments as readonly string[]).includes('(tabs)')
+  // `isTabScreen` tiene que ser ESTABLE por pantalla: un screen de tab SIEMPRE
+  // es de tab. Pero `useSegments()` es GLOBAL (la ruta ACTUAL), así que cuando
+  // navegás a una sub-pantalla de Settings, los tab screens MONTADOS (lazy:false)
+  // ven segments=Settings → isTabScreen=false → usan el bottomPadding chico (20).
+  // Al volver y actualizarse a (tabs) → isTabScreen=true → bottomPadding salta a
+  // 96 → el frame del contenido se encoge ~96px y TODO se reacomoda = el
+  // "warp/parpadeo" al volver de Settings (medido: frame 860→764). En el flujo
+  // normal segments siempre es (tabs) → no se nota.
+  // Fix: latch. Una vez que esta instancia se vio dentro de (tabs), lo es para
+  // siempre — ignora los segments transitorios de otra ruta mientras sigue
+  // montada. Los screens NO-tab (settings, modales) montan con SU ruta (nunca
+  // (tabs)), así que nunca quedan latcheados en true.
+  const segmentsAreTabs = (segments as readonly string[]).includes('(tabs)')
+  const isTabScreenRef = useRef(segmentsAreTabs)
+  if (segmentsAreTabs) isTabScreenRef.current = true
+  const isTabScreen = isTabScreenRef.current
   const baseBottomPadding = theme.spacing.xxl + (isTabScreen ? 96 : 20)
   // Reserve extra bottom space when the shared InAppNumpad is open so
   // fields near the bottom of the scroll view stay reachable above
