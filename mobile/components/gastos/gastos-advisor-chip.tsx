@@ -84,7 +84,55 @@ export function GastosAdvisorChip({
     return domain[0]
   }, [signals, selectedCategoryId, categoryNameById])
 
-  if (!target) return null
+  // Slot de altura fija: si no hay señal, en vez de `return null` (que hacía
+  // crecer el ListHeaderComponent del SectionList virtualizado de 0→52px
+  // cuando los signals llegaban tarde → re-medición → "salto" del header)
+  // mostramos una afirmación calma con la MISMA estructura/altura. El header
+  // nunca cambia de tamaño → no re-mide → no salta (content-jumping).
+  if (!target) {
+    const calmTone = theme.colors.textMuted
+    return (
+      <Animated.View entering={chipEntering} layout={chipLayout}>
+        <View
+          style={[
+            styles.row,
+            {
+              backgroundColor: theme.isDark
+                ? theme.colors.surfaceMuted
+                : theme.colors.creamCard,
+              borderColor: theme.colors.line,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.iconTile,
+              {
+                backgroundColor: hexAlpha(calmTone, 0.12),
+                borderColor: hexAlpha(calmTone, 0.24),
+              },
+            ]}
+          >
+            <MaterialIcons name="check" size={16} color={calmTone} />
+          </View>
+          <View style={styles.body}>
+            <Text
+              style={[styles.title, { color: theme.colors.textMuted }]}
+              numberOfLines={1}
+            >
+              Sin alertas por ahora
+            </Text>
+            <Text
+              style={[styles.impact, { color: theme.colors.textSoft }]}
+              numberOfLines={1}
+            >
+              Tus categorías están en orden
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
+    )
+  }
 
   const tone =
     target.urgency === 'alta'
