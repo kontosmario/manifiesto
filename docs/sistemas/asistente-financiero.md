@@ -329,6 +329,37 @@ Es **completamente local-first**: las señales se calculan en el cliente desde d
 └───────────────────────────────────────────────────────────────┘
 ```
 
+### Filtrado de señales — source of truth ÚNICO (2026-06-17)
+
+> ⚠️ El diagrama dice "Filter dismissed" en la UI Surface — eso quedó
+> **desactualizado**. El filtrado ahora es **central**.
+
+`useControlV2Data` es el **único** lugar que filtra y sabe cuándo está listo.
+Devuelve:
+- **`signals`** — ya filtrado por **blocklist** (`user_signal_blocklist`, aplicado
+  en `buildControlSignals` vía `blockedFamilies`) **Y** por **dismissed**
+  (`control-dismiss-store`, filtro central con `dismissKeyFor`). Vacío hasta que
+  ambos filtros cargaron.
+- **`signalsReady`** — `(!userId || blocklist cargada) && dismissals hidratados`.
+  Las superficies que LISTAN señales muestran loading mientras es `false`.
+
+**Por qué:** antes cada consumidor (asistente, badge, Control, dot del tab, push,
+chip de Gastos) filtraba —o no— por su cuenta. Solo el asistente y el badge
+filtraban dismissed → el resto **mostraba/pusheaba señales descartadas**. Y como
+los filtros (blocklist + dismissals) cargan async, las señales aparecían sin
+filtrar y después se achicaban (cards que aparecen→desaparecen; badge "5→0").
+
+**Reglas para cualquier consumidor nuevo de `signals`:**
+1. NO re-filtres dismissed/blocklist — `signals` ya viene filtrado.
+2. Pasá el `userId` real a `useControlV2Data` (si no, no se aplica la blocklist).
+3. Si LISTÁS señales (o las contás como badge), gateá en `signalsReady` y mostrá
+   loading/0 hasta que sea `true` — nunca la lista sin filtrar.
+4. `dismissKeyFor` vive en `control-dismiss-store.ts` — usá ése, no lo dupliques.
+
+Los `dismissals` se seedean síncrono desde `home_snapshot` (`seedAdvisorDismissals`
+en seedCaches) → `useDismissalsHydrated` arranca `true` en cold start; el fetch
+async de `useAdvisorDismissalsSync` es backup.
+
 ### Diagrama de capa cognitiva (NEW)
 
 ```
