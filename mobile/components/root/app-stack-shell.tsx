@@ -190,7 +190,20 @@ export function AppStackShell() {
             visual transition work itself. Pure-navigation pushes to
             `/(tabs)` after login (and any internal swap) become
             free UI-thread work. */}
-        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+        {/* freezeOnBlur: false SOLO acá (override del global true). Con
+            freezeOnBlur, al pushear una pantalla de Settings (card full-screen)
+            el screen (tabs) se congela vía react-freeze + react-native-screens
+            lo desconecta; al volver, Reanimated sigue avanzando los shared
+            values pero escribe a un view tag inválido → TODAS las animaciones
+            de los tabs quedan congeladas hasta reiniciar la app (confirmado:
+            withRepeat sigue corriendo pero las views no actualizan). Mantener
+            (tabs) sin freeze preserva el binding de las views. Trade-off: los
+            tabs siguen vivos bajo Settings (costo de GPU menor mientras estás
+            en una sub-pantalla), aceptable vs el freeze permanente. */}
+        <Stack.Screen
+          name="(tabs)"
+          options={{ animation: 'none', freezeOnBlur: false }}
+        />
         <Stack.Screen
           name="onboarding"
           options={{
