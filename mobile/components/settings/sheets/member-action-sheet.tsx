@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { SettingsGroup, SettingsRow } from '@/components/settings/settings-grouped-list'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
 import {
@@ -17,10 +17,12 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
 
+type IconName = keyof typeof MaterialIcons.glyphMap
 type MemberAction = 'transfer' | 'block' | 'unblock' | 'remove'
 
 interface ConfirmSpec {
   action: MemberAction
+  icon: IconName
   title: string
   body: string
   cta: string
@@ -41,11 +43,13 @@ interface MemberActionSheetProps {
 
 /**
  * Sheet de detalle + acciones de un integrante de la familia. Reemplaza el
- * `ActionSheetIOS`/`Alert` nativo por el `ModalCard` del sistema.
+ * `ActionSheetIOS`/`Alert` nativo por el `ModalCard` del sistema, con el
+ * contenido CENTRADO (identidad tipo contact-card de iOS, métricas y acciones
+ * centradas, confirmación tipo alert de iOS).
  *
- * Dos estados en el MISMO sheet: detalle (identidad + métricas + acciones) y
- * confirmación inline. Confirmar dentro del mismo sheet (en vez de abrir un
- * segundo modal) evita el gotcha de modal-chain de iOS.
+ * Dos estados en el MISMO sheet: detalle y confirmación inline. Confirmar
+ * dentro del mismo sheet (en vez de abrir un segundo modal) evita el gotcha de
+ * modal-chain de iOS.
  */
 export function MemberActionSheet({
   member,
@@ -105,21 +109,36 @@ export function MemberActionSheet({
   }
 
   const name = m.displayName
+  const surface = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
-    <ModalCard
-      visible={visible}
-      title={confirm ? confirm.title : ''}
-      subtitle=""
-      onClose={onClose}
-    >
+    <ModalCard visible={visible} title="" subtitle="" onClose={onClose}>
       {confirm ? (
-        <View style={styles.stack}>
+        <View style={styles.confirmCenter}>
+          <View
+            style={[
+              styles.confirmIcon,
+              {
+                backgroundColor: confirm.danger
+                  ? theme.colors.peachSoft
+                  : theme.colors.primarySurface,
+              },
+            ]}
+          >
+            <MaterialIcons
+              name={confirm.icon}
+              size={26}
+              color={confirm.danger ? theme.colors.danger : theme.colors.primaryStrong}
+            />
+          </View>
+          <Text style={[styles.confirmTitle, { color: theme.colors.text }]}>
+            {confirm.title}
+          </Text>
           <Text style={[styles.confirmBody, { color: theme.colors.textMuted }]}>
             {confirm.body}
           </Text>
           {error ? (
-            <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+            <Text style={[styles.confirmError, { color: theme.colors.danger }]}>
               {error}
             </Text>
           ) : null}
@@ -145,44 +164,34 @@ export function MemberActionSheet({
         </View>
       ) : (
         <View style={styles.stack}>
-          {/* Identidad */}
+          {/* Identidad — contact-card centrada (iOS feel) */}
           <View style={styles.identity}>
             {m.avatarAnimal ? (
-              <AvatarAnimal slug={m.avatarAnimal} size={48} />
+              <AvatarAnimal slug={m.avatarAnimal} size={64} />
             ) : (
-              <Avatar name={name} color={theme.colors.primary} size={48} />
+              <Avatar name={name} color={theme.colors.primary} size={64} />
             )}
-            <View style={styles.identityCopy}>
-              <View style={styles.nameRow}>
-                <Text
-                  style={[styles.name, { color: theme.colors.text }]}
-                  numberOfLines={1}
-                >
-                  {name}
-                  {isMe ? ' (tú)' : ''}
-                </Text>
-                <RoleBadge role={m.role} />
-              </View>
+            <View style={styles.nameRow}>
               <Text
-                style={[styles.since, { color: theme.colors.textMuted }]}
+                style={[styles.name, { color: theme.colors.text }]}
                 numberOfLines={1}
               >
-                {formatMemberSince(m.memberSince)}
+                {name}
+                {isMe ? ' (tú)' : ''}
               </Text>
+              <RoleBadge role={m.role} />
             </View>
+            <Text
+              style={[styles.since, { color: theme.colors.textMuted }]}
+              numberOfLines={1}
+            >
+              {formatMemberSince(m.memberSince)}
+            </Text>
           </View>
 
-          {/* Métricas */}
+          {/* Métricas — celdas centradas */}
           <View
-            style={[
-              styles.statsCard,
-              {
-                backgroundColor: theme.isDark
-                  ? theme.colors.surfaceMuted
-                  : theme.colors.creamCard,
-                borderColor: theme.colors.line,
-              },
-            ]}
+            style={[styles.statsCard, { backgroundColor: surface, borderColor: theme.colors.line }]}
           >
             <View style={styles.statsRow}>
               <StatCell
@@ -196,6 +205,7 @@ export function MemberActionSheet({
                 secondary={m.lastExpenseAt ? formatRelative(m.lastExpenseAt) : '—'}
               />
             </View>
+            <View style={[styles.statsDivider, { backgroundColor: theme.colors.line }]} />
             <View style={styles.statsRow}>
               <StatCell
                 label="Racha"
@@ -210,91 +220,140 @@ export function MemberActionSheet({
             </View>
           </View>
 
-          {/* Acciones */}
+          {/* Acciones — filas centradas (iOS action-sheet feel) */}
           {isMe ? (
             <Text style={[styles.ownerNote, { color: theme.colors.textMuted }]}>
               Sos el dueño de la familia. Desde acá gestionás al resto de los
               integrantes.
             </Text>
-          ) : m.role === 'blocked' ? (
-            <SettingsGroup title="Acciones">
-              <SettingsRow
-                icon="lock-open"
-                label="Desbloquear"
-                onPress={() =>
-                  setConfirm({
-                    action: 'unblock',
-                    title: 'Desbloquear integrante',
-                    body: `${name} va a volver a poder cargar gastos.`,
-                    cta: 'Desbloquear',
-                    danger: false,
-                  })
-                }
-              />
-              <SettingsRow
-                icon="person-remove"
-                label="Eliminar de la familia"
-                destructive
-                isLast
-                onPress={() =>
-                  setConfirm({
-                    action: 'remove',
-                    title: 'Eliminar de la familia',
-                    body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
-                    cta: 'Eliminar',
-                    danger: true,
-                  })
-                }
-              />
-            </SettingsGroup>
           ) : (
-            <SettingsGroup title="Acciones">
-              <SettingsRow
-                icon="swap-horiz"
-                label="Transferir propiedad"
-                onPress={() =>
-                  setConfirm({
-                    action: 'transfer',
-                    title: 'Transferir propiedad',
-                    body: `Vas a transferir la propiedad a ${name}. Vas a perder la capacidad de editar la familia.`,
-                    cta: 'Transferir',
-                    danger: true,
-                  })
-                }
-              />
-              <SettingsRow
-                icon="block"
-                label="Bloquear integrante"
-                onPress={() =>
-                  setConfirm({
-                    action: 'block',
-                    title: 'Bloquear integrante',
-                    body: `${name} no va a poder cargar nuevos gastos. Sus datos quedan visibles.`,
-                    cta: 'Bloquear',
-                    danger: false,
-                  })
-                }
-              />
-              <SettingsRow
-                icon="person-remove"
-                label="Eliminar de la familia"
-                destructive
-                isLast
-                onPress={() =>
-                  setConfirm({
-                    action: 'remove',
-                    title: 'Eliminar de la familia',
-                    body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
-                    cta: 'Eliminar',
-                    danger: true,
-                  })
-                }
-              />
-            </SettingsGroup>
+            <View
+              style={[styles.actionsCard, { backgroundColor: surface, borderColor: theme.colors.line }]}
+            >
+              {m.role === 'blocked' ? (
+                <>
+                  <ActionRow
+                    icon="lock-open"
+                    label="Desbloquear"
+                    onPress={() =>
+                      setConfirm({
+                        action: 'unblock',
+                        icon: 'lock-open',
+                        title: 'Desbloquear integrante',
+                        body: `${name} va a volver a poder cargar gastos.`,
+                        cta: 'Desbloquear',
+                        danger: false,
+                      })
+                    }
+                  />
+                  <ActionRow
+                    icon="person-remove"
+                    label="Eliminar de la familia"
+                    destructive
+                    isLast
+                    onPress={() =>
+                      setConfirm({
+                        action: 'remove',
+                        icon: 'person-remove',
+                        title: 'Eliminar de la familia',
+                        body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
+                        cta: 'Eliminar',
+                        danger: true,
+                      })
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <ActionRow
+                    icon="swap-horiz"
+                    label="Transferir propiedad"
+                    onPress={() =>
+                      setConfirm({
+                        action: 'transfer',
+                        icon: 'swap-horiz',
+                        title: 'Transferir propiedad',
+                        body: `Vas a transferir la propiedad a ${name}. Vas a perder la capacidad de editar la familia.`,
+                        cta: 'Transferir',
+                        danger: true,
+                      })
+                    }
+                  />
+                  <ActionRow
+                    icon="block"
+                    label="Bloquear integrante"
+                    onPress={() =>
+                      setConfirm({
+                        action: 'block',
+                        icon: 'block',
+                        title: 'Bloquear integrante',
+                        body: `${name} no va a poder cargar nuevos gastos. Sus datos quedan visibles.`,
+                        cta: 'Bloquear',
+                        danger: false,
+                      })
+                    }
+                  />
+                  <ActionRow
+                    icon="person-remove"
+                    label="Eliminar de la familia"
+                    destructive
+                    isLast
+                    onPress={() =>
+                      setConfirm({
+                        action: 'remove',
+                        icon: 'person-remove',
+                        title: 'Eliminar de la familia',
+                        body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
+                        cta: 'Eliminar',
+                        danger: true,
+                      })
+                    }
+                  />
+                </>
+              )}
+            </View>
           )}
         </View>
       )}
     </ModalCard>
+  )
+}
+
+// ─── Fila de acción centrada (icono + label) ──────────────────────────────
+interface ActionRowProps {
+  icon: IconName
+  label: string
+  destructive?: boolean
+  isLast?: boolean
+  onPress: () => void
+}
+
+function ActionRow({ icon, label, destructive = false, isLast = false, onPress }: ActionRowProps) {
+  const { theme } = useAppTheme()
+  const color = destructive ? theme.colors.danger : theme.colors.text
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        void triggerHaptic('selection')
+        onPress()
+      }}
+      style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+    >
+      <View
+        style={[
+          styles.actionRow,
+          !isLast && {
+            borderBottomColor: theme.colors.line,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+          },
+        ]}
+      >
+        <MaterialIcons name={icon} size={20} color={color} />
+        <Text style={[styles.actionLabel, { color }]}>{label}</Text>
+      </View>
+    </Pressable>
   )
 }
 
@@ -337,30 +396,30 @@ function StatCell({ label, primary, secondary }: StatCellProps) {
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: 16 },
+  stack: { gap: 18 },
+  // Identidad centrada
   identity: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  identityCopy: {
-    flex: 1,
-    gap: 4,
+    gap: 8,
+    paddingTop: 2,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     flexWrap: 'wrap',
   },
   name: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '800',
     letterSpacing: -0.3,
-    maxWidth: '68%',
+    textAlign: 'center',
+    maxWidth: '74%',
   },
   since: {
     fontSize: 12,
+    textAlign: 'center',
   },
   badge: {
     paddingHorizontal: 8,
@@ -374,52 +433,104 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
+  // Métricas
   statsCard: {
     borderRadius: radii.lg,
     borderWidth: 1,
-    padding: 14,
-    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    gap: 14,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 12,
   },
+  statsDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 4,
+  },
   statCell: {
     flex: 1,
-    gap: 2,
+    gap: 3,
+    alignItems: 'center',
   },
   statLabel: {
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
   statPrimary: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
   statSecondary: {
     fontSize: 11,
+    textAlign: 'center',
+  },
+  // Acciones centradas
+  actionsCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 52,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  actionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   ownerNote: {
     fontSize: 13,
     lineHeight: 18,
-    paddingHorizontal: 4,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  // Confirmación centrada (iOS alert feel)
+  confirmCenter: {
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 4,
+  },
+  confirmIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   confirmBody: {
     fontSize: 14,
     lineHeight: 20,
-    paddingHorizontal: 2,
+    textAlign: 'center',
+    paddingHorizontal: 6,
   },
-  errorText: {
+  confirmError: {
     fontSize: 12,
     fontWeight: '600',
-    paddingHorizontal: 2,
+    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
+    marginTop: 6,
+    alignSelf: 'stretch',
   },
 })

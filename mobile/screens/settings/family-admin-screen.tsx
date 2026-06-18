@@ -93,6 +93,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
       title="Gestión de familia"
       subtitle="Roles, bloqueos y transferencias"
       canGoBack
+      bodyStyle={styles.body}
       backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       refreshControl={
         <RefreshControl
@@ -262,6 +263,12 @@ function EmptyRow({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  // El wrapper del body del <Screen> no trae gap propio → sin esto el hero y
+  // la primera sección quedan pegados. 24 = tier de separación entre secciones
+  // (rhythm de 8), da el aire de "grouped list" de iOS.
+  body: {
+    gap: 24,
+  },
   hero: {
     borderRadius: radii.xl,
     padding: 20,
