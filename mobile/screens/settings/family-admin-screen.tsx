@@ -166,7 +166,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
 
       <MemberActionSheet
         member={selected}
-        isMe={selected ? selected.userId === userId : false}
+        currentUserId={userId}
         onClose={() => setSelected(null)}
         onTransfer={(member) => transferMutation.mutateAsync({ targetUserId: member.userId })}
         onBlock={(member) => blockMutation.mutateAsync({ targetUserId: member.userId })}

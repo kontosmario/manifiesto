@@ -32,8 +32,10 @@ interface ConfirmSpec {
 interface MemberActionSheetProps {
   /** El integrante seleccionado. `null` = sheet cerrado. */
   member: FamilyMemberStats | null
-  /** True si la fila tocada es la del propio dueño (sin acciones). */
-  isMe: boolean
+  /** El id del usuario actual (dueño). `isMe` se deriva del integrante
+   *  CACHEADO, no de `member` (que se vuelve null al cerrar) — sino durante la
+   *  animación de salida el dueño "saltaría" a mostrar las acciones. */
+  currentUserId: string
   onClose: () => void
   onTransfer: (member: FamilyMemberStats) => Promise<unknown>
   onBlock: (member: FamilyMemberStats) => Promise<unknown>
@@ -53,7 +55,7 @@ interface MemberActionSheetProps {
  */
 export function MemberActionSheet({
   member,
-  isMe,
+  currentUserId,
   onClose,
   onTransfer,
   onBlock,
@@ -80,6 +82,9 @@ export function MemberActionSheet({
   }, [member])
 
   const m = member ?? cachedRef.current
+  // Derivado del integrante CACHEADO (no de `member`) para que no cambie
+  // durante la animación de salida.
+  const isMe = m != null && m.userId === currentUserId
 
   function runFor(action: MemberAction, target: FamilyMemberStats): Promise<unknown> {
     if (action === 'transfer') return onTransfer(target)
@@ -143,23 +148,27 @@ export function MemberActionSheet({
             </Text>
           ) : null}
           <View style={styles.buttonRow}>
-            <AppButton
-              label="Cancelar"
-              variant="ghost"
-              disabled={submitting}
-              onPress={() => {
-                setConfirm(null)
-                setError(null)
-              }}
-            />
-            <AppButton
-              label={confirm.cta}
-              variant={confirm.danger ? 'danger' : 'primary'}
-              loading={submitting}
-              onPress={() => {
-                void handleConfirm()
-              }}
-            />
+            <View style={styles.buttonCell}>
+              <AppButton
+                label="Cancelar"
+                variant="ghost"
+                disabled={submitting}
+                onPress={() => {
+                  setConfirm(null)
+                  setError(null)
+                }}
+              />
+            </View>
+            <View style={styles.buttonCell}>
+              <AppButton
+                label={confirm.cta}
+                variant={confirm.danger ? 'danger' : 'primary'}
+                loading={submitting}
+                onPress={() => {
+                  void handleConfirm()
+                }}
+              />
+            </View>
           </View>
         </View>
       ) : (
@@ -532,5 +541,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 6,
     alignSelf: 'stretch',
+  },
+  // Celda flex:1 para que ambos botones queden 50/50 (parejos). El AppButton
+  // es fullWidth → estira al ancho de la celda; el label ya va centrado.
+  buttonCell: {
+    flex: 1,
   },
 })
