@@ -287,6 +287,8 @@ function HomeHeroCardImpl({
         <RiseView delay={80}>
           <CountUpText
             value={data.availableToday}
+            flourish
+            glowColor={theme.colors.heroAccent}
             format={(n) => formatMoney(n)}
             style={[
               styles.amount,

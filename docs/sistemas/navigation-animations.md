@@ -165,13 +165,60 @@ anomalías de LÓGICA (re-mounts, resets, dobles), no para medir suavidad verdad
 
 ---
 
-## 6. Checklist para un screen de tab nuevo (no reintroducir el jank)
+## 6. El monto del hero — conteo FLUIDO en el UI thread (`count-up-text.tsx`)
+
+El número grande de los heroes (Home: saldo · Gastos: total · Control: días/plata) cuenta
+de 0 al valor al revelarse. La versión JS clásica (un `setState` por frame con el número
+formateado) **se traba en este device**: medido con un sampler, durante el conteo el JS
+thread sufre stalls de **78–171ms** — el `setState` compite con el render churn del boot
+(snapshot + los 4 tabs pre-montados por `lazy:false` + los 3 heroes contando a la vez). El
+UI thread estaba sano (dt≈8ms a 120Hz); el cuello era 100% el JS thread. Diferir el conteo
+(`runAfterInteractions`) y throttlear el muestreo **no alcanzó** — los stalls persistían.
+
+### La técnica (la prop `flourish`)
+
+El monto principal NO usa `setState`. El string se **deriva del `progress` (shared value)
+en el UI thread** y se inyecta como la prop `text` de un `TextInput` vía `useAnimatedProps`
+→ **cero render/`setState` por frame** → corre a 60/120fps, imposible que se trabe. Es el
+patrón estándar de Reanimated para texto animado (docs swmansion + Varun Kukade).
+
+- `Animated.addWhitelistedNativeProps({ text: true })` + `Animated.createAnimatedComponent(TextInput)`.
+- `useDerivedValue(() => formatCountWorklet(progress.value, unit))` → el string, en worklet.
+- `useAnimatedProps(() => ({ text, defaultValue }))` → inyecta el texto en el UI thread.
+- **Formateo en worklet** (`Intl` CRASHEA el UI runtime, ver `feedback_reanimated_worklet_globals`):
+  `formatCountWorklet` arma el separador de miles es-AR a mano (puntos) + `$`, o el entero
+  pelado (`unit: 'integer'`, p.ej. "DÍAS HASTA AGOTAR").
+- El `TextInput` va `editable={false}`, `padding/margin: 0`, `includeFontPadding: false`
+  (Android) para quedar idéntico a un `<Text>` en el layout.
+
+`CountUpText` despacha por `flourish` → `<FluidCountText>` (UI thread; los 3 heroes) o
+`<JsCountText>` (conteo JS clásico — diferido a `runAfterInteractions` + muestreo por
+tiempo; para montos secundarios chicos donde el jank no se nota). El reveal-desde-0 de la
+§3 (`hasRevealedRef`) se preserva en ambos modos.
+
+### El destello (variante 6, acorde al theme)
+
+Al asentar: un **brillo breve del accent** (`textShadow` vía `interpolateColor` de alpha +
+`textShadowRadius`) que sube rápido (pico ~25% de 600ms) y se disuelve. Sin rebote de
+escala. Sutil: pico `GLOW_PEAK = 0.45` (alpha y radio escalan juntos con `glow` → ~0.45
+alpha / ~8px). El color lo pasan los heroes desde el theme: Home/Gastos `heroAccent`
+(lime); Control el `tone` del estado (el destello combina con el número rojo/peach/verde).
+
+**Regla:** para un número que cuenta y tiene que sentirse premium, NO uses `setState` por
+frame — animá un `TextInput` con `useAnimatedProps` y formateá en worklet. El conteo por
+`setState` siempre compite por el JS thread y se traba en boots/devices cargados.
+
+---
+
+## 7. Checklist para un screen de tab nuevo (no reintroducir el jank)
 
 - [ ] ¿Renderea de caches warm-seedeadas por `home_snapshot`? Si tiene snapshot propio,
       seedéalo síncrono y gateá el contenido en `!data` con `keepPreviousData`.
 - [ ] ¿Algún queryKey incluye un float/valor derivado volátil? Redondealo o sacalo.
 - [ ] ¿`CountUpText` u otra animación de número? Que el primer reveal sea desde 0 y los cambios
-      posteriores desde el valor actual.
+      posteriores desde el valor actual. Para el monto PRINCIPAL del hero usá `flourish` (conteo
+      en el UI thread vía `TextInput`+`useAnimatedProps`; ver §6) — el conteo por `setState` se
+      traba.
 - [ ] ¿FlatList/SectionList? `ListHeaderComponent` de altura estable; reservá altura para
       elementos async (no `null`→grow).
 - [ ] ¿`LinearTransition`/`entering` en el árbol? Gatealos (`useGatedLayout` / `RiseViewGate

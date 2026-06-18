@@ -122,7 +122,8 @@ function GastosHeroCardImpl({
 
           <CountUpText
             value={totalVisible}
-            duration={1200}
+            flourish
+            glowColor={theme.colors.heroAccent}
             format={(n) => formatMoney(n)}
             style={[styles.amount, { color: theme.colors.heroText }]}
           />

@@ -99,6 +99,9 @@ export function ControlHeroTitular({ state }: Props) {
           </Text>
           <CountUpText
             value={msg.primaryNumber}
+            flourish
+            unit={msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? 'integer' : 'money'}
+            glowColor={tone}
             duration={900}
             format={(n) => (msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? String(Math.round(n)) : formatMoney(Math.round(n)))}
             style={[styles.numberValue, { color: tone }]}
