@@ -45,6 +45,9 @@ export interface UseFijosControllerResult {
   groups: FijoCategoryGroup[]
   tab: FijosTab
   setTab: (tab: FijosTab) => void
+  /** Tabs con datos, en orden de urgencia (vencidos → pendientes → pagados).
+   *  Las vacías no se muestran; si ninguna tiene datos → ['pendientes']. */
+  visibleTabs: FijosTab[]
   monthlyIncome: number
   freeAfterFijos: number
   pctOfIncome: number
@@ -181,22 +184,42 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     return summary.pendingItems
   }, [tab, summary])
 
-  // Auto-promote a 'vencidos' SOLO la primera vez que el data está
-  // cargado y hay vencidos. Si el user ya tocó alguna tab, respetamos
-  // su selección. Esto evita "secuestro" del tab cuando el user fue a
-  // 'pagados' y luego un refetch trae un nuevo vencido.
-  useEffect(() => {
-    if (userInteractedWithTabsRef.current) return
-    if (fixedExpensesQuery.isLoading) return
-    if (summary.overdueItems.length > 0 && tab !== 'vencidos') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- promote initial tab once data loads
-      setTab('vencidos')
-    }
+  // Solo las tabs con datos, en orden de urgencia. Si NINGUNA tiene (caso raro:
+  // todos los fijos son 'future', sin vencidos/pendientes/pagados este ciclo)
+  // caemos a ['pendientes'] para no dejar la barra vacía.
+  const visibleTabs = useMemo<FijosTab[]>(() => {
+    const visible = (['vencidos', 'pendientes', 'pagados'] as FijosTab[]).filter(
+      (t) =>
+        t === 'vencidos'
+          ? summary.overdueItems.length > 0
+          : t === 'pendientes'
+            ? summary.pendingItems.length > 0
+            : summary.paidItems.length > 0,
+    )
+    return visible.length > 0 ? visible : ['pendientes']
   }, [
-    fixedExpensesQuery.isLoading,
     summary.overdueItems.length,
-    tab,
+    summary.pendingItems.length,
+    summary.paidItems.length,
   ])
+
+  // Mantené el tab activo SIEMPRE válido + default al más urgente visible.
+  //  - Si el tab activo se quedó sin datos (ej. pagaste el último vencido), la
+  //    tab desaparece → saltamos a la primera visible (orden de urgencia).
+  //  - En la primera carga (sin interacción del user) abrimos en la más urgente
+  //    visible. Una vez que el user tocó una tab, respetamos su selección —
+  //    salvo que esa tab desaparezca.
+  useEffect(() => {
+    if (fixedExpensesQuery.isLoading) return
+    if (!visibleTabs.includes(tab)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- redirección cuando el tab activo se queda sin datos
+      setTab(visibleTabs[0])
+      return
+    }
+    if (!userInteractedWithTabsRef.current && tab !== visibleTabs[0]) {
+      setTab(visibleTabs[0])
+    }
+  }, [fixedExpensesQuery.isLoading, visibleTabs, tab])
 
   const categories = useMemo(
     () =>
@@ -251,6 +274,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     groups,
     tab,
     setTab: setTabUserDriven,
+    visibleTabs,
     monthlyIncome,
     freeAfterFijos,
     pctOfIncome,

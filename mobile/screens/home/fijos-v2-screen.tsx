@@ -511,6 +511,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
           <FijosTabs
             tab={controller.tab}
             setTab={controller.setTab}
+            visibleTabs={controller.visibleTabs}
             counts={{
               // 3 tabs (v4 2026-05-31): vencidos / pendientes / pagados.
               // Future items (fijos programados sin pagar) viven en
