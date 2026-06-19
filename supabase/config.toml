@@ -448,6 +448,11 @@ verify_jwt = true
 [functions.validate-purchase]
 verify_jwt = true
 
+# usd-rate: llamada desde el cliente con el JWT de sesión + auth.getUser()
+# server-side. verify_jwt=true (mismo patrón que register-push/validate-purchase).
+[functions.usd-rate]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

@@ -38,6 +38,7 @@ import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-
 import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
 import { EditCycleConfigSheet } from '@/components/settings/sheets/edit-cycle-config-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
+import { EditCurrencySheet } from '@/components/settings/sheets/edit-currency-sheet'
 import { EditUsdRateSheet } from '@/components/settings/sheets/edit-usd-rate-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
@@ -176,6 +177,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       savingsGoal: dashboard.savingsGoal,
       savingsGoalPercent: dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
       usdExchangeRate: dashboard.usdExchangeRate,
+      localCurrency: dashboard.familyFinanceQuery.data?.local_currency ?? 'ARS',
       currentCycleStartingBalance:
         dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
       currentCycleAnchor:
@@ -203,6 +205,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       dashboard.salaryPaymentDay,
       dashboard.savingsGoal,
       dashboard.usdExchangeRate,
+      dashboard.familyFinanceQuery.data?.local_currency,
     ],
   )
 
@@ -212,6 +215,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
   const [cycleConfigSheetOpen, setCycleConfigSheetOpen] = useState(false)
   const [usdSheetOpen, setUsdSheetOpen] = useState(false)
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false)
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
@@ -491,6 +495,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     [financeSnapshot, saveFinanceSnapshot],
   )
 
+  const handleSaveCurrency = useCallback(
+    (value: string) => {
+      saveFinanceSnapshot(
+        { ...financeSnapshot, localCurrency: value },
+        () => setCurrencySheetOpen(false),
+      )
+    },
+    [financeSnapshot, saveFinanceSnapshot],
+  )
+
   const handleSaveSavingsPercent = useCallback(
     (value: number) => {
       saveFinanceSnapshot(
@@ -760,6 +774,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
       : undefined
   const usdValue = currencyFormatter.format(financeSnapshot.usdExchangeRate)
+  const currencyValue = financeSnapshot.localCurrency ?? 'ARS'
   const currentCycleConfig = useMemo<FinanceCycleConfig>(
     () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
     [dashboard.familyFinanceQuery.data],
@@ -940,6 +955,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   label="Ciclo de cobro"
                   onPress={() => setCycleConfigSheetOpen(true)}
                   value={cycleConfigValue}
+                />
+                <SettingsRow
+                  disabled={!isOwner}
+                  disabledHint={DISABLED_HINT}
+                  helper="Contra qué moneda se calcula el equivalente en dólares."
+                  icon="language"
+                  label="Moneda"
+                  onPress={() => setCurrencySheetOpen(true)}
+                  value={currencyValue}
                 />
                 <SettingsRow
                   disabled={!isOwner}
@@ -1506,6 +1530,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onClose={() => setUsdSheetOpen(false)}
         onSave={handleSaveUsd}
         visible={usdSheetOpen}
+      />
+      <EditCurrencySheet
+        currentValue={financeSnapshot.localCurrency ?? 'ARS'}
+        isSaving={upsertFamilyFinanceMutation.isPending}
+        onClose={() => setCurrencySheetOpen(false)}
+        onSave={handleSaveCurrency}
+        visible={currencySheetOpen}
       />
       <EditSavingsPercentSheet
         currentValue={financeSnapshot.savingsGoalPercent}

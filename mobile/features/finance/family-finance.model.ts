@@ -9,6 +9,10 @@ export interface FinanceStoragePayload {
   savings_goal: number
   savings_goal_percent: number
   usd_exchange_rate: number
+  /** Moneda operativa del hogar (ISO 4217). Default 'ARS'. Determina contra
+   *  qué moneda se trae la cotización USD. Opcional en el payload: cuando un
+   *  upsert NO la incluye (undefined), se preserva el valor existente. */
+  local_currency?: string
   salary_payment_day: number
   last_salary_confirmed_at: string | null
   /**
@@ -53,6 +57,10 @@ export interface UpsertFamilyFinanceInput {
   savingsGoal: number
   savingsGoalPercent: number
   usdExchangeRate: number
+  /** Opcional: solo el setting de moneda lo manda. Si va undefined, el upsert
+   *  lo OMITE (Supabase descarta undefined) → preserva el valor existente, así
+   *  un save de otro campo (sueldo, etc.) no pisa la moneda. */
+  localCurrency?: string
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -71,6 +79,10 @@ export interface FamilyFinanceInputSnapshot {
   savingsGoal: number
   savingsGoalPercent: number
   usdExchangeRate: number
+  /** Opcional: solo el setting de moneda lo manda. Si va undefined, el upsert
+   *  lo OMITE (Supabase descarta undefined) → preserva el valor existente, así
+   *  un save de otro campo (sueldo, etc.) no pisa la moneda. */
+  localCurrency?: string
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -84,6 +96,12 @@ const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])
 
 export const DEFAULT_USD_EXCHANGE_RATE = 1000
+/** Monedas LatAm soportadas para la conversión USD (ISO 4217). */
+export const SUPPORTED_CURRENCIES = [
+  'ARS', 'CLP', 'COP', 'MXN', 'UYU', 'PEN', 'BRL', 'USD',
+] as const
+export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number]
+export const DEFAULT_LOCAL_CURRENCY: SupportedCurrency = 'ARS'
 export const DEFAULT_SALARY_PAYMENT_DAY = 1
 export const DEFAULT_DAILY_BUDGET_BUFFER_MODE = 'none'
 export const DEFAULT_DAILY_BUDGET_CHECKIN_HOUR = 9
@@ -149,6 +167,7 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     savings_goal: 0,
     savings_goal_percent: DEFAULT_SAVINGS_GOAL_PERCENT,
     usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
+    local_currency: DEFAULT_LOCAL_CURRENCY,
     salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
     last_salary_confirmed_at: null,
     current_cycle_starting_balance: null,
@@ -198,6 +217,15 @@ export function normalizeFinancePayload(
       Number.isFinite(usdExchangeRate) && usdExchangeRate > 0
         ? usdExchangeRate
         : base.usd_exchange_rate,
+    local_currency: (() => {
+      const raw =
+        typeof payload?.local_currency === 'string'
+          ? payload.local_currency.toUpperCase().trim()
+          : ''
+      return (SUPPORTED_CURRENCIES as readonly string[]).includes(raw)
+        ? raw
+        : DEFAULT_LOCAL_CURRENCY
+    })(),
     salary_payment_day:
       Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
         ? salaryPaymentDay
@@ -292,6 +320,7 @@ export function isMissingFinanceColumnError(
     | 'daily_budget_nudges_enabled'
     | 'daily_budget_checkin_hour'
     | 'savings_goal_percent'
+    | 'local_currency'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor',
 ) {
@@ -310,6 +339,7 @@ export function financeInputToStoragePayload(
     savings_goal: deriveSavingsGoalAmount(input.monthlyIncome, input.savingsGoalPercent),
     savings_goal_percent: clampPercent(input.savingsGoalPercent, MAX_SAVINGS_GOAL_PERCENT),
     usd_exchange_rate: input.usdExchangeRate,
+    local_currency: input.localCurrency,
     salary_payment_day: input.salaryPaymentDay,
     last_salary_confirmed_at: input.lastSalaryConfirmedAt,
     current_cycle_starting_balance: input.currentCycleStartingBalance,
@@ -410,6 +440,13 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     }
   }
 
+  if (
+    input.localCurrency !== undefined &&
+    !(SUPPORTED_CURRENCIES as readonly string[]).includes(input.localCurrency)
+  ) {
+    throw new Error('Moneda no soportada.')
+  }
+
   return financeInputToStoragePayload(input)
 }
 
@@ -425,6 +462,7 @@ export function buildFamilyFinanceInput(
     savingsGoal: deriveSavingsGoalAmount(snapshot.monthlyIncome, snapshot.savingsGoalPercent),
     savingsGoalPercent: snapshot.savingsGoalPercent,
     usdExchangeRate: snapshot.usdExchangeRate,
+    localCurrency: snapshot.localCurrency,
     salaryPaymentDay: snapshot.salaryPaymentDay,
     lastSalaryConfirmedAt: snapshot.lastSalaryConfirmedAt,
     currentCycleStartingBalance: snapshot.currentCycleStartingBalance,

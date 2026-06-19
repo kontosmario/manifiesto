@@ -97,6 +97,7 @@ export async function upsertFamilyFinance(
     | 'salary_payment_day'
     | 'savings_goal_percent'
     | 'usd_exchange_rate'
+    | 'local_currency'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor'
   > = [
@@ -108,6 +109,7 @@ export async function upsertFamilyFinance(
     'salary_payment_day',
     'savings_goal_percent',
     'usd_exchange_rate',
+    'local_currency',
     'current_cycle_starting_balance',
     'current_cycle_anchor',
   ]
