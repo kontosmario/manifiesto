@@ -43,7 +43,7 @@ export function EditCurrencySheet({
     <ModalCard
       visible={visible}
       title="Moneda"
-      subtitle="La moneda de tu hogar. Define contra qué moneda se calcula el equivalente en dólares."
+      subtitle="La moneda de tu hogar. La cotización contra el dólar se trae sola y se actualiza."
       onClose={onClose}
     >
       <View style={styles.list}>
