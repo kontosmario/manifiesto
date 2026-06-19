@@ -18,8 +18,10 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 **vivo en prod** y verificado e2e en sandbox.
 
 **Lo que BLOQUEA el launch hoy** (resumen):
-1. 🔴 **Build nuevo** — el binario en App Store Connect (1.0 build 1) es ANTERIOR
-   a TODO el trabajo de suscripciones. Hay que generar y subir un build nuevo.
+1. ✅ **Build nuevo** — build **1.0.0 (6)** generado + subido a App Store Connect
+   (2026-06-19, `eas build --auto-submit`). Incluye suscripciones + el trabajo de
+   esta semana (rediseño de familia, contador fluido, fix de notificaciones).
+   **Falta atarlo a la versión 1.0 en ASC (B2)** y enviarlo a review.
 2. ✅ **Paid Apps Agreement activo** — hecho (banking vía DolarApp, 2026-06-15).
 3. 🔴 **Primera suscripción enviada a revisión** con la versión de la app (Apple
    lo exige para el primer producto auto-renovable). Ver §1.
@@ -69,8 +71,9 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 
 | # | Item | Estado | Detalle |
 |---|---|---|---|
-| B1 | **Build nuevo con TODO el trabajo de suscripciones** | 🔴 | El 1.0 (1) actual NO tiene nada de esto (es código nativo RN, no viaja por OTA). Bump `buildNumber`, `eas build` + `eas submit`. |
-| B2 | Atar el build nuevo a la versión 1.0 en App Store Connect | 🔴 | Reemplaza el (1). |
+| B1 | **Build nuevo con TODO el trabajo de suscripciones** | ✅ | **Build 1.0.0 (6)** subido a ASC 2026-06-19 (`eas build --profile production --auto-submit`). Incluye suscripciones + rediseño de familia + contador fluido + fix de notificaciones. Build ID `74688ee5`. |
+| B2 | Atar el build nuevo a la versión 1.0 en App Store Connect | 🔴 | **PENDIENTE (owner)** — en ASC, versión 1.0 → seleccionar el build (6). Reemplaza el (1). |
+| B5 | **OTA bloqueado** (post-launch) | ⚠️ | La firma de updates (`codeSigningCertificate`) requiere **EAS Enterprise**, que la cuenta no tiene → `eas update` falla al firmar. Implicancia: **todo cambio de JS requiere build** hasta resolver el plan (o sacar la firma). No bloquea esta submission. |
 | B3 | hCaptcha baseUrl al dominio propio | ✅ | Ya configurado (commit `8f3d5b8`). |
 | B4 | Verificar `npx expo export --platform ios` antes del build | ✅ | Se corre en cada cambio; última corrida verde. |
 
