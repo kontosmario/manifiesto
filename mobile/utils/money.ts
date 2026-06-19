@@ -139,6 +139,13 @@ export function formatMoney(n: number, opts: { zeroAsDash?: boolean } = {}): str
   return '$' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
 }
 
+/** "US$ 841" — entero, sin decimales, separador de miles es-AR. Para mostrar
+ *  equivalentes en dólares de forma compacta (no usa el currency style de
+ *  usdFormatter, que mete ",00"). */
+export function formatUsd(n: number): string {
+  return 'US$ ' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
+}
+
 export function formatMoneyWithSign(n: number): string {
   const sign = n > 0 ? '+' : n < 0 ? '-' : ''
   return `${sign}${formatMoney(n)}`

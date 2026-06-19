@@ -48,6 +48,7 @@ import {
   type DashboardErrorKind,
 } from '@/features/home/home-dashboard-model'
 import { useHomeMetrics } from '@/features/home/use-home-metrics'
+import { useUsdRate } from '@/features/finance/use-usd-rate'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import {
   logHomeEvent,
@@ -830,6 +831,30 @@ export function HomeDashboard({
   // The dashboard model already prorates for cycle-balance overrides
   // and clamps `savingsRemaining` to ≥ 0, so we feed those values
   // straight into the pure helper.
+  // Cotización en dólares para la línea susurro del hero. Gateada por el toggle
+  // (usd_rate_enabled) + moneda ≠ USD; el hook queda disabled si no aplica (no
+  // fetchea). El equivalente del saldo se recalcula solo cuando cambia el saldo
+  // o el rate. null en loading/off/USD → el hero no muestra la línea.
+  const usdRateCurrency = dashboard.familyFinanceQuery.data?.local_currency ?? 'ARS'
+  const usdRateEnabled =
+    (dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? true) &&
+    usdRateCurrency !== 'USD'
+  const usdRateQuery = useUsdRate(usdRateEnabled ? usdRateCurrency : undefined)
+  const usdConversion = useMemo(() => {
+    const rate = usdRateQuery.data
+    if (!usdRateEnabled || !rate || !homeMetrics.hero.incomeConfigured) return null
+    if (!Number.isFinite(rate.ratePerUsd) || rate.ratePerUsd <= 0) return null
+    return {
+      saldoUsd: homeMetrics.hero.availableToday / rate.ratePerUsd,
+      ratePerUsd: rate.ratePerUsd,
+    }
+  }, [
+    usdRateEnabled,
+    usdRateQuery.data,
+    homeMetrics.hero.availableToday,
+    homeMetrics.hero.incomeConfigured,
+  ])
+
   const savingsChip = useMemo(
     () =>
       computeSavingsHeroChip({
@@ -889,6 +914,7 @@ export function HomeDashboard({
           onPressConfigureIncome={handlePressConfigureIncome}
           projectedCloseTrend={projectedCloseTrend}
           savingsChip={savingsChip}
+          usdConversion={usdConversion}
         />
       </TourTarget>
       {/* Variables + Fijos halves of MonthSummaryCard register as

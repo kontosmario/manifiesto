@@ -20,7 +20,7 @@ import { CardParticles } from '@/components/ui/card-particles'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { formatMoney, formatMoneyShort } from '@/utils/money'
+import { formatMoney, formatMoneyShort, formatUsd } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { useAppTheme } from '@/theme/theme-provider'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
@@ -40,6 +40,10 @@ interface HomeHeroCardProps {
    *  variable spending. `null` hides the chip — used when savings
    *  isn't configured or income is missing. */
   savingsChip?: SavingsHeroChip | null
+  /** Equivalente del saldo en dólares + la cotización en uso. Render como una
+   *  línea susurro bajo el monto, SOLO cuando el toggle de cotización está
+   *  activo y hay un rate real. `null` = no se muestra (loading / off / USD). */
+  usdConversion?: { saldoUsd: number; ratePerUsd: number } | null
 }
 
 /**
@@ -53,6 +57,7 @@ function HomeHeroCardImpl({
   onPressConfigureIncome,
   projectedCloseTrend = null,
   savingsChip = null,
+  usdConversion = null,
 }: HomeHeroCardProps) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
@@ -120,7 +125,9 @@ function HomeHeroCardImpl({
         data.projectionReliable && data.projectedClose != null
           ? `Cierre proyectado: ${formatMoney(data.projectedClose)}.`
           : ''
-      } ${savingsChip ? savingsChip.a11y : ''}`.trim()
+      } ${savingsChip ? savingsChip.a11y : ''} ${
+        usdConversion ? `Equivale a ${formatUsd(usdConversion.saldoUsd)}.` : ''
+      }`.trim()
     : 'Configura tu ingreso mensual para activar el seguimiento del mes.'
 
   return (
@@ -297,11 +304,40 @@ function HomeHeroCardImpl({
                 // Tighter gap when the override pill is present so the
                 // amount/chip read as a single block, otherwise keep
                 // the original generous spacing before the tiles.
-                marginBottom: data.cycleAdjusted || savingsChip ? 8 : 18,
+                marginBottom: usdConversion
+                  ? 2
+                  : data.cycleAdjusted || savingsChip
+                    ? 8
+                    : 18,
               },
             ]}
           />
         </RiseView>
+
+        {usdConversion ? (
+          // Línea susurro: equivalente del saldo en dólares + la cotización en
+          // uso. Solo se monta cuando el toggle de cotización está activo y hay
+          // rate real (el dashboard pasa null en loading / off / moneda USD).
+          // Tono heroMuted2 (el mismo de los tile subs) → secundario al monto,
+          // no compite. Sin pill: la pieza más discreta del hero.
+          <RiseView delay={100}>
+            <Text
+              accessibilityRole="text"
+              accessibilityLabel={`Equivale a ${formatUsd(usdConversion.saldoUsd)}. Un dólar cuesta ${formatMoney(usdConversion.ratePerUsd)}.`}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.4}
+              style={[
+                styles.usdLine,
+                {
+                  color: theme.colors.heroMuted2,
+                  marginBottom: data.cycleAdjusted || savingsChip ? 8 : 18,
+                },
+              ]}
+            >
+              {`≈ ${formatUsd(usdConversion.saldoUsd)} · dólar ${formatMoney(usdConversion.ratePerUsd)}`}
+            </Text>
+          </RiseView>
+        ) : null}
 
         {data.cycleAdjusted || savingsChip || data.acumulado || data.monthlyReserveAmount > 0 ? (
           // Read-only chip stack between the saldo amount and the
@@ -724,6 +760,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -1.8,
     lineHeight: 48,
+  },
+  // Línea susurro del equivalente en dólares — secundaria al monto.
+  usdLine: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    fontVariant: ['tabular-nums'],
   },
   // Setup state (income not configured)
   setupTitle: {
