@@ -263,7 +263,6 @@ export function useBilling() {
           void handlePurchaseUpdateRef.current?.(purchase)
         })
         const failed = iap.purchaseErrorListener((error) => {
-          if (__DEV__) console.log('[billing] purchaseError', error)
           // Resolvemos la compra pendiente (si la hay) con un motivo amigable.
           resolvePending({ ok: false, reason: reasonForPurchaseError(error) })
         })
@@ -300,21 +299,12 @@ export function useBilling() {
     async (purchase: IapPurchase) => {
       if (!iap) return
       const jws = purchase.purchaseToken
-      if (__DEV__) {
-        console.log('[billing] purchaseUpdated', {
-          productId: purchase.productId,
-          otx: purchase.originalTransactionIdentifierIOS,
-          txId: purchase.transactionId,
-          hasJws: Boolean(jws),
-        })
-      }
       if (!jws) {
         resolvePending({ ok: false, reason: PURCHASE_FALLBACK_REASON })
         return
       }
 
       const result = await validatePurchaseOnServer(jws)
-      if (__DEV__) console.log('[billing] validate result', result)
       if (!result.ok) {
         // Compra bound a otro hogar: falla PERMANENTE (la sub pertenece a otra
         // familia; reintentar no cambia nada). Cerramos la transacción para que
@@ -393,12 +383,6 @@ export function useBilling() {
           deferred ? 8_000 : 30_000,
         )
         pendingRef.current = { resolve, timer }
-        if (__DEV__) {
-          console.log('[billing] requestPurchase', {
-            sku: plan.productId,
-            appAccountToken: familyId,
-          })
-        }
         // requestPurchase NO devuelve el recibo: el resultado llega por el
         // listener (o el errorListener) → no esperamos su return.
         iap
@@ -407,7 +391,6 @@ export function useBilling() {
             type: 'subs',
           })
           .catch((error: unknown) => {
-            if (__DEV__) console.log('[billing] requestPurchase rejected', error)
             // Rechazo sincrónico de la store (p.ej. no preparada): resolvemos
             // la pendiente acá; el errorListener puede no disparar.
             const reason =

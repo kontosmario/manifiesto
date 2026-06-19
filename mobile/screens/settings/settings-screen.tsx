@@ -319,7 +319,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       // Dev-only: surface the real error so future Keychain / SecureStore
       // failures are diagnosable. The user-facing alert stays generic.
       if (__DEV__) {
-        // eslint-disable-next-line no-console
         console.error('[biometric] activation failed:', error)
       }
       Alert.alert(
