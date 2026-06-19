@@ -2,7 +2,9 @@ import { useCallback } from 'react'
 import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
-import { MaterialIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { CardParticles } from '@/components/ui/card-particles'
+import { FernMark } from '@/components/billing/fern-mark'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
@@ -13,7 +15,7 @@ import {
 } from '@/components/settings/settings-grouped-list'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import {
   PRIVACY_POLICY_URL,
@@ -110,39 +112,21 @@ export function AboutScreen({ userId }: AboutScreenProps) {
           {/* HERO con el logo + versión visible — Apple usa este surface
               para confirmar el match de build durante el review. */}
           <RiseView>
-            <View
-              style={[
-                styles.heroCard,
-                {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
-                },
-              ]}
+            <LinearGradient
+              colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={styles.heroCard}
             >
-              <View
-                style={[
-                  styles.heroBadge,
-                  {
-                    backgroundColor: theme.colors.primarySurface,
-                    borderColor: theme.colors.primary,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  color={theme.colors.primaryStrong}
-                  name="auto-awesome"
-                  size={28}
-                />
-              </View>
-              <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
+              <CardParticles count={11} accentColor={authTokens.peach} />
+              <FernMark variant="cream" size={58} />
+              <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
                 Manifiesto
               </Text>
-              <Text style={[styles.heroVersion, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.heroVersion, { color: theme.colors.heroMuted }]}>
                 {versionLabel}
               </Text>
-            </View>
+            </LinearGradient>
           </RiseView>
 
           {/* INFORMACIÓN LEGAL — solo se renderiza si al menos una URL
@@ -214,19 +198,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroCard: {
-    borderWidth: 1,
     borderRadius: radii.xl,
-    padding: 20,
-    gap: 10,
+    padding: 24,
+    gap: 12,
     alignItems: 'center',
-  },
-  heroBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
   },
   heroTitle: {
     ...typography.screenTitle,
