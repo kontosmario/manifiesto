@@ -9,8 +9,9 @@ import { MemberActionSheet } from '@/components/settings/sheets/member-action-sh
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
 import { ErrorState } from '@/components/ui/error-state'
+import { CardParticles } from '@/components/ui/card-particles'
 import { Screen } from '@/components/ui/screen'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
 import {
   useBlockMember,
   useFamilyMemberStats,
@@ -112,6 +113,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
           end={{ x: 0.9, y: 1 }}
           style={styles.hero}
         >
+          <CardParticles count={9} accentColor={authTokens.peach} />
           <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
             FAMILIA
           </Text>

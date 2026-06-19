@@ -21,9 +21,10 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { DrawRing } from '@/components/ui/draw-ring'
+import { CardParticles } from '@/components/ui/card-particles'
 import { ErrorState } from '@/components/ui/error-state'
 import { BadgeDetailSheet } from '@/components/achievements/badge-detail-sheet'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -139,6 +140,7 @@ function ProgressRingHero({
       end={{ x: 0.9, y: 1 }}
       style={styles.hero}
     >
+      <CardParticles count={10} accentColor={authTokens.peach} />
       <View style={styles.heroRow}>
         <View style={{ width: RING, height: RING }}>
           <DrawRing
