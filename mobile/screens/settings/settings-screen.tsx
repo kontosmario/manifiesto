@@ -38,8 +38,7 @@ import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-
 import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
 import { EditCycleConfigSheet } from '@/components/settings/sheets/edit-cycle-config-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
-import { EditCurrencySheet } from '@/components/settings/sheets/edit-currency-sheet'
-import { useUsdRate } from '@/features/finance/use-usd-rate'
+import { ConversionSettingsSheet } from '@/components/settings/sheets/conversion-settings-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
@@ -177,8 +176,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       savingsGoal: dashboard.savingsGoal,
       savingsGoalPercent: dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
       usdExchangeRate: dashboard.usdExchangeRate,
-      localCurrency: dashboard.familyFinanceQuery.data?.local_currency ?? 'ARS',
-      usdRateEnabled: dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? true,
+      localCurrency: dashboard.familyFinanceQuery.data?.local_currency,
+      usdRateEnabled: dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? false,
       currentCycleStartingBalance:
         dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
       currentCycleAnchor:
@@ -216,15 +215,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
   const [cycleConfigSheetOpen, setCycleConfigSheetOpen] = useState(false)
-  const [currencySheetOpen, setCurrencySheetOpen] = useState(false)
-  // Cotización USD automática según la moneda del hogar (reemplaza el rate
-  // manual). rate_per_usd = unidades de la moneda local por 1 USD. Solo se
-  // trae cuando el toggle "Cotización en dólares" está activo (sino el hook
-  // queda disabled vía currency undefined).
-  const usdRateEnabled = financeSnapshot.usdRateEnabled ?? true
-  const usdRate = useUsdRate(
-    usdRateEnabled ? (financeSnapshot.localCurrency ?? 'ARS') : undefined,
-  )
+  const [conversionSheetOpen, setConversionSheetOpen] = useState(false)
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
@@ -496,10 +487,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
   const handleSaveCurrency = useCallback(
     (value: string) => {
-      saveFinanceSnapshot(
-        { ...financeSnapshot, localCurrency: value },
-        () => setCurrencySheetOpen(false),
-      )
+      // No cierra el sheet: el usuario ve el check moverse + la cotización en
+      // uso, y cierra cuando quiere (drag / backdrop).
+      saveFinanceSnapshot({ ...financeSnapshot, localCurrency: value }, () => {})
     },
     [financeSnapshot, saveFinanceSnapshot],
   )
@@ -779,18 +769,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     financeSnapshot.monthlyIncome > 0
       ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
       : undefined
-  const currencyValue = financeSnapshot.localCurrency ?? 'ARS'
-  const currencyHelper = (() => {
-    if (currencyValue === 'USD') return 'Tu moneda es el dólar — sin conversión.'
-    const rate = usdRate.data
-    if (!rate) {
-      return usdRate.isLoading
-        ? 'Trayendo la cotización…'
-        : 'Cotización no disponible ahora.'
-    }
-    const suffix = rate.source.startsWith('dolarapi') ? ' · blue' : ''
-    return `US$ 1 ≈ ${currencyFormatter.format(Math.round(rate.ratePerUsd))}${suffix}`
-  })()
+  // Conversión a dólares (toggle + moneda). Sin asumir ARS: la moneda puede ser
+  // null (cuenta que todavía no eligió). El rate en uso vive dentro del sheet.
+  const usdRateEnabled = financeSnapshot.usdRateEnabled ?? false
+  const currencyValue = financeSnapshot.localCurrency ?? null
+  const conversionRowValue = !usdRateEnabled
+    ? 'Desactivada'
+    : (currencyValue ?? 'Elegí tu moneda')
   const currentCycleConfig = useMemo<FinanceCycleConfig>(
     () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
     [dashboard.familyFinanceQuery.data],
@@ -975,29 +960,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  helper="Mostrá el equivalente en dólares según la moneda del hogar."
+                  helper="Mostrá tu saldo convertido a dólares según tu moneda."
                   icon="currency-exchange"
                   label="Cotización en dólares"
-                  trailing={
-                    <Switch
-                      accessibilityLabel="Activar cotización en dólares"
-                      disabled={!isOwner}
-                      onValueChange={handleToggleUsdRate}
-                      value={usdRateEnabled}
-                    />
-                  }
+                  onPress={() => setConversionSheetOpen(true)}
+                  value={conversionRowValue}
                 />
-                {usdRateEnabled ? (
-                  <SettingsRow
-                    disabled={!isOwner}
-                    disabledHint={DISABLED_HINT}
-                    helper={currencyHelper}
-                    icon="language"
-                    label="Moneda"
-                    onPress={() => setCurrencySheetOpen(true)}
-                    value={currencyValue}
-                  />
-                ) : null}
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
@@ -1549,12 +1517,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onSave={handleSaveCycleConfig}
         visible={cycleConfigSheetOpen}
       />
-      <EditCurrencySheet
-        currentValue={financeSnapshot.localCurrency ?? 'ARS'}
+      <ConversionSettingsSheet
+        currency={currencyValue}
+        enabled={usdRateEnabled}
         isSaving={upsertFamilyFinanceMutation.isPending}
-        onClose={() => setCurrencySheetOpen(false)}
-        onSave={handleSaveCurrency}
-        visible={currencySheetOpen}
+        onClose={() => setConversionSheetOpen(false)}
+        onSelectCurrency={handleSaveCurrency}
+        onToggle={handleToggleUsdRate}
+        visible={conversionSheetOpen}
       />
       <EditSavingsPercentSheet
         currentValue={financeSnapshot.savingsGoalPercent}

@@ -174,8 +174,10 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     savings_goal: 0,
     savings_goal_percent: DEFAULT_SAVINGS_GOAL_PERCENT,
     usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
-    local_currency: DEFAULT_LOCAL_CURRENCY,
-    usd_rate_enabled: true,
+    // Sin default de país: una cuenta nueva no asume ARS. La conversión es
+    // opt-in (usd_rate_enabled false) y requiere elegir moneda explícitamente.
+    local_currency: undefined,
+    usd_rate_enabled: false,
     salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
     last_salary_confirmed_at: null,
     current_cycle_starting_balance: null,
@@ -230,11 +232,13 @@ export function normalizeFinancePayload(
         typeof payload?.local_currency === 'string'
           ? payload.local_currency.toUpperCase().trim()
           : ''
+      // No-set o inválida → undefined (NO 'ARS'). El consumidor decide qué
+      // hacer sin moneda (Settings pide elegir; el hero no muestra la línea).
       return (SUPPORTED_CURRENCIES as readonly string[]).includes(raw)
         ? raw
-        : DEFAULT_LOCAL_CURRENCY
+        : undefined
     })(),
-    usd_rate_enabled: payload?.usd_rate_enabled !== false,
+    usd_rate_enabled: payload?.usd_rate_enabled === true,
     salary_payment_day:
       Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
         ? salaryPaymentDay

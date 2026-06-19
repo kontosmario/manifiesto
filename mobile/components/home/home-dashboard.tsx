@@ -835,19 +835,19 @@ export function HomeDashboard({
   // (usd_rate_enabled) + moneda ≠ USD; el hook queda disabled si no aplica (no
   // fetchea). El equivalente del saldo se recalcula solo cuando cambia el saldo
   // o el rate. null en loading/off/USD → el hero no muestra la línea.
-  const usdRateCurrency = dashboard.familyFinanceQuery.data?.local_currency ?? 'ARS'
+  const usdRateCurrency = dashboard.familyFinanceQuery.data?.local_currency ?? null
   const usdRateEnabled =
-    (dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? true) &&
+    (dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? false) &&
+    !!usdRateCurrency &&
     usdRateCurrency !== 'USD'
-  const usdRateQuery = useUsdRate(usdRateEnabled ? usdRateCurrency : undefined)
+  const usdRateQuery = useUsdRate(
+    usdRateEnabled && usdRateCurrency ? usdRateCurrency : undefined,
+  )
   const usdConversion = useMemo(() => {
     const rate = usdRateQuery.data
     if (!usdRateEnabled || !rate || !homeMetrics.hero.incomeConfigured) return null
     if (!Number.isFinite(rate.ratePerUsd) || rate.ratePerUsd <= 0) return null
-    return {
-      saldoUsd: homeMetrics.hero.availableToday / rate.ratePerUsd,
-      ratePerUsd: rate.ratePerUsd,
-    }
+    return { saldoUsd: homeMetrics.hero.availableToday / rate.ratePerUsd }
   }, [
     usdRateEnabled,
     usdRateQuery.data,

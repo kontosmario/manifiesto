@@ -40,10 +40,11 @@ interface HomeHeroCardProps {
    *  variable spending. `null` hides the chip — used when savings
    *  isn't configured or income is missing. */
   savingsChip?: SavingsHeroChip | null
-  /** Equivalente del saldo en dólares + la cotización en uso. Render como una
-   *  línea susurro bajo el monto, SOLO cuando el toggle de cotización está
-   *  activo y hay un rate real. `null` = no se muestra (loading / off / USD). */
-  usdConversion?: { saldoUsd: number; ratePerUsd: number } | null
+  /** Equivalente del saldo en dólares. Render como una línea susurro bajo el
+   *  monto, SOLO cuando la conversión está activa y hay un rate real. `null` =
+   *  no se muestra (loading / off / sin moneda / USD). El valor del dólar NO se
+   *  muestra acá (vive en el sheet de Settings). */
+  usdConversion?: { saldoUsd: number } | null
 }
 
 /**
@@ -323,7 +324,7 @@ function HomeHeroCardImpl({
           <RiseView delay={100}>
             <Text
               accessibilityRole="text"
-              accessibilityLabel={`Equivale a ${formatUsd(usdConversion.saldoUsd)}. Un dólar cuesta ${formatMoney(usdConversion.ratePerUsd)}.`}
+              accessibilityLabel={`Equivale a ${formatUsd(usdConversion.saldoUsd)}.`}
               numberOfLines={1}
               maxFontSizeMultiplier={1.4}
               style={[
@@ -334,7 +335,7 @@ function HomeHeroCardImpl({
                 },
               ]}
             >
-              {`≈ ${formatUsd(usdConversion.saldoUsd)} · dólar ${formatMoney(usdConversion.ratePerUsd)}`}
+              {`≈ ${formatUsd(usdConversion.saldoUsd)}`}
             </Text>
           </RiseView>
         ) : null}
