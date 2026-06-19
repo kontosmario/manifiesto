@@ -8,6 +8,9 @@ import type { FijosTab } from '@/features/fijos/use-fijos-controller'
 interface FijosTabsProps {
   tab: FijosTab
   setTab: (tab: FijosTab) => void
+  /** Tabs a mostrar, en orden — solo las que tienen datos (las calcula el
+   *  controller). Una tab vacía no aparece; si queda una sola, se muestra esa. */
+  visibleTabs: FijosTab[]
   counts: {
     vencidos: number
     pendientes: number
@@ -45,10 +48,12 @@ const TAB_LABELS: Record<FijosTab, string> = {
  *
  * Cada bucket inactivo muestra su count en color semántico del estado;
  * el bucket activo cambia a la pill text-fg + creamCard-bg que ya
- * conocés de Gastos. Si un bucket tiene count=0 NO lo escondemos —
- * el user puede querer navegar entre vacíos para entender el sistema.
+ * conocés de Gastos. Solo se muestran los buckets CON datos (`visibleTabs`
+ * los calcula el controller): si no hay vencidos ni pendientes, queda solo
+ * "Pagados". Cuando el tab activo se vacía, el controller redirige al
+ * siguiente visible.
  */
-export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
+export function FijosTabs({ tab, setTab, visibleTabs, counts }: FijosTabsProps) {
   const handleSelect = useCallback(
     (id: string | null) => {
       if (!id) return
@@ -58,11 +63,6 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
     [setTab],
   )
 
-  // Orden: vencidos primero (más urgente) → pendientes → pagados.
-  // Refleja la jerarquía de "qué tengo que mirar primero". Los
-  // future (programados sin pagar) viven en banner aparte.
-  const TABS: FijosTab[] = ['vencidos', 'pendientes', 'pagados']
-
   return (
     <RiseView delay={120}>
       <ScrollView
@@ -70,7 +70,7 @@ export function FijosTabs({ tab, setTab, counts }: FijosTabsProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
       >
-        {TABS.map((id) => (
+        {visibleTabs.map((id) => (
           <GastosFilterPill
             key={id}
             active={tab === id}
