@@ -81,57 +81,24 @@ export function useDailyBudgetNudges() {
       }
 
       const now = new Date()
-      const triggerDate = new Date(now)
-      triggerDate.setHours(dashboard.dailyBudgetCheckinHour, 0, 0, 0)
 
-      if (triggerDate <= now) {
-        triggerDate.setDate(triggerDate.getDate() + 1)
-      }
-
-      const isSameDayCheckin = formatLocalDateKey(triggerDate) === formatLocalDateKey(dashboard.todayDate)
-      const checkinBudget = isSameDayCheckin ? summary.openingBudget : summary.projectedTomorrowOpening
-
+      // "Presupuesto del día listo" (checkin local diario) se RETIRÓ (2026-06-19):
+      // era redundante con el push server "Buen día" (checkin_morning, mismo
+      // ~9am pero con el monto real). La local REQUIERE permiso de notifs (igual
+      // que el push, ver el guard de arriba), así que nunca fue un fallback para
+      // "sin push": si tenías permiso llegaban las DOS. Cancelamos cualquiera que
+      // haya quedado agendada de versiones previas para que deje de dispararse en
+      // installs existentes; ya no se re-agenda. (Se conserva "Cerrá tu día", la
+      // del umbral 70%, que es contextual y no se pisa con nada server-side.)
       const scheduled = await Notifications.getAllScheduledNotificationsAsync()
-      const existingCheckins = scheduled.filter(
+      const staleCheckins = scheduled.filter(
         (item) => item.content.data?.key === `${CHECKIN_NOTIFICATION_KEY}:${familyId}`,
       )
-
-      await Promise.all(existingCheckins.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)))
-
-      // Sprint Q · Audit #10 Q-1 (2026-06-10): mirror Sprint O · P-1
-      // PII reduction (push payload server-side). Local notifications
-      // scheduled here ALSO surface on the lock screen — anyone with
-      // physical access to a locked device sees the body preview.
-      // Sprint O P-1 stripped amounts from REMOTE push bodies (see
-      // supabase/migrations/20260614002000_sprint_o_push_pii_reduction.sql
-      // and supabase/functions/notify-orchestrator) but did not touch
-      // these locally-scheduled bodies. We close the gap here: titles
-      // stay descriptive, bodies become a generic CTA so the lock-
-      // screen leak surface is identical to the remote push path.
-      if (!isCancelled) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Presupuesto del día listo',
-            body: 'Abrí Manifiesto para verlo.',
-            data: {
-              key: `${CHECKIN_NOTIFICATION_KEY}:${familyId}`,
-              kind: CHECKIN_NOTIFICATION_KEY,
-              url: '/expenses',
-              // Sprint Q · Q-1: keep the budget value in `data` (not
-              // surfaced on the lock screen) so the in-app handler
-              // can still render the contextual greeting when the
-              // user actually opens the app.
-              checkinBudget,
-            },
-            sound: 'default',
-          },
-          trigger: {
-            channelId: 'default',
-            date: triggerDate,
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-          },
-        })
-      }
+      await Promise.all(
+        staleCheckins.map((item) =>
+          Notifications.cancelScheduledNotificationAsync(item.identifier),
+        ),
+      )
 
       const thresholdKey = `${THRESHOLD_NOTIFICATION_KEY}:${familyId}:${formatLocalDateKey(dashboard.todayDate)}`
       const hasThresholdLog = (await getPersistentValue(thresholdKey)) === '1'
@@ -170,7 +137,6 @@ export function useDailyBudgetNudges() {
       isCancelled = true
     }
   }, [
-    dashboard.dailyBudgetCheckinHour,
     dashboard.dailyBudgetNudgesEnabled,
     dashboard.todayDate,
     familyId,

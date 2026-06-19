@@ -391,6 +391,28 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'web push requires p256dh + auth keys.' }, 400, cors)
   }
 
+  // Re-home del token al usuario ACTUAL. El endpoint de Expo es por
+  // device/instalación: un device tiene un solo usuario activo a la vez. Si una
+  // cuenta anterior dejó su fila (logout best-effort que falló o cambio de
+  // cuenta en el mismo device), sus notifs family-wide (fixed_upcoming, etc.)
+  // seguirían llegando a ESTE device — el bug de "fijos/Buen día de otra cuenta".
+  // Borramos cualquier fila con este endpoint de OTRO usuario antes de
+  // re-registrar → el token queda asociado solo a quien está logueado ahora,
+  // self-healing aunque el logout no haya limpiado. La unique key es
+  // (user_id, endpoint), así que sin esto las filas viejas sobreviven.
+  const rehomeResponse = await admin
+    .from('push_subscriptions')
+    .delete()
+    .eq('endpoint', token)
+    .neq('user_id', userId)
+  if (rehomeResponse.error) {
+    // Best-effort: no bloqueamos el registro si la limpieza falla.
+    console.error(
+      '[register-push-subscription] re-home delete failed',
+      rehomeResponse.error,
+    )
+  }
+
   const upsertResponse = await admin
     .from('push_subscriptions')
     .upsert(

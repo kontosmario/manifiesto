@@ -84,6 +84,39 @@ config.toml vuelve al default `true` y el gateway tira 401 sobre el secret
 opaco → **todo el push agendado cae en silencio**. Esto pasó durante la
 auditoría; el guard de cobertura + las entries explícitas lo previenen.
 
+## Fix cross-account — token huérfano (2026-06-19)
+
+**Síntoma (reportado por el owner):** en un device que tuvo logueadas DOS cuentas,
+llegaban las notifs de las DOS familias: fijos que "no son tuyos" (`fixed_upcoming`
+es family-wide), DOS "Buen día" (`checkin_morning` es per-usuario) y "Cierre del
+día" duplicado. NO era un bug de dedup (el dedup per-`(familia, usuario, día)` es
+sólido) — era un **token huérfano**.
+
+**Causa:** `push_subscriptions` tiene `unique (user_id, endpoint)`, no
+`unique(endpoint)`. El endpoint de Expo es por device. Al cambiar de cuenta en el
+mismo device (o si el logout best-effort de `tearDownPushNotifications` falló
+offline), quedaba la fila del usuario viejo con el mismo endpoint;
+`register-push-subscription` hacía UPSERT solo de su propia fila, sin borrar las
+ajenas. Los crons mandan por `family_id` → la fila huérfana recibía las notifs de
+la familia vieja en este device.
+
+**Fix:**
+- `register-push-subscription`: antes del upsert, **borra las filas del mismo
+  `endpoint` de OTROS usuarios** (`DELETE WHERE endpoint = token AND user_id !=
+  current`). El token queda asociado solo a quien está logueado ahora;
+  self-healing aunque el logout no haya limpiado. **Requiere redeploy de la edge.**
+- Migración `20260620220000_push_subscriptions_rehome_dedup`: limpieza única de
+  los duplicados ya existentes en prod (conserva la fila más reciente por endpoint).
+
+## "Presupuesto del día listo" (checkin local) retirado (2026-06-19)
+
+Era una notificación LOCAL (`mobile/hooks/use-daily-budget-nudges.ts`) a las ~9am,
+redundante con el push server "Buen día" (`checkin_morning`, mismo horario, con el
+monto real). Como la local REQUIERE permiso de notifs (igual que el push), nunca
+fue un fallback para "sin push": si tenías permiso llegaban las DOS. Se retiró
+(cancela las agendadas existentes + no re-agenda). Se conserva **"Cerrá tu día"**
+(umbral 70% del cupo, contextual, no se pisa con nada server-side).
+
 ## Pushes sociales (client-driven) — gasto/ingreso/fijo de un familiar
 
 Distinto del pipeline cron/orchestrator de arriba. Cuando un miembro
