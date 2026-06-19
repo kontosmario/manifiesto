@@ -180,15 +180,14 @@ const config: ExpoConfig = {
     // un eventual cooldown de 30+ días sobre `com.manifiesto.mobile`.
     bundleIdentifier: 'com.manifiesto.mobile.ZKYQF7UNYA',
     // Bump manual por release de TestFlight (appVersionSource: local;
-    // con config dinámica el autoIncrement de EAS no puede escribir
-    // este archivo). Build 6 (2026-06-19) = build 5 (warm-share v2 +
-    // suscripciones Fase 1) + el trabajo de esta tanda: rediseño de
-    // "Gestión de familia" (iOS feel), contador del hero fluido en el
-    // UI thread, y fix de notificaciones (token huérfano cross-account +
-    // retiro de "Presupuesto del día listo"). El OTA sigue bloqueado (la
-    // firma de updates requiere EAS Enterprise) — todo cambio de JS
-    // requiere build.
-    buildNumber: '6',
+    // con config dinámica el autoIncrement de EAS no puede escribir este
+    // archivo). Build 7 (2026-06-19) = build 6 (suscripciones + rediseño
+    // de familia + contador fluido + fix de notifs) + las tabs DINÁMICAS
+    // de fijos (cada bucket vencidos/pendientes/pagados se muestra solo si
+    // tiene items). El build 6 ya estaba en ASC → este es 7 (el número
+    // debe ser único por versión). El OTA sigue bloqueado (la firma de
+    // updates requiere EAS Enterprise) — todo cambio de JS requiere build.
+    buildNumber: '7',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
