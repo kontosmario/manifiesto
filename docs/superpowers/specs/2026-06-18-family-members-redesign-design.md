@@ -61,4 +61,14 @@ Dos estados internos:
 
 - Modificar: `mobile/screens/settings/family-admin-screen.tsx` (reescritura).
 - Crear: `mobile/components/settings/sheets/member-action-sheet.tsx`.
+- Crear: `mobile/features/family/member-display.ts` (formatters compartidos).
 - Sin tocar: `use-family-admin.ts`, las RPCs.
+
+## Pulido + iteraciones finales (2026-06-19) — iOS feel
+
+Pasada de pulido con la skill `ui-ux-pro-max` (confirmada en device). Cambios sobre el diseño base:
+
+- **Spacing hero ↔ lista.** El wrapper del body del `<Screen>` (`Animated.View` con `bodyStyle`) **no trae `gap` propio** → los hijos quedaban pegados/encimados. Fix: `bodyStyle={{ gap: 24 }}` (tier de sección, rhythm de 8) → aire de "grouped list" de iOS. **Regla reusable:** un `<Screen>` con varios bloques de contenido necesita `bodyStyle` con `gap` (el `gap:22` de `styles.content` aplica entre header y body, NO entre los hijos).
+- **Sheet centrado (iOS feel).** Todo el contenido del sheet va centrado: identidad tipo contact-card (avatar 64 + nombre + badge + alta), métricas en celdas centradas con `tabular-nums`, acciones como filas centradas icono+label (action-sheet feel) con el destructivo en rojo, y la confirmación tipo alert de iOS (icono en círculo tintado + título + body + botones, todo centrado).
+- **Gotcha — botones del confirm parejos.** `AppButton` es `fullWidth` (`alignSelf:'stretch'`), que en un `flexDirection:'row'` estira en el eje **vertical**, no horizontal → quedaban al ancho del texto y pegados a la izquierda. Fix: envolver cada botón en una celda `flex:1` → 50/50, parejos (Cancelar izq · acción der, layout de alert de iOS).
+- **Gotcha — salto del owner al cerrar.** El flag `isMe` se derivaba de `selected` en el parent, que pasa a `null` al cerrar → durante la animación de salida del `ModalCard`, `isMe` se volvía `false` mientras el sheet seguía mostrando el integrante **cacheado**, saltando de la nota de dueño (corta) a la card de acciones (alta). Fix: pasar `currentUserId` y derivar `isMe = m.userId === currentUserId` desde el integrante **cacheado** adentro del sheet. **Regla reusable:** cualquier flag que controle la ALTURA del contenido de un sheet con animación de salida debe derivarse del estado **cacheado** (el que sobrevive la salida), no de la prop que se limpia al cerrar — sino salta de altura durante el slide-down.
