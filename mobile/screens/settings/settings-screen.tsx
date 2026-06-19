@@ -178,6 +178,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       savingsGoalPercent: dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
       usdExchangeRate: dashboard.usdExchangeRate,
       localCurrency: dashboard.familyFinanceQuery.data?.local_currency ?? 'ARS',
+      usdRateEnabled: dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? true,
       currentCycleStartingBalance:
         dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
       currentCycleAnchor:
@@ -206,6 +207,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       dashboard.savingsGoal,
       dashboard.usdExchangeRate,
       dashboard.familyFinanceQuery.data?.local_currency,
+      dashboard.familyFinanceQuery.data?.usd_rate_enabled,
     ],
   )
 
@@ -216,8 +218,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [cycleConfigSheetOpen, setCycleConfigSheetOpen] = useState(false)
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false)
   // Cotización USD automática según la moneda del hogar (reemplaza el rate
-  // manual). rate_per_usd = unidades de la moneda local por 1 USD.
-  const usdRate = useUsdRate(financeSnapshot.localCurrency ?? 'ARS')
+  // manual). rate_per_usd = unidades de la moneda local por 1 USD. Solo se
+  // trae cuando el toggle "Cotización en dólares" está activo (sino el hook
+  // queda disabled vía currency undefined).
+  const usdRateEnabled = financeSnapshot.usdRateEnabled ?? true
+  const usdRate = useUsdRate(
+    usdRateEnabled ? (financeSnapshot.localCurrency ?? 'ARS') : undefined,
+  )
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
@@ -493,6 +500,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         { ...financeSnapshot, localCurrency: value },
         () => setCurrencySheetOpen(false),
       )
+    },
+    [financeSnapshot, saveFinanceSnapshot],
+  )
+
+  const handleToggleUsdRate = useCallback(
+    (value: boolean) => {
+      saveFinanceSnapshot({ ...financeSnapshot, usdRateEnabled: value }, () => {})
     },
     [financeSnapshot, saveFinanceSnapshot],
   )
@@ -961,12 +975,29 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  helper={currencyHelper}
+                  helper="Mostrá el equivalente en dólares según la moneda del hogar."
                   icon="currency-exchange"
-                  label="Moneda"
-                  onPress={() => setCurrencySheetOpen(true)}
-                  value={currencyValue}
+                  label="Cotización en dólares"
+                  trailing={
+                    <Switch
+                      accessibilityLabel="Activar cotización en dólares"
+                      disabled={!isOwner}
+                      onValueChange={handleToggleUsdRate}
+                      value={usdRateEnabled}
+                    />
+                  }
                 />
+                {usdRateEnabled ? (
+                  <SettingsRow
+                    disabled={!isOwner}
+                    disabledHint={DISABLED_HINT}
+                    helper={currencyHelper}
+                    icon="language"
+                    label="Moneda"
+                    onPress={() => setCurrencySheetOpen(true)}
+                    value={currencyValue}
+                  />
+                ) : null}
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}

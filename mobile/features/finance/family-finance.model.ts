@@ -13,6 +13,9 @@ export interface FinanceStoragePayload {
    *  qué moneda se trae la cotización USD. Opcional en el payload: cuando un
    *  upsert NO la incluye (undefined), se preserva el valor existente. */
   local_currency?: string
+  /** Toggle "Cotización en dólares" de Settings (per-hogar). Opcional: cuando un
+   *  upsert NO lo incluye (undefined), se preserva. Default true. */
+  usd_rate_enabled?: boolean
   salary_payment_day: number
   last_salary_confirmed_at: string | null
   /**
@@ -61,6 +64,8 @@ export interface UpsertFamilyFinanceInput {
    *  lo OMITE (Supabase descarta undefined) → preserva el valor existente, así
    *  un save de otro campo (sueldo, etc.) no pisa la moneda. */
   localCurrency?: string
+  /** Toggle de cotización USD (per-hogar). undefined → upsert lo omite → preserva. */
+  usdRateEnabled?: boolean
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -83,6 +88,8 @@ export interface FamilyFinanceInputSnapshot {
    *  lo OMITE (Supabase descarta undefined) → preserva el valor existente, así
    *  un save de otro campo (sueldo, etc.) no pisa la moneda. */
   localCurrency?: string
+  /** Toggle de cotización USD (per-hogar). undefined → upsert lo omite → preserva. */
+  usdRateEnabled?: boolean
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -168,6 +175,7 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     savings_goal_percent: DEFAULT_SAVINGS_GOAL_PERCENT,
     usd_exchange_rate: DEFAULT_USD_EXCHANGE_RATE,
     local_currency: DEFAULT_LOCAL_CURRENCY,
+    usd_rate_enabled: true,
     salary_payment_day: DEFAULT_SALARY_PAYMENT_DAY,
     last_salary_confirmed_at: null,
     current_cycle_starting_balance: null,
@@ -226,6 +234,7 @@ export function normalizeFinancePayload(
         ? raw
         : DEFAULT_LOCAL_CURRENCY
     })(),
+    usd_rate_enabled: payload?.usd_rate_enabled !== false,
     salary_payment_day:
       Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
         ? salaryPaymentDay
@@ -321,6 +330,7 @@ export function isMissingFinanceColumnError(
     | 'daily_budget_checkin_hour'
     | 'savings_goal_percent'
     | 'local_currency'
+    | 'usd_rate_enabled'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor',
 ) {
@@ -340,6 +350,7 @@ export function financeInputToStoragePayload(
     savings_goal_percent: clampPercent(input.savingsGoalPercent, MAX_SAVINGS_GOAL_PERCENT),
     usd_exchange_rate: input.usdExchangeRate,
     local_currency: input.localCurrency,
+    usd_rate_enabled: input.usdRateEnabled,
     salary_payment_day: input.salaryPaymentDay,
     last_salary_confirmed_at: input.lastSalaryConfirmedAt,
     current_cycle_starting_balance: input.currentCycleStartingBalance,
@@ -463,6 +474,7 @@ export function buildFamilyFinanceInput(
     savingsGoalPercent: snapshot.savingsGoalPercent,
     usdExchangeRate: snapshot.usdExchangeRate,
     localCurrency: snapshot.localCurrency,
+    usdRateEnabled: snapshot.usdRateEnabled,
     salaryPaymentDay: snapshot.salaryPaymentDay,
     lastSalaryConfirmedAt: snapshot.lastSalaryConfirmedAt,
     currentCycleStartingBalance: snapshot.currentCycleStartingBalance,

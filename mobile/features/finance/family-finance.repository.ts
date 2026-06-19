@@ -98,6 +98,7 @@ export async function upsertFamilyFinance(
     | 'savings_goal_percent'
     | 'usd_exchange_rate'
     | 'local_currency'
+    | 'usd_rate_enabled'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor'
   > = [
@@ -110,6 +111,7 @@ export async function upsertFamilyFinance(
     'savings_goal_percent',
     'usd_exchange_rate',
     'local_currency',
+    'usd_rate_enabled',
     'current_cycle_starting_balance',
     'current_cycle_anchor',
   ]
