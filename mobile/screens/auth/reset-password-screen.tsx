@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AppButton } from '@/components/ui/button'
 import { TextField } from '@/components/ui/text-field'
-import { Screen } from '@/components/ui/screen'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
+import { AuthShell } from '@/components/auth/auth-scaffold'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FreshInstallResetFriction } from '@/components/auth/fresh-install-reset-friction'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
@@ -235,29 +235,31 @@ export function ResetPasswordScreen() {
     )
   }, [])
 
+  const goToLogin = () => router.replace('/(auth)/login')
+
   if (stage === 'exchanging') {
     return <BlockingScreen message="Validando tu link..." />
   }
 
   if (stage === 'reauth') {
     return (
-      <Screen
-        title="Confirmá tu identidad"
+      <AuthShell
+        eyebrow="Un paso más"
+        onBack={goToLogin}
         subtitle="Antes de cambiar la contraseña pedimos tu PIN o biometría en este dispositivo."
+        title="Confirmá tu identidad"
       >
-        <View style={styles.stack}>
-          <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-            Esto evita que alguien con acceso temporal a tu email pueda
-            bloquearte la cuenta.
-          </Text>
-        </View>
+        <Text style={[styles.body, { color: theme.colors.textSoft }]}>
+          Esto evita que alguien con acceso temporal a tu email pueda bloquearte
+          la cuenta.
+        </Text>
         <RequireReauthSheet
-          visible={reauthVisible}
           actionLabel="cambiar tu contraseña"
-          onConfirmed={handleReauthConfirmed}
           onCancel={handleReauthCancel}
+          onConfirmed={handleReauthConfirmed}
+          visible={reauthVisible}
         />
-      </Screen>
+      </AuthShell>
     )
   }
 
@@ -267,130 +269,119 @@ export function ResetPasswordScreen() {
     // takeover chain described in `fresh-install-reset-friction.tsx`
     // while we work on a proper backend out-of-band confirmation flow.
     return (
-      <Screen
-        title="Antes de continuar"
+      <AuthShell
+        eyebrow="Importante"
+        onBack={goToLogin}
         subtitle="Leé esto con atención. Sin PIN ni biometría guardada en este dispositivo, este es el único momento en el que podemos avisarte."
+        title="Antes de continuar"
       >
         <FreshInstallResetFriction
-          onContinue={handleFrictionContinue}
-          onCancel={handleFrictionCancel}
-          // Sprint L · Audit #5 L-Med3: the recovery `code` is unique
-          // per reset flow, so it keys the SecureStore anchor so the
-          // countdown survives remounts within the same flow without
-          // leaking across distinct resets. Email isn't surfaced here
-          // (no auth context wired into this screen pre-form), and
-          // `code` is just as scoped to "the password reset attempt
-          // currently in progress" — exactly what we want.
+          // Sprint L · Audit #5 L-Med3: el `code` (o el `otp`) es único por
+          // flujo de reset, así que keyea el anchor de SecureStore para que el
+          // countdown sobreviva remounts dentro del mismo flujo sin filtrarse
+          // entre resets distintos.
           frictionKey={code ?? otp}
+          onCancel={handleFrictionCancel}
+          onContinue={handleFrictionContinue}
         />
-      </Screen>
+      </AuthShell>
     )
   }
 
   if (stage === 'timeout') {
     return (
-      <Screen
-        title="Está tardando más de lo normal"
+      <AuthShell
+        eyebrow="Un momento"
+        onBack={goToLogin}
         subtitle="No pudimos validar el link en 30 segundos."
+        title="Está tardando más de lo normal"
       >
-        <View style={styles.stack}>
-          <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-            Probá pedir otro link de recuperación o volver al login.
-          </Text>
-          <AppButton
-            label="Pedir nuevo link"
-            onPress={() => router.replace('/(auth)/forgot-password')}
-          />
-          <AppButton
-            label="Volver a login"
-            onPress={() => router.replace('/(auth)/login')}
-            variant="ghost"
-          />
-        </View>
-      </Screen>
+        <Text style={[styles.body, { color: theme.colors.textSoft }]}>
+          Probá pedir otro link de recuperación o volver al login.
+        </Text>
+        <AppButton
+          label="Pedir nuevo link"
+          onPress={() => router.replace('/(auth)/forgot-password')}
+        />
+        <AppButton label="Volver a login" onPress={goToLogin} variant="ghost" />
+      </AuthShell>
     )
   }
 
   if (stage === 'error') {
     return (
-      <Screen title="Link inválido" subtitle={exchangeError ?? undefined}>
-        <View style={styles.stack}>
-          <AppButton
-            label="Pedir nuevo link"
-            onPress={() => router.replace('/(auth)/forgot-password')}
-          />
-          <AppButton
-            label="Volver a login"
-            onPress={() => router.replace('/(auth)/login')}
-            variant="ghost"
-          />
-        </View>
-      </Screen>
+      <AuthShell
+        eyebrow="Algo pasó"
+        onBack={goToLogin}
+        subtitle={exchangeError ?? undefined}
+        title="Link inválido"
+      >
+        <AppButton
+          label="Pedir nuevo link"
+          onPress={() => router.replace('/(auth)/forgot-password')}
+        />
+        <AppButton label="Volver a login" onPress={goToLogin} variant="ghost" />
+      </AuthShell>
     )
   }
 
   if (stage === 'success') {
     return (
-      <Screen
-        title="Contraseña actualizada"
+      <AuthShell
+        eyebrow="Listo"
+        onBack={() => router.replace('/')}
         subtitle="Ya podés entrar con tu nueva contraseña."
+        title="Contraseña actualizada"
       >
-        <View style={styles.stack}>
-          <AppButton label="Ir al inicio" onPress={() => router.replace('/')} />
-        </View>
-      </Screen>
+        <AppButton label="Ir al inicio" onPress={() => router.replace('/')} />
+      </AuthShell>
     )
   }
 
   return (
-    <Screen
-      title="Nueva contraseña"
+    <AuthShell
+      eyebrow="Casi listo"
+      onBack={goToLogin}
       subtitle={`Elegí una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
+      title="Nueva contraseña"
     >
-      <View style={styles.stack}>
-        <TextField
-          accessibilityLabel="Nueva contraseña"
-          autoCapitalize="none"
-          autoCorrect={false}
-          label="Nueva contraseña"
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          returnKeyType="next"
-          secureTextEntry
-          textContentType="newPassword"
-          value={password}
-        />
-        <TextField
-          accessibilityLabel="Confirmar contraseña"
-          autoCapitalize="none"
-          autoCorrect={false}
-          label="Confirmar contraseña"
-          onChangeText={setConfirm}
-          placeholder="••••••••"
-          returnKeyType="go"
-          secureTextEntry
-          textContentType="newPassword"
-          value={confirm}
-          onSubmitEditing={() => void handleSubmit()}
-        />
-        {formError ? (
-          <FeedbackPill intent="error" message={formError} />
-        ) : null}
-        <AppButton
-          disabled={!passwordValid}
-          label={updatePassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
-          loading={updatePassword.isPending}
-          onPress={() => void handleSubmit()}
-        />
-      </View>
-    </Screen>
+      <TextField
+        accessibilityLabel="Nueva contraseña"
+        autoCapitalize="none"
+        autoCorrect={false}
+        label="Nueva contraseña"
+        onChangeText={setPassword}
+        placeholder="••••••••"
+        returnKeyType="next"
+        secureTextEntry
+        textContentType="newPassword"
+        value={password}
+      />
+      <TextField
+        accessibilityLabel="Confirmar contraseña"
+        autoCapitalize="none"
+        autoCorrect={false}
+        label="Confirmar contraseña"
+        onChangeText={setConfirm}
+        onSubmitEditing={() => void handleSubmit()}
+        placeholder="••••••••"
+        returnKeyType="go"
+        secureTextEntry
+        textContentType="newPassword"
+        value={confirm}
+      />
+      {formError ? <FeedbackPill intent="error" message={formError} /> : null}
+      <AppButton
+        disabled={!passwordValid}
+        label={updatePassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
+        loading={updatePassword.isPending}
+        onPress={() => void handleSubmit()}
+      />
+    </AuthShell>
   )
 }
 
 const styles = StyleSheet.create({
-  stack: {
-    gap: 14,
-  },
   body: {
     fontSize: 14,
     lineHeight: 20,
