@@ -44,6 +44,8 @@ interface InAppNumpadProps {
   maxIntegerDigits?: number
   maxDecimalDigits?: number
   doneLabel?: string
+  /** Modo código/OTP: sin coma ni decimales, permite cero inicial. */
+  integerOnly?: boolean
 }
 
 const ROWS: readonly (readonly (string | 'backspace')[])[] = [
@@ -64,6 +66,7 @@ export function InAppNumpad({
   maxIntegerDigits = 8,
   maxDecimalDigits = 2,
   doneLabel = 'Listo',
+  integerOnly = false,
 }: InAppNumpadProps) {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -157,11 +160,20 @@ export function InAppNumpad({
   const handleDigit = useCallback(
     (digit: string) => {
       void triggerHaptic('selection')
+      if (integerOnly) {
+        // Código/OTP: append simple, sin coma ni decimales, y SÍ permite el
+        // cero inicial (un código puede empezar con 0, a diferencia de un monto
+        // donde `appendDigit` lo descarta).
+        onChangeRawValue(
+          rawValue.length >= maxIntegerDigits ? rawValue : rawValue + digit,
+        )
+        return
+      }
       onChangeRawValue(
         appendDigit(rawValue, digit, { maxIntegerDigits, maxDecimalDigits }),
       )
     },
-    [onChangeRawValue, rawValue, maxIntegerDigits, maxDecimalDigits],
+    [integerOnly, onChangeRawValue, rawValue, maxIntegerDigits, maxDecimalDigits],
   )
 
   const handleComma = useCallback(() => {
@@ -262,7 +274,13 @@ export function InAppNumpad({
               <View style={styles.grid}>
                 {ROWS.map((row, rowIndex) => (
                   <View key={rowIndex} style={styles.row}>
-                    {row.map((key) => (
+                    {row.map((key) => {
+                      // En modo código no hay coma: dejamos el slot vacío para
+                      // mantener la grilla de 3 columnas alineada.
+                      if (key === ',' && integerOnly) {
+                        return <View key={key} style={styles.keyWrap} />
+                      }
+                      return (
                       <NumpadKey
                         key={key}
                         label={key === 'backspace' ? undefined : key}
@@ -283,7 +301,8 @@ export function InAppNumpad({
                         onPress={() => handleKeyPress(key)}
                         onLongPress={key === 'backspace' ? handleClearAll : undefined}
                       />
-                    ))}
+                      )
+                    })}
                   </View>
                 ))}
               </View>
