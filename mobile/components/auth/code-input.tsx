@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
+import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface CodeInputProps {
@@ -40,6 +42,22 @@ export function CodeInput({
     }
   }
 
+  // Long-press = pegar. Lee el portapapeles y extrae los dígitos (sirve aunque
+  // hayas copiado "Tu código: 123456" entero). No depende del menú nativo de
+  // "Pegar", que con un input fuera de pantalla + caretHidden no aparece.
+  const handlePaste = async () => {
+    const text = await Clipboard.getStringAsync()
+    const digits = text.replace(/\D/gu, '').slice(0, length)
+    if (!digits) return
+    void triggerHaptic('light')
+    onChangeText(digits)
+    if (digits.length === length) {
+      onComplete?.(digits)
+    } else {
+      inputRef.current?.focus()
+    }
+  }
+
   const cells = Array.from({ length }, (_, i) => value[i] ?? '')
   // El casillero "activo" es el próximo a llenar (o el último cuando está full).
   const activeIndex = Math.min(value.length, length - 1)
@@ -47,9 +65,11 @@ export function CodeInput({
 
   return (
     <Pressable
+      accessibilityHint="Mantené apretado para pegar el código"
       accessibilityLabel={`Código de ${length} dígitos`}
       accessibilityRole="button"
       disabled={disabled}
+      onLongPress={() => void handlePaste()}
       onPress={() => inputRef.current?.focus()}
       style={styles.row}
     >
