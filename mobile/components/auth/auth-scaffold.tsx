@@ -117,9 +117,13 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 0,
   },
+  // Top-packed (no space-between): el contenido va debajo del hero, como un form
+  // normal. Con space-between los inputs caían al fondo de la pantalla, lejos
+  // del título → se veían "desfasados". rowGap separa nav / hero / acciones.
   screenBody: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    rowGap: 28,
   },
   topNav: {
     paddingHorizontal: 20,
