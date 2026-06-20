@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface CodeInputProps {
@@ -15,10 +15,10 @@ interface CodeInputProps {
 
 /**
  * Input de código segmentado (un casillero por dígito) — el clásico de los
- * códigos de verificación. Render: una fila de casilleros que muestran el valor
- * + un TextInput invisible (absolute, opacity 0) que captura el teclado del
- * sistema. Tap en cualquier lado → foco + teclado. Soporta autofill de OTP
- * (`oneTimeCode` / `one-time-code`). Solo dígitos.
+ * códigos de verificación. Patrón: un `Pressable` que enfoca un `TextInput`
+ * real (fuera de pantalla, no como overlay opaco) — tap en cualquier casillero
+ * = foco + teclado. Evita el bug del overlay `opacity:0` que no recibe taps.
+ * Solo dígitos, autofill de OTP (`oneTimeCode`).
  */
 export function CodeInput({
   value,
@@ -46,35 +46,42 @@ export function CodeInput({
   const surface = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.row} pointerEvents="none">
-        {cells.map((char, i) => {
-          const isActive = focused && i === activeIndex && value.length < length
-          const filled = char !== ''
-          return (
-            <View
-              key={i}
-              style={[
-                styles.cell,
-                {
-                  backgroundColor: isActive ? theme.colors.primarySurface : surface,
-                  borderColor: isActive
-                    ? theme.colors.primary
-                    : filled
-                      ? theme.colors.textSoft
-                      : theme.colors.line,
-                  borderWidth: isActive ? 2 : StyleSheet.hairlineWidth + 1,
-                },
-              ]}
-            >
-              <Text style={[styles.cellText, { color: theme.colors.text }]}>{char}</Text>
-            </View>
-          )
-        })}
-      </View>
+    <Pressable
+      accessibilityLabel={`Código de ${length} dígitos`}
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={() => inputRef.current?.focus()}
+      style={styles.row}
+    >
+      {cells.map((char, i) => {
+        const isActive = focused && i === activeIndex && value.length < length
+        const filled = char !== ''
+        return (
+          <View
+            key={i}
+            pointerEvents="none"
+            style={[
+              styles.cell,
+              {
+                backgroundColor: isActive ? theme.colors.primarySurface : surface,
+                borderColor: isActive
+                  ? theme.colors.primary
+                  : filled
+                    ? theme.colors.textSoft
+                    : theme.colors.line,
+                borderWidth: isActive ? 2 : StyleSheet.hairlineWidth + 1,
+              },
+            ]}
+          >
+            <Text style={[styles.cellText, { color: theme.colors.text }]}>{char}</Text>
+          </View>
+        )
+      })}
+      {/* Input real, fuera de pantalla. El foco se dispara desde el Pressable;
+          el teclado + el autofill funcionan sin importar su posición. */}
       <TextInput
         ref={inputRef}
-        accessibilityLabel={`Código de ${length} dígitos`}
+        accessible={false}
         autoComplete="one-time-code"
         autoFocus={autoFocus}
         caretHidden
@@ -88,14 +95,11 @@ export function CodeInput({
         textContentType="oneTimeCode"
         value={value}
       />
-    </View>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    position: 'relative',
-  },
   row: {
     flexDirection: 'row',
     gap: 8,
@@ -112,8 +116,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
+  // Fuera de pantalla pero montado + enfocable. 1×1 para no afectar el layout.
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 1,
+    height: 1,
     opacity: 0,
   },
 })
