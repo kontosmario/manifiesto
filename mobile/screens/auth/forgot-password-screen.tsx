@@ -25,6 +25,7 @@ import { AppButton } from '@/components/ui/button'
 import { TextField } from '@/components/ui/text-field'
 import { Screen } from '@/components/ui/screen'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
+import { CodeInput } from '@/components/auth/code-input'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RequireGuest } from '@/components/guards'
 import { normalizeEmail } from '@/features/auth/auth-flow'
@@ -158,18 +159,13 @@ export function ForgotPasswordScreen() {
 
           <View style={styles.actionsStack}>
             <FadeInUp reduced={reduced} delay={400}>
-              <TextField
-                accessibilityLabel="Código de 6 dígitos"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="number-pad"
-                label="¿El link no te abrió la app?"
-                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Código de 6 dígitos del mail"
-                returnKeyType="go"
-                textContentType="oneTimeCode"
+              <Text style={[styles.codeLabel, { color: theme.colors.textSoft }]}>
+                ¿El link no te abrió la app? Ingresá el código del mail
+              </Text>
+              <CodeInput
                 value={code}
-                onSubmitEditing={handleVerifyCode}
+                onChangeText={setCode}
+                onComplete={handleVerifyCode}
               />
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={500}>
@@ -347,5 +343,11 @@ const styles = StyleSheet.create({
   },
   subStrong: {
     fontWeight: '700',
+  },
+  codeLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 })
