@@ -5,7 +5,10 @@ import {
   computeMonthlyAccountingWindow,
   type MonthlyAccountingWindow,
 } from '@/utils/monthly-accounting'
-import { normalizeToStartOfDay } from '@/utils/pay-cycle'
+import {
+  computeIsSalaryPendingConfirmation,
+  normalizeToStartOfDay,
+} from '@/utils/pay-cycle'
 
 export type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 
@@ -21,11 +24,20 @@ export function useMonthlyAccounting(familyId?: string): MonthlyAccountingWindow
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
     const config = financeToCycleConfig(finance.data)
-    return computeMonthlyAccountingWindow(config, today)
+    // Freeze: si el cobro del mes no fue confirmado, la ventana (y por ende el
+    // saldo) se queda en el ciclo anterior. Sin esto el saldo saltaba al ingreso
+    // nuevo el día de cobro aunque el user no confirmara.
+    const pending = computeIsSalaryPendingConfirmation(
+      config,
+      today,
+      finance.data?.last_salary_confirmed_at ?? null,
+    )
+    return computeMonthlyAccountingWindow(config, today, pending)
   }, [
     finance.data?.cycle_type,
     finance.data?.salary_payment_day,
     finance.data?.cycle_anchor_date,
     finance.data?.cycle_length_days,
+    finance.data?.last_salary_confirmed_at,
   ])
 }

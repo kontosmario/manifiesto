@@ -138,3 +138,30 @@ export function getCurrentPayCycle(
   }
   return computeRollingN(referenceDate, config.cycle_anchor_date, config.cycle_length_days)
 }
+
+/**
+ * `true` cuando el cobro mensual de ESTE mes ya llegó (today >= payday) pero el
+ * user todavía no lo confirmó (`lastConfirmedAt < payday`). Es el flag que
+ * congela el ciclo/ventana de accounting hasta confirmar el cobro. Solo aplica
+ * a `monthly`. Fuente única para que el countdown (usePayCycle) y el saldo
+ * (useMonthlyAccounting) usen EXACTAMENTE la misma condición y no se
+ * desincronicen.
+ */
+export function computeIsSalaryPendingConfirmation(
+  config: FinanceCycleConfig,
+  today: Date,
+  lastConfirmedAt: string | null,
+): boolean {
+  if (config.cycle_type !== 'monthly') return false
+  const todayNorm = normalizeToStartOfDay(today)
+  const payDate = buildPayDate(
+    todayNorm.getFullYear(),
+    todayNorm.getMonth(),
+    config.salary_payment_day,
+  )
+  if (todayNorm < payDate) return false
+  if (!lastConfirmedAt) return true
+  const confirmed = new Date(lastConfirmedAt)
+  if (Number.isNaN(confirmed.getTime())) return true
+  return normalizeToStartOfDay(confirmed) < payDate
+}

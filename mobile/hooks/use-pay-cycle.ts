@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { DEFAULT_SALARY_PAYMENT_DAY } from '@/features/finance/family-finance.model'
 import {
-  buildPayDate,
+  computeIsSalaryPendingConfirmation,
   getCurrentPayCycle,
   normalizeToStartOfDay,
   type PayCycle,
@@ -46,17 +46,13 @@ export function usePayCycle(familyId?: string): UsePayCycleResult {
 
     // freezeUntilSalaryConfirmation solo aplica a monthly: para rolling
     // types el ciclo activo viene del anchor + length, no del "día de
-    // cobro" que se confirma manualmente. Mantener semántica previa.
-    const currentMonthPayDate = buildPayDate(
-      today.getFullYear(),
-      today.getMonth(),
-      salaryPaymentDay,
+    // cobro" que se confirma manualmente. Helper compartido con
+    // useMonthlyAccounting → countdown y saldo nunca divergen.
+    const isSalaryPendingConfirmation = computeIsSalaryPendingConfirmation(
+      config,
+      today,
+      finance?.last_salary_confirmed_at ?? null,
     )
-    const lastConfirmed = parseConfirmedDate(finance?.last_salary_confirmed_at ?? null)
-    const isSalaryPendingConfirmation =
-      config.cycle_type === 'monthly' &&
-      today >= currentMonthPayDate &&
-      (!lastConfirmed || lastConfirmed < currentMonthPayDate)
 
     const cycle = getCurrentPayCycle(today, config, isSalaryPendingConfirmation)
     return { cycle, salaryPaymentDay, today, isSalaryPendingConfirmation }
@@ -67,11 +63,4 @@ export function usePayCycle(familyId?: string): UsePayCycleResult {
     finance?.cycle_length_days,
     finance?.last_salary_confirmed_at,
   ])
-}
-
-function parseConfirmedDate(raw: string | null): Date | null {
-  if (!raw) return null
-  const parsed = new Date(raw)
-  if (Number.isNaN(parsed.getTime())) return null
-  return normalizeToStartOfDay(parsed)
 }

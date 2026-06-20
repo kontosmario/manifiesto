@@ -30,10 +30,14 @@ export interface MonthlyAccountingWindow {
 export function computeMonthlyAccountingWindow(
   cycleConfig: FinanceCycleConfig,
   today: Date,
+  freezeUntilSalaryConfirmation = false,
 ): MonthlyAccountingWindow {
   const todayNorm = normalizeToStartOfDay(today)
   if (cycleConfig.cycle_type === 'monthly') {
-    const cycle = getCurrentPayCycle(todayNorm, cycleConfig)
+    // Mismo freeze que el pay cycle: si el cobro del mes no fue confirmado, la
+    // ventana de accounting se queda en el ciclo anterior → el saldo NO salta al
+    // ingreso nuevo hasta confirmar el cobro.
+    const cycle = getCurrentPayCycle(todayNorm, cycleConfig, freezeUntilSalaryConfirmation)
     const daysIntoMonth = Math.floor((todayNorm.getTime() - cycle.start.getTime()) / DAY_MS) + 1
     const daysRemaining = Math.max(1, Math.ceil((cycle.end.getTime() - todayNorm.getTime()) / DAY_MS))
     return {
