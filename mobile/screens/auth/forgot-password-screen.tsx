@@ -34,6 +34,7 @@ import { useCaptcha } from '@/features/auth/use-captcha'
 import { CaptchaModal } from '@/components/auth/captcha-modal'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
+import { useNumpadOffset } from '@/lib/numpad-visibility'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -48,6 +49,10 @@ export function ForgotPasswordScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [code, setCode] = useState('')
+  // Cuando el numpad (InAppNumpad) está abierto, su altura llega por acá. La
+  // usamos para subir el contenido (flex-start + padding) y que las celdas + la
+  // acción no queden tapadas por el sheet.
+  const numpadOffset = useNumpadOffset()
 
   const handleBack = useCallback(() => {
     void triggerHaptic('light')
@@ -126,8 +131,14 @@ export function ForgotPasswordScreen() {
     return (
       <RequireGuest allowFamilylessSession>
         <Screen
-          contentContainerStyle={styles.screenContent}
-          bodyStyle={styles.screenBody}
+          contentContainerStyle={[
+            styles.screenContent,
+            numpadOffset > 0 ? { paddingBottom: 16 + numpadOffset } : null,
+          ]}
+          bodyStyle={[
+            styles.screenBody,
+            numpadOffset > 0 ? styles.screenBodyNumpad : null,
+          ]}
         >
           <StatusBar style={theme.isDark ? 'light' : 'dark'} />
           {topNav}
@@ -293,6 +304,12 @@ const styles = StyleSheet.create({
   screenBody: {
     flex: 1,
     justifyContent: 'space-between',
+  },
+  // Con el numpad abierto: empaquetar arriba (en vez de space-between) para que
+  // las celdas + la acción suban y queden por encima del sheet.
+  screenBodyNumpad: {
+    justifyContent: 'flex-start',
+    rowGap: 28,
   },
   topNav: {
     paddingHorizontal: 20,
