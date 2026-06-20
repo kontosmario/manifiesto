@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AppButton } from '@/components/ui/button'
-import { TextField } from '@/components/ui/text-field'
+import { PasswordField } from '@/components/ui/password-field'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { AuthShell } from '@/components/auth/auth-scaffold'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
@@ -182,6 +183,12 @@ export function ResetPasswordScreen() {
     [password, confirm],
   )
 
+  // Indicador en vivo de coincidencia: success si coinciden, warning si no.
+  // null cuando el campo de confirmación está vacío (todavía no hay nada que
+  // comparar).
+  const matchState: 'match' | 'mismatch' | null =
+    confirm.length === 0 ? null : confirm === password ? 'match' : 'mismatch'
+
   const handleSubmit = useCallback(async () => {
     if (!passwordValid || updatePassword.isPending) return
     const policy = checkPasswordPolicy(password)
@@ -345,31 +352,59 @@ export function ResetPasswordScreen() {
       subtitle={`Elegí una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
       title="Nueva contraseña"
     >
-      <TextField
+      <View
+        style={[
+          styles.disclaimer,
+          { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.line },
+        ]}
+      >
+        <MaterialIcons name="lock" size={18} color={theme.colors.primary} />
+        <Text style={[styles.disclaimerText, { color: theme.colors.textSoft }]}>
+          Importante: esta será tu contraseña para iniciar sesión en Manifiesto.
+          Elegí una segura y que recuerdes.
+        </Text>
+      </View>
+      <PasswordField
         accessibilityLabel="Nueva contraseña"
-        autoCapitalize="none"
-        autoCorrect={false}
         label="Nueva contraseña"
         onChangeText={setPassword}
         placeholder="••••••••"
         returnKeyType="next"
-        secureTextEntry
         textContentType="newPassword"
         value={password}
       />
-      <TextField
+      <PasswordField
         accessibilityLabel="Confirmar contraseña"
-        autoCapitalize="none"
-        autoCorrect={false}
         label="Confirmar contraseña"
         onChangeText={setConfirm}
         onSubmitEditing={() => void handleSubmit()}
         placeholder="••••••••"
         returnKeyType="go"
-        secureTextEntry
-        textContentType="newPassword"
+        textContentType="password"
         value={confirm}
       />
+      {matchState ? (
+        <View style={styles.matchRow}>
+          <MaterialIcons
+            color={matchState === 'match' ? theme.colors.primary : theme.colors.warning}
+            name={matchState === 'match' ? 'check-circle' : 'error-outline'}
+            size={16}
+          />
+          <Text
+            style={[
+              styles.matchText,
+              {
+                color:
+                  matchState === 'match' ? theme.colors.primary : theme.colors.warning,
+              },
+            ]}
+          >
+            {matchState === 'match'
+              ? 'Las contraseñas coinciden'
+              : 'Las contraseñas no coinciden'}
+          </Text>
+        </View>
+      ) : null}
       {formError ? <FeedbackPill intent="error" message={formError} /> : null}
       <AppButton
         disabled={!passwordValid}
@@ -385,5 +420,29 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  matchText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 })

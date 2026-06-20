@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Modal,
   Pressable,
@@ -81,6 +81,21 @@ export function InAppNumpad({
   // `visible=false` on the Modal hides the sheet instantly and the
   // slide-down timing never paints.
   const [mounted, setMounted] = useState(false)
+  // Unmount-safe: si el numpad se desmonta estando abierto (ej: una navegación
+  // que cierra la pantalla mientras está visible), el close se publica desde el
+  // callback de la animación que NUNCA corre tras el unmount → el offset global
+  // queda inflado y TODAS las pantallas (Home) se sobre-scrollean. Este cleanup
+  // libera el offset en el unmount si quedó abierto.
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    mountedRef.current = mounted
+  }, [mounted])
+  useEffect(
+    () => () => {
+      if (mountedRef.current) publishNumpadClose()
+    },
+    [],
+  )
 
   const translateY = useSharedValue(screenHeight)
 

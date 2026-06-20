@@ -28,6 +28,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
+import { PasswordField } from '@/components/ui/password-field'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
@@ -880,16 +881,13 @@ function PasswordForm({
         />
       )}
 
-      <TextField
+      <PasswordField
         accessibilityLabel="Contraseña"
-        autoCapitalize="none"
-        autoCorrect={false}
         label="Contraseña"
         onChangeText={onChangePassword}
         placeholder="••••••••"
         ref={passwordRef}
         returnKeyType="go"
-        secureTextEntry
         textContentType="password"
         value={password}
         onSubmitEditing={onSubmit}

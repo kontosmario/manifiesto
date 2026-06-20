@@ -25,6 +25,7 @@ import { useRouter } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
+import { PasswordField } from '@/components/ui/password-field'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { Screen } from '@/components/ui/screen'
@@ -407,10 +408,8 @@ export function SignupScreen() {
               onSubmitEditing={() => passwordRef.current?.focus?.()}
             />
             <View>
-              <TextField
+              <PasswordField
                 accessibilityLabel="Contraseña"
-                autoCapitalize="none"
-                autoCorrect={false}
                 label="Contraseña"
                 onChangeText={(v) => {
                   setErrorMessage(null)
@@ -422,7 +421,6 @@ export function SignupScreen() {
                 placeholder="••••••••"
                 ref={passwordRef}
                 returnKeyType="go"
-                secureTextEntry
                 textContentType="newPassword"
                 value={password}
                 onSubmitEditing={() => {
