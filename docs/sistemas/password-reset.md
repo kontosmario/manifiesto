@@ -25,6 +25,36 @@ contraseña nueva seteada → home
 | Landing web | `manifiestoapp-site/auth/reset-password.html` | Rebota a la app preservando `?code=`; botón manual + fallback sin app. **Por qué existe**: iOS NO dispara Universal Links desde redirects 302 — el verify de Supabase siempre aterriza en Safari primero. |
 | Pantalla | `mobile/screens/auth/reset-password-screen.tsx` (ruta `app/auth/reset-password.tsx`) | Exchange PKCE, re-auth gate (G-Auth1), fricción fresh-install, política de contraseña, screen-capture protection. |
 
+## Fallback por código OTP (2026-06-20)
+
+Para que el reset funcione SIN depender del deep-link/Universal Link (que no abre
+la app en Expo Go, y que iOS no dispara desde el redirect 302 de Supabase), el
+mail incluye además un **código de 6 dígitos**. Flujo:
+
+```
+forgot-password (estado "sent") → campo "¿El link no te abrió la app?" + código
+        ↓ router.replace('/auth/reset-password', { email, otp })
+reset-password → verifyOtp({type:'recovery'}) → MISMA sesión de recovery que el PKCE
+        ↓ (de acá en adelante, idéntico al path del link)
+re-auth gate (PIN/biometría) + fricción fresh-install + form + política → home
+```
+
+- **Por qué es seguro**: NO baja la seguridad — el gate de PIN/biometría no se
+  toca. El código solo reemplaza al link como forma de *entrar* (mismo token
+  single-use, mismo TTL de 1h, mismo rate-limit de Supabase). El re-auth gate y
+  la fricción fresh-install siguen aplicando antes de `updateUser({password})`.
+- **Por qué funciona en todos lados**: no usa schemes ni AASA → idéntico en Expo
+  Go, dev build y TestFlight.
+- Piezas: `useVerifyRecoveryOtp` ([`use-auth-actions.ts`](../../mobile/features/auth/use-auth-actions.ts)),
+  campo de código en [`forgot-password-screen.tsx`](../../mobile/screens/auth/forgot-password-screen.tsx),
+  branch `otp` en [`reset-password-screen.tsx`](../../mobile/screens/auth/reset-password-screen.tsx).
+
+> **⚠️ Acción owner (requerida para que el usuario VEA el código)**: agregar
+> `{{ .Token }}` al cuerpo del template de **Recovery** (Dashboard → Auth → Email
+> Templates → Reset Password). Sin eso el mail no muestra el código (el link
+> sigue funcionando, pero el fallback queda invisible). El token ya existe; solo
+> falta surfacearlo en el cuerpo.
+
 ## Caveat Expo Go
 
 El `exp://192.168.x.x:8081/--/auth/reset-password` de dev NO está en el
@@ -34,6 +64,11 @@ builds reales ya no pasa (usa el Universal Link). Para probar el flujo
 COMPLETO en Expo Go: agregar temporalmente `exp://192.168.*.*:*/**` al
 allowlist (Dashboard → Auth → URL Configuration) y quitar al terminar.
 La pantalla en sí se puede probar siempre abriendo el deep link a mano.
+
+> **Actualización 2026-06-20**: con el **fallback por código OTP** (sección
+> arriba) ya no hace falta el allowlist hack para probar en Expo Go — el código
+> de 6 dígitos entra directo en la app, sin deep-link. Es el camino recomendado
+> para testear el flujo completo en cualquier entorno.
 
 ## Runbook — email desde soporte@manifiestoapp.com (OWNER ACTION)
 

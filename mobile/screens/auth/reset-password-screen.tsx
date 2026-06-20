@@ -12,6 +12,7 @@ import { markAppUnlocked } from '@/features/auth/app-lock-state'
 import {
   useCompleteAuthCallback,
   useUpdatePassword,
+  useVerifyRecoveryOtp,
 } from '@/features/auth/use-auth-actions'
 import { getBiometricLoginState } from '@/lib/biometric-auth'
 import { getPinLockState } from '@/lib/pin-lock'
@@ -42,19 +43,32 @@ export function ResetPasswordScreen() {
   useScreenCaptureProtection()
   const router = useRouter()
   const { theme } = useAppTheme()
-  const params = useLocalSearchParams<{ code?: string }>()
+  const params = useLocalSearchParams<{
+    code?: string
+    email?: string
+    otp?: string
+  }>()
   const completeAuthCallback = useCompleteAuthCallback()
+  const verifyRecoveryOtp = useVerifyRecoveryOtp()
   const updatePassword = useUpdatePassword()
   const cancelledRef = useRef(false)
   // El effect de exchange depende sólo del code; meter
   // `completeAuthCallback` en deps re-disparaba el RPC en cada render
   // porque la mutation object cambia de identidad. Code review screens-B1.
   const mutateRef = useRef(completeAuthCallback)
+  const verifyRef = useRef(verifyRecoveryOtp)
   useEffect(() => {
     mutateRef.current = completeAuthCallback
+    verifyRef.current = verifyRecoveryOtp
   })
 
   const code = typeof params.code === 'string' ? params.code : null
+  // Fallback OTP: el mail trae un código de 6 dígitos; forgot-password navega
+  // acá con ?email=&otp= cuando el deep-link no abre la app. verifyOtp deja la
+  // misma sesión de recovery que el exchange del PKCE → el resto es idéntico.
+  const otp = typeof params.otp === 'string' ? params.otp : null
+  const email = typeof params.email === 'string' ? params.email : null
+  const hasOtp = Boolean(otp && email)
   // Sprint G · G-Auth1: si el user tiene PIN o biometric configurado en
   // este device, gateamos el form detrás de un re-auth ANTES de permitir
   // updateUser({password}). El email link es ONE factor; si su inbox
@@ -71,9 +85,9 @@ export function ResetPasswordScreen() {
     | 'success'
     | 'error'
     | 'timeout'
-  >(code ? 'exchanging' : 'error')
+  >(code || hasOtp ? 'exchanging' : 'error')
   const [exchangeError, setExchangeError] = useState<string | null>(
-    code ? null : 'El link es inválido o ya expiró. Pedinos uno nuevo.',
+    code || hasOtp ? null : 'El link es inválido o ya expiró. Pedinos uno nuevo.',
   )
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -83,7 +97,7 @@ export function ResetPasswordScreen() {
   const [reauthVisible, setReauthVisible] = useState(false)
 
   useEffect(() => {
-    if (!code) return
+    if (!code && !hasOtp) return
     cancelledRef.current = false
     const timeoutId = setTimeout(() => {
       if (cancelledRef.current) return
@@ -92,7 +106,11 @@ export function ResetPasswordScreen() {
 
     const run = async () => {
       try {
-        await mutateRef.current.mutateAsync({ code })
+        if (code) {
+          await mutateRef.current.mutateAsync({ code })
+        } else if (otp && email) {
+          await verifyRef.current.mutateAsync({ email, token: otp })
+        }
         if (cancelledRef.current) return
         clearTimeout(timeoutId)
         // Sprint G · G-Auth1: chequeo si el device tiene local auth
@@ -134,7 +152,14 @@ export function ResetPasswordScreen() {
       } catch (error) {
         if (cancelledRef.current) return
         clearTimeout(timeoutId)
-        setExchangeError(getErrorMessage(error, 'No pudimos validar el link.'))
+        setExchangeError(
+          getErrorMessage(
+            error,
+            code
+              ? 'No pudimos validar el link.'
+              : 'Código inválido o vencido. Pedí uno nuevo.',
+          ),
+        )
         setStage('error')
       }
     }
@@ -144,7 +169,7 @@ export function ResetPasswordScreen() {
       cancelledRef.current = true
       clearTimeout(timeoutId)
     }
-  }, [code])
+  }, [code, otp, email, hasOtp])
 
   // Sprint H · H1: enforce full policy on password reset (new password
   // is treated as if the user were signing up — we don't want a recovery
@@ -256,7 +281,7 @@ export function ResetPasswordScreen() {
           // (no auth context wired into this screen pre-form), and
           // `code` is just as scoped to "the password reset attempt
           // currently in progress" — exactly what we want.
-          frictionKey={code}
+          frictionKey={code ?? otp}
         />
       </Screen>
     )

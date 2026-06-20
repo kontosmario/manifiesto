@@ -101,6 +101,28 @@ export function usePasswordReset() {
   })
 }
 
+/**
+ * Fallback del reset por código OTP (6 dígitos del mail), independiente del
+ * deep-link/Universal Link. `verifyOtp({type:'recovery'})` deja una sesión de
+ * recovery — exactamente igual que el `exchangeCodeForSession` del PKCE — así
+ * que el resto del flujo seguro (re-auth gate + form) no cambia. Funciona en
+ * Expo Go / dev build / TestFlight porque no depende de schemes ni AASA.
+ */
+export function useVerifyRecoveryOtp() {
+  return useMutation({
+    mutationFn: async ({ email, token }: { email: string; token: string }) => {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'recovery',
+      })
+      if (error) {
+        throw error
+      }
+    },
+  })
+}
+
 export function useUpdatePassword() {
   return useMutation({
     mutationFn: async ({ password }: { password: string }) => {

@@ -46,6 +46,7 @@ export function ForgotPasswordScreen() {
   const [email, setEmail] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
+  const [code, setCode] = useState('')
 
   const handleBack = useCallback(() => {
     void triggerHaptic('light')
@@ -82,6 +83,18 @@ export function ForgotPasswordScreen() {
       setErrorMessage(getErrorMessage(error, 'No pudimos enviar el email.'))
     }
   }, [captcha, email, passwordReset])
+
+  // Fallback por código: navega a reset-password con email+otp. La verificación
+  // (verifyOtp) + el gate seguro viven en reset-password — acá solo pasamos el
+  // código tipeado. Funciona en Expo Go / dev / TestFlight (no usa deep-link).
+  const handleVerifyCode = useCallback(() => {
+    if (!sentTo || code.length !== 6) return
+    void triggerHaptic('light')
+    router.replace({
+      pathname: '/auth/reset-password',
+      params: { email: sentTo, otp: code },
+    })
+  }, [code, router, sentTo])
 
   // Top nav compartido por ambos estados — idéntico al del login.
   const topNav = (
@@ -132,12 +145,12 @@ export function ForgotPasswordScreen() {
               </FadeInUp>
               <FadeInUp reduced={reduced} delay={300}>
                 <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-                  Te mandamos un link a{' '}
+                  Te mandamos un mail a{' '}
                   <Text style={[styles.subStrong, { color: theme.colors.text }]}>
                     {sentTo}
                   </Text>{' '}
-                  para crear una contraseña nueva. Si no aparece en unos
-                  minutos, revisá spam. El link vale por una hora.
+                  con un link y un código. Tocá el link, o si no te abre la app,
+                  ingresá el código de 6 dígitos acá abajo. Vale por una hora.
                 </Text>
               </FadeInUp>
             </View>
@@ -145,9 +158,32 @@ export function ForgotPasswordScreen() {
 
           <View style={styles.actionsStack}>
             <FadeInUp reduced={reduced} delay={400}>
+              <TextField
+                accessibilityLabel="Código de 6 dígitos"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="number-pad"
+                label="¿El link no te abrió la app?"
+                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Código de 6 dígitos del mail"
+                returnKeyType="go"
+                textContentType="oneTimeCode"
+                value={code}
+                onSubmitEditing={handleVerifyCode}
+              />
+            </FadeInUp>
+            <FadeInUp reduced={reduced} delay={500}>
+              <AppButton
+                disabled={code.length !== 6}
+                label="Ingresar con el código"
+                onPress={handleVerifyCode}
+              />
+            </FadeInUp>
+            <FadeInUp reduced={reduced} delay={600}>
               <AppButton
                 label="Volver a login"
                 onPress={() => router.replace('/(auth)/login')}
+                variant="ghost"
               />
             </FadeInUp>
           </View>
