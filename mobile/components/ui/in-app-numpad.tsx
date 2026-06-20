@@ -46,6 +46,8 @@ interface InAppNumpadProps {
   doneLabel?: string
   /** Modo código/OTP: sin coma ni decimales, permite cero inicial. */
   integerOnly?: boolean
+  /** Render como overlay NO-modal: permite scrollear el contenido detrás. */
+  embedded?: boolean
 }
 
 const ROWS: readonly (readonly (string | 'backspace')[])[] = [
@@ -67,6 +69,7 @@ export function InAppNumpad({
   maxDecimalDigits = 2,
   doneLabel = 'Listo',
   integerOnly = false,
+  embedded = false,
 }: InAppNumpadProps) {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -233,27 +236,8 @@ export function InAppNumpad({
       }
     })
 
-  return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={onDismiss}
-    >
-      <GestureHandlerRootView style={styles.root}>
-        {/* Transparent tap-to-dismiss surface — we deliberately do NOT
-            tint the area behind the numpad. The user wants the
-            AmountCard input to remain fully readable while typing.
-            The sheet sliding up is the focus cue, no scrim needed. */}
-        <Pressable
-          accessibilityLabel="Cerrar numpad"
-          accessibilityRole="button"
-          onPress={onDismiss}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <GestureDetector gesture={panGesture}>
+  const sheet = (
+    <GestureDetector gesture={panGesture}>
           <Animated.View
             onLayout={handleSheetLayout}
             style={[
@@ -309,6 +293,38 @@ export function InAppNumpad({
             </View>
           </Animated.View>
         </GestureDetector>
+  )
+
+  // Modo embedded: sin Modal, como overlay absoluto dentro del árbol del screen.
+  // `box-none` deja pasar los toques/scroll del área de arriba al contenido de
+  // atrás (el ScrollView del screen) → permite scrollear con el numpad abierto.
+  // Sin backdrop tap-to-dismiss: se cierra con pan-down o el botón "Listo".
+  if (embedded) {
+    if (!mounted) return null
+    return (
+      <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, styles.embeddedRoot]}>
+        {sheet}
+      </View>
+    )
+  }
+
+  return (
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onDismiss}
+    >
+      <GestureHandlerRootView style={styles.root}>
+        {/* Tap-to-dismiss transparente; el sheet subiendo es el cue de foco. */}
+        <Pressable
+          accessibilityLabel="Cerrar numpad"
+          accessibilityRole="button"
+          onPress={onDismiss}
+          style={StyleSheet.absoluteFill}
+        />
+        {sheet}
       </GestureHandlerRootView>
     </Modal>
   )
@@ -388,6 +404,10 @@ function NumpadKey({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  // Overlay embedded: absoluteFill (lo pone el caller) + sheet al fondo.
+  embeddedRoot: {
     justifyContent: 'flex-end',
   },
   backdrop: {

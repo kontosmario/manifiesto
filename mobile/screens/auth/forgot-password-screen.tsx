@@ -24,6 +24,7 @@ import Animated, {
 import { AppButton } from '@/components/ui/button'
 import { TextField } from '@/components/ui/text-field'
 import { Screen } from '@/components/ui/screen'
+import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { FeedbackPill } from '@/components/auth/auth-feedback-pill'
 import { CodeInput } from '@/components/auth/code-input'
 import { FernLogo } from '@/components/auth/fern-logo'
@@ -49,6 +50,7 @@ export function ForgotPasswordScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [code, setCode] = useState('')
+  const [numpadVisible, setNumpadVisible] = useState(false)
   // Cuando el numpad (InAppNumpad) está abierto, su altura llega por acá. La
   // usamos para subir el contenido (flex-start + padding) y que las celdas + la
   // acción no queden tapadas por el sheet.
@@ -93,14 +95,30 @@ export function ForgotPasswordScreen() {
   // Fallback por código: navega a reset-password con email+otp. La verificación
   // (verifyOtp) + el gate seguro viven en reset-password — acá solo pasamos el
   // código tipeado. Funciona en Expo Go / dev / TestFlight (no usa deep-link).
-  const handleVerifyCode = useCallback(() => {
-    if (!sentTo || code.length !== 6) return
-    void triggerHaptic('light')
-    router.replace({
-      pathname: '/auth/reset-password',
-      params: { email: sentTo, otp: code },
-    })
-  }, [code, router, sentTo])
+  const submitCode = useCallback(
+    (value: string) => {
+      if (!sentTo || value.length !== 6) return
+      void triggerHaptic('light')
+      router.replace({
+        pathname: '/auth/reset-password',
+        params: { email: sentTo, otp: value },
+      })
+    },
+    [router, sentTo],
+  )
+
+  // Cambios del código (numpad o paste). Sanitiza + auto-submit al 6º dígito.
+  const handleCodeChange = useCallback(
+    (next: string) => {
+      const digits = next.replace(/\D/gu, '').slice(0, 6)
+      setCode(digits)
+      if (digits.length === 6) {
+        setNumpadVisible(false)
+        submitCode(digits)
+      }
+    },
+    [submitCode],
+  )
 
   // Top nav compartido por ambos estados — idéntico al del login.
   const topNav = (
@@ -130,6 +148,7 @@ export function ForgotPasswordScreen() {
   if (sentTo) {
     return (
       <RequireGuest allowFamilylessSession>
+        <View style={styles.fill}>
         <Screen
           contentContainerStyle={[
             styles.screenContent,
@@ -174,16 +193,18 @@ export function ForgotPasswordScreen() {
                 ¿El link no te abrió la app? Ingresá el código del mail
               </Text>
               <CodeInput
+                active={numpadVisible}
+                length={6}
+                onChange={handleCodeChange}
+                onPressCells={() => setNumpadVisible(true)}
                 value={code}
-                onChangeText={setCode}
-                onComplete={handleVerifyCode}
               />
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={500}>
               <AppButton
                 disabled={code.length !== 6}
                 label="Ingresar con el código"
-                onPress={handleVerifyCode}
+                onPress={() => submitCode(code)}
               />
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={600}>
@@ -195,6 +216,16 @@ export function ForgotPasswordScreen() {
             </FadeInUp>
           </View>
         </Screen>
+        <InAppNumpad
+          embedded
+          integerOnly
+          maxIntegerDigits={6}
+          onChangeRawValue={handleCodeChange}
+          onDismiss={() => setNumpadVisible(false)}
+          rawValue={code}
+          visible={numpadVisible}
+        />
+        </View>
       </RequireGuest>
     )
   }
@@ -294,6 +325,9 @@ function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeI
 // Métricas espejadas de login-screen.tsx — cualquier cambio allá debe
 // reflejarse acá para que las tres superficies de auth lean como una.
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   screenContent: {
     flexGrow: 1,
     paddingHorizontal: 0,
