@@ -49,11 +49,12 @@ re-auth gate (PIN/biometría) + fricción fresh-install + form + política → h
   campo de código en [`forgot-password-screen.tsx`](../../mobile/screens/auth/forgot-password-screen.tsx),
   branch `otp` en [`reset-password-screen.tsx`](../../mobile/screens/auth/reset-password-screen.tsx).
 
-> **⚠️ Acción owner (requerida para que el usuario VEA el código)**: agregar
-> `{{ .Token }}` al cuerpo del template de **Recovery** (Dashboard → Auth → Email
-> Templates → Reset Password). Sin eso el mail no muestra el código (el link
-> sigue funcionando, pero el fallback queda invisible). El token ya existe; solo
-> falta surfacearlo en el cuerpo.
+> **✅ HECHO 2026-06-20** (Management API `PATCH /v1/projects/{ref}/config/auth`
+> → `mailer_templates_recovery_content`, autorización owner): el template de
+> **Recovery** ahora muestra el código — bloque *"¿No se abrió la app? Ingresá
+> este código: `{{ .Token }}`"* justo después del botón, on-brand (peach
+> `#F2B58A`, centrado). El link (`{{ .ConfirmationURL }}`) sigue funcionando
+> igual. Idempotente: re-correr no duplica el bloque.
 
 ## Caveat Expo Go
 
