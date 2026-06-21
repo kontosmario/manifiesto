@@ -235,22 +235,39 @@ export function useAdvisorNotificationSync({
       const now = Date.now()
       const nextCache = { ...cache }
 
-      await Promise.allSettled(
-        eligible.map(async (task) => {
-          const kind = `advisor_${task.id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase()}`
-          await sendFamilyPush({
-            familyId: familyId!,
-            title: task.title,
-            body: task.body,
-            kind,
-            url: '/(app)/(tabs)/control',
-          }).catch(() => {
-            // Push delivery is best-effort; cache still bumps below
-            // so we don't retry on every render.
-          })
-          nextCache[task.id] = { pushedAt: now }
-        }),
-      )
+      // Anti-spam: si califican >2 señales en la misma corrida, mandamos
+      // UNA sola push "Tenés N alertas en Control" en vez de una por señal.
+      // 1-2 → individuales. En ambos casos bumpeamos el cooldown de TODAS
+      // las señales incluidas para no re-pushear.
+      if (eligible.length > 2) {
+        await sendFamilyPush({
+          familyId: familyId!,
+          title: `Tenés ${eligible.length} alertas en Control`,
+          body: `${eligible[0].title} y ${eligible.length - 1} más. Tocá para revisar.`,
+          kind: 'advisor_digest',
+          url: '/(app)/(tabs)/control',
+        }).catch(() => {
+          // Best-effort; el cooldown se bumpea igual abajo.
+        })
+        for (const task of eligible) nextCache[task.id] = { pushedAt: now }
+      } else {
+        await Promise.allSettled(
+          eligible.map(async (task) => {
+            const kind = `advisor_${task.id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase()}`
+            await sendFamilyPush({
+              familyId: familyId!,
+              title: task.title,
+              body: task.body,
+              kind,
+              url: '/(app)/(tabs)/control',
+            }).catch(() => {
+              // Push delivery is best-effort; cache still bumps below
+              // so we don't retry on every render.
+            })
+            nextCache[task.id] = { pushedAt: now }
+          }),
+        )
+      }
 
       cache = nextCache
       await persist()
