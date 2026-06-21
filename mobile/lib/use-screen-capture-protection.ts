@@ -25,6 +25,16 @@
 import { useEffect } from 'react'
 import * as ScreenCapture from 'expo-screen-capture'
 
+// Decisión del owner (2026-06-21): protección de captura DESACTIVADA. Las
+// capturas de pantalla salían todas negras y el owner quiere poder capturar
+// la app. Con esto el contenido se ve en los screenshots/recordings.
+//
+// Trade-off de seguridad: las pantallas sensibles (PIN, password, login,
+// signup, reauth) ya NO bloquean screenshot/recording — un atacante con
+// acceso a la pantalla podría capturar credenciales tipeadas. Para
+// re-activar (todo, o solo algunas pantallas) poné este flag en true.
+const SCREEN_CAPTURE_PROTECTION_ENABLED = false
+
 /**
  * Disables screen recording + screenshot while the calling component
  * is mounted (and, optionally, only while `enabled` is true — useful
@@ -41,7 +51,7 @@ import * as ScreenCapture from 'expo-screen-capture'
  */
 export function useScreenCaptureProtection(enabled: boolean = true): void {
   useEffect(() => {
-    if (!enabled) return
+    if (!SCREEN_CAPTURE_PROTECTION_ENABLED || !enabled) return
     void ScreenCapture.preventScreenCaptureAsync().catch(() => {
       // Best-effort: web has no native equivalent. Don't throw.
     })
