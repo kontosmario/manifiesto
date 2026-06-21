@@ -9,10 +9,10 @@ import type { AuditFeedItem, FixedExpenseRow } from './types'
 const STORAGE_KEY = 'subs-zombie-notified:v1'
 
 /**
- * Fire a push notification once per (fixed_expense_id, classification)
- * when the engine emits a final classification. Persisted dedupe via
- * SecureStore — the same classification twice (e.g. user audited again
- * after cooldown) won't re-spam.
+ * Push notification cuando el engine emite una clasificación final de
+ * suscripción zombie. Anti-spam: si hay >2 pendientes manda UNA sola push
+ * consolidada; 1-2 → individuales. Dedupe persistido por
+ * (fixed_expense_id, classification) vía SecureStore.
  *
  * Mounts inside the asistente screen / zombie feed section. Idempotent.
  */
@@ -38,8 +38,17 @@ export function useZombiePushSync(args: {
         notified = {}
       }
       let dirty = false
+
+      // Juntar las suscripciones que pushearían (elegibles + no
+      // notificadas). Anti-spam: si son >2 → UNA sola push consolidada;
+      // 1-2 → individuales (copy actual).
+      const pending: {
+        id: string
+        classification: string
+        name: string
+        amount: number
+      }[] = []
       for (const item of feed) {
-        if (cancelled) return
         if (
           item.classification !== 'zombie_consensuado' &&
           item.classification !== 'uso_desigual'
@@ -47,29 +56,57 @@ export function useZombiePushSync(args: {
           continue
         }
         if (notified[item.fixedExpenseId] === item.classification) continue
-
         const fijo = fijosById.get(item.fixedExpenseId)
         if (!fijo) continue
+        pending.push({
+          id: item.fixedExpenseId,
+          classification: item.classification,
+          name: fijo.name,
+          amount: fijo.amount,
+        })
+      }
 
-        const title =
-          item.classification === 'zombie_consensuado'
-            ? `${fijo.name} — la familia casi no la usa`
-            : `${fijo.name} — uso desigual en la familia`
-        const body = `Pagas $${fijo.amount.toLocaleString('es-AR')} al mes. Toca para revisar.`
-
+      if (!cancelled && pending.length > 2) {
+        const total = pending.reduce((sum, p) => sum + p.amount, 0)
+        const names = pending
+          .slice(0, 3)
+          .map((p) => p.name)
+          .join(', ')
+        const more = pending.length > 3 ? ` y ${pending.length - 3} más` : ''
         try {
           await sendFamilyPush({
             familyId,
-            title,
-            body,
+            title: `Tenés ${pending.length} suscripciones que casi no usás`,
+            body: `${names}${more} · $${total.toLocaleString('es-AR')}/mes. Toca para revisar.`,
             kind: 'subscription_zombie',
             url: '/asistente',
           })
-          notified[item.fixedExpenseId] = item.classification
+          for (const p of pending) notified[p.id] = p.classification
           dirty = true
         } catch {
-          // Swallow: push delivery is best-effort, the card already
-          // surfaced visually. We'll retry on the next mount.
+          // Best-effort: la card ya está visible in-app.
+        }
+      } else {
+        for (const p of pending) {
+          if (cancelled) return
+          const title =
+            p.classification === 'zombie_consensuado'
+              ? `${p.name} — la familia casi no la usa`
+              : `${p.name} — uso desigual en la familia`
+          const body = `Pagas $${p.amount.toLocaleString('es-AR')} al mes. Toca para revisar.`
+          try {
+            await sendFamilyPush({
+              familyId,
+              title,
+              body,
+              kind: 'subscription_zombie',
+              url: '/asistente',
+            })
+            notified[p.id] = p.classification
+            dirty = true
+          } catch {
+            // Best-effort: la card ya está visible in-app.
+          }
         }
       }
       if (dirty && !cancelled) {

@@ -37,7 +37,7 @@
 | **streak_at_risk / broken / recovery** | TZ-aware (ventanas locales) | racha activa; recovery solo hitos 1/3/7/14; dedup | alto ✅ |
 | **weekly_insights (goal_behind)** | lun 9h | solo si <30% del pace | medio ✅ |
 | **price_hike** | 9:05h AR | solo Δ≥10% | bajo ✅ |
-| **zombie_alert** | lun 9:15h AR | fijo activo sin uso/pago 60d+, ≥2 pagos | medio ✅ |
+| **zombie_alert** | lun 9:15h AR | fijo activo sin uso/pago 60d+, ≥2 pagos; **>2/familia → 1 digest** (migración `20260621020000`) | medio ✅ |
 | ~~zombie_detected~~ | — | **REMOVIDO** (redundante con zombie_alert) | — |
 | **fixed_paid / expense_logged** | al cargar gasto | event-driven (trigger) | medio |
 
