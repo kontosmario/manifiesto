@@ -555,6 +555,9 @@ export function useControlV2Data(
         gastoHoy: data.gastoHoy,
         diasRestantes: view.diasRestantes,
         ingresoMes: data.ingresoMes,
+        // Sueldo recurrente = ingreso del ciclo SIN los income_events
+        // one-time. Lo consume `income-missing` para el cobro esperado.
+        ingresoRecurrente: Math.max(0, data.ingresoMes - extraIncome),
         fijosMes: data.fijosMes,
         dismissedHikes,
         baselines,
@@ -581,6 +584,7 @@ export function useControlV2Data(
     data.cupoDiario,
     data.gastoHoy,
     data.ingresoMes,
+    extraIncome,
     data.fijosMes,
     dismissedHikes,
     baselines,

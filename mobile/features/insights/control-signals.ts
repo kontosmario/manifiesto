@@ -91,6 +91,11 @@ interface BuildSignalsArgs {
   gastoHoy: number
   diasRestantes: number
   ingresoMes: number
+  /** Ingreso RECURRENTE del ciclo (sueldo, SIN los income_events
+   *  one-time como transferencias o sobrantes). Lo usa `income-missing`
+   *  para mostrar el cobro esperado REAL: los extras ya llegaron y no
+   *  son el cobro que se está esperando. Fallback a `ingresoMes`. */
+  ingresoRecurrente?: number
   fijosMes: number
   /** Optional 7-day rolling forecast (cognitive layer P1).
    *  When present, the predictive builders (`forecast-*`) consume it. */
@@ -1526,8 +1531,15 @@ function buildIncomeMissing(
     cat: 'Cobro',
     title: 'Cobro esperado no confirmado',
     body: `Tu cobro estaba previsto pero el ciclo no se confirmó. Si llegó, actualiza el balance del nuevo ciclo. Si cambió la fecha, ajusta tu día de pago.`,
-    impact: args.ingresoMes > 0 ? `Ingreso esperado: ${fmt(args.ingresoMes)}` : 'Confirmar cobro',
-    impactRaw: Math.round(args.ingresoMes),
+    // El "cobro esperado" es el SUELDO recurrente, no el ingreso del
+    // ciclo: los income_events one-time (transferencias, sobrantes) ya
+    // llegaron y no son lo que se está esperando. Sin esta distinción la
+    // señal mostraba sueldo+extras (ej. 8.7M en vez de 6.4M).
+    impact:
+      (args.ingresoRecurrente ?? args.ingresoMes) > 0
+        ? `Ingreso esperado: ${fmt(args.ingresoRecurrente ?? args.ingresoMes)}`
+        : 'Confirmar cobro',
+    impactRaw: Math.round(args.ingresoRecurrente ?? args.ingresoMes),
     impactScope: 'oneTime',
     cta: 'Actualizar',
     urgency: 'alta',
