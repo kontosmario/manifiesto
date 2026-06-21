@@ -380,7 +380,11 @@ export function computeControlView(d: ControlMockData): ControlView {
     delta: d.cupoDiario - g,
     dow: d.diasDow[i] ?? 0,
   }))
-  const vault = detalleDias.reduce((s, x) => s + Math.max(0, x.delta), 0)
+  // Suma cruda de los deltas positivos diarios (días que sub-gastaste el
+  // cupo). OJO: ignora los días que te pasaste, así que con gasto lumpy
+  // (mucho en pocos días) puede inflarse muy por encima del dinero real
+  // que te queda. Se capea abajo contra `restanteMes`.
+  const vaultRaw = detalleDias.reduce((s, x) => s + Math.max(0, x.delta), 0)
   const diasGanadores = detalleDias.filter((x) => x.gasto <= d.cupoDiario).length
   // Distinct days WITH spend (closed days that registered a gasto, plus
   // today if it has one). Drives the data-sufficiency gate of the cards
@@ -433,6 +437,11 @@ export function computeControlView(d: ControlMockData): ControlView {
   const gastadoHastaHoy = gastoTotalMes + d.gastoHoy
   const libreMesTotal = d.cupoDiario * d.diasMes
   const restanteMes = libreMesTotal - gastadoHastaHoy
+  // La alcancía es una SUGERENCIA de cuánto mover a tu meta — nunca puede
+  // superar lo que realmente te queda. Sin el cap mostraba "2.5M guardados"
+  // mientras el saldo real era 139K (gasto lumpy: sub-gastaste muchos días
+  // pero te pasaste en pocos, y el raw ignora los días que te pasaste).
+  const vault = Math.min(vaultRaw, Math.max(0, restanteMes))
   const diasRestantes = d.diasMes - d.diaActual + 1
   const closedDays = detalleDias.length
   // Una proyección confiable necesita DOS cosas: una semana de días
