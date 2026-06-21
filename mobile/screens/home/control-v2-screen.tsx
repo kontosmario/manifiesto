@@ -440,6 +440,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
         >
           <View style={styles.stack}>
             <ControlV2Header
+              familyId={familyId}
               score={0}
               scoreLabel="Pronto"
               scoreTone={view.scoreToneDark}
@@ -499,6 +500,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
         >
           <View style={styles.stack}>
             <ControlV2Header
+              familyId={familyId}
               score={view.score}
               scoreLabel={view.scoreLabel}
               scoreTone={view.scoreToneDark}

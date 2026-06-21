@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
+import { CobroPendingHeaderChip } from '@/components/ui/cobro-pending-chip'
 import {
   CIRCLE_BUTTON_RADIUS,
   CIRCLE_BUTTON_SHADOW,
@@ -42,6 +43,8 @@ interface ControlV2HeaderProps {
   onPressWrapped?: () => void
   /** Pulses the wrapped button to signal an unseen cycle close. */
   wrappedUnseen?: boolean
+  /** Hogar activo — alimenta el chip de "cobro pendiente". */
+  familyId?: string
 }
 
 /**
@@ -62,6 +65,7 @@ export function ControlV2Header({
   onPressGoal,
   onPressWrapped,
   wrappedUnseen = false,
+  familyId,
 }: ControlV2HeaderProps) {
   const { theme } = useAppTheme()
   const goalActive = dailyGoalAmount != null && dailyGoalAmount > 0
@@ -174,6 +178,7 @@ export function ControlV2Header({
           </Animated.View>
         </Pressable>
       ) : null}
+      <CobroPendingHeaderChip familyId={familyId} />
     </TabSectionHeader>
   )
 }

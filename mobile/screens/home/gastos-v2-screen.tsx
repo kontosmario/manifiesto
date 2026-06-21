@@ -825,6 +825,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           {/* Keep the streak flame + its tour target so the streak tour
               step and the flame keep working on the empty screen. */}
           <GastosHeader
+            familyId={familyId}
             subtitle={`Ciclo ${controller.cycleLabel}`}
             rightSlot={
               <TourTarget

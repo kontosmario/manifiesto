@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
+import { CobroPendingHeaderChip } from '@/components/ui/cobro-pending-chip'
 import {
   CIRCLE_BUTTON_SHADOW,
   CIRCLE_BUTTON_SIZE,
@@ -22,6 +23,8 @@ interface FijosHeaderProps {
   title?: string
   subtitle?: string
   onPressAdd?: () => void
+  /** Hogar activo — alimenta el chip de "cobro pendiente". */
+  familyId?: string
   /**
    * Optional ref attached to the add-button stage (the circular
    * Pressable + halo rings). Used by the Fijos guided tour to
@@ -36,6 +39,7 @@ export function FijosHeader({
   title = 'Fijos',
   subtitle = 'Todo lo recurrente en un solo lugar',
   onPressAdd,
+  familyId,
   addButtonRef,
 }: FijosHeaderProps) {
   const { theme } = useAppTheme()
@@ -138,7 +142,9 @@ export function FijosHeader({
           </Pressable>
         </View>
       }
-    />
+    >
+      <CobroPendingHeaderChip familyId={familyId} />
+    </TabSectionHeader>
   )
 }
 

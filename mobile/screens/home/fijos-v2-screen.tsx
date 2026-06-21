@@ -419,6 +419,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       <View style={styles.stack}>
         <Animated.View layout={sectionLayout}>
           <FijosHeader
+            familyId={familyId}
             onPressAdd={handlePressAdd}
             addButtonRef={addButtonTourRef}
           />
