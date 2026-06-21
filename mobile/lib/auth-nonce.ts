@@ -1,4 +1,5 @@
 import { sha256 } from 'js-sha256'
+import { getSecureRandomBytes } from '@/lib/secure-random'
 
 // Nonce helper for Sign in with Apple / Google id_token flows.
 //
@@ -21,11 +22,11 @@ import { sha256 } from 'js-sha256'
 // Hashing happens client-side because the IdP only sees the hash;
 // the raw value is the session-bound secret.
 //
-// CSPRNG note: we use `crypto.getRandomValues` (Hermes >= 0.74 ships
-// it as a JS builtin, RN 0.81.x is pinned in package.json). We THROW
-// rather than fall back to Math.random because a predictable nonce
-// completely defeats this defense (an attacker who can guess the
-// nonce can craft a replay that passes Supabase's check).
+// CSPRNG note: la aleatoriedad sale de `getSecureRandomBytes`
+// (crypto.getRandomValues en dev/prod builds; expo-crypto en Expo Go —
+// ambas son CSPRNG del SO). NUNCA caemos a Math.random: un nonce
+// predecible permitiría un replay del id_token que pasaría la
+// verificación de Supabase.
 
 const NONCE_BYTES = 32
 
@@ -43,19 +44,7 @@ function bytesToHex(bytes: Uint8Array): string {
  * degrade to Math.random for security-critical material.
  */
 export function generateRawNonce(): string {
-  const bytes = new Uint8Array(NONCE_BYTES)
-  const webCrypto = (globalThis as {
-    crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array }
-  }).crypto
-  if (!webCrypto?.getRandomValues) {
-    throw new Error(
-      '[auth-nonce] crypto.getRandomValues unavailable — refusing to ' +
-        'sign in with a non-CSPRNG nonce. This indicates a runtime ' +
-        'regression (Hermes >= 0.74 ships getRandomValues natively).',
-    )
-  }
-  webCrypto.getRandomValues(bytes)
-  return bytesToHex(bytes)
+  return bytesToHex(getSecureRandomBytes(NONCE_BYTES))
 }
 
 /**

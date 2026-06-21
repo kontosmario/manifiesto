@@ -46,6 +46,7 @@
 
 import * as SecureStore from 'expo-secure-store'
 import { sha256 } from 'js-sha256'
+import { getSecureRandomBytes } from '@/lib/secure-random'
 import {
   clearPinEnabledFlag,
   isPinEnabledFlagSet,
@@ -191,25 +192,12 @@ export function _pbkdf2HmacSha256ForTesting(password: string, salt: Uint8Array, 
   return result
 }
 
-// CSPRNG salt via Web Crypto. Hermes (RN >= 0.74) ships
-// `crypto.getRandomValues` as a JS builtin — no native module
-// needed. We THROW rather than silently fall back to Math.random
-// because a predictable salt collapses PBKDF2 to a rainbow-table
-// lookup. The throw surfaces immediately at setPin time (visible
-// in dev / crash reports) instead of degrading the security of a
-// real user's PIN. Pinned RN >= 0.81.x in package.json so this
-// throw should never fire in practice.
+// CSPRNG salt — `getSecureRandomBytes` usa crypto.getRandomValues en
+// dev/prod builds y expo-crypto en Expo Go (ambas CSPRNG del SO). NUNCA
+// cae a Math.random: un salt predecible colapsa PBKDF2 a un lookup de
+// rainbow-table.
 function randomSalt(): string {
-  const bytes = new Uint8Array(16)
-  const webCrypto = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto
-  if (!webCrypto?.getRandomValues) {
-    throw new Error(
-      '[pin-lock] crypto.getRandomValues unavailable — refusing to set a PIN with a non-CSPRNG salt. ' +
-        'This indicates a runtime regression (Hermes >= 0.74 ships getRandomValues natively).',
-    )
-  }
-  webCrypto.getRandomValues(bytes)
-  return bytesToHex(bytes)
+  return bytesToHex(getSecureRandomBytes(16))
 }
 
 function hashPin(salt: string, pin: string, iterations: number): string {
