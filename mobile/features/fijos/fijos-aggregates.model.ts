@@ -640,6 +640,14 @@ export interface FijoCategoryGroup {
   items: FijoItem[]
 }
 
+/** Orden cronológico por vencimiento: timestamp de `next_due_on`. Los
+ *  ítems sin fecha válida van al final. */
+function dueOrder(i: FijoItem | undefined): number {
+  if (!i || !i.next_due_on) return Number.MAX_SAFE_INTEGER
+  const t = new Date(i.next_due_on).getTime()
+  return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t
+}
+
 export function groupFijosByCategory(input: {
   items: FijoItem[]
   categories: Array<{ id: string; name: string; color: string }>
@@ -660,9 +668,16 @@ export function groupFijosByCategory(input: {
       label: cat?.name ?? 'Sin categoría',
       color: cat?.color ?? '#8A8A8A',
       total: arr.reduce((s, i) => s + Number(i.amount ?? 0), 0),
-      items: arr.sort((a, b) => a.dayOfMonth - b.dayOfMonth),
+      // Cronológico: el próximo a vencer primero (next_due_on real, no
+      // dayOfMonth — que se rompe cuando los fijos cruzan de mes).
+      items: arr.sort((a, b) => dueOrder(a) - dueOrder(b)),
     })
   }
-  groups.sort((a, b) => b.total - a.total)
+  // Los grupos también por vencimiento más próximo (items[0] es el más
+  // próximo tras el sort interno) → el próximo a vencer queda arriba de
+  // todo. Empate → la categoría con más monto primero.
+  groups.sort(
+    (a, b) => dueOrder(a.items[0]) - dueOrder(b.items[0]) || b.total - a.total,
+  )
   return groups
 }

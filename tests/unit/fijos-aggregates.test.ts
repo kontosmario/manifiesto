@@ -359,11 +359,12 @@ describe('groupFijosByCategory', () => {
     }
   }
 
-  it('agrupa por category_id y ordena por total desc', () => {
+  it('agrupa por category_id y ordena los grupos por vencimiento más próximo (no por total)', () => {
     const items = [
-      makeFijo({ id: 'a', category_id: 'cat-A', amount: 1000, day_of_month: 10 }),
-      makeFijo({ id: 'b', category_id: 'cat-B', amount: 5000, day_of_month: 20 }),
-      makeFijo({ id: 'c', category_id: 'cat-B', amount: 3000, day_of_month: 5 }),
+      // cat-A: barata pero vence ANTES → debe ir primero.
+      makeFijo({ id: 'a', category_id: 'cat-A', amount: 1000, next_due_on: '2026-06-08' }),
+      // cat-B: cara pero vence DESPUÉS.
+      makeFijo({ id: 'b', category_id: 'cat-B', amount: 9000, next_due_on: '2026-06-25' }),
     ]
     const groups = groupFijosByCategory({
       items,
@@ -373,21 +374,21 @@ describe('groupFijosByCategory', () => {
       ],
     })
     expect(groups).toHaveLength(2)
-    expect(groups[0]!.categoryId).toBe('cat-B')
-    expect(groups[0]!.total).toBe(8000)
-    expect(groups[1]!.total).toBe(1000)
+    expect(groups[0]!.categoryId).toBe('cat-A') // vence antes, aunque sea más barata
+    expect(groups[1]!.categoryId).toBe('cat-B')
   })
 
-  it('items dentro de cada grupo ordenados por dayOfMonth', () => {
+  it('items dentro de cada grupo ordenados por vencimiento (próximo primero, cross-mes)', () => {
     const items = [
-      makeFijo({ id: 'a', category_id: 'cat-X', amount: 1, dayOfMonth: 25 }),
-      makeFijo({ id: 'b', category_id: 'cat-X', amount: 1, dayOfMonth: 5 }),
-      makeFijo({ id: 'c', category_id: 'cat-X', amount: 1, dayOfMonth: 15 }),
+      makeFijo({ id: 'a', category_id: 'cat-X', amount: 1, next_due_on: '2026-07-05' }),
+      makeFijo({ id: 'b', category_id: 'cat-X', amount: 1, next_due_on: '2026-06-21' }),
+      makeFijo({ id: 'c', category_id: 'cat-X', amount: 1, next_due_on: '2026-06-30' }),
     ]
     const [group] = groupFijosByCategory({
       items,
       categories: [{ id: 'cat-X', name: 'X', color: '#000' }],
     })
+    // 21 jun → 30 jun → 5 jul. El sort por dayOfMonth viejo daba [5jul, 21jun, 30jun].
     expect(group!.items.map((i) => i.id)).toEqual(['b', 'c', 'a'])
   })
 
