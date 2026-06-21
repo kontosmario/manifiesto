@@ -32,7 +32,17 @@ export interface UsePayCycleResult {
  * Reads `family_finance.cycle_*` + `salary_payment_day` y despacha
  * al regimen correcto via `financeToCycleConfig`.
  */
-export function usePayCycle(familyId?: string): UsePayCycleResult {
+export function usePayCycle(
+  familyId?: string,
+  options?: { freeze?: boolean },
+): UsePayCycleResult {
+  // freeze=true (default) → el ciclo se congela en el período anterior
+  // mientras el cobro está pendiente (plano PLATA: saldo/cupo no saltan
+  // al ingreso nuevo). freeze=false → el ciclo avanza en tiempo real
+  // (plano OBLIGACIONES: fijos/vencimientos reflejan el calendario real
+  // aunque el cobro no esté confirmado). `isSalaryPendingConfirmation` se
+  // devuelve igual en ambos modos — es la condición, no el efecto.
+  const freeze = options?.freeze ?? true
   const financeQuery = useFamilyFinance(familyId)
   const finance = financeQuery.data
 
@@ -54,7 +64,11 @@ export function usePayCycle(familyId?: string): UsePayCycleResult {
       finance?.last_salary_confirmed_at ?? null,
     )
 
-    const cycle = getCurrentPayCycle(today, config, isSalaryPendingConfirmation)
+    const cycle = getCurrentPayCycle(
+      today,
+      config,
+      freeze && isSalaryPendingConfirmation,
+    )
     return { cycle, salaryPaymentDay, today, isSalaryPendingConfirmation }
   }, [
     finance?.cycle_type,
@@ -62,5 +76,6 @@ export function usePayCycle(familyId?: string): UsePayCycleResult {
     finance?.cycle_anchor_date,
     finance?.cycle_length_days,
     finance?.last_salary_confirmed_at,
+    freeze,
   ])
 }

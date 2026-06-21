@@ -80,14 +80,19 @@ const DEFAULT_SUMMARY: FijosCycleSummary = {
 }
 
 export function useFijosController(familyId: string): UseFijosControllerResult {
-  // PayCycle sigue siendo el plano salarial — lo necesitamos para los
-  // payments del cycle (la tabla `fixed_expense_payments` registra cada
-  // pago contra un período del cobro) y para el label del header.
-  // MonthlyAccounting es el plano de clasificación: paid/pending/overdue
-  // se decide contra el mes calendario (para non-monthly users) o
-  // contra el cycle (para monthly users — coinciden).
-  const { cycle, today } = usePayCycle(familyId)
-  const monthlyAccounting = useMonthlyAccounting(familyId)
+  // MODELO DE DOS PLANOS — los fijos viven en el plano OBLIGACIONES, que
+  // SIEMPRE va en tiempo real: un fijo vence cuando vence, lo haya
+  // confirmado el cobro o no. Por eso pedimos `freeze: false` a ambos
+  // hooks. Si dejáramos el freeze (default, plano PLATA), tras el día de
+  // cobro sin confirmar el ciclo quedaba pegado al mes anterior: los pagos
+  // del ciclo viejo hacían que `paidThisPeriod` short-circuiteara a
+  // 'paid', y los fijos de ESTE ciclo (recién vencidos) quedaban
+  // invisibles. El saldo del Home sí sigue congelado (usa el default).
+  //   · cycle (freeze:false) → ventana real para los payments + label.
+  //   · monthlyAccounting (freeze:false) → ventana real de clasificación
+  //     (paid/pending/overdue contra el calendario real).
+  const { cycle, today } = usePayCycle(familyId, { freeze: false })
+  const monthlyAccounting = useMonthlyAccounting(familyId, { freeze: false })
   // El default se inicializa a 'pendientes' pero el effect abajo lo
   // promueve a 'vencidos' si hay vencidos al cargar — para que el
   // primer paint muestre lo más urgente (mora arrastrada).

@@ -19,7 +19,17 @@ export type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
  *
  * Spec: docs/superpowers/specs/2026-06-05-monthly-accounting-reframe-design.md
  */
-export function useMonthlyAccounting(familyId?: string): MonthlyAccountingWindow {
+export function useMonthlyAccounting(
+  familyId?: string,
+  options?: { freeze?: boolean },
+): MonthlyAccountingWindow {
+  // freeze=true (default) → plano PLATA: la ventana de accounting se
+  // congela en el ciclo anterior mientras el cobro está pendiente, así el
+  // saldo no salta al ingreso nuevo. freeze=false → plano OBLIGACIONES: la
+  // ventana avanza en tiempo real (lo usa la clasificación de fijos para
+  // que vencidos/pendientes reflejen el calendario real). Ver el modelo de
+  // dos planos en use-fijos-controller.
+  const freeze = options?.freeze ?? true
   const finance = useFamilyFinance(familyId)
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
@@ -32,12 +42,13 @@ export function useMonthlyAccounting(familyId?: string): MonthlyAccountingWindow
       today,
       finance.data?.last_salary_confirmed_at ?? null,
     )
-    return computeMonthlyAccountingWindow(config, today, pending)
+    return computeMonthlyAccountingWindow(config, today, freeze && pending)
   }, [
     finance.data?.cycle_type,
     finance.data?.salary_payment_day,
     finance.data?.cycle_anchor_date,
     finance.data?.cycle_length_days,
     finance.data?.last_salary_confirmed_at,
+    freeze,
   ])
 }
