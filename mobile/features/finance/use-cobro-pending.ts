@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { buildPayDate } from '@/utils/pay-cycle'
 import { DAY_MS } from '@/utils/time'
@@ -22,10 +23,17 @@ const IDLE: CobroPendingState = { pending: false, daysOverdue: 0 }
  * día de cobro del mes en curso.
  */
 export function useCobroPending(familyId?: string): CobroPendingState {
+  const finance = useFamilyFinance(familyId)
   const { today, salaryPaymentDay, isSalaryPendingConfirmation } =
     usePayCycle(familyId)
   return useMemo(() => {
-    if (!isSalaryPendingConfirmation) return IDLE
+    // Gate en finance.data REAL. Sin finance cargado,
+    // financeToCycleConfig cae al default (día de pago = 1) y la
+    // condición de "pending" da true → el chip mostraría "+20 días sin
+    // cobrar" basura (hoy 21 − día 1) hasta que cargue. Con el gate, el
+    // chip no aparece hasta tener el día de cobro real → consistente en
+    // todas las secciones (era el bug de Gastos mostrando +20).
+    if (!finance.data || !isSalaryPendingConfirmation) return IDLE
     const payDate = buildPayDate(
       today.getFullYear(),
       today.getMonth(),
@@ -36,5 +44,5 @@ export function useCobroPending(familyId?: string): CobroPendingState {
       Math.floor((today.getTime() - payDate.getTime()) / DAY_MS),
     )
     return { pending: true, daysOverdue }
-  }, [today, salaryPaymentDay, isSalaryPendingConfirmation])
+  }, [finance.data, today, salaryPaymentDay, isSalaryPendingConfirmation])
 }
