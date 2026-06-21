@@ -58,6 +58,7 @@ import {
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { usePressScale } from '@/hooks/use-press-scale'
+import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
@@ -228,6 +229,9 @@ export function HomeDashboard({
   // 4 tipos de ciclo. Derivamos el countdown del chip directamente de
   // ahí en vez del legacy `salary_payment_day` que asumía monthly.
   const payCycle = dashboard.payCycle
+  // Ciclo en TIEMPO REAL (freeze:false) — solo para las OBLIGACIONES
+  // (el próximo fijo a vencer). El saldo sigue usando `payCycle` frozen.
+  const { cycle: realCycle } = usePayCycle(familyId, { freeze: false })
   const pending = useMemo(
     () => isPaydayPending({ cycle: payCycle, lastConfirmedAt }, today),
     [payCycle, lastConfirmedAt, today],
@@ -767,12 +771,12 @@ export function HomeDashboard({
     () =>
       computeNextFixed({
         fixedExpenses: fixedExpensesData,
-        // Scope to the current pay cycle: once the user pays a fijo
-        // and its `next_due_on` rolls forward to the next cycle, we
-        // stop surfacing it as pending here.
-        cycleEnd: dashboard.payCycle.end,
+        // Ciclo REAL (no el frozen): si el cobro no está confirmado, el
+        // próximo fijo a vencer igual debe aparecer (obligaciones en
+        // tiempo real). Con el frozen quedaba excluido (>= cycle viejo).
+        cycleEnd: realCycle.end,
       }),
-    [fixedExpensesData, dashboard.payCycle.end],
+    [fixedExpensesData, realCycle.end],
   )
   const nextFixedTracker = useTrackElement({
     familyId,
@@ -922,6 +926,7 @@ export function HomeDashboard({
           unchanged — only the column wrappers carry the refs. */}
       <MonthSummaryCard
         data={homeMetrics.monthSummary}
+        cobroPending={pending}
         onPressVariable={handleViewGastos}
         onPressFixed={handleViewFijos}
         topCategory={topCategory}

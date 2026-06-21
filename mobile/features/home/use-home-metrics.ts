@@ -14,6 +14,8 @@ import {
 } from '@/features/month-close/use-current-cycle-acumulado'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
+import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import {
   isHikeDismissed,
@@ -164,6 +166,13 @@ export interface HomeMetrics {
  */
 export function useHomeMetrics(familyId: string): HomeMetrics {
   const dashboard = useFamilyDashboard(familyId)
+  // Modelo de dos planos: el SALDO usa el dashboard congelado (default),
+  // pero las OBLIGACIONES (fijos: pagos + clasificación + próximo a vencer)
+  // van en TIEMPO REAL aunque el cobro no esté confirmado — si no, la card
+  // del Home mostraría "Todos pagados" del ciclo viejo en vez de los
+  // próximos a vencer. Mismo desacople que use-fijos-controller.
+  const { cycle: realCycle } = usePayCycle(familyId, { freeze: false })
+  const realMonthly = useMonthlyAccounting(familyId, { freeze: false })
   const categoriesQuery = useCategories(familyId, 'fixed_expense')
   const comparisonQuery = useMonthlyExpenseComparison(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
@@ -200,8 +209,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const paymentsQuery = useFixedExpensePayments({
     familyId,
     fixedExpenseIds: fixedExpenses.map((f) => f.id),
-    cycleStart: dashboard.payCycle.start,
-    cycleEnd: dashboard.payCycle.end,
+    cycleStart: realCycle.start,
+    cycleEnd: realCycle.end,
   })
   const dismissedHikes = useDismissedHikes()
 
@@ -221,9 +230,9 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       commitmentExpenses: expenses,
       categoriesById,
       today,
-      monthlyStart: dashboard.monthlyAccounting.start,
-      monthlyEnd: dashboard.monthlyAccounting.end,
-      monthlyDays: dashboard.monthlyAccounting.days,
+      monthlyStart: realMonthly.start,
+      monthlyEnd: realMonthly.end,
+      monthlyDays: realMonthly.days,
     })
   }, [
     fixedExpenses,
@@ -231,9 +240,9 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     expenses,
     categoriesById,
     today,
-    dashboard.monthlyAccounting.start,
-    dashboard.monthlyAccounting.end,
-    dashboard.monthlyAccounting.days,
+    realMonthly.start,
+    realMonthly.end,
+    realMonthly.days,
   ])
 
   return useMemo<HomeMetrics>(() => {

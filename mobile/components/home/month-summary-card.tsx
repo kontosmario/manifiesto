@@ -52,6 +52,8 @@ interface MonthSummaryCardProps {
    *  the add-fixed-expense flow). Ignored when `nextFixedFallback`
    *  is null. */
   onPressNextFixedFallback: () => void
+  /** Cobro pendiente (sueldo no confirmado) → mini-warning en ambas mitades. */
+  cobroPending?: boolean
   /**
    * Refs for the guided-tour to highlight each half of the card as
    * its own step. Optional — when omitted the card renders normally
@@ -113,6 +115,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   onPressNextFixed,
   nextFixedFallback,
   onPressNextFixedFallback,
+  cobroPending = false,
   variableRef,
   fixedRef,
 }: MonthSummaryCardProps) {
@@ -236,6 +239,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                 : 'trending-down'
               : null
           }
+          cobroPending={cobroPending}
           band={
             variablesChip
               ? {
@@ -293,6 +297,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
           pillText={fijosPillText}
           pillTone={fijosPillTone}
           pillIcon={null}
+          cobroPending={cobroPending}
           band={
             fijosChip
               ? {
@@ -365,6 +370,8 @@ interface SummaryPanelProps {
   pillText: string | null
   pillTone: PillTone | null
   pillIcon: keyof typeof MaterialIcons.glyphMap | null
+  /** Cobro pendiente (sueldo no confirmado) → mini-warning peach en el head. */
+  cobroPending: boolean
   band: BandPayload | null
 }
 
@@ -378,6 +385,7 @@ function SummaryPanel({
   pillText,
   pillTone,
   pillIcon,
+  cobroPending,
   band,
 }: SummaryPanelProps) {
   const { theme } = useAppTheme()
@@ -422,6 +430,21 @@ function SummaryPanel({
 
         <Text style={[styles.value, { color: theme.colors.text }]}>{value}</Text>
         <Text style={[styles.sub, { color: theme.colors.textMuted }]}>{sub}</Text>
+
+        {cobroPending ? (
+          <View style={styles.cobroWarn}>
+            <View style={styles.cobroWarnDot} />
+            <Text
+              style={[
+                styles.cobroWarnText,
+                { color: theme.isDark ? '#F2D9C6' : '#9A3412' },
+              ]}
+              numberOfLines={1}
+            >
+              Sin cobrar
+            </Text>
+          </View>
+        ) : null}
 
         {pillText && pillTone ? (
           <View style={[styles.pill, { backgroundColor: pillTone.bg }]}>
@@ -566,6 +589,32 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+  },
+  // Mini-warning peach de "cobro pendiente" — mismo lenguaje que el
+  // CobroPendingChip, compacto para la mitad de la card.
+  cobroWarn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: 'rgba(242,167,140,0.18)',
+    borderColor: 'rgba(242,167,140,0.5)',
+  },
+  cobroWarnDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#F2A78C',
+  },
+  cobroWarnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   bandRegion: {
     // minHeight matches the natural height of a two-line band
