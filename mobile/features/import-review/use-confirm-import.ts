@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
+import { sendFamilyPush } from '@/lib/send-family-push'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { isoDateToLocalNoonTimestamp } from './cycle-date-math'
 import type { ConfirmFailure, ConfirmResult, ReviewRow } from './types'
@@ -26,13 +27,17 @@ export function useConfirmImport(ctx: ConfirmContext) {
 
       let insertedExpenses = 0
       let insertedIncomes = 0
+      let insertedIncomeTotal = 0
       const failed: ConfirmFailure[] = []
 
       settled.forEach((res, i) => {
         const row = submittable[i]
         if (res.status === 'fulfilled') {
           if (row.kind === 'expense') insertedExpenses += 1
-          else if (row.kind === 'income') insertedIncomes += 1
+          else if (row.kind === 'income') {
+            insertedIncomes += 1
+            insertedIncomeTotal += row.amount
+          }
         } else {
           failed.push({
             rowId: row.id,
@@ -73,6 +78,22 @@ export function useConfirmImport(ctx: ConfirmContext) {
         })
       }
 
+      // Un solo push social al cerrar el import (los per-row se
+      // suprimieron con skipPush). Solo aplica a ingresos — los gastos
+      // importados no pushean. Anti-spam: 1 notif por import, no 1 por fila.
+      if (insertedIncomes >= 1) {
+        void sendFamilyPush({
+          familyId: ctx.familyId,
+          title:
+            insertedIncomes === 1
+              ? '{actor} registró un ingreso'
+              : `{actor} registró ${insertedIncomes} ingresos`,
+          body: `+$${insertedIncomeTotal.toLocaleString('es-AR')}`,
+          kind: 'income_logged',
+          url: '/home',
+        }).catch(() => {})
+      }
+
       return { insertedExpenses, insertedIncomes, skipped, failed }
     },
     [ctx, createIncomeMut.mutateAsync, queryClient],
@@ -103,6 +124,8 @@ async function insertOne(
       kind: row.incomeKind,
       description: row.description,
       eventDate: row.date,
+      // Anti-spam: el push va consolidado al cerrar el import, no por fila.
+      skipPush: true,
     })
     return
   }

@@ -34,6 +34,10 @@ export interface CreateIncomeEventInput {
   kind: IncomeEventKind
   description?: string | null
   eventDate?: string // ISO date; default today (server-side via column default)
+  /** Suprime el push social per-row. Lo usa el import para mandar UN solo
+   *  push consolidado al cerrar el wizard (anti-spam) en vez de uno por
+   *  ingreso. El feed in-app (trigger DB) no se ve afectado. */
+  skipPush?: boolean
 }
 
 const ROW_COLUMNS =
@@ -181,6 +185,9 @@ export function useCreateIncomeEvent(userId?: string) {
       return { previous, optimisticId }
     },
     onSuccess: (created, input) => {
+      // El import suprime el push per-row y manda uno consolidado al
+      // cerrar (anti-spam). El feed in-app (trigger DB) igual se emite.
+      if (input.skipPush) return
       // Push a la familia. El trigger DB trg_income_notification ya
       // emite la notif al feed; este push es la entrega al device.
       const kindLabel =
