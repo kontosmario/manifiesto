@@ -33,7 +33,7 @@
 | **checkin_morning** | 9h AR | cupo real del día; respeta prefs/mute; dedup diario | alto ✅ |
 | **checkin_evening** | 20:30h AR | contextual (cargaste hoy o no) | alto ✅ |
 | ~~checkin_midday~~ | — | **CORTADO 2026-06-15** (nudge genérico sin contexto) | — |
-| **fixed_upcoming** | 9h AR | fijo que vence hoy/mañana (o notify_days_before) | medio ✅ |
+| **fixed_upcoming** | 9h AR | fijo que vence hoy/mañana (o notify_days_before); **>2 fijos/día → 1 digest family-wide** (`fixed_upcoming_digest`, migración `20260621010000`) | medio ✅ |
 | **streak_at_risk / broken / recovery** | TZ-aware (ventanas locales) | racha activa; recovery solo hitos 1/3/7/14; dedup | alto ✅ |
 | **weekly_insights (goal_behind)** | lun 9h | solo si <30% del pace | medio ✅ |
 | **price_hike** | 9:05h AR | solo Δ≥10% | bajo ✅ |
