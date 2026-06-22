@@ -3,10 +3,8 @@ import { CaptchaModal } from '@/components/auth/captcha-modal'
 import { useCaptcha } from '@/features/auth/use-captcha'
 import {
   Alert,
-  Keyboard,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -160,14 +158,6 @@ export function LoginScreen() {
   // vuelta") was strictly feminine — these are gender-neutral.
   const returningGreeting = useMemo(() => pickReturningGreeting(), [])
 
-  // Ref to the Screen's underlying ScrollView so we can scrollToEnd
-  // when the keyboard opens during password entry. The system's
-  // automatic keyboard insets only ensure the focused input is
-  // visible — but we want the "Continuar" + "Volver a otro método"
-  // CTAs (which sit BELOW the input) to also clear the keyboard.
-  // scrollToEnd handles that in one shot.
-  const scrollRef = useRef<ScrollView | null>(null)
-
   // Auto-decide the default form mode once the lastUser cache has
   // settled. Returning users see the buttons (formMode=null); true
   // first-timers (no biometric, no cache) get the change-account form
@@ -191,24 +181,6 @@ export function LoginScreen() {
   // Once the user explicitly picks a mode (via the secondary buttons or
   // a Face ID failure), don't let the auto-decide effect override them.
   const userPickedModeRef = useRef(false)
-
-  // When the keyboard opens during password entry, scroll the
-  // ScrollView all the way to the end so the "Continuar" CTA and
-  // the "Volver a otro método" link sit comfortably above the
-  // keyboard. The system's automatic keyboard insets only push
-  // enough to show the focused input — but the user wants context
-  // (the buttons below) visible too.
-  useEffect(() => {
-    if (!formMode) return
-    const sub = Keyboard.addListener('keyboardDidShow', () => {
-      // requestAnimationFrame ensures the auto-insets layout pass
-      // has settled before we issue our manual scroll.
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollToEnd({ animated: true })
-      })
-    })
-    return () => sub.remove()
-  }, [formMode])
 
   // Local UI status reflects the biometric submission.
   const [status, setStatus] = useState<Status>('idle')
@@ -527,22 +499,19 @@ export function LoginScreen() {
     <>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       {/*
-        Standard mobile login pattern: a single ScrollView wraps the
-        entire screen and `automaticallyAdjustKeyboardInsets` (Screen
-        default) shifts the WHOLE content up together when the keyboard
-        opens — topNav, hero and actions all move as one unit. No
-        inner scroll view, no bottom-pinned actions: the content lives
-        as one continuous block, which is what users expect on iOS /
-        Android forms.
-        `flexGrow: 1` + `justifyContent: 'space-between'` makes the
-        three top-level children distribute when content is short
-        (topNav at top, hero centered, actions near bottom) without
-        introducing a flex split that would break the unified scroll.
+        Single ScrollView para toda la pantalla. El keyboard-avoidance lo
+        maneja `automaticallyAdjustKeyboardInsets` (default del Screen): iOS
+        sube SOLO lo necesario para dejar el input enfocado por encima del
+        teclado — no toda la pantalla. (Antes había un listener manual de
+        `keyboardDidShow → scrollToEnd` que empujaba todo el contenido al
+        fondo; se removió porque movía de más.) El usuario puede mandar con
+        la tecla "go"/"next" sin ver el CTA, o scrollear para alcanzarlo.
+        `flexGrow: 1` + `justifyContent: 'space-between'` distribuye los tres
+        bloques (topNav arriba, hero al centro, acciones abajo).
       */}
       <Screen
         contentContainerStyle={styles.screenContent}
         bodyStyle={styles.screenBody}
-        scrollRef={scrollRef}
       >
         {/* Top nav */}
         <View style={styles.topNav}>

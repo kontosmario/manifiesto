@@ -137,8 +137,14 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             styles.inputField,
             {
               color: theme.colors.text,
-              paddingTop: isMultiline ? 12 : 0,
-              paddingBottom: isMultiline ? 12 : 0,
+              // Centrado vertical DETERMINISTA: con padding simétrico el
+              // texto se centra por su propia caja, sin depender del alineado
+              // vertical de iOS. Antes `paddingTop/Bottom: 0` se lo dejaba a
+              // iOS, que con el TextInput estirado (`flex` + wrap `stretch`) a
+              // la altura del wrap lo mandaba ABAJO → el texto "flotaba" al
+              // fondo de la caja (el bug visible en el login). Multilínea
+              // queda arriba.
+              paddingVertical: isMultiline ? 12 : 15,
               textAlignVertical: isMultiline ? 'top' : 'center',
               flex: 1,
             },
@@ -190,7 +196,7 @@ const styles = StyleSheet.create({
   },
   inputField: {
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    // El padding vertical lo define el render (simétrico ⇒ centrado).
     fontSize: 14,
     fontWeight: '600',
   },
