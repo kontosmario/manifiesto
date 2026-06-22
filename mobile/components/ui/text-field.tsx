@@ -130,6 +130,13 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       >
         <TextInput
           ref={ref}
+          // Fija el tamaño de fuente del input: con el "Texto más grande" /
+          // Dynamic Type de iOS activado, el TextInput escalaba y la caja
+          // crecía por encima de su alto de diseño (48pt), dejando hueco abajo
+          // → el texto/placeholder caía al fondo (lo que se veía "corrido").
+          // Los inputs de formularios se mantienen a tamaño fijo para layout
+          // predecible (práctica estándar); labels y helper sí escalan.
+          allowFontScaling={false}
           clearButtonMode="while-editing"
           placeholderTextColor={theme.colors.textSoft}
           selectionColor={theme.colors.primary}
