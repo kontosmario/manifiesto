@@ -130,34 +130,29 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       >
         <TextInput
           ref={ref}
-          // Fija el tamaño de fuente del input: con el "Texto más grande" /
-          // Dynamic Type de iOS activado, el TextInput escalaba y la caja
-          // crecía por encima de su alto de diseño (48pt), dejando hueco abajo
-          // → el texto/placeholder caía al fondo (lo que se veía "corrido").
-          // Los inputs de formularios se mantienen a tamaño fijo para layout
-          // predecible (práctica estándar); labels y helper sí escalan.
+          // Fija el tamaño de fuente del input para layout predecible (con el
+          // "Texto más grande" de iOS el TextInput escalaba y descuadraba la
+          // caja). Labels y helper sí escalan.
           allowFontScaling={false}
-          clearButtonMode="while-editing"
+          // Sin botón de limpiar cuando hay trailing (ojo de contraseña), para
+          // que la "x" nativa de iOS no se solape con el ícono absoluto.
+          clearButtonMode={trailing ? 'never' : 'while-editing'}
           placeholderTextColor={theme.colors.textSoft}
           selectionColor={theme.colors.primary}
           style={[
             styles.inputField,
             {
               color: theme.colors.text,
-              // Centrado vertical A PRUEBA DE BALAS: el input single-line se
-              // dimensiona por su CONTENIDO (alignSelf 'center' dentro de un
-              // wrap `alignItems: 'center'`), NO se estira a la altura del
-              // wrap. Así el texto se centra por su propia caja de padding
-              // simétrico sin depender del alineado vertical de iOS — que con
-              // el input estirado lo mandaba ABAJO. Y si el sistema agranda la
-              // fuente (Dynamic Type / "Texto más grande"), la caja CRECE con
-              // el contenido en vez de dejar hueco abajo, así que el texto
-              // SIGUE centrado. Multilínea se estira (alignSelf 'stretch') y
-              // ancla el texto arriba.
-              paddingVertical: isMultiline ? 12 : 15,
+              // El input es un hijo de ANCHO COMPLETO que se dimensiona por su
+              // CONTENIDO (texto + este padding simétrico), igual que un
+              // TextInput "pelado" → el texto se centra por su propia caja, sin
+              // flex-stretch (que lo estiraba a la altura del wrap y mandaba el
+              // texto ABAJO). Ver inputWrap. Multilínea ancla arriba.
+              paddingVertical: isMultiline ? 12 : 14,
+              // Lugar a la derecha para el trailing absoluto (ojo), para que el
+              // texto no pase por debajo del ícono.
+              paddingRight: trailing ? 44 : 14,
               textAlignVertical: isMultiline ? 'top' : 'center',
-              alignSelf: isMultiline ? 'stretch' : 'center',
-              flex: 1,
             },
             style,
           ]}
@@ -195,17 +190,15 @@ const styles = StyleSheet.create({
   inputWrap: {
     borderRadius: radii.lg,
     minHeight: 48,
-    flexDirection: 'row',
-    // `center`: el input single-line se centra por CONTENIDO (ver el override
-    // de `paddingVertical`/`alignSelf` en el render). Antes usábamos `stretch`
-    // para que el input llenara el wrap y fuera 100% tappable, pero estirarlo
-    // hacía que iOS bottom-alineara el texto (y peor con Dynamic Type, donde
-    // la caja crecía y dejaba hueco abajo). Con `center` + el padding simétrico
-    // de 15pt el input mide ~47pt dentro del wrap de 48pt → el "strip"
-    // no-tappable es <1pt (irrelevante, vs los ~6pt del problema original que
-    // motivó `stretch`). El trailing (ojo) usa `alignSelf: 'stretch'` para
-    // seguir ocupando toda la altura y centrar su ícono con el texto.
-    alignItems: 'center',
+    justifyContent: 'center',
+    // Layout en BLOQUE (sin flexDirection row ni flex en el input): el
+    // TextInput es un hijo de ancho completo que se dimensiona por su CONTENIDO
+    // (texto + padding vertical simétrico), igual que un TextInput "pelado"
+    // (cf. delete-account-screen, que renderiza centrado) → el texto se centra
+    // por su propia caja, SIN depender del alineado vertical de iOS ni de
+    // flex-stretch (que estiraba el input a la altura del wrap y dejaba el
+    // texto ABAJO — el bug reportado). El wrap solo garantiza el alto mínimo
+    // (48) y centra el input si sobra espacio. El trailing (ojo) va absoluto.
   },
   inputField: {
     paddingHorizontal: 14,
@@ -217,10 +210,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   trailing: {
+    // Absoluto a la derecha, ocupando toda la altura del wrap (top/bottom 0)
+    // para centrar verticalmente el ícono con el texto.
+    position: 'absolute',
+    right: 4,
+    top: 0,
+    bottom: 0,
     paddingRight: 8,
     paddingLeft: 4,
-    // Ocupa toda la altura del wrap (que ahora centra a sus hijos) para que el
-    // ojo de PasswordField (flex:1, centrado) quede alineado con el texto.
-    alignSelf: 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 })
