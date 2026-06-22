@@ -137,15 +137,19 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             styles.inputField,
             {
               color: theme.colors.text,
-              // Centrado vertical DETERMINISTA: con padding simétrico el
-              // texto se centra por su propia caja, sin depender del alineado
-              // vertical de iOS. Antes `paddingTop/Bottom: 0` se lo dejaba a
-              // iOS, que con el TextInput estirado (`flex` + wrap `stretch`) a
-              // la altura del wrap lo mandaba ABAJO → el texto "flotaba" al
-              // fondo de la caja (el bug visible en el login). Multilínea
-              // queda arriba.
+              // Centrado vertical A PRUEBA DE BALAS: el input single-line se
+              // dimensiona por su CONTENIDO (alignSelf 'center' dentro de un
+              // wrap `alignItems: 'center'`), NO se estira a la altura del
+              // wrap. Así el texto se centra por su propia caja de padding
+              // simétrico sin depender del alineado vertical de iOS — que con
+              // el input estirado lo mandaba ABAJO. Y si el sistema agranda la
+              // fuente (Dynamic Type / "Texto más grande"), la caja CRECE con
+              // el contenido en vez de dejar hueco abajo, así que el texto
+              // SIGUE centrado. Multilínea se estira (alignSelf 'stretch') y
+              // ancla el texto arriba.
               paddingVertical: isMultiline ? 12 : 15,
               textAlignVertical: isMultiline ? 'top' : 'center',
+              alignSelf: isMultiline ? 'stretch' : 'center',
               flex: 1,
             },
             style,
@@ -185,14 +189,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     minHeight: 48,
     flexDirection: 'row',
-    // `stretch` (no `center`) so the TextInput fills the full wrap
-    // height. With `alignItems: 'center'` the TextInput was sized
-    // to its content + padding and the leftover ~6pt of vertical
-    // space inside the wrap was non-focusable Animated.View. Tapping
-    // that strip blurred whatever input was focused but didn't
-    // re-focus the new one — ScrollView's `keyboardShouldPersistTaps`
-    // saw the tap as "outside an input" and dismissed the keyboard.
-    alignItems: 'stretch',
+    // `center`: el input single-line se centra por CONTENIDO (ver el override
+    // de `paddingVertical`/`alignSelf` en el render). Antes usábamos `stretch`
+    // para que el input llenara el wrap y fuera 100% tappable, pero estirarlo
+    // hacía que iOS bottom-alineara el texto (y peor con Dynamic Type, donde
+    // la caja crecía y dejaba hueco abajo). Con `center` + el padding simétrico
+    // de 15pt el input mide ~47pt dentro del wrap de 48pt → el "strip"
+    // no-tappable es <1pt (irrelevante, vs los ~6pt del problema original que
+    // motivó `stretch`). El trailing (ojo) usa `alignSelf: 'stretch'` para
+    // seguir ocupando toda la altura y centrar su ícono con el texto.
+    alignItems: 'center',
   },
   inputField: {
     paddingHorizontal: 14,
@@ -206,5 +212,8 @@ const styles = StyleSheet.create({
   trailing: {
     paddingRight: 8,
     paddingLeft: 4,
+    // Ocupa toda la altura del wrap (que ahora centra a sus hijos) para que el
+    // ojo de PasswordField (flex:1, centrado) quede alineado con el texto.
+    alignSelf: 'stretch',
   },
 })
