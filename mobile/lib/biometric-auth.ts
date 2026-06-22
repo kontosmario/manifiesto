@@ -53,32 +53,23 @@ const credentialStoreOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 }
 
-// Sprint H · H5 — Bind the refresh-token blob to a successful local
-// authentication challenge (Face ID / Touch ID / device passcode).
+// Nota (2026-06-22) — POR QUÉ el blob NO usa `requireAuthentication` OS:
+//   H5 lo había agregado para gatear la lectura del keychain con el Secure
+//   Enclave, asumiendo que "iOS coalesce" ese prompt con el gate explícito.
+//   FALSO: `expo-secure-store` (lectura/escritura authed) y
+//   `expo-local-authentication` (el gate) NO comparten LAContext, así que
+//   iOS dispara un prompt por CADA acceso al keychain protegido. El login
+//   por Face ID terminaba pidiendo 3 veces: gate + leer token + guardar
+//   token rotado. Inaceptable de UX.
 //
-// Threat model:
-//   `WHEN_UNLOCKED_THIS_DEVICE_ONLY` is great at protecting the keychain
-//   row from off-device extraction (no iCloud sync, no backup leak).
-//   But once the device is unlocked, ANY process in our app sandbox
-//   can read the row — including JS executed via a maliciously hijacked
-//   OTA bundle (now hardened by F1, but defense-in-depth wins).
-//
-//   `requireAuthentication: true` adds OS-level access control via the
-//   Secure Enclave: reading the row triggers a LocalAuthentication
-//   prompt. The attacker would need a live biometric/passcode auth at
-//   read time, which prevents headless exfil and aligns with the way
-//   refresh-tokens already power the biometric-restore flow (the user
-//   already passes Face ID before we touch this blob — iOS coalesces
-//   the prompts so there is no double tap).
-//
-//   The non-credential metadata (just the email for UI hints) does NOT
-//   need this — it's already revealed by the login screen avatar.
-const credentialStoreOptionsAuthed: SecureStore.SecureStoreOptions = {
-  ...credentialStoreOptions,
-  requireAuthentication: true,
-  authenticationPrompt:
-    'Confirmá tu identidad para acceder al inicio de sesión guardado.',
-}
+//   Protección actual (decisión owner 2026-06-22, prioriza 1 solo prompt):
+//     1. El gate `authenticateBiometricAccess()` que el flujo de login
+//        SIEMPRE pasa antes de tocar el token (Face ID a nivel app).
+//     2. `WHEN_UNLOCKED_THIS_DEVICE_ONLY`: no viaja en backups/iCloud y no
+//        se lee con el device bloqueado.
+//   Trade-off aceptado: se resigna la defensa-en-profundidad a nivel-OS
+//   contra un atacante con código DENTRO del sandbox (mitigado por la OTA
+//   firmada — F1) a cambio de un único prompt biométrico.
 
 function getDefaultBiometricLabel() {
   return Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'biometría'
@@ -191,31 +182,15 @@ export async function saveBiometricCredentials(input: BiometricCredentialsPayloa
   if (!input.email || !input.refreshToken) {
     return
   }
-  // H5: credentials use the AUTHED options (Face ID gate at read time)
-  // in production. In Expo Go we soften to `credentialStoreOptions` (no
-  // `requireAuthentication`) for the SAME reason `authenticateBiometricAccess`
-  // softens `disableDeviceFallback`: Expo Go's host binary (`host.exp.Exponent`)
-  // lacks the Secure Enclave / Keychain access-control entitlements that the
-  // `requireAuthentication: true` write needs to bind the row to LAContext.
-  // Without softening, `SecureStore.setItemAsync` throws with an opaque
-  // "InvalidArgumentException" / Keychain error (-25243 / errSecParam) and
-  // the catch in settings-screen surfaces "No pudimos guardar".
-  //
-  // In every other runtime (dev client, EAS preview, store builds) the
-  // strict gate is preserved. The read path (`getBiometricCredentials`)
-  // mirrors this so dev-in-Expo-Go can save AND read.
-  const saveOptions = IS_EXPO_GO ? credentialStoreOptions : credentialStoreOptionsAuthed
-  if (__DEV__ && IS_EXPO_GO) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[biometric] Expo Go detected — saving credentials WITHOUT `requireAuthentication`. ' +
-        'The strict Secure Enclave gate is preserved in dev-client / EAS / store builds.',
-    )
-  }
+  // Sin `requireAuthentication` (ver la nota arriba): la protección
+  // biométrica vive en el gate `authenticateBiometricAccess()` del login, no
+  // en el keychain. Evita el prompt extra al guardar + funciona idéntico en
+  // Expo Go / dev client / store (ya no hay flags de Secure Enclave que Expo
+  // Go no soporte).
   await SecureStore.setItemAsync(
     BIOMETRIC_CREDENTIALS_KEY,
     JSON.stringify(input),
-    saveOptions,
+    credentialStoreOptions,
   )
   // Metadata stays plain because the biometric-login state probe needs
   // to read it WITHOUT prompting Face ID (otherwise the login screen
@@ -239,10 +214,9 @@ export async function updateStoredRefreshToken(nextToken: string) {
   if (!nextToken) return
   const metadata = await readBiometricMetadata()
   if (!metadata) return
-  // H5: write must use the same authed options used to create the row
-  // so the access-control flags survive the rotation. We swallow errors:
-  // a rotation that fails just means the next biometric login will
-  // re-issue the same token from the prior session — not fatal.
+  // Mismas opciones que el save (sin requireAuthentication) — así rotar el
+  // token NO dispara un prompt. Best-effort: si falla, el próximo login
+  // re-emite el token de la sesión previa — no es fatal.
   try {
     await SecureStore.setItemAsync(
       BIOMETRIC_CREDENTIALS_KEY,
@@ -250,7 +224,7 @@ export async function updateStoredRefreshToken(nextToken: string) {
         email: metadata.email,
         refreshToken: nextToken,
       } satisfies BiometricCredentialsPayload),
-      credentialStoreOptionsAuthed,
+      credentialStoreOptions,
     )
   } catch {
     // best-effort
@@ -266,25 +240,16 @@ export async function clearBiometricCredentials() {
 }
 
 export async function getBiometricCredentials(): Promise<BiometricCredentialsPayload | null> {
-  // H5: read must include the authed options. On iOS this triggers the
-  // Face ID prompt via Secure Enclave. The biometric-restore flow
-  // already shows a Face ID prompt right before this call, and iOS
-  // coalesces near-simultaneous prompts into ONE — so the perceived
-  // UX is unchanged. If the user cancels the OS prompt or auth fails,
-  // SecureStore throws — we treat that as "no credentials available"
-  // so the caller falls back to password sign-in cleanly.
-  //
-  // Expo Go softening (mirrors `saveBiometricCredentials`): the write in
-  // Expo Go used `credentialStoreOptions` (no `requireAuthentication`)
-  // because the host binary lacks the Secure Enclave entitlements. The
-  // read MUST use the same options or we'd be searching the keychain
-  // for an item that doesn't exist under the authed access-control flag.
-  const readOptions = IS_EXPO_GO ? credentialStoreOptions : credentialStoreOptionsAuthed
+  // Lectura SIN prompt: el blob se guarda con `credentialStoreOptions` (sin
+  // requireAuthentication). El Face ID ya se pidió en el gate explícito del
+  // login (`authenticateBiometricAccess`) — no queremos un segundo prompt
+  // acá. Si el read falla, devolvemos null y el caller cae limpio al
+  // sign-in por contraseña.
   let rawValue: string | null = null
   try {
     rawValue = await SecureStore.getItemAsync(
       BIOMETRIC_CREDENTIALS_KEY,
-      readOptions,
+      credentialStoreOptions,
     )
   } catch {
     return null

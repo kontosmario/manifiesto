@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, RefreshControl, StyleSheet, View } from 'react-native'
+import { Alert, AppState, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -14,6 +14,8 @@ import {
 } from '@/features/billing/use-billing'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { logoutSession } from '@/features/auth/logout'
+import { getErrorMessage } from '@/utils/error-message'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import { PaywallView } from '@/components/billing/paywall-view'
 import { ManageView } from '@/components/billing/manage-view'
@@ -239,6 +241,34 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     if (retryState) void doPurchase(retryState.plan, retryState.kind)
   }, [retryState, doPurchase])
 
+  // Salida del gate duro (lockMode): un usuario con trial vencido que no
+  // quiere pagar puede cerrar sesión en vez de quedar atrapado en el paywall.
+  // logoutSession dispara SIGNED_OUT → AppEntryGate → welcome, lo que
+  // desmonta el Modal del SubscriptionGate (sin sesión no hay gate).
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      '¿Cerrar sesión?',
+      'Vas a volver a la pantalla de inicio. Tu cuenta y tus datos quedan guardados.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: () => {
+            void logoutSession({
+              onError: (e) =>
+                Alert.alert(
+                  'No pudimos cerrar sesión',
+                  getErrorMessage(e, 'Probá de nuevo en un momento.'),
+                ),
+              onSuccess: () => {},
+            })
+          },
+        },
+      ],
+    )
+  }, [])
+
   const isErrorSheet =
     sheet?.variant === 'error' || sheet?.variant === 'restoreError'
 
@@ -277,6 +307,7 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
             isPurchasing={billing.isPurchasing}
             onPurchase={doPurchase}
             onRestore={doRestore}
+            onLogout={handleLogout}
           />
         )}
       </View>

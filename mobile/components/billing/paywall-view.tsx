@@ -29,6 +29,9 @@ export interface PaywallViewProps {
   isPurchasing: boolean
   onPurchase: (plan: BillingPlan) => void
   onRestore: () => void
+  /** Solo en lockMode: salida para que el usuario no quede atrapado en el
+   *  paywall duro si no quiere suscribirse. */
+  onLogout?: () => void
   productPrices?: Record<string, string>
 }
 
@@ -38,6 +41,7 @@ export const PaywallView = memo(function PaywallView({
   isPurchasing,
   onPurchase,
   onRestore,
+  onLogout,
   productPrices,
 }: PaywallViewProps) {
   const { theme } = useAppTheme()
@@ -164,6 +168,28 @@ export const PaywallView = memo(function PaywallView({
             <Text style={linkStyle}>Privacidad</Text>
           </Pressable>
         </View>
+        {/* Salida del gate duro: sin esto el usuario con trial vencido que no
+            quiere pagar queda atrapado (no llega a Ajustes para cerrar sesión).
+            Solo en lockMode — fuera de él, el logout vive en Ajustes. */}
+        {lockMode && onLogout ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar sesión"
+            hitSlop={8}
+            onPress={onLogout}
+            style={({ pressed }) => [styles.logoutRow, pressed && { opacity: 0.6 }]}
+          >
+            <MaterialIcons name="logout" size={15} color={theme.colors.textMuted} />
+            <Text
+              style={[
+                theme.typography.bodySmall,
+                { color: theme.colors.textMuted, fontWeight: '600' },
+              ]}
+            >
+              Cerrar sesión
+            </Text>
+          </Pressable>
+        ) : null}
       </RiseView>
     </View>
   )
@@ -191,5 +217,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexWrap: 'wrap',
     marginTop: 4,
+  },
+  logoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 6,
   },
 })
