@@ -29,8 +29,18 @@ import {
   setBiometricEnabledFlag,
 } from '@/features/auth/biometric-enabled-flag'
 
-const BIOMETRIC_CREDENTIALS_KEY = 'auth.biometric.credentials'
-const BIOMETRIC_METADATA_KEY = 'auth.biometric.metadata'
+// `.v2` (2026-06-22): el bump INVALIDA las credenciales guardadas con el
+// candado viejo `requireAuthentication`. El access-control biométrico está
+// horneado en el ITEM del keychain (no en la query), así que LEER el item
+// viejo (authed) dispara un Face ID extra para descifrarlo — ese era el 2º
+// prompt del login biométrico. Con la key nueva NUNCA leemos el item viejo
+// (cero prompt extra); el usuario re-enrola 1 vez y queda con un item v2 SIN
+// requireAuthentication → 1 solo prompt (el gate). Las v1 huérfanas se borran
+// en clearBiometricCredentials (logout) — borrar NO dispara prompt.
+const BIOMETRIC_CREDENTIALS_KEY = 'auth.biometric.credentials.v2'
+const BIOMETRIC_METADATA_KEY = 'auth.biometric.metadata.v2'
+const LEGACY_BIOMETRIC_CREDENTIALS_KEY = 'auth.biometric.credentials'
+const LEGACY_BIOMETRIC_METADATA_KEY = 'auth.biometric.metadata'
 
 interface BiometricCredentialsPayload {
   email: string
@@ -235,6 +245,10 @@ export async function clearBiometricCredentials() {
   await Promise.all([
     SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY),
     SecureStore.deleteItemAsync(BIOMETRIC_METADATA_KEY),
+    // Limpieza de las claves v1 (con requireAuthentication) que hayan quedado
+    // del modo viejo — best-effort, borrar no dispara prompt biométrico.
+    SecureStore.deleteItemAsync(LEGACY_BIOMETRIC_CREDENTIALS_KEY).catch(() => {}),
+    SecureStore.deleteItemAsync(LEGACY_BIOMETRIC_METADATA_KEY).catch(() => {}),
     clearBiometricEnabledFlag(),
   ])
 }

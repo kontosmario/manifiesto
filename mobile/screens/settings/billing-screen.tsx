@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, AppState, RefreshControl, StyleSheet, View } from 'react-native'
+import { Alert, AppState, Modal, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -19,6 +19,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import { PaywallView } from '@/components/billing/paywall-view'
 import { ManageView } from '@/components/billing/manage-view'
+import { DeleteAccountScreen } from '@/screens/settings/delete-account-screen'
 import {
   PurchaseResultSheet,
   type PurchaseResultVariant,
@@ -91,6 +92,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
     kind: PurchaseKind
   } | null>(null)
   const [changeOpen, setChangeOpen] = useState(false)
+  // Eliminar cuenta desde el paywall lockMode (ver el Modal anidado abajo).
+  const [showDelete, setShowDelete] = useState(false)
   const [changeSelected, setChangeSelected] =
     useState<BillingPlanId>('hogar-anual')
   // Cambio agendado de forma OPTIMISTA: un downgrade no emite evento de
@@ -308,6 +311,9 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
             onPurchase={doPurchase}
             onRestore={doRestore}
             onLogout={handleLogout}
+            onDeleteAccount={
+              userId && familyId ? () => setShowDelete(true) : undefined
+            }
           />
         )}
       </View>
@@ -330,6 +336,27 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
         onConfirm={onConfirmChange}
         onClose={() => setChangeOpen(false)}
       />
+
+      {/* Eliminar cuenta desde el paywall lockMode (Guideline 5.1.1(v)): el
+          SubscriptionGate es un Modal nativo top-most, así que navegar a la
+          ruta /settings/delete-account quedaría DEBAJO. En su lugar montamos la
+          pantalla de baja como Modal anidado (se apila por encima del gate).
+          onClose la descarta; tras agendar la baja, logoutSession dispara
+          SIGNED_OUT y desmonta todo. Solo se abre con userId + familyId. */}
+      {userId && familyId ? (
+        <Modal
+          visible={showDelete}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowDelete(false)}
+        >
+          <DeleteAccountScreen
+            userId={userId}
+            familyId={familyId}
+            onClose={() => setShowDelete(false)}
+          />
+        </Modal>
+      ) : null}
     </Screen>
   )
 }

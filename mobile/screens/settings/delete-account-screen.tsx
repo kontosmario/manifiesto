@@ -39,6 +39,11 @@ import { getErrorMessage } from '@/utils/error-message'
 interface DeleteAccountScreenProps {
   userId: string
   familyId: string
+  /** Cuando se monta como Modal anidado (p.ej. desde el paywall lockMode, que
+   *  es un Modal nativo top-most donde no se puede navegar a la ruta), cancelar
+   *  debe descartar ese Modal en vez de hacer router.back(). Si no se pasa, el
+   *  comportamiento de ruta normal (router.back) se mantiene. */
+  onClose?: () => void
 }
 
 type Step =
@@ -70,7 +75,7 @@ const CONFIRM_PHRASE = 'ELIMINAR'
  * dos flujos divergentes; la gracia + cron processor ya está cableado
  * end-to-end y le da al usuario una ventana de arrepentimiento.
  */
-export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenProps) {
+export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccountScreenProps) {
   const { theme } = useAppTheme()
   const router = useRouter()
   const inputRef = useRef<TextInput | null>(null)
@@ -360,8 +365,12 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
 
   const handleCancel = useCallback(() => {
     if (requestDeletion.isPending) return
+    if (onClose) {
+      onClose()
+      return
+    }
     router.back()
-  }, [requestDeletion.isPending, router])
+  }, [requestDeletion.isPending, router, onClose])
 
   const handleBackToReview = useCallback(() => {
     if (requestDeletion.isPending) return
@@ -379,7 +388,7 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-        canGoBack
+        canGoBack={!onClose}
         contentContainerStyle={styles.screenContent}
         subtitle="Antes de borrar tu cuenta, transferí el hogar a otro miembro."
         title="Eliminar cuenta"
@@ -422,7 +431,7 @@ export function DeleteAccountScreen({ userId, familyId }: DeleteAccountScreenPro
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      canGoBack
+      canGoBack={!onClose}
       contentContainerStyle={styles.screenContent}
       subtitle={
         step === 'review'

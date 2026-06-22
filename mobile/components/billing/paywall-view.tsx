@@ -29,9 +29,12 @@ export interface PaywallViewProps {
   isPurchasing: boolean
   onPurchase: (plan: BillingPlan) => void
   onRestore: () => void
-  /** Solo en lockMode: salida para que el usuario no quede atrapado en el
-   *  paywall duro si no quiere suscribirse. */
+  /** Solo en lockMode: salidas para que el usuario no quede atrapado en el
+   *  paywall duro si no quiere suscribirse. Visibles ÚNICAMENTE sin membresía
+   *  paga y con el período de prueba vencido — que es exactamente cuando se
+   *  monta el lockMode (has_access=false). */
   onLogout?: () => void
+  onDeleteAccount?: () => void
   productPrices?: Record<string, string>
 }
 
@@ -42,6 +45,7 @@ export const PaywallView = memo(function PaywallView({
   onPurchase,
   onRestore,
   onLogout,
+  onDeleteAccount,
   productPrices,
 }: PaywallViewProps) {
   const { theme } = useAppTheme()
@@ -168,27 +172,66 @@ export const PaywallView = memo(function PaywallView({
             <Text style={linkStyle}>Privacidad</Text>
           </Pressable>
         </View>
-        {/* Salida del gate duro: sin esto el usuario con trial vencido que no
-            quiere pagar queda atrapado (no llega a Ajustes para cerrar sesión).
-            Solo en lockMode — fuera de él, el logout vive en Ajustes. */}
-        {lockMode && onLogout ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
-            hitSlop={8}
-            onPress={onLogout}
-            style={({ pressed }) => [styles.logoutRow, pressed && { opacity: 0.6 }]}
-          >
-            <MaterialIcons name="logout" size={15} color={theme.colors.textMuted} />
-            <Text
-              style={[
-                theme.typography.bodySmall,
-                { color: theme.colors.textMuted, fontWeight: '600' },
-              ]}
-            >
-              Cerrar sesión
-            </Text>
-          </Pressable>
+        {/* Salidas del gate duro: sin esto el usuario con trial vencido que no
+            quiere pagar queda atrapado (no llega a Ajustes). Solo en lockMode
+            (= sin membresía + prueba vencida). Eliminar cuenta cumple además la
+            Guideline 5.1.1(v) de Apple (baja accesible in-app). */}
+        {lockMode && (onLogout || onDeleteAccount) ? (
+          <View style={styles.escapeRow}>
+            {onLogout ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar sesión"
+                hitSlop={8}
+                onPress={onLogout}
+                style={({ pressed }) => [
+                  styles.escapeAction,
+                  pressed && { opacity: 0.6 },
+                ]}
+              >
+                <MaterialIcons name="logout" size={15} color={theme.colors.textMuted} />
+                <Text
+                  style={[
+                    theme.typography.bodySmall,
+                    { color: theme.colors.textMuted, fontWeight: '600' },
+                  ]}
+                >
+                  Cerrar sesión
+                </Text>
+              </Pressable>
+            ) : null}
+            {onLogout && onDeleteAccount ? (
+              <Text style={[theme.typography.bodySmall, { color: theme.colors.line }]}>
+                |
+              </Text>
+            ) : null}
+            {onDeleteAccount ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Eliminar cuenta"
+                hitSlop={8}
+                onPress={onDeleteAccount}
+                style={({ pressed }) => [
+                  styles.escapeAction,
+                  pressed && { opacity: 0.6 },
+                ]}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={15}
+                  color={theme.colors.danger}
+                />
+                <Text
+                  style={[
+                    theme.typography.bodySmall,
+                    { color: theme.colors.danger, fontWeight: '600' },
+                  ]}
+                >
+                  Eliminar cuenta
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
       </RiseView>
     </View>
@@ -218,12 +261,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 4,
   },
-  logoutRow: {
+  escapeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 12,
     marginTop: 16,
+  },
+  escapeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
   },
 })
