@@ -50,6 +50,18 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const warningProgress = useSharedValue(warning ? 1 : 0)
   const isMultiline = Boolean(inputProps.multiline)
 
+  // Placeholder PROPIO (single-line): el placeholder NATIVO de iOS se dibuja
+  // bottom-aligned aunque el texto tipeado se centre — bug de RCTUITextField
+  // (`placeholderRect` ≠ `textRect`) que NO se corrige con padding ni altura.
+  // Lo renderizamos como un <Text> superpuesto y centrado por flexbox (que sí
+  // controlamos). Multilínea conserva el placeholder nativo (ancla arriba, OK).
+  const { placeholder, value: valueProp, onChangeText, ...restInputProps } =
+    inputProps
+  const [localText, setLocalText] = useState('')
+  const effectiveText = valueProp !== undefined ? valueProp : localText
+  const showCustomPlaceholder =
+    !isMultiline && Boolean(placeholder) && (effectiveText ?? '').length === 0
+
   useEffect(() => {
     focusProgress.value = reduceMotion
       ? (isFocused ? 1 : 0)
@@ -137,18 +149,27 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           // Sin botón de limpiar cuando hay trailing (ojo de contraseña), para
           // que la "x" nativa de iOS no se solape con el ícono absoluto.
           clearButtonMode={trailing ? 'never' : 'while-editing'}
+          placeholder={isMultiline ? placeholder : undefined}
           placeholderTextColor={theme.colors.textSoft}
           selectionColor={theme.colors.primary}
           style={[
             styles.inputField,
             {
               color: theme.colors.text,
-              // El input es un hijo de ANCHO COMPLETO que se dimensiona por su
-              // CONTENIDO (texto + este padding simétrico), igual que un
-              // TextInput "pelado" → el texto se centra por su propia caja, sin
-              // flex-stretch (que lo estiraba a la altura del wrap y mandaba el
-              // texto ABAJO). Ver inputWrap. Multilínea ancla arriba.
-              paddingVertical: isMultiline ? 12 : 16,
+              // SINGLE-LINE: alto EXPLÍCITO (52) + paddingVertical 0. iOS
+              // `UITextField` con `contentVerticalAlignment = .center` (default
+              // de RN para single-line) centra DENTRO de ese alto TANTO el texto
+              // tipeado COMO el placeholder → dejan de divergir. El bug: cuando
+              // el input tiene padding vertical interno, su área de contenido
+              // queda más alta que la línea; iOS centra el texto vivo (vía
+              // contentVerticalAlignment) pero dibuja el placeholder con otro
+              // offset (`placeholderRect` ≠ `textRect`) → placeholder bajo. El
+              // alto explícito también evita que el input vacío colapse a ~0
+              // (lo que antes hacía desaparecer el placeholder).
+              // MULTILÍNEA: SIN alto fijo (debe crecer con el contenido) +
+              // padding propio + ancla arriba.
+              height: isMultiline ? undefined : 52,
+              paddingVertical: isMultiline ? 12 : 0,
               // Lugar a la derecha para el trailing absoluto (ojo), para que el
               // texto no pase por debajo del ícono.
               paddingRight: trailing ? 44 : 14,
@@ -156,16 +177,37 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             },
             style,
           ]}
-          {...inputProps}
+          {...restInputProps}
+          value={valueProp}
+          onChangeText={(text) => {
+            // Para inputs no controlados, trackeamos el texto local para
+            // decidir si mostrar el placeholder propio.
+            if (valueProp === undefined) setLocalText(text)
+            onChangeText?.(text)
+          }}
           onBlur={(event) => {
             setFocused(false)
-            inputProps.onBlur?.(event)
+            restInputProps.onBlur?.(event)
           }}
           onFocus={(event) => {
             setFocused(true)
-            inputProps.onFocus?.(event)
+            restInputProps.onFocus?.(event)
           }}
         />
+        {showCustomPlaceholder ? (
+          <View
+            style={[styles.placeholderOverlay, { right: trailing ? 44 : 14 }]}
+            pointerEvents="none"
+          >
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={[styles.placeholderText, { color: theme.colors.textSoft }]}
+            >
+              {placeholder}
+            </Text>
+          </View>
+        ) : null}
         {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
       </Animated.View>
       {helper ? (
@@ -189,25 +231,37 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     borderRadius: radii.lg,
-    minHeight: 54,
-    justifyContent: 'center',
-    // Layout en BLOQUE (sin flexDirection row ni flex en el input): el
-    // TextInput es un hijo de ancho completo que se dimensiona por su CONTENIDO
-    // (texto + padding vertical simétrico), igual que un TextInput "pelado"
-    // (cf. delete-account-screen, que renderiza centrado) → el texto se centra
-    // por su propia caja, SIN depender del alineado vertical de iOS ni de
-    // flex-stretch (que estiraba el input a la altura del wrap y dejaba el
-    // texto ABAJO — el bug reportado). El wrap solo garantiza el alto mínimo
-    // (48) y centra el input si sobra espacio. El trailing (ojo) va absoluto.
+    // El wrap NO agrega padding vertical ni justifyContent: el alto lo DEFINE el
+    // input. Single-line: el input tiene `height: 52` → la caja mide 52 y centra
+    // texto + placeholder. Multilínea: el input crece con su contenido y el wrap
+    // lo sigue; `minHeight: 52` es solo un piso (coincide con el alto single-line,
+    // no pelea con él). Cualquier paddingVertical/justifyContent en el wrap
+    // reintroduce espacio sobrante donde el placeholder vuelve a derivar.
+    minHeight: 52,
+    // El trailing (ojo) va posicionado absoluto a la derecha (ver `trailing`).
   },
   inputField: {
     paddingHorizontal: 14,
-    // El padding vertical lo define el render (simétrico ⇒ centrado).
+    // Sin padding vertical aquí: el render lo setea (0 single-line / 12 multi).
     fontSize: 14,
     fontWeight: '600',
   },
   helper: {
     paddingHorizontal: 2,
+  },
+  // Placeholder propio: superpuesto sobre el input, centrado verticalmente por
+  // flexbox (top/bottom 0 + justifyContent center). `left: 14` matchea el
+  // paddingHorizontal del input; `right` se setea en línea (44 si hay ojo).
+  placeholderOverlay: {
+    position: 'absolute',
+    left: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   trailing: {
     // Absoluto a la derecha, ocupando toda la altura del wrap (top/bottom 0)
