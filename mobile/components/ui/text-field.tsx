@@ -148,7 +148,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
               // TextInput "pelado" → el texto se centra por su propia caja, sin
               // flex-stretch (que lo estiraba a la altura del wrap y mandaba el
               // texto ABAJO). Ver inputWrap. Multilínea ancla arriba.
-              paddingVertical: isMultiline ? 12 : 14,
+              paddingVertical: isMultiline ? 12 : 16,
               // Lugar a la derecha para el trailing absoluto (ojo), para que el
               // texto no pase por debajo del ícono.
               paddingRight: trailing ? 44 : 14,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     borderRadius: radii.lg,
-    minHeight: 48,
+    minHeight: 54,
     justifyContent: 'center',
     // Layout en BLOQUE (sin flexDirection row ni flex en el input): el
     // TextInput es un hijo de ancho completo que se dimensiona por su CONTENIDO
