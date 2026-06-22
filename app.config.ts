@@ -68,6 +68,20 @@ const config: ExpoConfig = {
     'expo-asset',
     'expo-secure-store',
     'expo-updates',
+    // Google sign-in (2026-06-21): el flujo OAuth web (signInWithOAuth +
+    // PKCE → WebBrowser.openAuthSessionAsync) usa expo-web-browser. NO se
+    // registra como plugin acá a propósito: el módulo nativo lo cablea
+    // Expo autolinking desde package.json (igual que expo-screen-capture
+    // más abajo). El config-plugin de expo-web-browser es un no-op salvo
+    // que se pase `experimentalLauncherActivity` (Android), que no usamos,
+    // y NO agrega las <queries> de Custom Tabs. En iOS openAuthSessionAsync
+    // usa ASWebAuthenticationSession y no requiere config extra. Igual
+    // requiere build nativa nueva para el dev build / producción (Expo Go
+    // ya trae expo-web-browser). Ver mobile/features/auth/social-sign-in.ts.
+    //
+    // TODO Android (Play Store launch): si en Android el Custom Tab no
+    // resuelve por package-visibility de Android 11+, agregar <queries>
+    // explícitas (el plugin no las provee).
     // Sprint P · Audit #9 P-3 (2026-06-10): expo-screen-capture is used at
     // runtime in auth/PIN screens (login, signup, reset-password, pin-unlock,
     // pin-setup, require-reauth-sheet) via preventScreenCaptureAsync(). The

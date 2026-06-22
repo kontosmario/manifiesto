@@ -557,14 +557,13 @@ export function SignupScreen() {
               <Text style={styles.appleLabel}>Continuar con Apple</Text>
             </Pressable>
 
-            {/* Sprint J · Audit #3 J-Auth4 — Google sign-in disabled
-                because the free SDK can't inject a nonce → id_token is
-                replayable. Hide the button until we ship the
-                expo-auth-session flow (or pay for OneTap). The
-                `signInWithGoogle` runtime also short-circuits to
-                `unavailable`, defense-in-depth. Keep the dead handler
-                wired so re-enabling the flag in `social-sign-in.ts` is
-                a one-line revert. */}
+            {/* Google sign-in (rewrite 2026-06-21): ahora usa el flujo
+                OAuth web de Supabase (signInWithOAuth + PKCE), no el
+                id_token nativo. Es seguro sin nonce y anda en Expo Go.
+                El botón se muestra cuando `isGoogleSignInConfigured()` es
+                true (kill-switch `GOOGLE_SIGN_IN_ENABLED` en
+                social-sign-in.ts); `handleGoogleSignUp` corre el flujo
+                real. Ver el detalle en social-sign-in.ts. */}
             {googleAvailable ? (
               <Pressable
                 accessibilityLabel="Continuar con Google"

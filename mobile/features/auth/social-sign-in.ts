@@ -1,5 +1,7 @@
 import { Platform } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
+import * as WebBrowser from 'expo-web-browser'
+import * as Linking from 'expo-linking'
 import { supabase } from '@/lib/supabase'
 import { createNoncePair } from '@/lib/auth-nonce'
 
@@ -19,72 +21,26 @@ function stripBidiAndControls(value: string): string {
   return value.replace(re, ' ').replace(/\s+/g, ' ').trim()
 }
 
-// Google sign-in is loaded lazily because the package's top-level
-// import calls `TurboModuleRegistry.getEnforcing('RNGoogleSignin')`,
-// which crashes the entire JS bundle when the native module isn't in
-// the binary (Expo Go, dev builds without the lib, web). Lazy require
-// keeps the bundle loadable; the runtime check `loadGoogle()` reports
-// failure cleanly so the JS handler can show a friendly fallback.
-type GoogleModule = typeof import('@react-native-google-signin/google-signin')
-let cachedGoogleModule: GoogleModule | null | undefined
-function loadGoogle(): GoogleModule | null {
-  if (cachedGoogleModule !== undefined) return cachedGoogleModule
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cachedGoogleModule = require('@react-native-google-signin/google-signin') as GoogleModule
-  } catch {
-    cachedGoogleModule = null
-  }
-  return cachedGoogleModule
-}
-
 /**
- * Bridges the platform-native Sign in with Apple / Google flows to
- * Supabase Auth via `signInWithIdToken`. The provider returns a JWT
- * (id_token) that Supabase verifies against the issuer's JWKS — no
- * server-side client secret needed for either provider.
+ * Bridges the platform sign-in flows to Supabase Auth.
+ *
+ *   · **Apple** uses the native id_token flow (`signInWithIdToken`): the
+ *     OS returns a JWT that Supabase verifies against Apple's JWKS. A
+ *     CSPRNG nonce binds the token to this request so a stolen token
+ *     can't be replayed. Requires an iOS development build (the Sign in
+ *     with Apple entitlement only exists in compiled binaries — Expo Go's
+ *     `aud` is `host.exp.Exponent`, which we deliberately don't accept).
+ *
+ *   · **Google** uses Supabase's OAuth **web flow** (`signInWithOAuth` +
+ *     PKCE) instead of a native id_token. See `signInWithGoogle` below for
+ *     the full rationale — short version: it needs no client-side nonce,
+ *     ships no Google credentials in the app, and works in Expo Go.
  *
  * Both flows handle BOTH new sign-ups and returning sign-ins
  * transparently: Supabase upserts into `auth.users` keyed by the
  * provider subject (`sub`), so the same user gets one row regardless
  * of how many times they tap the button.
- *
- * Setup checklist (won't work without these):
- *   Apple
- *     · Apple Developer Portal: enable "Sign In with Apple" for the
- *       bundle id `com.manifiesto.mobile`.
- *     · Supabase Dashboard → Authentication → Providers → Apple:
- *       enter the Service ID (e.g. `com.manifiesto.web`), Team ID,
- *       Key ID, and the .p8 private key.
- *     · iOS development build (not Expo Go) — the entitlement only
- *       exists in compiled binaries.
- *   Google
- *     · Google Cloud Console: create OAuth 2.0 Client IDs for iOS
- *       and Web (Web ID is the one Supabase needs).
- *     · `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` env var = Web client id.
- *     · `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME` env var = reversed iOS
- *       client id (e.g. `com.googleusercontent.apps.123-abc`).
- *     · Supabase Dashboard → Authentication → Providers → Google:
- *       enter the Web Client ID and Web Client Secret.
  */
-
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-
-// Configure on first successful module load — idempotent, so calling
-// it again on subsequent loads is harmless. The Web client id is what
-// Supabase verifies the id_token against on the backend, so it's
-// required even on iOS.
-let googleConfigured = false
-function configureGoogleIfNeeded(google: GoogleModule) {
-  if (googleConfigured || !GOOGLE_WEB_CLIENT_ID) return
-  google.GoogleSignin.configure({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    offlineAccess: false,
-  })
-  googleConfigured = true
-}
 
 export interface SocialSignInResult {
   status: 'signed-in' | 'cancelled' | 'unavailable'
@@ -101,31 +57,50 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
 }
 
 /**
- * Sprint J · Audit #3 J-Auth4 — Google sign-in is disabled in production.
+ * Google sign-in via Supabase's OAuth **web flow** (Authorization Code
+ * + PKCE) — NOT the native `@react-native-google-signin` id_token flow.
  *
- * Why: the free tier of `@react-native-google-signin/google-signin`
- * exposes `signIn(loginHint?)` without a `nonce` parameter (custom
- * nonces are gated behind the paid GoogleOneTapSignIn surface). Without
- * a nonce, the id_token has no `nonce` claim and Supabase can't bind
- * the token to a per-request value → an attacker who intercepts a valid
- * id_token (browser extension, malicious dev tool, or a leaked log) can
- * replay it against `signInWithIdToken` and assume the user.
+ * Why the web flow (replaces the Sprint J · J-Auth4 disable):
+ *   · **No client-side nonce gymnastics.** Security comes from PKCE: the
+ *     `code` returned in the redirect is useless without the
+ *     `code_verifier` that never leaves this device, and the final token
+ *     exchange runs server-side with the Google client secret stored in
+ *     Supabase. A stolen `code` can't be replayed. (This is what the
+ *     native free-tier SDK could NOT give us — it exposed no `nonce`
+ *     parameter, leaving the id_token replayable, so we'd hidden it.)
+ *   · **Works in Expo Go.** `expo-web-browser` is a core Expo module, so
+ *     no native `@react-native-google-signin` binary is required.
+ *   · **Ships no Google credentials.** Supabase holds the Web Client ID +
+ *     secret (Dashboard → Authentication → Providers → Google).
  *
- * Until we either (a) implement the auth-session flow manually so we
- * can inject a nonce, or (b) pay for OneTap, the safer option is to
- * hide the entry point entirely. The `signInWithGoogle` runtime
- * function below also short-circuits to `unavailable` so even a stray
- * deep link can't drive the flow.
+ * Flow:
+ *   1. `signInWithOAuth({ provider: 'google', skipBrowserRedirect: true })`
+ *      builds the Google consent URL with the PKCE challenge and stashes
+ *      the `code_verifier` in Supabase's secure storage.
+ *   2. `WebBrowser.openAuthSessionAsync` opens it in an ephemeral system
+ *      browser session and resolves once the Google → Supabase →
+ *      `…/auth/callback` redirect completes.
+ *   3. We pull `?code=` from the redirect and `exchangeCodeForSession`
+ *      swaps it (using the stored verifier) for a real session.
  *
- * Migration path for v1.1: build the OAuth request via
- * `expo-auth-session` (PKCE + nonce), then re-enable
- * `isGoogleSignInConfigured` to return true again.
+ * The redirect URL is derived with `Linking.createURL('auth/callback')`
+ * so it resolves to `manifiesto://auth/callback` in dev/standalone builds
+ * and to the `exp://…/--/auth/callback` host inside Expo Go. BOTH must be
+ * listed in Supabase → Authentication → URL Configuration → Redirect URLs
+ * for the corresponding runtime to complete the flow.
+ *
+ * Note (PKCE "plain"): Hermes has no `crypto.subtle`, so auth-js falls
+ * back to the plain code-challenge method (see mobile/lib/runtime.ts).
+ * Still secure — the verifier never leaves the device — and fully
+ * compatible with `exchangeCodeForSession`.
  */
-const GOOGLE_SIGN_IN_ENABLED = false
+const GOOGLE_SIGN_IN_ENABLED = true
 
 export function isGoogleSignInConfigured(): boolean {
-  if (!GOOGLE_SIGN_IN_ENABLED) return false
-  return Boolean(GOOGLE_WEB_CLIENT_ID) && loadGoogle() !== null
+  // The web flow needs no client-side credentials — Google is configured
+  // entirely server-side in Supabase. The kill-switch lets us hide the
+  // entry point instantly if the provider ever misbehaves.
+  return GOOGLE_SIGN_IN_ENABLED
 }
 
 export async function signInWithApple(): Promise<SocialSignInResult> {
@@ -231,10 +206,8 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
 }
 
 export async function signInWithGoogle(): Promise<SocialSignInResult> {
-  // Sprint J · Audit #3 J-Auth4 — runtime guard mirrors the build-time
-  // flag in `isGoogleSignInConfigured`. Even if a deep link or stray
-  // CTA reaches here, we never call the underlying SDK because the SDK
-  // can't inject a nonce → the id_token is replayable.
+  // Kill-switch mirror — even a stray deep link / CTA can't drive the
+  // flow when Google is turned off.
   if (!GOOGLE_SIGN_IN_ENABLED) {
     return {
       status: 'unavailable',
@@ -242,78 +215,70 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
         'Google sign-in está temporalmente deshabilitado en esta versión. Probá con Apple o email + contraseña.',
     }
   }
-  if (!GOOGLE_WEB_CLIENT_ID) {
-    return {
-      status: 'unavailable',
-      error: 'Google sign-in todavía no está configurado.',
-    }
-  }
-
-  const google = loadGoogle()
-  if (!google) {
-    return {
-      status: 'unavailable',
-      error:
-        'Google sign-in no está disponible en este build. Necesitas un development build (no Expo Go).',
-    }
-  }
-  configureGoogleIfNeeded(google)
 
   try {
-    await google.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
-    // Cast: tsconfig `moduleSuffixes` resolves the package's
-    // `.web.d.ts` (which types `signIn()` as `Promise<User>`) ahead of
-    // the native `.d.ts`. At runtime the mobile module returns the
-    // `{ type, data }` shape from the native declaration.
-    const response = (await google.GoogleSignin.signIn()) as unknown as
-      | { type: 'success'; data: { idToken: string | null } }
-      | { type: 'cancelled' }
+    const redirectTo = Linking.createURL('auth/callback')
 
-    if (response.type === 'cancelled') {
-      return { status: 'cancelled' }
-    }
+    // PKCE: Supabase generates the code challenge and stores the verifier
+    // in secure storage. `skipBrowserRedirect` keeps us in control of
+    // opening the URL ourselves (vs an automatic browser redirect that
+    // only works on web).
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+        // Force the account chooser so a user with multiple Google
+        // accounts isn't silently logged in with the last one.
+        queryParams: { prompt: 'select_account' },
+      },
+    })
 
-    const idToken = response.data.idToken
-    if (!idToken) {
+    if (error || !data?.url) {
       return {
         status: 'unavailable',
-        error: 'No recibimos un token válido de Google.',
+        error: error?.message ?? 'No pudimos iniciar el flujo con Google.',
       }
     }
 
-    // NOTE on nonce: ideally we'd generate a CSPRNG nonce, send the
-    // hash to Google, and pass the raw value to Supabase (same defense
-    // as Apple — protects against id_token replay). The version of
-    // `@react-native-google-signin/google-signin` we use exposes
-    // `signIn(loginHint?)` in its free tier, which has NO `nonce`
-    // parameter (custom nonce support is gated behind the paid
-    // GoogleOneTapSignIn surface). Without injecting a nonce into the
-    // OAuth request, the id_token has no `nonce` claim, and passing
-    // `nonce: rawNonce` to Supabase would make `signInWithIdToken`
-    // reject the token. Tracked as a follow-up: upgrade to OneTap or
-    // build the OAuth request manually via expo-auth-session.
-    const { error } = await supabase.auth.signInWithIdToken({
-      provider: 'google',
-      token: idToken,
-    })
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
 
-    if (error) {
-      return { status: 'unavailable', error: error.message }
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      return { status: 'cancelled' }
+    }
+    if (result.type !== 'success' || !result.url) {
+      return {
+        status: 'unavailable',
+        error: 'No pudimos completar el inicio con Google.',
+      }
+    }
+
+    // The redirect lands as `…/auth/callback?code=…` (PKCE). The global
+    // `URL` is available via `react-native-url-polyfill/auto`, imported
+    // in mobile/lib/runtime.ts.
+    const callbackUrl = new URL(result.url)
+    const oauthError =
+      callbackUrl.searchParams.get('error_description') ??
+      callbackUrl.searchParams.get('error')
+    if (oauthError) {
+      return { status: 'unavailable', error: oauthError }
+    }
+
+    const code = callbackUrl.searchParams.get('code')
+    if (!code) {
+      return {
+        status: 'unavailable',
+        error: 'No recibimos el código de autorización de Google.',
+      }
+    }
+
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    if (exchangeError) {
+      return { status: 'unavailable', error: exchangeError.message }
     }
 
     return { status: 'signed-in' }
   } catch (error) {
-    if (google.isErrorWithCode(error)) {
-      if (error.code === google.statusCodes.SIGN_IN_CANCELLED) {
-        return { status: 'cancelled' }
-      }
-      if (error.code === google.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return {
-          status: 'unavailable',
-          error: 'Google Play Services no está disponible en este dispositivo.',
-        }
-      }
-    }
     return {
       status: 'unavailable',
       error: error instanceof Error ? error.message : 'No pudimos iniciar con Google.',

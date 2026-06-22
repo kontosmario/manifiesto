@@ -6,17 +6,78 @@ import { enableFreeze } from 'react-native-screens'
 // process/backup with file-system access. Auth tokens now live in
 // Keychain via `mobile/lib/supabase-secure-storage.ts`.
 import 'react-native-url-polyfill/auto'
+import * as ExpoCrypto from 'expo-crypto'
 
-// NOTE about the Supabase WARN "WebCrypto API is not supported. Code
+// CSPRNG global — polyfill `globalThis.crypto.getRandomValues` so
+// @supabase/auth-js generates the PKCE `code_verifier` with a
+// cryptographically-secure RNG instead of its `Math.random()` fallback.
+//
+// Why this is load-bearing (red team 2026-06-21): the Google sign-in
+// OAuth web flow (signInWithOAuth + PKCE — see
+// mobile/features/auth/social-sign-in.ts) rests ENTIRELY on the verifier
+// being unguessable. A `code` delivered to the custom scheme
+// `manifiesto://auth/callback` (any app on the device can register it) is
+// only useless to a hijacker because they lack the verifier. But Hermes
+// ships NO global `crypto`, and auth-js's `generatePKCEVerifier` silently
+// degrades to `Math.random()` when `typeof crypto === 'undefined'` — a
+// predictable verifier that defeats the entire defense and replays into
+// `exchangeCodeForSession` => account takeover.
+//
+// We use expo-crypto (a CSPRNG core Expo module that works in Expo Go AND
+// dev/prod builds) rather than `react-native-get-random-values` (a native
+// module ABSENT from Expo Go). This MUST run before `@/lib/supabase`
+// loads — it does, because supabase.ts imports this module first.
+{
+  type CryptoGlobal = {
+    getRandomValues?: <T extends ArrayBufferView | null>(array: T) => T
+    subtle?: unknown
+  }
+  const scope = globalThis as unknown as { crypto?: CryptoGlobal }
+  if (typeof scope.crypto?.getRandomValues !== 'function') {
+    const getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
+      if (array == null) return array
+      ExpoCrypto.getRandomValues(
+        array as unknown as Parameters<typeof ExpoCrypto.getRandomValues>[0],
+      )
+      return array
+    }
+    const polyfilled: CryptoGlobal = { ...(scope.crypto ?? {}), getRandomValues }
+    try {
+      Object.defineProperty(scope, 'crypto', {
+        value: polyfilled,
+        configurable: true,
+        writable: true,
+      })
+    } catch {
+      scope.crypto = polyfilled
+    }
+  }
+}
+
+// Surfaces a regression (e.g. expo-crypto dropped / polyfill order broken)
+// in dev BEFORE it ships an insecure verifier to production.
+if (
+  __DEV__ &&
+  typeof (globalThis as unknown as { crypto?: { getRandomValues?: unknown } })
+    .crypto?.getRandomValues !== 'function'
+) {
+  console.error(
+    '[runtime] globalThis.crypto.getRandomValues is missing — the PKCE ' +
+      'code_verifier would fall back to Math.random(). Sign-in is INSECURE.',
+  )
+}
+
+// NOTE on the Supabase WARN "WebCrypto API is not supported. Code
 // challenge method will default to use plain instead of sha256":
-// Hermes has no `crypto.subtle`, so @supabase/auth-js falls back to
-// PKCE "plain" (still secure: the code_verifier never leaves the
-// device). It's a benign warning. We tried polyfilling via
-// `expo-standard-web-crypto` + a manual `subtle.digest` shim, but that
-// package depends on the native module `ExpoCryptoAES` which is NOT
-// in the current dev-client build — bundling crashed the whole app.
-// Live with the warning until we rebuild the dev client (or until
-// Expo ships a pure-JS subtle.digest in expo-crypto).
+// the polyfill above wires `getRandomValues` (so the verifier IS a
+// CSPRNG), but Hermes still has no `crypto.subtle`, so auth-js keeps the
+// PKCE "plain" method. That is fine: with a high-entropy verifier, "plain"
+// is secure — the challenge (== verifier) only ever travels inside the
+// ephemeral system-browser request to the IdP over TLS, never to another
+// app; the redirect only carries the `code`. We deliberately do NOT shim
+// `subtle.digest` (a prior `expo-standard-web-crypto` attempt depended on
+// the native `ExpoCryptoAES`, absent from the dev client, and crashed the
+// bundle). Upgrading to "s256" is optional defense-in-depth, not required.
 
 // Activa el freezing de React subtrees para screens con
 // `freezeOnBlur: true`. Sin este flag global, todos los

@@ -48,6 +48,8 @@ App Store Connect (owner) ... 🔴 atar build + suscripción a review + DSA + su
 | Limpiar **estado de test fabricado** (`mario7` / family `351cf218` quedó en `active-yearly-2027`) | Owner/yo | Volver a `none`. |
 | `NSPhotoLibraryUsageDescription` **en español** | Yo (código) | Evita fricción 5.1.1 (la app está en español, el string default sale en inglés). 5 min. |
 | `npm run supabase:functions:check` antes del build | Yo | Las 6 edge functions con entry en `config.toml`. |
+| **Remover `exp://**` de la allowlist de Redirect URLs de Supabase** (dev-only, agregado 2026-06-21 para probar Google en Expo Go) | Yo (Management API) | Wildcard amplio que **no debe quedar en prod**. Producción usa `manifiesto://auth/callback` (ya allowlisted). **Ver §6.1.** |
+| Build nuevo (8) **debe incluir `expo-web-browser`** (dep del login con Google) | Owner (`eas build`) | Ya requerido por §6; al cortar desde `main` actual lo incluye. Sin él, el botón de Google falla (no crashea) con "unavailable" en prod. |
 
 ---
 
@@ -163,6 +165,24 @@ El build **7** se subió el **2026-06-19**. **Todo lo del 2026-06-20 quedó afue
 > **Decisión a tomar:** v1.0 debería salir con un **build nuevo (8)** que incluya estos dos arreglos. Mandar el build 7 tal cual = publicar con el reset de contraseña roto y el bug del saldo. Recomendación: **rebuild antes del submit.**
 >
 > (Los cambios de moneda local / cotización USD / rediseño de logros del 06-19 podrían estar o no en el build 7 según el momento exacto del corte; el build nuevo los incluye de todos modos.)
+
+---
+
+## 6.1 Google sign-in (OAuth web flow) — agregado 2026-06-21
+
+Se agregó **iniciar sesión con Google** vía el flujo **OAuth web de Supabase** (`signInWithOAuth` + PKCE), NO el id_token nativo. Es seguro (code exchange server-side, sin nonce replayable) y anda en Expo Go.
+
+**Estado:**
+- Proveedor Google **habilitado en Supabase prod** (client id + secret cargados; el secret vive solo en Supabase, no en el repo).
+- Código: `mobile/features/auth/social-sign-in.ts` (flujo OAuth web) + **polyfill CSPRNG** de `globalThis.crypto.getRandomValues` con expo-crypto en `mobile/lib/runtime.ts`. Este polyfill es **load-bearing de seguridad** (hallazgo red team 2026-06-21): sin él, `@supabase/auth-js` generaba el `code_verifier` de PKCE con `Math.random()` en Hermes → verifier predecible → account takeover.
+- `expo-web-browser` agregado a `package.json` → **requiere build nativa nueva** (Expo Go ya lo trae; el dev build actual / producción no). El build 8 (ya requerido por §6) lo incluye al cortarse desde `main`.
+
+**🔴 A REMOVER ANTES DE LANZAR (config dev-only en prod):**
+- En **Supabase → Authentication → URL Configuration → Redirect URLs** se agregó **`exp://**`** SOLO para probar Google en **Expo Go** (ahí el redirect es `exp://<ip>:8081/--/auth/callback`, que de otro modo no matchea). Es un wildcard amplio que **no debe quedar en producción**. La app de producción usa `manifiesto://auth/callback` (ya allowlisted) y no necesita el `exp://`. **Sacarlo de la allowlist antes del submit / cuando se deje de probar en Expo Go.**
+
+**Cómo probar:**
+- **Expo Go:** funciona ya (con `exp://` agregado + el polyfill CSPRNG). Apple igual NO funciona en Expo Go (necesita dev build).
+- **Dev build / producción:** requiere build nuevo con `expo-web-browser`; el redirect `manifiesto://auth/callback` ya está allowlisted.
 
 ---
 
