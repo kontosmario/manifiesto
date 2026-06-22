@@ -1,0 +1,23 @@
+-- supabase/migrations/20260622170000_local_currency_drop_not_null.sql
+--
+-- Fix de una inconsistencia introducida por 20260620250000
+-- (currency_opt_in_no_default). Esa migración hizo `local_currency` OPT-IN
+-- ("filas nuevas nacen NULL — sin moneda", "el check constraint ya admite
+-- NULL") pero SOLO dropeó el DEFAULT y dejó la columna NOT NULL. Resultado:
+-- cualquier INSERT que no provea `local_currency` viola la NOT NULL — en
+-- particular el bootstrap UPSERT del trigger `recompute_family_income`:
+--
+--     insert into public.family_finance (family_id, monthly_income)
+--     values (v_family_id, v_total)
+--     on conflict (family_id) do update set monthly_income = excluded.monthly_income;
+--
+-- Ese trigger se dispara al insertar/borrar `family_members` y toma el path
+-- INSERT cuando todavía no existe la fila de `family_finance` (familia recién
+-- booteada, o borrado en cascada). Desde 20260620250000 ese path crashea.
+--
+-- Este fix COMPLETA la intención de aquella migración: que `local_currency`
+-- sea realmente opcional (nullable). Las filas existentes conservan su valor
+-- ('ARS' en las cuentas AR actuales); las nuevas pueden nacer NULL = sin
+-- conversión, que es exactamente el opt-in deseado.
+ALTER TABLE public.family_finance
+  ALTER COLUMN local_currency DROP NOT NULL;
