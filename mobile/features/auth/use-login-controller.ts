@@ -211,6 +211,9 @@ export function useLoginController(options?: UseLoginControllerOptions) {
       handleFieldFocus: keyboardActions.handleFieldFocus,
       handleSubmit,
       handleViewportLayout: keyboardActions.handleViewportLayout,
+      // Expuesto para que el login social (Apple/Google) pueda ofrecer el
+      // mismo enrolamiento de Face ID que el login con email.
+      persistBiometricCredentials,
       setDisplayName,
       setEmail,
       setErrorMessage,

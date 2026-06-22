@@ -43,7 +43,9 @@ import {
   signInWithApple,
   signInWithGoogle,
 } from '@/features/auth/social-sign-in'
+import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
+import { supabase } from '@/lib/supabase'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { pickReturningGreeting } from '@/lib/copy/auth-greetings'
@@ -124,6 +126,8 @@ export function LoginScreen() {
     passwordInputRef,
     emailInputRef,
   } = controller
+  // Estable (useCallback [] en el biometric controller) — seguro como dep.
+  const { persistBiometricCredentials } = actions
 
   const hasSavedBiometric =
     biometricState.isAvailable && biometricState.hasSavedCredentials
@@ -405,6 +409,27 @@ export function LoginScreen() {
       void triggerHaptic('warning')
     }
   }, [actions, email, resendConfirm])
+  // Tras un sign-in social exitoso, ofrecé el enrolamiento de Face ID igual
+  // que el login con email (persistBiometricCredentials — basado en refresh
+  // token, NO necesita password, así que funciona para usuarios de
+  // Apple/Google). Gateado: SOLO para cuentas que ya pasaron por la pantalla
+  // biometric-setup (usuarios existentes). Las cuentas nuevas van a esa
+  // pantalla, así que prompteear acá sería doble. Best-effort: nunca bloquea
+  // el acceso.
+  const offerBiometricAfterSocial = useCallback(async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      const sessionUser = data.session?.user
+      if (!sessionUser) return
+      if (!(await getBiometricSetupShown(sessionUser.id))) return
+      await persistBiometricCredentials(sessionUser.email ?? '', {
+        shouldPromptSetup: true,
+      })
+    } catch {
+      // no-op: el enrolamiento es opcional, no frena el login.
+    }
+  }, [persistBiometricCredentials])
+
   const handleAppleSignIn = useCallback(async () => {
     if (appleSigningIn || isBusy) return
     void triggerHaptic('selection')
@@ -423,6 +448,9 @@ export function LoginScreen() {
       const result = await signInWithApple()
       if (result.status === 'signed-in') {
         await triggerHaptic('success')
+        // Mismo enrolamiento de Face ID que el login con email, antes de
+        // navegar (para cuentas existentes sin biometría configurada).
+        await offerBiometricAfterSocial()
         // Apple sign-in es un evento de auth explícito: la máquina
         // entra al bridge, marca unlocked (confirm-session) y navega
         // al destino resuelto cuando el overlay está opaco.
@@ -435,7 +463,7 @@ export function LoginScreen() {
     } finally {
       setAppleSigningIn(false)
     }
-  }, [appleAvailable, appleSigningIn, isBusy])
+  }, [appleAvailable, appleSigningIn, isBusy, offerBiometricAfterSocial])
 
   const handleGoogleSignIn = useCallback(async () => {
     if (googleSigningIn || isBusy) return
@@ -453,6 +481,7 @@ export function LoginScreen() {
       const result = await signInWithGoogle()
       if (result.status === 'signed-in') {
         await triggerHaptic('success')
+        await offerBiometricAfterSocial()
         // Mismo handoff que Apple: la máquina bridgea y resuelve el
         // destino (home si la cuenta ya está onboardeada).
         dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })
@@ -464,7 +493,7 @@ export function LoginScreen() {
     } finally {
       setGoogleSigningIn(false)
     }
-  }, [googleAvailable, googleSigningIn, isBusy])
+  }, [googleAvailable, googleSigningIn, isBusy, offerBiometricAfterSocial])
 
   const handleUsePassword = useCallback(() => {
     void triggerHaptic('selection')
