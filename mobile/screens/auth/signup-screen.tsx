@@ -36,6 +36,7 @@ import {
   signInWithGoogle,
   type SocialSignInResult,
 } from '@/features/auth/social-sign-in'
+import { offerBiometricEnrollmentAfterSocial } from '@/features/auth/offer-biometric-after-social'
 import { usePasswordSignUp } from '@/features/auth/use-auth-actions'
 import { useCaptcha } from '@/features/auth/use-captcha'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
@@ -273,6 +274,11 @@ export function SignupScreen() {
         const result = await runner()
         if (result.status === 'signed-in') {
           await triggerHaptic('success')
+          // Ofrecé el enrolamiento de Face ID (igual que el login con
+          // email). El gate por created_at adentro hace que las cuentas
+          // NUEVAS lo salteen (van a la pantalla biometric-setup) y solo las
+          // EXISTENTES reciban la oferta acá.
+          await offerBiometricEnrollmentAfterSocial()
           // Mismo rationale que el path de email: la máquina bridgea y
           // resuelve el destino (biometric-setup → onboarding para
           // cuentas nuevas; home si el provider re-logueó una cuenta
