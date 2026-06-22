@@ -186,6 +186,19 @@ Se agregó **iniciar sesión con Google** vía el flujo **OAuth web de Supabase*
 
 ---
 
+## 6.2 Comportamiento de signup social + hardening (2026-06-22)
+
+Análisis del comportamiento correcto al apretar Google/Apple desde "Crear cuenta" (4 agentes + Apple HIG / Google / paper pre-account-takeover USENIX 2022). Conclusión: el login social es un flujo **único e idempotente** — si el email ya existe → **login automático + auto-link**, NO error "ya registrado". El comportamiento de la app ya era correcto; **no se tocó el flujo social**.
+
+**Aplicado:**
+- **#1** Signup: el panel de confirmación por email ahora ofrece "¿Ya tenés cuenta? Iniciá sesión" + copy condicional (no filtra existencia). Antes un email ya registrado quedaba esperando un mail que Supabase no manda (anti-enumeración).
+- **#2** Notificación "se vinculó una identidad" activada y localizada en Supabase (mitigación barata del pre-account-takeover; antes un auto-link era 100% silencioso).
+- **#3** "Continuar con Google" agregado al login (paridad con Apple, las 3 vistas).
+
+**🟡 DIFERIDO — #4 verificación de email en el alta (`mailer_autoconfirm=false`):** es el fix de RAÍZ del pre-account-takeover (con autoconfirm=true una cuenta email/password se marca "verificada" sin probar posesión del buzón, lo que habilita la fusión por email). **Decisión owner 2026-06-22: dejarlo para después.** Riesgo residual bajo-a-moderado, parcialmente mitigado por #2. Para retomarlo bien hace falta construir el **fallback por OTP de 6 dígitos para el signup** (igual que el reset de contraseña: template con `{{ .Token }}` + `verifyOtp` + UI de código), porque la confirmación por link sola depende de PKCE (only same-device) y no anda en Expo Go ni cross-device. Recién después prender `autoconfirm=false`.
+
+---
+
 ## 7. Resumen ejecutivo para decidir hoy
 
 1. **¿Publicamos los fixes de hoy en v1.0?** → Sí ⟹ **correr un build nuevo** (bloqueante #1). Es la única vía (OTA bloqueada).
