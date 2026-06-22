@@ -39,7 +39,9 @@ import { resolveLoginActionView } from '@/features/auth/login-action-view'
 import { useLoginController } from '@/features/auth/use-login-controller'
 import {
   isAppleSignInAvailable,
+  isGoogleSignInConfigured,
   signInWithApple,
+  signInWithGoogle,
 } from '@/features/auth/social-sign-in'
 import { useResendConfirmEmail } from '@/features/auth/use-resend-confirm-email'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
@@ -357,6 +359,15 @@ export function LoginScreen() {
   const [appleSigningIn, setAppleSigningIn] = useState(false)
   const [appleError, setAppleError] = useState<string | null>(null)
 
+  // Google sign-in en login (2026-06-22): paridad con signup. Mismo flujo
+  // OAuth web (signInWithOAuth + PKCE) que ya corre en el botón de Google
+  // del signup; en login disparamos LOGIN_SUCCESS en vez de SIGNUP_SUCCESS.
+  // Cierra el dead-end de un usuario que creó la cuenta con Google y no
+  // tenía forma de volver a entrar desde acá.
+  const googleAvailable = isGoogleSignInConfigured()
+  const [googleSigningIn, setGoogleSigningIn] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
+
   // Sprint H · H2 — Anti-enumeration resend flow.
   //
   // Antes detectábamos "email not confirmed" en el errorMessage y
@@ -425,6 +436,35 @@ export function LoginScreen() {
       setAppleSigningIn(false)
     }
   }, [appleAvailable, appleSigningIn, isBusy])
+
+  const handleGoogleSignIn = useCallback(async () => {
+    if (googleSigningIn || isBusy) return
+    void triggerHaptic('selection')
+    if (!googleAvailable) {
+      Alert.alert(
+        'No disponible',
+        'Google sign-in todavía no está configurado en este build.',
+      )
+      return
+    }
+    setGoogleSigningIn(true)
+    setGoogleError(null)
+    try {
+      const result = await signInWithGoogle()
+      if (result.status === 'signed-in') {
+        await triggerHaptic('success')
+        // Mismo handoff que Apple: la máquina bridgea y resuelve el
+        // destino (home si la cuenta ya está onboardeada).
+        dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })
+        return
+      }
+      if (result.status === 'cancelled') return
+      await triggerHaptic('warning')
+      setGoogleError(result.error ?? 'No pudimos continuar con Google.')
+    } finally {
+      setGoogleSigningIn(false)
+    }
+  }, [googleAvailable, googleSigningIn, isBusy])
 
   const handleUsePassword = useCallback(() => {
     void triggerHaptic('selection')
@@ -684,6 +724,15 @@ export function LoginScreen() {
                     withDivider
                   />
                 ) : null}
+                {googleAvailable ? (
+                  <GoogleSignInRow
+                    busy={googleSigningIn}
+                    error={googleError}
+                    onPress={() => void handleGoogleSignIn()}
+                    colors={theme.colors}
+                    withDivider={!appleAvailable}
+                  />
+                ) : null}
               </>
             ) : actionView === 'face-id' ? (
               <>
@@ -755,6 +804,14 @@ export function LoginScreen() {
                     colors={theme.colors}
                   />
                 ) : null}
+                {googleAvailable ? (
+                  <GoogleSignInRow
+                    busy={googleSigningIn}
+                    error={googleError}
+                    onPress={() => void handleGoogleSignIn()}
+                    colors={theme.colors}
+                  />
+                ) : null}
               </>
             ) : actionView === 'secondary-only' ? (
               // Cached profile from a previous login but biometric isn't
@@ -801,6 +858,17 @@ export function LoginScreen() {
                 error={appleError}
                 onPress={() => void handleAppleSignIn()}
                 colors={theme.colors}
+              />
+            ) : null}
+            {actionView !== 'password-form' &&
+            actionView !== 'face-id' &&
+            googleAvailable ? (
+              <GoogleSignInRow
+                busy={googleSigningIn}
+                error={googleError}
+                onPress={() => void handleGoogleSignIn()}
+                colors={theme.colors}
+                withDivider={!appleAvailable}
               />
             ) : null}
         </View>
@@ -1214,6 +1282,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.2,
   },
+  googleButton: {
+    marginTop: 10,
+    height: 52,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  googleButtonLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
   appleErrorLabel: {
     marginTop: 8,
     fontSize: 12,
@@ -1374,5 +1458,70 @@ function AppleSignInRow({ busy, error, onPress, colors, withDivider }: AppleSign
         <Text style={[styles.appleErrorLabel, { color: colors.danger }]}>{error}</Text>
       ) : null}
     </View>
+  )
+}
+
+interface GoogleSignInRowProps {
+  busy: boolean
+  error: string | null
+  onPress: () => void
+  colors: ThemeColors
+  withDivider?: boolean
+}
+
+function GoogleSignInRow({ busy, error, onPress, colors, withDivider }: GoogleSignInRowProps) {
+  return (
+    <View>
+      {withDivider ? (
+        <View style={styles.appleDivider}>
+          <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
+          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>O</Text>
+          <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
+        </View>
+      ) : null}
+      <Pressable
+        accessibilityLabel="Continuar con Google"
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.googleButton,
+          { borderColor: colors.line, opacity: pressed || busy ? 0.85 : 1 },
+        ]}
+      >
+        <GoogleIcon />
+        <Text style={[styles.googleButtonLabel, { color: colors.text }]}>
+          {busy ? 'Conectando…' : 'Continuar con Google'}
+        </Text>
+      </Pressable>
+      {error ? (
+        <Text style={[styles.appleErrorLabel, { color: colors.danger }]}>{error}</Text>
+      ) : null}
+    </View>
+  )
+}
+
+function GoogleIcon() {
+  // Official Google "G" mark, simplified to four solid paths (mismo que
+  // signup-screen.tsx).
+  return (
+    <Svg width={18} height={18} viewBox="0 0 48 48" fill="none">
+      <Path
+        d="M44.5 20H24v8.5h11.8C34.7 33.9 30 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"
+        fill="#FFC107"
+      />
+      <Path
+        d="M6.3 14.7l7 5.1C15.1 16.1 19.2 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 6.1 29.6 4 24 4c-8.4 0-15.6 4.8-19.2 11.7z"
+        fill="#FF3D00"
+      />
+      <Path
+        d="M24 46c5.4 0 10.3-2 14-5.3l-6.5-5.5C29.5 36.7 26.9 38 24 38c-5.9 0-10.9-3.7-12.8-9l-7 5.4C7.9 41.4 15.4 46 24 46z"
+        fill="#4CAF50"
+      />
+      <Path
+        d="M44.5 20H24v8.5h11.8c-.9 2.6-2.5 4.9-4.6 6.5l6.5 5.5C42.4 36.5 46 31 46 24c0-1.3-.2-2.7-.5-4z"
+        fill="#1976D2"
+      />
+    </Svg>
   )
 }

@@ -459,7 +459,9 @@ export function SignupScreen() {
                   Te mandamos un mail a {maskEmail(confirmationEmail)}
                 </Text>
                 <Text style={[styles.confirmationBody, { color: theme.colors.textSoft }]}>
-                  Confirmá desde el link para entrar. Revisá spam si no lo ves.
+                  Si es una cuenta nueva, confirmá desde el link del email
+                  (revisá spam). Si ya tenías cuenta con este email, iniciá
+                  sesión.
                 </Text>
                 <View style={styles.confirmationActions}>
                   <Pressable
@@ -518,6 +520,33 @@ export function SignupScreen() {
                     </Text>
                   </Pressable>
                 </View>
+                {/* Anti-dead-end (2026-06-22): si el email ya estaba
+                    registrado, Supabase no manda mail (anti-enumeración) y el
+                    usuario quedaría esperando uno que no llega. Este link le
+                    da salida sin revelar si el email existe — el copy del
+                    body es condicional ("si ya tenías cuenta…"). */}
+                <Pressable
+                  accessibilityLabel="Iniciar sesión"
+                  accessibilityRole="button"
+                  hitSlop={DEFAULT_HIT_SLOP}
+                  onPress={() => {
+                    void triggerHaptic('selection')
+                    router.replace('/(auth)/login')
+                  }}
+                  style={({ pressed }) => [
+                    styles.confirmationLoginLink,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.confirmationLoginLinkLabel,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    ¿Ya tenés cuenta? Iniciá sesión
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
 
@@ -1062,5 +1091,17 @@ const styles = StyleSheet.create({
   confirmationSecondaryLabel: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  confirmationLoginLink: {
+    marginTop: 6,
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  confirmationLoginLinkLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textDecorationLine: 'underline',
   },
 })
