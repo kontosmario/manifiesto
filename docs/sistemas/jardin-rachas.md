@@ -27,8 +27,10 @@ de "plantar" manual (sería redundante).
 
 `mobile/features/garden/garden-model.ts` (tests en `tests/unit/garden-model.test.ts`):
 
-- **`deriveGardenCells`** → grilla 7×5 (35 días, índice 34 = hoy). El estado del
-  brote depende de la **antigüedad** del día:
+- **`deriveGardenCells`** → grilla DINÁMICA por semanas calendario L→D
+  (`weeksToShow`: crece desde la semana del primer registro hasta un tope de 5;
+  cuenta nueva = 1 semana, no 5 vacías). El estado del brote depende de la
+  **antigüedad** del día:
   - `pre` (antes del primer registro) · `pending` (hoy sin registrar) ·
     `missed` (día pasado sin registrar, **no rompe**) ·
     `seed` (registrado, ≤6 días) · `germ` (7–13) · `fern` (≥14, helecho de marca, 24→32px).
@@ -62,9 +64,12 @@ totalDaysLogged, freezeTokens, hasLoggedToday).
    `floracionToneForTier` (`garden-tier.ts`). La galería de logros se re-skineó
    (emoji en bubble crema).
 4. **Cierre de semana** (`mobile/components/garden/week-close-celebration.tsx`):
-   takeover verde con los 7 brotes que crecen escalonados (growIn) según el score;
-   7/7 = helechos con flor coral + confeti. Se presenta como overlay desde el banner
-   de Mi jardín.
+   recap de la semana que CERRÓ (L-D anterior). Takeover verde con los 7 brotes que
+   crecen escalonados (growIn) según el score; 7/7 = helechos con flor coral + confeti.
+   Se auto-dispara el lunes (primera apertura de la semana nueva) vía
+   `WeekCloseBridge` (una vez por semana, flag en AsyncStorage por usuario, todas las
+   semanas), y también tocando el banner de Mi jardín (`weekCloseAvailable` lo oculta
+   hasta tener una semana cerrada dentro del tracking).
 
 ## Componentes reusados
 
@@ -79,12 +84,14 @@ totalDaysLogged, freezeTokens, hasLoggedToday).
 cards no-hero usan `surfaceMuted` en dark (igual que la card del calendario de Gastos),
 **no** `creamCard`. La celebración va siempre sobre `#163A1E` (paleta fija).
 
-## Pendiente / decisiones
+## Estado / decisiones (resueltas 2026-06-23)
 
-- **"Sin culpa" backend (decisión owner, requiere aplicar):** el motor actual marchita
-  la racha (`current_streak=0`) por gaps vía cron + notificaciones de "se cortó tu
-  racha". El jardín pide que NO marchite. La grilla ya no marchita (muestra todo el
-  historial). Falta **suavizar/desactivar las notificaciones punitivas** (at-risk +
-  broken) — migración pendiente de aplicar a prod con OK del owner.
-- Auto-disparo del cierre de semana (domingo→lunes): hoy es **manual** (banner). Se
-  puede automatizar con un flag local (patrón `control-dismiss-store`).
+- **"Sin culpa" backend:** APLICADO a prod (migración `20260623160000`). El
+  recordatorio del atardecer se reformuló a la metáfora del jardín (sin deadline ni
+  "se corta", severity `info`) y el aviso "La racha se cortó" se eliminó. El estado
+  (`current_streak=0` = pausa del contador) y la notificación positiva del escudo
+  quedan. NO toca `advance_streak` ni la programación de los crons.
+- **Calendario dinámico:** la grilla crece desde la semana del primer registro
+  (`weeksToShow`, tope 5), no 5 semanas fijas.
+- **Cierre de semana:** lunes a domingo; recapitula la semana que cerró; auto-dispara
+  el lunes (`WeekCloseBridge`) para todas las semanas + accesible por el banner.
