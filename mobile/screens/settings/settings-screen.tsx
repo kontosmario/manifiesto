@@ -6,10 +6,14 @@ import {
 } from '@/features/auth-flow/dev-journeys'
 import { useFocusEffect } from '@react-navigation/native'
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { useRouter } from 'expo-router'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
+import { CardParticles } from '@/components/ui/card-particles'
+import { FernMark } from '@/components/billing/fern-mark'
+import { membershipVariant } from '@/features/billing/membership-state'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -828,6 +832,71 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const themeValue =
     preference === 'system' ? 'Sistema' : preference === 'light' ? 'Claro' : 'Oscuro'
 
+  // Chip de plan/estado para la hero de marca (forest). Derivado del
+  // entitlement resuelto server-side. Compliance billing: el copy del
+  // trial dice "Acceso completo · N días" — NUNCA "prueba/gratis".
+  // Colores forest-safe (claros sobre el verde oscuro en ambos temas);
+  // `getStateTokens` en claro usa un verde oscuro que se perdería sobre
+  // el forest, así que mapeamos a la paleta clara de los chips del Home.
+  const planChip = useMemo<{
+    label: string
+    fg: string
+    bg: string
+    border: string
+  } | null>(() => {
+    const ent = entitlementQuery.data
+    if (ent == null) return null
+    // Tono → trío de colores forest-safe. positive=mint, neutral=cream
+    // tenue, caution=peach (alineado con los chips de la hero del Home).
+    const TONES = {
+      positive: {
+        fg: '#A6EF8F',
+        bg: 'rgba(166,239,143,0.16)',
+        border: 'rgba(166,239,143,0.42)',
+      },
+      neutral: {
+        fg: 'rgba(242,234,211,0.85)',
+        bg: 'rgba(246,251,239,0.10)',
+        border: 'rgba(255,255,255,0.18)',
+      },
+      caution: {
+        fg: '#F2A78C',
+        bg: 'rgba(242,167,140,0.18)',
+        border: 'rgba(242,167,140,0.50)',
+      },
+    } as const
+    // 1) Trial → "Acceso completo · N días" (copy compliant).
+    if (ent.source === 'trial') {
+      const days = ent.daysLeft ?? 0
+      return {
+        label: `Acceso completo · ${days} ${days === 1 ? 'día' : 'días'}`,
+        ...TONES.positive,
+      }
+    }
+    // 2) Sin acceso o plan gratuito → "Sin plan".
+    if (!ent.hasAccess || ent.source === 'free') {
+      return { label: 'Sin plan', ...TONES.neutral }
+    }
+    // 3) Resto (mvp/comped/family/grace/no-renew/active) → variante.
+    const variant = membershipVariant(ent)
+    const LABELS: Record<string, string> = {
+      MVP: 'MVP',
+      'CORTESÍA': 'Cortesía',
+      'MIEMBRO DEL HOGAR': 'Miembro del hogar',
+      'PROBLEMA DE PAGO': 'Problema de pago',
+      'NO SE RENOVARÁ': 'No se renueva',
+      ACTIVA: 'Activa',
+    }
+    const label = LABELS[variant.statusLabel] ?? variant.statusLabel
+    const tone =
+      variant.tone === 'warn'
+        ? TONES.caution
+        : variant.tone === 'comped'
+          ? TONES.neutral
+          : TONES.positive
+    return { label, ...tone }
+  }, [entitlementQuery.data])
+
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -882,57 +951,96 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 />
               </RiseView>
             ) : null}
-            {/* HERO */}
+            {/* HERO — card de marca (forest). Mismo lenguaje visual que la
+                hero del Home: gradiente forest + campo de partículas detrás
+                del contenido. Logo (helecho) arriba-izq + chip de plan/estado
+                arriba-der. Texto en tokens claros (heroText/heroMuted). */}
             <RiseView>
-              <View
-                style={[
-                  styles.heroCard,
-                  {
-                    backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-                    borderColor: theme.colors.line,
-                  },
-                ]}
+              <LinearGradient
+                colors={
+                  [...theme.colors.heroGradient] as unknown as readonly [
+                    string,
+                    string,
+                    ...string[],
+                  ]
+                }
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 0.9, y: 1 }}
+                style={[styles.heroCard, { borderColor: 'rgba(166,239,143,0.12)' }]}
               >
-                <Text style={[styles.heroEyebrow, { color: theme.colors.textMuted }]}>
-                  {isSolo ? 'TU CUENTA' : 'TU HOGAR'}
-                </Text>
-                <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
-                  {displayName.trim() || 'Perfil sin nombre'}
-                </Text>
-                <Text style={[styles.heroSub, { color: theme.colors.textMuted }]}>
-                  {isSolo
-                    ? 'Tu cuenta personal'
-                    : totalMembers === 1
-                      ? 'Hogar individual'
-                      : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
-                </Text>
-                {isOwner && !isSolo ? (
-                  <View
-                    style={[
-                      styles.ownerPill,
-                      {
-                        backgroundColor: theme.colors.primarySurface,
-                        borderColor: theme.colors.primary,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      color={theme.colors.primaryStrong}
-                      name="verified"
-                      size={14}
-                    />
-                    <Text
-                      style={[styles.ownerText, { color: theme.colors.primaryStrong }]}
-                    >
-                      Sos el dueño de la familia
-                    </Text>
+                {/* Campo de partículas: primer hijo absoluto, detrás del
+                    contenido. accent peach (legible sobre el forest). */}
+                <CardParticles count={10} accentColor="#F2A78C" />
+                {/* Contenido textual envuelto para que el `gap` del card no
+                    descoloque el absoluteFill de las partículas. */}
+                <View style={styles.heroContent}>
+                  {/* Fila superior: logo a la izquierda, chip a la derecha. */}
+                  <View style={styles.heroTopRow}>
+                    <FernMark variant="cream" size={20} />
+                    {planChip ? (
+                      <View
+                        style={[
+                          styles.heroChip,
+                          {
+                            backgroundColor: planChip.bg,
+                            borderColor: planChip.border,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[styles.heroChipDot, { backgroundColor: planChip.fg }]}
+                        />
+                        <Text
+                          style={[styles.heroChipText, { color: planChip.fg }]}
+                          numberOfLines={1}
+                          maxFontSizeMultiplier={1.3}
+                        >
+                          {planChip.label}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                ) : role === 'member' ? (
-                  <Text style={[styles.memberHint, { color: theme.colors.textSoft }]}>
-                    Sos miembro. Solo el dueño puede editar el hogar.
+                  <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
+                    {isSolo ? 'TU CUENTA' : 'TU HOGAR'}
                   </Text>
-                ) : null}
-              </View>
+                  <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
+                    {displayName.trim() || 'Perfil sin nombre'}
+                  </Text>
+                  <Text style={[styles.heroSub, { color: theme.colors.heroMuted }]}>
+                    {isSolo
+                      ? 'Tu cuenta personal'
+                      : totalMembers === 1
+                        ? 'Hogar individual'
+                        : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
+                  </Text>
+                  {isOwner && !isSolo ? (
+                    <View
+                      style={[
+                        styles.ownerPill,
+                        {
+                          backgroundColor: 'rgba(166,239,143,0.16)',
+                          borderColor: 'rgba(166,239,143,0.35)',
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        color={theme.colors.heroAccent}
+                        name="verified"
+                        size={14}
+                      />
+                      <Text
+                        style={[styles.ownerText, { color: theme.colors.heroAccent }]}
+                      >
+                        Sos el dueño de la familia
+                      </Text>
+                    </View>
+                  ) : role === 'member' ? (
+                    <Text style={[styles.memberHint, { color: theme.colors.heroMuted2 }]}>
+                      Sos miembro. Solo el dueño puede editar el hogar.
+                    </Text>
+                  ) : null}
+                </View>
+              </LinearGradient>
             </RiseView>
 
             {/* 1. PERFIL */}
@@ -960,7 +1068,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             </RiseView>
 
             {/* 2. HOGAR */}
-            <RiseView delay={160}>
+            <RiseView delay={140}>
               <SettingsGroup
                 footer={
                   isOwner
@@ -1019,7 +1127,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 de mes (Spec B). Surface acá para que la plata no
                 desaparezca visualmente del Settings. */}
             {Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) > 0 ? (
-              <RiseView delay={220}>
+              <RiseView delay={200}>
                 <SettingsGroup title="Reserva acumulada">
                   <View style={styles.reserveInner}>
                     <Text
@@ -1043,7 +1151,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             ) : null}
 
             {/* 3. META DE AHORRO */}
-            <RiseView delay={240}>
+            <RiseView delay={260}>
               <SettingsGroup title="Metas de ahorro">
                 <SettingsRow
                   disabled={!isOwner}
@@ -1057,10 +1165,227 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 4. FAMILIA */}
+            {/* 4. PLAN DEL HOGAR */}
+            <RiseView delay={320}>
+              <SettingsGroup title="Tu plan">
+                <SettingsRow
+                  helper="Tu suscripción, las personas incluidas y la facturación."
+                  icon="workspace-premium"
+                  isLast
+                  label="Plan del hogar"
+                  onPress={() => router.push('/settings/plan' as never)}
+                  value="Ver planes"
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 5. TU PROGRESO — LOGROS + EDICIONES */}
+            <RiseView delay={380}>
+              <SettingsGroup title="Tu progreso">
+                <SettingsRow
+                  helper="Hitos que vas desbloqueando con cada acción dentro de Manifiesto."
+                  icon="emoji-events"
+                  label="Logros"
+                  onPress={() => router.push('/settings/achievements' as never)}
+                  value="Ver galería"
+                />
+                <SettingsRow
+                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que podés revivir."
+                  icon="auto-stories"
+                  isLast
+                  label="Ediciones"
+                  onPress={() => router.push('/settings/editions' as never)}
+                  value="Ver archivo"
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 6. ASISTENTE — del acá en adelante todos comparten delay 420
+                (aparecen juntos, están below-the-fold). */}
+            <RiseView delay={420}>
+              <SettingsGroup title="Asistente">
+                <SettingsRow
+                  icon="auto-awesome"
+                  isLast
+                  label="Preferencias del asistente"
+                  onPress={() => router.push('/settings/asistente' as never)}
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 7. NOTIFICACIONES */}
+            <RiseView delay={420}>
+              <SettingsGroup title="Notificaciones">
+                <SettingsRow
+                  icon="tune"
+                  label="Gestionar notificaciones"
+                  onPress={() => router.push('/settings/notifications' as never)}
+                />
+                <SettingsRow
+                  icon="notifications-active"
+                  isLast
+                  isLoading={supportsPushActivation && enablePushMutation.isPending}
+                  label="Habilitar push"
+                  onPress={handlePushActivation}
+                  value={pushValue}
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 8. ACCESO RÁPIDO — toggle de biometría sin necesidad de
+                cerrar sesión. Permite activar Face ID / huella desde
+                acá si el usuario lo declinó en el post-login, o
+                desactivarlo (limpia el refresh token guardado). El
+                row queda disabled si el dispositivo no tiene
+                biometría enrolada.
+
+                Sprint R-3 redesign (2026-06-11): cuando ni biometric ni
+                PIN están configurados, el footer del group cambia a un
+                tono más claro de recomendación (no de info neutral) +
+                link "Recordame mañana" para dismissear 24h. Reemplaza al
+                banner sticky que estaba en el top del home. La señal
+                ambient en home (gear icon dot) trae al user acá; el
+                texto contextual le explica qué hacer. */}
+            <RiseView delay={420}>
+              <SettingsGroup
+                footer={
+                  protectionPrompt.visible
+                    ? 'Tu cuenta no está protegida. Activá Face ID o creá un PIN para que solo vos puedas entrar.'
+                    : biometricState.isAvailable
+                      ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
+                      : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
+                }
+                title="Acceso rápido"
+              >
+                <SettingsRow
+                  disabled={!biometricState.isAvailable}
+                  icon="fingerprint"
+                  isLoading={isBiometricBusy}
+                  label={`Entrar con ${biometricState.label}`}
+                  onPress={handleBiometricToggle}
+                  value={biometricRowValue}
+                />
+                <SettingsRow
+                  icon="dialpad"
+                  isLast
+                  label="PIN de acceso"
+                  onPress={handlePinPress}
+                  value={pinIsSet ? 'Activado' : 'Desactivado'}
+                />
+              </SettingsGroup>
+              {protectionPrompt.visible ? (
+                <SettingsProtectionDismissRow
+                  onPress={() => void protectionPrompt.dismiss()}
+                />
+              ) : null}
+            </RiseView>
+
+            {/* 9. APARIENCIA */}
+            <RiseView delay={420}>
+              <SettingsGroup footer={`Tema actual: ${themeValue}.`} title="Apariencia">
+                <View style={styles.appearanceInner}>
+                  <SegmentedControl
+                    onChange={setPreference}
+                    options={[
+                      { label: 'Sistema', value: 'system' },
+                      { label: 'Claro', value: 'light' },
+                      { label: 'Oscuro', value: 'dark' },
+                    ]}
+                    value={preference}
+                  />
+                </View>
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 10. ANIMACIONES — user-facing override del flag de
+                reduced-motion. 'Auto' (default) respeta accessibility
+                + auto-detecta hardware viejo via deviceYearClass<2020;
+                'Reducir' fuerza desactivar todos los loops decorativos;
+                'Todas' fuerza el motion completo aunque el hardware no
+                sea ideal. */}
+            <RiseView delay={420}>
+              <SettingsGroup
+                footer={
+                  motionPreference === 'always'
+                    ? 'Las animaciones decorativas están desactivadas siempre.'
+                    : motionPreference === 'never'
+                      ? 'Las animaciones decorativas se ejecutan aunque el dispositivo sea más lento.'
+                      : 'Se desactivan automáticamente en dispositivos antiguos para mantener la fluidez.'
+                }
+                title="Animaciones"
+              >
+                <View style={styles.appearanceInner}>
+                  <SegmentedControl
+                    onChange={setMotionPreference}
+                    options={[
+                      { label: 'Reducir', value: 'always' },
+                      { label: 'Auto', value: 'auto' },
+                      { label: 'Todas', value: 'never' },
+                    ]}
+                    value={motionPreference}
+                  />
+                </View>
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 11. AYUDA · TUTORIALES */}
+            <RiseView delay={420}>
+              <SettingsGroup
+                title="Ayuda"
+                footer="Volvé a ver cualquier tutorial cuando quieras."
+              >
+                <SettingsRow
+                  icon="home"
+                  label="Ver tutorial de Inicio"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.home)}
+                />
+                <SettingsRow
+                  icon="receipt-long"
+                  label="Ver tutorial de Gastos"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.gastos)}
+                />
+                <SettingsRow
+                  icon="event-repeat"
+                  label="Ver tutorial de Fijos"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.fijos)}
+                />
+                <SettingsRow
+                  icon="insights"
+                  label="Ver tutorial de Control"
+                  onPress={() => void handleRewatchTour(TOUR_KEYS.control)}
+                />
+                <SettingsRow
+                  icon="restart-alt"
+                  label="Volver a ver todos los tutoriales"
+                  helper="Resetea los 4 tutoriales — el próximo ingreso a cada pantalla los vuelve a mostrar."
+                  onPress={() => void handleResetAllTours()}
+                  isLast
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 12. INFORMACIÓN / ACERCA DE — versión, info legal y soporte.
+                La pantalla dedicada centraliza el footer "Hecho con ♥",
+                la versión y el contacto que antes estaban dispersos. */}
+            <RiseView delay={420}>
+              <SettingsGroup title="Información">
+                <SettingsRow
+                  helper="Versión, política de privacidad, términos y soporte."
+                  icon="info-outline"
+                  isLast
+                  label="Acerca de"
+                  onPress={() => router.push('/(app)/settings/about')}
+                />
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 13. FAMILIA + TIPO DE CUENTA + REINICIAR — acciones del
+                hogar (incluyendo las destructivas). El ternario isSolo
+                queda ATÓMICO. Delays internos relativos: bloque base 420,
+                bloques secundarios 440 (mantienen el +20 de stagger). */}
             {!isSolo ? (
             <>
-            <RiseView delay={320}>
+            <RiseView delay={420}>
               <SettingsGroup title="Familia">
                 <SettingsRow
                   icon="person-add"
@@ -1099,7 +1424,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
             {isOwner ? (
-              <RiseView delay={340}>
+              <RiseView delay={440}>
                 <SettingsGroup title="Tipo de cuenta">
                   <SettingsRow
                     destructive
@@ -1115,7 +1440,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             </>
             ) : (
               <>
-                <RiseView delay={320}>
+                <RiseView delay={420}>
                   <SettingsGroup title="Tipo de cuenta">
                     <SettingsRow
                       icon="group-add"
@@ -1126,7 +1451,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     />
                   </SettingsGroup>
                 </RiseView>
-                <RiseView delay={340}>
+                <RiseView delay={440}>
                   <SettingsGroup
                     footer="Borra tus gastos, fijos, metas y configuración, y reinicia el onboarding desde cero. No se puede deshacer."
                     title="Reiniciar"
@@ -1143,172 +1468,47 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </>
             )}
 
-            {/* 4b. ASISTENTE */}
-            <RiseView delay={300}>
-              <SettingsGroup title="Asistente">
-                <SettingsRow
-                  icon="auto-awesome"
-                  isLast
-                  label="Preferencias del asistente"
-                  onPress={() => router.push('/settings/asistente' as never)}
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 5. NOTIFICACIONES */}
-            <RiseView delay={320}>
-              <SettingsGroup title="Notificaciones">
-                <SettingsRow
-                  icon="tune"
-                  label="Gestionar notificaciones"
-                  onPress={() => router.push('/settings/notifications' as never)}
-                />
-                <SettingsRow
-                  icon="notifications-active"
-                  isLast
-                  isLoading={supportsPushActivation && enablePushMutation.isPending}
-                  label="Habilitar push"
-                  onPress={handlePushActivation}
-                  value={pushValue}
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 6. AYUDA · TUTORIALES */}
-            <RiseView delay={320}>
-              <SettingsGroup
-                title="Ayuda"
-                footer="Volvé a ver cualquier tutorial cuando quieras."
-              >
-                <SettingsRow
-                  icon="home"
-                  label="Ver tutorial de Inicio"
-                  onPress={() => void handleRewatchTour(TOUR_KEYS.home)}
-                />
-                <SettingsRow
-                  icon="receipt-long"
-                  label="Ver tutorial de Gastos"
-                  onPress={() => void handleRewatchTour(TOUR_KEYS.gastos)}
-                />
-                <SettingsRow
-                  icon="event-repeat"
-                  label="Ver tutorial de Fijos"
-                  onPress={() => void handleRewatchTour(TOUR_KEYS.fijos)}
-                />
-                <SettingsRow
-                  icon="insights"
-                  label="Ver tutorial de Control"
-                  onPress={() => void handleRewatchTour(TOUR_KEYS.control)}
-                />
-                <SettingsRow
-                  icon="restart-alt"
-                  label="Volver a ver todos los tutoriales"
-                  helper="Resetea los 4 tutoriales — el próximo ingreso a cada pantalla los vuelve a mostrar."
-                  onPress={() => void handleResetAllTours()}
-                  isLast
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 7. APARIENCIA */}
-            <RiseView delay={320}>
-              <SettingsGroup footer={`Tema actual: ${themeValue}.`} title="Apariencia">
-                <View style={styles.appearanceInner}>
-                  <SegmentedControl
-                    onChange={setPreference}
-                    options={[
-                      { label: 'Sistema', value: 'system' },
-                      { label: 'Claro', value: 'light' },
-                      { label: 'Oscuro', value: 'dark' },
-                    ]}
-                    value={preference}
+            {/* 14. SUPER ADMIN — solo kontosmario@gmail.com. */}
+            {isSuperAdmin ? (
+              <RiseView delay={420}>
+                <SettingsGroup title="Super admin">
+                  <SettingsRow
+                    helper="Activá acceso MVP (completo, de por vida) por email."
+                    icon="admin-panel-settings"
+                    isLast
+                    label="Cuentas MVP"
+                    onPress={() => router.push('/(app)/settings/admin' as never)}
                   />
-                </View>
-              </SettingsGroup>
-            </RiseView>
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
 
-            {/* 6b. ANIMACIONES — user-facing override del flag de
-                reduced-motion. 'Auto' (default) respeta accessibility
-                + auto-detecta hardware viejo via deviceYearClass<2020;
-                'Reducir' fuerza desactivar todos los loops decorativos;
-                'Todas' fuerza el motion completo aunque el hardware no
-                sea ideal. */}
-            <RiseView delay={320}>
-              <SettingsGroup
-                footer={
-                  motionPreference === 'always'
-                    ? 'Las animaciones decorativas están desactivadas siempre.'
-                    : motionPreference === 'never'
-                      ? 'Las animaciones decorativas se ejecutan aunque el dispositivo sea más lento.'
-                      : 'Se desactivan automáticamente en dispositivos antiguos para mantener la fluidez.'
-                }
-                title="Animaciones"
-              >
-                <View style={styles.appearanceInner}>
-                  <SegmentedControl
-                    onChange={setMotionPreference}
-                    options={[
-                      { label: 'Reducir', value: 'always' },
-                      { label: 'Auto', value: 'auto' },
-                      { label: 'Todas', value: 'never' },
-                    ]}
-                    value={motionPreference}
-                  />
-                </View>
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 6c. ACCESO RÁPIDO — toggle de biometría sin necesidad de
-                cerrar sesión. Permite activar Face ID / huella desde
-                acá si el usuario lo declinó en el post-login, o
-                desactivarlo (limpia el refresh token guardado). El
-                row queda disabled si el dispositivo no tiene
-                biometría enrolada.
-
-                Sprint R-3 redesign (2026-06-11): cuando ni biometric ni
-                PIN están configurados, el footer del group cambia a un
-                tono más claro de recomendación (no de info neutral) +
-                link "Recordame mañana" para dismissear 24h. Reemplaza al
-                banner sticky que estaba en el top del home. La señal
-                ambient en home (gear icon dot) trae al user acá; el
-                texto contextual le explica qué hacer. */}
-            <RiseView delay={320}>
-              <SettingsGroup
-                footer={
-                  protectionPrompt.visible
-                    ? 'Tu cuenta no está protegida. Activá Face ID o creá un PIN para que solo vos puedas entrar.'
-                    : biometricState.isAvailable
-                      ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
-                      : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
-                }
-                title="Acceso rápido"
-              >
+            {/* 15. CUENTA */}
+            <RiseView delay={420}>
+              <SettingsGroup title="Cuenta">
                 <SettingsRow
-                  disabled={!biometricState.isAvailable}
-                  icon="fingerprint"
-                  isLoading={isBiometricBusy}
-                  label={`Entrar con ${biometricState.label}`}
-                  onPress={handleBiometricToggle}
-                  value={biometricRowValue}
+                  icon="power-settings-new"
+                  label="Cerrar sesión"
+                  onPress={handleConfirmLogout}
                 />
                 <SettingsRow
-                  icon="dialpad"
+                  destructive
+                  helper="Borra tus datos en 30 días. Podés cancelar antes."
+                  icon="delete-forever"
                   isLast
-                  label="PIN de acceso"
-                  onPress={handlePinPress}
-                  value={pinIsSet ? 'Activado' : 'Desactivado'}
+                  label="Eliminar cuenta"
+                  // La pantalla dedicada `delete-account` contiene el
+                  // disclaimer extendido + el step de re-auth (PIN /
+                  // biometría) que antes vivían en el sheet. El sheet
+                  // legacy queda como fallback para callers internos.
+                  onPress={() => router.push('/(app)/settings/delete-account')}
                 />
               </SettingsGroup>
-              {protectionPrompt.visible ? (
-                <SettingsProtectionDismissRow
-                  onPress={() => void protectionPrompt.dismiss()}
-                />
-              ) : null}
             </RiseView>
 
-            {/* 7. DESARROLLO — solo en builds de desarrollo. Permite
-                disparar animaciones específicas sin tener que repetir
-                el flow completo (login/logout, etc). */}
+            {/* DEV — "sacados de lado": DESARROLLO + FILTRO DEMO al final,
+                justo antes del footer, intactos (delays como estaban).
+                Solo en builds de desarrollo. */}
             {__DEV__ ? (
               <RiseView delay={320}>
                 <SettingsGroup
@@ -1427,95 +1627,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </RiseView>
             ) : null}
 
-            {/* 8a. LOGROS + EDICIONES */}
-            <RiseView delay={310}>
-              <SettingsGroup title="Tu progreso">
-                <SettingsRow
-                  helper="Hitos que vas desbloqueando con cada acción dentro de Manifiesto."
-                  icon="emoji-events"
-                  label="Logros"
-                  onPress={() => router.push('/settings/achievements' as never)}
-                  value="Ver galería"
-                />
-                <SettingsRow
-                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que podés revivir."
-                  icon="auto-stories"
-                  isLast
-                  label="Ediciones"
-                  onPress={() => router.push('/settings/editions' as never)}
-                  value="Ver archivo"
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 8. PLAN DEL HOGAR */}
-            <RiseView delay={320}>
-              <SettingsGroup title="Tu plan">
-                <SettingsRow
-                  helper="Tu suscripción, las personas incluidas y la facturación."
-                  icon="workspace-premium"
-                  isLast
-                  label="Plan del hogar"
-                  onPress={() => router.push('/settings/plan' as never)}
-                  value="Ver planes"
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 8b. SUPER ADMIN — solo kontosmario@gmail.com. */}
-            {isSuperAdmin ? (
-              <RiseView delay={320}>
-                <SettingsGroup title="Super admin">
-                  <SettingsRow
-                    helper="Activá acceso MVP (completo, de por vida) por email."
-                    icon="admin-panel-settings"
-                    isLast
-                    label="Cuentas MVP"
-                    onPress={() => router.push('/(app)/settings/admin' as never)}
-                  />
-                </SettingsGroup>
-              </RiseView>
-            ) : null}
-
-            {/* 9b. ACERCA DE — versión, info legal y soporte. La
-                pantalla dedicada centraliza el footer "Hecho con ♥",
-                la versión y el contacto que antes estaban dispersos. */}
-            <RiseView delay={320}>
-              <SettingsGroup title="Información">
-                <SettingsRow
-                  helper="Versión, política de privacidad, términos y soporte."
-                  icon="info-outline"
-                  isLast
-                  label="Acerca de"
-                  onPress={() => router.push('/(app)/settings/about')}
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            {/* 10. CUENTA */}
-            <RiseView delay={320}>
-              <SettingsGroup title="Cuenta">
-                <SettingsRow
-                  icon="power-settings-new"
-                  label="Cerrar sesión"
-                  onPress={handleConfirmLogout}
-                />
-                <SettingsRow
-                  destructive
-                  helper="Borra tus datos en 30 días. Podés cancelar antes."
-                  icon="delete-forever"
-                  isLast
-                  label="Eliminar cuenta"
-                  // La pantalla dedicada `delete-account` contiene el
-                  // disclaimer extendido + el step de re-auth (PIN /
-                  // biometría) que antes vivían en el sheet. El sheet
-                  // legacy queda como fallback para callers internos.
-                  onPress={() => router.push('/(app)/settings/delete-account')}
-                />
-              </SettingsGroup>
-            </RiseView>
-
-            <RiseView delay={320}>
+            {/* Footer de versión — queda último. */}
+            <RiseView delay={420}>
               <Text style={[styles.versionFooter, { color: theme.colors.textMuted }]}>
                 {appVersionLabel}
               </Text>
@@ -1643,7 +1756,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 20,
     padding: 18,
+    // Clipea el campo de partículas al bounding box del card.
+    overflow: 'hidden',
+  },
+  // Envuelve el contenido textual: como el card aloja también el
+  // absoluteFill de las partículas, el `gap` vive acá (no en el card)
+  // para no descolocar el fondo de partículas.
+  heroContent: {
     gap: 6,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  heroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    flexShrink: 1,
+  },
+  heroChipDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 999,
+  },
+  heroChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   heroEyebrow: {
     fontSize: 11,
