@@ -68,6 +68,13 @@ const Y_AMPLITUDE_BASE = 16
 const BRIGHT_FLOOR = 0.18
 const BRIGHT_PEAK = 0.92
 
+// 3ª clase de partícula: "luciérnaga peach" — levemente más grande + color cálido
+// fijo (= authTokens.peach), distinta de las luciérnagas crema/lime. NO usar
+// theme.colors.peach (en light es terracota oscuro, invisible sobre el gradiente).
+const PEACH_GLOW = '#F2B58A'
+const PEACH_EVERY = 5 // ~1 de cada 5 partículas
+const SIZE_PEACH = 5 // vs tope normal 4.0 → levemente más grande
+
 /**
  * Continuous-flow particle field for hero cards.
  *
@@ -160,6 +167,9 @@ export function CardParticles({
       const fx = (i % 3 === 0 ? 2 : 1) as 1 | 2
       const fy = (i % 2 === 0 ? 1 : 2) as 1 | 2
       const fb = (1 + (i % 3)) as 1 | 2 | 3
+      // Offset PEACH_EVERY-1 para no colisionar con la regla del accent (i%3===0).
+      // Guard count>=4 protege las cards chicas (plan-tiles usa count=4).
+      const isPeach = count >= 4 && i % PEACH_EVERY === PEACH_EVERY - 1
       out.push({
         key: i,
         x: ax * size.width,
@@ -179,8 +189,8 @@ export function CardParticles({
         // Larger particles glow a touch brighter at peak; smaller ones
         // hold a softer ceiling so they read as "background" twinkles.
         brightCeil: BRIGHT_PEAK - ((i % 4) * 0.06),
-        size: 2.4 + (i % 3) * 0.8,
-        color: i % 3 === 0 && accentColor ? accentColor : color,
+        size: isPeach ? SIZE_PEACH : 2.4 + (i % 3) * 0.8,
+        color: isPeach ? PEACH_GLOW : i % 3 === 0 && accentColor ? accentColor : color,
       })
     }
     return out
