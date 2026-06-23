@@ -224,9 +224,9 @@ const lightColors: ThemeColors = {
   shineOverlay:       'rgba(255,255,255,0.1)',
   ringBg:             '#FAF7F0',  // V1 — paper foundation (matches eventual V1 canvas)
   pageBg:             '#F4FDF2',  // V1 — primary-50 (faint mint paper)
-  gardenSoil:         '#EDF4E4',  // tierra de brote (semilla/germinación)
-  gardenSoilFern:     '#E4F0D6',  // tierra de planta arraigada (más viva)
-  gardenSkipped:      '#CBC6B6',  // brote salteado (sin culpa, tenue)
+  gardenSoil:         '#E3F1D4',  // tile de brote (semilla/germinación) — verde legible sobre creamCard
+  gardenSoilFern:     '#D2E9BF',  // tile de planta arraigada (verde más vivo)
+  gardenSkipped:      '#ECE7DB',  // tile de día salteado (neutro cálido, sin culpa)
 }
 
 const darkColors: ThemeColors = {
@@ -269,9 +269,9 @@ const darkColors: ThemeColors = {
   shineOverlay:       'rgba(255,255,255,0.06)',
   ringBg:             '#12211A',  // V1 — surface-950 (matches eventual V1 canvas)
   pageBg:             '#12211A',  // V1 — surface-950 (matches canvas)
-  gardenSoil:         'rgba(166,239,143,0.10)',  // tile de brote sobre dark forest
-  gardenSoilFern:     'rgba(166,239,143,0.16)',  // tile de planta arraigada
-  gardenSkipped:      'rgba(255,255,255,0.14)',  // brote salteado tenue
+  gardenSoil:         'rgba(166,239,143,0.13)',  // tile de brote sobre dark forest
+  gardenSoilFern:     'rgba(166,239,143,0.22)',  // tile de planta arraigada
+  gardenSkipped:      'rgba(255,255,255,0.06)',  // tile de día salteado (faint)
 }
 
 /**

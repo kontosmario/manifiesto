@@ -2,7 +2,8 @@ import { memo, useState } from 'react'
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import { Sprout } from './sprout'
 import { useAppTheme } from '@/theme/theme-provider'
-import type { GardenCell } from '@/features/garden/garden-model'
+import type { AppTheme } from '@/theme/palette'
+import type { BroteStage, GardenCell } from '@/features/garden/garden-model'
 
 interface GardenGridProps {
   cells: GardenCell[]
@@ -11,9 +12,9 @@ interface GardenGridProps {
 }
 
 const COLS = 7
-const GAP = 8
+const GAP = 7
 
-// Puntos de color de la leyenda (matchean los fills del prototipo).
+// Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
 const LEGEND: Array<{ label: string; color: string }> = [
   { label: 'semilla', color: '#C29A5E' },
   { label: 'creciendo', color: '#A9D57F' },
@@ -21,14 +22,36 @@ const LEGEND: Array<{ label: string; color: string }> = [
   { label: 'salteado', color: '#CBC6B6' },
 ]
 
-function isPlanted(stage: GardenCell['stage']): boolean {
+function isPlanted(stage: BroteStage): boolean {
   return stage === 'seed' || stage === 'germ' || stage === 'fern'
+}
+
+// Fondo del tile por estado. TODA celda tiene tile (la grilla se lee como una
+// matriz contenida dentro de la card, no flotando sobre el fondo de pantalla).
+function tileBg(stage: BroteStage, theme: AppTheme): string {
+  const isDark = theme.isDark
+  switch (stage) {
+    case 'fern':
+      return theme.colors.gardenSoilFern
+    case 'seed':
+    case 'germ':
+      return theme.colors.gardenSoil
+    case 'pending':
+      return isDark ? 'rgba(166,239,143,0.18)' : '#E8F3DF'
+    case 'missed':
+      return theme.colors.gardenSkipped
+    case 'pre':
+    default:
+      return isDark ? 'rgba(255,255,255,0.03)' : 'rgba(28,58,35,0.045)'
+  }
 }
 
 function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
   const { theme } = useAppTheme()
   const [width, setWidth] = useState(0)
-  const cellSize = width > 0 ? (width - (COLS - 1) * GAP) / COLS : 0
+  // Floor para que las 7 columnas SIEMPRE entren en la fila (sub-pixel hacía
+  // que la 7ª celda wrappeara → la grilla se veía "desfasada").
+  const cellSize = width > 0 ? Math.floor((width - (COLS - 1) * GAP) / COLS) : 0
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)
 
@@ -38,15 +61,6 @@ function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
         {cellSize > 0 &&
           cells.map((cell) => {
             const planted = isPlanted(cell.stage)
-            const soil =
-              cell.stage === 'fern'
-                ? theme.colors.gardenSoilFern
-                : planted
-                  ? theme.colors.gardenSoil
-                  : cell.stage === 'pending'
-                    ? 'rgba(166,239,143,0.12)'
-                    : 'transparent'
-            const bordered = !planted && cell.stage !== 'pending'
             return (
               <View
                 key={cell.iso}
@@ -55,10 +69,9 @@ function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
                   {
                     width: cellSize,
                     height: cellSize,
-                    backgroundColor: soil,
-                    boxShadow: planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.22)' : undefined,
-                    borderWidth: bordered ? StyleSheet.hairlineWidth : 0,
-                    borderColor: theme.colors.line,
+                    backgroundColor: tileBg(cell.stage, theme),
+                    // "Montículo" de tierra: sombra interna solo en las plantadas.
+                    boxShadow: planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.20)' : undefined,
                   },
                 ]}
               >
@@ -73,7 +86,13 @@ function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
       </View>
       <View style={styles.legend}>
         {LEGEND.map((l) => (
-          <View key={l.label} style={[styles.chip, { backgroundColor: theme.colors.creamSoft }]}>
+          <View
+            key={l.label}
+            style={[
+              styles.chip,
+              { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : '#F2EFE6' },
+            ]}
+          >
             <View style={[styles.dot, { backgroundColor: l.color }]} />
             <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>{l.label}</Text>
           </View>
@@ -90,9 +109,10 @@ const styles = StyleSheet.create({
     gap: GAP,
   },
   cell: {
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    paddingBottom: 4,
     overflow: 'hidden',
   },
   legend: {
@@ -100,8 +120,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 7,
-    marginTop: 16,
-    paddingBottom: 6,
+    marginTop: 18,
+    paddingBottom: 4,
   },
   chip: {
     flexDirection: 'row',
