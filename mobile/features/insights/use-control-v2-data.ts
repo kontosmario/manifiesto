@@ -41,6 +41,8 @@ import {
   type VelocitySnapshot,
   type NotificationLite,
 } from '@/features/insights/control-signals'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
+import type { SubscriptionCheckin } from '@/features/subscriptions-zombie/usage-checkin'
 import { computeUserBaselines } from '@/features/insights/user-baselines'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import {
@@ -65,7 +67,6 @@ import {
   useControlSnapshot,
   type ControlSnapshot,
   type OverBudgetCategoryRow,
-  type ZombieCandidateRow,
   type MemberPressureRow,
 } from '@/features/insights/use-control-snapshot'
 import { useAssistantDemoMode } from '@/features/insights/assistant-demo-store'
@@ -198,15 +199,6 @@ export interface ControlV2ViewModel {
    */
   overBudgetFromServer: OverBudgetCategoryRow[] | null
   /**
-   * Server-detected zombie subscription candidates from
-   * `control_snapshot.zombie_candidates`. When non-empty, also
-   * synthesises `zombie_alert` notification entries fed to
-   * `buildControlSignals` so the zombie signals fire even if the
-   * notifications stream is empty. `null` when the snapshot is missing
-   * or empty.
-   */
-  zombiesFromServer: ZombieCandidateRow[] | null
-  /**
    * Server-computed per-member spend pressure from
    * `control_snapshot.member_pressure`. Currently unused by the engines
    * (no analog input today) — exposed for downstream consumers that
@@ -277,6 +269,9 @@ export function useControlV2Data(
   const advisorPrefsQuery = useAdvisorPreferences()
   const blocklistQuery = useSignalBlocklist(userId ?? null)
   const controlSnapshotQuery = useControlSnapshot(userId ?? undefined)
+  // home_snapshot (cache caliente del app-shell) — fuente de
+  // subscription_checkins (LIVE, sin ventana de ciclo) para el check-in de uso.
+  const homeSnapshotQuery = useHomeSnapshot(userId ?? undefined)
 
   // Stabilise the `?? []` / `?? null` fallbacks so downstream memos
   // don't see a fresh reference on every render when the underlying
@@ -322,11 +317,22 @@ export function useControlV2Data(
     return rows
   }, [snapshotData])
 
-  const zombiesFromServer = useMemo<ZombieCandidateRow[] | null>(() => {
-    const rows = snapshotData?.zombie_candidates
-    if (!rows || rows.length === 0) return null
-    return rows
-  }, [snapshotData])
+  // Subs con categoría 'Suscripciones' + status active, derivadas server-side
+  // SIN ventana de ciclo. Mapea snake_case del RPC → camelCase del builder.
+  // Reemplaza al zombi por ausencia-de-pago (Sistema A retirado 2026-06-23).
+  const subscriptionCheckins = useMemo<SubscriptionCheckin[]>(() => {
+    const rows = homeSnapshotQuery.data?.subscription_checkins
+    if (!rows || rows.length === 0) return []
+    return rows.map((r) => ({
+      fixedExpenseId: r.fixed_expense_id,
+      name: r.name,
+      amount: r.amount,
+      lastPaymentAt: r.last_payment_at,
+      lastAuditAt: r.last_audit_at,
+      recentLevels: r.recent_levels ?? [],
+      hasOpenCancelIntent: r.open_intent ?? false,
+    }))
+  }, [homeSnapshotQuery.data])
 
   const memberPressureFromServer = useMemo<MemberPressureRow[] | null>(() => {
     const rows = snapshotData?.member_pressure
@@ -362,32 +368,14 @@ export function useControlV2Data(
     }))
   }, [overBudgetFromServer, limitsBase])
 
-  // Synthesise zombie_alert notifications from the snapshot's zombie
-  // candidates when the array is non-empty. The engine's
-  // `buildFromZombieNotifications` filters by `kind === 'zombie_alert'`
-  // and reads `metadata.name`, `metadata.amount`, `metadata.fixed_expense_id`
-  // — we map snapshot rows onto that exact shape.
-  //
-  // We replace, rather than augment, the existing zombie_alert entries:
-  // when the server has authoritative data, prefer it. Other notification
-  // kinds (price_hike, etc.) flow through unchanged.
-  const notifications = useMemo<NotificationLite[]>(() => {
-    if (!zombiesFromServer) return notificationsBase
-    const nowIso = new Date().toISOString()
-    const synthetic: NotificationLite[] = zombiesFromServer.map((row) => ({
-      id: `snapshot-zombie-${row.fixed_expense_id}`,
-      kind: 'zombie_alert',
-      severity: 'warning',
-      created_at: row.last_used_at ?? nowIso,
-      metadata: {
-        fixed_expense_id: row.fixed_expense_id,
-        name: row.name,
-        amount: row.amount,
-      },
-    }))
-    const otherKinds = notificationsBase.filter((n) => n.kind !== 'zombie_alert')
-    return [...synthetic, ...otherKinds]
-  }, [zombiesFromServer, notificationsBase])
+  // Notifs del feed tal cual del server. La síntesis de zombie_alert desde
+  // el snapshot (Sistema A) se retiró 2026-06-23: el check-in de uso
+  // (buildSubUsageCheckin) reemplaza al zombi por ausencia-de-pago y se
+  // alimenta de `subscriptionCheckins`, no de notifications sintéticas.
+  const notifications = useMemo<NotificationLite[]>(
+    () => notificationsBase,
+    [notificationsBase],
+  )
 
   const { usingMock, noConfig } = classifyControlMode({
     finance,
@@ -565,6 +553,7 @@ export function useControlV2Data(
         persona,
         paydayPending: isSalaryPendingConfirmation,
         blockedFamilies: blocklistQuery.data,
+        subscriptionCheckins,
       }),
     )
   }, [
@@ -592,6 +581,7 @@ export function useControlV2Data(
     persona,
     isSalaryPendingConfirmation,
     blocklistQuery.data,
+    subscriptionCheckins,
   ])
 
   // ── Source of truth de las señales VISIBLES ───────────────────────────
@@ -661,7 +651,6 @@ export function useControlV2Data(
     wrappedSeen,
     forecastFromServer,
     overBudgetFromServer,
-    zombiesFromServer,
     memberPressureFromServer,
   }
 }
