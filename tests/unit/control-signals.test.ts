@@ -10,6 +10,7 @@ import {
   computeControlView,
 } from '@/features/insights/control-v2-mock'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
+import type { SubscriptionCheckin } from '@/features/subscriptions-zombie/usage-checkin'
 
 const NOW = new Date('2026-04-22T14:20:00')
 
@@ -162,21 +163,20 @@ describe('control-signals', () => {
           { id: 'c', amount: 30000, status: 'pending', next_due_on: '2026-04-27' },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
         ] as any[],
+        // Sub-usage hard-flag → urgency 'alta' (reemplaza los zombie_alert del
+        // Sistema A retirado 2026-06-23). 3 'casi_nunca' → CTA Cancelar.
+        subscriptionCheckins: [
+          {
+            fixedExpenseId: 'fe-netflix',
+            name: 'Netflix',
+            amount: 4500,
+            lastPaymentAt: '2026-04-21T10:00:00',
+            lastAuditAt: '2026-04-10T10:00:00',
+            recentLevels: ['casi_nunca', 'casi_nunca', 'casi_nunca'],
+            hasOpenCancelIntent: false,
+          },
+        ],
         notifications: [
-          {
-            id: 'n1',
-            kind: 'zombie_alert',
-            severity: 'warning',
-            created_at: '2026-04-20T10:00:00',
-            metadata: { name: 'Netflix', amount: 4500 },
-          },
-          {
-            id: 'n2',
-            kind: 'zombie_alert',
-            severity: 'warning',
-            created_at: '2026-04-21T10:00:00',
-            metadata: { name: 'Spotify', amount: 2500 },
-          },
           {
             id: 'n3',
             kind: 'price_hike',
@@ -195,6 +195,59 @@ describe('control-signals', () => {
     expect(out.length).toBeLessThanOrEqual(5)
     // First item must be the highest-urgency one
     expect(out[0]!.urgency).toBe('alta')
+  })
+
+  // ── Sub-usage check-in (reemplaza el zombi por ausencia-de-pago, 2026-06-23) ──
+  const subCheckin = (over: Partial<SubscriptionCheckin> = {}): SubscriptionCheckin => ({
+    fixedExpenseId: 'fe1',
+    name: 'Netflix',
+    amount: 4500,
+    lastPaymentAt: null,
+    lastAuditAt: null,
+    recentLevels: [],
+    hasOpenCancelIntent: false,
+    ...over,
+  })
+
+  it('sub-usage: pago sin responder → emite card con 3 réplicas', () => {
+    const out = buildControlSignals(
+      baseArgs({ subscriptionCheckins: [subCheckin({ lastPaymentAt: '2026-04-21T10:00:00', lastAuditAt: '2026-04-01T10:00:00' })] }),
+    )
+    const card = out.find((s) => s.id.startsWith('sub-usage-'))
+    expect(card).toBeDefined()
+    expect(card!.replies).toHaveLength(3)
+  })
+
+  it('sub-usage: respondió hace <15d → no card', () => {
+    const out = buildControlSignals(
+      baseArgs({ subscriptionCheckins: [subCheckin({ lastAuditAt: '2026-04-20T10:00:00', recentLevels: ['a_veces'] })] }),
+    )
+    expect(out.find((s) => s.id.startsWith('sub-usage-'))).toBeUndefined()
+  })
+
+  it('sub-usage: 3 negativas → flag fuerte con acción cancelar', () => {
+    const out = buildControlSignals(
+      baseArgs({ subscriptionCheckins: [subCheckin({ lastAuditAt: '2026-04-01T10:00:00', recentLevels: ['casi_nunca', 'casi_nunca', 'casi_nunca'] })] }),
+    )
+    const card = out.find((s) => s.id.startsWith('sub-usage-'))
+    expect(card).toBeDefined()
+    expect(card!.urgency).toBe('alta')
+    expect(card!.replies!.some((r) => r.action.kind === 'sub-usage-cancel')).toBe(true)
+  })
+
+  it('sub-usage: intent de cancelar abierto → no card', () => {
+    const out = buildControlSignals(
+      baseArgs({ subscriptionCheckins: [subCheckin({ lastPaymentAt: '2026-04-21T10:00:00', hasOpenCancelIntent: true })] }),
+    )
+    expect(out.find((s) => s.id.startsWith('sub-usage-'))).toBeUndefined()
+  })
+
+  it('sub-usage: cap de 2 cards de uso', () => {
+    const checkins = [0, 1, 2].map((i) =>
+      subCheckin({ fixedExpenseId: `fe${i}`, name: `Sub${i}`, lastPaymentAt: '2026-04-21T10:00:00', lastAuditAt: '2026-04-01T10:00:00' }),
+    )
+    const out = buildControlSignals(baseArgs({ subscriptionCheckins: checkins }))
+    expect(out.filter((s) => s.id.startsWith('sub-usage-')).length).toBeLessThanOrEqual(2)
   })
 
   it('builds a recovery path when today overspends but not catastrophic', () => {
@@ -262,8 +315,8 @@ describe('control-signals', () => {
       { id: '3', category_id: 'c', price: 10000, created_at: '2026-04-12T09:00:00', commitment_id: null },
     ]
     const out = buildControlSignals(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
       baseArgs({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
         expenses: list as any[],
         categoriesExpense: [
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
