@@ -303,6 +303,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 10,
     marginTop: 4,
   },
