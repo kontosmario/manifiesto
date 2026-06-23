@@ -29,6 +29,17 @@ describe('scoreSubscriptionUsage', () => {
     expect(r.prompt).toBe('pay')
   })
 
+  it('pago viejo fuera de la ventana de recencia + sin responder → no preguntar', () => {
+    // Sub vencida: último pago hace 22 días (ciclo anterior), no la pagó este
+    // período. NO debe disparar el check-in (regresión 2026-06-23: Netflix/
+    // Apple marito vencidas mostraban card sin que el pago haya sucedido).
+    const r = scoreSubscriptionUsage(
+      checkin({ lastPaymentAt: '2026-06-01T10:00:00', lastAuditAt: null }),
+      NOW,
+    )
+    expect(r.shouldAsk).toBe(false)
+  })
+
   it('re-ask por timer >=15d, sin depender de payments', () => {
     const r = scoreSubscriptionUsage(
       checkin({ lastPaymentAt: null, lastAuditAt: '2026-06-05T10:00:00', recentLevels: ['a_veces'] }),

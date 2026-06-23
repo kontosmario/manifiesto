@@ -5,6 +5,7 @@ import {
   HARD_FLAG_STREAK,
   USAGE_SCORE,
   NEGATIVE_SCORE_THRESHOLD,
+  PAYMENT_RECENCY_DAYS,
 } from './usage-checkin.constants'
 import type { UsageLevel } from './types'
 
@@ -77,10 +78,15 @@ export function scoreSubscriptionUsage(
   if (negativeStreak >= HARD_FLAG_STREAK || casiNuncaStreak >= 2) flag = 'hard'
   else if (negativeStreak >= SOFT_FLAG_STREAK) flag = 'soft'
 
-  // Condición 1: ask-al-pagar (pago sin responder).
+  // Condición 1: ask-al-pagar — hay un pago RECIENTE sin responder. La
+  // recencia es clave: un pago viejo de un ciclo anterior (sub vencida que
+  // no se pagó este período) NO debe disparar el check-in. Solo preguntamos
+  // cuando el pago acaba de suceder, no por la mera existencia de un pago
+  // histórico (fix 2026-06-23: Netflix/Apple marito vencidas mostraban card).
   const paidUnanswered =
     !Number.isNaN(lastPayMs) &&
-    (Number.isNaN(lastAuditMs) || lastPayMs > lastAuditMs)
+    (Number.isNaN(lastAuditMs) || lastPayMs > lastAuditMs) &&
+    nowMs - lastPayMs <= PAYMENT_RECENCY_DAYS * DAY_MS
 
   // Condición 2: re-ask por timer (independiente de payments → cross-ciclo safe).
   const reaskDue =

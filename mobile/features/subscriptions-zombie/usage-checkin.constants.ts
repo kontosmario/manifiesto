@@ -19,3 +19,9 @@ export const USAGE_SCORE = {
 
 /** Una respuesta cuenta como 'negativa' (suma a la racha) si score >= esto. */
 export const NEGATIVE_SCORE_THRESHOLD = 0.5
+
+/** Ventana (días) del ask-al-pagar: solo preguntamos por un pago RECIENTE.
+ *  Un pago viejo de un ciclo anterior (sub vencida que NO se pagó el período
+ *  actual) NO dispara el check-in — el ask es "acabás de pagar", no "existe
+ *  algún pago histórico". Debe ser < REASK_DAYS para no solapar con el re-ask. */
+export const PAYMENT_RECENCY_DAYS = 7

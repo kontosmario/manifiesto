@@ -11,7 +11,7 @@ Reemplaza el detector viejo *"sin movimiento hace 2+ meses"* (que infería no-us
 
 ## Flujo
 
-1. **Al pagar** → próxima vez en el asistente aparece la card *"Pagaste X · ¿cuánto la usaste?"* con la escala de 3 botones.
+1. **Al pagar** (pago RECIENTE, ≤ `PAYMENT_RECENCY_DAYS`=7d) → próxima vez en el asistente aparece la card *"Pagaste X · ¿cuánto la usaste?"* con la escala de 3 botones. Una sub **vencida sin pagar** (su último pago es de un ciclo anterior) NO dispara el check-in — el ask es "acabás de pagar", no "existe algún pago histórico".
 2. **A los ~15 días** sin nueva respuesta → re-pregunta *"¿Seguís usando X?"*.
 3. **Mucho** → resetea la racha + afloja la cadencia (~35 días).
 4. **2 negativas seguidas** → flag suave *"¿la estás aprovechando?"*.
@@ -31,7 +31,7 @@ Reemplaza el detector viejo *"sin movimiento hace 2+ meses"* (que infería no-us
 Va en **`home_snapshot` (live)**, NO en `control_snapshot` (materializado 3×/día → lag inservible para "preguntá al pagar"). El pago invalida home_snapshot → la card aparece pronto.
 
 ### Cliente
-- `mobile/features/subscriptions-zombie/usage-checkin.ts` — `scoreSubscriptionUsage(checkin, now)` (pura): deriva `shouldAsk` / `prompt` ('pay'|'reask') / `flag` / `negativeStreak`. Umbrales en `usage-checkin.constants.ts` (`REASK_DAYS=15`, `REASK_DAYS_AFTER_HIGH=35`, `SOFT=2`, `HARD=3`).
+- `mobile/features/subscriptions-zombie/usage-checkin.ts` — `scoreSubscriptionUsage(checkin, now)` (pura): deriva `shouldAsk` / `prompt` ('pay'|'reask') / `flag` / `negativeStreak`. Umbrales en `usage-checkin.constants.ts` (`PAYMENT_RECENCY_DAYS=7`, `REASK_DAYS=15`, `REASK_DAYS_AFTER_HIGH=35`, `SOFT=2`, `HARD=3`).
 - `control-signals.ts` → `buildSubUsageCheckin(args, now)`: lee `args.subscriptionCheckins`, corre el score, emite 0..2 cards `sub-usage-<feid>` con `replies` de escala.
 - `use-control-v2-data.ts` lee `subscription_checkins` de `useHomeSnapshot` (cache caliente) e inyecta `subscriptionCheckins` a `buildControlSignals`.
 - Acciones: `ControlAction` kinds `sub-usage-answer` (graba respuesta) y `sub-usage-cancel` (abre editor + declara intent), en `use-control-action-dispatcher.ts` → repo `record-subscription-usage.ts`.
