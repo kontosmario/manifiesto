@@ -68,7 +68,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
     >
       {data && (
         <>
-          <RiseView delay={40}>
+          <RiseView delay={0} translateY={0} duration={400}>
             <GardenHero
               streak={data.currentStreak}
               total={data.totalDaysLogged}
@@ -76,10 +76,10 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
               seeds={data.freezeTokens}
             />
           </RiseView>
-          <RiseView delay={120}>
+          <RiseView delay={75} translateY={0} duration={400}>
             <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
           </RiseView>
-          <RiseView delay={200}>
+          <RiseView delay={150} translateY={0} duration={400}>
             <View
               style={[
                 styles.gardenCard,
@@ -102,10 +102,10 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
               </View>
             </View>
           </RiseView>
-          <RiseView delay={280}>
+          <RiseView delay={225} translateY={0} duration={400}>
             <PlantButton planted={planted} onPress={handlePlant} disabled={markNoSpend.isPending} />
           </RiseView>
-          <RiseView delay={360}>
+          <RiseView delay={300} translateY={0} duration={400}>
             <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>{FOOTNOTE}</Text>
           </RiseView>
         </>
