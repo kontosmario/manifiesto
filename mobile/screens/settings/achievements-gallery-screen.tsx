@@ -264,9 +264,22 @@ function BadgeTile({
           press.animatedStyle,
         ]}
       >
-        <Text style={[styles.tileIcon, !earned && styles.tileIconLocked]}>
-          {item.icon}
-        </Text>
+        <View
+          style={[
+            styles.iconBubble,
+            {
+              backgroundColor: earned
+                ? theme.isDark
+                  ? 'rgba(255,251,242,0.92)'
+                  : '#FFFBF2'
+                : theme.isDark
+                  ? 'rgba(255,255,255,0.04)'
+                  : 'rgba(28,58,35,0.045)',
+            },
+          ]}
+        >
+          <Text style={[styles.tileIcon, !earned && styles.tileIconLocked]}>{item.icon}</Text>
+        </View>
         <Text
           style={[
             styles.tileTitle,
@@ -409,8 +422,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 10,
   },
+  iconBubble: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tileIcon: {
-    fontSize: 30,
+    fontSize: 27,
   },
   tileIconLocked: {
     opacity: 0.35,
