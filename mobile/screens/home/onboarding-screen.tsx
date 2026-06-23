@@ -39,7 +39,7 @@ import { useConsumeFamilyInvite } from '@/features/family/use-family-actions'
 import { buildFamilyFinanceInput } from '@/features/finance/use-family-finance'
 import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   profileQueryKey,
   useMyProfile,
@@ -47,6 +47,9 @@ import {
   useUpdateDisplayName,
 } from '@/features/profile/use-profile'
 import { logoutSession } from '@/features/auth/logout'
+import { authQueryKeys } from '@/features/auth/use-auth-session'
+import { supabase } from '@/lib/supabase'
+import type { Session } from '@supabase/supabase-js'
 import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
@@ -56,6 +59,19 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 interface OnboardingScreenProps {
   userId: string
+}
+
+/**
+ * Mejor display name desde un blob `user_metadata` de Supabase, prefiriendo el
+ * nombre real del provider. Cubre Google (`full_name`/`name`) y Apple
+ * (`display_name`, parcheado en social-sign-in) + un fallback compuesto.
+ */
+function readOAuthName(meta: Record<string, unknown> | undefined): string {
+  if (!meta) return ''
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+  const direct = str(meta.display_name) || str(meta.full_name) || str(meta.name)
+  if (direct) return direct
+  return [str(meta.given_name), str(meta.family_name)].filter(Boolean).join(' ')
 }
 
 export function OnboardingScreen({ userId }: OnboardingScreenProps) {
@@ -87,16 +103,41 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   // when onboarding is re-run (e.g. after a DB cleanup that kept the
   // membership row), skipping meant the user got silently bound to
   // the old family with no chance to choose.
-  // Hydrate displayName from profile once (only if user has not typed yet).
+  // El provider (Google `full_name`/`name`, Apple `display_name` parcheado en
+  // social-sign-in) trae el nombre real en el user_metadata. Leemos la sesión
+  // de la cache (la query root ya la popula; mismo key → no duplica el
+  // listener) para preferirlo sobre el prefijo del email que el trigger de
+  // signup deja por defecto.
+  const { data: session } = useQuery<Session | null>({
+    queryKey: authQueryKeys.session,
+    queryFn: async () => (await supabase.auth.getSession()).data.session,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const oauthName = readOAuthName(
+    session?.user?.user_metadata as Record<string, unknown> | undefined,
+  )
+
+  // Hydrate displayName once (only if user has not typed yet). Cuenta nueva →
+  // preferimos el nombre del provider; re-ingreso (previously_onboarded) →
+  // respetamos el que el usuario ya guardó en su profile.
   const [hydratedName, setHydratedName] = useState(false)
   useEffect(() => {
     if (hydratedName) return
-    const fromProfile = profileQuery.data?.display_name
-    if (fromProfile) {
-      actions.setDisplayName(sanitizeDisplayName(fromProfile))
+    const profileName = profileQuery.data?.display_name ?? ''
+    const isRejoinName = profileQuery.data?.previously_onboarded === true
+    const best = isRejoinName ? profileName || oauthName : oauthName || profileName
+    if (best) {
+      actions.setDisplayName(sanitizeDisplayName(best))
       setHydratedName(true)
     }
-  }, [profileQuery.data?.display_name, hydratedName, actions])
+  }, [
+    profileQuery.data?.display_name,
+    profileQuery.data?.previously_onboarded,
+    oauthName,
+    hydratedName,
+    actions,
+  ])
 
   // Re-entry detection: `profile.previously_onboarded` is set by a
   // SQL trigger the first time the user completes onboarding and is
