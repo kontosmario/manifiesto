@@ -26,6 +26,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  ZoomIn,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -532,6 +533,27 @@ function InsightCard({
     transform: [{ scale: pressS.value * (1 + lift.value * 0.012) }],
   }))
 
+  // Coreografía de respuesta de la escala (sub-usage): al elegir, el botón
+  // elegido se confirma (fill + check con pop) y los otros se atenúan; tras un
+  // beat disparamos onReply (que descarta la card → sale con el slide-out
+  // direccional). El haptic de 'success' lo dispara el dispatcher al commit.
+  const [pickedReply, setPickedReply] = useState<string | null>(null)
+  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (replyTimer.current) clearTimeout(replyTimer.current)
+    },
+    [],
+  )
+  const handlePickReply = useCallback(
+    (label: string, action: ControlAction) => {
+      if (pickedReply) return
+      setPickedReply(label)
+      replyTimer.current = setTimeout(() => onReply(action), 440)
+    },
+    [pickedReply, onReply],
+  )
+
   return (
     <View style={styles.message}>
       {/*
@@ -633,28 +655,53 @@ function InsightCard({
           // Fila de escala (Mucho / A veces / Casi nunca, o Cancelar / La sigo
           // usando) — reemplaza el CTA único para las cards de uso de sub.
           <View style={styles.scaleRow}>
-            {task.replies.map((r) => (
-              <PressScale
-                key={r.label}
-                accessibilityRole="button"
-                accessibilityLabel={`${r.label} para ${task.title}`}
-                onPress={() => onReply(r.action)}
-                style={[
-                  styles.scaleBtn,
-                  {
-                    backgroundColor: t.vistoBg,
-                    borderColor: t.vistoBorder,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.scaleBtnText, { color: t.vistoText }]}
-                  numberOfLines={1}
+            {task.replies.map((r) => {
+              const isPicked = pickedReply === r.label
+              const isFaded = pickedReply != null && !isPicked
+              return (
+                <PressScale
+                  key={r.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${r.label} para ${task.title}`}
+                  onPress={() => handlePickReply(r.label, r.action)}
+                  style={[
+                    styles.scaleBtn,
+                    isPicked
+                      ? {
+                          backgroundColor: tone.soft,
+                          borderColor: tone.accent,
+                          borderWidth: 1.5,
+                        }
+                      : { backgroundColor: t.vistoBg, borderColor: t.vistoBorder },
+                    isFaded ? styles.scaleBtnFaded : null,
+                  ]}
                 >
-                  {r.label}
-                </Text>
-              </PressScale>
-            ))}
+                  {isPicked ? (
+                    <Animated.View
+                      entering={
+                        cardReduced
+                          ? FadeIn.duration(120)
+                          : ZoomIn.springify()
+                              .damping(motionSprings.celebrate.damping)
+                              .stiffness(motionSprings.celebrate.stiffness)
+                              .mass(motionSprings.celebrate.mass)
+                      }
+                    >
+                      <MaterialIcons name="check" size={15} color={tone.fg} />
+                    </Animated.View>
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.scaleBtnText,
+                      { color: isPicked ? tone.fg : t.vistoText },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {r.label}
+                  </Text>
+                </PressScale>
+              )
+            })}
           </View>
         ) : (
           <View style={styles.replies}>
@@ -1079,10 +1126,15 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
     paddingVertical: 10,
+  },
+  scaleBtnFaded: {
+    opacity: 0.32,
   },
   scaleBtnText: {
     fontSize: 13,
