@@ -392,6 +392,14 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
         case 'sub-usage-cancel': {
           void triggerHaptic('warning')
           dismissCard(action.dismissId)
+          // Abre el editor del fijo para que el usuario finalice (pausar/
+          // archivar la sub) Y registra la intención de cancelar (tracking).
+          requestFixedExpenseEdit(
+            action.fixedExpenseId,
+            meta
+              ? { taskId: meta.taskId, surface: meta.surface, context: meta.taskContext, timeToActionMs: meta.timeToActionMs }
+              : null,
+          )
           void declareSubscriptionCancelIntent(action.fixedExpenseId)
             .then(() =>
               syncAllAfterMutation(queryClient, {

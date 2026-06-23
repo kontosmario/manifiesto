@@ -48,9 +48,8 @@ import {
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
 import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-action-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
-import type { ControlSectionAnchor } from '@/features/insights/control-action'
+import type { ControlAction, ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
-import { ZombieFeedSection } from '@/components/control-v2/zombie-feed-section'
 import {
   useAsistenteTheme,
   type AsistenteTokens,
@@ -229,6 +228,32 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
     [dispatch],
   )
 
+  // Réplica rápida (escala de uso de suscripción) — dispara la action del
+  // botón por el dispatcher central. El dispatcher ya emite su propio haptic
+  // para los kinds sub-usage; evitamos el doble buzz.
+  const handleReplyAction = useCallback(
+    (task: ControlAdvisorTask, action: ControlAction) => {
+      const meta = getActionMeta(action)
+      const dispatcherFiresHaptic =
+        action.kind === 'sub-usage-answer' ||
+        action.kind === 'sub-usage-cancel' ||
+        action.kind === 'dismiss' ||
+        action.kind === 'quick-savings-contribution'
+      if (!dispatcherFiresHaptic) void triggerHaptic(meta.haptic)
+      dispatch(action, {
+        taskId: task.id,
+        surface: 'asistente_screen',
+        taskContext: {
+          urgency: task.urgency,
+          confidence: task.confidence,
+          impactRaw: task.impactRaw,
+          cat: task.cat,
+        },
+      })
+    },
+    [dispatch],
+  )
+
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
       <LinearGradient
@@ -278,6 +303,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                     onPressBubble={() => setActive(i)}
                     onLongPressBubble={() => handleLongPress(task)}
                     onAction={() => handleAction(task)}
+                    onReply={(action) => handleReplyAction(task, action)}
                     onDismiss={() => handleDismiss(task)}
                     t={t}
                   />
@@ -285,8 +311,6 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
               ))
             )}
           </View>
-
-          <ZombieFeedSection familyId={familyId} userId={userId} />
         </ScrollView>
       </LinearGradient>
       {/* Nested instance of the advisor sheets. Required because the
@@ -362,6 +386,7 @@ function InsightCard({
   onPressBubble,
   onLongPressBubble,
   onAction,
+  onReply,
   onDismiss,
   t,
 }: {
@@ -370,6 +395,7 @@ function InsightCard({
   onPressBubble: () => void
   onLongPressBubble: () => void
   onAction: () => void
+  onReply: (action: ControlAction) => void
   onDismiss: () => void
   t: AsistenteTokens
 }) {
@@ -447,49 +473,79 @@ function InsightCard({
           </Text>
         </Pressable>
 
-        <View style={styles.replies}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${ctaLabel} para ${task.title}`}
-            onPress={onAction}
-            style={({ pressed }) => [
-              styles.replyCta,
-              {
-                backgroundColor: t.ctaBg,
-                shadowColor: t.ctaShadow,
-                opacity: pressed ? 0.92 : 1,
-              },
-            ]}
-          >
-            <Text
-              style={[styles.replyCtaText, { color: t.ctaText }]}
-              numberOfLines={1}
-            >
-              {ctaLabel}
-            </Text>
-            <MaterialIcons name="arrow-forward" size={14} color={t.ctaText} />
-          </Pressable>
-          {!isDismissAction ? (
+        {task.replies && task.replies.length > 0 ? (
+          // Fila de escala (Mucho / A veces / Casi nunca, o Cancelar / La sigo
+          // usando) — reemplaza el CTA único para las cards de uso de sub.
+          <View style={styles.scaleRow}>
+            {task.replies.map((r) => (
+              <Pressable
+                key={r.label}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.label} para ${task.title}`}
+                onPress={() => onReply(r.action)}
+                style={({ pressed }) => [
+                  styles.scaleBtn,
+                  {
+                    backgroundColor: t.vistoBg,
+                    borderColor: t.vistoBorder,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.scaleBtnText, { color: t.vistoText }]}
+                  numberOfLines={1}
+                >
+                  {r.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.replies}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Marcar como visto"
-              onPress={onDismiss}
-              hitSlop={4}
+              accessibilityLabel={`${ctaLabel} para ${task.title}`}
+              onPress={onAction}
               style={({ pressed }) => [
-                styles.replySeen,
+                styles.replyCta,
                 {
-                  backgroundColor: t.vistoBg,
-                  borderColor: t.vistoBorder,
-                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: t.ctaBg,
+                  shadowColor: t.ctaShadow,
+                  opacity: pressed ? 0.92 : 1,
                 },
               ]}
             >
-              <Text style={[styles.replySeenText, { color: t.vistoText }]}>
-                Visto
+              <Text
+                style={[styles.replyCtaText, { color: t.ctaText }]}
+                numberOfLines={1}
+              >
+                {ctaLabel}
               </Text>
+              <MaterialIcons name="arrow-forward" size={14} color={t.ctaText} />
             </Pressable>
-          ) : null}
-        </View>
+            {!isDismissAction ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Marcar como visto"
+                onPress={onDismiss}
+                hitSlop={4}
+                style={({ pressed }) => [
+                  styles.replySeen,
+                  {
+                    backgroundColor: t.vistoBg,
+                    borderColor: t.vistoBorder,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.replySeenText, { color: t.vistoText }]}>
+                  Visto
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
       </View>
     </View>
   )
@@ -833,6 +889,27 @@ const styles = StyleSheet.create({
   },
   replySeenText: {
     fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  // Sub-usage scale row (Mucho / A veces / Casi nunca)
+  scaleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  scaleBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  scaleBtnText: {
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.1,
   },
