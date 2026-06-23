@@ -29,10 +29,12 @@ const TEXT_ON_CREAM = authTokens.welcomeBg          // brand dark green for body
 const TEXT_ON_CREAM_SOFT = 'rgba(14,58,38,0.6)'     // soft variant: same green with 60% alpha
 
 /**
- * Post-onboarding success screen. Sits between the wizard's last step
- * and Home. Tap-to-continue, sin auto-dismiss, para que el usuario
- * sienta el momento de cierre. Una vez en Home, el tour de Home
- * auto-fira (mecánica existente en `useScreenTour`).
+ * Post-onboarding success screen. Sits between the wizard's last step y la
+ * pantalla de bienvenida al acceso completo (trial-welcome), que va antes de
+ * Home. Tap-to-continue, sin auto-dismiss, para que el usuario sienta el
+ * momento de cierre. El pre-prompt de notificaciones vive ACÁ (lo ve toda
+ * cuenta nueva, también las que la pantalla de acceso saltea). Una vez en
+ * Home, el tour de Home auto-fira (mecánica existente en `useScreenTour`).
  */
 export function OnboardingSuccessScreen() {
   return (
@@ -76,23 +78,27 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
   //     build sin push).
   const [primeVisible, setPrimeVisible] = useState(false)
 
-  const navigateHome = useCallback(() => {
-    router.replace('/(app)/(tabs)/home')
+  const navigateNext = useCallback(() => {
+    // Antes de Home pasamos por la bienvenida al acceso completo (trial-welcome).
+    // Esa pantalla decide si anunciar el período de acceso o saltar a Home según
+    // el entitlement. El pre-prompt de notifs queda acá (lo ve toda cuenta nueva,
+    // también las que esa pantalla saltea).
+    router.replace('/(app)/trial-welcome')
   }, [router])
 
   const handleContinue = useCallback(async () => {
     void triggerHaptic('selection')
     if (!canUseNativePushNotifications) {
-      navigateHome()
+      navigateNext()
       return
     }
     const shouldPrime = await shouldPrimePermission('notifications')
     if (!shouldPrime) {
-      navigateHome()
+      navigateNext()
       return
     }
     setPrimeVisible(true)
-  }, [navigateHome])
+  }, [navigateNext])
 
   const handlePrimeAllow = useCallback(async () => {
     setPrimeVisible(false)
@@ -106,14 +112,14 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
       // Cualquier error en el prompt nativo lo tragamos: el usuario
       // ya verá el banner "Activar push" en Ajustes si quiso.
     }
-    navigateHome()
-  }, [navigateHome])
+    navigateNext()
+  }, [navigateNext])
 
   const handlePrimeDismiss = useCallback(async () => {
     setPrimeVisible(false)
     await markPrimeDismissed('notifications')
-    navigateHome()
-  }, [navigateHome])
+    navigateNext()
+  }, [navigateNext])
 
   return (
     <View style={[styles.root, { backgroundColor: CREAM }]}>

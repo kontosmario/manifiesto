@@ -222,6 +222,13 @@ export function AppStackShell() {
           }}
         />
         <Stack.Screen
+          name="trial-welcome"
+          options={{
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="biometric-setup"
           options={{
             gestureEnabled: false,
