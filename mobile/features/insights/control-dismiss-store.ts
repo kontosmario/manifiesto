@@ -62,6 +62,7 @@ const BASE_TTL_DAYS: Record<string, number> = {
   'fijos-ratio': 14,
   'income-volatility': 14,
   zombie: 21,
+  'sub-usage': 15,
   hike: 21,
   'undetected-sub': 21,
   cap: 7,

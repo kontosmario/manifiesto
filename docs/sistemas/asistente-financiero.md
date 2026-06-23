@@ -7,6 +7,15 @@
 >
 > **Documento canónico activo.** `docs/asistente-financiero.md` queda archivado como baseline v1.
 
+> **Actualización 2026-06-23 — suscripciones por uso real.** La señal `zombie`
+> (*"X: sin movimiento hace 2+ meses"*, que infería no-uso por **ausencia de
+> pago**) se **retiró**. La reemplaza el **check-in de uso post-pago**: cuando
+> pagás una sub, el asistente pregunta cuánto la usaste (escala Mucho/A veces/
+> Casi nunca), re-pregunta a ~15 días y escala a un flag de cancelar. Nuevas
+> señales `sub-usage` + acciones `sub-usage-answer` / `sub-usage-cancel`.
+> `cron_detect_zombies` quedó desagendado (tablas/funciones dormidas, reversible).
+> Doc canónico del feature: [`suscripciones-uso.md`](./suscripciones-uso.md).
+
 ---
 
 ## 🚦 Estado de integración

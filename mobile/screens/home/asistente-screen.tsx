@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -9,18 +10,23 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import Animated, {
   Easing,
   FadeIn,
   FadeOut,
+  Keyframe,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
+  withSpring,
   withTiming,
+  ZoomIn,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -28,7 +34,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { decorativeDurations } from '@/lib/motion/tokens'
+import {
+  decorativeDurations,
+  motionDurations,
+  motionEasings,
+  motionSprings,
+  motionStagger,
+} from '@/lib/motion/tokens'
 import { formatMoneyShort } from '@/utils/money'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
 import { useControlActionDispatcher } from '@/features/insights/use-control-action-dispatcher'
@@ -43,14 +55,15 @@ import {
 } from '@/features/insights/control-dismiss-store'
 import {
   TYPE_TONES,
+  bubbleHeadline,
   bubbleType,
+  impactChipLabel,
 } from '@/components/control-v2/asesor-bubble-meta'
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
 import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-action-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
-import type { ControlSectionAnchor } from '@/features/insights/control-action'
+import type { ControlAction, ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
-import { ZombieFeedSection } from '@/components/control-v2/zombie-feed-section'
 import {
   useAsistenteTheme,
   type AsistenteTokens,
@@ -81,6 +94,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const t = useAsistenteTheme()
+  const reduced = useReducedMotion()
   // `signals` ya viene filtrado (blocklist + dismissed) y vacío hasta que los
   // filtros cargaron (signalsReady) — el filtrado es central en useControlV2Data,
   // no acá. Así el push (abajo) tampoco dispara sobre señales descartadas.
@@ -229,6 +243,32 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
     [dispatch],
   )
 
+  // Réplica rápida (escala de uso de suscripción) — dispara la action del
+  // botón por el dispatcher central. El dispatcher ya emite su propio haptic
+  // para los kinds sub-usage; evitamos el doble buzz.
+  const handleReplyAction = useCallback(
+    (task: ControlAdvisorTask, action: ControlAction) => {
+      const meta = getActionMeta(action)
+      const dispatcherFiresHaptic =
+        action.kind === 'sub-usage-answer' ||
+        action.kind === 'sub-usage-cancel' ||
+        action.kind === 'dismiss' ||
+        action.kind === 'quick-savings-contribution'
+      if (!dispatcherFiresHaptic) void triggerHaptic(meta.haptic)
+      dispatch(action, {
+        taskId: task.id,
+        surface: 'asistente_screen',
+        taskContext: {
+          urgency: task.urgency,
+          confidence: task.confidence,
+          impactRaw: task.impactRaw,
+          cat: task.cat,
+        },
+      })
+    },
+    [dispatch],
+  )
+
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
       <LinearGradient
@@ -267,9 +307,46 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
               visible.map((task, i) => (
                 <Animated.View
                   key={task.id}
-                  layout={LinearTransition.duration(220)}
-                  entering={FadeIn.duration(280).delay(80 * i)}
-                  exiting={FadeOut.duration(140)}
+                  layout={
+                    reduced
+                      ? LinearTransition.duration(180)
+                      : LinearTransition.springify()
+                          .damping(motionSprings.enter.damping)
+                          .stiffness(motionSprings.enter.stiffness)
+                          .mass(motionSprings.enter.mass)
+                  }
+                  entering={
+                    reduced
+                      ? FadeIn.duration(160)
+                      : new Keyframe({
+                          0: {
+                            opacity: 0,
+                            transform: [{ translateY: 12 }, { scale: 0.96 }],
+                          },
+                          100: {
+                            opacity: 1,
+                            transform: [{ translateY: 0 }, { scale: 1 }],
+                            easing: motionEasings.enterSmooth,
+                          },
+                        })
+                          .duration(motionDurations.enterStack)
+                          .delay(motionStagger.listItem * i)
+                  }
+                  exiting={
+                    reduced
+                      ? FadeOut.duration(120)
+                      : new Keyframe({
+                          0: {
+                            opacity: 1,
+                            transform: [{ translateX: 0 }, { scale: 1 }],
+                          },
+                          100: {
+                            opacity: 0,
+                            transform: [{ translateX: -24 }, { scale: 0.97 }],
+                            easing: motionEasings.exitStandard,
+                          },
+                        }).duration(motionDurations.exitStack)
+                  }
                   onLayout={onMessageLayout(task.id)}
                 >
                   <InsightCard
@@ -278,6 +355,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                     onPressBubble={() => setActive(i)}
                     onLongPressBubble={() => handleLongPress(task)}
                     onAction={() => handleAction(task)}
+                    onReply={(action) => handleReplyAction(task, action)}
                     onDismiss={() => handleDismiss(task)}
                     t={t}
                   />
@@ -285,8 +363,6 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
               ))
             )}
           </View>
-
-          <ZombieFeedSection familyId={familyId} userId={userId} />
         </ScrollView>
       </LinearGradient>
       {/* Nested instance of the advisor sheets. Required because the
@@ -356,12 +432,64 @@ function Header({
   )
 }
 
+// Small reusable pressable that scales down on press-in and springs
+// back on release. Wraps an Animated Pressable so the scale runs on the
+// UI thread. Respects reduced motion (no transform animation, but the
+// view always carries a transform array — `transform: undefined`
+// crashes iOS on the bridge).
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
+function PressScale({
+  children,
+  onPress,
+  style,
+  accessibilityLabel,
+  accessibilityRole = 'button',
+  hitSlop,
+}: {
+  children: ReactNode
+  onPress: () => void
+  style?: StyleProp<ViewStyle>
+  accessibilityLabel?: string
+  accessibilityRole?: 'button'
+  hitSlop?: number
+}) {
+  const reduced = useReducedMotion()
+  const scale = useSharedValue(1)
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={() => {
+        if (!reduced) {
+          scale.value = withTiming(0.96, {
+            duration: motionDurations.micro,
+            easing: motionEasings.standard,
+          })
+        }
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, motionSprings.press)
+      }}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={hitSlop}
+      style={[style, animStyle]}
+    >
+      {children}
+    </AnimatedPressable>
+  )
+}
+
 function InsightCard({
   task,
   isActive,
   onPressBubble,
   onLongPressBubble,
   onAction,
+  onReply,
   onDismiss,
   t,
 }: {
@@ -370,6 +498,7 @@ function InsightCard({
   onPressBubble: () => void
   onLongPressBubble: () => void
   onAction: () => void
+  onReply: (action: ControlAction) => void
   onDismiss: () => void
   t: AsistenteTokens
 }) {
@@ -379,11 +508,51 @@ function InsightCard({
   const icon = iconForSignal(task.id)
   const ctaLabel = resolveCtaLabel(task.cta, task.action)
   const isDismissAction = task.action?.kind === 'dismiss'
-  // Impact line picks the brand-aligned positive/warning color from
+  const eyebrow = bubbleHeadline(task)
+  const impactLabel = impactChipLabel(task)
+  // Impact value picks the brand-aligned positive/warning color from
   // the active theme. The deep variants pass AA on light cards; the
   // mint/peach pair passes AAA on dark cards.
   const impactColor =
     type === 'warning' ? t.impactWarning : t.impactPositive
+
+  const cardReduced = useReducedMotion()
+  // Press-scale + active-lift on the bubble. Combined in a single
+  // transform array so neither slot is ever `undefined` (that coerces
+  // to null on the bridge and crashes iOS). The scale multiplies the
+  // press value (1 → 0.97) by the active-lift factor (1 → 1.012).
+  const pressS = useSharedValue(1)
+  const lift = useSharedValue(isActive ? 1 : 0)
+  useEffect(() => {
+    lift.value = withTiming(isActive ? 1 : 0, {
+      duration: 200,
+      easing: motionEasings.standard,
+    })
+  }, [isActive, lift])
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressS.value * (1 + lift.value * 0.012) }],
+  }))
+
+  // Coreografía de respuesta de la escala (sub-usage): al elegir, el botón
+  // elegido se confirma (fill + check con pop) y los otros se atenúan; tras un
+  // beat disparamos onReply (que descarta la card → sale con el slide-out
+  // direccional). El haptic de 'success' lo dispara el dispatcher al commit.
+  const [pickedReply, setPickedReply] = useState<string | null>(null)
+  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (replyTimer.current) clearTimeout(replyTimer.current)
+    },
+    [],
+  )
+  const handlePickReply = useCallback(
+    (label: string, action: ControlAction) => {
+      if (pickedReply) return
+      setPickedReply(label)
+      replyTimer.current = setTimeout(() => onReply(action), 440)
+    },
+    [pickedReply, onReply],
+  )
 
   return (
     <View style={styles.message}>
@@ -392,10 +561,12 @@ function InsightCard({
         buttons. Buttons sit on the card surface so the theme-aware
         button colors render with the right contrast in both modes.
       */}
-      <View
+      <Animated.View
         style={[
           styles.bubble,
           {
+            borderWidth:
+              isActive || isCritical ? 1 : StyleSheet.hairlineWidth,
             borderColor: isActive
               ? t.cardBorderActive
               : isCritical
@@ -406,30 +577,53 @@ function InsightCard({
             shadowOpacity: isActive ? 0.28 : 0.12,
             shadowRadius: isActive ? 16 : 8,
           },
+          pressStyle,
         ]}
       >
         <Pressable
           onPress={onPressBubble}
+          onPressIn={() => {
+            if (!cardReduced) {
+              pressS.value = withTiming(0.97, {
+                duration: motionDurations.micro,
+                easing: motionEasings.standard,
+              })
+            }
+          }}
+          onPressOut={() => {
+            pressS.value = withSpring(1, motionSprings.press)
+          }}
           onLongPress={onLongPressBubble}
           delayLongPress={350}
           accessibilityRole="button"
           accessibilityLabel={`${task.title}. Mantené presionado para opciones.`}
         >
-          <View style={styles.bubbleHead}>
-            <View
-              style={[
-                styles.bubbleIconTile,
-                { backgroundColor: tone.bg },
-              ]}
+          <View style={styles.head}>
+            {/* Materialized icon tile — keeps the per-signal icon as
+                personality. Soft top-to-bottom gradient + hairline edge
+                + a faint accent-tinted shadow give it a tactile lift. */}
+            <LinearGradient
+              colors={[tone.soft, tone.bg]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[styles.tile, { borderColor: tone.edge, shadowColor: tone.accent }]}
             >
-              <MaterialIcons name={icon} size={18} color={tone.fg} />
+              <MaterialIcons name={icon} size={20} color={tone.fg} />
+            </LinearGradient>
+            <View style={styles.headtext}>
+              <Text
+                style={[styles.eyebrow, { color: t.cardMuted }]}
+                numberOfLines={1}
+              >
+                {eyebrow.toUpperCase()}
+              </Text>
+              <Text
+                style={[styles.bubbleTitle, { color: t.cardTitle }]}
+                numberOfLines={2}
+              >
+                {task.title}
+              </Text>
             </View>
-            <Text
-              style={[styles.bubbleTitle, { color: t.cardTitle }]}
-              numberOfLines={2}
-            >
-              {task.title}
-            </Text>
           </View>
 
           <Text
@@ -439,58 +633,120 @@ function InsightCard({
             {task.body}
           </Text>
 
-          <Text
-            style={[styles.impactLine, { color: impactColor }]}
-            numberOfLines={1}
-          >
-            {task.impact}
-          </Text>
-        </Pressable>
-
-        <View style={styles.replies}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${ctaLabel} para ${task.title}`}
-            onPress={onAction}
-            style={({ pressed }) => [
-              styles.replyCta,
-              {
-                backgroundColor: t.ctaBg,
-                shadowColor: t.ctaShadow,
-                opacity: pressed ? 0.92 : 1,
-              },
-            ]}
-          >
+          {/* Impact "jewel" — uppercase label + tabular value. The
+              value is a pre-formatted string (no Intl in a worklet). */}
+          <View style={styles.impactRow}>
             <Text
-              style={[styles.replyCtaText, { color: t.ctaText }]}
+              style={[styles.impactRowLabel, { color: t.cardMuted }]}
               numberOfLines={1}
             >
-              {ctaLabel}
+              {impactLabel}
             </Text>
-            <MaterialIcons name="arrow-forward" size={14} color={t.ctaText} />
-          </Pressable>
-          {!isDismissAction ? (
-            <Pressable
+            <Text
+              style={[styles.impactRowValue, { color: impactColor }]}
+              numberOfLines={1}
+            >
+              {task.impact}
+            </Text>
+          </View>
+        </Pressable>
+
+        {task.replies && task.replies.length > 0 ? (
+          // Fila de escala (Mucho / A veces / Casi nunca, o Cancelar / La sigo
+          // usando) — reemplaza el CTA único para las cards de uso de sub.
+          <View style={styles.scaleRow}>
+            {task.replies.map((r) => {
+              const isPicked = pickedReply === r.label
+              const isFaded = pickedReply != null && !isPicked
+              return (
+                <PressScale
+                  key={r.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${r.label} para ${task.title}`}
+                  onPress={() => handlePickReply(r.label, r.action)}
+                  style={[
+                    styles.scaleBtn,
+                    isPicked
+                      ? {
+                          backgroundColor: tone.soft,
+                          borderColor: tone.accent,
+                          borderWidth: 1.5,
+                        }
+                      : { backgroundColor: t.vistoBg, borderColor: t.vistoBorder },
+                    isFaded ? styles.scaleBtnFaded : null,
+                  ]}
+                >
+                  {isPicked ? (
+                    <Animated.View
+                      entering={
+                        cardReduced
+                          ? FadeIn.duration(120)
+                          : ZoomIn.springify()
+                              .damping(motionSprings.celebrate.damping)
+                              .stiffness(motionSprings.celebrate.stiffness)
+                              .mass(motionSprings.celebrate.mass)
+                      }
+                    >
+                      <MaterialIcons name="check" size={15} color={tone.fg} />
+                    </Animated.View>
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.scaleBtnText,
+                      { color: isPicked ? tone.fg : t.vistoText },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {r.label}
+                  </Text>
+                </PressScale>
+              )
+            })}
+          </View>
+        ) : (
+          <View style={styles.replies}>
+            <PressScale
               accessibilityRole="button"
-              accessibilityLabel="Marcar como visto"
-              onPress={onDismiss}
-              hitSlop={4}
-              style={({ pressed }) => [
-                styles.replySeen,
+              accessibilityLabel={`${ctaLabel} para ${task.title}`}
+              onPress={onAction}
+              style={[
+                styles.replyCta,
                 {
-                  backgroundColor: t.vistoBg,
-                  borderColor: t.vistoBorder,
-                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: t.ctaBg,
+                  shadowColor: t.ctaShadow,
                 },
               ]}
             >
-              <Text style={[styles.replySeenText, { color: t.vistoText }]}>
-                Visto
+              <Text
+                style={[styles.replyCtaText, { color: t.ctaText }]}
+                numberOfLines={1}
+              >
+                {ctaLabel}
               </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+              <MaterialIcons name="arrow-forward" size={14} color={t.ctaText} />
+            </PressScale>
+            {!isDismissAction ? (
+              <PressScale
+                accessibilityRole="button"
+                accessibilityLabel="Marcar como visto"
+                onPress={onDismiss}
+                hitSlop={4}
+                style={[
+                  styles.replySeen,
+                  {
+                    backgroundColor: t.vistoBg,
+                    borderColor: t.vistoBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.replySeenText, { color: t.vistoText }]}>
+                  Visto
+                </Text>
+              </PressScale>
+            ) : null}
+          </View>
+        )}
+      </Animated.View>
     </View>
   )
 }
@@ -752,46 +1008,69 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   bubble: {
-    borderWidth: 1,
     borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     gap: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
     elevation: 2,
   },
-  bubbleHead: {
+  head: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  bubbleIconTile: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
+  headtext: {
+    flex: 1,
+  },
+  tile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.9,
+    marginBottom: 5,
   },
   bubbleTitle: {
-    flex: 1,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.4,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   bubbleBody: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '500',
   },
-  impactLine: {
-    fontSize: 14,
+  impactRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 7,
+    marginTop: 14,
+  },
+  impactRowLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  impactRowValue: {
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
-    paddingTop: 2,
   },
   // Action row sits inside the card so the theme-aware button colors
   // render on the card surface (instead of on the shell, where the
@@ -801,7 +1080,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
   },
   replyCta: {
     flexDirection: 'row',
@@ -833,6 +1112,32 @@ const styles = StyleSheet.create({
   },
   replySeenText: {
     fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  // Sub-usage scale row (Mucho / A veces / Casi nunca)
+  scaleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  scaleBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  scaleBtnFaded: {
+    opacity: 0.32,
+  },
+  scaleBtnText: {
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.1,
   },

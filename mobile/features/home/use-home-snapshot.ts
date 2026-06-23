@@ -134,6 +134,18 @@ interface HomeSnapshotPayload {
    *  current cycle, ordered by date desc. Optional for backwards-
    *  compat (see above). Added by migración 20260601007000. */
   no_spend_days_this_cycle?: string[]
+  /** Subs (categoría 'Suscripciones', status active) para el check-in de
+   *  uso del asistente — derivado server-side SIN ventana de ciclo (ledger
+   *  durable). Optional para backwards-compat. Migración 20260623000000. */
+  subscription_checkins?: Array<{
+    fixed_expense_id: string
+    name: string
+    amount: number
+    last_payment_at: string | null
+    last_audit_at: string | null
+    recent_levels: Array<'mucho' | 'a_veces' | 'casi_nunca'>
+    open_intent: boolean
+  }>
 }
 
 function toFixedExpenses(

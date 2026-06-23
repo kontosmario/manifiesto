@@ -45,6 +45,10 @@ import type { UserPersona } from '@/features/insights/persona'
 import { framingFor } from '@/features/insights/persona'
 import { signalFamilyOf } from '@/features/insights/signal-family'
 import {
+  scoreSubscriptionUsage,
+  type SubscriptionCheckin,
+} from '@/features/subscriptions-zombie/usage-checkin'
+import {
   recoveryHardBody,
   velocityBody,
   fijosRatioBody,
@@ -119,6 +123,10 @@ interface BuildSignalsArgs {
    *  replaces hardcoded thresholds (e.g. cat-dominance 40%) with
    *  the user's own P75 — what's "normal" for them. */
   baselines?: UserBaselines
+  /** Subs (categoría 'Suscripciones', status active) derivadas server-side
+   *  SIN ventana de ciclo, inyectadas por useControlV2Data desde home_snapshot.
+   *  El builder `buildSubUsageCheckin` decide qué preguntar. */
+  subscriptionCheckins?: SubscriptionCheckin[]
   now?: Date
 }
 
@@ -190,7 +198,7 @@ export function buildControlSignals(
   // Group 5 — Commitments & income health
   pushIfDefined(signals, buildFijosRatioHealth(args))
   pushIfDefined(signals, buildIncomeVolatility(args))
-  signals.push(...buildFromZombieNotifications(args, now))
+  signals.push(...buildSubUsageCheckin(args, now))
   signals.push(...buildFromPriceHikeNotifications(args, now))
 
   // Group 6 — Savings & goals
@@ -1203,43 +1211,74 @@ function buildIncomeVolatility(
   }
 }
 
-/** Translate zombie_alert notifications (last 14d) into tasks. */
-function buildFromZombieNotifications(
+/**
+ * Subscription usage check-in — pregunta por el uso REAL de una sub al pagar
+ * y re-pregunta a ~15 días; escala a flag de cancelar si el uso es bajo.
+ * Reemplaza el zombi por ausencia-de-pago (retirado 2026-06-23). Deriva todo
+ * de `args.subscriptionCheckins` (server-side, ledger durable, sin ventana de
+ * ciclo) vía `scoreSubscriptionUsage` (gate de cadencia, invariante 5).
+ */
+function buildSubUsageCheckin(
   args: BuildSignalsArgs,
   now: Date,
 ): ControlAdvisorTask[] {
-  const cutoff = now.getTime() - 14 * DAY_MS
-  const zombies = args.notifications.filter(
-    (n) =>
-      n.kind === 'zombie_alert' &&
-      new Date(n.created_at).getTime() >= cutoff,
-  )
-  return zombies.slice(0, 2).map((n) => {
-    const name = (n.metadata.name as string) ?? 'Una suscripción'
-    const amount = Number(n.metadata.amount ?? 0)
-    return {
-      id: `zombie-${n.id}`,
-      emoji: '🧟',
+  const checkins = args.subscriptionCheckins ?? []
+  if (checkins.length === 0) return []
+  const out: ControlAdvisorTask[] = []
+  for (const c of checkins) {
+    if (c.hasOpenCancelIntent) continue // ya en flujo de cancelación
+    const score = scoreSubscriptionUsage(c, now)
+    if (!score.shouldAsk) continue
+    const id = `sub-usage-${c.fixedExpenseId}`
+    let title: string
+    let body: string
+    let urgency: ControlAdvisorTask['urgency']
+    let replies: ControlAdvisorTask['replies'] = [
+      { label: 'Mucho', action: { kind: 'sub-usage-answer', fixedExpenseId: c.fixedExpenseId, level: 'mucho', dismissId: id } },
+      { label: 'A veces', action: { kind: 'sub-usage-answer', fixedExpenseId: c.fixedExpenseId, level: 'a_veces', dismissId: id } },
+      { label: 'Casi nunca', action: { kind: 'sub-usage-answer', fixedExpenseId: c.fixedExpenseId, level: 'casi_nunca', dismissId: id } },
+    ]
+    if (score.flag === 'hard') {
+      title = `Venís sin usar ${c.name} hace ~2 meses`
+      body = `Respondiste que casi no usás ${c.name} y cuesta ${fmt(c.amount)}/mes. ¿Realmente necesitás pagarla? Cancelarla te ahorra ${fmt(c.amount * 12)} al año.`
+      urgency = 'alta'
+      replies = [
+        { label: 'Cancelar', action: { kind: 'sub-usage-cancel', fixedExpenseId: c.fixedExpenseId, dismissId: id } },
+        { label: 'La sigo usando', action: { kind: 'sub-usage-answer', fixedExpenseId: c.fixedExpenseId, level: 'mucho', dismissId: id } },
+      ]
+    } else if (score.flag === 'soft') {
+      title = `${c.name}: ¿la estás aprovechando?`
+      body = `Las últimas veces dijiste que la usás poco. Cuesta ${fmt(c.amount)}/mes — si no le sacás provecho, conviene revisarla.`
+      urgency = 'media'
+    } else if (score.prompt === 'pay') {
+      title = `Pagaste ${c.name} · ¿cuánto la usaste?`
+      body = `Registramos el pago de ${c.name} (${fmt(c.amount)}/mes). ¿Cuánto la usaste el último mes?`
+      urgency = 'baja'
+    } else {
+      title = `¿Seguís usando ${c.name}?`
+      body = `Hace un tiempo no nos contás cómo va ${c.name} (${fmt(c.amount)}/mes). ¿La seguís usando?`
+      urgency = 'baja'
+    }
+    out.push({
+      id,
+      emoji: score.flag === 'hard' ? '🧟' : '📺',
       cat: 'Suscripciones',
-      // Auditoría 2026-06-11: la heurística server pasó a payment-aware
-      // (un fijo PAGADO hace <60 días no es zombie) — el copy ahora dice
-      // exactamente lo que detectamos: sin pagos NI uso registrado.
-      title: `${name}: sin movimiento hace 2+ meses`,
-      body: `No registrás pagos de ${name} hace 60+ días. Cuesta ${fmt(amount)}/mes en tu presupuesto: si ya no lo usás, cancelalo y recuperás ${fmt(amount * 12)} al año.`,
-      impact: `+${fmt(amount)}/mes`,
-      impactRaw: Math.round(amount),
-      cta: 'Revisar',
-      urgency: 'alta',
+      title,
+      body,
+      impact: `${fmt(c.amount)}/mes`,
+      impactRaw: Math.round(c.amount),
+      impactScope: 'monthly',
+      cta: 'Responder',
+      urgency,
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Un servicio "zombi" es un gasto fijo que sigue en tu presupuesto pero no muestra movimiento: hace más de 2 meses que no registrás un pago. Puede que lo hayas cancelado (sacalo de tus fijos) o que lo hayas olvidado (decidí si lo querés mantener).',
-      action: {
-        kind: 'open-fixed-expense',
-        fixedExpenseId: String(n.metadata.fixed_expense_id ?? ''),
-      },
-    }
-  })
+        'Te preguntamos por las suscripciones que pagás para ver si realmente las usás. Si venís diciendo que no, te avisamos para que decidas si vale la pena seguir pagándolas.',
+      replies,
+    })
+    if (out.length >= 2) break // cap 1-2, como el zombi
+  }
+  return out
 }
 
 /** Translate price_hike notifications (last 7d) into tasks. */

@@ -32,6 +32,13 @@ import {
 } from '@/features/insights/log-advisor-interaction'
 import { logAdvisorValue } from '@/features/insights/log-advisor-value'
 import type { ControlAction } from '@/features/insights/control-action'
+import { useQueryClient } from '@tanstack/react-query'
+import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import {
+  recordSubscriptionUsage,
+  declareSubscriptionCancelIntent,
+  todayCheckinPeriod,
+} from '@/features/subscriptions-zombie/record-subscription-usage'
 
 interface DispatcherContext {
   familyId: string
@@ -104,6 +111,7 @@ function actionKey(action: ControlAction): string {
 export function useControlActionDispatcher(ctx: DispatcherContext) {
   const router = useRouter()
   const anchors = useControlAnchors()
+  const queryClient = useQueryClient()
   const lastFireRef = useRef<Map<string, number>>(new Map())
 
   return useCallback(
@@ -355,8 +363,61 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           openSettingsModal(action.modal)
           return
         }
+        case 'sub-usage-answer': {
+          // Optimista: descartar ya (supresión intra-sesión) + registrar la
+          // respuesta en background. El gate del builder gobierna la cadencia
+          // real (>= REASK_DAYS); el dismiss + TTL backstop evita reaparición.
+          void triggerHaptic('success')
+          dismissCard(action.dismissId)
+          void recordSubscriptionUsage({
+            fixedExpenseId: action.fixedExpenseId,
+            level: action.level,
+            period: todayCheckinPeriod(),
+          })
+            .then(() =>
+              syncAllAfterMutation(queryClient, {
+                familyId: ctx.familyId,
+                userId: ctx.userId,
+                scopes: ['fixed', 'fixedPayment'],
+              }),
+            )
+            .catch(() => {
+              Alert.alert(
+                'No pudimos guardar tu respuesta',
+                'Probá de nuevo en unos segundos.',
+              )
+            })
+          return
+        }
+        case 'sub-usage-cancel': {
+          void triggerHaptic('warning')
+          dismissCard(action.dismissId)
+          // Abre el editor del fijo para que el usuario finalice (pausar/
+          // archivar la sub) Y registra la intención de cancelar (tracking).
+          requestFixedExpenseEdit(
+            action.fixedExpenseId,
+            meta
+              ? { taskId: meta.taskId, surface: meta.surface, context: meta.taskContext, timeToActionMs: meta.timeToActionMs }
+              : null,
+          )
+          void declareSubscriptionCancelIntent(action.fixedExpenseId)
+            .then(() =>
+              syncAllAfterMutation(queryClient, {
+                familyId: ctx.familyId,
+                userId: ctx.userId,
+                scopes: ['fixed', 'fixedPayment'],
+              }),
+            )
+            .catch(() => {
+              Alert.alert(
+                'No pudimos registrar la cancelación',
+                'Probá de nuevo en unos segundos.',
+              )
+            })
+          return
+        }
       }
     },
-    [router, anchors, ctx],
+    [router, anchors, ctx, queryClient],
   )
 }
