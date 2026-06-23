@@ -114,6 +114,26 @@ export type ControlAction =
         | 'display-name'
         | 'avatar'
     }
+  /**
+   * Registra la respuesta de uso de una suscripción (escala
+   * mucho/a_veces/casi_nunca) del check-in post-pago. El dispatcher llama
+   * `record_subscription_usage(feid, level, today)` y descarta la card.
+   */
+  | {
+      kind: 'sub-usage-answer'
+      fixedExpenseId: string
+      level: 'mucho' | 'a_veces' | 'casi_nunca'
+      dismissId: string
+    }
+  /**
+   * Declara intención de cancelar una suscripción (flag fuerte). El
+   * dispatcher llama `declare_subscription_intent(feid,'cancel')`.
+   */
+  | {
+      kind: 'sub-usage-cancel'
+      fixedExpenseId: string
+      dismissId: string
+    }
 
 /** Helper to keep the action field compact at the rule definition. */
 export function a(action: ControlAction): ControlAction {

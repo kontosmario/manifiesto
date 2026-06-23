@@ -13,6 +13,7 @@ const PREFIXES = [
   'member-imbalance-',
   'duplicate-',
   'causal-',
+  'sub-usage-',
   'zombie-',
   'hike-',
   'cap-',

@@ -142,6 +142,12 @@ export interface ControlAdvisorTask {
    */
   action?: ControlAction
   /**
+   * Fila de respuestas rápidas en línea (botones múltiples), p.ej. la
+   * escala de uso de suscripción (Mucho / A veces / Casi nunca). Cuando
+   * está presente, la card renderiza esta fila EN VEZ del CTA único.
+   */
+  replies?: { label: string; action: ControlAction }[]
+  /**
    * 0–1 score of how reliable this signal is given the data we have.
    * Used to rerank (`score = urgencyWeight × impactRaw × confidence`)
    * and to show "según N días" disclaimers on data-light tasks.

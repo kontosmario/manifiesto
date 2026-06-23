@@ -102,6 +102,16 @@ const META_BY_KIND: Record<ControlAction['kind'], AsesorActionMeta> = {
     haptic: 'selection',
     fallbackLabel: 'Configurar',
   },
+  'sub-usage-answer': {
+    icon: 'check',
+    haptic: 'success',
+    fallbackLabel: 'Responder',
+  },
+  'sub-usage-cancel': {
+    icon: 'cancel',
+    haptic: 'warning',
+    fallbackLabel: 'Cancelar',
+  },
 }
 
 /**
