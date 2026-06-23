@@ -15,8 +15,9 @@ interface StreakWeekWidgetProps {
 
 /**
  * Widget compacto de Home: tira semanal (L-M-M-J-V-S-D, un punto por día según
- * estado) + el número de racha. Refleja el jardín de forma glanceable; tocarlo
- * abre "Mi jardín". El brote se planta solo al registrar — el widget solo lee.
+ * estado) + el número de racha inline. Refleja el jardín de forma glanceable;
+ * tocarlo abre "Mi jardín". El brote se planta solo al registrar — el widget lee.
+ * Diseñado para baja altura (se ve muchas veces al día → calmo y compacto).
  */
 function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
   const { theme } = useAppTheme()
@@ -118,11 +119,11 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    borderRadius: 22,
+    gap: 12,
+    borderRadius: 18,
     borderWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
   },
   strip: {
     flex: 1,
@@ -131,34 +132,33 @@ const styles = StyleSheet.create({
   },
   dayCol: {
     alignItems: 'center',
-    gap: 9,
+    gap: 5,
   },
   letter: {
-    fontSize: 12,
+    fontSize: 10.5,
   },
   dot: {
-    width: 11,
-    height: 11,
+    width: 9,
+    height: 9,
     borderRadius: 999,
   },
   divider: {
     width: 1,
     alignSelf: 'stretch',
-    marginVertical: 2,
   },
   count: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
   },
   countNumber: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '900',
-    letterSpacing: -0.6,
-    lineHeight: 24,
+    letterSpacing: -0.5,
   },
   countLabel: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 2,
   },
 })
 
