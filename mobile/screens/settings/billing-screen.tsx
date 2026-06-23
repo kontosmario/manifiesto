@@ -75,13 +75,31 @@ function presentAfterNativeUI(show: () => void) {
   const timer = setTimeout(fire, 1500)
 }
 
-export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {}) {
+export function BillingScreen({
+  lockMode = false,
+  welcomeMode = false,
+  onContinue,
+}: {
+  lockMode?: boolean
+  /** Modo bienvenida post-onboarding: oculta el back-button y, en período
+   *  libre, agrega el CTA "Empezar con N días de acceso completo" → Home
+   *  (`onContinue`). El resto (planes + disclosure 3.1.2 + footer) intacto. */
+  welcomeMode?: boolean
+  onContinue?: () => void
+} = {}) {
   const { theme } = useAppTheme()
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
   const { familyId } = useImportWizardContext()
   const entQuery = useEntitlement(userId)
   const snap = entQuery.data ?? BLOCKED_ENTITLEMENT
+
+  // Copy del CTA de bienvenida (welcomeMode), con los días reales del período
+  // libre. Compliance: "acceso completo", nunca "prueba/gratis".
+  const welcomeContinueLabel =
+    snap.daysLeft != null
+      ? `Empezar con ${snap.daysLeft} ${snap.daysLeft === 1 ? 'día' : 'días'} de acceso completo`
+      : 'Empezar con acceso completo'
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
   // Guardamos el `kind` junto al plan: el retry desde el sheet de error debe
@@ -280,7 +298,7 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
       // Mismo fondo que Ajustes: canvas casi-negro DARK_TAB_CANVAS + halos
       // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      canGoBack={!lockMode}
+      canGoBack={!lockMode && !welcomeMode}
       title="Plan del hogar"
       scrollable
       refreshControl={
@@ -314,6 +332,8 @@ export function BillingScreen({ lockMode = false }: { lockMode?: boolean } = {})
             onDeleteAccount={
               userId && familyId ? () => setShowDelete(true) : undefined
             }
+            onContinueFree={welcomeMode ? onContinue : undefined}
+            continueLabel={welcomeMode ? welcomeContinueLabel : undefined}
           />
         )}
       </View>

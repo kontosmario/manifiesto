@@ -36,6 +36,12 @@ export interface PaywallViewProps {
   onLogout?: () => void
   onDeleteAccount?: () => void
   productPrices?: Record<string, string>
+  /** Modo bienvenida post-onboarding (solo en período libre): agrega un CTA
+   *  primario "Empezar con N días de acceso completo" que continúa a Home sin
+   *  comprar, y baja "Suscribirme" a secundario. El disclosure 3.1.2 sigue
+   *  visible (aplica al botón de suscripción, que sigue presente). */
+  onContinueFree?: () => void
+  continueLabel?: string
 }
 
 export const PaywallView = memo(function PaywallView({
@@ -47,6 +53,8 @@ export const PaywallView = memo(function PaywallView({
   onLogout,
   onDeleteAccount,
   productPrices,
+  onContinueFree,
+  continueLabel,
 }: PaywallViewProps) {
   const { theme } = useAppTheme()
   const [selected, setSelected] = useState<BillingPlanId>('hogar-anual')
@@ -116,13 +124,31 @@ export const PaywallView = memo(function PaywallView({
       </RiseView>
 
       <RiseView delay={140}>
-        <AppButton
-          label={`Suscribirme por ${priceText}`}
-          variant="primary"
-          fullWidth
-          loading={isPurchasing}
-          onPress={() => onPurchase(plan)}
-        />
+        {onContinueFree && inFreePeriod ? (
+          <View style={styles.ctaStack}>
+            <AppButton
+              label={continueLabel ?? 'Empezar'}
+              variant="primary"
+              fullWidth
+              onPress={onContinueFree}
+            />
+            <AppButton
+              label={`Suscribirme por ${priceText}`}
+              variant="secondary"
+              fullWidth
+              loading={isPurchasing}
+              onPress={() => onPurchase(plan)}
+            />
+          </View>
+        ) : (
+          <AppButton
+            label={`Suscribirme por ${priceText}`}
+            variant="primary"
+            fullWidth
+            loading={isPurchasing}
+            onPress={() => onPurchase(plan)}
+          />
+        )}
         {/* Disclosure de auto-renovación EXIGIDO por Apple (Guideline 3.1.2):
             cargo a Apple ID al confirmar · renovación salvo cancelación 24hs
             antes · gestión/cancelación desde Ajustes de la cuenta. Visible
@@ -240,6 +266,7 @@ export const PaywallView = memo(function PaywallView({
 
 const styles = StyleSheet.create({
   root: { gap: 14 },
+  ctaStack: { gap: 10 },
   lockChip: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
