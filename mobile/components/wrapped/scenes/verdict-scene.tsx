@@ -149,7 +149,8 @@ export function buildVerdictScene(
               <Text
                 style={[verdictStyles.deltaText, { color: tone.foreground }]}
               >
-                {Math.abs(deltaRounded)}% vs el ciclo anterior
+                Gastaste {Math.abs(deltaRounded)}%{' '}
+                {deltaRounded < 0 ? 'menos' : 'más'} que el mes pasado
               </Text>
             </View>
           ) : null}

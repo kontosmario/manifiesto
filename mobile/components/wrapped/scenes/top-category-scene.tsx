@@ -35,7 +35,7 @@ export function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
               {formatMoney(Math.round(top.amount))}
             </Text>
             <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.72)' }]}>
-              {Math.round(top.share * 100)}% del mes
+              el {Math.round(top.share * 100)}% de tus gastos
             </Text>
           </View>
 
