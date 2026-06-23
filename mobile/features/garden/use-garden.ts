@@ -5,6 +5,7 @@ import {
   deriveGardenCells,
   deriveWeekClose,
   deriveWeekStrip,
+  weeksToShow,
   type GardenCell,
   type WeekClose,
   type WeekStripDay,
@@ -17,6 +18,7 @@ export interface GardenData {
   freezeTokens: number
   hasLoggedToday: boolean
   cells: GardenCell[]
+  weeksShown: number
   weekClose: WeekClose
   weekStrip: WeekStripDay[]
   firstActivityIso: string | null
@@ -67,9 +69,6 @@ export function useGarden(
       activity.add(isoDay(new Date(e.created_at), tz))
     }
 
-    const dayIsoAtOffset = (offset: number) =>
-      isoDay(new Date(today.getTime() - offset * 86_400_000), tz)
-
     // Lunes de la semana actual (getDay: 0=Dom..6=Sáb → Monday0).
     const dow = (today.getDay() + 6) % 7
     const weekDayIso = (i: number) =>
@@ -84,7 +83,8 @@ export function useGarden(
       totalDaysLogged: streak.data.totalDaysLogged,
       freezeTokens: streak.data.freezeTokens,
       hasLoggedToday: streak.data.hasLoggedToday,
-      cells: deriveGardenCells(activity, todayIso, dayIsoAtOffset, firstActivityIso),
+      cells: deriveGardenCells(activity, todayIso, firstActivityIso),
+      weeksShown: weeksToShow(firstActivityIso, todayIso),
       weekClose: deriveWeekClose(activity, weekDayIso),
       weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso),
       firstActivityIso,

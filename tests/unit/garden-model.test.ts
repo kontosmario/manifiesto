@@ -1,29 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
-  broteStageForDay,
   fernSizeForAge,
   deriveGardenCells,
   deriveWeekClose,
   deriveWeekStrip,
+  weeksToShow,
 } from '@/features/garden/garden-model'
 
-describe('broteStageForDay', () => {
-  it('pre-tracking days are "pre" regardless of logged', () => {
-    expect(broteStageForDay(40, false, true)).toBe('pre')
-    expect(broteStageForDay(40, true, true)).toBe('pre')
+describe('weeksToShow', () => {
+  const today = '2026-06-24' // miércoles
+  it('sin actividad → 1', () => {
+    expect(weeksToShow(null, today)).toBe(1)
   })
-  it('today not logged is "pending"', () => {
-    expect(broteStageForDay(0, false, false)).toBe('pending')
+  it('primer registro en la semana actual → 1', () => {
+    expect(weeksToShow('2026-06-23', today)).toBe(1)
   })
-  it('unlogged in-window day is "missed" (no marchita)', () => {
-    expect(broteStageForDay(5, false, false)).toBe('missed')
+  it('primer registro 2 semanas atrás → 3 (incluye la actual)', () => {
+    expect(weeksToShow('2026-06-10', today)).toBe(3)
   })
-  it('logged day matures with age: seed <=6, germ 7..13, fern >=14', () => {
-    expect(broteStageForDay(0, true, false)).toBe('seed')
-    expect(broteStageForDay(6, true, false)).toBe('seed')
-    expect(broteStageForDay(7, true, false)).toBe('germ')
-    expect(broteStageForDay(13, true, false)).toBe('germ')
-    expect(broteStageForDay(14, true, false)).toBe('fern')
+  it('tope de 5', () => {
+    expect(weeksToShow('2026-01-01', today)).toBe(5)
   })
 })
 
@@ -35,38 +31,31 @@ describe('fernSizeForAge', () => {
   })
 })
 
-describe('deriveGardenCells', () => {
-  const todayIso = '2026-06-22'
-  // offset 0 = today, offset 34 = oldest
-  const dayIsoAtOffset = (offset: number) => {
-    const d = new Date(Date.UTC(2026, 5, 22) - offset * 86_400_000)
-    return d.toISOString().slice(0, 10)
-  }
-  it('returns 35 cells, index34 = today', () => {
-    const cells = deriveGardenCells(new Set(['2026-06-22']), todayIso, dayIsoAtOffset, '2026-06-01')
-    expect(cells).toHaveLength(35)
-    expect(cells[34].isToday).toBe(true)
-    expect(cells[34].iso).toBe('2026-06-22')
+describe('deriveGardenCells (semanas calendario dinámicas)', () => {
+  const today = '2026-06-24' // miércoles; lunes de la semana = 2026-06-22
+
+  it('cuenta nueva (sin actividad) → 7 celdas (semana actual), hoy pending', () => {
+    const cells = deriveGardenCells(new Set(), today, null)
+    expect(cells).toHaveLength(7)
+    expect(cells[0].iso).toBe('2026-06-22') // lunes
+    const hoy = cells.find((c) => c.iso === today)!
+    expect(hoy.stage).toBe('pending')
+    expect(hoy.isToday).toBe(true)
+    // días futuros de la semana en curso = 'pre' (tile tenue)
+    expect(cells[6].iso).toBe('2026-06-28') // domingo
+    expect(cells[6].stage).toBe('pre')
   })
-  it('today logged = seed, today unlogged = pending', () => {
-    const logged = deriveGardenCells(new Set(['2026-06-22']), todayIso, dayIsoAtOffset, '2026-06-22')
-    expect(logged[34].stage).toBe('seed')
-    const empty = deriveGardenCells(new Set(), todayIso, dayIsoAtOffset, null)
-    expect(empty[34].stage).toBe('pending')
-  })
-  it('days before firstActivity are pre-tracking, gaps inside are missed', () => {
-    const cells = deriveGardenCells(
-      new Set(['2026-06-20', '2026-06-22']),
-      todayIso,
-      dayIsoAtOffset,
-      '2026-06-20',
-    )
-    // 2026-06-21 (age1) is inside tracking, unlogged → missed
-    const d21 = cells.find((c) => c.iso === '2026-06-21')!
-    expect(d21.stage).toBe('missed')
-    // 2026-06-19 is before first activity → pre
-    const d19 = cells.find((c) => c.iso === '2026-06-19')!
-    expect(d19.stage).toBe('pre')
+
+  it('crece a N semanas; hoy=seed, hueco=missed, pre-inicio=pre', () => {
+    const cells = deriveGardenCells(new Set(['2026-06-24']), today, '2026-06-10')
+    expect(cells).toHaveLength(21) // 3 semanas (06-08, 06-15, 06-22)
+    expect(cells[0].iso).toBe('2026-06-08')
+    const hoy = cells.find((c) => c.iso === today)!
+    expect(hoy.stage).toBe('seed')
+    const hueco = cells.find((c) => c.iso === '2026-06-23')! // ayer, sin registrar
+    expect(hueco.stage).toBe('missed')
+    const preInicio = cells.find((c) => c.iso === '2026-06-09')! // antes del primer registro
+    expect(preInicio.stage).toBe('pre')
   })
 })
 

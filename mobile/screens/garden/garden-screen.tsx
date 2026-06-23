@@ -86,7 +86,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
               <View style={styles.gardenHeader}>
                 <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>Tu jardín</Text>
                 <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
-                  últimas 5 semanas
+                  {data.weeksShown <= 1 ? 'tu primera semana' : `últimas ${data.weeksShown} semanas`}
                 </Text>
               </View>
               <View style={styles.gridWrap}>

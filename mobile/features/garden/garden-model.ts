@@ -31,43 +31,70 @@ export function fernSizeForAge(ageDays: number): number {
   return Math.round(24 + Math.min((ageDays - 14) * 0.5, 8))
 }
 
-export function broteStageForDay(
-  ageDays: number,
-  logged: boolean,
-  isPreTracking: boolean,
-): BroteStage {
-  if (isPreTracking) return 'pre'
-  if (ageDays === 0 && !logged) return 'pending'
-  if (!logged) return 'missed'
-  if (ageDays <= 6) return 'seed'
-  if (ageDays <= 13) return 'germ'
-  return 'fern'
+// ── Helpers de fecha sobre ISO 'YYYY-MM-DD' (UTC, deterministas) ────────────
+// La grilla es una secuencia de días calendario; sólo necesitamos sus strings
+// de fecha, así que UTC-day arithmetic alcanza (el timezone ya se aplicó al
+// armar el set de actividad con isoDay). Lunes = 0.
+function utcDays(iso: string): number {
+  return Math.round(Date.parse(iso + 'T00:00:00Z') / 86_400_000)
+}
+function isoFromUtcDays(n: number): string {
+  return new Date(n * 86_400_000).toISOString().slice(0, 10)
+}
+function dowMonday0(iso: string): number {
+  return (new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7
 }
 
 /**
- * 35 celdas, índice 0 = 34 días atrás (más viejo), índice 34 = hoy.
- * `dayIsoAtOffset(offset)` devuelve el ISO del día `offset` días atrás
- * (offset 0 = hoy) en el timezone local del usuario.
+ * Semanas a mostrar en la grilla: crece desde la semana del PRIMER registro
+ * hasta la semana actual, con tope de 5 (después corre como ventana de 5). Sin
+ * actividad → 1 (sólo la semana actual). Así una cuenta nueva ve un jardín
+ * chiquito que crece, en vez de 5 semanas casi vacías.
+ */
+export function weeksToShow(firstActivityIso: string | null, todayIso: string): number {
+  if (!firstActivityIso) return 1
+  const currentMonday = utcDays(todayIso) - dowMonday0(todayIso)
+  const firstMonday = utcDays(firstActivityIso) - dowMonday0(firstActivityIso)
+  const weeks = Math.floor((currentMonday - firstMonday) / 7) + 1
+  return Math.min(GARDEN_ROWS, Math.max(1, weeks))
+}
+
+/**
+ * Grilla DINÁMICA por semanas calendario (L→D). Muestra las últimas
+ * `weeksToShow` semanas terminando en la semana actual; cada celda es un día.
+ * Estado del brote por antigüedad (días salteados no rompen). Días futuros de
+ * la semana en curso y previos al primer registro = 'pre' (tile tenue).
  */
 export function deriveGardenCells(
   activityIso: ReadonlySet<string>,
   todayIso: string,
-  dayIsoAtOffset: (offset: number) => string,
   firstActivityIso: string | null,
 ): GardenCell[] {
+  const weeks = weeksToShow(firstActivityIso, todayIso)
+  const todayN = utcDays(todayIso)
+  const startMonday = todayN - dowMonday0(todayIso) - (weeks - 1) * 7
   const cells: GardenCell[] = []
-  for (let i = 0; i < GARDEN_CELLS; i++) {
-    const ageDays = GARDEN_CELLS - 1 - i // i=34 → age 0 (hoy)
-    const iso = dayIsoAtOffset(ageDays)
+  for (let i = 0; i < weeks * GARDEN_COLS; i++) {
+    const n = startMonday + i
+    const iso = isoFromUtcDays(n)
+    const ageDays = todayN - n
     const logged = activityIso.has(iso)
-    const isPreTracking = firstActivityIso !== null && iso < firstActivityIso
-    const stage = broteStageForDay(ageDays, logged, isPreTracking)
+    const isToday = n === todayN
+    const isFuture = ageDays < 0
+    const isPre = firstActivityIso !== null && iso < firstActivityIso
+    let stage: BroteStage
+    if (isFuture || isPre) stage = 'pre'
+    else if (isToday && !logged) stage = 'pending'
+    else if (!logged) stage = 'missed'
+    else if (ageDays <= 6) stage = 'seed'
+    else if (ageDays <= 13) stage = 'germ'
+    else stage = 'fern'
     cells.push({
       iso,
       ageDays,
       stage,
       fernSize: stage === 'fern' ? fernSizeForAge(ageDays) : 26,
-      isToday: iso === todayIso,
+      isToday,
     })
   }
   return cells
