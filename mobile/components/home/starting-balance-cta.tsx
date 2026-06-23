@@ -31,6 +31,7 @@ interface StartingBalanceCtaProps {
  */
 function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps) {
   const { theme } = useAppTheme()
+  const isDark = theme.isDark
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
 
@@ -73,8 +74,12 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
           style={({ pressed }) => [
             styles.card,
             {
-              backgroundColor: theme.colors.creamSoft,
-              borderColor: theme.colors.peach,
+              // Identidad de "ahorro" (la alcancía) → verde de marca (success),
+              // mismo patrón AA que MetaCard. Antes: ícono theme.colors.text
+              // sobre tile peach → ambos invertían en paralelo y el contraste
+              // colapsaba (dark-on-dark en light, light-on-light en dark).
+              backgroundColor: theme.colors.creamCard,
+              borderColor: isDark ? 'rgba(166,239,143,0.42)' : 'rgba(166,239,143,0.32)',
               opacity: pressed ? 0.85 : 1,
             },
           ]}
@@ -82,10 +87,14 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
           <View
             style={[
               styles.iconWrap,
-              { backgroundColor: theme.colors.peach },
+              {
+                backgroundColor: isDark
+                  ? 'rgba(166,239,143,0.20)'
+                  : 'rgba(166,239,143,0.12)',
+              },
             ]}
           >
-            <MaterialIcons name="savings" size={20} color={theme.colors.text} />
+            <MaterialIcons name="savings" size={20} color={theme.colors.success} />
           </View>
           <View style={styles.textCol}>
             <Text style={[styles.title, { color: theme.colors.text }]}>
