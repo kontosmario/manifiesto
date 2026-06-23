@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { InteractionManager } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
 import { useIsAuthOverlayVisible } from '@/features/auth-flow/use-auth-flow'
 import { triggerHaptic } from '@/lib/haptics'
@@ -175,17 +174,14 @@ export function useScreenTour(
         // is mid-page.
         await resetScrollToTop(tour)
         if (cancelled) return
-        // Defer the tour Modal presentation until pending interactions /
-        // animations drain. On a brand-new account the tour fires right after
-        // the cycle-balance sheet's Modal closes; presenting our Modal while
-        // iOS is still tearing that one down triggers the modal-chain race
-        // (the scrim renders invisible but keeps capturing touches). Waiting
-        // for interactions to settle makes a clean, visible presentation far
-        // more likely; the scrim's tap-to-dismiss is the ultimate safety net.
-        InteractionManager.runAfterInteractions(() => {
-          if (cancelled) return
-          ctxRef.current.start(tour)
-        })
+        // Arranque directo. NO envolver en InteractionManager.runAfterInteractions:
+        // ese callback se posterga hasta que drenen los interaction-handles (dismiss
+        // del Modal de la sheet, toques) y, peor, la tormenta de re-renders post-
+        // confirmar-sueldo re-ejecuta este effect → el cleanup pone cancelled=true y
+        // el callback diferido aborta → el tour NUNCA arranca (regresión 2026-06-23).
+        // Contra el race modal-chain del header alcanza con el scrim escapable del
+        // TourHost (tap-to-dismiss), sin sacrificar el disparo del tour.
+        ctxRef.current.start(tour)
       }, startDelayMs)
     })()
 
