@@ -1,5 +1,6 @@
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
+import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
 
 /**
  * Convierte un row de `monthly_summaries` (ya parseado al shape de
@@ -79,7 +80,12 @@ export function buildWrappedPayloadFromSummary({
     periodRange,
     totalSpent: Number(summary.total_spent ?? 0),
     monthlyIncome: Number(summary.monthly_income ?? 0),
-    savingsDelta: Number(summary.savings_delta ?? 0),
+    // El "veredicto" (2da escena) muestra el saldo del ciclo. Usamos el
+    // sobrante REAL con signo = (sueldo + income extra del ciclo) − gasto −
+    // ahorro comprometido, NO el `savings_delta` del server (= max(0, sueldo −
+    // gasto), clampeado e ignorando el income extra → daba "empatado" cuando
+    // el mes cerró con +130k gracias al arrastre). Caso Mayo: +139k.
+    savingsDelta: computeCycleSurplusSigned(summary),
     expensesCount: Number(summary.expenses_count ?? 0),
     deltaVsPreviousPercent:
       summary.delta_vs_previous_percent == null

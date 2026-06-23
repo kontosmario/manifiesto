@@ -251,6 +251,19 @@ export function HomeDashboard({
     () => membersQuery.data ?? [],
     [membersQuery.data],
   )
+  // Actividad del Home = ciclo ACTUAL. Los gastos quedan archivados al cerrar
+  // el ciclo (no aparecen), pero los income_events NO se archivan, así que los
+  // acotamos a la ventana del ciclo por event_date. Un arrastre ("Sobrante de
+  // [mes]") es un income del ciclo donde se sumó; pasado ese ciclo deja de ser
+  // relevante y NO debe seguir flotando en la actividad del ciclo nuevo
+  // (reporte owner 2026-06-22).
+  const cycleIncome = useMemo(() => {
+    const startKey = formatLocalDateKey(payCycle.start)
+    const endKey = formatLocalDateKey(payCycle.end)
+    return recentIncome.filter(
+      (e) => e.event_date >= startKey && e.event_date < endKey,
+    )
+  }, [recentIncome, payCycle.start, payCycle.end])
   const expensesData = useMemo(
     () => dashboard.expensesQuery.data ?? [],
     [dashboard.expensesQuery.data],
@@ -974,7 +987,7 @@ export function HomeDashboard({
 
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
-        {recentExpenses.length > 0 || recentIncome.length > 0 ? (
+        {recentExpenses.length > 0 || cycleIncome.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver todo el historial"
@@ -998,7 +1011,7 @@ export function HomeDashboard({
       >
         <HomeActivitySection
           expenses={recentExpenses}
-          incomeEvents={recentIncome}
+          incomeEvents={cycleIncome}
           categoryNameById={categoryNameById}
           categoryColorById={categoryColorById}
           familyMembers={familyMembers}
