@@ -4,8 +4,10 @@ import { useStreak } from '@/features/streaks/use-streak'
 import {
   deriveGardenCells,
   deriveWeekClose,
+  deriveWeekStrip,
   type GardenCell,
   type WeekClose,
+  type WeekStripDay,
 } from './garden-model'
 
 export interface GardenData {
@@ -16,6 +18,7 @@ export interface GardenData {
   hasLoggedToday: boolean
   cells: GardenCell[]
   weekClose: WeekClose
+  weekStrip: WeekStripDay[]
   firstActivityIso: string | null
 }
 
@@ -83,6 +86,7 @@ export function useGarden(
       hasLoggedToday: streak.data.hasLoggedToday,
       cells: deriveGardenCells(activity, todayIso, dayIsoAtOffset, firstActivityIso),
       weekClose: deriveWeekClose(activity, weekDayIso),
+      weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso),
       firstActivityIso,
     }
   }, [familyId, userId, streak.data, expensesQuery.data])

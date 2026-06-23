@@ -136,3 +136,36 @@ export function deriveWeekClose(
   const copy = weekCloseCopy(score)
   return { score, ...copy, days }
 }
+
+// ── Tira semanal (widget de Home) ──────────────────────────────────────
+export type WeekDayState = 'logged' | 'pending' | 'missed' | 'future'
+
+export interface WeekStripDay {
+  letter: string
+  iso: string
+  state: WeekDayState
+  isToday: boolean
+}
+
+/**
+ * Semana calendario L→D para el widget de Home. Cada día: registrado (logged),
+ * hoy-sin-registrar (pending), pasado-sin-registrar (missed), o futuro (future).
+ * `weekDayIso(i)` devuelve el ISO del día i (0=Lunes..6=Domingo). Los ISO
+ * `YYYY-MM-DD` se comparan lexicográficamente = cronológicamente.
+ */
+export function deriveWeekStrip(
+  activityIso: ReadonlySet<string>,
+  todayIso: string,
+  weekDayIso: (dayIndexMonday0: number) => string,
+): WeekStripDay[] {
+  const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+  return letters.map((letter, i) => {
+    const iso = weekDayIso(i)
+    let state: WeekDayState
+    if (activityIso.has(iso)) state = 'logged'
+    else if (iso > todayIso) state = 'future'
+    else if (iso === todayIso) state = 'pending'
+    else state = 'missed'
+    return { letter, iso, state, isToday: iso === todayIso }
+  })
+}

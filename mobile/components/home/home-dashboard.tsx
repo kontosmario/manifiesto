@@ -31,6 +31,7 @@ import { StartingBalanceCta } from '@/components/home/starting-balance-cta'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
+import { StreakWeekWidget } from '@/components/home/streak-week-widget'
 import {
   HOME_TOUR,
   HOME_TOUR_STEPS,
@@ -952,6 +953,8 @@ export function HomeDashboard({
           usdConversion={usdConversion}
         />
       </TourTarget>
+      {/* Tira semanal del jardín (racha glanceable; abre Mi jardín). */}
+      <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
       {/* Variables + Fijos halves of MonthSummaryCard register as
           two separate steps via the refs above. The card renders
           unchanged — only the column wrappers carry the refs. */}

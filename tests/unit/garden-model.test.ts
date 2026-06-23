@@ -4,6 +4,7 @@ import {
   fernSizeForAge,
   deriveGardenCells,
   deriveWeekClose,
+  deriveWeekStrip,
 } from '@/features/garden/garden-model'
 
 describe('broteStageForDay', () => {
@@ -87,5 +88,29 @@ describe('deriveWeekClose', () => {
     expect(deriveWeekClose(mk(4), weekDayIso).stage).toBe('germ')
     expect(deriveWeekClose(mk(2), weekDayIso).stage).toBe('seed')
     expect(deriveWeekClose(mk(0), weekDayIso).stage).toBe('none')
+  })
+})
+
+describe('deriveWeekStrip', () => {
+  // Semana Lun 6/16 .. Dom 6/22; hoy = 6/19 (índice 3).
+  const weekDayIso = (i: number) =>
+    new Date(Date.UTC(2026, 5, 16) + i * 86_400_000).toISOString().slice(0, 10)
+  const todayIso = '2026-06-19'
+
+  it('clasifica logged / missed / pending / future', () => {
+    const activity = new Set(['2026-06-16', '2026-06-17']) // Lun, Mar registrados
+    const strip = deriveWeekStrip(activity, todayIso, weekDayIso)
+    expect(strip[0].state).toBe('logged') // Lun
+    expect(strip[1].state).toBe('logged') // Mar
+    expect(strip[2].state).toBe('missed') // Mié (pasado, sin registrar)
+    expect(strip[3].state).toBe('pending') // Jue = hoy, sin registrar
+    expect(strip[3].isToday).toBe(true)
+    expect(strip[4].state).toBe('future') // Vie
+    expect(strip[6].state).toBe('future') // Dom
+  })
+
+  it('hoy registrado = logged (no pending)', () => {
+    const strip = deriveWeekStrip(new Set(['2026-06-19']), todayIso, weekDayIso)
+    expect(strip[3].state).toBe('logged')
   })
 })
