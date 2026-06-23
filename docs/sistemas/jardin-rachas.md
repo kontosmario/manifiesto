@@ -39,9 +39,15 @@ de "plantar" manual (sería redundante).
 - **`deriveWeekStrip`** → semana calendario L→D para el widget de Home
   (logged/pending/missed/future).
 
-`mobile/features/garden/use-garden.ts` compone `useStreak` + `useExpenses` y expone
-`GardenData` (cells, weekClose, weekStrip, currentStreak, longestStreak,
-totalDaysLogged, freezeTokens, hasLoggedToday).
+`mobile/features/garden/use-garden.ts` compone `useStreak` + `useExpenses` +
+`useMyProfile` y expone `GardenData` (cells, weeksShown, weekClose,
+weekCloseAvailable, weekCloseId, weekStrip, ...).
+
+**Anclaje (`gardenFirstActivity`):** el jardín arranca con tu primer brote DESDE que
+creaste la cuenta (`profiles.created_at`). Back-datear un gasto anterior a tu cuenta
+NO extiende el jardín hacia atrás (evita semanas de "salteados" falsos); back-datear
+DENTRO de tu período sí llena el brote de ese día. Días previos a tu inicio = tenues
+(`pre`), nunca "salteados".
 
 > **Nota 14 vs 35 días:** `markedDaysIso` (días sin-gasto) está limitado a 14 por el
 > query de `useStreak`. Los días sin-gasto más viejos que 14 no aparecen en la grilla
