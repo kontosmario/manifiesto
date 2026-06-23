@@ -68,9 +68,11 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
               seeds={data.freezeTokens}
             />
           </RiseView>
-          <RiseView delay={75} translateY={0} duration={400}>
-            <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
-          </RiseView>
+          {data.weekCloseAvailable && (
+            <RiseView delay={75} translateY={0} duration={400}>
+              <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
+            </RiseView>
+          )}
           <RiseView delay={150} translateY={0} duration={400}>
             <View
               style={[

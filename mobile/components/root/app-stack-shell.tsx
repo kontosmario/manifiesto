@@ -4,6 +4,7 @@ import { Stack } from 'expo-router'
 import { useAppTheme } from '@/theme/theme-provider'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { AchievementUnlockBridge } from '@/components/bridges/achievement-unlock-bridge'
+import { WeekCloseBridge } from '@/components/garden/week-close-bridge'
 import { CycleWrappedBridge } from '@/components/bridges/cycle-wrapped-bridge'
 import { ToastHost } from '@/components/ui/toast-host'
 import { NoSpendConfettiHost } from '@/components/ui/no-spend-confetti-host'
@@ -151,6 +152,7 @@ export function AppStackShell() {
           <GlobalSettingsModalsHost familyId={familyId} userId={userId} />
           <GlobalAdvisorActionHost familyId={familyId} userId={userId} />
           <AchievementUnlockBridge userId={userId} />
+          <WeekCloseBridge familyId={familyId} userId={userId} />
           <CycleWrappedBridge />
           <ToastHost />
           <NoSpendConfettiHost />

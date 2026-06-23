@@ -46,7 +46,7 @@ function WeekCloseBannerImpl({ weekClose, onPress }: WeekCloseBannerProps) {
       <View style={styles.textCol}>
         <Text style={[styles.title, { color: theme.colors.text }]}>{weekClose.label}</Text>
         <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-          {weekClose.score}/7 días registrados
+          Semana pasada · {weekClose.score}/7 días
         </Text>
       </View>
       <Text style={[styles.chip, { backgroundColor: chipBg, color: chipColor }]}>Ver cierre ›</Text>

@@ -20,6 +20,8 @@ export interface GardenData {
   cells: GardenCell[]
   weeksShown: number
   weekClose: WeekClose
+  weekCloseAvailable: boolean
+  weekCloseId: string
   weekStrip: WeekStripDay[]
   firstActivityIso: string | null
 }
@@ -73,9 +75,16 @@ export function useGarden(
     const dow = (today.getDay() + 6) % 7
     const weekDayIso = (i: number) =>
       isoDay(new Date(today.getTime() - (dow - i) * 86_400_000), tz)
+    // Semana que YA cerró (la anterior): el "cierre de semana" recapitula la
+    // semana COMPLETA, no la en curso.
+    const prevWeekDayIso = (i: number) =>
+      isoDay(new Date(today.getTime() - (dow - i + 7) * 86_400_000), tz)
 
     const sorted = [...activity].sort()
     const firstActivityIso = sorted.length > 0 ? sorted[0] : null
+    const weekCloseId = prevWeekDayIso(0) // lunes de la semana cerrada = id estable
+    const weekCloseAvailable =
+      firstActivityIso !== null && firstActivityIso <= prevWeekDayIso(6)
 
     return {
       currentStreak: streak.data.currentStreak,
@@ -85,7 +94,9 @@ export function useGarden(
       hasLoggedToday: streak.data.hasLoggedToday,
       cells: deriveGardenCells(activity, todayIso, firstActivityIso),
       weeksShown: weeksToShow(firstActivityIso, todayIso),
-      weekClose: deriveWeekClose(activity, weekDayIso),
+      weekClose: deriveWeekClose(activity, prevWeekDayIso),
+      weekCloseAvailable,
+      weekCloseId,
       weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso),
       firstActivityIso,
     }
