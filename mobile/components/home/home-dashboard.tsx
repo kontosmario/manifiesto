@@ -953,8 +953,6 @@ export function HomeDashboard({
           usdConversion={usdConversion}
         />
       </TourTarget>
-      {/* Tira semanal del jardín (racha glanceable; abre Mi jardín). */}
-      <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
       {/* Variables + Fijos halves of MonthSummaryCard register as
           two separate steps via the refs above. The card renders
           unchanged — only the column wrappers carry the refs. */}
@@ -988,6 +986,9 @@ export function HomeDashboard({
         </TourTarget>
       ) : null}
 
+      {/* Racha del jardín — pegada a Actividad: la racha es tu hábito de registrar,
+          y así no interrumpe el par saldo↔variables/fijos. */}
+      <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
         {recentExpenses.length > 0 || cycleIncome.length > 0 ? (
