@@ -12,11 +12,11 @@ interface AchievementUnlockBridgeProps {
 
 /**
  * App-level bridge that subscribes to realtime inserts on
- * `achievements_earned` for the current user and pops the
- * `AchievementUnlockModal` when a new badge arrives.
+ * `achievements_earned` for the current user and renders the
+ * `FloracionView` celebration (jardín) when a new badge arrives.
  *
  * Mounted once inside `AppStackShell` after the user+family are
- * resolved. Lives outside the navigation `Stack` so the modal
+ * resolved. Lives outside the navigation `Stack` so the celebration
  * survives screen pushes — a streak milestone unlocked while the
  * user is in Gastos still celebrates above whatever screen they're
  * looking at.
