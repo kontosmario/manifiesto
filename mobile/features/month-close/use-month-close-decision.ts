@@ -27,6 +27,7 @@ interface PendingRow {
   period_start: string
   period_end: string
   monthly_income: number | string
+  extra_income: number | string
   total_spent: number | string
   savings_goal_amount: number | string
 }
@@ -59,7 +60,7 @@ export function useMonthCloseDecisionPending(familyId?: string): PendingDecision
       // 1) Traer summaries reciente sin decision matching.
       const { data: summaries, error: sErr } = await supabase
         .from('monthly_summaries')
-        .select('id, period_label, period_start, period_end, monthly_income, total_spent, savings_goal_amount')
+        .select('id, period_label, period_start, period_end, monthly_income, extra_income, total_spent, savings_goal_amount')
         .eq('family_id', familyId)
         .order('period_end', { ascending: false })
         .limit(3)

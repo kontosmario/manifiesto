@@ -67,6 +67,10 @@ export interface MonthlySummaryHistory {
   expenses_count: number
   monthly_income: number
   savings_delta: number
+  /** Suma de income_events del ciclo (arrastres de "acumular", bonos,
+   *  transferencias). Income REAL del ciclo — input de la fórmula del sobrante
+   *  (sobrante.ts) junto a monthly_income. */
+  extra_income: number
   /** Meta de ahorro comprometida del mes — input de la fórmula del
    *  sobrante decidible (sobrante.ts). */
   savings_goal_amount: number

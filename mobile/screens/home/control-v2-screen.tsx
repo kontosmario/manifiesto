@@ -57,6 +57,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { useMarkCycleWrappedSeen } from '@/features/wrapped/use-mark-cycle-wrapped-seen'
 import { useApplyMonthCloseDecision } from '@/features/month-close/use-month-close-decision'
+import { computeSobranteFromSummary } from '@/features/month-close/sobrante'
 import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { supabase } from '@/lib/supabase'
@@ -125,7 +126,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
       const [summaryRes, existingRes] = await Promise.all([
         supabase
           .from('monthly_summaries')
-          .select('monthly_income, total_spent, savings_delta')
+          .select('monthly_income, extra_income, total_spent, savings_goal_amount')
           .eq('id', wrappedSummaryId)
           .maybeSingle(),
         supabase
@@ -135,16 +136,17 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           .maybeSingle(),
       ])
       const summary = summaryRes.data as
-        | { monthly_income: number | string; total_spent: number | string; savings_delta: number | string }
+        | {
+            monthly_income: number | string
+            extra_income: number | string
+            total_spent: number | string
+            savings_goal_amount: number | string
+          }
         | null
-      const sobrante = summary
-        ? Math.max(
-            0,
-            Number(summary.monthly_income ?? 0)
-              - Number(summary.total_spent ?? 0)
-              - Number(summary.savings_delta ?? 0),
-          )
-        : 0
+      // Fix 2026-06-22: fórmula canónica (incluye extra_income del ciclo y resta
+      // savings_goal_amount — NO savings_delta, que era doble resta y daba 0
+      // → la decisión nunca se ofrecía para un ciclo con arrastre).
+      const sobrante = summary ? computeSobranteFromSummary(summary) : 0
       if (existingRes.data) {
         // Hay decisión persistida → modo read-only en closing scene.
         // Las 3 opciones siguen apareciendo, pero la elegida queda

@@ -15,6 +15,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { useCategories } from '@/features/categories/use-categories'
 import { useMonthlyEditions } from '@/features/wrapped/use-monthly-editions'
+import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
@@ -63,21 +64,29 @@ export function EditionsScreen() {
     return map
   }, [categoriesQuery.data])
 
-  // YTD totals para el masthead. Suma simple, ignora ciclos sin gastos
-  // (ya filtrados upstream).
-  const totals = useMemo(() => {
-    let savedTotal = 0
-    let cycleCount = 0
+  // Sobrante POR CICLO (no suma corrida — fix 2026-06-22): cada edición muestra
+  // lo que quedó en la cuenta = (sueldo + income extra del ciclo) − gasto −
+  // ahorro comprometido, CON signo (margen / excedido / empatado). El income
+  // extra (`extra_income`) incluye los arrastres de "acumular" previos (el
+  // "Sobrante de [mes]" ya sumado a ESTE ciclo como income_event), así el
+  // saldo encadena solo — NO hace falta sumar corrida. Caso real: Mayo =
+  // 6.4M sueldo + 1.727M arrastre − 7.99M gasto = +130k (lo que quedó en la
+  // cuenta). El masthead muestra el sobrante del último ciclo cerrado = saldo
+  // actual.
+  const { sobranteById, latestSobrante } = useMemo(() => {
+    const map = new Map<string, number>()
+    let latest = 0
+    let latestStart = ''
     for (const e of editions) {
-      // savings_delta es income - total_spent. Lo clampeamos a >=0
-      // para el masthead: la suma de "ahorro acumulado" pierde sentido
-      // si mezclamos overshoots negativos. Los excesos individuales
-      // siguen visibles en cada row.
-      const delta = Number(e.savings_delta ?? 0)
-      savedTotal += Math.max(0, delta)
-      cycleCount += 1
+      const sobrante = computeCycleSurplusSigned(e)
+      map.set(e.id, sobrante)
+      const start = String(e.period_start ?? '')
+      if (start >= latestStart) {
+        latestStart = start
+        latest = sobrante
+      }
     }
-    return { savedTotal, cycleCount }
+    return { sobranteById: map, latestSobrante: latest }
   }, [editions])
 
   const handleEditionPress = (summary: MonthlySummaryHistory) => {
@@ -125,7 +134,7 @@ export function EditionsScreen() {
       ) : (
         <View style={styles.stack}>
           <RiseView>
-            <Masthead savedTotal={totals.savedTotal} cycleCount={totals.cycleCount} />
+            <Masthead savedTotal={latestSobrante} cycleCount={editions.length} />
           </RiseView>
 
           <View style={styles.list}>
@@ -133,6 +142,7 @@ export function EditionsScreen() {
               <RiseView key={ed.id} delay={Math.min(80 + idx * 40, 480)}>
                 <EditionRow
                   edition={ed}
+                  sobrante={sobranteById.get(ed.id) ?? 0}
                   onPress={() => handleEditionPress(ed)}
                 />
               </RiseView>
@@ -166,7 +176,7 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
       <Text
         style={[styles.mastheadEyebrow, { color: theme.colors.textMuted }]}
       >
-        TU MANIFIESTO HASTA HOY
+        TU SALDO ACUMULADO
       </Text>
       <CountUpText
         value={savedTotal}
@@ -193,15 +203,18 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
 
 interface EditionRowProps {
   edition: MonthlySummaryHistory
+  /** Sobrante del ciclo CON signo = lo que quedó en la cuenta (sueldo + income
+   *  extra del ciclo − gasto − ahorro comprometido). El tono/label van por su
+   *  signo: margen (+) / excedido (−) / empatado (0). */
+  sobrante: number
   onPress: () => void
 }
 
-function EditionRow({ edition, onPress }: EditionRowProps) {
+function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
   const { theme } = useAppTheme()
   const press = usePressScale({ pressedScale: 0.97 })
 
-  const delta = Number(edition.savings_delta ?? 0)
-  const tone = resolveTone(delta, theme.isDark)
+  const tone = resolveTone(sobrante, theme.isDark)
   const range = useMemo(
     () => buildShortRange(edition.period_start, edition.period_end),
     [edition.period_start, edition.period_end],
@@ -210,8 +223,8 @@ function EditionRow({ edition, onPress }: EditionRowProps) {
   // Sign + absolute amount para que el número sea legible (un "−$80k"
   // se lee mejor que "-$80,000"). Usamos el sign unicode largo en
   // lugar del hyphen-minus.
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : ''
-  const amountAbs = Math.abs(delta)
+  const sign = sobrante > 0 ? '+' : sobrante < 0 ? '−' : ''
+  const amountAbs = Math.abs(sobrante)
 
   return (
     <Animated.View style={press.animatedStyle}>

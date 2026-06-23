@@ -485,10 +485,28 @@ export function HomeDashboard({
         queryKey: monthCloseDecisionQueryKey(familyId),
       }),
     ])
-    const fresh = queryClient.getQueryData<{
-      summaries: MonthlySummaryHistory[]
-    }>(controlIntelligenceQueryKey(familyId))
-    const latest = fresh?.summaries?.[0]
+    // BUG FIX v2 (2026-06-22): traemos la edición RECIÉN CERRADA con una query
+    // DIRECTA — la summary de mayor `period_start` (el ciclo más nuevo). NO la
+    // sacamos del cache (llegaba stale → reproducía la edición anterior) ni vía
+    // `dashboard.monthlyAccounting.start`, que JUSTO post-confirm queda con el
+    // anchor VIEJO del ciclo recién cerrado (Mayo, 2026-05-20) → matcheaba la
+    // edición ANTERIOR (Abril, cuyo period_end es 2026-05-20). El ciclo recién
+    // cerrado es SIEMPRE el de mayor period_start. Reintento corto por la
+    // latencia/commit del trigger de cierre.
+    let latest: MonthlySummaryHistory | null = null
+    for (let i = 0; i < 5 && !latest; i++) {
+      if (i > 0) await new Promise<void>((r) => setTimeout(r, 300))
+      const { data } = await supabase
+        .from('monthly_summaries')
+        .select(
+          'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, extra_income, savings_goal_amount, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at',
+        )
+        .eq('family_id', familyId)
+        .order('period_start', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data) latest = data as MonthlySummaryHistory
+    }
     if (!latest) {
       setWrappedInFlight(false)
       return
@@ -572,7 +590,8 @@ export function HomeDashboard({
         pendingLeftoverDecision: pendingForWrapped,
         pastLeftoverDecision: pastForWrapped,
         activeGoal: activeGoalForSheet,
-        nextCycleAnchor: formatLocalDateKey(dashboard.monthlyAccounting.start),
+        // El inicio del nuevo ciclo == period_end del recién cerrado (exclusivo).
+        nextCycleAnchor: latest.period_end,
         onApplyLeftoverDecision: pendingForWrapped
           ? async (input) => {
               // El catch de la CTA solo resetea su spinner — el
@@ -599,7 +618,6 @@ export function HomeDashboard({
     familyId,
     categoryNameById,
     activeGoalForSheet,
-    dashboard.monthlyAccounting.start,
     applyDecision,
   ])
 

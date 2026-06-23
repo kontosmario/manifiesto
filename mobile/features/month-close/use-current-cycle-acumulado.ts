@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { computeSobranteFromSummary } from '@/features/month-close/sobrante'
 
 export interface CycleAcumulado {
   /** Sobrante (>0) acumulado del cycle anterior, calculado vía RPC al
@@ -18,8 +19,9 @@ interface SummaryEmbed {
   period_label: string
   period_end: string
   monthly_income: number | string
+  extra_income: number | string
   total_spent: number | string
-  savings_delta: number | string
+  savings_goal_amount: number | string
 }
 
 interface DecisionWithSummaryRow {
@@ -50,8 +52,9 @@ export async function fetchCurrentCycleAcumulado(
         period_label,
         period_end,
         monthly_income,
+        extra_income,
         total_spent,
-        savings_delta
+        savings_goal_amount
       )
     `)
     .eq('family_id', familyId)
@@ -74,16 +77,11 @@ export async function fetchCurrentCycleAcumulado(
   // otro cycle y no aplica al saldo actual.
   if (summary.period_end !== currentCycleAnchor) return null
 
-  // Reconstruimos el sobrante con la misma fórmula que usa
-  // useMonthCloseDecisionPending (clampeado >= 0). El RPC ya hizo
-  // su propia versión al persistir, pero no guardó el monto, así
-  // que lo derivamos del summary aquí.
-  const sobrante = Math.max(
-    0,
-    Number(summary.monthly_income ?? 0)
-      - Number(summary.total_spent ?? 0)
-      - Number(summary.savings_delta ?? 0),
-  )
+  // Reconstruimos el sobrante con la fórmula canónica (incluye extra_income
+  // del ciclo y resta savings_goal_amount — NO savings_delta, que era doble
+  // resta y daba ~0). El RPC ya hizo su versión al persistir pero no guardó
+  // el monto, así que lo derivamos del summary acá.
+  const sobrante = computeSobranteFromSummary(summary)
   if (sobrante <= 0) return null
   return {
     amount: sobrante,
