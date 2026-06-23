@@ -472,15 +472,19 @@ export function TourHost() {
       transparent
       visible
     >
-      {/* Scrim — blocks all underlying touches but does NOT dismiss on tap.
-          Dismissal is intentionally restricted to the "Saltar" button in the
-          tooltip (consistent with explicit-action UX). The Pressable (no
-          onPress) still captures taps so the user can't interact with the
-          masked UI underneath. A single SVG Path with `fillRule="evenodd"`
-          paints the scrim and subtracts the rounded cutout. The
-          Animated.View's opacity drives both the show/hide fade and the
-          configured `scrimOpacity` cap. */}
+      {/* Scrim — blocks all underlying touches AND dismisses the tour on tap.
+          Tap-to-dismiss is load-bearing for the iOS modal-chain race: if this
+          Modal presents while another sheet's Modal is still tearing down
+          (e.g. the cycle-balance sheet right after onboarding), iOS can drop
+          the VISUAL presentation — no tooltip, no "Saltar" — while this
+          full-screen touch-capturing Pressable stays attached, trapping the
+          user over a dead header (bug 2026-06-23). Letting any scrim tap call
+          stop() guarantees the user is never stuck behind an invisible scrim.
+          A single SVG Path with `fillRule="evenodd"` paints the scrim and
+          subtracts the rounded cutout. The Animated.View's opacity drives both
+          the show/hide fade and the configured `scrimOpacity` cap. */}
       <Pressable
+        onPress={() => stop(false)}
         style={StyleSheet.absoluteFill}
       >
         <Animated.View
