@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -7,6 +7,7 @@ import { FernMark } from '@/components/billing/fern-mark'
 import { GardenHero } from '@/components/garden/garden-hero'
 import { GardenGrid } from '@/components/garden/garden-grid'
 import { WeekCloseBanner } from '@/components/garden/week-close-banner'
+import { WeekCloseCelebration } from '@/components/garden/week-close-celebration'
 import { useGarden } from '@/features/garden/use-garden'
 import { triggerHaptic } from '@/lib/haptics'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
@@ -30,13 +31,15 @@ const FOOTNOTE =
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { theme } = useAppTheme()
   const { data } = useGarden(familyId, userId)
+  const [showWeekClose, setShowWeekClose] = useState(false)
 
   const handleOpenWeekClose = useCallback(() => {
-    // E2 cablea acá la celebración de "Cierre de semana".
     void triggerHaptic('selection')
+    setShowWeekClose(true)
   }, [])
 
   return (
+    <>
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Mi jardín"
@@ -97,6 +100,13 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
         </>
       )}
     </Screen>
+    {showWeekClose && data && (
+      <WeekCloseCelebration
+        weekClose={data.weekClose}
+        onContinue={() => setShowWeekClose(false)}
+      />
+    )}
+    </>
   )
 }
 
