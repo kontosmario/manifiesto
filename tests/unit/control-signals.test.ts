@@ -105,6 +105,52 @@ describe('control-signals', () => {
     expect(breach!.impactRaw).toBe(15000) // 35000 - 20000
   })
 
+  // Regresión 2026-06-23: pagar un fijo inserta en `expenses` una fila con
+  // commitment_id = id del fijo. Esos pagos están contemplados y NO deben
+  // generar ruido (movimiento alto / duplicado). Antes del fix, las dos
+  // señales de abajo iteraban `expenses` sin excluir commitment_id.
+  it('does NOT flag "Movimiento alto hoy" for a fixed-expense payment', () => {
+    const out = buildControlSignals(
+      baseArgs({
+        cupoDiario: 100000,
+        expenses: [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+          { id: 'fx', category_id: 'cat', price: 300000, created_at: '2026-04-22T10:00:00', commitment_id: 'fixed-1' } as any,
+        ],
+      }),
+    )
+    expect(out.find((s) => s.id === 'high-single-expense')).toBeUndefined()
+  })
+
+  it('flags "Movimiento alto hoy" for the same amount as a discretionary expense', () => {
+    // Control positivo: idéntico al anterior pero gasto variable
+    // (commitment_id null) — confirma que el filtro es lo único que cambia.
+    const out = buildControlSignals(
+      baseArgs({
+        cupoDiario: 100000,
+        expenses: [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+          { id: 'd', category_id: 'cat', price: 300000, created_at: '2026-04-22T10:00:00', commitment_id: null } as any,
+        ],
+      }),
+    )
+    expect(out.find((s) => s.id === 'high-single-expense')).toBeDefined()
+  })
+
+  it('does NOT flag "cargos parecidos" for two fixed-expense payments in 48h', () => {
+    const out = buildControlSignals(
+      baseArgs({
+        expenses: [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+          { id: 'f1', category_id: 'cat', description: 'Netflix', price: 5000, created_at: '2026-04-21T10:00:00', commitment_id: 'fixed-1' } as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+          { id: 'f2', category_id: 'cat', description: 'Netflix', price: 5000, created_at: '2026-04-22T10:00:00', commitment_id: 'fixed-1' } as any,
+        ],
+      }),
+    )
+    expect(out.find((s) => s.id.startsWith('duplicate-'))).toBeUndefined()
+  })
+
   it('caps output at 5 tasks and ranks by urgency then impact', () => {
     const view = computeControlView(CONTROL_MOCK)
     const out = buildControlSignals(

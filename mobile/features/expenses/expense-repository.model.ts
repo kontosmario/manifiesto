@@ -44,6 +44,13 @@ export interface ExpenseQueryFilters {
   /** ISO timestamp exclusive upper bound for `created_at`. Pair with
    *  `createdAtGte` to express a `[start, end)` cycle window. */
   createdAtLt?: string
+  /** Cuando es true, excluye los expenses archivados (`archived_at` no-null,
+   *  que `close_monthly_cycle` setea al cerrar el ciclo). Lo usa el feed
+   *  reciente del Home/Gastos para no mostrar gastos del ciclo anterior —
+   *  bug 2026-06-23: el refetch de `loadExpenses` los traía transitoriamente
+   *  (no filtraba archived) hasta que el re-seed del `home_snapshot` —que sí
+   *  filtra archived— los borraba, de ahí el "se resetea al refrescar". */
+  excludeArchived?: boolean
 }
 
 const MISSING_COLUMN_CODES = new Set(['42703', 'PGRST204'])

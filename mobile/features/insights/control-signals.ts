@@ -1380,6 +1380,11 @@ function buildHighSingleExpense(
   if (args.cupoDiario <= 0) return null
   const today = startOfLocalDay(args.now ?? new Date())
   const todayExpenses = args.expenses.filter((e) => {
+    // Excluir pagos de gastos fijos (commitment_id no-null): ya están
+    // contemplados, no son "movimiento alto" sorpresa ni consumen el cupo
+    // discrecional. Alinea esta señal con sus hermanas (small-leaks,
+    // night-impulse, category) que ya filtran commitment_id.
+    if (e.commitment_id) return false
     const ts = new Date(e.created_at).getTime()
     return ts >= today && ts < today + DAY_MS
   })
@@ -1418,7 +1423,9 @@ function buildDuplicateMerchant(
   const now = (args.now ?? new Date()).getTime()
   const cutoff = now - 48 * 60 * 60 * 1000
   const recent = args.expenses.filter(
-    (e) => new Date(e.created_at).getTime() >= cutoff,
+    // Excluir pagos de fijos: dos pagos del mismo fijo (o un fijo + un gasto
+    // manual con misma description y monto) no son un "duplicado" a revisar.
+    (e) => !e.commitment_id && new Date(e.created_at).getTime() >= cutoff,
   )
   if (recent.length < 2) return null
   const seen = new Map<string, typeof recent>()

@@ -33,12 +33,17 @@ function applyExpenseFilters<Q extends {
   eq: (col: string, val: unknown) => Q
   gte: (col: string, val: unknown) => Q
   lt: (col: string, val: unknown) => Q
+  is: (col: string, val: unknown) => Q
   limit: (n: number) => Q
 }>(query: Q, filters: ExpenseQueryFilters): Q {
   let q = query
   if (filters.categoryId) q = q.eq('category_id', filters.categoryId)
   if (filters.createdAtGte) q = q.gte('created_at', filters.createdAtGte)
   if (filters.createdAtLt) q = q.lt('created_at', filters.createdAtLt)
+  // Excluir ciclos cerrados (archived_at no-null) cuando el caller lo pide —
+  // el feed reciente del Home/Gastos. Mismo filtro que aplica el RPC
+  // home_snapshot, para que el refetch no pinte gastos del ciclo anterior.
+  if (filters.excludeArchived) q = q.is('archived_at', null)
   if (typeof filters.limit === 'number' && filters.limit > 0) {
     q = q.limit(filters.limit)
   }

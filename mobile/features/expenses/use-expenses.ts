@@ -121,7 +121,10 @@ export function useRecentExpenses(familyId?: string, limit = 3) {
       }
 
       const buffer = Math.max(limit * 4, 12)
-      const rows = await loadExpenses(familyId, { limit: buffer })
+      // excludeArchived: el feed solo muestra el ciclo vigente. Sin esto, el
+      // refetch traía gastos archivados del ciclo anterior hasta que el
+      // re-seed del home_snapshot los borraba (bug "se resetea al refrescar").
+      const rows = await loadExpenses(familyId, { limit: buffer, excludeArchived: true })
       return rows.filter((e) => !e.commitment_id).slice(0, limit)
     },
   })
