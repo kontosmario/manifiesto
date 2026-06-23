@@ -94,9 +94,13 @@ export function formatPriceInputValue(
       : `${focusedPrefix}${formattedInteger}`
   }
 
-  const normalizedForParsing = hasTrailingDecimalSeparator
-    ? `${integerPart}.${decimalPart || '0'}`
-    : normalized
+  // Siempre parsear con punto decimal. La rama no-focused antes usaba
+  // `normalized` crudo, que en AR trae la COMA decimal (p.ej "139107,83")
+  // → Number() daba NaN → devolvía '' y el campo del sheet quedaba VACÍO
+  // cuando el monto pre-cargado tenía decimales (bug 2026-06-23: el
+  // pre-fill de la reserva acumulada $139.107,83). `parsePrice` ya hacía
+  // bien el replace de coma→punto; esto alinea el display con esa lógica.
+  const normalizedForParsing = `${integerPart}.${decimalPart || '0'}`
   const parsed = Number(normalizedForParsing)
 
   if (!Number.isFinite(parsed)) {
