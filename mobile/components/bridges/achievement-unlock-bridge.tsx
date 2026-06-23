@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { AchievementUnlockModal } from '@/components/achievements/achievement-unlock-modal'
+import { FloracionView } from '@/components/garden/floracion-view'
 import {
   useAchievementUnlocks,
   type AchievementViewItem,
@@ -47,5 +47,5 @@ export function AchievementUnlockBridge({ userId }: AchievementUnlockBridgeProps
   // emitter only fires when __DEV__ callers use it.
   useAchievementPreviewListener(handleUnlock)
 
-  return <AchievementUnlockModal item={active} onDismiss={handleDismiss} />
+  return <FloracionView item={active} onDismiss={handleDismiss} />
 }
