@@ -61,7 +61,7 @@ describe('fetchCurrentCycleAcumulado', () => {
           period_end: '2026-05-31', // ≠ anchor 2026-06-01
           monthly_income: 1_000_000,
           total_spent: 500_000,
-          savings_delta: 0,
+          savings_goal_amount: 0,
         },
       },
       error: null,
@@ -79,7 +79,7 @@ describe('fetchCurrentCycleAcumulado', () => {
           period_end: '2026-06-01',
           monthly_income: 1_000_000,
           total_spent: 600_000,
-          savings_delta: 100_000,
+          savings_goal_amount: 100_000,
         },
       },
       error: null,
@@ -87,6 +87,31 @@ describe('fetchCurrentCycleAcumulado', () => {
     const result = await fetchCurrentCycleAcumulado('fam-1', '2026-06-01')
     expect(result).toEqual({
       amount: 300_000, // 1M - 600k - 100k
+      periodLabel: 'Mayo 2026',
+    })
+  })
+
+  it('incluye extra_income del ciclo en el sobrante (arrastre)', async () => {
+    // Headline del modelo del sobrante (2026-06-23): el income extra del
+    // ciclo (arrastres "acumular", bonos) SUMA al sobrante; el ahorro
+    // comprometido resta. NO se usa savings_delta (clampeado server-side).
+    maybeSingleMock.mockResolvedValue({
+      data: {
+        decided_at: '2026-05-31T10:00:00Z',
+        monthly_summary: {
+          period_label: 'Mayo 2026',
+          period_end: '2026-06-01',
+          monthly_income: 1_000_000,
+          extra_income: 200_000,
+          total_spent: 600_000,
+          savings_goal_amount: 100_000,
+        },
+      },
+      error: null,
+    })
+    const result = await fetchCurrentCycleAcumulado('fam-1', '2026-06-01')
+    expect(result).toEqual({
+      amount: 500_000, // 1M + 200k - 600k - 100k
       periodLabel: 'Mayo 2026',
     })
   })
@@ -100,7 +125,7 @@ describe('fetchCurrentCycleAcumulado', () => {
           period_end: '2026-06-01',
           monthly_income: 1_000_000,
           total_spent: 1_000_000,
-          savings_delta: 0,
+          savings_goal_amount: 0,
         },
       },
       error: null,
@@ -119,7 +144,7 @@ describe('fetchCurrentCycleAcumulado', () => {
             period_end: '2026-06-01',
             monthly_income: '900000',
             total_spent: '500000',
-            savings_delta: '0',
+            savings_goal_amount: '0',
           },
         ],
       },

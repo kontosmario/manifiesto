@@ -232,12 +232,26 @@ describe('buildWrappedPayloadFromSummary', () => {
   })
 
   it('savingsDelta negativo (excedido) se preserva con su signo', () => {
+    // Excedido: gastó más que (sueldo + extra) − ahorro comprometido.
+    // El veredicto usa computeCycleSurplusSigned (signed, NO clampeado, NO
+    // savings_delta): 200k income − 215k gasto = −15k.
     const payload = buildWrappedPayloadFromSummary({
-      summary: makeSummary({ savings_delta: -15_000 }),
+      summary: makeSummary({ total_spent: 215_000 }),
       categoryNameById: new Map(),
       achievementsEarnedAt: [],
     })
     expect(payload.savingsDelta).toBe(-15_000)
+  })
+
+  it('savingsDelta incluye el extra_income del ciclo (arrastre)', () => {
+    // Headline del modelo del sobrante (2026-06-23): el income extra del
+    // ciclo suma al veredicto. 200k income + 100k extra − 150k gasto = 150k.
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({ extra_income: 100_000 }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.savingsDelta).toBe(150_000)
   })
 
   it('deltaVsPreviousPercent numérico se preserva', () => {
