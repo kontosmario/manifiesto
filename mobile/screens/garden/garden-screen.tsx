@@ -7,7 +7,6 @@ import { FernMark } from '@/components/billing/fern-mark'
 import { GardenHero } from '@/components/garden/garden-hero'
 import { GardenGrid } from '@/components/garden/garden-grid'
 import { PlantButton } from '@/components/garden/plant-button'
-import { GardenStats } from '@/components/garden/garden-stats'
 import { WeekCloseBanner } from '@/components/garden/week-close-banner'
 import { useGarden } from '@/features/garden/use-garden'
 import { useMarkNoExpenseDay } from '@/features/streaks/use-streak'
@@ -70,13 +69,28 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
       {data && (
         <>
           <RiseView delay={40}>
-            <GardenHero streak={data.currentStreak} />
+            <GardenHero
+              streak={data.currentStreak}
+              total={data.totalDaysLogged}
+              record={data.longestStreak}
+              seeds={data.freezeTokens}
+            />
           </RiseView>
           <RiseView delay={120}>
             <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
           </RiseView>
           <RiseView delay={200}>
-            <View style={[styles.gardenCard, { backgroundColor: theme.colors.creamCard }]}>
+            <View
+              style={[
+                styles.gardenCard,
+                {
+                  backgroundColor: theme.isDark
+                    ? theme.colors.surfaceMuted
+                    : theme.colors.creamCard,
+                  borderColor: theme.colors.line,
+                },
+              ]}
+            >
               <View style={styles.gardenHeader}>
                 <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>Tu jardín</Text>
                 <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
@@ -92,13 +106,6 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
             <PlantButton planted={planted} onPress={handlePlant} disabled={markNoSpend.isPending} />
           </RiseView>
           <RiseView delay={360}>
-            <GardenStats
-              total={data.totalDaysLogged}
-              record={data.longestStreak}
-              seeds={data.freezeTokens}
-            />
-          </RiseView>
-          <RiseView delay={420}>
             <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>{FOOTNOTE}</Text>
           </RiseView>
         </>
@@ -125,6 +132,7 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingHorizontal: 22,
     paddingBottom: 8,
+    borderWidth: 1,
     boxShadow: '0 6px 24px rgba(28,58,35,0.07)',
   },
   gardenHeader: {

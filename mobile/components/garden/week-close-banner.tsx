@@ -22,7 +22,9 @@ function WeekCloseBannerImpl({ weekClose, onPress }: WeekCloseBannerProps) {
     ? isDark
       ? 'rgba(166,239,143,0.12)'
       : '#E7F1DE'
-    : theme.colors.creamCard
+    : isDark
+      ? theme.colors.surfaceMuted
+      : theme.colors.creamCard
   const border = perfect
     ? isDark
       ? 'rgba(166,239,143,0.26)'
