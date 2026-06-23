@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -6,10 +6,8 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { FernMark } from '@/components/billing/fern-mark'
 import { GardenHero } from '@/components/garden/garden-hero'
 import { GardenGrid } from '@/components/garden/garden-grid'
-import { PlantButton } from '@/components/garden/plant-button'
 import { WeekCloseBanner } from '@/components/garden/week-close-banner'
 import { useGarden } from '@/features/garden/use-garden'
-import { useMarkNoExpenseDay } from '@/features/streaks/use-streak'
 import { triggerHaptic } from '@/lib/haptics'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -20,27 +18,18 @@ interface GardenScreenProps {
 }
 
 const FOOTNOTE =
-  'Los días salteados quedan como un brote tenue, sin culpa. Usá una semilla guardada para revivir uno.'
+  'Tu jardín crece solo: cada gasto que registrás planta el brote del día. ¿No gastaste? Marcá el día sin gastos en el calendario y también suma.'
 
 /**
  * Pantalla "Mi jardín" — vista dedicada de la racha (accesible desde Gastos).
- * Hero de racha + banner de cierre de semana + grilla 7×5 de brotes + plantar
- * el brote de hoy + stats. El brote se planta al registrar un gasto (trigger
- * server-side); el botón cubre el caso "registrar el día sin gasto".
+ * Es de SOLO LECTURA: el brote se planta automáticamente al registrar un gasto
+ * o pago de fijo (trigger server-side) o al marcar un día sin gastos en el
+ * calendario de Gastos. El jardín solo refleja esas dos señales (no hay acción
+ * manual de "plantar").
  */
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { theme } = useAppTheme()
   const { data } = useGarden(familyId, userId)
-  const markNoSpend = useMarkNoExpenseDay(familyId, userId)
-  const [justPlanted, setJustPlanted] = useState(false)
-
-  const planted = Boolean(data?.hasLoggedToday) || justPlanted
-
-  const handlePlant = useCallback(() => {
-    if (planted || markNoSpend.isPending) return
-    void triggerHaptic('success')
-    markNoSpend.mutate(undefined, { onSuccess: () => setJustPlanted(true) })
-  }, [planted, markNoSpend])
 
   const handleOpenWeekClose = useCallback(() => {
     // E2 cablea acá la celebración de "Cierre de semana".
@@ -98,14 +87,11 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
                 </Text>
               </View>
               <View style={styles.gridWrap}>
-                <GardenGrid cells={data.cells} justPlantedToday={justPlanted} />
+                <GardenGrid cells={data.cells} />
               </View>
             </View>
           </RiseView>
           <RiseView delay={225} translateY={0} duration={400}>
-            <PlantButton planted={planted} onPress={handlePlant} disabled={markNoSpend.isPending} />
-          </RiseView>
-          <RiseView delay={300} translateY={0} duration={400}>
             <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>{FOOTNOTE}</Text>
           </RiseView>
         </>
