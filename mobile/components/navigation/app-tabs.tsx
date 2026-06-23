@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { Tabs } from 'expo-router'
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/components/navigation/app-tabs-ui'
 import { TabBarPressable } from '@/components/navigation/tab-bar-pressable'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
+import { useTour } from '@/features/tours/tour-context'
 import { withNavDevLog } from '@/lib/dev/anim-log'
 import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
@@ -97,7 +98,29 @@ export function AppTabs() {
   const tabHaptics = useTabHaptics()
   // DEV-only: agrega logging de focus/blur/tabPress + sampler de frames por
   // transición. En release devuelve `tabHaptics` sin tocar (no-op).
-  const screenListeners = useMemo(() => withNavDevLog(tabHaptics), [tabHaptics])
+  const baseListeners = useMemo(() => withNavDevLog(tabHaptics), [tabHaptics])
+
+  // Mientras un tour guiado está activo, bloqueamos el cambio de tab. El overlay
+  // del tour es un <Modal> que tapa el contenido pero NO la barra de tabs, así
+  // que tocar una tab saltaba a otra vista y OMITÍA el tutorial. Ref para que el
+  // listener estable lea el valor vigente sin recrear screenListeners.
+  const { activeTour } = useTour()
+  const tourActiveRef = useRef(false)
+  tourActiveRef.current = activeTour != null
+
+  const screenListeners = useMemo(
+    () => ({
+      ...baseListeners,
+      tabPress: (e: { preventDefault: () => void; target?: string }) => {
+        if (tourActiveRef.current) {
+          e.preventDefault()
+          return
+        }
+        baseListeners.tabPress?.(e)
+      },
+    }),
+    [baseListeners],
+  )
 
   // Theme-dependent option chunks are the only thing that should
   // recompute on theme change. Everything else (icon renderers, tab
