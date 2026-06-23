@@ -115,7 +115,9 @@ export function useScreenTour(
   const markSeenMutation = useMarkTourSeen()
   const ctxRef = useRef(ctx)
   ctxRef.current = ctx
-  const startedRef = useRef(false)
+  // Flips ONLY when we actually call ctx.start — never on an early bail — so a
+  // not-yet-ready gate doesn't latch the tour dead (ver el effect de abajo).
+  const firedRef = useRef(false)
 
   // Mark our tour as seen on stop. The context's `activeTour` flips
   // to null when a tour stops; we infer "ours just stopped" by
@@ -133,54 +135,41 @@ export function useScreenTour(
     }
   }, [ctx.activeTour, tour, markSeenMutation])
 
-  // Auto-start on focus.
+  // Auto-start on focus. La decisión se condensa en un único booleano derivado
+  // `shouldFire` y el effect SOLO depende de él. Dos motivos:
+  //   1. Evita el churn: la tormenta de re-renders post-confirmar-sueldo cambia
+  //      muchos primitivos sueltos; si el effect dependiera de ellos se
+  //      re-ejecutaría y su cleanup cancelaría el arranque pendiente.
+  //   2. Reintenta: si el primer momento en que enabled+splashHidden son true el
+  //      perfil todavía no trae las columnas de tour (home_snapshot reseedea el
+  //      cache SIN ellas → quedan `undefined` → tourSeen=true por el `!== null`),
+  //      `shouldFire` es false; cuando el perfil completo carga y tourSeen pasa a
+  //      false, `shouldFire` se vuelve true y el effect arranca. `firedRef` se
+  //      marca solo al llamar a ctx.start, así que un bail temprano NO traba el
+  //      disparo (antes el latch dejaba el tour muerto para siempre — 2026-06-23).
+  const shouldFire =
+    enabled &&
+    isFocused &&
+    splashHidden &&
+    (forceStart || (!toursSeenLoading && !tourSeen))
+
   useEffect(() => {
-    if (!enabled) {
-      // Reset so when enabled flips true, the effect can fire fresh.
-      startedRef.current = false
-      return
-    }
-    if (!isFocused) {
-      startedRef.current = false
-      return
-    }
-    // Wait for the auth-transition splash to dismiss before
-    // scheduling the tour. Without this, on first login the tour
-    // fires while the splash logo is still on top, and the user
-    // sees the tooltip/cutout floating over the brand wordmark.
-    if (!splashHidden) return
-    if (startedRef.current) return
-    startedRef.current = true
+    if (!shouldFire || firedRef.current) return
 
     let cancelled = false
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     void (async () => {
-      const enabled = await getToursEnabled()
-      if (cancelled || !enabled) return
-      if (!forceStart) {
-        // Wait for the profile load to resolve before deciding. While
-        // loading, `tourSeen` is true (conservative — see
-        // useToursSeen), so the early-return below already covers
-        // that case.
-        if (toursSeenLoading) return
-        if (tourSeen) return
-      }
+      // Kill-switch device-local (Ajustes → desactivar visitas guiadas).
+      const toursEnabled = await getToursEnabled()
+      if (cancelled || !toursEnabled) return
       timeoutId = setTimeout(async () => {
         if (cancelled) return
         void triggerHaptic('light')
-        // Reset scroll to top so the first step's measurement runs
-        // against an unscrolled layout. Avoids mid-tour drift when
-        // the user reopens the tour from Settings while the screen
-        // is mid-page.
+        // Reset scroll to top so the first step's measurement runs against an
+        // unscrolled layout (evita drift si la pantalla está scrolleada).
         await resetScrollToTop(tour)
         if (cancelled) return
-        // Arranque directo. NO envolver en InteractionManager.runAfterInteractions:
-        // ese callback se posterga hasta que drenen los interaction-handles (dismiss
-        // del Modal de la sheet, toques) y, peor, la tormenta de re-renders post-
-        // confirmar-sueldo re-ejecuta este effect → el cleanup pone cancelled=true y
-        // el callback diferido aborta → el tour NUNCA arranca (regresión 2026-06-23).
-        // Contra el race modal-chain del header alcanza con el scrim escapable del
-        // TourHost (tap-to-dismiss), sin sacrificar el disparo del tour.
+        firedRef.current = true
         ctxRef.current.start(tour)
       }, startDelayMs)
     })()
@@ -189,7 +178,7 @@ export function useScreenTour(
       cancelled = true
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [enabled, forceStart, isFocused, splashHidden, startDelayMs, tour, tourSeen, toursSeenLoading])
+  }, [shouldFire, startDelayMs, tour])
 
   const start = useCallback(async () => {
     void triggerHaptic('light')

@@ -304,13 +304,36 @@ function toFamilyInfo(raw: RawFamilySlice | null): FamilyInfo | null {
   return { familyId: raw.familyId, kind: normalizeAccountKind(raw.kind) }
 }
 
+/**
+ * Seed the profile cache from a snapshot payload SIN pisar columnas que el RPC
+ * no devuelve. El payload de home_snapshot omite las 4 `*_tour_seen_at`, así que
+ * un overwrite plano las dejaba `undefined` → `useToursSeen` las leía como
+ * "visto" (`undefined !== null`) y las visitas guiadas nunca arrancaban en una
+ * cuenta nueva (regresión 2026-06-23). El merge sobre el perfil completo ya
+ * cacheado las mantiene vivas a través del reseed; `useMyProfile` sigue siendo
+ * la fuente de lo que el snapshot no trae. Mismo patrón que use-timezone-sync.
+ */
+function seedProfile(
+  client: QueryClient,
+  userId: string,
+  profile: Profile | null,
+): void {
+  if (!profile) {
+    client.setQueryData(profileQueryKey(userId), null)
+    return
+  }
+  client.setQueryData<Profile | null>(profileQueryKey(userId), (prev) =>
+    prev ? { ...prev, ...profile } : profile,
+  )
+}
+
 function seedCaches(
   client: QueryClient,
   payload: HomeSnapshotPayload,
   userId: string,
   familyId: string,
 ): void {
-  client.setQueryData(profileQueryKey(userId), payload.profile ?? null)
+  seedProfile(client, userId, payload.profile ?? null)
   // The RPC returns `{ familyId, code }`; the client's `useFamily`
   // expects `{ familyId, familyCode }`. Normalize before seeding so
   // consumers read the right shape on the cache hit.
@@ -470,7 +493,7 @@ async function fetchAndSeedHomeSnapshot(
   } else if (userId) {
     // No family yet — still seed profile + family (as null) so
     // RequireAuth can redirect without refetching.
-    queryClient.setQueryData(profileQueryKey(userId), payload.profile ?? null)
+    seedProfile(queryClient, userId, payload.profile ?? null)
     queryClient.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
   }
   return payload
