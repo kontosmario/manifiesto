@@ -93,6 +93,27 @@ export function TourHost() {
     svRectRef.current = null
   }, [activeTour])
 
+  // Self-heal del "header muerto". Si el Modal del tour fantasmea (iOS descarta
+  // la presentación visual en una colisión modal-chain pero el scrim queda
+  // montado), onShow NUNCA dispara y, como el scrim NO se descarta al tocar (UX
+  // deliberada: solo "Saltar"), el usuario quedaría atrapado sin "Saltar"
+  // visible. Si a los ~1.5s de iniciar el tour onShow no disparó, lo descartamos
+  // solos. `stopRef` keyea el efecto SOLO en activeTour (no resetea shownRef en
+  // cada render aunque `stop` cambie de identidad).
+  const shownRef = useRef(false)
+  const stopRef = useRef(stop)
+  stopRef.current = stop
+  useEffect(() => {
+    shownRef.current = false
+    if (activeTour === null) return
+    const handle = setTimeout(() => {
+      if (!shownRef.current) {
+        stopRef.current(false)
+      }
+    }, 1500)
+    return () => clearTimeout(handle)
+  }, [activeTour])
+
   // Cutout rect (window coords) + radius. These five SharedValues
   // drive every animated style below — the mask geometry is fully
   // derived from them, so the entire mask animates as one motion.
@@ -468,23 +489,25 @@ export function TourHost() {
     <Modal
       animationType="none"
       onRequestClose={() => stop(false)}
+      // Marca que el Modal SÍ se presentó visiblemente. Si fantasmea (colisión
+      // modal-chain de iOS) onShow no dispara y el self-heal de arriba descarta
+      // el tour a los ~1.5s para que el usuario no quede atrapado.
+      onShow={() => {
+        shownRef.current = true
+      }}
       statusBarTranslucent
       transparent
       visible
     >
-      {/* Scrim — blocks all underlying touches AND dismisses the tour on tap.
-          Tap-to-dismiss is load-bearing for the iOS modal-chain race: if this
-          Modal presents while another sheet's Modal is still tearing down
-          (e.g. the cycle-balance sheet right after onboarding), iOS can drop
-          the VISUAL presentation — no tooltip, no "Saltar" — while this
-          full-screen touch-capturing Pressable stays attached, trapping the
-          user over a dead header (bug 2026-06-23). Letting any scrim tap call
-          stop() guarantees the user is never stuck behind an invisible scrim.
-          A single SVG Path with `fillRule="evenodd"` paints the scrim and
-          subtracts the rounded cutout. The Animated.View's opacity drives both
-          the show/hide fade and the configured `scrimOpacity` cap. */}
+      {/* Scrim — bloquea los toques de abajo pero NO descarta el tour al tocar.
+          Descartar es EXCLUSIVO del botón "Saltar" del tooltip (o terminar el
+          tour) — UX deliberada de acción explícita; tocar en cualquier otro lado
+          mantiene el tutorial vigente. (Si el Modal fantasmea y "Saltar" no se
+          ve, el self-heal por onShow/timeout descarta el tour solo, sin depender
+          del tap.) Un único SVG Path con `fillRule="evenodd"` pinta el scrim y
+          resta el cutout redondeado. La opacidad del Animated.View maneja el fade
+          y el `scrimOpacity` configurado. */}
       <Pressable
-        onPress={() => stop(false)}
         style={StyleSheet.absoluteFill}
       >
         <Animated.View
