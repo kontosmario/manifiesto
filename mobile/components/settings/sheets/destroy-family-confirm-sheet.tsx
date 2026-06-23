@@ -6,7 +6,8 @@ import { ModalCard } from '@/components/ui/modal-card'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
-const CONFIRM_PHRASE = 'ELIMINAR'
+const PHRASE_FAMILY = 'ELIMINAR'
+const PHRASE_ACCOUNT = 'REINICIAR'
 
 interface DestroyFamilyConfirmSheetProps {
   visible: boolean
@@ -14,6 +15,13 @@ interface DestroyFamilyConfirmSheetProps {
   otherActiveMembers: number
   onCancel: () => void
   onConfirm: () => void
+  /**
+   * `'family'` (default): owner tearing down a shared hogar that still
+   * has members — the original flow. `'account'`: a solo user wiping
+   * their OWN account to re-onboard from scratch (no members involved).
+   * Only the copy + confirm phrase change; the two-step friction is shared.
+   */
+  mode?: 'family' | 'account'
 }
 
 /**
@@ -32,8 +40,11 @@ export function DestroyFamilyConfirmSheet({
   otherActiveMembers,
   onCancel,
   onConfirm,
+  mode = 'family',
 }: DestroyFamilyConfirmSheetProps) {
   const { theme } = useAppTheme()
+  const isAccount = mode === 'account'
+  const confirmPhrase = isAccount ? PHRASE_ACCOUNT : PHRASE_FAMILY
   const [step, setStep] = useState<1 | 2>(1)
   const [phrase, setPhrase] = useState('')
   const inputRef = useRef<TextInput | null>(null)
@@ -58,8 +69,8 @@ export function DestroyFamilyConfirmSheet({
   }, [visible, step])
 
   const matches = useMemo(
-    () => phrase.trim().toUpperCase() === CONFIRM_PHRASE,
-    [phrase],
+    () => phrase.trim().toUpperCase() === confirmPhrase,
+    [phrase, confirmPhrase],
   )
 
   const memberLabel = otherActiveMembers === 1
@@ -71,10 +82,18 @@ export function DestroyFamilyConfirmSheet({
       onClose={onCancel}
       subtitle={
         step === 1
-          ? `Aún hay ${memberLabel} en tu hogar.`
+          ? isAccount
+            ? 'Vas a empezar el setup desde cero.'
+            : `Aún hay ${memberLabel} en tu hogar.`
           : 'Confirma escribiendo la palabra exacta.'
       }
-      title={step === 1 ? '¿Eliminar tu hogar?' : 'Última confirmación'}
+      title={
+        step === 1
+          ? isAccount
+            ? '¿Reiniciar tu cuenta?'
+            : '¿Eliminar tu hogar?'
+          : 'Última confirmación'
+      }
       visible={visible}
     >
       {step === 1 ? (
@@ -98,36 +117,59 @@ export function DestroyFamilyConfirmSheet({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
-                Vas a borrar todo el hogar
+                {isAccount ? 'Vas a borrar todos tus datos' : 'Vas a borrar todo el hogar'}
               </Text>
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
-                Como sos el dueño, salirte cierra el hogar para todos. Tu familia,
-                gastos, fijos, metas y configuración se eliminan. Los {memberLabel}{' '}
-                pierden acceso y empiezan de nuevo.
+                {isAccount
+                  ? 'Se eliminan tus gastos, fijos, metas y toda tu configuración. Tu cuenta vuelve al onboarding desde cero. Tu suscripción se mantiene.'
+                  : `Como sos el dueño, salirte cierra el hogar para todos. Tu familia, gastos, fijos, metas y configuración se eliminan. Los ${memberLabel} pierden acceso y empiezan de nuevo.`}
               </Text>
             </View>
           </View>
 
-          <View style={styles.bullets}>
-            <BulletRow
-              colorMuted={theme.colors.textMuted}
-              colorText={theme.colors.text}
-              icon="delete-outline"
-              label="Se borran tus gastos, fijos, metas y la configuración del hogar."
-            />
-            <BulletRow
-              colorMuted={theme.colors.textMuted}
-              colorText={theme.colors.text}
-              icon="people-outline"
-              label={`Los ${memberLabel} pierden acceso compartido.`}
-            />
-            <BulletRow
-              colorMuted={theme.colors.textMuted}
-              colorText={theme.colors.text}
-              icon="restore"
-              label="Si quieres volver, vas a tener que armar un hogar de cero."
-            />
-          </View>
+          {isAccount ? (
+            <View style={styles.bullets}>
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="delete-outline"
+                label="Se borran tus gastos, fijos, metas y toda tu configuración."
+              />
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="restart-alt"
+                label="Volvés a empezar el onboarding desde cero."
+              />
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="verified"
+                label="Tu suscripción no se toca: seguís con tu plan."
+              />
+            </View>
+          ) : (
+            <View style={styles.bullets}>
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="delete-outline"
+                label="Se borran tus gastos, fijos, metas y la configuración del hogar."
+              />
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="people-outline"
+                label={`Los ${memberLabel} pierden acceso compartido.`}
+              />
+              <BulletRow
+                colorMuted={theme.colors.textMuted}
+                colorText={theme.colors.text}
+                icon="restore"
+                label="Si quieres volver, vas a tener que armar un hogar de cero."
+              />
+            </View>
+          )}
 
           <View style={styles.row}>
             <AppButton
@@ -148,7 +190,7 @@ export function DestroyFamilyConfirmSheet({
             <Text style={[styles.confirmHelper, { color: theme.colors.textMuted }]}>
               Escribe{' '}
               <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
-                {CONFIRM_PHRASE}
+                {confirmPhrase}
               </Text>{' '}
               para habilitar el botón.
             </Text>
@@ -158,7 +200,7 @@ export function DestroyFamilyConfirmSheet({
             ref={inputRef}
             value={phrase}
             onChangeText={(value) => setPhrase(value.toUpperCase())}
-            placeholder={CONFIRM_PHRASE}
+            placeholder={confirmPhrase}
             placeholderTextColor={theme.colors.textSoft}
             autoCapitalize="characters"
             autoCorrect={false}
@@ -177,7 +219,7 @@ export function DestroyFamilyConfirmSheet({
 
           {phrase.length > 0 && !matches ? (
             <Text style={[styles.errorText, { color: theme.colors.danger }]}>
-              Tiene que coincidir exactamente con {CONFIRM_PHRASE}.
+              Tiene que coincidir exactamente con {confirmPhrase}.
             </Text>
           ) : null}
 
@@ -190,7 +232,7 @@ export function DestroyFamilyConfirmSheet({
             />
             <AppButton
               disabled={!matches || isSubmitting}
-              label="Eliminar para siempre"
+              label={isAccount ? 'Reiniciar mi cuenta' : 'Eliminar para siempre'}
               loading={isSubmitting}
               onPress={onConfirm}
               variant="danger"

@@ -219,6 +219,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
   const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
   const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
+  const [resetAccountSheetOpen, setResetAccountSheetOpen] = useState(false)
   // Preview state lives here so the dates are regenerated relative to
   // "today" each time the user opens the preview, not snapshotted at
   // mount. `null` while closed so the sheet doesn't render with stale
@@ -606,6 +607,33 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       },
     })
   }, [leaveFamilyMutation, leaveFamilyReauth, router, showError])
+
+  // Reset de cuenta INDIVIDUAL. Una cuenta solo es internamente una `families`
+  // kind='solo' con un único miembro, así que el MISMO RPC leave_current_family
+  // ya produce el reset deseado: cae en la rama owner-alone → borra la familia
+  // (cascade de TODOS los datos financieros) y deja onboarding_completed_at en
+  // null → RequireAuth re-entra al onboarding; los tours se re-resetean al
+  // completar (useCompleteOnboarding). Reusamos la mutation tal cual; solo cambia
+  // el copy del confirm. No hace falta backend nuevo.
+  const runResetAccount = useCallback(async () => {
+    const ok = await leaveFamilyReauth.requireReauth('Reiniciar mi cuenta')
+    if (!ok) return
+    leaveFamilyMutation.mutate(undefined, {
+      onError: (error: unknown) => {
+        void showError(error, 'No se pudo reiniciar la cuenta.')
+      },
+      onSuccess: () => {
+        void triggerHaptic('success')
+        setResetAccountSheetOpen(false)
+        router.replace('/(app)/onboarding')
+      },
+    })
+  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError])
+
+  const handleConfirmResetAccount = useCallback(() => {
+    void triggerHaptic('warning')
+    setResetAccountSheetOpen(true)
+  }, [])
 
   const handleConfirmLeave = useCallback(() => {
     if (isOwnerDestroyFlow) {
@@ -1086,17 +1114,33 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             ) : null}
             </>
             ) : (
-              <RiseView delay={320}>
-                <SettingsGroup title="Tipo de cuenta">
-                  <SettingsRow
-                    icon="group-add"
-                    isLast
-                    label="Compartir con mi familia o pareja"
-                    helper="Activá el modo familiar para invitar y compartir gastos."
-                    onPress={handleConfirmConvertToFamily}
-                  />
-                </SettingsGroup>
-              </RiseView>
+              <>
+                <RiseView delay={320}>
+                  <SettingsGroup title="Tipo de cuenta">
+                    <SettingsRow
+                      icon="group-add"
+                      isLast
+                      label="Compartir con mi familia o pareja"
+                      helper="Activá el modo familiar para invitar y compartir gastos."
+                      onPress={handleConfirmConvertToFamily}
+                    />
+                  </SettingsGroup>
+                </RiseView>
+                <RiseView delay={340}>
+                  <SettingsGroup
+                    footer="Borra tus gastos, fijos, metas y configuración, y reinicia el onboarding desde cero. No se puede deshacer."
+                    title="Reiniciar"
+                  >
+                    <SettingsRow
+                      destructive
+                      icon="restart-alt"
+                      isLast
+                      label="Reiniciar mi cuenta"
+                      onPress={handleConfirmResetAccount}
+                    />
+                  </SettingsGroup>
+                </RiseView>
+              </>
             )}
 
             {/* 4b. ASISTENTE */}
@@ -1550,6 +1594,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onConfirm={() => void runLeaveFamily()}
         otherActiveMembers={otherActiveMembers}
         visible={destroyFamilySheetOpen}
+      />
+      <DestroyFamilyConfirmSheet
+        isSubmitting={leaveFamilyMutation.isPending}
+        mode="account"
+        onCancel={() => {
+          if (leaveFamilyMutation.isPending) return
+          setResetAccountSheetOpen(false)
+        }}
+        onConfirm={() => void runResetAccount()}
+        otherActiveMembers={0}
+        visible={resetAccountSheetOpen}
       />
       <RequireReauthSheet
         visible={leaveFamilyReauth.isVisible}
