@@ -14,8 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ShineOverlay } from '@/components/home/animated/shine-overlay'
-import { HeroAurora } from '@/components/home/hero-aurora'
 import { CardParticles } from '@/components/ui/card-particles'
 import type { HomeHeroMetrics } from '@/features/home/use-home-metrics'
 import type { SavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
@@ -142,18 +140,10 @@ function HomeHeroCardImpl({
         accessibilityRole="summary"
         accessibilityLabel={a11yLabel}
       >
-        <HeroAurora radius={24} />
-        <ShineOverlay
-          width={430}
-          height={320}
-          tint={theme.colors.shineOverlay}
-          delayMs={1000}
-          periodMs={4200}
-        />
-        {/* Particle field — twinkling fireflies layered over the
-            gradient + aurora + shine, under the content. Single shared
-            wave + per-particle phase offset → 1 worklet for the whole
-            field (see card-particles.tsx for the rationale). */}
+        {/* Campo de luciérnagas sobre el gradiente forest, bajo el contenido.
+            Un solo wave compartido + phase por partícula → 1 worklet (ver
+            card-particles.tsx). Sin aurora ni shine: la Home queda alineada con
+            el resto de los heroes (todos forest plano). */}
         <CardParticles count={12} accentColor="#F2A78C" />
 
         {!data.incomeConfigured ? (

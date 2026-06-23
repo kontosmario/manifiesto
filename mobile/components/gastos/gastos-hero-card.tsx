@@ -4,7 +4,6 @@ import Animated, { LinearTransition } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CategoryWeightsList, type CategoryWeight } from '@/components/gastos/category-weights-list'
 import { GastosAverageBars } from '@/components/gastos/gastos-average-bars'
 import { CardParticles } from '@/components/ui/card-particles'
@@ -94,13 +93,6 @@ function GastosHeroCardImpl({
           end={{ x: 0.9, y: 1 }}
           style={styles.card}
         >
-          <ShineOverlay
-            width={430}
-            height={260}
-            tint={theme.colors.shineOverlay}
-            delayMs={1000}
-            periodMs={4200}
-          />
           {/* Twinkling firefly field, layered over background, under
               the content. See `card-particles.tsx` for the
               shared-wave + per-particle-phase technique. */}

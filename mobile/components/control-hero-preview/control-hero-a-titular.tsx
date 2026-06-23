@@ -10,7 +10,6 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
-import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
@@ -50,13 +49,6 @@ export function ControlHeroTitular({ state }: Props) {
       end={{ x: 0.9, y: 1 }}
       style={[styles.card, { borderColor: 'rgba(166,239,143,0.12)' }]}
     >
-      <ShineOverlay
-        width={430}
-        height={360}
-        tint={theme.colors.shineOverlay}
-        delayMs={1000}
-        periodMs={4200}
-      />
       <CardParticles count={14} accentColor={authTokens.peach} />
 
       <RiseRow delay={0}>

@@ -13,7 +13,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -54,7 +53,7 @@ interface FijosHeroCardProps {
 /**
  * Fijos hero card — aligns with the Home/Gastos hero language:
  *  · LinearGradient shell driven by theme.heroGradient.
- *  · HeroAurora (three drifting blobs) + ShineOverlay (diagonal sweep).
+ *  · Campo de luciérnagas (CardParticles) sobre el gradiente forest.
  *  · BreatheDot next to the eyebrow label.
  *  · CountUpText for every monetary value (shared Reanimated hook).
  *  · RiseView cascade matching the screen-wide wave (0/80/160/240/320/400).
@@ -167,13 +166,6 @@ function FijosHeroCardImpl({
               Ahora el pulse se aplica solo al badge "VENCIDOS" del
               header (ver `urgencyBadgeStyle` + `Animated.View` del
               badge más abajo). */}
-          <ShineOverlay
-            width={430}
-            height={360}
-            tint={theme.colors.shineOverlay}
-            delayMs={1000}
-            periodMs={4200}
-          />
           {/* Twinkling firefly field — same shared-wave technique
               as the Home and Gastos hero cards. */}
           <CardParticles count={12} accentColor={authTokens.peach} />
