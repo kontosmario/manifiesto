@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useStreak } from '@/features/streaks/use-streak'
+import { useMyProfile } from '@/features/profile/use-profile'
 import {
   deriveGardenCells,
   deriveWeekClose,
   deriveWeekStrip,
+  gardenFirstActivity,
   weeksToShow,
   type GardenCell,
   type WeekClose,
@@ -56,6 +58,7 @@ export function useGarden(
 ): { data: GardenData | null; isLoading: boolean } {
   const streak = useStreak(familyId, userId)
   const expensesQuery = useExpenses(familyId)
+  const profileQuery = useMyProfile(userId)
 
   const data = useMemo<GardenData | null>(() => {
     if (!familyId || !userId || !streak.data) return null
@@ -80,8 +83,12 @@ export function useGarden(
     const prevWeekDayIso = (i: number) =>
       isoDay(new Date(today.getTime() - (dow - i + 7) * 86_400_000), tz)
 
+    // Ancla = primer brote DESDE tu inicio (cuándo creaste la cuenta). Back-datear
+    // un gasto anterior a tu cuenta no extiende el jardín (evita "salteados" falsos).
+    const created = profileQuery.data?.created_at
+    const accountCreatedIso = created ? isoDay(new Date(created), tz) : null
     const sorted = [...activity].sort()
-    const firstActivityIso = sorted.length > 0 ? sorted[0] : null
+    const firstActivityIso = gardenFirstActivity(sorted, accountCreatedIso)
     const weekCloseId = prevWeekDayIso(0) // lunes de la semana cerrada = id estable
     const weekCloseAvailable =
       firstActivityIso !== null && firstActivityIso <= prevWeekDayIso(6)
@@ -97,10 +104,10 @@ export function useGarden(
       weekClose: deriveWeekClose(activity, prevWeekDayIso),
       weekCloseAvailable,
       weekCloseId,
-      weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso),
+      weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso, accountCreatedIso),
       firstActivityIso,
     }
-  }, [familyId, userId, streak.data, expensesQuery.data])
+  }, [familyId, userId, streak.data, expensesQuery.data, profileQuery.data])
 
   return { data, isLoading: streak.isLoading || expensesQuery.isLoading }
 }

@@ -4,8 +4,26 @@ import {
   deriveGardenCells,
   deriveWeekClose,
   deriveWeekStrip,
+  gardenFirstActivity,
   weeksToShow,
 } from '@/features/garden/garden-model'
+
+describe('gardenFirstActivity (anclaje a tu inicio)', () => {
+  it('sin actividad → null', () => {
+    expect(gardenFirstActivity([], '2026-06-01')).toBeNull()
+  })
+  it('sin fecha de cuenta → el registro más viejo (fallback)', () => {
+    expect(gardenFirstActivity(['2026-05-01', '2026-06-10'], null)).toBe('2026-05-01')
+  })
+  it('clampea a la cuenta: ignora back-date anterior a tu inicio', () => {
+    expect(
+      gardenFirstActivity(['2026-05-01', '2026-06-10', '2026-06-15'], '2026-06-01'),
+    ).toBe('2026-06-10')
+  })
+  it('solo hay back-date pre-cuenta → null (no extiende el jardín)', () => {
+    expect(gardenFirstActivity(['2026-05-01'], '2026-06-01')).toBeNull()
+  })
+})
 
 describe('weeksToShow', () => {
   const today = '2026-06-24' // miércoles
@@ -101,5 +119,13 @@ describe('deriveWeekStrip', () => {
   it('hoy registrado = logged (no pending)', () => {
     const strip = deriveWeekStrip(new Set(['2026-06-19']), todayIso, weekDayIso)
     expect(strip[3].state).toBe('logged')
+  })
+
+  it('días previos al inicio (startIso) = future tenue, no missed', () => {
+    // inicio de cuenta 06-18 → Lun 06-16 y Mar 06-17 (antes) = future, no missed
+    const strip = deriveWeekStrip(new Set(), todayIso, weekDayIso, '2026-06-18')
+    expect(strip[0].state).toBe('future')
+    expect(strip[1].state).toBe('future')
+    expect(strip[3].state).toBe('pending') // hoy 06-19
   })
 })

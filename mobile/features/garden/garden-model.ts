@@ -60,6 +60,22 @@ export function weeksToShow(firstActivityIso: string | null, todayIso: string): 
 }
 
 /**
+ * Ancla del jardín = el primer brote DESDE que empezaste a usar la app. Clampea
+ * el primer registro a `accountCreatedIso` para que back-datear un gasto anterior
+ * a tu cuenta NO extienda el jardín hacia atrás (evita semanas de "salteados" que
+ * nunca tuviste chance de registrar — "sin culpa"). `sortedActivityIso` debe venir
+ * ascendente. Sin fecha de cuenta → el registro más viejo (fallback).
+ */
+export function gardenFirstActivity(
+  sortedActivityIso: string[],
+  accountCreatedIso: string | null,
+): string | null {
+  if (sortedActivityIso.length === 0) return null
+  if (!accountCreatedIso) return sortedActivityIso[0]
+  return sortedActivityIso.find((iso) => iso >= accountCreatedIso) ?? null
+}
+
+/**
  * Grilla DINÁMICA por semanas calendario (L→D). Muestra las últimas
  * `weeksToShow` semanas terminando en la semana actual; cada celda es un día.
  * Estado del brote por antigüedad (días salteados no rompen). Días futuros de
@@ -184,12 +200,15 @@ export function deriveWeekStrip(
   activityIso: ReadonlySet<string>,
   todayIso: string,
   weekDayIso: (dayIndexMonday0: number) => string,
+  startIso?: string | null,
 ): WeekStripDay[] {
   const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
   return letters.map((letter, i) => {
     const iso = weekDayIso(i)
     let state: WeekDayState
-    if (activityIso.has(iso)) state = 'logged'
+    // Días previos a tu inicio = tenues (no "salteados"): no eras usuario aún.
+    if (startIso && iso < startIso) state = 'future'
+    else if (activityIso.has(iso)) state = 'logged'
     else if (iso > todayIso) state = 'future'
     else if (iso === todayIso) state = 'pending'
     else state = 'missed'
