@@ -115,6 +115,7 @@ export function bubbleHeadline(task: ControlAdvisorTask): string {
   if (id.startsWith('undetected-sub-')) return 'Posible suscripción'
   if (id.startsWith('member-imbalance-')) return 'Balance familiar'
   if (id.startsWith('income-volatility')) return 'Variación de ingresos'
+  if (id.startsWith('sub-usage-')) return 'Suscripción · uso'
   return task.cat || 'Insight'
 }
 
@@ -168,5 +169,6 @@ export function impactChipLabel(task: ControlAdvisorTask): string {
   if (id.startsWith('undetected-sub-')) return 'Suscripción anual'
   if (id.startsWith('member-imbalance-')) return 'Carga del miembro'
   if (id.startsWith('income-volatility')) return 'Delta ingreso'
+  if (id.startsWith('sub-usage-')) return 'Costo mensual'
   return 'Impacto mensual'
 }
