@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
+import { entitlementQueryKey } from '@/features/billing/use-entitlement'
 import { resetAllTours } from '@/features/tours/persistence'
 import { deletePersistentValue } from '@/lib/persistent-kv'
 
@@ -41,6 +42,11 @@ export function useCompleteOnboarding(userId?: string) {
             : prev,
       )
       await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
+      // Al completar el onboarding se setea onboarding_completed_at → el
+      // SubscriptionGate recién acá puede bloquear. Refrescamos el entitlement
+      // para que el gate evalúe el snapshot correcto (trial de la familia nueva),
+      // no un BLOCKED stale de la ventana sin-familia del reset.
+      await queryClient.invalidateQueries({ queryKey: entitlementQueryKey(userId) })
 
       // Reset tour-seen flags so the home/gastos/fijos/control tours
       // auto-fire for this brand-new account. The flags live device-wide

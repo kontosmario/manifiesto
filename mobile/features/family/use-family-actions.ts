@@ -9,6 +9,7 @@ import { familyMembersKey } from '@/features/family/use-family-members'
 import { familyMembersDetailKey } from '@/features/family/use-family-members-detail'
 import { familyAdminMemberStatsQueryKey } from '@/features/family/use-family-admin'
 import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
+import { entitlementQueryKey } from '@/features/billing/use-entitlement'
 import type { AccountKind } from '@/features/family/account-kind'
 
 interface FamilyRpcResult {
@@ -46,6 +47,11 @@ export function useBootstrapFamily(userId?: string) {
         queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
         queryClient.invalidateQueries({ queryKey: categoriesQueryKey(result.family_id) }),
         queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
+        // El entitlement se resuelve con la familia (trial nuevo o cobertura del
+        // hogar). Sin esto, el snapshot BLOCKED cacheado durante la ventana
+        // sin-familia del reset quedaba pegado (staleTime 60s) y el paywall duro
+        // no se soltaba.
+        queryClient.invalidateQueries({ queryKey: entitlementQueryKey(userId) }),
       ])
     },
   })
@@ -145,6 +151,11 @@ export function useConsumeFamilyInvite(userId?: string) {
         queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
         queryClient.invalidateQueries({ queryKey: categoriesQueryKey(result.family_id) }),
         queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
+        // El entitlement se resuelve con la familia (trial nuevo o cobertura del
+        // hogar). Sin esto, el snapshot BLOCKED cacheado durante la ventana
+        // sin-familia del reset quedaba pegado (staleTime 60s) y el paywall duro
+        // no se soltaba.
+        queryClient.invalidateQueries({ queryKey: entitlementQueryKey(userId) }),
       ])
     },
   })

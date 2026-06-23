@@ -1,6 +1,7 @@
 import { Modal, StyleSheet, View } from 'react-native'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useEntitlement } from '@/features/billing/use-entitlement'
+import { useMyProfile } from '@/features/profile/use-profile'
 import { BillingScreen } from '@/screens/settings/billing-screen'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -23,8 +24,15 @@ export function SubscriptionGate() {
   const { theme } = useAppTheme()
   const userId = useAuthSession().data?.user.id
   const { data: ent, isLoading } = useEntitlement(userId)
+  const profile = useMyProfile(userId).data
 
-  const blocked = !isLoading && ent != null && !ent.hasAccess
+  // Guard estructural: NUNCA bloquear mientras el usuario está en onboarding
+  // (onboarding_completed_at null). Las tabs siguen montadas DEBAJO del modal de
+  // onboarding (p.ej. durante "Reiniciar mi cuenta", que borra la familia y
+  // re-onboardea), así que sin esto un entitlement transitoriamente bloqueado
+  // montaría el paywall ENCIMA del onboarding y dejaría al usuario atrapado.
+  const onboardingDone = profile?.onboarding_completed_at != null
+  const blocked = !isLoading && ent != null && !ent.hasAccess && onboardingDone
   if (!blocked) return null
 
   return (
