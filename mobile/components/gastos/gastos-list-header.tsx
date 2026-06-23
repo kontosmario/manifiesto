@@ -15,7 +15,7 @@ import { GastosHeader } from '@/components/gastos/gastos-header'
 import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { GastosSmartFilter } from '@/components/gastos/gastos-smart-filter'
-import { StreakFlameIcon } from '@/components/gastos/streak-flame-icon'
+import { GardenLeafIcon } from '@/components/garden/garden-leaf-icon'
 import { ClearFiltersButton } from '@/components/gastos/clear-filters-button'
 import {
   GASTOS_TOUR,
@@ -145,7 +145,7 @@ export function GastosListHeader(props: GastosListHeaderProps) {
               // en top:-5 / right:-5.
               highlight={{ borderRadius: 20, padding: 6, pulse: true }}
             >
-              <StreakFlameIcon data={streakData} onPress={onPressStreak} />
+              <GardenLeafIcon data={streakData} onPress={onPressStreak} />
             </TourTarget>
           }
         />

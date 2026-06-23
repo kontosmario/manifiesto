@@ -20,7 +20,7 @@ import { CardSkeleton, HeroSkeleton, ListRowSkeleton } from '@/components/ui/ske
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { GastosEmptyState } from '@/components/gastos/gastos-empty-state'
 import { GastosHeader } from '@/components/gastos/gastos-header'
-import { StreakFlameIcon } from '@/components/gastos/streak-flame-icon'
+import { GardenLeafIcon } from '@/components/garden/garden-leaf-icon'
 import { StreakSheet } from '@/components/gastos/streak-sheet'
 import { EmptyActionButton } from '@/components/gastos/empty-action-button'
 import { GastosMovementRow } from '@/components/gastos/gastos-movement-row'
@@ -509,8 +509,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   const handlePressStreak = useCallback(() => {
     void triggerHaptic('selection')
     trackTap('streak_flame', 'header')
-    setStreakSheetVisible(true)
-  }, [trackTap])
+    // La metáfora de jardín reemplaza el StreakSheet: el header abre "Mi jardín".
+    router.push('/(app)/garden')
+  }, [router, trackTap])
   const handleRegisterForgotten = useCallback(
     (date: Date) => {
       void triggerHaptic('light')
@@ -834,7 +835,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
                 text={GASTOS_TOUR_STEPS.streak.text}
                 highlight={{ borderRadius: 20, padding: 6, pulse: true }}
               >
-                <StreakFlameIcon data={streakData} onPress={handlePressStreak} />
+                <GardenLeafIcon data={streakData} onPress={handlePressStreak} />
               </TourTarget>
             }
           />
