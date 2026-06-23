@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { Sprout } from './sprout'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
@@ -13,6 +13,9 @@ interface GardenGridProps {
 
 const COLS = 7
 const GAP = 7
+// Inset horizontal del grid = padding del Screen (20×2) + de la gardenCard (22×2).
+// Solo para ESTIMAR el cellSize en el primer frame (onLayout corrige con el real).
+const GRID_INSET = 84
 
 // Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
 const LEGEND: Array<{ label: string; color: string }> = [
@@ -48,12 +51,16 @@ function tileBg(stage: BroteStage, theme: AppTheme): string {
 
 function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
   const { theme } = useAppTheme()
-  const [width, setWidth] = useState(0)
-  // Floor para que las 7 columnas SIEMPRE entren en la fila (sub-pixel hacía
-  // que la 7ª celda wrappeara → la grilla se veía "desfasada").
-  const cellSize = width > 0 ? Math.floor((width - (COLS - 1) * GAP) / COLS) : 0
+  const { width: windowWidth } = useWindowDimensions()
+  const [measuredWidth, setMeasuredWidth] = useState(0)
+  // Ancho del grid: estimado desde el window en el PRIMER frame (sin esperar
+  // onLayout) → las celdas rinden ya, sin pop ni colapso de altura; onLayout
+  // corrige con el ancho real. Floor → las 7 columnas SIEMPRE entran (sub-pixel
+  // hacía wrappear la 7ª).
+  const width = measuredWidth || Math.max(0, windowWidth - GRID_INSET)
+  const cellSize = Math.floor((width - (COLS - 1) * GAP) / COLS)
 
-  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)
+  const onLayout = (e: LayoutChangeEvent) => setMeasuredWidth(e.nativeEvent.layout.width)
 
   return (
     <View>
