@@ -396,15 +396,12 @@ function HomeHeroCardImpl({
                   accessibilityLabel={`Sumaste ${formatMoney(data.cycleBalanceDiff)} al saldo del mes`}
                   style={[
                     styles.adjustedChip,
-                    theme.isDark
-                      ? {
-                          backgroundColor: 'rgba(165,180,252,0.18)',
-                          borderColor: 'rgba(165,180,252,0.42)',
-                        }
-                      : {
-                          backgroundColor: 'rgba(99,102,241,0.14)',
-                          borderColor: 'rgba(99,102,241,0.40)',
-                        },
+                    {
+                      // Hero oscuro en ambos modos → siempre el índigo claro
+                      // (dark mode), alineado con el resto de los chips.
+                      backgroundColor: 'rgba(165,180,252,0.18)',
+                      borderColor: 'rgba(165,180,252,0.42)',
+                    },
                   ]}
                 >
                   {/* Icon add-circle: acción clara de "sumar/agregar"
@@ -413,12 +410,12 @@ function HomeHeroCardImpl({
                   <MaterialIcons
                     name="add-circle"
                     size={13}
-                    color={theme.isDark ? '#A5B4FC' : '#4F46E5'}
+                    color={'#A5B4FC'}
                   />
                   <Text
                     style={[
                       styles.adjustedChipText,
-                      { color: theme.isDark ? '#A5B4FC' : '#4F46E5' },
+                      { color: '#A5B4FC' },
                     ]}
                   >
                     {`+${formatMoneyShort(data.cycleBalanceDiff)} al mes`}
@@ -526,27 +523,24 @@ function HomeHeroCardImpl({
                   accessibilityLabel={`Tenés ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
                   style={[
                     styles.savingsChip,
-                    theme.isDark
-                      ? {
-                          backgroundColor: 'rgba(252,211,77,0.14)',
-                          borderColor: 'rgba(252,211,77,0.40)',
-                        }
-                      : {
-                          backgroundColor: 'rgba(180,83,9,0.10)',
-                          borderColor: 'rgba(180,83,9,0.36)',
-                        },
+                    {
+                      // Hero oscuro en ambos modos → siempre el gold (dark
+                      // mode). Antes en light usaba rust #B45309 que rompía.
+                      backgroundColor: 'rgba(252,211,77,0.14)',
+                      borderColor: 'rgba(252,211,77,0.40)',
+                    },
                   ]}
                 >
                   <MaterialIcons
                     name="account-balance-wallet"
                     size={13}
-                    color={theme.isDark ? '#FCD34D' : '#B45309'}
+                    color={'#FCD34D'}
                   />
                   <Text
                     style={[
                       styles.savingsChipText,
                       {
-                        color: theme.isDark ? '#FCD34D' : '#B45309',
+                        color: '#FCD34D',
                         fontVariant: ['tabular-nums'],
                       },
                     ]}
