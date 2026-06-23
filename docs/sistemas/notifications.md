@@ -108,6 +108,30 @@ la familia vieja en este device.
 - Migración `20260620220000_push_subscriptions_rehome_dedup`: limpieza única de
   los duplicados ya existentes en prod (conserva la fila más reciente por endpoint).
 
+## Fix flood de register-push — loop del token listener (2026-06-23)
+
+**Síntoma (reportado por el owner):** "no veo push hace unos días; al activarlas
+dice *algo salió mal, edge function returned a non-2xx status code*". Los logs de
+la edge mostraban un **diluvio de ~43 req/s a `register-push-subscription`, todos
+429** (rate limit), en cada ventana de 1 min saturada (20/20). El token igual
+quedaba registrado (las primeras 20/min pasan) pero el toggle manual caía siempre
+como 21º+ → 429.
+
+**Causa:** el `addPushTokenListener` agregado en `88681a7` (audit 2026-06-15)
+llamaba `run(1)` **incondicionalmente**. `run` → `setupPushNotifications` →
+`getExpoPushTokenAsync`, que **re-emite el device token por el mismo listener** →
+`run(1)` → ... loop apretado, decenas de invokes concurrentes que se auto-infligen
+el 429. Coincide con "hace unos días" (el listener no existía antes de ese commit).
+
+**Fix (`use-register-push-token.ts`, solo cliente):**
+- **Guard de concurrencia** (`inFlight` ref): nunca dos registros solapados; las
+  re-entradas durante un registro en vuelo se descartan → el loop muere en 1 iter.
+- **Dedupe del listener** (`lastDeviceToken` ref): re-registrar solo ante una
+  rotación REAL del token (compara device token); descarta los re-emits idénticos.
+- No requiere redeploy de edge ni migración. Llega por **reload de Metro** (dev) o
+  un build nuevo (prod). El rate limit se auto-limpia 1 min después de que el
+  flood pare (ventana tumbling de 60s).
+
 ## "Presupuesto del día listo" (checkin local) retirado (2026-06-19)
 
 Era una notificación LOCAL (`mobile/hooks/use-daily-budget-nudges.ts`) a las ~9am,

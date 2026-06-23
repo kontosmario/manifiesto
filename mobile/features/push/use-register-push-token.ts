@@ -45,6 +45,13 @@ export function useRegisterPushToken(
 ): void {
   const queryClient = useQueryClient()
   const lastSuccessKey = useRef<string | null>(null)
+  // Fix del flood de register-push (audit 2026-06-23). Dos guardas que
+  // rompen el loop `getExpoPushTokenAsync → addPushTokenListener → run`:
+  //   · `inFlight`: nunca solapar dos registros (ver `run`).
+  //   · `lastDeviceToken`: re-registrar solo ante rotación REAL del token
+  //     (ver el `addPushTokenListener` abajo).
+  const inFlight = useRef(false)
+  const lastDeviceToken = useRef<string | null>(null)
 
   useEffect(() => {
     if (!canUseNativePushNotifications) return
@@ -59,24 +66,37 @@ export function useRegisterPushToken(
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const run = async (attempt: number): Promise<void> => {
-      const result = await setupPushNotifications({
-        userId,
-        familyId: familyId ?? null,
-      })
-      if (cancelled) return
-      if (result.status === 'ok') {
-        lastSuccessKey.current = attemptKey
-        await queryClient.invalidateQueries({
-          queryKey: pushSubscriptionQueryKey(familyId ?? undefined, userId),
+      // Guard de concurrencia: jamás dejar dos registros solapados. La
+      // causa raíz del flood (audit 2026-06-23): `setupPushNotifications`
+      // llama `getExpoPushTokenAsync`, que re-emite el device token vía
+      // `addPushTokenListener` → re-entra acá → fan-out de decenas de
+      // invokes concurrentes → 429 auto-infligido. Con el guard, las
+      // re-entradas durante un registro en vuelo se descartan (no se
+      // encolan), así el loop muere en una iteración.
+      if (inFlight.current) return
+      inFlight.current = true
+      try {
+        const result = await setupPushNotifications({
+          userId,
+          familyId: familyId ?? null,
         })
-        return
-      }
-      // Solo 'error' (transitorio) se reintenta. El resto es terminal
-      // para este lifecycle.
-      if (result.status === 'error' && attempt < MAX_REGISTER_ATTEMPTS) {
-        timer = setTimeout(() => {
-          void run(attempt + 1)
-        }, RETRY_BASE_MS * attempt)
+        if (cancelled) return
+        if (result.status === 'ok') {
+          lastSuccessKey.current = attemptKey
+          await queryClient.invalidateQueries({
+            queryKey: pushSubscriptionQueryKey(familyId ?? undefined, userId),
+          })
+          return
+        }
+        // Solo 'error' (transitorio) se reintenta. El resto es terminal
+        // para este lifecycle.
+        if (result.status === 'error' && attempt < MAX_REGISTER_ATTEMPTS) {
+          timer = setTimeout(() => {
+            void run(attempt + 1)
+          }, RETRY_BASE_MS * attempt)
+        }
+      } finally {
+        inFlight.current = false
       }
     }
 
@@ -87,7 +107,18 @@ export function useRegisterPushToken(
     void (async () => {
       const Notifications = await import('expo-notifications')
       if (cancelled) return
-      const subscription = Notifications.addPushTokenListener(() => {
+      const subscription = Notifications.addPushTokenListener((deviceToken) => {
+        // Solo re-registrar ante una rotación REAL del token. expo-
+        // notifications re-emite el token actual cada vez que corre
+        // `getExpoPushTokenAsync` (que nuestro propio setup llama) — sin
+        // este dedupe el listener re-entra a `run` → getExpoPushTokenAsync
+        // → listener → ... el loop apretado que floodeaba register-push
+        // (audit 2026-06-23). Comparamos contra el último device token
+        // visto y descartamos los re-emits idénticos.
+        const next =
+          typeof deviceToken?.data === 'string' ? deviceToken.data : null
+        if (next && next === lastDeviceToken.current) return
+        lastDeviceToken.current = next
         // Forzamos un registro fresco con el token rotado.
         lastSuccessKey.current = null
         if (timer) clearTimeout(timer)
