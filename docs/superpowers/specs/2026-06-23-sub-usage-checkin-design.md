@@ -34,17 +34,23 @@ Clave del diseño: **`period` es `text` libre (sin CHECK de formato)**. Usamos `
 ### Nuevo RPC: `record_subscription_usage(p_fixed_expense_id uuid, p_level text, p_period text)`
 `audit_subscription` existente **hardcodea** `period := to_char(now(),'YYYY-MM')` (una fila/mes, overwrite) → no sirve para el historial por check-in. Agregamos un RPC nuevo `SECURITY DEFINER` (mismo patrón de validación: auth + membership + level válido) que inserta con el `p_period` explícito (la fecha del check-in), `on conflict (fixed_expense_id,user_id,period) do update set level, updated_at`. No tocamos `audit_subscription` (queda, sin callers tras retirar B-engine).
 
-### Cadencia + racha = **derivadas** (sin columnas nuevas)
-No agregamos columnas a `fixed_expenses` (evita el gotcha de `home_snapshot`). El builder cliente deriva todo de datos ya disponibles:
-- **¿Toca preguntar?** = hay un `fixed_expense_payments` con `paid_at` posterior a la última `usage_audit.created_at` de esa sub (ask-al-pagar) **o** pasaron ≥15 días desde la última respuesta (re-ask).
-- **Racha negativa** = contar las últimas respuestas (`level` mapeado a score) por orden `created_at desc`.
+### Cadencia + racha = **derivadas server-side** (cross-ciclo safe)
 
-### Exponer en `home_snapshot`
-Agregar al JSONB del RPC `home_snapshot()`:
-- `subscription_usage_audits`: filas de `fixed_expense_usage_audit` de la familia, ventana ~12 meses (para que el builder lea el historial sincrónico, igual que `advisor_signal_dismissals`).
-- `subscription_action_intents`: intents abiertos (`resolved_at is null`).
+No agregamos columnas a `fixed_expenses`. **Ojo cross-ciclo (validado 2026-06-23):** el `home_snapshot` ventanea `fixed_expense_payments` al ciclo activo (`paid_at ∈ [cycle_start, cycle_end)`) y lo congela pre-cobro → el builder **no** puede leer "el pago disparador" si cayó en un ciclo ya cerrado. Una sub pagada a fin de ciclo perdería su primer check-in. Por eso el snapshot expone un payload **derivado server-side, SIN ventana de ciclo**:
 
-`fixed_expense_payments` y `fixed_expenses` (con `category_id`) **ya** vienen en el snapshot.
+`subscription_checkins`: array, una entrada por `fixed_expenses` con categoría 'Suscripciones' y `status='active'`:
+- `fixed_expense_id`, `name`, `amount` (vigente — **NO** el expense del pago, que se archiva/purga).
+- `last_payment_at` = `MAX(fixed_expense_payments.paid_at)` de la sub — **sin filtro de ciclo**.
+- `last_audit_at` = `MAX(fixed_expense_usage_audit.created_at)` (del usuario).
+- `recent_levels` = últimos ~3 `level` por `created_at desc` (para el scoring).
+- `open_intent` = el `fixed_expense_action_intent` abierto (si hay).
+
+Con eso el builder deriva todo sin tocar la ventana de ciclo ni el freeze:
+- **Ask-al-pagar** = `last_payment_at > last_audit_at` (pago sin responder).
+- **Re-ask** = `now − last_audit_at >= REASK_DAYS` (no depende de payments → robusto al cierre).
+- **Racha** = `recent_levels` mapeados a score.
+
+Las dos condiciones se evalúan por separado e idempotentes; nunca 2 cards para la misma sub en una corrida (cap 1–2). Este payload reemplaza el plan anterior de exponer `fixed_expense_usage_audit`/`payments` crudos (que sufren el windowing del ciclo).
 
 ## Flujo (la card)
 
@@ -72,7 +78,7 @@ Umbrales en constantes (`mobile/features/subscriptions-zombie/usage-checkin.cons
 ## Anti-spam (reusar, no duplicar)
 
 - Diversity budget del asistente (≤3 por urgencia, cap 5 cards) — la card de uso entra a ese presupuesto.
-- Dismiss TTL escalado (`control-dismiss-store`): responder = dismiss; reaparece al próximo check-in derivado (no por TTL fijo, sino por `next_ask` derivado).
+- **Cadencia gobernada por el gate del builder** (no emitir si `now − last_audit_at < REASK_DAYS`), **NO** por el TTL del `control-dismiss-store`. Validado 2026-06-23: el dismiss-store es TTL-based y 'sub-usage' caería al `COOLDOWN_DAYS=7` (reaparición temprana = spam antes de los 15d) y un id por-período nunca acumula `ignoreCount`. El dismiss se usa solo como **supresión intra-sesión**; agregar 'sub-usage' a `BASE_TTL_DAYS` con valor `>= REASK_DAYS` como backstop.
 - Máx **1–2** cards de uso por corrida (como zombie hoy).
 - v1 **no** emite push (cero riesgo de flood). El push del fast-follow reusará el dedup 14d + cooldown del cron existente.
 
@@ -82,6 +88,7 @@ Umbrales en constantes (`mobile/features/subscriptions-zombie/usage-checkin.cons
 - La síntesis de zombi del snapshot en `use-control-v2-data.ts` (`id 'snapshot-zombie-*'`).
 - El cron `cron_detect_zombies` (unschedule en `pg_cron`; migración que lo da de baja). **No** se borran tablas/columnas (`last_used_at`, `control_snapshots.zombie_candidates`) — reversible.
 - Revisar `subscription-audit-engine.ts` / `use-subscription-audit-feed.ts` / `zombie-feed-section.tsx`: lo que sea candidatura-pasiva del Sistema B se reemplaza por el flujo nuevo; lo reusable (la card de escala, los tipos) se conserva.
+- **Tests (mismo commit, validado 2026-06-23):** actualizar `tests/unit/control-signals.test.ts` — el caso *"caps output at 5 tasks and ranks by urgency"* inyecta 2 `zombie_alert` y assertea `out[0].urgency==='alta'`; se rompe al sacar `buildFromZombieNotifications`. Reemplazar el fixture/assert por la nueva fuente de urgencia alta (card sub-usage con flag fuerte) o quitar los `zombie_alert`. Revisar `tests/integration/control-snapshot.test.ts` si se toca `compute_control_snapshot`.
 
 ## Retención
 
@@ -109,6 +116,20 @@ No hay flag booleano de suscripción. Criterio: categoría con `name='Suscripcio
 - Builder `buildSubUsageCheckin` vía `buildControlSignals` (patrón de `tests/unit/control-signals.test.ts`): paga-sin-responder→card; respondió hace <15d→no card; 3 negativas→flag fuerte con CTA cancelar.
 - RPC `record_subscription_usage`: append-only por período, idempotente, RLS (member-only). (Integration si hay DB; si no, smoke del shape.)
 - Validación por task: `npm run typecheck`, `eslint`, `npx expo export --platform ios` antes de declarar verificado. La migración se aplica a prod vía Management API y se verifica con una query.
+
+## Invariantes cross-ciclo (validado adversarialmente 2026-06-23)
+
+Verificado contra `close_monthly_cycle`, `home_snapshot` (freeze), la retención de pagos, y el feed del asistente. Veredicto: **safe-with-notes** — la feature no rompe el ciclo ni el ciclo corrompe sus datos; estas invariantes deben mantenerse:
+
+1. **El cierre no toca las tablas de la feature.** `close_monthly_cycle` solo archiva `expenses` (`archived_at`) y upserta `monthly_summaries`. NO puede tocar/archivar/resetear `fixed_expense_payments`, `fixed_expense_usage_audit` ni `fixed_expense_action_intent`. Cualquier cambio futuro al cierre debe preservarlo.
+2. **El trigger se ancla al ledger durable, no al expense efímero.** El evento de pago vive en `fixed_expense_payments.paid_at` (persiste cross-ciclo). El `expense` ligado se archiva al cerrar y se purga (retención last-3) → NUNCA derivar el trigger ni el monto del expense. Monto = `fixed_expenses.amount` vigente.
+3. **El ask-al-pagar NO depende de la ventana de ciclo del snapshot.** Se deriva del payload `subscription_checkins` (sin filtro de ciclo). El array de `fixed_expense_payments` ventaneado del snapshot NO sirve para el check-in cross-ciclo.
+4. **Las dos condiciones del trigger son independientes e idempotentes ante un cierre intermedio.** Re-ask por timer (`now − last_audit_at >= REASK_DAYS`) no depende de payments → robusto al cierre. Nunca 2 cards para la misma sub en una corrida.
+5. **La cadencia la gobierna el gate del builder, no el TTL del dismiss-store.** El dismiss es supresión intra-sesión.
+6. **El builder solo considera `status='active'` + categoría 'Suscripciones'.** Subs `archived`/`paused` (vía `resolve_subscription_intent`) quedan excluidas aunque sigan llegando en el snapshot.
+7. **`record_subscription_usage` es `SECURITY DEFINER` e idempotente** (`on conflict (fixed_expense_id,user_id,period) do update`) — la RLS de `fixed_expense_usage_audit` no tiene policy de UPDATE.
+8. **`period` del flujo nuevo es siempre `'YYYY-MM-DD'`;** `scoreSubscriptionUsage` debe ser robusto a (o ignorar) filas legacy `'YYYY-MM'` de `audit_subscription`.
+9. **Prune de `usage_audit` = 12m, estrictamente `>> REASK_DAYS × streak_threshold`** para no truncar rachas activas (el scoring mira las últimas ~3).
 
 ## Riesgos / consideraciones
 
