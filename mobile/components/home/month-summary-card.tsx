@@ -66,8 +66,6 @@ interface MonthSummaryCardProps {
 interface PanelTone {
   /** Color of the uppercase label ("VARIABLES" / "FIJOS"). */
   label: string
-  /** Subtle border around the entire card (cream surface inside). */
-  border: string
   /** Default tone for the bottom band fill. */
   bandBg: string
   /** Default tone for the icon circle inside the band. */
@@ -127,7 +125,6 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   const variablesTone = useMemo<PanelTone>(
     () => ({
       label: theme.isDark ? '#F8D1C3' : '#B84014',
-      border: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)',
       bandBg: theme.isDark ? 'rgba(166,239,143,0.12)' : 'rgba(166,239,143,0.12)',
       bandIconBg: theme.isDark ? 'rgba(166,239,143,0.22)' : 'rgba(166,239,143,0.20)',
       bandIconFg: theme.isDark ? '#A6EF8F' : '#297811',
@@ -142,7 +139,6 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   const fijosTone = useMemo<PanelTone>(
     () => ({
       label: theme.isDark ? '#A6EF8F' : '#297811',
-      border: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)',
       bandBg: theme.isDark ? 'rgba(166,239,143,0.12)' : 'rgba(166,239,143,0.12)',
       bandIconBg: theme.isDark ? 'rgba(166,239,143,0.22)' : 'rgba(166,239,143,0.20)',
       bandIconFg: theme.isDark ? '#A6EF8F' : '#297811',
@@ -401,10 +397,9 @@ function SummaryPanel({
           backgroundColor: theme.isDark
             ? theme.colors.surfaceMuted
             : theme.colors.creamCard,
-          borderColor: tone.border,
-          // Match ACTIVIDAD's 1px edge at night; the hairline read as
-          // edgeless on the dark canvas. Light keeps the hairline.
-          borderWidth: theme.isDark ? 1 : StyleSheet.hairlineWidth,
+          // Mismo "marcado" que la card de racha: borde sólido 1px en `line`.
+          borderColor: theme.colors.line,
+          borderWidth: 1,
         },
       ]}
     >
@@ -541,8 +536,8 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   headRegion: {
