@@ -400,7 +400,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           existingId: null,
           input: {
             title: state.firstGoalTitle.trim(),
-            emoji: '🎯',
+            emoji: state.firstGoalEmoji,
             goalAmount,
             currentAmount: 0,
             targetMonths: state.firstGoalMonths,
@@ -428,6 +428,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     state.createFirstGoal,
     state.firstGoalTargetRaw,
     state.firstGoalTitle,
+    state.firstGoalEmoji,
     state.firstGoalMonths,
     monthlyIncome,
     existingFinance,
@@ -809,11 +810,13 @@ function renderStep(
           savingsGoalPercent={state.savingsGoalPercent}
           createFirstGoal={state.createFirstGoal}
           firstGoalTitle={state.firstGoalTitle}
+          firstGoalEmoji={state.firstGoalEmoji}
           firstGoalTargetRaw={state.firstGoalTargetRaw}
           firstGoalMonths={state.firstGoalMonths}
           onChangeSavingsPercent={actions.setSavingsPercent}
           onToggleCreateFirstGoal={actions.setCreateFirstGoal}
           onChangeFirstGoalTitle={actions.setFirstGoalTitle}
+          onChangeFirstGoalEmoji={actions.setFirstGoalEmoji}
           onRequestFirstGoalNumpad={ctx.openGoalNumpad}
           onChangeFirstGoalMonths={actions.setFirstGoalMonths}
           isGoalNumpadActive={ctx.numpadTarget === 'goal'}

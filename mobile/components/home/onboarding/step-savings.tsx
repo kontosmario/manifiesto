@@ -1,8 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
+// Reusamos los mismos constantes que el wizard de creación de meta de Settings
+// para que onboarding y Settings queden sincronizados (un solo source of truth).
+import { EMOJI_PALETTE } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
+import { MONTH_OPTIONS } from '@/components/savings-goals/wizard-steps/step-3-months'
 import { TextField } from '@/components/ui/text-field'
 import { formatMoney, parsePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
@@ -13,11 +17,13 @@ interface StepSavingsProps {
   savingsGoalPercent: number
   createFirstGoal: boolean
   firstGoalTitle: string
+  firstGoalEmoji: string
   firstGoalTargetRaw: string
   firstGoalMonths: number
   onChangeSavingsPercent: (value: number) => void
   onToggleCreateFirstGoal: (value: boolean) => void
   onChangeFirstGoalTitle: (value: string) => void
+  onChangeFirstGoalEmoji: (value: string) => void
   onRequestFirstGoalNumpad: () => void
   onChangeFirstGoalMonths: (value: number) => void
   /** True while the InAppNumpad is open editing the goal amount.
@@ -36,11 +42,13 @@ export function StepSavings({
   savingsGoalPercent,
   createFirstGoal,
   firstGoalTitle,
+  firstGoalEmoji,
   firstGoalTargetRaw,
   firstGoalMonths,
   onChangeSavingsPercent,
   onToggleCreateFirstGoal,
   onChangeFirstGoalTitle,
+  onChangeFirstGoalEmoji,
   onRequestFirstGoalNumpad,
   onChangeFirstGoalMonths,
   isGoalNumpadActive = false,
@@ -179,6 +187,48 @@ export function StepSavings({
             accessibilityLabel="Título de la meta"
           />
 
+          {/* Emoji — mismo set que el wizard de Settings (EMOJI_PALETTE). */}
+          <View style={styles.emojiSection}>
+            <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+              ELEGÍ UN ÍCONO
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.emojiScroll}
+              contentContainerStyle={styles.emojiScrollContent}
+              accessibilityLabel="Seleccionar ícono — desliza para ver más"
+            >
+              {EMOJI_PALETTE.map((glyph) => {
+                const on = glyph === firstGoalEmoji
+                return (
+                  <Pressable
+                    key={glyph}
+                    onPress={() => {
+                      void triggerHaptic('selection')
+                      onChangeFirstGoalEmoji(glyph)
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`Ícono ${glyph}`}
+                    style={[
+                      styles.emojiCard,
+                      {
+                        backgroundColor: on
+                          ? theme.colors.primarySurface
+                          : theme.colors.creamSoft,
+                        borderColor: on ? theme.colors.primary : theme.colors.line,
+                        borderWidth: on ? 2 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.emojiGlyph}>{glyph}</Text>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+
           <View ref={amountCardRef}>
             <AmountCard
               amount={goalAmount}
@@ -188,30 +238,43 @@ export function StepSavings({
             />
           </View>
 
+          {/* Plazo — mismos presets que el wizard de Settings (MONTH_OPTIONS). */}
           <View>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 6 }]}>
               EN CUÁNTOS MESES
             </Text>
-            <View style={styles.monthsRow}>
-              <Pressable
-                onPress={() => onChangeFirstGoalMonths(Math.max(1, firstGoalMonths - 1))}
-                style={[styles.dayButton, { backgroundColor: theme.colors.creamSoft }]}
-                accessibilityRole="button"
-                accessibilityLabel="Un mes menos"
-              >
-                <Text style={[styles.dayButtonText, { color: theme.colors.text }]}>−</Text>
-              </Pressable>
-              <Text style={[styles.monthsValue, { color: theme.colors.text }]}>
-                {firstGoalMonths} {firstGoalMonths === 1 ? 'mes' : 'meses'}
-              </Text>
-              <Pressable
-                onPress={() => onChangeFirstGoalMonths(Math.min(120, firstGoalMonths + 1))}
-                style={[styles.dayButton, { backgroundColor: theme.colors.creamSoft }]}
-                accessibilityRole="button"
-                accessibilityLabel="Un mes más"
-              >
-                <Text style={[styles.dayButtonText, { color: theme.colors.text }]}>+</Text>
-              </Pressable>
+            <View style={styles.monthsChips}>
+              {MONTH_OPTIONS.map((m) => {
+                const on = firstGoalMonths === m
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => {
+                      void triggerHaptic('selection')
+                      onChangeFirstGoalMonths(m)
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`${m} meses`}
+                    style={[
+                      styles.monthChip,
+                      {
+                        backgroundColor: on ? theme.colors.text : theme.colors.creamSoft,
+                        borderColor: on ? theme.colors.text : theme.colors.line,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.monthChipText,
+                        { color: on ? theme.colors.creamCard : theme.colors.text },
+                      ]}
+                    >
+                      {m} meses
+                    </Text>
+                  </Pressable>
+                )
+              })}
             </View>
           </View>
         </Animated.View>
@@ -267,20 +330,26 @@ const styles = StyleSheet.create({
   toggleTitle: { fontSize: 14, fontWeight: '800' },
   toggleMeta: { fontSize: 12, marginTop: 2 },
   goalForm: { gap: 12 },
-  monthsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  monthsValue: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-  },
-  dayButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
+  emojiSection: { gap: 10 },
+  emojiScroll: { flexGrow: 0 },
+  emojiScrollContent: { gap: 8, paddingVertical: 2, paddingHorizontal: 2 },
+  emojiCard: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayButtonText: { fontSize: 18, fontWeight: '800' },
+  emojiGlyph: { fontSize: 24, lineHeight: 30 },
+  monthsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  monthChip: {
+    flexGrow: 1,
+    flexBasis: '47%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthChipText: { fontSize: 14, fontWeight: '700' },
 })

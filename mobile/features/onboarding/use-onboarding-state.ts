@@ -20,7 +20,12 @@ export interface OnboardingDraft {
   savingsGoalPercent: number
   createFirstGoal: boolean
   firstGoalTitle: string
+  /** Emoji de la meta. Mismo set que el wizard de Settings (EMOJI_PALETTE);
+   *  default '🎯' = EMOJI_PALETTE[0]. */
+  firstGoalEmoji: string
   firstGoalTargetRaw: string
+  /** Plazo en meses. Default 12 = DEFAULT_MONTHS del wizard de Settings
+   *  (antes era 6 → desfasaba con la creación de meta en Settings). */
   firstGoalMonths: number
   /** Joiner-only flag. `null` until the user makes a choice in step 4
    *  of the joiner flow. `true` → the user contributes income (sums
@@ -50,6 +55,7 @@ type Action =
   | { type: 'setSavingsPercent'; value: number }
   | { type: 'setCreateFirstGoal'; value: boolean }
   | { type: 'setFirstGoalTitle'; value: string }
+  | { type: 'setFirstGoalEmoji'; value: string }
   | { type: 'setFirstGoalTarget'; value: string }
   | { type: 'setFirstGoalMonths'; value: number }
   | { type: 'setContributesIncome'; value: boolean | null }
@@ -68,8 +74,9 @@ function createInitialDraft(): OnboardingDraft {
     savingsGoalPercent: 20,
     createFirstGoal: false,
     firstGoalTitle: '',
+    firstGoalEmoji: '🎯',
     firstGoalTargetRaw: '',
-    firstGoalMonths: 6,
+    firstGoalMonths: 12,
     contributesIncome: null,
     pendingFamily: null,
   }
@@ -111,6 +118,8 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
       return { ...state, createFirstGoal: action.value }
     case 'setFirstGoalTitle':
       return { ...state, firstGoalTitle: action.value }
+    case 'setFirstGoalEmoji':
+      return { ...state, firstGoalEmoji: action.value }
     case 'setFirstGoalTarget':
       return { ...state, firstGoalTargetRaw: action.value }
     case 'setFirstGoalMonths':
@@ -163,6 +172,7 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
       setSavingsPercent: (value: number) => dispatch({ type: 'setSavingsPercent', value }),
       setCreateFirstGoal: (value: boolean) => dispatch({ type: 'setCreateFirstGoal', value }),
       setFirstGoalTitle: (value: string) => dispatch({ type: 'setFirstGoalTitle', value }),
+      setFirstGoalEmoji: (value: string) => dispatch({ type: 'setFirstGoalEmoji', value }),
       setFirstGoalTarget: (value: string) => dispatch({ type: 'setFirstGoalTarget', value }),
       setFirstGoalMonths: (value: number) => dispatch({ type: 'setFirstGoalMonths', value }),
       setContributesIncome: (value: boolean | null) =>
