@@ -384,10 +384,12 @@ function resolveTone(
       // Filled solid CTA — el usuario lo lee como botón sin dudar.
       filled: '#E8976A',
       // Overlay sutil sobre el filled (para el icon circle y el arrow).
-      iconOverlay: 'rgba(255,255,255,0.22)',
-      iconFg: '#FFFFFF',
-      textOnFilled: '#FFFFFF',
-      textMutedOnFilled: 'rgba(255,255,255,0.78)',
+      iconOverlay: 'rgba(15,46,31,0.16)',
+      // Fill peach CLARO (#E8976A) → texto/icono OSCURO (blanco daba 1.95-2.32:1;
+      // forest #0F2E1F da ~8:1). Mismo criterio que el brand tone en dark.
+      iconFg: '#0F2E1F',
+      textOnFilled: '#0F2E1F',
+      textMutedOnFilled: 'rgba(15,46,31,0.88)',
       shadowColor: '#E8976A',
     }
   }
