@@ -187,12 +187,8 @@ export function Step1Form(props: Step1FormProps) {
                     style={[
                       styles.cuotaPill,
                       {
-                        backgroundColor: on ? '#6B9AD6' : 'transparent',
-                        borderColor: on
-                          ? '#6B9AD6'
-                          : theme.isDark
-                            ? '#2E4A6E'
-                            : '#A8BED4',
+                        backgroundColor: on ? theme.colors.primary : 'transparent',
+                        borderColor: on ? theme.colors.primary : theme.colors.line,
                       },
                     ]}
                     accessibilityRole="button"
@@ -202,7 +198,7 @@ export function Step1Form(props: Step1FormProps) {
                     <Text
                       style={[
                         styles.cuotaPillText,
-                        { color: on ? '#F2EAD3' : theme.colors.text },
+                        { color: on ? theme.colors.textOnPrimary : theme.colors.text },
                       ]}
                     >
                       {n}

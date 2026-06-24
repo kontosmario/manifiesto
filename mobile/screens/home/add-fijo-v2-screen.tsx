@@ -360,9 +360,10 @@ export function AddFijoV2Screen({
             <Text
               style={[
                 styles.primaryCtaText,
-                {
-                  color: form.canSubmit ? theme.colors.creamCard : theme.colors.textMuted,
-                },
+                // Siempre crema: el estado "deshabilitado" lo da el opacity 0.45
+                // del Pressable, NO un fg de bajo contraste. Antes textMuted
+                // (verde-claro) sobre el fill crema daba 1.14:1 en dark (ilegible).
+                { color: theme.colors.creamCard },
               ]}
             >
               {!form.canSubmit

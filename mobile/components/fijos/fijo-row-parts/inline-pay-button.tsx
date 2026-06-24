@@ -20,9 +20,13 @@ import { usePressScale } from '@/hooks/use-press-scale'
  *   · Pill con ícono $ + label "Pagar" — texto + fill = inequívocamente
  *     tappable, y el verbo lo separa semánticamente del monto contiguo
  *     (el círculo icon-only se leía como insignia/estado). hitSlop 8 ≥44pt.
- *   · Brand color por status: forest-deep (pending, "go") /
- *     red-brand (overdue, "urgente"). Bg sólido + icono blanco
- *     reads como primario, no genérico negro.
+ *   · Tinted on-brand por status: fill + texto + borde derivados del
+ *     ACCENT del status (mismo source-of-truth que el status badge del
+ *     row) — pending=peach / overdue=rojo. Habla el mismo idioma que el
+ *     badge; el verde forest queda libre para su único significado: PAID.
+ *     (Antes era un fill verde/rojo sólido + texto blanco — se sentía
+ *     fuera del design system: la app no usa fills saturados para
+ *     acciones, y el verde "pending" contradecía el badge peach del row.)
  *   · Ícono `attach-money` (símbolo $) — universalmente asociado a
  *     pago. Mejor que `check` (que es post-confirmación / done) y
  *     mejor que `paid` (mismo problema).
@@ -44,10 +48,19 @@ export function InlinePayButton({
   status,
   pressScale,
   onPress,
+  bg,
+  fg,
+  border,
 }: {
   status: 'pending' | 'overdue'
   pressScale: ReturnType<typeof usePressScale>
   onPress: () => void
+  /** Fill tinteado / texto+ícono / borde — derivados del accent del status
+   *  (mismo computeAccent que el status badge del row). El fg es el solid
+   *  del accent (también el color del halo de overdue). */
+  bg: string
+  fg: string
+  border: string
 }) {
   const reduceMotion = useReducedMotion()
   const pulse = useSharedValue(0)
@@ -83,10 +96,6 @@ export function InlinePayButton({
   }))
 
   const isOverdue = status === 'overdue'
-  // Paleta brand-aware. Light: deep-forest verde / deep-red rojo.
-  // Dark: variantes brand-bright para contraste con surfaceMuted.
-  const bg = isOverdue ? '#A8211B' : '#297811' // forest deep / red brand
-  const borderColor = isOverdue ? '#7A1810' : '#1F5A0D' // 1 stop darker
 
   return (
     <Pressable
@@ -107,7 +116,7 @@ export function InlinePayButton({
           pointerEvents="none"
           style={[
             styles.inlinePayHalo,
-            { backgroundColor: bg },
+            { backgroundColor: fg },
             haloStyle,
           ]}
         />
@@ -116,12 +125,12 @@ export function InlinePayButton({
       <Animated.View
         style={[
           styles.inlinePayBtn,
-          { backgroundColor: bg, borderColor },
+          { backgroundColor: bg, borderColor: border },
           pressScale.animatedStyle,
         ]}
       >
-        <MaterialIcons name="attach-money" size={16} color="#FFFFFF" />
-        <Text style={styles.inlinePayLabel}>Pagar</Text>
+        <MaterialIcons name="attach-money" size={16} color={fg} />
+        <Text style={[styles.inlinePayLabel, { color: fg }]}>Pagar</Text>
       </Animated.View>
     </Pressable>
   )
@@ -153,8 +162,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   inlinePayLabel: {
-    color: '#FFFFFF',
-    fontSize: 12.5,
+    // 14px/800 = "large text" (≥14px bold) → umbral WCAG 3:1, que el fill
+    // tinteado peach/rojo cumple en light y dark (verificado).
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
