@@ -39,7 +39,7 @@ export function Chip({
 
   const activeSurface = hasHue ? hue.ink : color ?? theme.colors.primary
   const activeBorder = activeSurface
-  const activeText = hasHue ? hue.surface : '#FFFFFF'
+  const activeText = hasHue ? hue.surface : theme.colors.textOnPrimary
 
   return (
     <Pressable

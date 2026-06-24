@@ -203,7 +203,7 @@ const lightColors: ThemeColors = {
   primaryStrong:      '#1F590D',  // V1 — primary-900 (hierarchy below primary)
   primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
   success:            '#297811',  // V1 — primary-800 (AA on cream; collapsed to primary, AA over differentiation)
-  warning:            '#C27A0A',
+  warning:            '#9A5E04',  // oscurecido para AA como texto chico (era #C27A0A → 2.9-3.4:1)
   danger:             '#C23A2F',
   overlay:            'rgba(15,46,31,0.32)',
   heroGradient:       ['#244235', '#1F590D', '#297811', '#297811'],  // V1: forest → primary-900 → primary-800 (terminate, AA-safe for cream)

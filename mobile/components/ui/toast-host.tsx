@@ -39,13 +39,13 @@ export function ToastHost() {
     current.kind === 'error'
       ? {
           bg: theme.colors.danger,
-          fg: '#FFFBF2',
+          fg: theme.colors.textOnPrimary,
           icon: 'error-outline' as const,
         }
       : current.kind === 'success'
         ? {
             bg: theme.colors.success,
-            fg: '#0B1F12',
+            fg: theme.colors.textOnPrimary,
             icon: 'check-circle' as const,
           }
         : {

@@ -70,12 +70,14 @@ export function AppButton({
     danger: {
       backgroundColor: theme.colors.danger,
       borderColor: theme.colors.danger,
-      textColor: '#FFFFFF',
+      textColor: theme.colors.textOnPrimary,
     },
     accent: {
       backgroundColor: theme.brand.bright,
       borderColor: theme.brand.bright,
-      textColor: theme.brand.deep,
+      // Ink fijo sobre el fill mint fijo (brand.bright es igual en ambos modos);
+      // primary-900, 6.16:1. brand.deep #329315 daba 2.89:1.
+      textColor: '#1F590D',
     },
   } as const
 

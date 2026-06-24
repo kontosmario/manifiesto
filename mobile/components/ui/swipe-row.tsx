@@ -328,11 +328,11 @@ function SwipeActionButton({ action, width, onPress }: SwipeActionButtonProps) {
   const theme = useThemeTokens()
   const isDanger = action.tone === 'danger'
   const background = isDanger ? theme.colors.danger : theme.colors.primary
-  const foreground = isDanger
-    ? '#FFFFFF'
-    : theme.isDark
-      ? theme.brand.deep
-      : '#FFFFFF'
+  // fg legible sobre el fill brillante, por-modo (cream/ink) — danger y
+  // non-danger usan fills theme-paired (danger / primary), así que el mismo
+  // token sirve. Antes: blanco sobre danger dark = 2.92, brand.deep sobre
+  // primary mint = 2.89.
+  const foreground = theme.colors.textOnPrimary
 
   return (
     <RectButton
