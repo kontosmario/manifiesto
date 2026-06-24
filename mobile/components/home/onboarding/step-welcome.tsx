@@ -1,7 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useAppTheme } from '@/theme/theme-provider'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { CardParticles } from '@/components/ui/card-particles'
 import { TextField } from '@/components/ui/text-field'
+import { radii } from '@/theme/palette'
 
 interface StepWelcomeProps {
   displayName: string
@@ -22,13 +25,35 @@ export function StepWelcome({
 
   return (
     <View style={styles.stack}>
+      {/*
+        Banda hero de marca — el momento "la app te da la bienvenida". Primer
+        pantalla del wizard (rara, first-time → vale el delight). Mismo lenguaje
+        que las hero cards de Home/Fijos: gradiente forest (mode-invariante) +
+        luciérnagas + texto crema (heroText/heroMuted). Las partículas se ven
+        porque la superficie es OSCURA (sobre crema serían invisibles).
+      */}
       <RiseView>
-        <Text style={[styles.greeting, { color: theme.colors.text }]}>
-          {isRejoin ? 'Hola de nuevo 👋' : 'Hola 👋'}
-        </Text>
-        <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Contanos cómo quieres que te llamemos.
-        </Text>
+        <View style={styles.heroBand}>
+          <LinearGradient
+            colors={
+              [...theme.colors.heroGradient] as unknown as readonly [
+                string,
+                string,
+                ...string[],
+              ]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <CardParticles count={8} accentColor="#F2A78C" />
+          <Text style={[styles.greeting, { color: theme.colors.heroText }]}>
+            {isRejoin ? 'Hola de nuevo 👋' : 'Hola 👋'}
+          </Text>
+          <Text style={[styles.subcopy, { color: theme.colors.heroMuted }]}>
+            Contanos cómo quieres que te llamemos.
+          </Text>
+        </View>
       </RiseView>
 
       {closedByOwner ? (
@@ -94,8 +119,15 @@ export function StepWelcome({
 
 const styles = StyleSheet.create({
   stack: { gap: 18 },
-  greeting: { fontSize: 34, fontWeight: '800', letterSpacing: -1 },
-  subcopy: { fontSize: 14, marginTop: 4 },
+  heroBand: {
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    gap: 6,
+  },
+  greeting: { fontSize: 30, fontWeight: '800', letterSpacing: -1 },
+  subcopy: { fontSize: 14, lineHeight: 19 },
   helperRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -107,7 +139,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: 11, fontWeight: '700' },
   rejoinBanner: {
     padding: 12,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
   },
   rejoinText: { fontSize: 14, lineHeight: 20 },
