@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
   LinearTransition,
@@ -134,6 +134,25 @@ function FijosHeroCardImpl({
     borderColor: `rgba(240,106,106,${0.5 + urgencyPulse.value * 0.35})`,
   }))
 
+  // ── "AL DÍA" — glow-ping ONE-SHOT cuando RECIÉN se completa todo (no en
+  // cold-open, mismo criterio que el ConfettiBurst del row: gate por ref).
+  // Un halo lime detrás del badge late UNA vez. ReduceMotion → sin glow.
+  const allDiaGlow = useSharedValue(0)
+  const prevAllPaidRef = useRef(isAllPaid)
+  useEffect(() => {
+    if (isAllPaid && !prevAllPaidRef.current && !reduced) {
+      allDiaGlow.value = withSequence(
+        withTiming(1, { duration: 220, easing: motionEasings.warm }),
+        withTiming(0, { duration: 640, easing: motionEasings.warm }),
+      )
+    }
+    prevAllPaidRef.current = isAllPaid
+  }, [isAllPaid, reduced, allDiaGlow])
+  const allDiaGlowStyle = useAnimatedStyle(() => ({
+    opacity: allDiaGlow.value * 0.6,
+    transform: [{ scale: 1 + allDiaGlow.value * 0.35 }],
+  }))
+
   // Subtitle state-aware ELIMINADO en favor de la CycleRouteLine que
   // ocupa ese slot. El estado lo comunican ahora: badge VENCIDOS/AL DÍA
   // + BreatheDot color-coded + segments coloreados + urgency ring pulse.
@@ -200,14 +219,20 @@ function FijosHeroCardImpl({
               </Animated.View>
             ) : null}
             {isAllPaid ? (
-              <View
-                style={[
-                  styles.celebrateBadge,
-                  { backgroundColor: 'rgba(166,239,143,0.18)', borderColor: 'rgba(166,239,143,0.45)' },
-                ]}
-                accessibilityLabel="Todo al día"
-              >
-                <Text style={styles.celebrateBadgeText}>AL DÍA</Text>
+              <View style={styles.celebrateWrap}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.celebrateGlow, allDiaGlowStyle]}
+                />
+                <View
+                  style={[
+                    styles.celebrateBadge,
+                    { backgroundColor: 'rgba(166,239,143,0.18)', borderColor: 'rgba(166,239,143,0.45)' },
+                  ]}
+                  accessibilityLabel="Todo al día"
+                >
+                  <Text style={styles.celebrateBadgeText}>AL DÍA</Text>
+                </View>
               </View>
             ) : null}
           </View>
@@ -686,6 +711,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.2,
     color: '#FFB59E',
+  },
+  celebrateWrap: {
+    position: 'relative',
+  },
+  celebrateGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    backgroundColor: '#A6EF8F',
   },
   celebrateBadge: {
     paddingHorizontal: 8,
