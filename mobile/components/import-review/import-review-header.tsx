@@ -27,7 +27,6 @@ export function ImportReviewHeader({
   const reduced = useReducedMotion()
   const headingEnter = reduced ? undefined : FadeIn.duration(200)
 
-  const eyebrow = mode === 'summary' ? 'Casi terminás' : 'Captura importada'
   const title = (() => {
     if (mode === 'summary') return 'Resumen final'
     if (total <= 1) return 'Revisá el movimiento'
@@ -52,12 +51,6 @@ export function ImportReviewHeader({
         />
       ) : null}
       <View style={styles.textCol}>
-        <Text
-          style={[styles.eyebrow, { color: theme.colors.textMuted }]}
-          numberOfLines={1}
-        >
-          {eyebrow}
-        </Text>
         <Text style={[styles.title, { color: theme.colors.text }]}>
           {title}
         </Text>
@@ -83,13 +76,6 @@ const styles = StyleSheet.create({
   },
   textCol: {
     flex: 1,
-    gap: 2,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
   },
   title: {
     fontSize: 17,

@@ -145,6 +145,15 @@ export function ImportReviewRow({
     setNumpadVisible(true)
   }
 
+  // Validation noise is already surfaced twice: the field tints (border +
+  // label) and the footer lists the missing fields under the CTA. So the
+  // in-row warnings list carries ONLY what those don't say — context like
+  // "asumimos hoy" or a foreign-currency note. The required-field cases
+  // (no-merchant, value-zero) would just be a third copy of the same line.
+  const infoWarnings = row.warnings.filter(
+    (w) => w !== 'no-merchant' && w !== 'value-zero',
+  )
+
   return (
     // Las 6+ RiseView de abajo staggereaban (0→360ms) en CADA paso → se sentía
     // lento (animación frecuente). El slide del stepHost ya lleva la entrada;
@@ -233,10 +242,10 @@ export function ImportReviewRow({
         />
       </RiseView>
 
-      {row.warnings.length > 0 ? (
+      {infoWarnings.length > 0 ? (
         <RiseView delay={360}>
           <View style={styles.warnings}>
-            {row.warnings.map((w) => (
+            {infoWarnings.map((w) => (
               <Text
                 key={w}
                 style={[styles.warning, { color: theme.colors.textMuted }]}

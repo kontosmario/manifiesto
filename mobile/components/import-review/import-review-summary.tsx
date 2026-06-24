@@ -1,18 +1,6 @@
-import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import Animated, {
-  Easing,
-  FadeIn,
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated'
-import { MaterialIcons } from '@expo/vector-icons'
-import { motionDurations, motionSprings } from '@/lib/motion/tokens'
+import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated'
+import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { Category } from '@/features/categories/use-categories'
 import type { IncomeKind, ReviewRow } from '@/features/import-review/types'
@@ -35,16 +23,16 @@ const INCOME_KIND_LABELS: Record<IncomeKind, string> = {
 }
 
 /**
- * Final wizard step. Lays out everything the user is about to commit
- * in a single scannable list with a celebratory header — the "you're
- * about to ship" moment. Anything marked as `skip` is summarized in a
- * dimmed chip at the bottom so the user doesn't lose track of what
- * they de-selected.
+ * Final wizard step. A sober, scannable list of exactly what's about to
+ * be committed — no celebration here on purpose: nothing has been saved
+ * yet, so the moment is "confirm", not "done". The real celebration
+ * (confetti) fires after the commit succeeds, where it belongs. Anything
+ * skipped is noted in one quiet line at the bottom so the user keeps
+ * track of what they left out.
  *
- * No editing happens here; the only actions are "Confirmar" (primary
- * footer) or "Volver a editar" (secondary footer). Keeping this step
- * read-only is intentional: the wizard's job is to commit, and giving
- * the user another place to fiddle invites infinite-loop indecision.
+ * Read-only by design: the only actions are "Confirmar" (primary footer)
+ * or "Volver a editar" (secondary footer). Another place to fiddle would
+ * just invite infinite-loop indecision.
  */
 export function ImportReviewSummary({
   rows,
@@ -60,9 +48,7 @@ export function ImportReviewSummary({
 
   const subtitleParts: string[] = []
   if (expensesCount > 0) {
-    subtitleParts.push(
-      `${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`,
-    )
+    subtitleParts.push(`${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`)
   }
   if (incomesCount > 0) {
     subtitleParts.push(
@@ -70,24 +56,19 @@ export function ImportReviewSummary({
     )
   }
   const subtitle = subtitleParts.join(' y ')
+  const isEmpty = expensesCount + incomesCount === 0
 
   return (
     <View style={styles.root}>
-      <CelebrationIcon color={theme.colors.primary} iconColor={theme.colors.textOnPrimary} />
       <Animated.Text
-        entering={FadeIn.duration(motionDurations.standard).delay(120).easing(EASE_IOS)}
-        style={[styles.heading, { color: theme.colors.text }]}
+        entering={FadeIn.duration(motionDurations.standard).easing(EASE_IOS)}
+        style={[
+          isEmpty ? styles.heading : styles.lead,
+          { color: isEmpty ? theme.colors.text : theme.colors.textMuted },
+        ]}
       >
-        {expensesCount + incomesCount === 0 ? 'Sin nada para cargar' : 'Casi listo'}
+        {isEmpty ? 'Sin nada para cargar' : `Vas a cargar ${subtitle}.`}
       </Animated.Text>
-      {subtitle !== '' ? (
-        <Animated.Text
-          entering={FadeIn.duration(motionDurations.standard).delay(180).easing(EASE_IOS)}
-          style={[styles.subtitle, { color: theme.colors.textMuted }]}
-        >
-          Vas a cargar {subtitle}.
-        </Animated.Text>
-      ) : null}
 
       <View style={styles.list}>
         {submittable.map((row, idx) => (
@@ -99,35 +80,24 @@ export function ImportReviewSummary({
                 ? (categoryById.get(row.categoryId)?.name ?? null)
                 : null
             }
-            delay={240 + idx * 70}
+            // Cap the stagger at 5 items: with 8-12 movements the tail used
+            // to land ~1s late and the user waited to read their own list.
+            delay={40 + Math.min(idx, 5) * 60}
           />
         ))}
       </View>
 
       {skippedCount > 0 ? (
-        <Animated.View
+        <Animated.Text
           entering={FadeIn.duration(motionDurations.quick)
-            .delay(240 + submittable.length * 70 + 80)
+            .delay(40 + Math.min(submittable.length, 5) * 60 + 80)
             .easing(EASE_IOS)}
-          style={[
-            styles.skippedChip,
-            {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.line,
-            },
-          ]}
+          style={[styles.skippedLine, { color: theme.colors.textMuted }]}
         >
-          <MaterialIcons
-            name="block"
-            size={14}
-            color={theme.colors.textMuted}
-          />
-          <Text style={[styles.skippedLabel, { color: theme.colors.textMuted }]}>
-            {skippedCount} movimiento{skippedCount === 1 ? '' : 's'} saltado
-            {skippedCount === 1 ? '' : 's'} (no se carga
-            {skippedCount === 1 ? '' : 'n'})
-          </Text>
-        </Animated.View>
+          {skippedCount} movimiento{skippedCount === 1 ? '' : 's'} saltado
+          {skippedCount === 1 ? '' : 's'} · no se carga
+          {skippedCount === 1 ? '' : 'n'}
+        </Animated.Text>
       ) : null}
     </View>
   )
@@ -139,13 +109,16 @@ interface SummaryItemProps {
   delay: number
 }
 
+/**
+ * One light row per movement: description + amount on the baseline, a
+ * muted meta line below. No card wrapper and no GASTO/INGRESO eyebrow —
+ * the `+` sign and the primary tint on income already carry the kind, so
+ * the label was just noise. Whitespace does the grouping.
+ */
 function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
   const { theme } = useAppTheme()
   const sign = row.kind === 'income' ? '+' : ''
   const tint = row.kind === 'income' ? theme.colors.primary : theme.colors.text
-  const kindLabel = row.kind === 'income' ? 'INGRESO' : 'GASTO'
-  const kindColor =
-    row.kind === 'income' ? theme.colors.primary : theme.colors.textMuted
 
   const meta = (() => {
     const dateLabel = formatRelativeDate(row.date)
@@ -161,19 +134,8 @@ function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
       entering={FadeInDown.duration(motionDurations.standard)
         .delay(delay)
         .easing(EASE_IOS)}
-      style={[
-        styles.item,
-        {
-          backgroundColor: theme.isDark
-            ? theme.colors.surfaceMuted
-            : theme.colors.creamCard,
-          borderColor: theme.colors.line,
-        },
-      ]}
+      style={styles.item}
     >
-      <View style={styles.itemTop}>
-        <Text style={[styles.itemKind, { color: kindColor }]}>{kindLabel}</Text>
-      </View>
       <View style={styles.itemMain}>
         <Text
           style={[styles.itemDescription, { color: theme.colors.text }]}
@@ -182,10 +144,7 @@ function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
         >
           {row.description}
         </Text>
-        <Text
-          style={[styles.itemAmount, { color: tint }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.itemAmount, { color: tint }]} numberOfLines={1}>
           {sign}${formatThousands(row.amount)}
         </Text>
       </View>
@@ -196,58 +155,6 @@ function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
         {meta}
       </Text>
     </Animated.View>
-  )
-}
-
-/**
- * Big circular check that does a spring-bounce-in with a brief halo
- * pulse. Single moment of celebration to mark "you made it through the
- * review, now confirm".
- */
-function CelebrationIcon({ color, iconColor }: { color: string; iconColor: string }) {
-  const scale = useSharedValue(0.4)
-  const halo = useSharedValue(0)
-
-  useEffect(() => {
-    scale.value = withDelay(40, withSpring(1, motionSprings.celebrate))
-    halo.value = withDelay(
-      40,
-      withSequence(
-        withTiming(1, { duration: motionDurations.standard, easing: EASE_IOS }),
-        withTiming(0, { duration: motionDurations.deliberate, easing: EASE_IOS }),
-      ),
-    )
-  }, [scale, halo])
-
-  const circleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }))
-
-  const haloStyle = useAnimatedStyle(() => ({
-    opacity: halo.value * 0.4,
-    transform: [{ scale: 0.9 + halo.value * 0.7 }],
-  }))
-
-  return (
-    <View style={styles.iconWrap}>
-      <Animated.View
-        style={[
-          styles.halo,
-          haloStyle,
-          { backgroundColor: color },
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View
-        style={[
-          styles.iconCircle,
-          circleStyle,
-          { backgroundColor: color },
-        ]}
-      >
-        <MaterialIcons name="check" size={36} color={iconColor} />
-      </Animated.View>
-    </View>
   )
 }
 
@@ -283,54 +190,20 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
   },
-  iconWrap: {
-    alignSelf: 'center',
-    width: 72,
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  halo: {
-    position: 'absolute',
-    width: 72,
-    height: 72,
-    borderRadius: 999,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   heading: {
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.1,
-    textAlign: 'center',
-    marginBottom: 8,
+  lead: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 4,
   },
-  list: { gap: 8 },
-  item: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  itemTop: { flexDirection: 'row', alignItems: 'center' },
-  itemKind: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
+  list: { gap: 16 },
+  item: { gap: 3 },
   itemMain: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -354,19 +227,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.1,
   },
-  skippedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignSelf: 'center',
+  skippedLine: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
     marginTop: 4,
-  },
-  skippedLabel: {
-    fontSize: 11,
-    fontWeight: '700',
   },
 })

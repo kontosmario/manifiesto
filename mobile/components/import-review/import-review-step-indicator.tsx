@@ -3,31 +3,30 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export type StepStatus = 'pending' | 'current' | 'done' | 'invalid' | 'skipped'
 
 interface Props {
-  /** One entry per movement — drives both width and per-segment color. */
+  /** One entry per movement — drives width and the filled/pending split. */
   statuses: readonly StepStatus[]
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 /**
- * Horizontal pill segments showing wizard progress. Each segment maps
- * 1:1 to a row in the import. Colors encode status so the user can
- * glance at the strip and see what's done, what's flagged, what's still
- * pending — no need to step through to find issues.
- *
- * On `current → done` transition the segment briefly swells + flashes
- * to ack the forward motion. Subtle but enough that a confused user
- * gets a "yep, I just moved forward" signal beyond the slide animation.
+ * Thin progress strip: one segment per movement. We deliberately keep
+ * the visual language to TWO ideas — "handled" (filled, brand tint) vs
+ * "still ahead" (muted) — plus a single red flag for an invalid row,
+ * which is the only status that needs the user to act. The old five-color
+ * scheme (done / skipped / current each its own hue, plus an advance
+ * pulse) made the user learn a legend for something the "Movimiento N de
+ * M" header and the slide already communicate. Less to decode, same
+ * orientation.
  */
 export function ImportReviewStepIndicator({ statuses }: Props) {
   if (statuses.length <= 1) return null
@@ -42,88 +41,33 @@ export function ImportReviewStepIndicator({ statuses }: Props) {
 
 function Segment({ status }: { status: StepStatus }) {
   const { theme } = useAppTheme()
-  const fillProgress = useSharedValue(toFill(status))
-  const heightProgress = useSharedValue(status === 'current' ? 1 : 0)
-  // Brief celebratory bump when the segment transitions from "current"
-  // to "done". Combined with the slide-in of the next step it tells the
-  // user "this one's locked in" — confidence-building for the timid.
-  const advancePulse = useSharedValue(0)
-  const prevStatusRef = useRef<StepStatus>(status)
+  const filled = status !== 'pending'
+  const opacity = useSharedValue(filled ? 1 : 0.4)
 
   useEffect(() => {
-    fillProgress.value = withTiming(toFill(status), {
+    opacity.value = withTiming(filled ? 1 : 0.4, {
       duration: motionDurations.quick,
       easing: EASE_IOS,
     })
-    heightProgress.value = withTiming(status === 'current' ? 1 : 0, {
-      duration: motionDurations.quick,
-      easing: EASE_IOS,
-    })
+  }, [filled, opacity])
 
-    if (prevStatusRef.current === 'current' && status === 'done') {
-      advancePulse.value = withSequence(
-        withTiming(1, {
-          duration: motionDurations.micro,
-          easing: EASE_IOS,
-        }),
-        withTiming(0, {
-          duration: motionDurations.standard,
-          easing: EASE_IOS,
-        }),
-      )
-    }
-    prevStatusRef.current = status
-  }, [status, fillProgress, heightProgress, advancePulse])
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    // 4px when inactive, 6px when current, briefly 8px on advance pulse.
-    height: 4 + heightProgress.value * 2 + advancePulse.value * 2,
-    opacity: Math.min(1, 0.35 + fillProgress.value * 0.65 + advancePulse.value * 0.3),
-  }))
-
-  const color = (() => {
-    switch (status) {
-      case 'invalid':
-        return theme.colors.danger
-      case 'skipped':
-        // Warning tint reads as "intentional omission" — louder than a
-        // muted gray, softer than danger red. User wants the strip to
-        // reflect skipped reality, not whisper it.
-        return theme.colors.warning
-      case 'done':
-      case 'current':
-        return theme.colors.primary
-      case 'pending':
-      default:
-        return theme.colors.line
-    }
-  })()
+  // Only two colors carry meaning: red = "fix me", brand tint = "handled".
+  // Pending segments ride the muted line color at low opacity so the
+  // filled/pending boundary itself reads as progress.
+  const color =
+    status === 'invalid'
+      ? theme.colors.danger
+      : status === 'pending'
+        ? theme.colors.line
+        : theme.colors.primary
 
   return (
     <Animated.View
-      style={[
-        styles.segment,
-        animatedStyle,
-        { backgroundColor: color },
-      ]}
+      style={[styles.segment, animatedStyle, { backgroundColor: color }]}
     />
   )
-}
-
-function toFill(status: StepStatus): number {
-  switch (status) {
-    case 'done':
-    case 'current':
-    case 'invalid':
-    case 'skipped':
-      // Full opacity for skipped — the warning color is doing the
-      // semantic work; muting it would dilute the "this one's out"
-      // signal the user explicitly asked for.
-      return 1
-    case 'pending':
-    default:
-      return 0.4
-  }
 }
 
 const styles = StyleSheet.create({
@@ -134,6 +78,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    height: 4,
     borderRadius: 999,
   },
 })

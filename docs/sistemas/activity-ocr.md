@@ -119,12 +119,12 @@ Reglas:
 El sheet es un wizard de N+1 pasos donde `N = totalRows` y el último índice es el **summary final**.
 
 Cada paso de movimiento muestra:
-- **Step indicator** ([`import-review-step-indicator.tsx`](../../mobile/components/import-review/import-review-step-indicator.tsx)): segmentos por movimiento — pending (line), current (primary swollen), done (primary), invalid (danger), skipped (warning amber).
-- **Header slim** ([`import-review-header.tsx`](../../mobile/components/import-review/import-review-header.tsx)): thumbnail 44×44 + "Movimiento N de M" / "Resumen final".
-- **Row form** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)): kind toggle + AmountCard compact + TextField descripción + CycleDateSlider + CategoryHorizontalRail/IncomeKindSection + NotesRow.
+- **Step indicator** ([`import-review-step-indicator.tsx`](../../mobile/components/import-review/import-review-step-indicator.tsx)): franja de progreso de **dos ideas** — relleno=manejado (primary, cubre done/current/skipped) vs apagado=pendiente (line), más **rojo** (danger) solo para fila inválida (lo único accionable). El "Movimiento N de M" del header ya es el progreso lineal; no hay pulso de avance ni 5 colores.
+- **Header slim** ([`import-review-header.tsx`](../../mobile/components/import-review/import-review-header.tsx)): thumbnail 44×44 + "Movimiento N de M" / "Resumen final" (sin eyebrow decorativo).
+- **Row form** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)): kind toggle + AmountCard compact + TextField descripción + CycleDateSlider + CategoryHorizontalRail/IncomeKindSection + NotesRow. Los warnings se dicen **una vez**: el campo se tinta (border+label) + el footer lista los faltantes bajo el CTA; el bloque al pie del form (`infoWarnings`) solo carga los **contextuales** (no-date/future-date/foreign-currency/swap-ambiguous), nunca los de campo requerido (no-merchant/value-zero).
 - **Footer** ([`import-review-footer.tsx`](../../mobile/components/import-review/import-review-footer.tsx)): Anterior · Saltear · primary CTA (Siguiente → / Confirmar N → / hard-block en busy).
 
-El summary final ([`import-review-summary.tsx`](../../mobile/components/import-review/import-review-summary.tsx)) muestra todos los movimientos por cargar en una lista compacta, un check icon celebratorio (spring `motionSprings.celebrate` + halo pulse) y un chip muted con la cantidad de skipped.
+El summary final ([`import-review-summary.tsx`](../../mobile/components/import-review/import-review-summary.tsx)) es **sobrio**: es el paso de CONFIRMAR, todavía no se cargó nada, así que no hay celebración acá (el confetti real es post-confirm). Un encabezado de una línea ("Vas a cargar N gastos y M ingresos."), la lista de movimientos por cargar **sin card ni rótulo gasto/ingreso** (el `+`/`$` y el tinte primary ya lo comunican; stagger capeado a 5 items) y una línea muted con la cantidad de skipped.
 
 #### Navegación
 
@@ -264,7 +264,7 @@ Cobertura del mock:
 - 6 gastos de tamaños mixtos ($4.800 a $185.000)
 - 2 ingresos (1 transfer, 1 bonus)
 - 1 case MERPAGO* truncated merchant
-- 2 pre-skipped (testean color warning de la franja desde el primer render)
+- 2 pre-skipped (en la franja cuentan como "manejado"/relleno desde el primer render)
 - Fechas spanning hoy a -7 días (CycleDateSlider scrollea)
 
 El sheet recibe `previewMode={true}` que cortocircuita `useConfirmImport` con un result sintético — exit animation, confetti, toast disparan igual pero nada toca DB. Toast wording dice "Vista previa: … (no se cargó nada)" para que el bypass sea obvio.
@@ -309,9 +309,8 @@ Phase B agregó `@react-native-ml-kit/text-recognition` (~3 MB al hbc) y `expo-i
 ### Reduce motion
 
 Todas las animaciones del wizard respetan `useReducedMotion()`:
-- Step indicator: heightProgress + advancePulse → snap inmediato
+- Step indicator: fade de opacidad relleno/pendiente → snap inmediato
 - Slide transitions: FadeInRight/Left → snap
-- Summary celebration icon: spring → snap a final scale
 - Per-field warning glide: timing → snap a final color
 
 ---

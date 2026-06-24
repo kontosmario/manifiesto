@@ -132,7 +132,6 @@ export function ImportReviewFooter({
           <SecondaryButton
             icon={isCurrentSkipped ? 'restore' : 'block'}
             label={isCurrentSkipped ? 'Restaurar' : 'Saltear este'}
-            helper={isCurrentSkipped ? undefined : 'no se carga'}
             onPress={onSkip}
             disabled={busy}
             theme={theme}
