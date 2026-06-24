@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -32,6 +33,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { theme } = useAppTheme()
   const { data } = useGarden(familyId, userId)
   const [showWeekClose, setShowWeekClose] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
 
   const handleOpenWeekClose = useCallback(() => {
     void triggerHaptic('selection')
@@ -87,12 +89,28 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
             >
               <View style={styles.gardenHeader}>
                 <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>Tu jardín</Text>
-                <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
-                  {data.weeksShown <= 1 ? 'tu primera semana' : `últimas ${data.weeksShown} semanas`}
-                </Text>
+                <Pressable
+                  onPress={() => setShowLegend((v) => !v)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Qué significan los brotes"
+                  style={styles.legendToggle}
+                >
+                  <Text style={[styles.legendToggleText, { color: theme.colors.textMuted }]}>
+                    ¿qué significan?
+                  </Text>
+                  <MaterialIcons
+                    name={showLegend ? 'expand-less' : 'expand-more'}
+                    size={16}
+                    color={theme.colors.textMuted}
+                  />
+                </Pressable>
               </View>
+              <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
+                {data.weeksShown <= 1 ? 'tu primera semana' : `últimas ${data.weeksShown} semanas`}
+              </Text>
               <View style={styles.gridWrap}>
-                <GardenGrid cells={data.cells} />
+                <GardenGrid cells={data.cells} showLegend={showLegend} />
               </View>
             </View>
           </RiseView>
@@ -143,6 +161,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   gardenMeta: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  legendToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  legendToggleText: {
     fontSize: 12,
     fontWeight: '700',
   },

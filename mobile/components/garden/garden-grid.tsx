@@ -1,5 +1,6 @@
 import { memo, useState } from 'react'
 import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { Sprout } from './sprout'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
@@ -9,6 +10,8 @@ interface GardenGridProps {
   cells: GardenCell[]
   /** Anima la entrada del brote de HOY (solo al recién plantar). */
   justPlantedToday?: boolean
+  /** Muestra la leyenda (controlada por el toggle del header del card). */
+  showLegend?: boolean
 }
 
 const COLS = 7
@@ -49,7 +52,7 @@ function tileBg(stage: BroteStage, theme: AppTheme): string {
   }
 }
 
-function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
+function GardenGridImpl({ cells, justPlantedToday, showLegend }: GardenGridProps) {
   const { theme } = useAppTheme()
   const { width: windowWidth } = useWindowDimensions()
   const [measuredWidth, setMeasuredWidth] = useState(0)
@@ -91,20 +94,26 @@ function GardenGridImpl({ cells, justPlantedToday }: GardenGridProps) {
             )
           })}
       </View>
-      <View style={styles.legend}>
-        {LEGEND.map((l) => (
-          <View
-            key={l.label}
-            style={[
-              styles.chip,
-              { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : '#F2EFE6' },
-            ]}
-          >
-            <View style={[styles.dot, { backgroundColor: l.color }]} />
-            <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>{l.label}</Text>
-          </View>
-        ))}
-      </View>
+      {showLegend && (
+        <Animated.View
+          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
+          style={styles.legend}
+        >
+          {LEGEND.map((l) => (
+            <View
+              key={l.label}
+              style={[
+                styles.chip,
+                { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : '#F2EFE6' },
+              ]}
+            >
+              <View style={[styles.dot, { backgroundColor: l.color }]} />
+              <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>{l.label}</Text>
+            </View>
+          ))}
+        </Animated.View>
+      )}
     </View>
   )
 }
