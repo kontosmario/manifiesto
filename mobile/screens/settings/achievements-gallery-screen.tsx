@@ -300,7 +300,7 @@ function BadgeTile({
               },
             ]}
           >
-            <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+            <MaterialIcons name="lock" size={10} color={theme.colors.textMuted} />
           </View>
         ) : null}
       </Animated.View>

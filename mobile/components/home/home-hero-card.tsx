@@ -366,10 +366,10 @@ function HomeHeroCardImpl({
                   <MaterialIcons
                     name="trending-up"
                     size={13}
-                    color={theme.colors.primary}
+                    color={theme.colors.heroAccent}
                   />
                   <Text
-                    style={[styles.adjustedChipText, { color: theme.colors.primary }]}
+                    style={[styles.adjustedChipText, { color: theme.colors.heroAccent }]}
                   >
                     {`+${formatMoneyShort(data.acumulado.amount)} de ${data.acumulado.periodLabel.toLowerCase()}`}
                   </Text>
