@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmountCard } from '@/components/home/amount-card'
+import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 // Reusamos los mismos constantes que el wizard de creación de meta de Settings
 // para que onboarding y Settings queden sincronizados (un solo source of truth).
@@ -102,11 +103,27 @@ export function StepSavings({
             ))}
           </View>
           {monthlyIncome > 0 ? (
-            <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-              {savingsGoalPercent > 0
-                ? `≈ ${formatMoney(targetAmount)} por mes`
-                : 'Sin ahorro automático — lo puedes activar luego.'}
-            </Text>
+            savingsGoalPercent > 0 ? (
+              <View style={styles.hintRow}>
+                <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
+                  Ahorrás{' '}
+                </Text>
+                <CountUpText
+                  value={targetAmount}
+                  format={formatMoney}
+                  duration={500}
+                  style={[styles.hintStrong, { color: theme.colors.primary }]}
+                />
+                <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
+                  {' '}
+                  por mes
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
+                Sin ahorro automático — lo puedes activar luego.
+              </Text>
+            )
           ) : (
             <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
               Ingresa tu sueldo en el paso anterior para ver el equivalente.
@@ -123,7 +140,14 @@ export function StepSavings({
           }}
           style={[
             styles.toggleRow,
-            { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+            {
+              backgroundColor: createFirstGoal
+                ? theme.colors.primarySurface
+                : theme.colors.creamCard,
+              borderColor: createFirstGoal
+                ? theme.colors.primary
+                : theme.colors.line,
+            },
           ]}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: createFirstGoal }}
@@ -133,13 +157,13 @@ export function StepSavings({
             style={[
               styles.checkbox,
               {
-                backgroundColor: createFirstGoal ? theme.colors.text : 'transparent',
-                borderColor: createFirstGoal ? theme.colors.text : theme.colors.line,
+                backgroundColor: createFirstGoal ? theme.colors.primary : 'transparent',
+                borderColor: createFirstGoal ? theme.colors.primary : theme.colors.line,
               },
             ]}
           >
             {createFirstGoal ? (
-              <MaterialIcons name="check" size={16} color={theme.colors.creamCard} />
+              <MaterialIcons name="check" size={16} color={theme.colors.textOnPrimary} />
             ) : null}
           </View>
           <View style={{ flex: 1 }}>
@@ -361,6 +385,8 @@ const styles = StyleSheet.create({
   },
   percentChipText: { fontSize: 12, fontWeight: '700' },
   percentHint: { fontSize: 12, marginTop: 2 },
+  hintRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2 },
+  hintStrong: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',

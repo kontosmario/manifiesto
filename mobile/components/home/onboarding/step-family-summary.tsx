@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
+import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { formatMoneyShort, parsePrice } from '@/utils/money'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
@@ -66,9 +67,12 @@ export function StepFamilySummary({
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
             INGRESO MENSUAL DEL HOGAR
           </Text>
-          <Text style={[styles.heroValue, { color: theme.colors.text }]}>
-            {formatMoneyShort(householdIncome)}
-          </Text>
+          <CountUpText
+            value={householdIncome}
+            format={formatMoneyShort}
+            duration={600}
+            style={[styles.heroValue, { color: theme.colors.text }]}
+          />
           {pendingContribution > 0 ? (
             <Text style={[styles.heroDelta, { color: theme.colors.primary }]}>
               + {formatMoneyShort(pendingContribution)} tu aporte ={' '}
