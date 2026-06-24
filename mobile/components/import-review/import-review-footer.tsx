@@ -135,7 +135,6 @@ export function ImportReviewFooter({
             helper={isCurrentSkipped ? undefined : 'no se carga'}
             onPress={onSkip}
             disabled={busy}
-            tone="warning"
             theme={theme}
           />
         )}
@@ -146,8 +145,8 @@ export function ImportReviewFooter({
         icon={primaryIcon}
         lookDisabled={lookDisabled}
         hardDisabled={hardDisabled}
-        backgroundColor={theme.colors.primary}
-        foregroundColor={theme.colors.textOnPrimary}
+        backgroundColor={lookDisabled ? theme.colors.line : theme.colors.primary}
+        foregroundColor={lookDisabled ? theme.colors.textMuted : theme.colors.textOnPrimary}
         onPress={onPrimary}
       />
 
@@ -232,13 +231,7 @@ function PrimaryCTA({
           styles.primary,
           {
             backgroundColor,
-            opacity: lookDisabled
-              ? 0.45
-              : hardDisabled
-                ? 0.55
-                : pressed
-                  ? 0.92
-                  : 1,
+            opacity: hardDisabled ? 0.55 : pressed ? 0.92 : 1,
           },
         ]}
       >

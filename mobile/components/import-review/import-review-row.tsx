@@ -5,7 +5,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { NotesRow } from '@/components/home/notes-row'
-import { RiseView } from '@/components/home/animated/rise-view'
+import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { TextField } from '@/components/ui/text-field'
 import { parsePrice, serializePrice } from '@/utils/money'
@@ -146,6 +146,10 @@ export function ImportReviewRow({
   }
 
   return (
+    // Las 6+ RiseView de abajo staggereaban (0→360ms) en CADA paso → se sentía
+    // lento (animación frecuente). El slide del stepHost ya lleva la entrada;
+    // gateamos el stagger interno (skip = render al estado final, layout intacto).
+    <RiseViewGate skip>
     <View
       style={[
         styles.expanded,
@@ -251,6 +255,7 @@ export function ImportReviewRow({
         onDismiss={() => setNumpadVisible(false)}
       />
     </View>
+    </RiseViewGate>
   )
 }
 
@@ -429,17 +434,18 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     gap: 4,
-    alignSelf: 'center',
-    width: '70%',
+    alignSelf: 'stretch',
   },
   toggleBtn: {
     flex: 1,
-    paddingVertical: 6,
+    minHeight: 44,
+    paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  toggleLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
+  toggleLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
   field: { gap: 6 },
   label: {
     fontSize: 11,
@@ -452,10 +458,10 @@ const styles = StyleSheet.create({
   warning: { fontSize: 11, fontWeight: '600' },
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   kindBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
   },
-  kindLabel: { fontSize: 12, fontWeight: '700' },
+  kindLabel: { fontSize: 13, fontWeight: '700' },
 })
