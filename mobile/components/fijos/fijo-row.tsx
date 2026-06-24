@@ -306,13 +306,6 @@ function FijoRowReal({
                   status={status}
                   pressScale={inlinePayPress}
                   onPress={() => onMarkPaid(fijo.id)}
-                  // Variante B (tinted on-brand): fill+texto+borde del MISMO
-                  // accent que el status badge del row (peach pending / rojo
-                  // overdue). fg = accent.solid; fill = solid @ alpha sobre el
-                  // surface de la row (surfaceMuted dark / creamCard light).
-                  bg={hexAlpha(accent.solid, theme.isDark ? 0.18 : 0.14)}
-                  fg={accent.solid}
-                  border={hexAlpha(accent.solid, theme.isDark ? 0.45 : 0.34)}
                 />
               ) : null}
             </View>
