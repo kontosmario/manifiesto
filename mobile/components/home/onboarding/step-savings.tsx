@@ -8,8 +8,10 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { EMOJI_PALETTE } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
 import { MONTH_OPTIONS } from '@/components/savings-goals/wizard-steps/step-3-months'
 import { TextField } from '@/components/ui/text-field'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { formatMoney, parsePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
+import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface StepSavingsProps {
@@ -86,37 +88,18 @@ export function StepSavings({
             </Text>
           </View>
           <View style={styles.percentChips}>
-            {PERCENT_OPTIONS.map((p) => {
-              const on = savingsGoalPercent === p
-              return (
-                <Pressable
-                  key={p}
-                  onPress={() => {
-                    void triggerHaptic('selection')
-                    onChangeSavingsPercent(p)
-                  }}
-                  style={[
-                    styles.percentChip,
-                    {
-                      backgroundColor: on ? theme.colors.text : theme.colors.creamSoft,
-                      borderColor: on ? theme.colors.text : theme.colors.line,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${p} por ciento`}
-                >
-                  <Text
-                    style={[
-                      styles.percentChipText,
-                      { color: on ? theme.colors.creamCard : theme.colors.text },
-                    ]}
-                  >
-                    {p}%
-                  </Text>
-                </Pressable>
-              )
-            })}
+            {PERCENT_OPTIONS.map((p) => (
+              <PercentChip
+                key={p}
+                percent={p}
+                selected={savingsGoalPercent === p}
+                onPress={() => {
+                  void triggerHaptic('selection')
+                  onChangeSavingsPercent(p)
+                }}
+                theme={theme}
+              />
+            ))}
           </View>
           {monthlyIncome > 0 ? (
             <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
@@ -244,42 +227,110 @@ export function StepSavings({
               EN CUÁNTOS MESES
             </Text>
             <View style={styles.monthsChips}>
-              {MONTH_OPTIONS.map((m) => {
-                const on = firstGoalMonths === m
-                return (
-                  <Pressable
-                    key={m}
-                    onPress={() => {
-                      void triggerHaptic('selection')
-                      onChangeFirstGoalMonths(m)
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={`${m} meses`}
-                    style={[
-                      styles.monthChip,
-                      {
-                        backgroundColor: on ? theme.colors.text : theme.colors.creamSoft,
-                        borderColor: on ? theme.colors.text : theme.colors.line,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.monthChipText,
-                        { color: on ? theme.colors.creamCard : theme.colors.text },
-                      ]}
-                    >
-                      {m} meses
-                    </Text>
-                  </Pressable>
-                )
-              })}
+              {MONTH_OPTIONS.map((m) => (
+                <MonthChip
+                  key={m}
+                  months={m}
+                  selected={firstGoalMonths === m}
+                  onPress={() => {
+                    void triggerHaptic('selection')
+                    onChangeFirstGoalMonths(m)
+                  }}
+                  theme={theme}
+                />
+              ))}
             </View>
           </View>
         </Animated.View>
       ) : null}
     </View>
+  )
+}
+
+interface PercentChipProps {
+  percent: number
+  selected: boolean
+  onPress: () => void
+  theme: ReturnType<typeof useAppTheme>['theme']
+}
+
+function PercentChip({ percent, selected, onPress, theme }: PercentChipProps) {
+  const press = usePressScale({ pressedScale: 0.98 })
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${percent} por ciento`}
+    >
+      <Animated.View
+        style={[
+          styles.percentChip,
+          press.animatedStyle,
+          {
+            backgroundColor: selected
+              ? theme.colors.primarySurface
+              : theme.colors.creamSoft,
+            borderColor: selected ? theme.colors.primary : theme.colors.line,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.percentChipText,
+            { color: selected ? theme.colors.primary : theme.colors.text },
+          ]}
+        >
+          {percent}%
+        </Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+interface MonthChipProps {
+  months: number
+  selected: boolean
+  onPress: () => void
+  theme: ReturnType<typeof useAppTheme>['theme']
+}
+
+function MonthChip({ months, selected, onPress, theme }: MonthChipProps) {
+  const press = usePressScale({ pressedScale: 0.98 })
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${months} meses`}
+      style={styles.monthChipWrap}
+    >
+      <Animated.View
+        style={[
+          styles.monthChip,
+          press.animatedStyle,
+          {
+            backgroundColor: selected
+              ? theme.colors.primarySurface
+              : theme.colors.creamSoft,
+            borderColor: selected ? theme.colors.primary : theme.colors.line,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.monthChipText,
+            { color: selected ? theme.colors.primary : theme.colors.text },
+          ]}
+        >
+          {months} meses
+        </Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
@@ -291,7 +342,7 @@ const styles = StyleSheet.create({
   percentCard: {
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 18,
+    borderRadius: radii.lg,
     borderWidth: 1,
     gap: 10,
   },
@@ -305,7 +356,7 @@ const styles = StyleSheet.create({
   percentChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
   },
   percentChipText: { fontSize: 12, fontWeight: '700' },
@@ -316,7 +367,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     borderWidth: 1,
   },
   checkbox: {
@@ -336,15 +387,17 @@ const styles = StyleSheet.create({
   emojiCard: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emojiGlyph: { fontSize: 24, lineHeight: 30 },
   monthsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  monthChip: {
+  monthChipWrap: {
     flexGrow: 1,
     flexBasis: '47%',
+  },
+  monthChip: {
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,

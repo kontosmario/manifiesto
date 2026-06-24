@@ -4,6 +4,8 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { TextField } from '@/components/ui/text-field'
+import { usePressScale } from '@/hooks/use-press-scale'
+import { radii } from '@/theme/palette'
 import {
   useBootstrapFamily,
   usePeekFamilyInvite,
@@ -181,47 +183,25 @@ export function StepFamily({
           layout={LinearTransition.duration(240)}
           style={styles.optionStack}
         >
-          <Pressable
+          <OptionCard
+            emoji="👤"
+            title="Yo solo"
+            meta="Gestiono mi plata solo."
             onPress={() => void handleSolo()}
             disabled={busy}
-            accessibilityRole="button"
             accessibilityLabel="Usar la app yo solo"
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            ]}
-          >
-            <Text style={styles.optionEmoji}>👤</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Yo solo</Text>
-              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
-                Gestiono mi plata solo.
-              </Text>
-            </View>
-            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
-          </Pressable>
+            theme={theme}
+          />
 
-          <Pressable
+          <OptionCard
+            emoji="👨‍👩‍👧"
+            title="Con mi familia o pareja"
+            meta="Compartimos los gastos."
             onPress={() => setPanel('root')}
             disabled={busy}
-            accessibilityRole="button"
             accessibilityLabel="Usar la app con mi familia o pareja"
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            ]}
-          >
-            <Text style={styles.optionEmoji}>👨‍👩‍👧</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>
-                Con mi familia o pareja
-              </Text>
-              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
-                Compartimos los gastos.
-              </Text>
-            </View>
-            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
-          </Pressable>
+            theme={theme}
+          />
         </Animated.View>
       ) : panel === 'root' ? (
         <Animated.View
@@ -231,47 +211,27 @@ export function StepFamily({
           layout={LinearTransition.duration(240)}
           style={styles.optionStack}
         >
-          <Pressable
+          <OptionCard
+            emoji="🏠"
+            title="Crear nueva"
+            meta="Empezamos con un código nuevo."
             onPress={() => {
               void triggerHaptic('selection')
               void handleCreate()
             }}
             disabled={busy}
-            accessibilityRole="button"
             accessibilityLabel="Crear nueva familia"
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            ]}
-          >
-            <Text style={styles.optionEmoji}>🏠</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Crear nueva</Text>
-              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
-                Empezamos con un código nuevo.
-              </Text>
-            </View>
-            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
-          </Pressable>
+            theme={theme}
+          />
 
-          <Pressable
+          <OptionCard
+            emoji="🔗"
+            title="Unirme con código"
+            meta="Pegá el código que te pasaron."
             onPress={() => setPanel('join')}
-            accessibilityRole="button"
             accessibilityLabel="Unirme con código"
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            ]}
-          >
-            <Text style={styles.optionEmoji}>🔗</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.optionTitle, { color: theme.colors.text }]}>Unirme con código</Text>
-              <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>
-                Pegá el código que te pasaron.
-              </Text>
-            </View>
-            <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
-          </Pressable>
+            theme={theme}
+          />
 
           <Pressable
             onPress={() => setPanel('mode')}
@@ -337,6 +297,53 @@ export function StepFamily({
   )
 }
 
+interface OptionCardProps {
+  emoji: string
+  title: string
+  meta: string
+  onPress: () => void
+  disabled?: boolean
+  accessibilityLabel: string
+  theme: ReturnType<typeof useAppTheme>['theme']
+}
+
+function OptionCard({
+  emoji,
+  title,
+  meta,
+  onPress,
+  disabled = false,
+  accessibilityLabel,
+  theme,
+}: OptionCardProps) {
+  const press = usePressScale({ pressedScale: 0.98 })
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View
+        style={[
+          styles.optionCard,
+          press.animatedStyle,
+          { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+        ]}
+      >
+        <Text style={styles.optionEmoji}>{emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{title}</Text>
+          <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>{meta}</Text>
+        </View>
+        <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
   stack: { gap: 16 },
   title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
@@ -349,7 +356,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderRadius: 18,
+    borderRadius: radii.lg,
     borderWidth: 1,
   },
   optionEmoji: { fontSize: 28 },
@@ -365,7 +372,7 @@ const styles = StyleSheet.create({
   ghostButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -374,7 +381,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -385,13 +392,13 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 16,
     paddingVertical: 18,
-    borderRadius: 18,
+    borderRadius: radii.lg,
     borderWidth: 1,
   },
   confirmIcon: {
     width: 40,
     height: 40,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

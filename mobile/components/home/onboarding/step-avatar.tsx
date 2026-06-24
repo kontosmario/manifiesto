@@ -7,6 +7,8 @@ import {
 } from '@/assets/avatars'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { usePressScale } from '@/hooks/use-press-scale'
+import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface StepAvatarProps {
@@ -66,35 +68,60 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.gridContent}
         >
-          {AVATAR_SLUGS.map((slug) => {
-            const on = slug === selected
-            return (
-              <Pressable
-                key={slug}
-                onPress={() => onSelect(slug)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={AVATAR_LABELS[slug]}
-                style={[
-                  styles.gridCell,
-                  {
-                    backgroundColor: on ? theme.colors.text : theme.colors.creamCard,
-                    borderColor: on ? theme.colors.text : theme.colors.line,
-                  },
-                ]}
-              >
-                <AvatarAnimal
-                  slug={slug}
-                  size={44}
-                  tint={on ? theme.colors.creamCard : theme.colors.text}
-                  backgroundTint="transparent"
-                />
-              </Pressable>
-            )
-          })}
+          {AVATAR_SLUGS.map((slug) => (
+            <AvatarCell
+              key={slug}
+              slug={slug}
+              selected={slug === selected}
+              onSelect={onSelect}
+              theme={theme}
+            />
+          ))}
         </ScrollView>
       </RiseView>
     </View>
+  )
+}
+
+interface AvatarCellProps {
+  slug: AvatarSlug
+  selected: boolean
+  onSelect: (slug: AvatarSlug) => void
+  theme: ReturnType<typeof useAppTheme>['theme']
+}
+
+function AvatarCell({ slug, selected, onSelect, theme }: AvatarCellProps) {
+  const press = usePressScale({ pressedScale: 0.98 })
+  return (
+    <Pressable
+      onPress={() => onSelect(slug)}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={AVATAR_LABELS[slug]}
+    >
+      <Animated.View
+        style={[
+          styles.gridCell,
+          press.animatedStyle,
+          {
+            backgroundColor: selected
+              ? theme.colors.primarySurface
+              : theme.colors.creamCard,
+            borderColor: selected ? theme.colors.primary : theme.colors.line,
+            borderWidth: selected ? 2 : 1,
+          },
+        ]}
+      >
+        <AvatarAnimal
+          slug={slug}
+          size={44}
+          tint={selected ? theme.colors.primary : theme.colors.text}
+          backgroundTint="transparent"
+        />
+      </Animated.View>
+    </Pressable>
   )
 }
 
@@ -108,7 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 24,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: radii.xl,
     borderWidth: 1,
     gap: 12,
   },
@@ -135,8 +162,7 @@ const styles = StyleSheet.create({
   gridCell: {
     width: 64,
     height: 64,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },

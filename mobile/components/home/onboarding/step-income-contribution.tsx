@@ -1,7 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { parsePrice } from '@/utils/money'
+import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface StepIncomeContributionProps {
@@ -88,8 +91,8 @@ export function StepIncomeContribution({
             style={[
               styles.infoCard,
               {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.creamCard,
+                borderColor: theme.colors.line,
               },
             ]}
           >
@@ -112,36 +115,43 @@ interface ChoicePillProps {
 }
 
 function ChoicePill({ label, selected, onPress, theme }: ChoicePillProps) {
+  const press = usePressScale({ pressedScale: 0.98 })
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.choice,
-        {
-          backgroundColor: selected
-            ? theme.colors.primary
-            : theme.colors.surface,
-          borderColor: selected
-            ? theme.colors.primary
-            : theme.colors.border,
-          opacity: pressed ? 0.92 : 1,
-        },
-      ]}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={styles.choiceWrap}
     >
-      <Text
+      <Animated.View
         style={[
-          styles.choiceText,
+          styles.choice,
+          press.animatedStyle,
           {
-            color: selected
-              ? theme.colors.surface
-              : theme.colors.text,
+            backgroundColor: selected
+              ? theme.colors.primarySurface
+              : theme.colors.creamCard,
+            borderColor: selected
+              ? theme.colors.primary
+              : theme.colors.line,
           },
         ]}
       >
-        {label}
-      </Text>
+        <Text
+          style={[
+            styles.choiceText,
+            {
+              color: selected
+                ? theme.colors.primary
+                : theme.colors.text,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -154,11 +164,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  choiceWrap: { flex: 1 },
   choice: {
-    flex: 1,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
     alignItems: 'center',
     minHeight: 48,
@@ -178,7 +188,7 @@ const styles = StyleSheet.create({
   hint: { marginTop: 10, fontSize: 12, lineHeight: 17 },
   infoCard: {
     padding: 14,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
   },
   infoText: { fontSize: 13, lineHeight: 18 },

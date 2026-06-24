@@ -4,6 +4,7 @@ import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { formatMoneyShort, parsePrice } from '@/utils/money'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
+import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { FamilyPeek } from '@/features/family/use-family-actions'
 
@@ -57,8 +58,8 @@ export function StepFamilySummary({
           style={[
             styles.card,
             {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.creamCard,
+              borderColor: theme.colors.line,
             },
           ]}
         >
@@ -97,8 +98,8 @@ export function StepFamilySummary({
                 style={[
                   styles.memberRow,
                   {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.creamCard,
+                    borderColor: theme.colors.line,
                   },
                 ]}
               >
@@ -129,7 +130,7 @@ export function StepFamilySummary({
               styles.memberRow,
               styles.memberRowPending,
               {
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.colors.primarySurface,
                 borderColor: theme.colors.primary,
               },
             ]}
@@ -171,8 +172,8 @@ export function StepFamilySummary({
             style={[
               styles.goalCard,
               {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.creamCard,
+                borderColor: theme.colors.line,
               },
             ]}
           >
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
   subcopy: { fontSize: 13, marginTop: 6, lineHeight: 18 },
   card: {
     padding: 16,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     borderWidth: 1,
     gap: 4,
   },
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
     gap: 12,
   },
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   goalCard: {
     marginTop: 12,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
     gap: 4,
   },
