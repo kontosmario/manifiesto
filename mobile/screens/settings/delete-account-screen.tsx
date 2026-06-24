@@ -390,7 +390,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         canGoBack={!onClose}
         contentContainerStyle={styles.screenContent}
-        subtitle="Antes de borrar tu cuenta, transferí el hogar a otro miembro."
+        subtitle="Antes de borrar tu cuenta, cerrá tu hogar o esperá a que los demás se retiren."
         title="Eliminar cuenta"
       >
         <View style={styles.sectionStack}>
@@ -416,9 +416,9 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 No podés borrar tu cuenta todavía
               </Text>
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
-                Sos dueño de un hogar con otros miembros activos. Si te vas,
-                el resto pierde acceso. Pasale el rol a otro miembro desde
-                "Gestionar miembros" y volvé acá.
+                Sos dueño de un hogar con otros miembros activos. Para borrar
+                tu cuenta, primero eliminá el hogar (se cierra para todos) o
+                pediles a los demás que se retiren, y volvé acá.
               </Text>
             </View>
           </View>
