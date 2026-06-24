@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Pressable, StyleSheet } from 'react-native'
+import { Pressable, StyleSheet, Text } from 'react-native'
 import Animated, {
   Easing,
   ReduceMotion,
@@ -17,7 +17,9 @@ import { usePressScale } from '@/hooks/use-press-scale'
  * Botón inline "Pagar" — visualmente único y referenciado al pago.
  *
  * Diseño:
- *   · Círculo 40pt + hitSlop 8 = ~56pt efectivo (HIG/MD ≥44pt).
+ *   · Pill con ícono $ + label "Pagar" — texto + fill = inequívocamente
+ *     tappable, y el verbo lo separa semánticamente del monto contiguo
+ *     (el círculo icon-only se leía como insignia/estado). hitSlop 8 ≥44pt.
  *   · Brand color por status: forest-deep (pending, "go") /
  *     red-brand (overdue, "urgente"). Bg sólido + icono blanco
  *     reads como primario, no genérico negro.
@@ -25,7 +27,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
  *     pago. Mejor que `check` (que es post-confirmación / done) y
  *     mejor que `paid` (mismo problema).
  *   · Borde 1.5pt en tono más profundo del bg → finish curado.
- *   · Press scale 0.88 (pronunciado para icon-only).
+ *   · Press scale 0.95 (sutil — el target del pill ya es grande).
  *   · Pulse halo continuo PARA OVERDUE: círculo BG-only que crece
  *     y se desvanece en loop (1.5s ease-in-out, scale 1→1.45,
  *     opacity 0.45→0). Skip si reduceMotion activo.
@@ -118,7 +120,8 @@ export function InlinePayButton({
           pressScale.animatedStyle,
         ]}
       >
-        <MaterialIcons name="attach-money" size={22} color="#FFFFFF" />
+        <MaterialIcons name="attach-money" size={16} color="#FFFFFF" />
+        <Text style={styles.inlinePayLabel}>Pagar</Text>
       </Animated.View>
     </Pressable>
   )
@@ -132,29 +135,35 @@ const styles = StyleSheet.create({
   // El wrap maneja layout + alineación del halo pulse (overdue);
   // el btn lleva el visual chrome.
   inlinePayWrap: {
-    width: 40,
-    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
+    // Aire entre el monto (dato) y el pill (acción) → leen como columnas
+    // distintas, no como "dos cosas de plata" pegadas.
+    marginLeft: 10,
   },
   inlinePayBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 11,
     borderWidth: 1.5,
     overflow: 'hidden',
+  },
+  inlinePayLabel: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   // Halo pulse continuo para overdue — se renderiza absoluto detrás
   // del botón, escalando y desvaneciéndose en loop. Color = mismo bg
   // del botón pero alpha-modulado vía el animatedStyle (NO bg-alpha
   // hardcodeado para que el dark mode también funcione).
   inlinePayHalo: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 999,
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 11,
   },
 })

@@ -226,6 +226,8 @@ export function AddFijoV2Screen({
 
   const onPrimaryCtaStep1 = () => {
     if (form.canContinue) {
+      // Feedback al avanzar al impacto — antes el salto de paso era mudo.
+      void triggerHaptic('selection')
       form.setStep(2)
       return
     }

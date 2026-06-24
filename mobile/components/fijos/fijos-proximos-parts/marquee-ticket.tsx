@@ -59,8 +59,10 @@ export function MarqueeTicket({
     ? 'rgba(242,167,140,0.40)'
     : 'rgba(184,64,20,0.28)'
 
+  // Dark: el 0.035 dejaba los tickets sin volumen sobre el card surfaceMuted;
+  // subido a 0.06 para que se lean como tarjetas (mismo hue, solo alpha).
   const ticketBg = theme.isDark
-    ? 'rgba(255,255,255,0.035)'
+    ? 'rgba(255,255,255,0.06)'
     : 'rgba(15,42,30,0.035)'
 
   const catColor = category?.color ?? theme.colors.peach
@@ -92,7 +94,7 @@ export function MarqueeTicket({
             backgroundColor: urgent
               ? urgentBgRgba
               : theme.isDark
-                ? 'rgba(255,255,255,0.06)'
+                ? 'rgba(255,255,255,0.08)'
                 : 'rgba(15,42,30,0.05)',
             borderColor: urgent ? urgentBorderRgba : theme.colors.line,
           },

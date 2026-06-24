@@ -105,7 +105,7 @@ function FijoRowReal({
   // monto. Más feedback porque es un icon-only button (44pt hit area,
   // 36pt visual) y necesita confirmar el tap sin lugar a duda.
   const cardPress = usePressScale({ pressedScale: 0.98 })
-  const inlinePayPress = usePressScale({ pressedScale: 0.92 })
+  const inlinePayPress = usePressScale({ pressedScale: 0.95 })
 
   // ── Local celebration on status flip → 'paid' ──────────────────
   // Capture the row's initial status on mount via a ref. The pulse
