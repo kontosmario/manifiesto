@@ -18,7 +18,7 @@ import { formatMoney } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
-type MemberAction = 'transfer' | 'block' | 'unblock' | 'remove'
+type MemberAction = 'block' | 'unblock' | 'remove'
 
 interface ConfirmSpec {
   action: MemberAction
@@ -37,7 +37,6 @@ interface MemberActionSheetProps {
    *  animación de salida el dueño "saltaría" a mostrar las acciones. */
   currentUserId: string
   onClose: () => void
-  onTransfer: (member: FamilyMemberStats) => Promise<unknown>
   onBlock: (member: FamilyMemberStats) => Promise<unknown>
   onUnblock: (member: FamilyMemberStats) => Promise<unknown>
   onRemove: (member: FamilyMemberStats) => Promise<unknown>
@@ -57,7 +56,6 @@ export function MemberActionSheet({
   member,
   currentUserId,
   onClose,
-  onTransfer,
   onBlock,
   onUnblock,
   onRemove,
@@ -87,7 +85,6 @@ export function MemberActionSheet({
   const isMe = m != null && m.userId === currentUserId
 
   function runFor(action: MemberAction, target: FamilyMemberStats): Promise<unknown> {
-    if (action === 'transfer') return onTransfer(target)
     if (action === 'block') return onBlock(target)
     if (action === 'unblock') return onUnblock(target)
     return onRemove(target)
@@ -217,8 +214,8 @@ export function MemberActionSheet({
             <View style={[styles.statsDivider, { backgroundColor: theme.colors.line }]} />
             <View style={styles.statsRow}>
               <StatCell
-                label="Racha"
-                primary={m.currentStreak > 0 ? `${m.currentStreak} 🔥` : '—'}
+                label="Jardín"
+                primary={m.currentStreak > 0 ? `${m.currentStreak} 🌱` : '—'}
                 secondary={`Mejor: ${m.longestStreak}`}
               />
               <StatCell
@@ -274,20 +271,6 @@ export function MemberActionSheet({
                 </>
               ) : (
                 <>
-                  <ActionRow
-                    icon="swap-horiz"
-                    label="Transferir propiedad"
-                    onPress={() =>
-                      setConfirm({
-                        action: 'transfer',
-                        icon: 'swap-horiz',
-                        title: 'Transferir propiedad',
-                        body: `Vas a transferir la propiedad a ${name}. Vas a perder la capacidad de editar la familia.`,
-                        cta: 'Transferir',
-                        danger: true,
-                      })
-                    }
-                  />
                   <ActionRow
                     icon="block"
                     label="Bloquear integrante"

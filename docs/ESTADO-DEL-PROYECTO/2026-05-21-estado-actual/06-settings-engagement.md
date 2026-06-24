@@ -124,12 +124,12 @@ Convive con la entry "Reactivar visitas guiadas" del grupo Asistente (UX distint
 `FlatList` de miembros con `FamilyMemberStats` (userId, displayName, avatarAnimal, role, monthlyIncomeContribution, totalExpenses, lastActiveAt, joinedAt, blockedAt).
 
 Cada fila muestra: avatar animal, nombre, "Miembro desde {mes año}", actividad relativa ("Hace X días"), aporte mensual, total gastos, badge de rol. Tap en fila (ActionSheet iOS / Alert Android) ofrece según el rol del target:
-- **member** → Transferir propiedad, Bloquear, Eliminar
+- **member** → Bloquear, Eliminar
 - **blocked** → Desbloquear, Eliminar
 
-Mutations via RPCs: `family_transfer_ownership`, `family_block_member`, `family_unblock_member`, `family_remove_member`.
+Mutations via RPCs: `family_block_member`, `family_unblock_member`, `family_remove_member`. (La acción **transferir propiedad** se eliminó de la UI 2026-06-23 — decisión owner; el RPC `family_transfer_ownership` queda dormido en backend.)
 
-**Hooks:** `useFamilyMemberStats`, `useTransferOwnership`, `useBlockMember`, `useUnblockMember`, `useRemoveMember` (todos en [`mobile/features/family/use-family-admin.ts`](../../../mobile/features/family/use-family-admin.ts)).
+**Hooks:** `useFamilyMemberStats`, `useBlockMember`, `useUnblockMember`, `useRemoveMember` (todos en [`mobile/features/family/use-family-admin.ts`](../../../mobile/features/family/use-family-admin.ts)).
 
 ### 3.2 Billing / Plan del hogar
 
@@ -836,7 +836,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 | [`mobile/features/achievements/use-achievements.ts`](../../../mobile/features/achievements/use-achievements.ts) | `useAchievements` + `useAchievementUnlocks` |
 | [`mobile/features/billing/billing-plans.ts`](../../../mobile/features/billing/billing-plans.ts) | Definición de planes (hogar-mensual, hogar-anual) |
 | [`mobile/features/billing/use-billing.ts`](../../../mobile/features/billing/use-billing.ts) | `useBilling` (MOCK) |
-| [`mobile/features/family/use-family-admin.ts`](../../../mobile/features/family/use-family-admin.ts) | `useFamilyMemberStats`, `useTransferOwnership`, `useBlockMember`, `useUnblockMember`, `useRemoveMember` |
+| [`mobile/features/family/use-family-admin.ts`](../../../mobile/features/family/use-family-admin.ts) | `useFamilyMemberStats`, `useBlockMember`, `useUnblockMember`, `useRemoveMember` |
 | [`mobile/features/family/use-family-actions.ts`](../../../mobile/features/family/use-family-actions.ts) | `useLeaveCurrentFamily`, `useUpdateMyIncomeContribution` |
 | [`mobile/features/family/use-family-members.ts`](../../../mobile/features/family/use-family-members.ts) | `useFamilyMembers` |
 | [`mobile/features/family/use-family-members-detail.ts`](../../../mobile/features/family/use-family-members-detail.ts) | `useFamilyMembersDetail` |
@@ -907,7 +907,7 @@ Wrapper thin de `BlockingScreenView`. Usado en: `auth-callback-screen` ("Confirm
 - Ediciones: archivo de Wrappeds, masthead YTD, rows con tier dots, tap-to-replay
 - Tours custom (sin react-native-copilot): 4 tours, SecureStore persistence, overlay cutout, reset desde Settings (silent) y desde Asistente (con Alert)
 - Subscriptions-zombie: motor de clasificación client-side, 5 clasificaciones, cooldowns, 5 queries paralelas, intención + follow-up, sync push
-- Family admin: gestionar miembros, transferir ownership, bloquear/desbloquear/eliminar via RPCs
+- Family admin: gestionar miembros, bloquear/desbloquear/eliminar via RPCs (transferir propiedad removido de la UI 2026-06-23)
 - Savings goals: CRUD completo, validación, milestones achievements, SavingsAdvisorStrip contextual, bloque de plan de ahorro derivado (progreso + falta + $/mes)
 - Notifications preferences: canales, grupos, horarios check-in, optimistic update
 - Notificaciones V2: feed minificado, hard-delete al marcar leída, animación FadeOutRight + spring reflow, sin filtros ni hero duplicado

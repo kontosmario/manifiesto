@@ -16,7 +16,6 @@ import {
   useBlockMember,
   useFamilyMemberStats,
   useRemoveMember,
-  useTransferOwnership,
   useUnblockMember,
   type FamilyMemberStats,
 } from '@/features/family/use-family-admin'
@@ -34,7 +33,6 @@ interface FamilyAdminScreenProps {
 export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   const { theme } = useAppTheme()
   const statsQuery = useFamilyMemberStats()
-  const transferMutation = useTransferOwnership()
   const blockMutation = useBlockMember()
   const unblockMutation = useUnblockMember()
   const removeMutation = useRemoveMember()
@@ -68,7 +66,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         title="Gestión de familia"
-        subtitle="Roles, bloqueos y transferencias"
+        subtitle="Roles y bloqueos"
         canGoBack
         backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       >
@@ -170,7 +168,6 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
         member={selected}
         currentUserId={userId}
         onClose={() => setSelected(null)}
-        onTransfer={(member) => transferMutation.mutateAsync({ targetUserId: member.userId })}
         onBlock={(member) => blockMutation.mutateAsync({ targetUserId: member.userId })}
         onUnblock={(member) => unblockMutation.mutateAsync({ targetUserId: member.userId })}
         onRemove={(member) => removeMutation.mutateAsync({ targetUserId: member.userId })}

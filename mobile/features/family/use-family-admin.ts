@@ -115,13 +115,6 @@ function useFamilyAdminMutation(rpcName: string, fallbackMessage: string) {
   })
 }
 
-export function useTransferOwnership() {
-  return useFamilyAdminMutation(
-    'family_transfer_ownership',
-    'No pudimos transferir la propiedad.',
-  )
-}
-
 export function useBlockMember() {
   return useFamilyAdminMutation('family_block_member', 'No pudimos bloquear al miembro.')
 }
