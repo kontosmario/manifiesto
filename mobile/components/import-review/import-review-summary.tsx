@@ -73,7 +73,7 @@ export function ImportReviewSummary({
 
   return (
     <View style={styles.root}>
-      <CelebrationIcon color={theme.colors.primary} />
+      <CelebrationIcon color={theme.colors.primary} iconColor={theme.colors.textOnPrimary} />
       <Animated.Text
         entering={FadeIn.duration(motionDurations.standard).delay(120).easing(EASE_IOS)}
         style={[styles.heading, { color: theme.colors.text }]}
@@ -204,7 +204,7 @@ function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
  * pulse. Single moment of celebration to mark "you made it through the
  * review, now confirm".
  */
-function CelebrationIcon({ color }: { color: string }) {
+function CelebrationIcon({ color, iconColor }: { color: string; iconColor: string }) {
   const scale = useSharedValue(0.4)
   const halo = useSharedValue(0)
 
@@ -245,7 +245,7 @@ function CelebrationIcon({ color }: { color: string }) {
           { backgroundColor: color },
         ]}
       >
-        <MaterialIcons name="check" size={36} color="#0F2D06" />
+        <MaterialIcons name="check" size={36} color={iconColor} />
       </Animated.View>
     </View>
   )

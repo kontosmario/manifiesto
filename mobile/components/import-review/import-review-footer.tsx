@@ -147,6 +147,7 @@ export function ImportReviewFooter({
         lookDisabled={lookDisabled}
         hardDisabled={hardDisabled}
         backgroundColor={theme.colors.primary}
+        foregroundColor={theme.colors.textOnPrimary}
         onPress={onPrimary}
       />
 
@@ -182,6 +183,7 @@ interface PrimaryCTAProps {
    *  in-flight states (network roundtrip) where re-pressing is a bug. */
   hardDisabled: boolean
   backgroundColor: string
+  foregroundColor: string
   onPress: () => void
 }
 
@@ -197,6 +199,7 @@ function PrimaryCTA({
   lookDisabled,
   hardDisabled,
   backgroundColor,
+  foregroundColor,
   onPress,
 }: PrimaryCTAProps) {
   const pressScale = useSharedValue(1)
@@ -239,10 +242,10 @@ function PrimaryCTA({
           },
         ]}
       >
-        <Text style={styles.primaryText} numberOfLines={1}>
+        <Text style={[styles.primaryText, { color: foregroundColor }]} numberOfLines={1}>
           {label}
         </Text>
-        <MaterialIcons name={icon} size={20} color="#0F2D06" />
+        <MaterialIcons name={icon} size={20} color={foregroundColor} />
       </Pressable>
     </Animated.View>
   )
@@ -365,7 +368,6 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#0F2D06',
     letterSpacing: -0.2,
   },
   helperRow: {

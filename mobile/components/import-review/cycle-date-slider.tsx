@@ -100,6 +100,7 @@ export function CycleDateSlider({
             primary={theme.colors.primary}
             textColor={theme.colors.text}
             mutedColor={theme.colors.textMuted}
+            onPrimary={theme.colors.textOnPrimary}
           />
         ))}
       </ScrollView>
@@ -114,6 +115,7 @@ interface TileProps {
   primary: string
   textColor: string
   mutedColor: string
+  onPrimary: string
 }
 
 function DayTile({
@@ -123,6 +125,7 @@ function DayTile({
   primary,
   textColor,
   mutedColor,
+  onPrimary,
 }: TileProps) {
   const press = useSharedValue(1)
   // Días futuros: no seleccionables (un gasto no puede ser de mañana).
@@ -175,7 +178,7 @@ function DayTile({
             style={[
               styles.dayNum,
               {
-                color: isSelected ? '#0F2D06' : textColor,
+                color: isSelected ? onPrimary : textColor,
                 fontWeight: isSelected ? '900' : '700',
               },
             ]}

@@ -65,7 +65,10 @@ export function ShareImportHost() {
   return (
     <>
       {phase === 'parsing' ? (
-        <View style={styles.overlay} pointerEvents="auto">
+        <View
+          style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}
+          pointerEvents="auto"
+        >
           <View
             style={[
               styles.card,
@@ -101,7 +104,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
     zIndex: 50,
   },
   card: {

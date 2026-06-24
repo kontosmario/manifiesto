@@ -92,6 +92,8 @@ export interface ThemeColors {
   primary: string             // brand.deep in light / brand.bright in dark
   primaryStrong: string
   primarySurface: string
+  /** Texto/ícono legible SOBRE un fill `primary` (cambia por modo). */
+  textOnPrimary: string
   success: string
   warning: string
   danger: string
@@ -197,6 +199,7 @@ const lightColors: ThemeColors = {
   textMuted:          '#3B6D57',  // V1 — surface-700 (neutral muted, AA on cream)
   textSoft:           '#3B6D57',  // V1 — surface-700 (AA on cream; same hex as textMuted for now)
   primary:            '#297811',  // V1 — primary-800 (AA-safe on creamCard 5.37:1)
+  textOnPrimary:      '#F2EAD3',  // crema sobre el fill primary forest (AA en light)
   primaryStrong:      '#1F590D',  // V1 — primary-900 (hierarchy below primary)
   primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
   success:            '#297811',  // V1 — primary-800 (AA on cream; collapsed to primary, AA over differentiation)
@@ -242,6 +245,7 @@ const darkColors: ThemeColors = {
   textMuted:          '#A6EF8F',  // V1 — primary-300 (branded muted on dark)
   textSoft:           '#77E755',  // V1 — primary-400 (AA on creamCard dark 4.98:1)
   primary:            '#A6EF8F',  // V1 — primary-300 (was brand.bright #7AD8A3)
+  textOnPrimary:      '#0F2D06',  // verde-casi-negro sobre el fill primary mint (AA en dark)
   primaryStrong:      '#D1F7C5',  // V1 — primary-200
   primarySurface:     'rgba(166,239,143,0.12)',  // V1 — primary-300 alpha
   success:            '#A6EF8F',  // V1 — primary-300 (matches primary on dark)

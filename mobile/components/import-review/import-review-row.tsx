@@ -287,7 +287,7 @@ function KindToggle({
             <Text
               style={[
                 styles.toggleLabel,
-                { color: active ? '#0F2D06' : theme.colors.text },
+                { color: active ? theme.colors.textOnPrimary : theme.colors.text },
               ]}
             >
               {opt.label}
@@ -362,7 +362,7 @@ function IncomeKindSection({
               <Text
                 style={[
                   styles.kindLabel,
-                  { color: active ? '#0F2D06' : theme.colors.text },
+                  { color: active ? theme.colors.textOnPrimary : theme.colors.text },
                 ]}
               >
                 {INCOME_KIND_LABELS[k]}
