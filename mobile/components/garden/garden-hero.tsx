@@ -23,7 +23,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   const { theme } = useAppTheme()
   return (
     <View style={styles.stat}>
-      <Text style={[styles.statLabel, { color: theme.colors.heroMuted2 }]}>{label}</Text>
+      <Text style={[styles.statLabel, { color: theme.colors.heroText }]}>{label}</Text>
       <Text style={[styles.statValue, { color: theme.colors.heroText }]}>{value}</Text>
     </View>
   )

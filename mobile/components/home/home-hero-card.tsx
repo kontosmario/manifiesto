@@ -400,12 +400,12 @@ function HomeHeroCardImpl({
                   <MaterialIcons
                     name="add-circle"
                     size={13}
-                    color={'#A5B4FC'}
+                    color={theme.colors.heroAccent}
                   />
                   <Text
                     style={[
                       styles.adjustedChipText,
-                      { color: '#A5B4FC' },
+                      { color: theme.colors.heroAccent },
                     ]}
                   >
                     {`+${formatMoneyShort(data.cycleBalanceDiff)} al mes`}
@@ -562,7 +562,7 @@ function HomeHeroCardImpl({
               <Text style={[styles.tileValue, { color: theme.colors.heroText }]}>
                 {formatMoneyShort(data.dailyBudget)}
               </Text>
-              <Text style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}>
+              <Text style={[styles.tileSub, { color: theme.colors.heroText }]}>
                 hasta fin de ciclo
               </Text>
             </View>
@@ -578,7 +578,7 @@ function HomeHeroCardImpl({
                 },
               ]}
             >
-              <Text style={[styles.tileLabel, { color: theme.colors.heroMuted2 }]}>
+              <Text style={[styles.tileLabel, { color: theme.colors.heroText }]}>
                 Vas a cerrar con
               </Text>
               {data.projectionReliable ? (

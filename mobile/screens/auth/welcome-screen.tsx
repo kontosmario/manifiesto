@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 11,
     fontWeight: '400',
-    color: 'rgba(255,251,242,0.38)',
+    color: 'rgba(255,251,242,0.62)',
     textAlign: 'center',
   },
   fineprintLink: {
     textDecorationLine: 'underline',
-    color: 'rgba(255,251,242,0.38)',
+    color: 'rgba(255,251,242,0.74)',
   },
 })
 

@@ -860,7 +860,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         border: 'rgba(255,255,255,0.18)',
       },
       caution: {
-        fg: '#F2A78C',
+        fg: '#FADFC8',
         bg: 'rgba(242,167,140,0.18)',
         border: 'rgba(242,167,140,0.50)',
       },

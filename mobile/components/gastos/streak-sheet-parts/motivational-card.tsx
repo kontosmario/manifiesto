@@ -85,7 +85,7 @@ export function ConsequenceCard({ data, derived }: ConsequenceCardProps) {
         {rows.map((text, i) => (
           <View key={i} style={styles.consequenceRow}>
             <View style={[styles.consequenceDot, { backgroundColor: danger.fg }]} />
-            <Text style={[styles.cardBody, { color: `${danger.fg}B8` }]}>
+            <Text style={[styles.cardBody, { color: danger.fg }]}>
               {text}
             </Text>
           </View>

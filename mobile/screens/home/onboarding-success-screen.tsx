@@ -26,7 +26,7 @@ const PEACH = authTokens.peach
 const CLAY = authTokens.clay
 const DARK_GREEN = authTokens.welcomeBg
 const TEXT_ON_CREAM = authTokens.welcomeBg          // brand dark green for body text on cream canvas
-const TEXT_ON_CREAM_SOFT = 'rgba(14,58,38,0.6)'     // soft variant: same green with 60% alpha
+const TEXT_ON_CREAM_SOFT = 'rgba(14,58,38,0.72)'    // soft @72% alpha (5.2:1 AA; 0.6 daba 3.77)
 
 /**
  * Post-onboarding success screen. Sits between the wizard's last step y la
