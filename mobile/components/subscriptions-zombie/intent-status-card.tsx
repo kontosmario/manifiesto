@@ -1,5 +1,6 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useAppTheme } from '@/theme/theme-provider'
 import type { IntentKind } from '@/features/subscriptions-zombie/types'
 
 interface Props {
@@ -32,15 +33,23 @@ export function IntentStatusCard({
   monthlySaving,
   now,
 }: Props) {
+  const { theme } = useAppTheme()
+  const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+
   return (
-    <View style={styles.card} accessibilityRole="summary">
-      <Text style={styles.line}>
+    <View
+      style={[styles.card, { backgroundColor: cardBg }]}
+      accessibilityRole="summary"
+    >
+      <Text style={[styles.line, { color: theme.colors.text }]}>
         <Text style={styles.bold}>{declaredByName}</Text> {INTENT_LABEL[intent]}{' '}
         <Text style={styles.bold}>{fijoName}</Text>
       </Text>
-      <Text style={styles.meta}>{rel(declaredAtIso, now)}</Text>
+      <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
+        {rel(declaredAtIso, now)}
+      </Text>
       {(intent === 'cancel' || intent === 'pause') && monthlySaving > 0 ? (
-        <Text style={styles.savings}>
+        <Text style={[styles.savings, { color: theme.colors.primary }]}>
           Ahorro estimado: ${monthlySaving.toLocaleString('es-AR')} / mes
         </Text>
       ) : null}
@@ -50,13 +59,12 @@ export function IntentStatusCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F0EDE7',
     borderRadius: 12,
     padding: 12,
     gap: 4,
   },
-  line: { fontSize: 14, color: '#2A1F1A' },
+  line: { fontSize: 14 },
   bold: { fontWeight: '700' },
-  meta: { fontSize: 12, color: '#6B5E55' },
-  savings: { fontSize: 13, color: '#2E7D5B', fontWeight: '600', marginTop: 4 },
+  meta: { fontSize: 12 },
+  savings: { fontSize: 13, fontWeight: '600', marginTop: 4 },
 })

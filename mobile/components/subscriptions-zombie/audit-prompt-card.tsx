@@ -1,6 +1,7 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Avatar } from '@/components/ui/avatar'
+import { useAppTheme } from '@/theme/theme-provider'
 import { UsageLevelButtons } from './usage-level-buttons'
 import type {
   UsageAuditRecord,
@@ -49,13 +50,18 @@ export function AuditPromptCard({
   now,
   onSelect,
 }: Props) {
+  const { theme } = useAppTheme()
+  const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
   const others = audits.filter((a) => a.userId !== currentUserId)
   const youAlreadyAnswered = audits.some((a) => a.userId === currentUserId)
 
   return (
-    <View style={styles.card} accessibilityRole="summary">
-      <Text style={styles.title}>{fijoName}</Text>
-      <Text style={styles.subtitle}>
+    <View
+      style={[styles.card, { backgroundColor: cardBg }]}
+      accessibilityRole="summary"
+    >
+      <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         ${fijoAmount.toLocaleString('es-AR')} / mes
       </Text>
 
@@ -68,7 +74,7 @@ export function AuditPromptCard({
             return (
               <View key={a.id} style={styles.otherRow}>
                 <Avatar name={member?.name ?? ''} color={color} size={24} />
-                <Text style={styles.otherText}>
+                <Text style={[styles.otherText, { color: theme.colors.text }]}>
                   {member?.name ?? 'Alguien'}{' '}
                   <Text style={styles.otherStrong}>{LEVEL_LABEL[a.level]}</Text> ·{' '}
                   {relativeTime(a.createdAt, now)}
@@ -81,13 +87,15 @@ export function AuditPromptCard({
 
       {!youAlreadyAnswered ? (
         <>
-          <Text style={styles.question}>
+          <Text style={[styles.question, { color: theme.colors.text }]}>
             {others.length > 0 ? '¿Y tú?' : '¿La estás usando?'}
           </Text>
           <UsageLevelButtons onSelect={onSelect} />
         </>
       ) : (
-        <Text style={styles.answered}>Ya contestaste — esperando al resto.</Text>
+        <Text style={[styles.answered, { color: theme.colors.textMuted }]}>
+          Ya contestaste — esperando al resto.
+        </Text>
       )}
     </View>
   )
@@ -95,22 +103,20 @@ export function AuditPromptCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F7F3ED',
     borderRadius: 16,
     padding: 16,
     gap: 4,
   },
-  title: { fontSize: 16, fontWeight: '700', color: '#2A1F1A' },
-  subtitle: { fontSize: 14, color: '#6B5E55', marginBottom: 8 },
+  title: { fontSize: 16, fontWeight: '700' },
+  subtitle: { fontSize: 14, marginBottom: 8 },
   others: { gap: 6, marginBottom: 12 },
   otherRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  otherText: { fontSize: 13, color: '#3A2F26', flex: 1 },
+  otherText: { fontSize: 13, flex: 1 },
   otherStrong: { fontWeight: '700' },
-  question: { fontSize: 15, fontWeight: '600', color: '#2A1F1A', marginTop: 8 },
+  question: { fontSize: 15, fontWeight: '600', marginTop: 8 },
   answered: {
     marginTop: 12,
     fontSize: 13,
-    color: '#6B5E55',
     fontStyle: 'italic',
   },
 })

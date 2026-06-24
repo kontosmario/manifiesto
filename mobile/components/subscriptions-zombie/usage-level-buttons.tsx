@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { useAppTheme } from '@/theme/theme-provider'
 import type { UsageLevel } from '@/features/subscriptions-zombie/types'
 
 interface Props {
@@ -15,6 +16,7 @@ const OPTIONS: Array<{ level: UsageLevel; label: string }> = [
 ]
 
 export function UsageLevelButtons({ onSelect, disabled = false }: Props) {
+  const { theme } = useAppTheme()
   return (
     <View style={styles.row} accessibilityRole="radiogroup">
       {OPTIONS.map((opt) => (
@@ -29,11 +31,17 @@ export function UsageLevelButtons({ onSelect, disabled = false }: Props) {
           }}
           style={({ pressed }) => [
             styles.btn,
+            {
+              borderColor: theme.colors.line,
+              backgroundColor: theme.colors.surface,
+            },
             pressed && styles.btnPressed,
             disabled && styles.btnDisabled,
           ]}
         >
-          <Text style={styles.btnText}>{opt.label}</Text>
+          <Text style={[styles.btnText, { color: theme.colors.text }]}>
+            {opt.label}
+          </Text>
         </Pressable>
       ))}
     </View>
@@ -47,8 +55,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D8D2C7',
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
@@ -56,5 +62,5 @@ const styles = StyleSheet.create({
   },
   btnPressed: { opacity: 0.7, transform: [{ scale: 0.97 }] },
   btnDisabled: { opacity: 0.4 },
-  btnText: { fontSize: 14, fontWeight: '600', color: '#2A1F1A', textAlign: 'center' },
+  btnText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
 })
