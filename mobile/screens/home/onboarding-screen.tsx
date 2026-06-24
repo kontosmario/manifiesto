@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { Screen } from '@/components/ui/screen'
 import { StickyFooter } from '@/components/ui/sticky-footer'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { useNumpadOffset } from '@/lib/numpad-visibility'
 import {
   OnboardingStepDots,
@@ -493,6 +494,26 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     actions,
   ])
 
+  const ctaPress = usePressScale({ pressedScale: 0.97 })
+
+  // Título por paso, centrado en el chrome (reemplaza "PASO X/N").
+  const stepTitle = (() => {
+    switch (step) {
+      case 1:
+        return 'Tu nombre'
+      case 2:
+        return 'Tu avatar'
+      case 3:
+        return 'Tu hogar'
+      case 4:
+        return 'Tus ingresos'
+      case 5:
+        return isJoiner ? 'Casi listo' : 'Tu ahorro'
+      default:
+        return ''
+    }
+  })()
+
   const primaryLabel = (() => {
     if (submitting) return isJoiner ? 'Confirmando…' : 'Terminando…'
     if (step === 5) return isJoiner ? 'Confirmar y unirme' : 'Terminar y empezar'
@@ -620,7 +641,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       contentContainerStyle={screenStyle}
     >
       <Animated.View layout={LinearTransition.duration(260)}>
-        <OnboardingStepHeader step={step} canGoBack onBack={handleBack} />
+        <OnboardingStepHeader title={stepTitle} canGoBack onBack={handleBack} />
         <OnboardingStepDots step={step} />
       </Animated.View>
 
@@ -676,30 +697,32 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       </ScrollView>
 
       <StickyFooter divider={false}>
-        <Pressable
-          onPress={() => void handlePrimary()}
-          disabled={!canContinue || submitting}
-          accessibilityRole="button"
-          accessibilityLabel={primaryLabel}
-          style={[
-            styles.primaryCta,
-            {
-              backgroundColor: canContinue ? theme.colors.text : theme.colors.line,
-              opacity: submitting ? 0.7 : 1,
-            },
-          ]}
-        >
-          <Text
+        <Animated.View style={ctaPress.animatedStyle}>
+          <Pressable
+            onPress={() => void handlePrimary()}
+            onPressIn={ctaPress.onPressIn}
+            onPressOut={ctaPress.onPressOut}
+            disabled={!canContinue || submitting}
+            accessibilityRole="button"
+            accessibilityLabel={primaryLabel}
             style={[
-              styles.primaryCtaText,
+              styles.primaryCta,
               {
-                color: canContinue ? theme.colors.creamCard : theme.colors.textMuted,
+                // fill=text siempre; el disabled lo da el opacity (NO bajar el
+                // contraste del texto, que daba textMuted sobre line ilegible).
+                // Patrón del CTA de add-fijo.
+                backgroundColor: theme.colors.text,
+                opacity: !canContinue ? 0.45 : submitting ? 0.7 : 1,
               },
             ]}
           >
-            {primaryLabel}
-          </Text>
-        </Pressable>
+            <Text
+              style={[styles.primaryCtaText, { color: theme.colors.creamCard }]}
+            >
+              {primaryLabel}
+            </Text>
+          </Pressable>
+        </Animated.View>
       </StickyFooter>
 
       <InAppNumpad

@@ -1,16 +1,26 @@
+import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { ONBOARDING_TOTAL_STEPS } from '@/features/onboarding/use-onboarding-state'
 
 interface OnboardingStepHeaderProps {
-  step: number
+  /** Título del paso, centrado. Reemplaza el label "PASO X/N" (redundante
+   *  con los dots) — da jerarquía y contexto, hermano de add-fijo StepHeader. */
+  title: string
   canGoBack: boolean
   onBack: () => void
 }
 
 export function OnboardingStepHeader({
-  step,
+  title,
   canGoBack,
   onBack,
 }: OnboardingStepHeaderProps) {
@@ -33,8 +43,11 @@ export function OnboardingStepHeader({
       ) : (
         <View style={styles.backPill} />
       )}
-      <Text style={[styles.stepLabel, { color: theme.colors.textMuted }]}>
-        PASO {step} / {ONBOARDING_TOTAL_STEPS}
+      <Text
+        style={[styles.title, { color: theme.colors.text }]}
+        numberOfLines={1}
+      >
+        {title}
       </Text>
       <View style={styles.backPill} />
     </View>
@@ -46,29 +59,36 @@ interface OnboardingStepDotsProps {
 }
 
 export function OnboardingStepDots({ step }: OnboardingStepDotsProps) {
-  const { theme } = useAppTheme()
   return (
     <View style={styles.dotsRow}>
       {Array.from({ length: ONBOARDING_TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
-        <View
-          key={s}
-          style={[
-            styles.stepBar,
-            {
-              backgroundColor: s <= step ? theme.colors.text : theme.colors.line,
-            },
-          ]}
-        />
+        <StepBar key={s} filled={s <= step} />
       ))}
     </View>
   )
+}
+
+// El fill line→text se anima (no salta) al avanzar/retroceder de paso.
+function StepBar({ filled }: { filled: boolean }) {
+  const { theme } = useAppTheme()
+  const p = useSharedValue(filled ? 1 : 0)
+  useEffect(() => {
+    p.value = withTiming(filled ? 1 : 0, { duration: motionDurations.quick })
+  }, [filled, p])
+  const style = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      p.value,
+      [0, 1],
+      [theme.colors.line, theme.colors.text],
+    ),
+  }))
+  return <Animated.View style={[styles.stepBar, style]} />
 }
 
 const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
   },
   backPill: {
@@ -80,11 +100,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderColor: 'transparent',
   },
-  stepLabel: {
-    fontSize: 11,
+  title: {
+    flex: 1,
+    fontSize: 22,
     fontWeight: '800',
-    letterSpacing: 1.8,
+    letterSpacing: -0.6,
+    textAlign: 'center',
   },
-  dotsRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  dotsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
   stepBar: { flex: 1, height: 3, borderRadius: 2 },
 })
