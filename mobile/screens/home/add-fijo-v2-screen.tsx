@@ -36,6 +36,7 @@ import {
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
 import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
@@ -224,6 +225,11 @@ export function AddFijoV2Screen({
     }
   }
 
+  // Instancias separadas: solo un CTA monta por vez, pero así el shared value
+  // no arrastra un press a medias al cambiar de step.
+  const ctaStep1Press = usePressScale({ pressedScale: 0.97 })
+  const ctaStep2Press = usePressScale({ pressedScale: 0.97 })
+
   const onPrimaryCtaStep1 = () => {
     if (form.canContinue) {
       // Feedback al avanzar al impacto — antes el salto de paso era mudo.
@@ -314,12 +320,15 @@ export function AddFijoV2Screen({
 
       <StickyFooter divider={false}>
         {form.step === 1 ? (
+          <Animated.View style={ctaStep1Press.animatedStyle}>
           <Pressable
             // Keep press reachable even when dimmed así un tap routea al
             // "flag missing fields" branch y pinta los unfilled inputs
             // con su warning glide. Mismo patrón que el PrimaryCTA de
             // import-review.
             onPress={onPrimaryCtaStep1}
+            onPressIn={ctaStep1Press.onPressIn}
+            onPressOut={ctaStep1Press.onPressOut}
             style={[
               styles.primaryCta,
               form.canContinue
@@ -338,9 +347,13 @@ export function AddFijoV2Screen({
               {form.canContinue ? 'Ver impacto →' : 'Completa los datos'}
             </Text>
           </Pressable>
+          </Animated.View>
         ) : (
+          <Animated.View style={ctaStep2Press.animatedStyle}>
           <Pressable
             onPress={onPrimaryCtaStep2}
+            onPressIn={ctaStep2Press.onPressIn}
+            onPressOut={ctaStep2Press.onPressOut}
             disabled={pending}
             style={[
               styles.primaryCta,
@@ -377,6 +390,7 @@ export function AddFijoV2Screen({
                   : 'Confirmar y crear ✓'}
             </Text>
           </Pressable>
+          </Animated.View>
         )}
       </StickyFooter>
 
