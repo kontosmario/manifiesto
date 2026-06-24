@@ -1,18 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { useBorderGlow } from '@/hooks/use-border-glow'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   currencyFormatter,
@@ -191,8 +184,6 @@ function CycleBalancePromptSheetBase({
     onKeepDefault()
   }
 
-  const tone = resolveTone(theme, copy.chipTone)
-
   return (
     <NumericEditSheet
       visible={visible}
@@ -227,7 +218,6 @@ function CycleBalancePromptSheetBase({
             label={copy.chipTitle}
             sublabel={copy.chipSubtitle}
             amount={formatMoney(monthlyIncome)}
-            tone={tone}
             disabled={isSaving}
             a11yLabel={copy.chipA11y(formatMoney(monthlyIncome))}
             onPress={handleQuickConfirm}
@@ -258,169 +248,85 @@ interface QuickConfirmCtaProps {
   label: string
   sublabel: string
   amount: string
-  tone: ReturnType<typeof resolveTone>
   disabled: boolean
   a11yLabel: string
   onPress: () => void
 }
 
 /**
- * CTA primaria del sheet de cobro — rediseño jerárquico con
- * animación idle.
- *
- * Iteración 2 (2026-06-07): el user pidió "mejor formato y estilo" +
- * "alguna animacion". Esta versión cambia la jerarquía visual:
- *   - Eyebrow chico arriba ("CONFIRMAR")
- *   - Amount grande como hero (la decisión del user es el monto)
- *   - Sublabel chico abajo (contexto)
- *   - Arrow circle a la derecha con idle pulse (1 → 1.08 cada 2.4s,
- *     respetando reduced-motion)
- *   - Press scale 0.97 spring sobre todo
- *
- * Principios aplicados:
- *   - impeccable: hierarchy via scale/weight (no flat); motion
- *     respira/atrae sin distraer
- *   - emil-design-eng: idle pulse decorative pero contenido; press
- *     spring inmediato
- *   - ui-ux-pro-max: touch target ≥44pt; affordance "tap to confirm"
- *     reforzada por el pulse del arrow
+ * CTA primaria del sheet de cobro ("tengo el sueldo completo" / confirmar el
+ * saldo). Mismo lenguaje que la StartingBalanceCta del Home: gradiente forest
+ * (heroGradient) + texto crema (heroText) + acento lime (heroAccent) + BORDER
+ * GLOW (useBorderGlow) — el borde lime respira en lugar de un scale-pulse (que
+ * recortaba los bordes). El gradiente se redondea a sí mismo para que el borde
+ * no quede seamed en las esquinas. Jerarquía: eyebrow lime chico, monto crema
+ * grande (la decisión del user es el monto), sublabel muted. Press scale 0.97.
  */
 function QuickConfirmCta({
   label,
   sublabel,
   amount,
-  tone,
   disabled,
   a11yLabel,
   onPress,
 }: QuickConfirmCtaProps) {
+  const { theme } = useAppTheme()
   const press = usePressScale({ pressedScale: 0.97 })
-  const reducedMotion = useReducedMotion()
-  // Pulse SUTIL del card completo (scale 1 → 1.012 → 1, ~1.6s loop).
-  // El "respiración" en toda la tarjeta comunica "esto es interactivo"
-  // sin ser intrusivo. Combinado con press scale 0.97 vía Animated.View
-  // anidado — las transformaciones de scale en jerarquía se
-  // multiplican naturalmente.
-  const pulse = useSharedValue(1)
-
-  useEffect(() => {
-    if (reducedMotion || disabled) {
-      cancelAnimation(pulse)
-      pulse.value = 1
-      return
-    }
-    pulse.value = withRepeat(
-      withSequence(
-        // @motion-allow: 800ms idle CTA pulse (cycle 1.6s total) — calibrado para llamar atención sin distraer; entre decorativeDurations.shimmer (1400) y pulse (1200) por diseño.
-        withTiming(1.012, { duration: 800, easing: Easing.inOut(Easing.quad) }),
-        // @motion-allow: 800ms — paired with the up-phase above.
-        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    )
-    return () => {
-      cancelAnimation(pulse)
-    }
-  }, [reducedMotion, disabled, pulse])
-
-  const pulseAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }))
+  const glowBorderStyle = useBorderGlow(!disabled)
 
   return (
-    // Outer wrapper: pulse breathing (idle). Inner wrapper: press
-    // scale. Nested → transforms multiplican.
-    <Animated.View style={[styles.ctaWrap, pulseAnimatedStyle]}>
-      <Animated.View style={press.animatedStyle}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={a11yLabel}
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={onPress}
-          onPressIn={press.onPressIn}
-          onPressOut={press.onPressOut}
-          style={[
-            styles.ctaPressable,
-            {
-              backgroundColor: tone.filled,
-              opacity: disabled ? 0.6 : 1,
-            },
-          ]}
-        >
-          <View style={[styles.ctaIcon, { backgroundColor: tone.iconOverlay }]}>
-            <MaterialIcons name="check-circle" size={22} color={tone.iconFg} />
+    <Animated.View style={press.animatedStyle}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={{ opacity: disabled ? 0.6 : 1 }}
+      >
+        <Animated.View style={[styles.ctaCard, glowBorderStyle]}>
+          <LinearGradient
+            colors={
+              [...theme.colors.heroGradient] as unknown as readonly [
+                string,
+                string,
+                ...string[],
+              ]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            // Gradiente redondeado a sí mismo (sin overflow:hidden) → el borde
+            // glow no queda seamed/cropeado en las esquinas.
+            style={[StyleSheet.absoluteFillObject, styles.ctaGradient]}
+          />
+          <View style={styles.ctaInner}>
+            <View style={styles.ctaIcon}>
+              <MaterialIcons name="check-circle" size={22} color={theme.colors.heroAccent} />
+            </View>
+            <View style={styles.ctaTextWrap}>
+              <Text style={[styles.ctaEyebrow, { color: theme.colors.heroAccent }]}>
+                {label.toUpperCase()}
+              </Text>
+              <Text
+                style={[styles.ctaAmount, { color: theme.colors.heroText }]}
+                numberOfLines={1}
+              >
+                {amount}
+              </Text>
+              <Text style={[styles.ctaSublabel, { color: theme.colors.heroMuted }]}>
+                {sublabel}
+              </Text>
+            </View>
+            <View style={styles.ctaArrow}>
+              <MaterialIcons name="arrow-forward" size={18} color={theme.colors.heroAccent} />
+            </View>
           </View>
-          <View style={styles.ctaTextWrap}>
-            <Text style={[styles.ctaEyebrow, { color: tone.textMutedOnFilled }]}>
-              {label.toUpperCase()}
-            </Text>
-            <Text
-              style={[styles.ctaAmount, { color: tone.textOnFilled }]}
-              numberOfLines={1}
-            >
-              {amount}
-            </Text>
-            <Text style={[styles.ctaSublabel, { color: tone.textMutedOnFilled }]}>
-              {sublabel}
-            </Text>
-          </View>
-          <View style={[styles.ctaArrow, { backgroundColor: tone.iconOverlay }]}>
-            <MaterialIcons name="arrow-forward" size={18} color={tone.iconFg} />
-          </View>
-        </Pressable>
-      </Animated.View>
+        </Animated.View>
+      </Pressable>
     </Animated.View>
   )
-}
-
-function resolveTone(
-  theme: ReturnType<typeof useAppTheme>['theme'],
-  chipTone: ChipTone,
-) {
-  if (chipTone === 'peach') {
-    return {
-      // Filled solid CTA — el usuario lo lee como botón sin dudar.
-      filled: '#E8976A',
-      // Overlay sutil sobre el filled (para el icon circle y el arrow).
-      iconOverlay: 'rgba(15,46,31,0.16)',
-      // Fill peach CLARO (#E8976A) → texto/icono OSCURO (blanco daba 1.95-2.32:1;
-      // forest #0F2E1F da ~8:1). Mismo criterio que el brand tone en dark.
-      iconFg: '#0F2E1F',
-      textOnFilled: '#0F2E1F',
-      textMutedOnFilled: 'rgba(15,46,31,0.88)',
-      shadowColor: '#E8976A',
-    }
-  }
-  // Brand tone — primary del theme. Theme-aware para legibilidad:
-  //   • Light: primary = #297811 (forest deep) → text white (5.7:1 AA)
-  //   • Dark: primary = #A6EF8F (bright lime) → text FOREST DEEP
-  //     (#0F2E1F) en vez de near-black. Feedback owner: "me gustaria
-  //     un tono mas clarito acorde al darkmode, pero no negro oscuro".
-  //     #0F2E1F (forest, mismo que usa el wrapped) → 9.7:1 AAA
-  //     mantiene legibilidad y se siente brand, no pure black.
-  if (theme.isDark) {
-    return {
-      filled: theme.colors.primary, // #A6EF8F bright lime
-      // Overlay forest sutil sobre el lime claro (no near-black).
-      iconOverlay: 'rgba(15, 46, 31, 0.16)',
-      iconFg: '#0F2E1F',
-      textOnFilled: '#0F2E1F',
-      textMutedOnFilled: 'rgba(15, 46, 31, 0.70)',
-      shadowColor: theme.colors.primary,
-    }
-  }
-  return {
-    filled: theme.colors.primary, // #297811 forest deep
-    iconOverlay: 'rgba(255,255,255,0.22)',
-    iconFg: '#FFFFFF',
-    textOnFilled: '#FFFFFF',
-    // 0.92 para que eyebrow/sublabel (texto chico) lleguen a AA (4.96:1)
-    // sobre el forest deep; a 0.78 daban 4.04.
-    textMutedOnFilled: 'rgba(255,255,255,0.92)',
-    shadowColor: theme.colors.primary,
-  }
 }
 
 const styles = StyleSheet.create({
@@ -431,22 +337,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  // CTA wrapper: contiene la shadow para elevación (el Pressable
-  // adentro ya tiene el bg filled).
-  ctaWrap: {
+  // Card de la CTA: gradiente forest + border glow lime (useBorderGlow).
+  ctaCard: {
     borderRadius: radii.lg,
-    // boxShadow se interpreta como elevation en RN nuevo
-    // ('0px 6px 14px -4px rgba(0,0,0,0.28)') — flat sin sombra
-    // en plataformas sin support.
-    boxShadow: '0px 6px 14px -4px rgba(0,0,0,0.28)' as unknown as string,
+    borderWidth: 1.5,
   },
-  ctaPressable: {
+  ctaGradient: {
+    borderRadius: radii.lg,
+  },
+  ctaInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: radii.lg,
+    paddingVertical: 14,
     minHeight: 76,
   },
   ctaIcon: {
@@ -455,6 +359,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    // Tile forest oscuro tenue → el ícono lime (heroAccent) resalta.
+    backgroundColor: 'rgba(15,46,31,0.25)',
   },
   ctaTextWrap: {
     flex: 1,
@@ -483,6 +389,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(15,46,31,0.25)',
   },
   // ────────── Legacy chip styles (kept for back-compat if otros call-sites
   // todavía referencian; no se usan en el rediseño actual) ──────────

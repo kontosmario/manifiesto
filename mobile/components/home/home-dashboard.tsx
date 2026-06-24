@@ -28,6 +28,7 @@ import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { HomeActivitySection } from '@/components/home/home-activity-section'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { StartingBalanceCta } from '@/components/home/starting-balance-cta'
+import { CollapsingReveal } from '@/components/home/collapsing-reveal'
 import { HomeHeader } from '@/components/home/home-header'
 import { FamilyStrip } from '@/components/home/family-strip'
 import { MonthSummaryCard } from '@/components/home/month-summary-card'
@@ -932,14 +933,26 @@ export function HomeDashboard({
           showMembers={!isSolo}
         />
       </TourTarget>
-      {isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0 ? (
-        <View style={{ marginBottom: 12 }}>
-          <StartingBalanceCta
-            tourOrder={99}
-            onPress={() => setCycleBalanceSheetOpen(true)}
-          />
-        </View>
-      ) : null}
+      {/* La card de "confirmá tu saldo" se confirma DENTRO de un Modal
+          full-screen (NumericEditSheet). Si la desmontáramos al instante en
+          que el dato flippea, el colapso correría OCULTO detrás del modal y la
+          card "desaparecía de golpe" al revelarse Home. CollapsingReveal la
+          mantiene montada, espera ~320ms a que el modal termine de cerrarse, y
+          recién ahí colapsa altura + fade sobre el Home ya visible → el hero de
+          abajo sube suave sin salto. El tour de Home (startDelay 600ms, gateado
+          a post-confirm) arranca después, así que no compite con el colapso. */}
+      <CollapsingReveal
+        visible={
+          isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0
+        }
+        hideDelayMs={320}
+        style={{ paddingBottom: 12 }}
+      >
+        <StartingBalanceCta
+          tourOrder={99}
+          onPress={() => setCycleBalanceSheetOpen(true)}
+        />
+      </CollapsingReveal>
       <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
