@@ -219,6 +219,14 @@ export function AppStackShell() {
         <Stack.Screen
           name="onboarding-success"
           options={{
+            // El wizard (onboarding) es un modal; success es el destino al
+            // terminar. Un `fade` hace que success CRUCE suave sobre el wizard
+            // (crossfade) en vez del modal-dismiss (slide-down) + card-push,
+            // que se leía como un salto/parpadeo hacia atrás. Combinado con
+            // quitar el replace imperativo redundante en el orquestador (el
+            // gate redirige una sola vez), la transición queda limpia.
+            animation: 'fade',
+            animationDuration: motionDurations.enterModal,
             gestureEnabled: false,
             fullScreenGestureEnabled: false,
           }}

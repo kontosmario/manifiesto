@@ -345,7 +345,12 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         })
         await completeOnboarding.mutateAsync()
         void triggerHaptic('success')
-        router.replace('/(app)/onboarding-success')
+        // Navegación: la maneja el gate de la ruta (OnboardingRoute), que
+        // redirige a onboarding-success en cuanto completeOnboarding flipea
+        // onboarding_completed_at en el cache (setQueryData SINCRÓNICO en
+        // onSuccess, antes de que este await resuelva). Un router.replace
+        // imperativo acá apuntaba al MISMO destino → doble navegación + doble
+        // transición (el parpadeo). Single source = el Redirect del gate.
         return
       }
 
@@ -412,7 +417,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
 
       await completeOnboarding.mutateAsync()
       void triggerHaptic('success')
-      router.replace('/(app)/onboarding-success')
+      // Navegación: la maneja el Redirect del gate (ver nota en el branch
+      // joiner). Sin replace imperativo redundante → una sola transición.
     } catch (error) {
       void triggerHaptic('error')
       Alert.alert('No pudimos terminar el setup', getErrorMessage(error, errorMessages.server))
@@ -437,7 +443,6 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     upsertSavingsGoal,
     consumeInvite,
     completeOnboarding,
-    router,
   ])
 
   const handlePrimary = useCallback(async () => {

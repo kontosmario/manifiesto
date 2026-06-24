@@ -322,9 +322,25 @@ function seedProfile(
     client.setQueryData(profileQueryKey(userId), null)
     return
   }
-  client.setQueryData<Profile | null>(profileQueryKey(userId), (prev) =>
-    prev ? { ...prev, ...profile } : profile,
-  )
+  client.setQueryData<Profile | null>(profileQueryKey(userId), (prev) => {
+    if (!prev) return profile
+    return {
+      ...prev,
+      ...profile,
+      // `onboarding_completed_at` lo owna SOLO `useMyProfile`, no el
+      // snapshot. El RPC home_snapshot puede traerlo STALE (null) si corrió
+      // antes de que el wizard completara — `upsertFinance`/bootstrap en el
+      // último paso disparan un refetch de home_snapshot cuyo profile todavía
+      // tiene null, y ESE refetch resuelve DESPUÉS del setQueryData(truthy) de
+      // `completeOnboarding`. El overwrite plano revertía el flag → el gate de
+      // la ruta de onboarding re-montaba el wizard en el step 1 por un frame
+      // antes del success (parpadeo 2026-06-24). Conservando el valor previo,
+      // el reseed nunca DEGRADA el flag; los cambios reales (incluido el
+      // reset → null) llegan por el refetch de `useMyProfile`. Mismo espíritu
+      // que el merge de las `*_tour_seen_at` arriba.
+      onboarding_completed_at: prev.onboarding_completed_at,
+    }
+  })
 }
 
 function seedCaches(
