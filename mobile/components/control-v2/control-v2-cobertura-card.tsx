@@ -131,8 +131,10 @@ function ControlV2CoberturaCardImpl({
     bg: isDark ? 'rgba(122,216,163,0.18)' : 'rgba(28,126,58,0.12)',
   }
   const libreTone: SegmentTone = {
-    solid: isDark ? '#AFCDE8' : '#6B9AD6',
-    bg: isDark ? 'rgba(175,205,232,0.18)' : 'rgba(107,154,214,0.14)',
+    // Teal on-brand mode-aware (era azul ajeno; #6B9AD6 daba 2.82:1 en cream).
+    // Distinto de fijos=peach y ahorro=verde.
+    solid: isDark ? '#9FD8C8' : '#2E6E5E',
+    bg: isDark ? 'rgba(159,216,200,0.18)' : 'rgba(46,110,94,0.14)',
   }
 
   // Smart hint copy — pulled apart so we can also surface a callout

@@ -28,10 +28,12 @@ export const controlV2Tokens = {
     border:    'rgba(242,167,140,0.35)',
     glow:      'rgba(242,167,140,0.45)',
   },
+  // Teal on-brand: el "neutral info" distinto de good=verde / warn=peach.
+  // Era un azul ajeno (#6B9AD6) que la auditoria marco off-brand + sub-AA.
   info: {
-    solid:     '#8FB8E0',
-    solidDeep: '#6B9AD6',
-    tint:      '#AFCDE8',
+    solid:     '#7FC4B0',
+    solidDeep: '#2E6E5E',
+    tint:      '#9FD8C8',
   },
 } as const
 
