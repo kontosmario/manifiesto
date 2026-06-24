@@ -1,7 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
+import { motionDurations } from '@/lib/motion/tokens'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { NotesRow } from '@/components/home/notes-row'
@@ -121,15 +136,15 @@ export function ImportReviewRow({
         >
           {row.description}
         </Text>
-        <Pressable
-          accessibilityRole="button"
+        <PressScale
           onPress={onUnskip}
+          accessibilityLabel="Restaurar este movimiento"
           style={[styles.restoreBtn, { borderColor: theme.colors.line }]}
         >
           <Text style={[styles.restoreLabel, { color: theme.colors.primary }]}>
             Restaurar este movimiento
           </Text>
-        </Pressable>
+        </PressScale>
       </View>
     )
   }
@@ -195,7 +210,7 @@ export function ImportReviewRow({
         ) : null}
       </RiseView>
 
-      <RiseView delay={120}>
+      <RiseView delay={120} style={styles.rhythmTop}>
         <TextField
           label="Descripción"
           value={row.description}
@@ -210,16 +225,26 @@ export function ImportReviewRow({
       </RiseView>
 
       <RiseView delay={180}>
-        <CycleDateSlider
-          value={row.date}
-          cycleStart={cycleStart}
-          cycleDays={cycleDays}
-          today={today}
-          onChange={(iso) => onPatch({ date: iso })}
-        />
+        <View style={styles.field}>
+          <View style={styles.dateLabelRow}>
+            <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+              Fecha
+            </Text>
+            <Text style={[styles.dateValue, { color: theme.colors.text }]}>
+              {formatDayLabel(row.date)}
+            </Text>
+          </View>
+          <CycleDateSlider
+            value={row.date}
+            cycleStart={cycleStart}
+            cycleDays={cycleDays}
+            today={today}
+            onChange={(iso) => onPatch({ date: iso })}
+          />
+        </View>
       </RiseView>
 
-      <RiseView delay={240}>
+      <RiseView delay={240} style={styles.rhythmTop}>
         {row.kind === 'expense' ? (
           <CategorySection
             categories={categories}
@@ -268,6 +293,58 @@ export function ImportReviewRow({
   )
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const PRESS_EASE = Easing.bezier(0.32, 0.72, 0, 1)
+
+/**
+ * Pressable with the scale-on-press the footer buttons and the date tiles
+ * already have. The row's toggles/pills were the only tappables in the
+ * whole flow that didn't respond to touch — that inconsistency reads as
+ * "not the same app". Transform is ALWAYS an array (never undefined) to
+ * dodge the iOS processTransform crash.
+ */
+function PressScale({
+  children,
+  onPress,
+  style,
+  accessibilityLabel,
+  accessibilityState,
+}: {
+  children: ReactNode
+  onPress: () => void
+  style?: StyleProp<ViewStyle>
+  accessibilityLabel?: string
+  accessibilityState?: { selected?: boolean; disabled?: boolean }
+}) {
+  const scale = useSharedValue(1)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }))
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      onPress={onPress}
+      onPressIn={() => {
+        scale.value = withTiming(0.96, {
+          duration: motionDurations.micro,
+          easing: PRESS_EASE,
+        })
+      }}
+      onPressOut={() => {
+        scale.value = withTiming(1, {
+          duration: motionDurations.micro,
+          easing: PRESS_EASE,
+        })
+      }}
+      style={[style, animatedStyle]}
+    >
+      {children}
+    </AnimatedPressable>
+  )
+}
+
 function KindToggle({
   kind,
   onChange,
@@ -285,9 +362,8 @@ function KindToggle({
       {options.map((opt) => {
         const active = opt.key === kind
         return (
-          <Pressable
+          <PressScale
             key={opt.key}
-            accessibilityRole="button"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(opt.key)}
             style={[
@@ -306,7 +382,7 @@ function KindToggle({
             >
               {opt.label}
             </Text>
-          </Pressable>
+          </PressScale>
         )
       })}
     </View>
@@ -358,10 +434,9 @@ function IncomeKindSection({
         {INCOME_KINDS.map((k) => {
           const active = k === incomeKind
           return (
-            <Pressable
+            <PressScale
               key={k}
               onPress={() => onSelect(k)}
-              accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={[
                 styles.kindBtn,
@@ -381,12 +456,29 @@ function IncomeKindSection({
               >
                 {INCOME_KIND_LABELS[k]}
               </Text>
-            </Pressable>
+            </PressScale>
           )
         })}
       </View>
     </View>
   )
+}
+
+function formatDayLabel(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return ''
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const t = new Date(d)
+  t.setHours(0, 0, 0, 0)
+  const diff = Math.round((t.getTime() - today.getTime()) / 86_400_000)
+  if (diff === 0) return 'hoy'
+  if (diff === -1) return 'ayer'
+  if (diff === 1) return 'mañana'
+  const wd = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+  const mo = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  return `${wd[d.getDay()]} ${d.getDate()} ${mo[d.getMonth()]}`
 }
 
 function warningLabel(w: ReviewRow['warnings'][number]): string {
@@ -456,6 +548,13 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
   field: { gap: 6 },
+  rhythmTop: { marginTop: 6 },
+  dateLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  dateValue: { fontSize: 13, fontWeight: '700' },
   label: {
     fontSize: 11,
     fontWeight: '700',

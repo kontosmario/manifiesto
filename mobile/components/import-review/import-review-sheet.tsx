@@ -193,6 +193,14 @@ export function ImportReviewSheet({
 
   function handleConfirmAttempt() {
     if (!controller.canConfirm) {
+      // All-skipped (nothing invalid, nothing to load): NOT an error. The
+      // user deliberately skipped everything (e.g. the capture was already
+      // loaded). The old path lied with "something's incomplete" and left
+      // them trapped on an inert CTA with no jump target. Just close.
+      if (controller.invalidIds.length === 0) {
+        onClose()
+        return
+      }
       // Jump to the first invalid step so the user lands exactly where
       // the form needs fixing. Cheaper than scrolling through a list of
       // dots looking for the red one.
@@ -228,6 +236,14 @@ export function ImportReviewSheet({
           }
         : await confirm(controller.state.rows)
       const total = result.insertedExpenses + result.insertedIncomes
+
+      // The climax of the whole flow ("I loaded your movements") was mute —
+      // every other step buzzes ('selection'/'warning') but the payoff
+      // didn't. Reward the successful commit (partial failure stays on the
+      // 'warning' tone the error toast already implies).
+      if (total > 0 && result.failed.length === 0) {
+        void triggerHaptic('success')
+      }
 
       // Cinematic fade-out: the form fades up before the modal dismisses
       // so the user sees the rows leave instead of a hard cut.
@@ -373,6 +389,12 @@ export function ImportReviewSheet({
                   expensesCount={controller.submittableBreakdown.expenses}
                   incomesCount={controller.submittableBreakdown.incomes}
                   skippedCount={controller.skippedCount}
+                  onJumpTo={(rowId) => {
+                    const idx = controller.state.rows.findIndex(
+                      (r) => r.id === rowId,
+                    )
+                    if (idx >= 0) jumpTo(idx)
+                  }}
                 />
               ) : currentRow ? (
                 <ImportReviewRow
@@ -397,7 +419,7 @@ export function ImportReviewSheet({
 
           {controller.state.unmatched > 0 && !isSummary ? (
             <Text style={[styles.unmatched, { color: theme.colors.textMuted }]}>
-              {`${controller.state.unmatched} líneas no se pudieron clasificar.`}
+              {`${controller.state.unmatched} ${controller.state.unmatched === 1 ? 'línea' : 'líneas'} de la captura no parecían movimientos; las omitimos.`}
             </Text>
           ) : null}
         </View>

@@ -121,17 +121,19 @@ El sheet es un wizard de N+1 pasos donde `N = totalRows` y el último índice es
 Cada paso de movimiento muestra:
 - **Step indicator** ([`import-review-step-indicator.tsx`](../../mobile/components/import-review/import-review-step-indicator.tsx)): franja de progreso de **dos ideas** — relleno=manejado (primary, cubre done/current/skipped) vs apagado=pendiente (line), más **rojo** (danger) solo para fila inválida (lo único accionable). El "Movimiento N de M" del header ya es el progreso lineal; no hay pulso de avance ni 5 colores.
 - **Header slim** ([`import-review-header.tsx`](../../mobile/components/import-review/import-review-header.tsx)): thumbnail 44×44 + "Movimiento N de M" / "Resumen final" (sin eyebrow decorativo).
-- **Row form** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)): kind toggle + AmountCard compact + TextField descripción + CycleDateSlider + CategoryHorizontalRail/IncomeKindSection + NotesRow. Los warnings se dicen **una vez**: el campo se tinta (border+label) + el footer lista los faltantes bajo el CTA; el bloque al pie del form (`infoWarnings`) solo carga los **contextuales** (no-date/future-date/foreign-currency/swap-ambiguous), nunca los de campo requerido (no-merchant/value-zero).
-- **Footer** ([`import-review-footer.tsx`](../../mobile/components/import-review/import-review-footer.tsx)): Anterior · Saltear · primary CTA (Siguiente → / Confirmar N → / hard-block en busy).
+- **Row form** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)): kind toggle + AmountCard compact + TextField descripción + CycleDateSlider (con label **Fecha** + la fecha elegida en texto) + CategoryHorizontalRail/IncomeKindSection + NotesRow. Los tappables del form (toggle, pills, Restaurar) responden al toque con press-scale (helper `PressScale`, transform SIEMPRE array para esquivar el crash de iOS). Los warnings se dicen **una vez**: el campo se tinta (border+label) + el footer lista los faltantes bajo el CTA; el bloque al pie del form (`infoWarnings`) solo carga los **contextuales** (no-date/future-date/foreign-currency/swap-ambiguous), nunca los de campo requerido (no-merchant/value-zero).
+- **Footer** ([`import-review-footer.tsx`](../../mobile/components/import-review/import-review-footer.tsx)): Anterior · Saltear · primary CTA (Siguiente → / Confirmar N → / **Cerrar** si todo quedó salteado / hard-block en busy).
 
-El summary final ([`import-review-summary.tsx`](../../mobile/components/import-review/import-review-summary.tsx)) es **sobrio**: es el paso de CONFIRMAR, todavía no se cargó nada, así que no hay celebración acá (el confetti real es post-confirm). Un encabezado de una línea ("Vas a cargar N gastos y M ingresos."), la lista de movimientos por cargar **sin card ni rótulo gasto/ingreso** (el `+`/`$` y el tinte primary ya lo comunican; stagger capeado a 5 items) y una línea muted con la cantidad de skipped.
+El summary final ([`import-review-summary.tsx`](../../mobile/components/import-review/import-review-summary.tsx)) es **sobrio**: es el paso de CONFIRMAR, todavía no se cargó nada, así que no hay celebración acá (el confetti real es post-confirm). Un encabezado de una línea que **lidera** la jerarquía ("Vas a cargar N gastos y M ingresos.", peso/escala mayor que los items), la lista de movimientos por cargar **sin card ni rótulo gasto/ingreso** (el `+`/`$` y el tinte primary ya lo comunican; stagger capeado a 5 items) y una línea muted con la cantidad de skipped. Cada item es **tappable** → salta directo a editar ese movimiento (`onJumpTo`→`jumpTo`, con chevron + un `accessibilityLabel` que verbaliza tipo+descripción+monto para VoiceOver).
 
 #### Navegación
 
 - `goNext()` checks `missingFields` del row actual. Si falla, bump `highlightToken` + warning haptic → no avanza. Si pasa, slide-left con `FadeInRight`/`FadeOutLeft`.
 - `goPrev()` simétrico (slide-right). Funciona en cualquier estado.
 - `handleSkipToggle()` toggle kind=skip ↔ unskip + auto-advance al siguiente cuando salta.
-- `handleConfirmAttempt()` al confirmar con invalid items: jump-to-first-invalid + toast + warning haptic.
+- `handleConfirmAttempt()`: con invalid items → jump-to-first-invalid + toast + warning haptic; con **todo salteado** (0 submittable, 0 inválidos) → `onClose()` directo (no miente "falta completar algo" ni deja un dead-end). El CTA en ese estado dice "Cerrar".
+- `jumpTo(idx)` también lo dispara el tap en un item del summary (jump-to-fix de 1 tap).
+- Confirm exitoso (total > 0, 0 fallidos) dispara haptic `success` — el clímax del flujo ya no es mudo.
 
 ### 6. Confirm (`use-confirm-import.ts`)
 
@@ -311,6 +313,7 @@ Phase B agregó `@react-native-ml-kit/text-recognition` (~3 MB al hbc) y `expo-i
 Todas las animaciones del wizard respetan `useReducedMotion()`:
 - Step indicator: fade de opacidad relleno/pendiente → snap inmediato
 - Slide transitions: FadeInRight/Left → snap
+- Overlay "Leyendo tu captura" (FadeIn/FadeOut + card FadeInDown) → sin animación
 - Per-field warning glide: timing → snap a final color
 
 ---

@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { Category } from '@/features/categories/use-categories'
@@ -11,6 +12,8 @@ interface Props {
   expensesCount: number
   incomesCount: number
   skippedCount: number
+  /** Jump straight back to a movement's edit step (tap on its row). */
+  onJumpTo?: (rowId: string) => void
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
@@ -40,6 +43,7 @@ export function ImportReviewSummary({
   expensesCount,
   incomesCount,
   skippedCount,
+  onJumpTo,
 }: Props) {
   const { theme } = useAppTheme()
   const submittable = rows.filter((r) => r.kind !== 'skip')
@@ -64,7 +68,7 @@ export function ImportReviewSummary({
         entering={FadeIn.duration(motionDurations.standard).easing(EASE_IOS)}
         style={[
           isEmpty ? styles.heading : styles.lead,
-          { color: isEmpty ? theme.colors.text : theme.colors.textMuted },
+          { color: theme.colors.text },
         ]}
       >
         {isEmpty ? 'Sin nada para cargar' : `Vas a cargar ${subtitle}.`}
@@ -83,6 +87,7 @@ export function ImportReviewSummary({
             // Cap the stagger at 5 items: with 8-12 movements the tail used
             // to land ~1s late and the user waited to read their own list.
             delay={40 + Math.min(idx, 5) * 60}
+            onJumpTo={onJumpTo}
           />
         ))}
       </View>
@@ -94,9 +99,9 @@ export function ImportReviewSummary({
             .easing(EASE_IOS)}
           style={[styles.skippedLine, { color: theme.colors.textMuted }]}
         >
-          {skippedCount} movimiento{skippedCount === 1 ? '' : 's'} saltado
-          {skippedCount === 1 ? '' : 's'} · no se carga
-          {skippedCount === 1 ? '' : 'n'}
+          {skippedCount === 1
+            ? '1 movimiento que salteaste no se va a cargar.'
+            : `${skippedCount} movimientos que salteaste no se van a cargar.`}
         </Animated.Text>
       ) : null}
     </View>
@@ -107,6 +112,7 @@ interface SummaryItemProps {
   row: ReviewRow
   categoryName: string | null
   delay: number
+  onJumpTo?: (rowId: string) => void
 }
 
 /**
@@ -114,8 +120,12 @@ interface SummaryItemProps {
  * muted meta line below. No card wrapper and no GASTO/INGRESO eyebrow —
  * the `+` sign and the primary tint on income already carry the kind, so
  * the label was just noise. Whitespace does the grouping.
+ *
+ * Tappable: a summary that lists what you're about to commit should let
+ * you fix any line in one tap (jump straight to its edit step) instead of
+ * "Volver a editar" + paging back one by one.
  */
-function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
+function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
   const { theme } = useAppTheme()
   const sign = row.kind === 'income' ? '+' : ''
   const tint = row.kind === 'income' ? theme.colors.primary : theme.colors.text
@@ -129,31 +139,57 @@ function SummaryItem({ row, categoryName, delay }: SummaryItemProps) {
     return `${dateLabel} · ${sub}`
   })()
 
+  // One a11y node per movement, read as a single phrase. Without this the
+  // '+' on income is silent and gasto/ingreso sound identical at the most
+  // critical step (what you're about to load).
+  const a11yLabel = `${row.kind === 'income' ? 'Ingreso' : 'Gasto'}, ${row.description}, ${sign === '+' ? 'más ' : ''}$${formatThousands(row.amount)}, ${meta}`
+
   return (
     <Animated.View
       entering={FadeInDown.duration(motionDurations.standard)
         .delay(delay)
         .easing(EASE_IOS)}
-      style={styles.item}
     >
-      <View style={styles.itemMain}>
-        <Text
-          style={[styles.itemDescription, { color: theme.colors.text }]}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {row.description}
-        </Text>
-        <Text style={[styles.itemAmount, { color: tint }]} numberOfLines={1}>
-          {sign}${formatThousands(row.amount)}
-        </Text>
-      </View>
-      <Text
-        style={[styles.itemMeta, { color: theme.colors.textMuted }]}
-        numberOfLines={1}
+      <Pressable
+        onPress={onJumpTo ? () => onJumpTo(row.id) : undefined}
+        disabled={!onJumpTo}
+        accessible
+        accessibilityRole={onJumpTo ? 'button' : 'text'}
+        accessibilityLabel={a11yLabel}
+        accessibilityHint={onJumpTo ? 'Tocá para editar este movimiento' : undefined}
+        style={({ pressed }) => [
+          styles.item,
+          pressed && onJumpTo ? styles.itemPressed : null,
+        ]}
       >
-        {meta}
-      </Text>
+        <View style={styles.itemMain}>
+          <Text
+            style={[styles.itemDescription, { color: theme.colors.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {row.description}
+          </Text>
+          <Text style={[styles.itemAmount, { color: tint }]} numberOfLines={1}>
+            {sign}${formatThousands(row.amount)}
+          </Text>
+        </View>
+        <View style={styles.itemBottom}>
+          <Text
+            style={[styles.itemMeta, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            {meta}
+          </Text>
+          {onJumpTo ? (
+            <MaterialIcons
+              name="chevron-right"
+              size={16}
+              color={theme.colors.textMuted}
+            />
+          ) : null}
+        </View>
+      </Pressable>
     </Animated.View>
   )
 }
@@ -197,13 +233,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   lead: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   list: { gap: 16 },
   item: { gap: 3 },
+  itemPressed: { opacity: 0.55 },
+  itemBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   itemMain: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -213,7 +256,7 @@ const styles = StyleSheet.create({
   itemDescription: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.2,
   },
   itemAmount: {

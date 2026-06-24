@@ -4,9 +4,15 @@ import {
   InteractionManager,
   StyleSheet,
   Text,
-  View,
 } from 'react-native'
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+} from 'react-native-reanimated'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { openImportFromUri } from '@/features/import-review/open-import-flow'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import { useShareImportGate } from '@/features/share-import/use-share-import-gate'
@@ -23,8 +29,11 @@ import { useAppTheme } from '@/theme/theme-provider'
  * Ciclo: gate entrega URI → overlay "Leyendo tu captura…" → OCR+parse
  * (openImportFromUri) → wizard. Cualquier error → toast y a idle.
  */
+const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
+
 export function ShareImportHost() {
   const { theme } = useAppTheme()
+  const reduced = useReducedMotion()
   const { familyId, userId, makeMapContext } = useImportWizardContext()
   const [phase, setPhase] = useState<'idle' | 'parsing'>('idle')
   const [reviewState, setReviewState] = useState<ReviewState | null>(null)
@@ -65,11 +74,16 @@ export function ShareImportHost() {
   return (
     <>
       {phase === 'parsing' ? (
-        <View
+        <Animated.View
+          entering={reduced ? undefined : FadeIn.duration(180).easing(EASE_IOS)}
+          exiting={reduced ? undefined : FadeOut.duration(160).easing(EASE_IOS)}
           style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}
           pointerEvents="auto"
         >
-          <View
+          <Animated.View
+            entering={
+              reduced ? undefined : FadeInDown.duration(220).easing(EASE_IOS)
+            }
             style={[
               styles.card,
               {
@@ -84,8 +98,8 @@ export function ShareImportHost() {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Leyendo tu captura…
             </Text>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       ) : null}
 
       <ImportReviewSheet

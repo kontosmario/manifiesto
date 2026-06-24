@@ -80,7 +80,9 @@ export function ImportReviewFooter({
   const primaryLabel = (() => {
     if (busy) return `${loadingLabels.import}…`
     if (isSummary) {
-      if (totalSubmittable === 0) return 'Nada para cargar'
+      // All-skipped: the CTA now closes (the sheet routes this to onClose),
+      // so it must read as a real action, not an inert "nada para cargar".
+      if (totalSubmittable === 0) return 'Cerrar'
       const parts: string[] = []
       if (expensesCount > 0) {
         parts.push(
@@ -100,7 +102,7 @@ export function ImportReviewFooter({
 
   const primaryIcon: keyof typeof MaterialIcons.glyphMap = (() => {
     if (busy) return 'hourglass-empty'
-    if (isSummary) return 'check'
+    if (isSummary) return totalSubmittable === 0 ? 'close' : 'check'
     return 'arrow-forward'
   })()
 
@@ -110,7 +112,10 @@ export function ImportReviewFooter({
   // press means. `lookDisabled` controls opacity/affordance; `busy`
   // hard-disables (during the network roundtrip) because we genuinely
   // do not want repeat presses there.
-  const lookDisabled = isSummary ? !canConfirm : !canAdvanceCurrent
+  // All-skipped → the CTA is a live "Cerrar", not a pending/disabled state.
+  const lookDisabled = isSummary
+    ? totalSubmittable > 0 && !canConfirm
+    : !canAdvanceCurrent
   const hardDisabled = busy
 
   const showMissingHelper =
