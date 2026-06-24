@@ -192,7 +192,7 @@ export function DailyGoalSheet({
                 ? theme.colors.primarySurface
                 : theme.colors.surfaceMuted,
               borderColor: isGoalActive
-                ? theme.colors.heroAccent
+                ? theme.colors.primary
                 : theme.colors.border,
             },
           ]}
@@ -204,7 +204,7 @@ export function DailyGoalSheet({
               styles.heroEyebrow,
               {
                 color: isGoalActive
-                  ? theme.colors.heroAccent
+                  ? theme.colors.primary
                   : theme.colors.textMuted,
               },
             ]}
@@ -218,7 +218,7 @@ export function DailyGoalSheet({
               styles.heroAmount,
               {
                 color: isGoalActive
-                  ? theme.colors.heroAccent
+                  ? theme.colors.primary
                   : theme.colors.text,
               },
             ]}
@@ -276,10 +276,10 @@ export function DailyGoalSheet({
                   styles.stepperCell,
                   {
                     backgroundColor: active
-                      ? theme.colors.heroAccent
+                      ? theme.colors.primary
                       : theme.colors.surfaceMuted,
                     borderColor: active
-                      ? theme.colors.heroAccent
+                      ? theme.colors.primary
                       : theme.colors.border,
                     opacity: pressed ? 0.78 : 1,
                   },
@@ -324,7 +324,7 @@ export function DailyGoalSheet({
               styles.impactIconBadge,
               {
                 backgroundColor: isGoalActive
-                  ? theme.colors.heroAccent
+                  ? theme.colors.primary
                   : theme.colors.border,
               },
             ]}
@@ -344,7 +344,7 @@ export function DailyGoalSheet({
                 style={[styles.impactCopy, { color: theme.colors.text }]}
               >
                 Si cerrás cada día con tu meta, llegás al cobro con{' '}
-                <Text style={[styles.impactStrong, { color: theme.colors.heroAccent }]}>
+                <Text style={[styles.impactStrong, { color: theme.colors.primary }]}>
                   {formatMoneyShort(projectedCycleSaving)}
                 </Text>{' '}
                 extra para tu ahorro ({currencyFormatter.format(dailySaving)}/día ×{' '}
