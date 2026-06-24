@@ -850,12 +850,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     // tenue, caution=peach (alineado con los chips de la hero del Home).
     const TONES = {
       positive: {
-        fg: '#A6EF8F',
+        fg: '#F2EAD3', // heroText — AA-safe sobre el fill mint en el hero forest
         bg: 'rgba(166,239,143,0.16)',
         border: 'rgba(166,239,143,0.42)',
       },
       neutral: {
-        fg: 'rgba(242,234,211,0.85)',
+        fg: '#F2EAD3', // heroText — AA-safe sobre el fill cream tenue en el hero forest
         bg: 'rgba(246,251,239,0.10)',
         border: 'rgba(255,255,255,0.18)',
       },
@@ -1000,7 +1000,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
+                  <Text style={[styles.heroEyebrow, { color: theme.colors.heroText }]}>
                     {isSolo ? 'TU CUENTA' : 'TU HOGAR'}
                   </Text>
                   <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>

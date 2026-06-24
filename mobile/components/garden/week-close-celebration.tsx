@@ -106,7 +106,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
                 <Text
                   style={[
                     styles.broteLetter,
-                    { color: day.registered ? '#9FE08A' : '#5E7359' },
+                    { color: day.registered ? '#9FE08A' : '#8CA285' },
                   ]}
                 >
                   {day.letter}

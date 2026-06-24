@@ -207,7 +207,17 @@ export function FreshInstallResetFriction({
             Esto te va a desloguear de todos los dispositivos que tengan
             sesión activa.
           </Text>
-          <Text style={[styles.bodyStrong, { color: theme.colors.danger }]}>
+          <Text
+            style={[
+              styles.bodyStrong,
+              {
+                // Light: danger (#C23A2F) daba 4.41 sobre surfaceMuted →
+                // accent-700 #973511 = 6.13 AA. Dark: danger (#F06A6A) ya
+                // pasa (4.87), se mantiene.
+                color: theme.isDark ? theme.colors.danger : '#973511',
+              },
+            ]}
+          >
             Si vos NO pediste este cambio, cerrá esta pantalla AHORA y
             avisanos a{' '}
             <Text

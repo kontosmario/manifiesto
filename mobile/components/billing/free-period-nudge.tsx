@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   txt: { flex: 1 },
   t1: { fontSize: 12, fontWeight: '800' },
-  t2: { fontSize: 9, marginTop: 1, opacity: 0.85 },
+  t2: { fontSize: 9, marginTop: 1 },
   cta: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999 },
   ctaText: { fontSize: 10, fontWeight: '800' },
   close: { padding: 2 },

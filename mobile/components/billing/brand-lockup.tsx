@@ -17,7 +17,7 @@ export const BrandLockup = memo(function BrandLockup({
   const { theme } = useAppTheme()
   const onForest = tone === 'onForest'
   const wordColor = onForest ? theme.colors.heroText : theme.colors.text
-  const tagColor = onForest ? theme.colors.heroAccent : theme.colors.textMuted
+  const tagColor = onForest ? theme.colors.heroText : theme.colors.textMuted
   return (
     <View style={styles.row}>
       <FernMark variant={onForest ? 'cream' : 'forest'} size={17} />

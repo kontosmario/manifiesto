@@ -274,7 +274,7 @@ function HomeHeroCardImpl({
                   },
                 ]}
               >
-                <Text style={[styles.dayChipText, { color: theme.colors.heroMuted }]}>
+                <Text style={[styles.dayChipText, { color: theme.colors.heroText }]}>
                   {dayChipLabel}
                 </Text>
               </View>
@@ -482,7 +482,7 @@ function HomeHeroCardImpl({
                           savingsChip.kind === 'consumed'
                             ? '#F2EAD3'
                             : savingsChip.kind === 'partial'
-                              ? theme.colors.heroMuted
+                              ? theme.colors.heroText
                               : theme.colors.heroAccent,
                         fontVariant: ['tabular-nums'],
                       },
@@ -516,7 +516,9 @@ function HomeHeroCardImpl({
                     {
                       // Hero oscuro en ambos modos → siempre el gold (dark
                       // mode). Antes en light usaba rust #B45309 que rompía.
-                      backgroundColor: 'rgba(252,211,77,0.14)',
+                      // Fill bajado a 0.06 para que el gold claro del texto
+                      // alcance AA (4.5:1) sobre el verde del hero.
+                      backgroundColor: 'rgba(252,211,77,0.06)',
                       borderColor: 'rgba(252,211,77,0.40)',
                     },
                   ]}
@@ -524,13 +526,13 @@ function HomeHeroCardImpl({
                   <MaterialIcons
                     name="account-balance-wallet"
                     size={13}
-                    color={'#FCD34D'}
+                    color={'#FEF0C2'}
                   />
                   <Text
                     style={[
                       styles.savingsChipText,
                       {
-                        color: '#FCD34D',
+                        color: '#FEF0C2',
                         fontVariant: ['tabular-nums'],
                       },
                     ]}
@@ -617,7 +619,7 @@ function HomeHeroCardImpl({
                         size={11}
                         color={
                           projectedCloseTrend > 0
-                            ? '#F8D1C3'
+                            ? '#FBE3D6'
                             : projectedCloseTrend < 0
                               ? theme.colors.heroAccent
                               : theme.colors.heroMuted2
@@ -629,7 +631,7 @@ function HomeHeroCardImpl({
                           {
                             color:
                               projectedCloseTrend > 0
-                                ? '#F8D1C3'
+                                ? '#FBE3D6'
                                 : projectedCloseTrend < 0
                                   ? theme.colors.heroAccent
                                   : theme.colors.heroMuted2,

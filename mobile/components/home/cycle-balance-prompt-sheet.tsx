@@ -414,7 +414,9 @@ function resolveTone(
     iconOverlay: 'rgba(255,255,255,0.22)',
     iconFg: '#FFFFFF',
     textOnFilled: '#FFFFFF',
-    textMutedOnFilled: 'rgba(255,255,255,0.78)',
+    // 0.92 para que eyebrow/sublabel (texto chico) lleguen a AA (4.96:1)
+    // sobre el forest deep; a 0.78 daban 4.04.
+    textMutedOnFilled: 'rgba(255,255,255,0.92)',
     shadowColor: theme.colors.primary,
   }
 }

@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12.5,
-    color: '#7E9579',
+    color: '#9FCB93', // AA sobre el scrim #163A1E (6.9:1; antes #7E9579 = 3.9)
     textAlign: 'center',
     marginTop: 14,
   },

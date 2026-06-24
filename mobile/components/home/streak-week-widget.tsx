@@ -61,7 +61,7 @@ function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
                   {
                     color: day.isToday ? theme.colors.text : theme.colors.textMuted,
                     fontWeight: day.isToday ? '800' : '600',
-                    opacity: day.state === 'future' ? 0.5 : 1,
+                    opacity: day.state === 'future' ? 0.7 : 1,
                   },
                 ]}
               >

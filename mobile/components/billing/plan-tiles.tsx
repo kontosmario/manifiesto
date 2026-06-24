@@ -140,7 +140,7 @@ const YearlyTile = memo(function YearlyTile({
                 RECOMENDADO
               </Text>
             </View>
-            <Text style={[styles.label, { color: theme.colors.heroAccent }]}>ANUAL</Text>
+            <Text style={[styles.label, { color: theme.colors.heroText }]}>ANUAL</Text>
             <View style={styles.priceRow}>
               <Text style={[styles.price, { color: theme.colors.heroText }]}>{price}</Text>
               <Text style={[styles.priceSuffix, styles.priceSuffixOnForest, { color: theme.colors.heroText }]}>
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
-  subOnForest: { opacity: 0.85 },
+  subOnForest: {},
   badge: {
     alignSelf: 'flex-start',
     position: 'absolute',

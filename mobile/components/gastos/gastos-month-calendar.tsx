@@ -282,9 +282,9 @@ function GridMode({
       <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>TU MES EN UN VISTAZO</Text>
           <View style={styles.legend}>
-            <LegendDot color="#49D61F" label="bien" theme={theme} />
-            <LegendDot color="#EC7A51" label="alerta" theme={theme} />
-            <LegendDot color="#D96A4F" label="exceso" theme={theme} />
+            <LegendDot mood="green" label="bien" theme={theme} />
+            <LegendDot mood="amber" label="alerta" theme={theme} />
+            <LegendDot mood="red" label="exceso" theme={theme} />
           </View>
         </View>
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>
@@ -342,14 +342,18 @@ function GridMode({
 }
 
 function LegendDot({
-  color,
+  mood,
   label,
   theme,
 }: {
-  color: string
+  mood: GastosDayMood
   label: string
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
+  // El dot toma el MISMO color que la celda de ese ánimo (theme-aware),
+  // así legend y celdas quedan en lockstep y el dot pasa AA (>=3:1) sobre
+  // la card en ambos modos.
+  const color = getMoodStyle(mood, theme.isDark).color
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendDot, { backgroundColor: color }]} />
