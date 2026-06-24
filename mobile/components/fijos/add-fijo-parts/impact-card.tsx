@@ -1,7 +1,16 @@
 // Cards de "Impacto en el presupuesto" del wizard add-fijo: ImpactRow
 // (label + value + delta), ImpactBar (before vs after gradient bar) y
 // HealthBadge (alto/medio/sano). Extraído de `add-fijo-v2-screen.tsx`.
+import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -93,28 +102,50 @@ export function ImpactBar({
   afterPct: number
 }) {
   const { theme } = useAppTheme()
+  const reduced = useReducedMotion()
   const clampedBefore = Math.max(0, Math.min(100, beforePct))
   const clampedAfter = Math.max(0, Math.min(100, afterPct))
+  const deltaWidth = Math.max(0, clampedAfter - clampedBefore)
+
+  // La barra LLEGA en vez de aparecer pintada: el fill "antes" crece, y el
+  // segmento "delta" (lo que agregás) se suma DESPUÉS con un stagger → el ojo
+  // ve "esto es lo que sumás". reduceMotion → directo al valor final.
+  const beforeProgress = useSharedValue(reduced ? 1 : 0)
+  const deltaProgress = useSharedValue(reduced ? 1 : 0)
+
+  useEffect(() => {
+    if (reduced) return
+    beforeProgress.value = withTiming(1, {
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+    })
+    deltaProgress.value = withDelay(
+      120,
+      withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }),
+    )
+  }, [beforeProgress, deltaProgress, reduced])
+
+  const beforeStyle = useAnimatedStyle(() => ({
+    width: `${clampedBefore * beforeProgress.value}%`,
+  }))
+  const deltaStyle = useAnimatedStyle(() => ({
+    width: `${deltaWidth * deltaProgress.value}%`,
+  }))
+
   return (
     <View
       style={[styles.impactBarTrack, { backgroundColor: theme.colors.pageBg }]}
     >
-      <View style={[styles.impactBarFill, { width: `${clampedBefore}%` }]}>
+      <Animated.View style={[styles.impactBarFill, beforeStyle]}>
         <LinearGradient
           colors={['#49D61F', '#297811'] as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
         />
-      </View>
-      <View
-        style={[
-          styles.impactBarFill,
-          {
-            left: `${clampedBefore}%`,
-            width: `${Math.max(0, clampedAfter - clampedBefore)}%`,
-          },
-        ]}
+      </Animated.View>
+      <Animated.View
+        style={[styles.impactBarFill, { left: `${clampedBefore}%` }, deltaStyle]}
       >
         <LinearGradient
           colors={['#F2A78C', '#EC7A51'] as unknown as readonly [string, string, ...string[]]}
@@ -122,7 +153,7 @@ export function ImpactBar({
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
         />
-      </View>
+      </Animated.View>
     </View>
   )
 }

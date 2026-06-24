@@ -5,6 +5,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { CountUpText } from '@/components/home/animated/count-up-text'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import {
   FREQ_OPTIONS,
@@ -70,6 +71,28 @@ export function Step2Summary(props: Step2SummaryProps) {
     alreadyPaidCurrentCuota,
     onToggleAlreadyPaid,
   } = props
+
+  // Color + glow + veredicto del "te queda libre" según la holgura, con el
+  // MISMO umbral del HealthBadge (impact-card.tsx): holgado / ajustado /
+  // apretado. Convierte el dato frío en un semáforo emocional.
+  const libreTone =
+    pctDespues > 70
+      ? {
+          color: theme.colors.danger,
+          glow: theme.colors.danger,
+          phrase: 'Cuidado: queda muy poco libre',
+        }
+      : pctDespues > 50
+        ? {
+            color: theme.colors.peach,
+            glow: theme.colors.peach,
+            phrase: 'Va a quedar algo ajustado',
+          }
+        : {
+            color: theme.colors.primary,
+            glow: theme.colors.heroAccent,
+            phrase: 'Te queda holgado este mes',
+          }
 
   return (
     <Animated.View
@@ -162,9 +185,18 @@ export function Step2Summary(props: Step2SummaryProps) {
                   <Text style={[styles.libreEyebrow, { color: theme.colors.textMuted }]}>
                     TE QUEDA LIBRE
                   </Text>
-                  <Text style={[styles.libreValue, { color: theme.colors.text }]}>
-                    {formatMoney(libreDespues)}
+                  <Text style={[styles.librePhrase, { color: theme.colors.textMuted }]}>
+                    {libreTone.phrase}
                   </Text>
+                  <CountUpText
+                    value={libreDespues}
+                    format={formatMoney}
+                    unit="money"
+                    flourish
+                    duration={900}
+                    glowColor={libreTone.glow}
+                    style={[styles.libreValue, { color: libreTone.color }]}
+                  />
                 </View>
                 <HealthBadge pct={pctDespues} />
               </View>
@@ -382,7 +414,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   libreEyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '700' },
-  libreValue: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4, marginTop: 2 },
+  librePhrase: { fontSize: 12, fontWeight: '600', letterSpacing: -0.1, marginTop: 3 },
+  libreValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
   reminderCard: {
     flexDirection: 'row',
     alignItems: 'center',
