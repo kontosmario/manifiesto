@@ -30,18 +30,37 @@ de "plantar" manual (sería redundante).
 - **`deriveGardenCells`** → grilla DINÁMICA por semanas calendario L→D
   (`weeksToShow`: crece desde la semana del primer registro hasta un tope de 5;
   cuenta nueva = 1 semana, no 5 vacías). El estado del brote depende de la
-  **antigüedad** del día:
+  **antigüedad** del día **y del cierre de la semana**:
   - `pre` (antes del primer registro) · `pending` (hoy sin registrar) ·
-    `missed` (día pasado sin registrar, **no rompe**) ·
-    `seed` (registrado, ≤6 días) · `germ` (7–13) · `fern` (≥14, helecho de marca, 24→32px).
+    `missed` (día pasado sin registrar, **no rompe**).
+  - por EDAD (decisión owner 2026-06-25, antes 14d): `seed` (≤1 día) ·
+    `germ` (2–6) · `fern` (≥7 = 1 semana, helecho de marca, 24→32px hasta ~3½ sem).
+  - por SEMANA: una semana **perfecta** (los 7 días registrados) hace florecer
+    todos sus brotes → `bloom` (flor coral, glyph en `sprout.tsx`), sin importar
+    la edad. *La edad lleva hasta arraigado; florecer requiere una semana completa.*
+    La grilla (`garden-grid.tsx`) ahora rinde filas por-semana (`flex:1`,
+    encabezados L→D) en vez de `flexWrap`+cellSize.
 - **`deriveWeekClose`** → score 0–7 (días registrados de la semana L→D) + madurez +
   copy. Confeti solo en 7/7.
 - **`deriveWeekStrip`** → semana calendario L→D para el widget de Home
   (logged/pending/missed/future).
+- **`deriveRecoverableGap`** → espejo cliente de `recover_garden_day`: si la semana
+  recién cerrada está EXACTAMENTE 6/7 (gasto ∪ marca ∪ recuperado), el hueco es un
+  día real post-inicio, y tenés ≥1 escudo → devuelve el ISO del hueco (si no, null).
+
+**Recovery del 6/7 ("plantá el día que faltó", opción A — cuesta 1 escudo):** si
+cerraste 6/7, la celda del hueco se vuelve tappable (afiche coral). Confirmás → RPC
+`recover_garden_day(family, day)` (migración `20260625110000`) valida server-side
+(semana recién cerrada · exactamente 6/7 · día = el hueco · post-cuenta · escudo
+disponible), consume 1 `freeze_token` e inserta en `garden_recovered_days`. El día
+queda como brote `recovered` (distinto, glyph con semilla coral) y **NO florece** —
+la floración sigue siendo solo para el 7/7 ORGÁNICO (los recuperados no están en
+`activity`). Anti-exploit: solo la semana anterior, solo 1 hueco, no arregla semanas
+viejas. Hooks: `useRecoverGardenDay` + `gardenRecoveredQueryKey` en `use-garden.ts`.
 
 `mobile/features/garden/use-garden.ts` compone `useStreak` + `useExpenses` +
-`useMyProfile` y expone `GardenData` (cells, weeksShown, weekClose,
-weekCloseAvailable, weekCloseId, weekStrip, ...).
+`useMyProfile` + `garden_recovered_days` y expone `GardenData` (cells, weeksShown,
+weekClose, weekCloseAvailable, weekCloseId, weekStrip, recoverableGapIso, ...).
 
 **Anclaje (`gardenFirstActivity`):** el jardín arranca con tu primer brote DESDE que
 creaste la cuenta (`profiles.created_at`). Back-datear un gasto anterior a tu cuenta

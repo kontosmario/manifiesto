@@ -36,6 +36,8 @@ const GLYPH = {
     germStem: '#3C7D34',
     germLeaf1: '#9FD580',
     germLeaf2: '#A9D57F',
+    bloomPetal: '#E2935E',
+    bloomCenter: '#F4D58A',
     missStroke: '#B7B2A2',
     missFill: '#CBC6B6',
     missOpacity: 0.62,
@@ -46,6 +48,8 @@ const GLYPH = {
     germStem: '#6FB35E',
     germLeaf1: '#9FD580',
     germLeaf2: '#B7DD8E',
+    bloomPetal: '#E8A57C',
+    bloomCenter: '#F6DC9A',
     missStroke: '#7E8C76',
     missFill: '#6F7E68',
     missOpacity: 0.45,
@@ -82,6 +86,32 @@ function SproutGlyph({
       )
     case 'fern':
       return <FernMark variant="cream" size={fernSize} style={styles.fern} />
+    case 'bloom':
+      // Semana perfecta: planta arraigada con flor coral (5 pétalos + centro).
+      return (
+        <Svg viewBox="0 0 40 44" width={28} height={28} style={[styles.bloom]}>
+          <Path d="M20 40 V19" stroke={c.germStem} strokeWidth={2.4} strokeLinecap="round" />
+          <Ellipse cx={13} cy={26} rx={6} ry={3.4} rotation={-32} originX={13} originY={26} fill={c.germLeaf1} />
+          <Ellipse cx={27} cy={24} rx={6} ry={3.4} rotation={32} originX={27} originY={24} fill={c.germLeaf2} />
+          <Circle cx={20} cy={8} r={3.8} fill={c.bloomPetal} />
+          <Circle cx={14.5} cy={11.5} r={3.8} fill={c.bloomPetal} />
+          <Circle cx={25.5} cy={11.5} r={3.8} fill={c.bloomPetal} />
+          <Circle cx={16.3} cy={17} r={3.8} fill={c.bloomPetal} />
+          <Circle cx={23.7} cy={17} r={3.8} fill={c.bloomPetal} />
+          <Circle cx={20} cy={13} r={3.4} fill={c.bloomCenter} />
+        </Svg>
+      )
+    case 'recovered':
+      // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
+      // No florece — distinto de creciendo (sin coral) y de floración (flor llena).
+      return (
+        <Svg viewBox="0 0 40 44" width={24} height={24} style={[styles.recovered]}>
+          <Path d="M20 40 V24" stroke={c.germStem} strokeWidth={2.2} strokeLinecap="round" />
+          <Ellipse cx={13.5} cy={28} rx={5.5} ry={3.2} rotation={-34} originX={13.5} originY={28} fill={c.germLeaf1} />
+          <Ellipse cx={26.5} cy={26.5} rx={5.5} ry={3.2} rotation={34} originX={26.5} originY={26.5} fill={c.germLeaf2} />
+          <Circle cx={20} cy={18} r={3} fill={c.bloomPetal} />
+        </Svg>
+      )
     case 'missed':
       return (
         <Svg viewBox="0 0 40 44" width={24} height={24} style={[styles.missed, { opacity: c.missOpacity }]}>
@@ -139,6 +169,8 @@ const styles = StyleSheet.create({
   seed: { marginBottom: 7 },
   germ: { marginBottom: 4 },
   fern: { marginBottom: 2 },
+  bloom: { marginBottom: 3 },
+  recovered: { marginBottom: 5 },
   missed: { marginBottom: 5 },
 })
 

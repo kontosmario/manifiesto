@@ -1,10 +1,11 @@
-import { memo, useState } from 'react'
-import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { memo } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Svg, { Circle } from 'react-native-svg'
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { Sprout } from './sprout'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
-import type { BroteStage, GardenCell } from '@/features/garden/garden-model'
+import { GARDEN_COLS, type BroteStage, type GardenCell } from '@/features/garden/garden-model'
 
 interface GardenGridProps {
   cells: GardenCell[]
@@ -12,24 +13,35 @@ interface GardenGridProps {
   justPlantedToday?: boolean
   /** Muestra la leyenda (controlada por el toggle del header del card). */
   showLegend?: boolean
+  /** ISO del hueco recuperable de la semana cerrada (6/7 + escudo) — null si no hay. */
+  recoverableGapIso?: string | null
+  /** Tap en la celda del hueco recuperable → abre la confirmación de plantar. */
+  onPlantGap?: (iso: string) => void
 }
 
-const COLS = 7
+const CORAL = '#E2935E'
+
 const GAP = 7
-// Inset horizontal del grid = padding del Screen (20×2) + de la gardenCard (22×2).
-// Solo para ESTIMAR el cellSize en el primer frame (onLayout corrige con el real).
-const GRID_INSET = 84
+// Letras de los días (L→D, Lunes=0) — espejo de deriveGardenCells / deriveWeekStrip.
+const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 // Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
 const LEGEND: Array<{ label: string; color: string }> = [
   { label: 'semilla', color: '#C29A5E' },
   { label: 'creciendo', color: '#A9D57F' },
   { label: 'arraigado', color: '#4F9E45' },
+  { label: 'floración', color: '#E2935E' },
   { label: 'salteado', color: '#CBC6B6' },
 ]
 
 function isPlanted(stage: BroteStage): boolean {
-  return stage === 'seed' || stage === 'germ' || stage === 'fern'
+  return (
+    stage === 'seed' ||
+    stage === 'germ' ||
+    stage === 'fern' ||
+    stage === 'bloom' ||
+    stage === 'recovered'
+  )
 }
 
 // Fondo del tile por estado. TODA celda tiene tile (la grilla se lee como una
@@ -37,10 +49,12 @@ function isPlanted(stage: BroteStage): boolean {
 function tileBg(stage: BroteStage, theme: AppTheme): string {
   const isDark = theme.isDark
   switch (stage) {
+    case 'bloom':
     case 'fern':
       return theme.colors.gardenSoilFern
     case 'seed':
     case 'germ':
+    case 'recovered':
       return theme.colors.gardenSoil
     case 'pending':
       return isDark ? 'rgba(166,239,143,0.18)' : '#E8F3DF'
@@ -52,48 +66,101 @@ function tileBg(stage: BroteStage, theme: AppTheme): string {
   }
 }
 
-function GardenGridImpl({ cells, justPlantedToday, showLegend }: GardenGridProps) {
-  const { theme } = useAppTheme()
-  const { width: windowWidth } = useWindowDimensions()
-  const [measuredWidth, setMeasuredWidth] = useState(0)
-  // Ancho del grid: estimado desde el window en el PRIMER frame (sin esperar
-  // onLayout) → las celdas rinden ya, sin pop ni colapso de altura; onLayout
-  // corrige con el ancho real. Floor → las 7 columnas SIEMPRE entran (sub-pixel
-  // hacía wrappear la 7ª).
-  const width = measuredWidth || Math.max(0, windowWidth - GRID_INSET)
-  const cellSize = Math.floor((width - (COLS - 1) * GAP) / COLS)
+// La grilla viene plana (weeks*7 celdas, L→D). La partimos en semanas para que
+// cada fila sea un contenedor flex propio: 7 celdas `flex:1` llenan el ancho
+// EXACTO (equivalente a repeat(7,1fr)), sin el sliver que dejaba el cellSize
+// floored + flexWrap. Sin medición ni onLayout.
+function toWeeks(cells: GardenCell[]): GardenCell[][] {
+  const weeks: GardenCell[][] = []
+  for (let i = 0; i < cells.length; i += GARDEN_COLS) {
+    weeks.push(cells.slice(i, i + GARDEN_COLS))
+  }
+  return weeks
+}
 
-  const onLayout = (e: LayoutChangeEvent) => setMeasuredWidth(e.nativeEvent.layout.width)
+function GardenGridImpl({
+  cells,
+  justPlantedToday,
+  showLegend,
+  recoverableGapIso,
+  onPlantGap,
+}: GardenGridProps) {
+  const { theme } = useAppTheme()
+  const weeks = toWeeks(cells)
+  // Columna de HOY (0..6) → resaltamos su letra en el encabezado ("estás acá").
+  const todayIndex = cells.findIndex((c) => c.isToday)
+  const todayCol = todayIndex >= 0 ? todayIndex % GARDEN_COLS : -1
 
   return (
     <View>
-      <View style={styles.grid} onLayout={onLayout}>
-        {cellSize > 0 &&
-          cells.map((cell) => {
-            const planted = isPlanted(cell.stage)
-            return (
-              <View
-                key={cell.iso}
-                style={[
-                  styles.cell,
-                  {
-                    width: cellSize,
-                    height: cellSize,
-                    backgroundColor: tileBg(cell.stage, theme),
-                    // "Montículo" de tierra: sombra interna solo en las plantadas.
-                    boxShadow: planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.20)' : undefined,
-                  },
-                ]}
-              >
-                <Sprout
-                  stage={cell.stage}
-                  fernSize={cell.fernSize}
-                  animateIn={Boolean(justPlantedToday) && cell.isToday && cell.stage === 'seed'}
-                />
-              </View>
-            )
-          })}
+      <View style={styles.weekdayRow}>
+        {WEEKDAYS.map((d, i) => (
+          <Text
+            key={i}
+            style={[
+              styles.weekday,
+              {
+                color: i === todayCol ? theme.colors.text : theme.colors.textMuted,
+                fontWeight: i === todayCol ? '800' : '700',
+              },
+            ]}
+          >
+            {d}
+          </Text>
+        ))}
       </View>
+
+      <View style={styles.grid}>
+        {weeks.map((week, wi) => (
+          <View key={wi} style={styles.week}>
+            {week.map((cell) => {
+              // Hueco recuperable: celda tappable con afiche "plantá el día que faltó".
+              if (cell.iso === recoverableGapIso && onPlantGap) {
+                return (
+                  <Pressable
+                    key={cell.iso}
+                    onPress={() => onPlantGap(cell.iso)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Plantar el día que faltó la semana pasada"
+                    style={({ pressed }) => [
+                      styles.cell,
+                      styles.plantable,
+                      { backgroundColor: theme.isDark ? 'rgba(226,147,94,0.18)' : 'rgba(226,147,94,0.12)' },
+                      pressed && styles.cellPressed,
+                    ]}
+                  >
+                    <Svg width={20} height={20}>
+                      <Circle cx={10} cy={10} r={8} stroke={CORAL} strokeWidth={1.6} strokeDasharray="3 3" fill="none" />
+                      <Circle cx={10} cy={10} r={2.4} fill={CORAL} />
+                    </Svg>
+                  </Pressable>
+                )
+              }
+              const planted = isPlanted(cell.stage)
+              return (
+                <View
+                  key={cell.iso}
+                  style={[
+                    styles.cell,
+                    {
+                      backgroundColor: tileBg(cell.stage, theme),
+                      // "Montículo" de tierra: sombra interna solo en las plantadas.
+                      boxShadow: planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.20)' : undefined,
+                    },
+                  ]}
+                >
+                  <Sprout
+                    stage={cell.stage}
+                    fernSize={cell.fernSize}
+                    animateIn={Boolean(justPlantedToday) && cell.isToday && cell.stage === 'seed'}
+                  />
+                </View>
+              )
+            })}
+          </View>
+        ))}
+      </View>
+
       {showLegend && (
         <Animated.View
           entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
@@ -119,17 +186,40 @@ function GardenGridImpl({ cells, justPlantedToday, showLegend }: GardenGridProps
 }
 
 const styles = StyleSheet.create({
-  grid: {
+  weekdayRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    gap: GAP,
+    marginBottom: 9,
+  },
+  weekday: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 11,
+    letterSpacing: 0.4,
+  },
+  grid: {
+    gap: GAP,
+  },
+  week: {
+    flexDirection: 'row',
     gap: GAP,
   },
   cell: {
+    flex: 1,
+    aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 4,
     overflow: 'hidden',
+  },
+  plantable: {
+    justifyContent: 'center',
+    paddingBottom: 0,
+  },
+  cellPressed: {
+    transform: [{ scale: 0.94 }],
+    opacity: 0.85,
   },
   legend: {
     flexDirection: 'row',

@@ -3,7 +3,15 @@
 // salteados NO rompen el jardín (decisión "sin culpa"): se muestran como
 // brote tenue. Refleja la lógica del prototipo de diseño (renderVals()).
 
-export type BroteStage = 'pre' | 'pending' | 'missed' | 'seed' | 'germ' | 'fern'
+export type BroteStage =
+  | 'pre'
+  | 'pending'
+  | 'missed'
+  | 'recovered' // día plantado con ayuda (1 escudo) — NO florece
+  | 'seed'
+  | 'germ'
+  | 'fern'
+  | 'bloom'
 
 export interface GardenCell {
   iso: string
@@ -27,8 +35,10 @@ export const GARDEN_COLS = 7
 export const GARDEN_ROWS = 5
 export const GARDEN_CELLS = GARDEN_COLS * GARDEN_ROWS // 35
 
+// El helecho arraiga a los 7 días (1 semana) y sigue engrosando un poco con la
+// edad (24→32px) hasta ~3½ semanas. Rebase tras bajar el umbral de 14→7.
 export function fernSizeForAge(ageDays: number): number {
-  return Math.round(24 + Math.min((ageDays - 14) * 0.5, 8))
+  return Math.round(24 + Math.min((ageDays - 7) * 0.4, 8))
 }
 
 // ── Helpers de fecha sobre ISO 'YYYY-MM-DD' (UTC, deterministas) ────────────
@@ -78,13 +88,21 @@ export function gardenFirstActivity(
 /**
  * Grilla DINÁMICA por semanas calendario (L→D). Muestra las últimas
  * `weeksToShow` semanas terminando en la semana actual; cada celda es un día.
- * Estado del brote por antigüedad (días salteados no rompen). Días futuros de
- * la semana en curso y previos al primer registro = 'pre' (tile tenue).
+ *
+ * Madurez del brote (decisión owner 2026-06-25):
+ *  - por EDAD del día registrado: semilla 0–1d, creciendo 2–6d, arraigado 7d+
+ *    (1 semana para arraigar; días salteados no rompen — "sin culpa").
+ *  - por SEMANA: una semana PERFECTA (los 7 días registrados) hace FLORECER
+ *    todos sus brotes (`bloom`), sin importar la edad. La edad te lleva hasta
+ *    arraigado; florecer requiere una semana completa (esfuerzo, no solo tiempo).
+ *
+ * Días futuros de la semana en curso y previos al primer registro = 'pre'.
  */
 export function deriveGardenCells(
   activityIso: ReadonlySet<string>,
   todayIso: string,
   firstActivityIso: string | null,
+  recoveredIso: ReadonlySet<string> = new Set(),
 ): GardenCell[] {
   const weeks = weeksToShow(firstActivityIso, todayIso)
   const todayN = utcDays(todayIso)
@@ -95,15 +113,17 @@ export function deriveGardenCells(
     const iso = isoFromUtcDays(n)
     const ageDays = todayN - n
     const logged = activityIso.has(iso)
+    const recovered = recoveredIso.has(iso)
     const isToday = n === todayN
     const isFuture = ageDays < 0
     const isPre = firstActivityIso !== null && iso < firstActivityIso
     let stage: BroteStage
     if (isFuture || isPre) stage = 'pre'
+    else if (recovered) stage = 'recovered'
     else if (isToday && !logged) stage = 'pending'
     else if (!logged) stage = 'missed'
-    else if (ageDays <= 6) stage = 'seed'
-    else if (ageDays <= 13) stage = 'germ'
+    else if (ageDays <= 1) stage = 'seed'
+    else if (ageDays <= 6) stage = 'germ'
     else stage = 'fern'
     cells.push({
       iso,
@@ -113,7 +133,56 @@ export function deriveGardenCells(
       isToday,
     })
   }
+
+  // Floración por SEMANA PERFECTA: si los 7 días de una semana están
+  // registrados, todos sus brotes florecen. (Una semana sólo puede ser 7/7 si
+  // ya está completa — no se pueden registrar días futuros — así que la semana
+  // en curso recién florece al cerrar el domingo.)
+  for (let w = 0; w < weeks; w++) {
+    const base = w * GARDEN_COLS
+    let perfect = true
+    for (let d = 0; d < GARDEN_COLS; d++) {
+      if (!activityIso.has(cells[base + d].iso)) {
+        perfect = false
+        break
+      }
+    }
+    if (perfect) {
+      for (let d = 0; d < GARDEN_COLS; d++) cells[base + d].stage = 'bloom'
+    }
+  }
+
   return cells
+}
+
+/**
+ * Hueco RECUPERABLE de la semana recién cerrada (espejo cliente de
+ * `recover_garden_day`). Devuelve el ISO del único día faltante si la semana
+ * anterior está EXACTAMENTE 6/7 (gasto ∪ marca ∪ recuperado), el hueco es un día
+ * real post-inicio, y tenés ≥1 escudo. Si no, `null` (no hay oferta de plantar).
+ * El server revalida todo — esto es solo para la UI.
+ */
+export function deriveRecoverableGap(
+  activityIso: ReadonlySet<string>,
+  recoveredIso: ReadonlySet<string>,
+  todayIso: string,
+  firstActivityIso: string | null,
+  freezeTokens: number,
+): string | null {
+  if (freezeTokens < 1 || firstActivityIso === null) return null
+  const todayN = utcDays(todayIso)
+  const prevMonday = todayN - dowMonday0(todayIso) - 7
+  let filled = 0
+  let gap: string | null = null
+  for (let i = 0; i < GARDEN_COLS; i++) {
+    const iso = isoFromUtcDays(prevMonday + i)
+    if (activityIso.has(iso) || recoveredIso.has(iso)) filled++
+    else gap = iso
+  }
+  if (filled !== 6 || gap === null) return null
+  // El hueco debe ser un día real (post-inicio), no pre-cuenta.
+  if (gap < firstActivityIso) return null
+  return gap
 }
 
 // Score 0–7 de la semana L→D → madurez + copy. Tabla del handoff.

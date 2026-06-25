@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -9,7 +9,7 @@ import { GardenHero } from '@/components/garden/garden-hero'
 import { GardenGrid } from '@/components/garden/garden-grid'
 import { WeekCloseBanner } from '@/components/garden/week-close-banner'
 import { WeekCloseCelebration } from '@/components/garden/week-close-celebration'
-import { useGarden } from '@/features/garden/use-garden'
+import { useGarden, useRecoverGardenDay } from '@/features/garden/use-garden'
 import { triggerHaptic } from '@/lib/haptics'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -24,14 +24,16 @@ const FOOTNOTE =
 
 /**
  * Pantalla "Mi jardín" — vista dedicada de la racha (accesible desde Gastos).
- * Es de SOLO LECTURA: el brote se planta automáticamente al registrar un gasto
- * o pago de fijo (trigger server-side) o al marcar un día sin gastos en el
- * calendario de Gastos. El jardín solo refleja esas dos señales (no hay acción
- * manual de "plantar").
+ * Casi de solo lectura: el brote se planta automáticamente al registrar un gasto
+ * o pago de fijo (trigger server-side) o al marcar un día sin gastos. La ÚNICA
+ * acción manual es "plantar el día que faltó" (recovery del 6/7): si la semana
+ * cerrada quedó 6/7 y tenés un escudo, la celda del hueco es tappable y consume
+ * el escudo para plantar un brote "recuperado" (no florece). Ver `recover_garden_day`.
  */
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { theme } = useAppTheme()
   const { data } = useGarden(familyId, userId)
+  const recover = useRecoverGardenDay(familyId, userId)
   const [showWeekClose, setShowWeekClose] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
 
@@ -39,6 +41,33 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
     void triggerHaptic('selection')
     setShowWeekClose(true)
   }, [])
+
+  const seeds = data?.freezeTokens ?? 0
+  const handlePlantGap = useCallback(
+    (iso: string) => {
+      if (recover.isPending) return
+      void triggerHaptic('selection')
+      Alert.alert(
+        'Plantá el día que faltó',
+        `La semana pasada registraste 6 de 7 días. Plantá el que falta con una semilla guardada (tenés ${seeds}). No florece como una semana perfecta, pero completás tu jardín.`,
+        [
+          { text: 'Ahora no', style: 'cancel' },
+          {
+            text: 'Plantar',
+            onPress: () =>
+              recover.mutate(iso, {
+                onSuccess: () => void triggerHaptic('success'),
+                onError: (e) => {
+                  void triggerHaptic('error')
+                  Alert.alert('No se pudo plantar', e.message || 'Intentá de nuevo en un rato.')
+                },
+              }),
+          },
+        ],
+      )
+    },
+    [recover, seeds],
+  )
 
   return (
     <>
@@ -110,7 +139,12 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
                 {data.weeksShown <= 1 ? 'tu primera semana' : `últimas ${data.weeksShown} semanas`}
               </Text>
               <View style={styles.gridWrap}>
-                <GardenGrid cells={data.cells} showLegend={showLegend} />
+                <GardenGrid
+                  cells={data.cells}
+                  showLegend={showLegend}
+                  recoverableGapIso={data.recoverableGapIso}
+                  onPlantGap={handlePlantGap}
+                />
               </View>
             </View>
           </RiseView>
