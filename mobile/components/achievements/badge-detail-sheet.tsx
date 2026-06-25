@@ -7,6 +7,13 @@ import {
   tierShort,
   tierTone,
 } from '@/features/achievements/achievement-tiers'
+import {
+  AchievementIcon,
+  hasAchievementIcon,
+  ICON_CORAL,
+  ICON_CORAL_SOFT,
+  ICON_FOREST,
+} from '@/components/achievements/achievement-icon'
 import type { AchievementViewItem } from '@/features/achievements/use-achievements'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -53,7 +60,30 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
                 },
           ]}
         >
-          <Text style={[styles.icon, !earned && styles.iconLocked]}>{b.icon}</Text>
+          {hasAchievementIcon(b.code) ? (
+            <View
+              style={[
+                styles.iconDisc,
+                {
+                  backgroundColor: earned
+                    ? '#FFFBF2'
+                    : theme.isDark
+                      ? 'rgba(255,255,255,0.05)'
+                      : 'rgba(28,58,35,0.05)',
+                },
+              ]}
+            >
+              <AchievementIcon
+                code={b.code}
+                size={48}
+                stroke={earned ? ICON_FOREST : theme.colors.textMuted}
+                accent={earned ? ICON_CORAL : theme.colors.textMuted}
+                accentSoft={earned ? ICON_CORAL_SOFT : theme.colors.textMuted}
+              />
+            </View>
+          ) : (
+            <Text style={[styles.icon, !earned && styles.iconLocked]}>{b.icon}</Text>
+          )}
           {!earned ? (
             <View
               style={[
@@ -119,6 +149,13 @@ const styles = StyleSheet.create({
   },
   iconLocked: {
     opacity: 0.4,
+  },
+  iconDisc: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   lockBadge: {
     position: 'absolute',

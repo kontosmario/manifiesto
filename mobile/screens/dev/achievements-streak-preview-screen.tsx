@@ -10,6 +10,14 @@ import {
   useAchievements,
   type AchievementViewItem,
 } from '@/features/achievements/use-achievements'
+import {
+  AchievementIcon,
+  ACHIEVEMENT_ICON_CODES,
+  hasAchievementIcon,
+  ICON_CORAL,
+  ICON_CORAL_SOFT,
+  ICON_FOREST,
+} from '@/components/achievements/achievement-icon'
 import type { StreakData } from '@/features/streaks/use-streak'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -62,6 +70,14 @@ export function AchievementsStreakPreviewScreen() {
     ? FALLBACK_ACHIEVEMENT_PREVIEWS
     : realItems
 
+  // Título por code para etiquetar el showcase de íconos (cae al code si el
+  // catálogo no cargó en esta base).
+  const titleByCode = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const it of data?.items ?? []) m.set(it.code, it.title)
+    return m
+  }, [data])
+
   return (
     <Screen
       title="Preview · Logros & Racha"
@@ -69,6 +85,54 @@ export function AchievementsStreakPreviewScreen() {
       canGoBack
     >
       <View style={styles.stack}>
+        {/* ── Section 0: Set de íconos SVG nuevos ───────────────── */}
+        <View>
+          <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+            ÍCONOS NUEVOS — SET SVG (18)
+          </Text>
+          <Text style={[styles.sectionHint, { color: theme.colors.textSoft }]}>
+            Los 18 íconos custom renderizados en estado earned (verde bosque +
+            coral sobre disco crema). En la galería el locked sale como silueta
+            muted. 5 familias: primeros · racha · meta · bajo cupo · sin gasto.
+          </Text>
+          <View style={styles.iconShowcaseGrid}>
+            {ACHIEVEMENT_ICON_CODES.map((code) => (
+              <View
+                key={code}
+                style={[
+                  styles.iconTile,
+                  {
+                    backgroundColor: theme.colors.creamCard,
+                    borderColor: theme.colors.line,
+                  },
+                ]}
+              >
+                <View style={styles.iconShowcaseDisc}>
+                  <AchievementIcon
+                    code={code}
+                    size={34}
+                    stroke={ICON_FOREST}
+                    accent={ICON_CORAL}
+                    accentSoft={ICON_CORAL_SOFT}
+                  />
+                </View>
+                <Text
+                  style={[styles.iconTileTitle, { color: theme.colors.text }]}
+                  numberOfLines={1}
+                >
+                  {titleByCode.get(code) ?? code}
+                </Text>
+                <Text
+                  style={[styles.iconTileCode, { color: theme.colors.textSoft }]}
+                  numberOfLines={1}
+                >
+                  {code}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
         {/* ── Section 1: Achievement unlock previews ────────────── */}
         <View>
           <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
@@ -196,7 +260,19 @@ function PreviewAchievementRow({ item }: { item: AchievementViewItem }) {
         },
       ]}
     >
-      <Text style={styles.previewIcon}>{item.icon}</Text>
+      {hasAchievementIcon(item.code) ? (
+        <View style={styles.previewIconDisc}>
+          <AchievementIcon
+            code={item.code}
+            size={26}
+            stroke={ICON_FOREST}
+            accent={ICON_CORAL}
+            accentSoft={ICON_CORAL_SOFT}
+          />
+        </View>
+      ) : (
+        <Text style={styles.previewIcon}>{item.icon}</Text>
+      )}
       <View style={styles.previewBody}>
         <Text style={[styles.previewTitle, { color: theme.colors.text }]} numberOfLines={1}>
           {item.title}
@@ -419,6 +495,50 @@ const styles = StyleSheet.create({
   previewIcon: {
     fontSize: 24,
     width: 36,
+    textAlign: 'center',
+  },
+  previewIconDisc: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFBF2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Showcase grid de íconos nuevos
+  iconShowcaseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+  },
+  iconTile: {
+    width: '31%',
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 106,
+  },
+  iconShowcaseDisc: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFBF2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconTileTitle: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.1,
+  },
+  iconTileCode: {
+    fontSize: 9,
+    fontFamily: 'Menlo',
     textAlign: 'center',
   },
   previewBody: {

@@ -36,6 +36,13 @@ import {
   tierIsPremium,
   tierTone,
 } from '@/features/achievements/achievement-tiers'
+import {
+  AchievementIcon,
+  hasAchievementIcon,
+  ICON_CORAL,
+  ICON_CORAL_SOFT,
+  ICON_FOREST,
+} from '@/components/achievements/achievement-icon'
 import { useAppTheme } from '@/theme/theme-provider'
 
 const GRID_GAP = 10
@@ -278,7 +285,17 @@ function BadgeTile({
             },
           ]}
         >
-          <Text style={[styles.tileIcon, !earned && styles.tileIconLocked]}>{item.icon}</Text>
+          {hasAchievementIcon(item.code) ? (
+            <AchievementIcon
+              code={item.code}
+              size={30}
+              stroke={earned ? ICON_FOREST : theme.colors.textMuted}
+              accent={earned ? ICON_CORAL : theme.colors.textMuted}
+              accentSoft={earned ? ICON_CORAL_SOFT : theme.colors.textMuted}
+            />
+          ) : (
+            <Text style={[styles.tileIcon, !earned && styles.tileIconLocked]}>{item.icon}</Text>
+          )}
         </View>
         <Text
           style={[
