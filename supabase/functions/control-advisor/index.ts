@@ -722,10 +722,11 @@ export async function handler(request: Request): Promise<Response> {
     p_window_seconds: 3600,
   })
   if (rateLimitResponse.error) {
+    // RFC 7231: Retry-After en segundos = ventana del rate-limit (1h).
     return jsonResponse(
       { error: 'Rate limit exceeded. Refresh in ~1 hour.' },
       429,
-      cors,
+      { ...cors, 'Retry-After': '3600' },
     )
   }
 
