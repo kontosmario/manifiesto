@@ -1,8 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
+import { usePressScale } from '@/hooks/use-press-scale'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
+import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { ReserveBlock } from './reserve-block'
 
@@ -50,6 +55,19 @@ export function ControlV2AlcanciaCardEmpty({
   const cardBg = isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
   const progreso = Math.max(0, Math.min(diasConGasto, MIN_SPEND_DAYS))
 
+  // Crear meta NO depende de días con gasto (a diferencia del vault). Cuando no
+  // hay meta, el candado "Disponible pronto" es engañoso (no existe una meta a
+  // la que mover) → ofrecemos crearla acá mismo con el wizard self-contained.
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const ctaPress = usePressScale({ pressedScale: 0.97 })
+  const accentFg = theme.colors.success
+  const createBg = isDark ? 'rgba(122,216,163,0.18)' : 'rgba(28,126,58,0.10)'
+  const createBorder = isDark ? 'rgba(122,216,163,0.42)' : 'rgba(28,126,58,0.30)'
+  const handleCreatePress = () => {
+    void triggerHaptic('selection')
+    setWizardOpen(true)
+  }
+
   return (
     <RiseView delay={180}>
       <View
@@ -86,15 +104,40 @@ export function ControlV2AlcanciaCardEmpty({
           </View>
         </View>
 
-        {/* CTA con look deshabilitado — no presionable. */}
-        <View
-          style={[styles.cta, { backgroundColor: tileBg, borderColor: tileBorder }]}
-        >
-          <MaterialIcons name="lock-outline" size={16} color={muted} />
-          <Text style={[styles.ctaText, { color: muted }]} numberOfLines={1}>
-            Disponible pronto
-          </Text>
-        </View>
+        {/* Sin meta → CTA FUNCIONAL para crearla (no necesita días con gasto).
+            Con meta pero pocos días → el vault sí está pendiente: candado. */}
+        {goal == null ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Crear meta de ahorro"
+            onPress={handleCreatePress}
+            onPressIn={ctaPress.onPressIn}
+            onPressOut={ctaPress.onPressOut}
+          >
+            <Animated.View
+              style={[
+                styles.cta,
+                ctaPress.animatedStyle,
+                { backgroundColor: createBg, borderColor: createBorder },
+              ]}
+            >
+              <MaterialIcons name="add" size={16} color={accentFg} />
+              <Text style={[styles.ctaText, { color: accentFg }]} numberOfLines={1}>
+                Crear meta de ahorro
+              </Text>
+              <MaterialIcons name="chevron-right" size={18} color={accentFg} />
+            </Animated.View>
+          </Pressable>
+        ) : (
+          <View
+            style={[styles.cta, { backgroundColor: tileBg, borderColor: tileBorder }]}
+          >
+            <MaterialIcons name="lock-outline" size={16} color={muted} />
+            <Text style={[styles.ctaText, { color: muted }]} numberOfLines={1}>
+              Disponible pronto
+            </Text>
+          </View>
+        )}
 
         {/* 3 mini-tiles inertes — labels reales, valores en dash. */}
         <View style={styles.tilesRow}>
@@ -147,6 +190,14 @@ export function ControlV2AlcanciaCardEmpty({
           userId={userId}
           monthlyReserveAmount={monthlyReserveAmount}
           goal={goal}
+        />
+
+        <CreateSavingsGoalWizardSheet
+          visible={wizardOpen}
+          familyId={familyId}
+          userId={userId}
+          onCreated={() => setWizardOpen(false)}
+          onClose={() => setWizardOpen(false)}
         />
       </View>
     </RiseView>

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -7,6 +8,7 @@ import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
+import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { MetaCard } from '@/components/home/meta-card'
 import {
@@ -36,6 +38,13 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
   // filtra por is_active, el toggle "off" hacía null al query → screen
   // flippaba al EmptyState como si se hubiera eliminado.
   const goalQuery = useLatestSavingsGoal(familyId)
+  // Crear meta DESDE Settings (su hogar natural de gestión). Antes el empty
+  // state punteaba a Control · Tu Alcancía, pero ese card cae a un estado
+  // bloqueado ("Disponible pronto") cuando no hay días con gasto — así que una
+  // cuenta nueva sin meta no tenía NINGÚN camino para crearla. El wizard es un
+  // sheet self-contained: lo hosteamos acá y al crear, la query invalida y la
+  // pantalla pasa al viewer.
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   if (goalQuery.isLoading) {
     return (
@@ -58,7 +67,14 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
         title="Meta de ahorro"
         canGoBack
       >
-        <EmptyState onCreatePress={() => router.push('/(app)/(tabs)/insights')} />
+        <EmptyState onCreatePress={() => setWizardOpen(true)} />
+        <CreateSavingsGoalWizardSheet
+          visible={wizardOpen}
+          familyId={familyId}
+          userId={userId}
+          onCreated={() => setWizardOpen(false)}
+          onClose={() => setWizardOpen(false)}
+        />
       </Screen>
     )
   }
@@ -118,13 +134,13 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
             Aún no configuraste una meta de ahorro
           </Text>
           <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>
-            Las metas se crean desde Control · Tu Alcancía o durante el
-            onboarding.
+            Definí cuánto querés juntar y en cuánto tiempo. La meta aparece en
+            Home y suma tus aportes.
           </Text>
           <View style={styles.emptyCta}>
             <AppButton
               variant="primary"
-              label="Ir a Control"
+              label="Crear meta"
               onPress={onCreatePress}
             />
           </View>
