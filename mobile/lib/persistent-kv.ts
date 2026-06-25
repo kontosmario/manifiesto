@@ -33,7 +33,13 @@ export async function setPersistentValue(key: string, value: string): Promise<vo
       return
     }
 
-    await SecureStore.setItemAsync(key, value)
+    // THIS_DEVICE_ONLY: estos valores son caches locales (fallback offline de
+    // datos financieros, flags de UX) que NO deben viajar en backups cifrados
+    // de iCloud/iTunes ni migrar a otro dispositivo. Mismo criterio que
+    // biometric-auth.ts y last-user-cache.ts. El read no necesita la opción.
+    await SecureStore.setItemAsync(key, value, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    })
   } catch {
     return
   }
