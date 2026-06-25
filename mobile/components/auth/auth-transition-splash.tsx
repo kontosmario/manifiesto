@@ -5,7 +5,6 @@ import Animated, {
   FadeIn,
   ReduceMotion,
 } from 'react-native-reanimated'
-import NetInfo from '@react-native-community/netinfo'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import {
   dispatchAuthFlow,
@@ -20,6 +19,7 @@ import { motionDurations } from '@/lib/motion'
 export type AuthTransitionPhase = 'showing' | 'error'
 export type AuthTransitionErrorKind = BridgeErrorKind
 import { triggerHaptic } from '@/lib/haptics'
+import { verifyInternetReachable } from '@/lib/verify-internet-reachable'
 import { authTokens } from '@/theme/palette'
 
 interface AuthTransitionSplashProps {
@@ -205,16 +205,14 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
     void triggerHaptic('selection')
     setChecking(true)
     try {
-      // Ask NetInfo for a fresh probe instead of trusting the cached
-      // event listener — the user just tapped "Reintentar", they
-      // want a real check. If the network came back, dismiss the
-      // splash and let the underlying screen reveal. If it's still
-      // offline, re-emit the error so the fallback stays visible
-      // (and re-renders to give haptic + visual feedback that
-      // something happened).
-      const next = await NetInfo.fetch()
-      const online =
-        next.isConnected !== false && next.isInternetReachable !== false
+      // VERIFICACIÓN ACTIVA (round-trip real) en vez de confiar en NetInfo:
+      // si NetInfo quedó "stuck" en offline (snapshot stale al resumir, o su
+      // probe por defecto bloqueado), confiar en él haría que el Reintentar
+      // NUNCA funcione aunque el usuario tenga internet. Acá hacemos un GET
+      // real a endpoints confiables. Si hay conexión, escondemos la vista y
+      // revelamos la pantalla de abajo; si sigue offline, el fallback queda
+      // (el haptic del tap ya dio feedback de que el intento ocurrió).
+      const online = await verifyInternetReachable()
       if (online) {
         // Error de la máquina (viaje en curso) → RETRY re-prefetchea y
         // sigue el viaje. Takeover offline global → simplemente se

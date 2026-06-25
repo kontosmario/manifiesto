@@ -18,6 +18,7 @@ import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
 import { useRegisterPushToken } from '@/features/push/use-register-push-token'
 import { useOnlineStatus } from '@/hooks/use-online-status'
+import { verifyInternetReachable } from '@/lib/verify-internet-reachable'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { motionDurations } from '@/lib/motion'
 import { withStackDevLog } from '@/lib/dev/anim-log'
@@ -117,16 +118,32 @@ export function AppStackShell() {
   // app; el takeover offline global lo maneja GlobalConnectivityWatcher.
   useEffect(() => {
     if (!snapshot.isError) return
+
+    const classifyByMessage = (): 'network' | 'unknown' => {
+      const message = String(snapshot.error?.message ?? '').toLowerCase()
+      return message.includes('network') || message.includes('fetch') ? 'network' : 'unknown'
+    }
+
     if (!isOnline) {
-      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'network' })
-      return
+      // NetInfo dice offline — pero puede ser un snapshot STALE al resumir
+      // (la radio recién despierta). Verificamos de verdad antes de surfacear
+      // "Sin conexión": si hay internet real, el error NO es de red →
+      // clasificamos por el mensaje. Mismo criterio que GlobalConnectivityWatcher
+      // para que la vista solo aparezca cuando realmente no hay conexión.
+      let cancelled = false
+      void verifyInternetReachable().then((reachable) => {
+        if (cancelled) return
+        dispatchAuthFlow({
+          type: 'LOAD_FAILED',
+          kind: reachable ? classifyByMessage() : 'network',
+        })
+      })
+      return () => {
+        cancelled = true
+      }
     }
-    const message = String(snapshot.error?.message ?? '').toLowerCase()
-    if (message.includes('network') || message.includes('fetch')) {
-      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'network' })
-    } else {
-      dispatchAuthFlow({ type: 'LOAD_FAILED', kind: 'unknown' })
-    }
+
+    dispatchAuthFlow({ type: 'LOAD_FAILED', kind: classifyByMessage() })
   }, [snapshot.isError, snapshot.error, isOnline])
 
   // If the user is authenticated, block the whole app tree until the
