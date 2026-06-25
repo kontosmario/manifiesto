@@ -33,6 +33,7 @@ export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
     'fixed_deleted',
     'fixed_paid',
     'fixed_upcoming',
+    'price_hike',
   ],
   racha: [
     'streak_milestone',
@@ -41,6 +42,7 @@ export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
     'shield_used',
     'shield_earned',
     'shield_auto_hint',
+    'streak_recovery_nudge',
     'checkin_morning',
     'checkin_midday',
     'checkin_evening',
@@ -71,6 +73,7 @@ export function groupForKind(kind: string): NotificationGroup {
     case 'fixed_deleted':
     case 'fixed_paid':
     case 'fixed_upcoming':
+    case 'price_hike':
       return 'fijos'
     case 'streak_milestone':
     case 'streak_broken':
@@ -78,6 +81,7 @@ export function groupForKind(kind: string): NotificationGroup {
     case 'shield_used':
     case 'shield_earned':
     case 'shield_auto_hint':
+    case 'streak_recovery_nudge':
     case 'checkin_morning':
     case 'checkin_midday':
     case 'checkin_evening':
