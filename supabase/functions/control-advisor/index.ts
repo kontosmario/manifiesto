@@ -799,7 +799,7 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse(
       { error: 'Rate limit exceeded (family). Refresh in ~1 hour.' },
       429,
-      cors,
+      { ...cors, 'Retry-After': '3600' },
     )
   }
 
