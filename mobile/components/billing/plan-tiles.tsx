@@ -1,6 +1,7 @@
 import { memo, useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -8,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CardParticles } from '@/components/ui/card-particles'
+import { SkeletonBox } from '@/components/ui/skeleton-box'
 import { FernMark } from '@/components/billing/fern-mark'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -24,8 +26,10 @@ import { BILLING_PLANS, type BillingPlanId } from '@/features/billing/billing-pl
 export interface PlanTilesProps {
   selected: BillingPlanId
   onSelect(id: BillingPlanId): void
-  /** Precios reales de la store (RevenueCat) por productId. */
+  /** Precios localizados de StoreKit por productId. */
   productPrices?: Record<string, string>
+  /** true mientras StoreKit carga: mostramos skeleton en vez del hardcode. */
+  loading?: boolean
 }
 
 const MONTHLY = BILLING_PLANS['hogar-mensual']
@@ -35,11 +39,12 @@ export const PlanTiles = memo(function PlanTiles({
   selected,
   onSelect,
   productPrices,
+  loading = false,
 }: PlanTilesProps) {
   return (
     <View style={styles.row}>
-      <MonthlyTile selected={selected === MONTHLY.id} onSelect={onSelect} productPrices={productPrices} />
-      <YearlyTile selected={selected === YEARLY.id} onSelect={onSelect} productPrices={productPrices} />
+      <MonthlyTile selected={selected === MONTHLY.id} onSelect={onSelect} productPrices={productPrices} loading={loading} />
+      <YearlyTile selected={selected === YEARLY.id} onSelect={onSelect} productPrices={productPrices} loading={loading} />
     </View>
   )
 })
@@ -49,20 +54,28 @@ const MonthlyTile = memo(function MonthlyTile({
   selected,
   onSelect,
   productPrices,
+  loading,
 }: {
   selected: boolean
   onSelect(id: BillingPlanId): void
   productPrices?: Record<string, string>
+  loading?: boolean
 }) {
   const { theme } = useAppTheme()
   const highlight = useSelectionHighlight(selected)
-  const price = productPrices?.[MONTHLY.productId] ?? `$${MONTHLY.priceUsd}`
+  const storePrice = productPrices?.[MONTHLY.productId]
+  // Skeleton solo mientras StoreKit aún no respondió. Si falló (loading=false
+  // sin precio) caemos al hardcode; así nunca flasheamos un monto y lo cambiamos.
+  const showSkeleton = !storePrice && loading
+  const price = storePrice ?? `$${MONTHLY.priceUsd}`
 
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${MONTHLY.name}, ${price} por mes`}
+      accessibilityLabel={
+        showSkeleton ? `${MONTHLY.name}, cargando precio` : `${MONTHLY.name}, ${price} por mes`
+      }
       onPress={() => handlePress(selected, MONTHLY.id, onSelect)}
       style={styles.flex}
     >
@@ -79,7 +92,16 @@ const MonthlyTile = memo(function MonthlyTile({
       >
         <Text style={[styles.label, { color: theme.colors.textMuted }]}>MENSUAL</Text>
         <View style={styles.priceRow}>
-          <Text style={[styles.price, { color: theme.colors.text }]}>{price}</Text>
+          {showSkeleton ? (
+            <SkeletonBox width={56} height={20} radius={6} />
+          ) : (
+            <Animated.Text
+              entering={FadeIn.duration(240)}
+              style={[styles.price, { color: theme.colors.text }]}
+            >
+              {price}
+            </Animated.Text>
+          )}
           <Text style={[styles.priceSuffix, { color: theme.colors.textMuted }]}> /mes</Text>
         </View>
         <Text style={[styles.sub, { color: theme.colors.textMuted }]}>
@@ -95,20 +117,28 @@ const YearlyTile = memo(function YearlyTile({
   selected,
   onSelect,
   productPrices,
+  loading,
 }: {
   selected: boolean
   onSelect(id: BillingPlanId): void
   productPrices?: Record<string, string>
+  loading?: boolean
 }) {
   const { theme } = useAppTheme()
   const highlight = useSelectionHighlight(selected)
-  const price = productPrices?.[YEARLY.productId] ?? `$${YEARLY.priceUsd}`
+  const storePrice = productPrices?.[YEARLY.productId]
+  const showSkeleton = !storePrice && loading
+  const price = storePrice ?? `$${YEARLY.priceUsd}`
 
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${YEARLY.name}, recomendado, ${price} por año`}
+      accessibilityLabel={
+        showSkeleton
+          ? `${YEARLY.name}, recomendado, cargando precio`
+          : `${YEARLY.name}, recomendado, ${price} por año`
+      }
       onPress={() => handlePress(selected, YEARLY.id, onSelect)}
       style={styles.flex}
     >
@@ -142,7 +172,16 @@ const YearlyTile = memo(function YearlyTile({
             </View>
             <Text style={[styles.label, { color: theme.colors.heroText }]}>ANUAL</Text>
             <View style={styles.priceRow}>
-              <Text style={[styles.price, { color: theme.colors.heroText }]}>{price}</Text>
+              {showSkeleton ? (
+                <SkeletonBox width={64} height={20} radius={6} style={styles.skeletonOnForest} />
+              ) : (
+                <Animated.Text
+                  entering={FadeIn.duration(240)}
+                  style={[styles.price, { color: theme.colors.heroText }]}
+                >
+                  {price}
+                </Animated.Text>
+              )}
               <Text style={[styles.priceSuffix, styles.priceSuffixOnForest, { color: theme.colors.heroText }]}>
                 {' '}
                 /año
@@ -224,6 +263,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceSuffixOnForest: { opacity: 0.7 },
+  // El skeleton sobre el tile forest: crema translúcido (el surfaceMuted del
+  // SkeletonBox no contrasta sobre el verde). Va como override del bg.
+  skeletonOnForest: { backgroundColor: 'rgba(255, 251, 242, 0.35)', marginTop: 2 },
   sub: {
     fontSize: 9,
     fontWeight: '600',

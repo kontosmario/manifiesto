@@ -326,6 +326,8 @@ export function BillingScreen({
             snap={snap}
             lockMode={lockMode}
             isPurchasing={billing.isPurchasing}
+            productPrices={billing.productPrices}
+            pricesLoading={billing.pricesLoading}
             onPurchase={doPurchase}
             onRestore={doRestore}
             onLogout={handleLogout}

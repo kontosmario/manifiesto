@@ -36,6 +36,9 @@ export interface PaywallViewProps {
   onLogout?: () => void
   onDeleteAccount?: () => void
   productPrices?: Record<string, string>
+  /** true mientras StoreKit trae los precios: la UI muestra skeleton en lugar
+   *  del hardcode, así no hay flash cuando llega el precio real. */
+  pricesLoading?: boolean
   /** Modo bienvenida post-onboarding (solo en período libre): agrega un CTA
    *  primario "Empezar con N días de acceso completo" que continúa a Home sin
    *  comprar, y baja "Suscribirme" a secundario. El disclosure 3.1.2 sigue
@@ -53,13 +56,25 @@ export const PaywallView = memo(function PaywallView({
   onLogout,
   onDeleteAccount,
   productPrices,
+  pricesLoading = false,
   onContinueFree,
   continueLabel,
 }: PaywallViewProps) {
   const { theme } = useAppTheme()
   const [selected, setSelected] = useState<BillingPlanId>('hogar-anual')
   const plan = BILLING_PLANS[selected]
-  const priceText = `$${plan.priceUsd.toFixed(2)}${plan.cycle === 'yearly' ? '/año' : '/mes'}`
+  // Precio del CTA: preferimos el displayPrice localizado de StoreKit (mismo
+  // monto que cobra Apple, Guideline 3.1.2); fallback al hardcode si la store
+  // falló. El sufijo de período lo agregamos nosotros (StoreKit da solo el monto).
+  // Mientras StoreKit carga NO mostramos monto en el CTA (queda "Suscribirme" a
+  // secas) para no flashear el hardcode y corregirlo al llegar el precio real.
+  const cyclePeriod = plan.cycle === 'yearly' ? '/año' : '/mes'
+  const storePrice = productPrices?.[plan.productId]
+  const priceResolved = !!storePrice || !pricesLoading
+  const ctaPrice = storePrice ?? `$${plan.priceUsd.toFixed(2)}`
+  const subscribeLabel = priceResolved
+    ? `Suscribirme por ${ctaPrice}${cyclePeriod}`
+    : 'Suscribirme'
   const inFreePeriod = snap.source === 'trial' && snap.daysLeft != null
   const caution = getStateTokens('caution', theme)
   const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
@@ -98,6 +113,7 @@ export const PaywallView = memo(function PaywallView({
           selected={selected}
           onSelect={setSelected}
           productPrices={productPrices}
+          loading={pricesLoading}
         />
       </RiseView>
 
@@ -133,7 +149,7 @@ export const PaywallView = memo(function PaywallView({
               onPress={onContinueFree}
             />
             <AppButton
-              label={`Suscribirme por ${priceText}`}
+              label={subscribeLabel}
               variant="secondary"
               fullWidth
               loading={isPurchasing}
@@ -142,7 +158,7 @@ export const PaywallView = memo(function PaywallView({
           </View>
         ) : (
           <AppButton
-            label={`Suscribirme por ${priceText}`}
+            label={subscribeLabel}
             variant="primary"
             fullWidth
             loading={isPurchasing}

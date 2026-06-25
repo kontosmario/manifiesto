@@ -94,7 +94,17 @@ const config: ExpoConfig = {
     // picker for static images (OCR import flow), so the permission
     // inflates the Play Store privacy disclosure for no functional gain.
     // Setting microphonePermission: false drops it from the manifest.
-    ['expo-image-picker', { microphonePermission: false }],
+    // photosPermission: string ES propio (el default del plugin queda en
+    // inglés genérico, inconsistente con el resto del copy). Aparece en el
+    // prompt nativo de fototeca del flujo de import OCR.
+    [
+      'expo-image-picker',
+      {
+        microphonePermission: false,
+        photosPermission:
+          'Manifiesto necesita acceso a tus fotos para importar capturas de movimientos y leer sus montos.',
+      },
+    ],
     // Fix build EAS 2026-06-12: GoogleSignIn 9.x declara
     // `AppCheckCore ~> 11.0` (flota). AppCheckCore 11.3.0 sumó la dep
     // RecaptchaInterop y dispara la validación de Swift-estático

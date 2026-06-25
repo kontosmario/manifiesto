@@ -202,6 +202,18 @@ export function useBilling() {
 
   const [isPurchasing, setIsPurchasing] = useState(false)
 
+  // Precios localizados de StoreKit (productId → displayPrice, p.ej. "US$4.99"
+  // o "$4.990" según storefront). La UI los prefiere sobre el hardcode de
+  // billing-plans para que el monto mostrado SIEMPRE coincida con el cargo real
+  // (Apple Guideline 3.1.2 + UX en storefronts no-USD). Vacío hasta que carguen.
+  const [productPrices, setProductPrices] = useState<Record<string, string>>({})
+
+  // ¿Estamos esperando los precios de StoreKit? Arranca true SOLO si hay módulo
+  // IAP que va a responder (en Expo Go `iap` es null → false, la UI usa el
+  // hardcode al toque sin skeleton). La UI muestra skeleton mientras es true y
+  // así evita el flash hardcode→precio real. Se apaga cuando el fetch resuelve.
+  const [pricesLoading, setPricesLoading] = useState(iap != null)
+
   // Single-flight: solo permitimos una compra en vuelo. El listener resuelve
   // esta ref (no estado, para no re-suscribir el listener en cada compra).
   const pendingRef = useRef<PendingPurchase | null>(null)
@@ -267,6 +279,31 @@ export function useBilling() {
           resolvePending({ ok: false, reason: reasonForPurchaseError(error) })
         })
         subscriptions.push(updated, failed)
+
+        // Precios localizados: una sola vez, ya con la conexión lista (acá el
+        // orden está garantizado, evita el race de llamarlo desde el mount de
+        // la pantalla). Falla suave → la UI cae al hardcode de billing-plans.
+        iap
+          .fetchProducts({
+            skus: [
+              'com.manifiesto.app.subscription.monthly',
+              'com.manifiesto.app.subscription.yearly',
+            ],
+            type: 'subs',
+          })
+          .then((products) => {
+            if (!active) return
+            const map: Record<string, string> = {}
+            for (const p of products) {
+              if (p?.id && p.displayPrice) map[p.id] = p.displayPrice
+            }
+            if (Object.keys(map).length > 0) setProductPrices(map)
+            setPricesLoading(false)
+          })
+          .catch(() => {
+            // No-fatal: sin precios de store, la UI usa el fallback hardcodeado.
+            if (active) setPricesLoading(false)
+          })
       })
 
     return () => {
@@ -461,25 +498,16 @@ export function useBilling() {
     }
   }, [queryClient, userId])
 
-  // ─── getProducts: precios localizados (opcional para la UI) ──────────────
-  const getProducts = useCallback(async (): Promise<IapSubscriptionProduct[]> => {
-    if (!iap) return []
-    try {
-      const skus = [
-        'com.manifiesto.app.subscription.monthly',
-        'com.manifiesto.app.subscription.yearly',
-      ]
-      return await iap.fetchProducts({ skus, type: 'subs' })
-    } catch {
-      return []
-    }
-  }, [])
-
   return {
     status,
     isPurchasing,
     purchasePlan,
     restore,
-    getProducts,
+    /** Precios localizados de StoreKit (productId → displayPrice). Vacío hasta
+     *  que cargan; la UI cae al hardcode de billing-plans mientras tanto. */
+    productPrices,
+    /** true mientras se esperan los precios de StoreKit → la UI muestra
+     *  skeleton en vez del hardcode (evita el flash al llegar el precio real). */
+    pricesLoading,
   }
 }
