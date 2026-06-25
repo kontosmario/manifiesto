@@ -14,6 +14,10 @@ import {
   ICON_CORAL_SOFT,
   ICON_FOREST,
 } from '@/components/achievements/achievement-icon'
+import {
+  FilledAchievementIcon,
+  hasFilledAchievementIcon,
+} from '@/components/achievements/achievement-icon-filled'
 import type { AchievementViewItem } from '@/features/achievements/use-achievements'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -60,7 +64,11 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
                 },
           ]}
         >
-          {hasAchievementIcon(b.code) ? (
+          {hasFilledAchievementIcon(b.code) ? (
+            <View style={styles.iconDisc}>
+              <FilledAchievementIcon code={b.code} size={72} earned={earned} />
+            </View>
+          ) : hasAchievementIcon(b.code) ? (
             <View
               style={[
                 styles.iconDisc,
@@ -156,6 +164,8 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    // El ícono relleno trae su disco forest cuadrado → clip a círculo.
+    overflow: 'hidden',
   },
   lockBadge: {
     position: 'absolute',

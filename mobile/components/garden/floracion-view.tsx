@@ -13,6 +13,17 @@ import { CardParticles } from '@/components/ui/card-particles'
 import { AuroraBloom } from '@/components/ui/aurora-bloom'
 import { FernMark } from '@/components/billing/fern-mark'
 import { CoralBloom } from '@/components/garden/coral-bloom'
+import {
+  AchievementIcon,
+  hasAchievementIcon,
+  ICON_CORAL,
+  ICON_CORAL_SOFT,
+  ICON_FOREST,
+} from '@/components/achievements/achievement-icon'
+import {
+  FilledAchievementIcon,
+  hasFilledAchievementIcon,
+} from '@/components/achievements/achievement-icon-filled'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { floracionToneForTier } from '@/features/garden/garden-tier'
@@ -94,7 +105,26 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.fernWrap}>
           <AuroraBloom color="#2E6B34" size={210} intensity={0.5} />
-          <FernMark variant="cream" size={150} />
+          {/* El ícono ÚNICO del hito en una medalla crema → cada celebración se
+              siente distinta. Antes era el FernMark genérico (todas iguales por
+              tier). Fallback al helecho para codes sin ícono custom. */}
+          {hasFilledAchievementIcon(item.code) ? (
+            <View style={styles.medallion}>
+              <FilledAchievementIcon code={item.code} size={118} />
+            </View>
+          ) : hasAchievementIcon(item.code) ? (
+            <View style={styles.medallion}>
+              <AchievementIcon
+                code={item.code}
+                size={80}
+                stroke={ICON_FOREST}
+                accent={ICON_CORAL}
+                accentSoft={ICON_CORAL_SOFT}
+              />
+            </View>
+          ) : (
+            <FernMark variant="cream" size={150} />
+          )}
           {tone.blooms >= 1 && (
             <CoralBloom size={13} color="#E2935E" left="30%" top="24%" durationMs={11000} />
           )}
@@ -154,6 +184,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 18,
     position: 'relative',
+  },
+  medallion: {
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: '#FFFBF2',
+    borderWidth: 3,
+    borderColor: 'rgba(240,180,136,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // El ícono relleno trae su fondo forest cuadrado → clip a círculo.
+    overflow: 'hidden',
+    // Glow cálido sobre el scrim verde (la aurora aporta el verde detrás).
+    shadowColor: '#F0B488',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   eyebrow: {
     fontSize: 11.5,

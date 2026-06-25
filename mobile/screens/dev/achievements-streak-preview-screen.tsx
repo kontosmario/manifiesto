@@ -18,6 +18,10 @@ import {
   ICON_CORAL_SOFT,
   ICON_FOREST,
 } from '@/components/achievements/achievement-icon'
+import {
+  FilledAchievementIcon,
+  hasFilledAchievementIcon,
+} from '@/components/achievements/achievement-icon-filled'
 import type { StreakData } from '@/features/streaks/use-streak'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -108,13 +112,17 @@ export function AchievementsStreakPreviewScreen() {
                 ]}
               >
                 <View style={styles.iconShowcaseDisc}>
-                  <AchievementIcon
-                    code={code}
-                    size={34}
-                    stroke={ICON_FOREST}
-                    accent={ICON_CORAL}
-                    accentSoft={ICON_CORAL_SOFT}
-                  />
+                  {hasFilledAchievementIcon(code) ? (
+                    <FilledAchievementIcon code={code} size={52} />
+                  ) : (
+                    <AchievementIcon
+                      code={code}
+                      size={34}
+                      stroke={ICON_FOREST}
+                      accent={ICON_CORAL}
+                      accentSoft={ICON_CORAL_SOFT}
+                    />
+                  )}
                 </View>
                 <Text
                   style={[styles.iconTileTitle, { color: theme.colors.text }]}
@@ -260,7 +268,11 @@ function PreviewAchievementRow({ item }: { item: AchievementViewItem }) {
         },
       ]}
     >
-      {hasAchievementIcon(item.code) ? (
+      {hasFilledAchievementIcon(item.code) ? (
+        <View style={styles.previewIconDisc}>
+          <FilledAchievementIcon code={item.code} size={36} earned />
+        </View>
+      ) : hasAchievementIcon(item.code) ? (
         <View style={styles.previewIconDisc}>
           <AchievementIcon
             code={item.code}
@@ -504,6 +516,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBF2',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
 
   // Showcase grid de íconos nuevos
@@ -529,6 +542,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBF2',
     alignItems: 'center',
     justifyContent: 'center',
+    // Los íconos rellenos traen su fondo forest cuadrado → clip a círculo.
+    overflow: 'hidden',
   },
   iconTileTitle: {
     fontSize: 10.5,

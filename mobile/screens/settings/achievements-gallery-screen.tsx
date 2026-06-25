@@ -43,6 +43,10 @@ import {
   ICON_CORAL_SOFT,
   ICON_FOREST,
 } from '@/components/achievements/achievement-icon'
+import {
+  FilledAchievementIcon,
+  hasFilledAchievementIcon,
+} from '@/components/achievements/achievement-icon-filled'
 import { useAppTheme } from '@/theme/theme-provider'
 
 const GRID_GAP = 10
@@ -285,7 +289,9 @@ function BadgeTile({
             },
           ]}
         >
-          {hasAchievementIcon(item.code) ? (
+          {hasFilledAchievementIcon(item.code) ? (
+            <FilledAchievementIcon code={item.code} size={52} earned={earned} />
+          ) : hasAchievementIcon(item.code) ? (
             <AchievementIcon
               code={item.code}
               size={30}
@@ -445,6 +451,8 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    // Los íconos rellenos traen su disco forest cuadrado → clip a círculo.
+    overflow: 'hidden',
   },
   tileIcon: {
     fontSize: 27,
