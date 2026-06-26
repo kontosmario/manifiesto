@@ -15,6 +15,12 @@ export interface TopCategoryResult {
   categoryId: string
   /** Display name fallback to "Sin categoría" when missing. */
   name: string
+  /**
+   * Nombre CRUDO (no localizado) de la categoría — fuente para resolver
+   * el ícono del band (el matcher es ES). Cae a `name` cuando no hay
+   * crudo disponible (uncategorized). NUNCA pasar `name` al matcher.
+   */
+  rawName: string
   /** Sum of discretionary spend in this cycle (ARS, rounded). */
   total: number
   /** Fraction of the cycle's discretionary total — 0..1. */
@@ -25,6 +31,9 @@ interface CategoryLookup {
   /** Map id → display name. The Home tree already memoizes this from
    *  `useCategories(familyId)`. */
   categoryNameById: ReadonlyMap<string, string>
+  /** Map id → nombre CRUDO (no localizado). Fuente para el ícono del
+   *  band (matcher ES). Memoizado junto a `categoryNameById`. */
+  categoryRawNameById: ReadonlyMap<string, string>
 }
 
 interface ComputeArgs extends CategoryLookup {
@@ -87,12 +96,20 @@ export function computeTopCategory(args: ComputeArgs): TopCategoryResult | null 
   // deleted/missing categories. If a future caller wires the empty
   // string into a real filter, the conflation becomes user-visible
   // and this helper would need to disambiguate.
+  const uncategorized = i18n.t('home:topCategory.uncategorized')
   return {
     categoryId: topId === '__uncat__' ? '' : topId,
     name:
       topId === '__uncat__'
-        ? i18n.t('home:topCategory.uncategorized')
-        : args.categoryNameById.get(topId) ?? i18n.t('home:topCategory.uncategorized'),
+        ? uncategorized
+        : args.categoryNameById.get(topId) ?? uncategorized,
+    // Crudo para el ícono: cae al display si no hay name crudo (uncat).
+    rawName:
+      topId === '__uncat__'
+        ? uncategorized
+        : args.categoryRawNameById.get(topId) ??
+          args.categoryNameById.get(topId) ??
+          uncategorized,
     total: Math.round(topAmount),
     share: total > 0 ? topAmount / total : 0,
   }

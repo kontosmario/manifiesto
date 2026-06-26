@@ -80,6 +80,10 @@ interface HomeDashboardProps {
    *  los gastos por timestamp desc. */
   recentIncome?: IncomeEvent[]
   categoryNameById: Map<string, string>
+  /** category_id → nombre CRUDO (no localizado) de la DB. Fuente para
+   *  resolver el ícono/color de cada categoría (los matchers son ES).
+   *  El display visible sigue saliendo de `categoryNameById`. */
+  categoryRawNameById: Map<string, string>
   /** category_id → color (hex). Tinta el icon tile de cada gasto del feed
    *  por categoría, igual que en Gastos · Movimientos. */
   categoryColorById: Map<string, string>
@@ -144,6 +148,7 @@ export function HomeDashboard({
   recentExpenses,
   recentIncome = [],
   categoryNameById,
+  categoryRawNameById,
   categoryColorById,
   familyId,
   isSolo,
@@ -748,12 +753,14 @@ export function HomeDashboard({
         cycleStart: dashboard.payCycle.start,
         cycleEnd: dashboard.payCycle.end,
         categoryNameById,
+        categoryRawNameById,
       }),
     [
       expensesData,
       dashboard.payCycle.start,
       dashboard.payCycle.end,
       categoryNameById,
+      categoryRawNameById,
     ],
   )
   const topCategoryTracker = useTrackElement({
@@ -1032,6 +1039,7 @@ export function HomeDashboard({
           expenses={recentExpenses}
           incomeEvents={cycleIncome}
           categoryNameById={categoryNameById}
+          categoryRawNameById={categoryRawNameById}
           categoryColorById={categoryColorById}
           familyMembers={familyMembers}
           isLoading={isLoadingActivity}

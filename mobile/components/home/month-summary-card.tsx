@@ -246,7 +246,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
           band={
             variablesChip
               ? {
-                  iconName: pickMaterialIconForCategory(variablesChip.name),
+                  iconName: pickMaterialIconForCategory(variablesChip.rawName),
                   bandBg: variablesTone.bandBg,
                   iconBg: variablesTone.bandIconBg,
                   iconFg: variablesTone.bandIconFg,

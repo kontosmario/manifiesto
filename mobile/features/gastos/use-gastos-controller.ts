@@ -196,7 +196,13 @@ export function useGastosController(
     for (const c of categoriesQuery.data ?? []) {
       // Display localizado NO destructivo: el RPC de counts no trae
       // template_id, así que matcheamos por (name, scope='expense').
-      m.set(c.id, { id: c.id, name: localizeCategoryNameByName(c.name, 'expense'), color: c.color })
+      m.set(c.id, {
+        id: c.id,
+        name: localizeCategoryNameByName(c.name, 'expense'),
+        // Crudo de la DB → fuente para ícono/color (los matchers son ES).
+        rawName: c.name,
+        color: c.color,
+      })
     }
     return m
   }, [categoriesQuery.data])

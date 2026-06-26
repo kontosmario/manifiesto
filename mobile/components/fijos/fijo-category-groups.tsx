@@ -102,7 +102,8 @@ function CategoryGroup({
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(true)
-  const emoji = pickIconForFixedExpenseCategory(group.label)
+  // Ícono por nombre CRUDO (matcher ES); el header sigue en `group.label`.
+  const emoji = pickIconForFixedExpenseCategory(group.rawLabel)
   // Press scale subtle 0.98 — toda la row es tap-target grande, escala
   // sutil para no competir con la rotation del chevron.
   const press = usePressScale({ pressedScale: 0.98 })
@@ -159,6 +160,7 @@ function CategoryGroup({
               item={item}
               color={group.color}
               label={group.label}
+              rawLabel={group.rawLabel}
               todayDay={todayDay}
               onMarkPaid={onMarkPaid}
               onEdit={onEdit}
@@ -177,6 +179,7 @@ function ItemSlot({
   item,
   color,
   label,
+  rawLabel,
   todayDay,
   onMarkPaid,
   onEdit,
@@ -187,6 +190,7 @@ function ItemSlot({
   item: FijoItem
   color: string
   label: string
+  rawLabel: string
   todayDay: number
   onMarkPaid?: (id: string) => void
   onEdit?: (id: string) => void
@@ -202,6 +206,7 @@ function ItemSlot({
       item={item}
       categoryColor={color}
       categoryName={label}
+      categoryRawName={rawLabel}
       todayDay={todayDay}
       onMarkPaid={onMarkPaid}
       onEdit={onEdit}

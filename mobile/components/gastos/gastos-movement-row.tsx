@@ -154,6 +154,8 @@ export function GastosMovementRow({
         <GastoRow
           title={item.description || cat?.name || t('common:terms.expense')}
           categoryName={cat?.name ?? t('gastos:movementRow.noCategory')}
+          // Ícono por crudo (no localizado); el display sigue en `cat.name`.
+          categoryRawName={cat?.rawName}
           categoryColor={cat?.color ?? theme.colors.textMuted}
           whoName={who?.name ?? t('gastos:movementRow.someone')}
           whoColor={who?.color ?? '#329315'}

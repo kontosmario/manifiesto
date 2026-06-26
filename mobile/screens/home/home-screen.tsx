@@ -203,6 +203,18 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       ),
     [categoriesQuery.data],
   )
+  // category_id → nombre CRUDO (no localizado). Fuente para resolver el
+  // ícono/color de cada categoría (los matchers son ES). El display
+  // visible sale de `categoryNameById` (localizado).
+  const categoryRawNameById = useMemo(
+    () =>
+      new Map(
+        (categoriesQuery.data ?? []).map(
+          (category) => [category.id, category.name] as const,
+        ),
+      ),
+    [categoriesQuery.data],
+  )
   // category_id → color (hex) para tintar el icon tile de cada gasto del
   // activity feed por categoría, igual que en Gastos · Movimientos. El
   // color ya viene resuelto por useCategories (DB o fallbackCategoryColor).
@@ -440,6 +452,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           recentExpenses={recentExpenses}
           recentIncome={recentIncome}
           categoryNameById={categoryNameById}
+          categoryRawNameById={categoryRawNameById}
           categoryColorById={categoryColorById}
           familyId={familyId}
           isSolo={isSolo}

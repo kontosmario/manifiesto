@@ -19,7 +19,16 @@ import type { Expense } from '@/features/expenses/use-expenses'
 
 export interface CategoryLite {
   id: string
+  /** Nombre A MOSTRAR (localizado). Úsalo como label visible. */
   name: string
+  /**
+   * Nombre CRUDO de la DB (estable, en español para los templates).
+   * Fuente para resolver ícono/color por nombre (`pickIconForCategory`,
+   * `resolveCategoryHueByName`, etc.) — esos matchers esperan el crudo.
+   * NUNCA pasarles el `name` localizado o caen al default en EN.
+   * Opcional para back-compat; cae a `name` cuando falta.
+   */
+  rawName?: string
   color: string
 }
 

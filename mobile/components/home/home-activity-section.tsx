@@ -17,6 +17,9 @@ interface HomeActivitySectionProps {
    *  timestamp desc; positivos en verde con ícono distinto. */
   incomeEvents?: IncomeEvent[]
   categoryNameById: Map<string, string>
+  /** category_id → nombre CRUDO (no localizado). Fuente para el ícono de
+   *  cada row (matcher ES). El display sale de `categoryNameById`. */
+  categoryRawNameById: Map<string, string>
   /** category_id → color (hex). Tinta el icon tile de cada gasto por
    *  categoría, igual que en Gastos · Movimientos. */
   categoryColorById: Map<string, string>
@@ -91,6 +94,7 @@ function HomeActivitySectionImpl({
   expenses,
   incomeEvents = [],
   categoryNameById,
+  categoryRawNameById,
   categoryColorById,
   familyMembers = [],
   isLoading,
@@ -197,6 +201,9 @@ function HomeActivitySectionImpl({
         }
         const expense = m.expense
         const categoryName = categoryNameById.get(expense.category_id) ?? t('home:activitySection.noCategory')
+        // Ícono por nombre CRUDO (matcher ES); el display sigue en
+        // `categoryName` (localizado). Cae al display si falta el crudo.
+        const categoryRawName = categoryRawNameById.get(expense.category_id) ?? categoryName
         const dangerAction: SwipeAction = {
           label: t('home:activitySection.delete'),
           tone: 'danger',
@@ -211,7 +218,7 @@ function HomeActivitySectionImpl({
             isProcessing={pendingExpenseId === expense.id}
           >
             <ActivityRowV2
-              icon={pickIconForCategory(categoryName)}
+              icon={pickIconForCategory(categoryRawName)}
               title={expense.description || categoryName}
               category={categoryName}
               categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}

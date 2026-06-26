@@ -85,7 +85,7 @@ export function GastosSmartFilter({
                   key={c.id}
                   active={selectedCategoryId === c.id}
                   label={c.name}
-                  emoji={pickIconForCategory(c.name)}
+                  emoji={pickIconForCategory(c.rawName ?? c.name)}
                   color={c.color}
                   count={c.count}
                   selectId={c.id}
@@ -101,7 +101,7 @@ export function GastosSmartFilter({
                     key={c.id}
                     active={selectedCategoryId === c.id}
                     label={c.name}
-                    emoji={pickIconForCategory(c.name)}
+                    emoji={pickIconForCategory(c.rawName ?? c.name)}
                     color={c.color}
                     count={c.count}
                     selectId={c.id}

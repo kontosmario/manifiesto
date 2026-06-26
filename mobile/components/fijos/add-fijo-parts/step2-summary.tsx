@@ -133,7 +133,7 @@ export function Step2Summary(props: Step2SummaryProps) {
           <View style={{ flex: 1 }}>
             <Text style={[styles.summaryName, { color: theme.colors.text }]}>{name}</Text>
             <Text style={[styles.summaryMeta, { color: theme.colors.textMuted }]}>
-              {selectedCategory?.name ?? t('fijos:wizard.step2.noCategory')} ·{' '}
+              {selectedCategory?.displayName ?? t('fijos:wizard.step2.noCategory')} ·{' '}
               {(() => {
                 const freqKey = FREQ_OPTIONS.find((f) => f.id === freqChoice)?.labelKey
                 return freqKey ? t(freqKey) : ''

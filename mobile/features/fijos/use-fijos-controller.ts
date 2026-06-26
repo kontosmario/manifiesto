@@ -233,6 +233,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
         id: c.id,
         // Display localizado NO destructivo (== name crudo si renombrada).
         name: c.displayName,
+        // Crudo de la DB → fuente para el ícono del grupo (matcher ES).
+        rawName: c.name,
         color: c.color,
       })),
     [categoriesQuery.data],

@@ -9,6 +9,12 @@ import { useThemeTokens } from '@/theme/theme-provider'
 export interface GastoRowProps {
   title?: string
   categoryName?: string
+  /**
+   * Nombre CRUDO de la categoría (no localizado) para resolver el ícono.
+   * El matcher de íconos espera el name ES de la DB; el display sigue
+   * usando `categoryName` (localizado). Cae a `categoryName` si falta.
+   */
+  categoryRawName?: string
   categoryColor?: string
   whoName?: string
   whoColor?: string
@@ -49,6 +55,7 @@ function GastoRowImpl(props: GastoRowProps) {
 function GastoRowReal({
   title = '',
   categoryName = '',
+  categoryRawName,
   categoryColor = '#888888',
   whoName = '',
   whoColor = '#888888',
@@ -57,7 +64,9 @@ function GastoRowReal({
   notes,
 }: GastoRowProps) {
   const theme = useThemeTokens()
-  const icon = pickIconForCategory(categoryName)
+  // Ícono por nombre CRUDO (no localizado) — el matcher es ES; si no se
+  // pasa el crudo, cae al display localizado (back-compat).
+  const icon = pickIconForCategory(categoryRawName ?? categoryName)
   const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
   // catChipText hue-preserved en ambos modos. Antes el pastel original
   // sobre los chip backgrounds fallaba WCAG:
@@ -258,7 +267,8 @@ const styles = StyleSheet.create({
  * darkenForLightBg memoization, hexAlpha calls, etc.). Memo cierra
  * eso — solo rows con props cambiados re-renderean.
  *
- * Todos los props son primitives (title, categoryName, categoryColor,
- * whoName, whoColor, amount, time, notes) → shallow comparison exacta.
+ * Todos los props son primitives (title, categoryName, categoryRawName,
+ * categoryColor, whoName, whoColor, amount, time, notes) → shallow
+ * comparison exacta.
  */
 export const GastoRow = memo(GastoRowImpl)

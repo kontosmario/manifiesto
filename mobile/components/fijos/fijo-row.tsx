@@ -33,6 +33,12 @@ interface FijoRowProps {
   item?: FijoItem
   categoryColor?: string
   categoryName?: string
+  /**
+   * Nombre CRUDO (no localizado) de la categoría para resolver el ícono
+   * (el matcher es ES). El display sigue usando `categoryName`. Cae a
+   * `categoryName` cuando falta.
+   */
+  categoryRawName?: string
   /** Current UTC day-of-month. Histórico — el row ahora computa los
    *  días al vencimiento desde `item.next_due_on` directo (cálculo
    *  proper con UTC midnight), así que esta prop ya no se usa para
@@ -79,6 +85,7 @@ function FijoRowReal({
   item,
   categoryColor = '#888888',
   categoryName = '',
+  categoryRawName,
   // todayDay sigue aceptándose como prop pero ya no se desestructura —
   // el cálculo del detail label usa `next_due_on` directo (proper UTC
   // midnight diff), no day-of-month math.
@@ -95,7 +102,8 @@ function FijoRowReal({
   // transition de la fila (warp). Tras el idle se habilita para expandir/
   // colapsar y para add/delete de fijos.
   const rowLayout = useGatedLayout(LinearTransition.duration(240))
-  const emoji = pickIconForFixedExpenseCategory(categoryName)
+  // Ícono por nombre CRUDO (matcher ES); el display sigue en `categoryName`.
+  const emoji = pickIconForFixedExpenseCategory(categoryRawName ?? categoryName)
   // FijoRowReal is only rendered for non-placeholder rows, where `item`
   // is always supplied by the parent. The non-null assertion keeps the
   // downstream code unchanged while letting the prop be optional for the
