@@ -164,11 +164,14 @@ function pickTopCategory({
   if (top.amount <= 0) return null
 
   const uncategorized = i18n.t('control:wrapped.topCategory.uncategorized')
+  // `top.name` viene crudo del `category_breakdown` (ES, server-side). El
+  // Wrapped lo muestra al usuario, así que resolvemos el display localizado
+  // por `categoryId` PRIMERO; sólo caemos al name crudo del breakdown si la
+  // categoría ya no existe en el mapa (renombrada/borrada) o no hay id.
   const name =
+    (top.categoryId ? categoryNameById.get(top.categoryId) : undefined) ??
     top.name ??
-    (top.categoryId
-      ? categoryNameById.get(top.categoryId) ?? uncategorized
-      : uncategorized)
+    uncategorized
   const share = totalSpent > 0 ? top.amount / totalSpent : 0
   return {
     name,

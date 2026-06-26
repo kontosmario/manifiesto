@@ -622,7 +622,9 @@ export function useControlV2Data(
     const latest = summaries[0]
     if (!latest || (latest.expenses_count ?? 0) === 0) return null
     const categoryNameById = new Map(
-      categoriesExpense.map((c) => [c.id, c.name] as const),
+      // Display localizado: el Wrapped muestra la categoría top al usuario,
+      // así que el mapa debe llevar `displayName` (no el `name` crudo ES).
+      categoriesExpense.map((c) => [c.id, c.displayName] as const),
     )
     return buildWrappedPayloadFromSummary({
       summary: latest,

@@ -27,6 +27,7 @@
 
 import i18n from '@/lib/i18n'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
+import { weekdayLongFromMondayIndex } from '@/utils/date-format'
 import type { Expense } from '@/features/expenses/expense-repository'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
@@ -1149,8 +1150,11 @@ function buildWeeklyPattern(
   if (peorDow && peorDow.avg > 0 && peorDow.ratio >= 1.4) {
     const monthlyOccurrences = cycleDays / 7
     dowExtra = (peorDow.avg - globalAvg) * monthlyOccurrences
+    const peorDowIdx = dowIndexFromName(peorDow.name)
     dowName =
-      DOW_NAMES_FULL[dowIndexFromName(peorDow.name)] ?? peorDow.name.toLowerCase()
+      peorDowIdx >= 0
+        ? weekdayLongFromMondayIndex(peorDowIdx)
+        : peorDow.name.toLowerCase()
   }
 
   // ── Candidate B: weekend premium

@@ -52,3 +52,28 @@ export function formatDayMonthShort(date: Date): string {
 export function formatWeekdayDayMonth(date: Date): string {
   return `${weekdayShort(date)} ${date.getDate()} ${monthShort(date)}`
 }
+
+const weekdayLongCache = new Map<string, Intl.DateTimeFormat>()
+function weekdayLongFormatter(): Intl.DateTimeFormat {
+  const locale = getIntlLocale()
+  let formatter = weekdayLongCache.get(locale)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { weekday: 'long' })
+    weekdayLongCache.set(locale, formatter)
+  }
+  return formatter
+}
+
+/** Día de la semana completo del idioma activo, p.ej. "viernes" / "Friday". */
+export function weekdayLong(date: Date): string {
+  return weekdayLongFormatter().format(date)
+}
+
+/**
+ * Día completo localizado desde un índice Lunes-primero (0=Lun … 6=Dom),
+ * el orden de DOW_NAMES_FULL en los builders de señales. 2024-01-01 fue lunes.
+ */
+export function weekdayLongFromMondayIndex(index: number): string {
+  const safe = (((index % 7) + 7) % 7)
+  return weekdayLong(new Date(2024, 0, 1 + safe))
+}

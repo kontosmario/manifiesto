@@ -23,6 +23,7 @@ import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
 import Constants from 'expo-constants'
 import { setBiometricPromptInFlight } from '@/lib/biometric-prompt-state'
+import i18n from '@/lib/i18n'
 import {
   clearBiometricEnabledFlag,
   isBiometricEnabledFlagSet,
@@ -82,7 +83,9 @@ const credentialStoreOptions: SecureStore.SecureStoreOptions = {
 //   firmada — F1) a cambio de un único prompt biométrico.
 
 function getDefaultBiometricLabel() {
-  return Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'biometría'
+  return Platform.OS === 'ios'
+    ? 'Face ID / Touch ID'
+    : i18n.t('auth:reauthSheet.biometricLabelFallback')
 }
 
 function resolveBiometricLabel(types: LocalAuthentication.AuthenticationType[]) {
@@ -345,10 +348,12 @@ export async function authenticateBiometricAccess(
   setBiometricPromptInFlight(true)
   try {
     return await LocalAuthentication.authenticateAsync({
-      promptMessage: options?.promptMessage ?? 'Desbloquea tu acceso guardado',
-      cancelLabel: 'Cancelar',
+      promptMessage: options?.promptMessage ?? i18n.t('auth:biometric.unlockPrompt'),
+      cancelLabel: i18n.t('common:actions.cancel'),
       fallbackLabel:
-        disableDeviceFallback || Platform.OS !== 'ios' ? undefined : 'Usar código',
+        disableDeviceFallback || Platform.OS !== 'ios'
+          ? undefined
+          : i18n.t('auth:biometric.useCode'),
       disableDeviceFallback,
       biometricsSecurityLevel: ANDROID_REQUIRES_WEAK_BIOMETRIC ? 'weak' : 'strong',
     })
