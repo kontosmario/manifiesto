@@ -830,20 +830,22 @@ function buildCategoryAcceleration(
   const body = spike
     ? i18n.t('insights:signals.catAccel.bodySpike', {
         amount: fmt(topNow.amount),
-        category: topNow.name,
+        category: topNow.displayName,
         avg: fmt(historicalAvg),
       })
     : i18n.t('insights:signals.catAccel.bodyTrend', {
         amount: fmt(topNow.amount),
-        category: topNow.name,
+        category: topNow.displayName,
         avg: fmt(historicalAvg),
       })
   return {
     id: 'cat-accel',
     emoji: spike ? '🎯' : '📈',
+    // `cat` = nombre CRUDO (load-bearing: los chips de gastos/banner lo
+    // matchean por raw name). El display va por `displayName`.
     cat: topNow.name,
     title: i18n.t('insights:signals.catAccel.title', {
-      category: topNow.name,
+      category: topNow.displayName,
       suffix: titleSuffix,
     }),
     body,
@@ -873,22 +875,30 @@ function buildCategoryCapBreaches(
 ): ControlAdvisorTask[] {
   if (args.limits.length === 0) return []
   const byCategoryId = groupExpensesByCategoryId(args.expenses)
-  const categoryName = (id: string) =>
+  // `rawCategoryName` = nombre CRUDO (load-bearing: el banner de
+  // add-expense matchea `signal.cat` por raw name). `categoryDisplayName`
+  // = localizado, SOLO para el copy del título.
+  const rawCategoryName = (id: string) =>
     args.categoriesExpense.find((c) => c.id === id)?.name ??
     i18n.t('insights:signals.cap.categoryFallback')
+  const categoryDisplayName = (id: string) => {
+    const c = args.categoriesExpense.find((cat) => cat.id === id)
+    return c?.displayName ?? c?.name ?? i18n.t('insights:signals.cap.categoryFallback')
+  }
 
   const out: ControlAdvisorTask[] = []
   for (const limit of args.limits) {
     const spent = byCategoryId.get(limit.category_id) ?? 0
     const threshold = limit.monthly_cap * (limit.warning_threshold_pct / 100)
     if (spent < threshold) continue
-    const name = categoryName(limit.category_id)
+    const rawName = rawCategoryName(limit.category_id)
+    const name = categoryDisplayName(limit.category_id)
     const pct = Math.round((spent / limit.monthly_cap) * 100)
     const breach = spent > limit.monthly_cap
     out.push({
       id: `cap-${limit.id}`,
       emoji: breach ? '🚫' : '⚠️',
-      cat: name,
+      cat: rawName,
       title: breach
         ? i18n.t('insights:signals.cap.titleBreach', { name })
         : i18n.t('insights:signals.cap.titleWarning', { name, pct }),
@@ -945,15 +955,17 @@ function buildCategoryDominance(
   return {
     id: `cat-dominance-${top.id}`,
     emoji: '🎯',
+    // `cat` = nombre CRUDO (load-bearing: el merge cat-accel⊕cat-dominance
+    // y los chips de gastos lo matchean por raw name). Display = displayName.
     cat: top.name,
     title: i18n.t('insights:signals.catDominance.title', {
-      category: top.name,
+      category: top.displayName,
       amount: fmt(top.amount),
     }),
     body: i18n.t('insights:signals.catDominance.body', {
       total: fmt(total),
       amount: fmt(top.amount),
-      category: top.name,
+      category: top.displayName,
     }),
     impact: i18n.t('insights:signals.catDominance.impact', { save: fmt(save10) }),
     impactRaw: Math.round(save10),
@@ -979,8 +991,15 @@ function buildCategoryReductionWin(
   // (where $5k is meaningful) and over-fire for high earners (where
   // $5k is noise). For ingresoMes=0 we keep the absolute floor.
   const minDelta = Math.max(1000, args.ingresoMes * 0.005)
-  let bestWin: { name: string; now: number; avg: number; delta: number } | null = null
+  let bestWin: {
+    name: string
+    displayName: string
+    now: number
+    avg: number
+    delta: number
+  } | null = null
   for (const c of byCategory) {
+    // Match por nombre CRUDO (los summaries guardan el name en español).
     const avg = avgCategoryFromSummaries(args.summaries, c.name)
     if (avg === 0) continue
     const ratio = c.amount / avg
@@ -988,7 +1007,7 @@ function buildCategoryReductionWin(
     const delta = avg - c.amount
     if (delta < minDelta) continue
     if (!bestWin || delta > bestWin.delta) {
-      bestWin = { name: c.name, now: c.amount, avg, delta }
+      bestWin = { name: c.name, displayName: c.displayName, now: c.amount, avg, delta }
     }
   }
   if (!bestWin) return null
@@ -996,8 +1015,9 @@ function buildCategoryReductionWin(
   return {
     id: 'cat-win',
     emoji: '✅',
+    // `cat` = nombre CRUDO (los chips de gastos lo matchean por raw name).
     cat: bestWin.name,
-    title: i18n.t('insights:signals.catWin.title', { category: bestWin.name, pct }),
+    title: i18n.t('insights:signals.catWin.title', { category: bestWin.displayName, pct }),
     body: i18n.t('insights:signals.catWin.body', {
       now: fmt(bestWin.now),
       avg: fmt(bestWin.avg),
@@ -1855,7 +1875,7 @@ function dowIndexFromName(name: string): number {
 function groupExpensesByCategory(
   expenses: Expense[],
   categories: Category[],
-): Array<{ id: string; name: string; amount: number }> {
+): Array<{ id: string; name: string; displayName: string; amount: number }> {
   const byId = new Map<string, number>()
   for (const e of expenses) {
     if (e.commitment_id) continue
@@ -1864,11 +1884,19 @@ function groupExpensesByCategory(
       (byId.get(e.category_id) ?? 0) + Number(e.price ?? 0),
     )
   }
-  return Array.from(byId.entries()).map(([id, amount]) => ({
-    id,
-    name: categories.find((c) => c.id === id)?.name ?? i18n.t('insights:signals.fallbackCategory'),
-    amount,
-  }))
+  return Array.from(byId.entries()).map(([id, amount]) => {
+    const cat = categories.find((c) => c.id === id)
+    // `name` = crudo de DB (load-bearing: matchea contra los
+    // `category_breakdown[].name` de los summaries, que el server guarda
+    // en español). `displayName` = localizado, SOLO para mostrar.
+    const fallback = i18n.t('insights:signals.fallbackCategory')
+    return {
+      id,
+      name: cat?.name ?? fallback,
+      displayName: cat?.displayName ?? cat?.name ?? fallback,
+      amount,
+    }
+  })
 }
 
 function groupExpensesByCategoryId(expenses: Expense[]): Map<string, number> {

@@ -117,7 +117,6 @@ export function GastosListHeader(props: GastosListHeaderProps) {
     onSelectCategory,
     onClearFilters,
     advisorSignals,
-    categoryNameById,
     onAdvisorPress,
     sectionsLength,
   } = props
@@ -126,6 +125,18 @@ export function GastosListHeader(props: GastosListHeaderProps) {
     () => getMondayFirstOffset(cycleStart),
     [cycleStart],
   )
+  // El chip matchea `signal.cat` (nombre CRUDO de la categoría, en
+  // español) contra el nombre de la categoría seleccionada. Por eso acá
+  // armamos el lookup con el `rawName` crudo, NO con el `name` localizado:
+  // el `categoryNameById` del prop viene localizado y rompería el match en
+  // EN (el signal trae "Comida" pero el display sería "Food").
+  const rawCategoryNameById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of categoriesList) {
+      m.set(c.id, c.rawName ?? c.name)
+    }
+    return m
+  }, [categoriesList])
   const selectedDayTotal =
     selectedDay != null ? (dailySpend[selectedDay]?.total ?? 0) : 0
   const selectedDayCount =
@@ -234,7 +245,7 @@ export function GastosListHeader(props: GastosListHeaderProps) {
           <GastosAdvisorChip
             signals={advisorSignals}
             selectedCategoryId={selectedCategoryId}
-            categoryNameById={categoryNameById}
+            categoryNameById={rawCategoryNameById}
             onPress={onAdvisorPress}
           />
         </Animated.View>

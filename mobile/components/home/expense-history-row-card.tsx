@@ -70,7 +70,7 @@ export function ExpenseHistoryRowCard({
               <ExpenseCategoryPill
                 borderColor={palette.borderColor}
                 color={category?.color ?? theme.colors.primary}
-                label={category?.name ?? t('home:historyRow.noCategory')}
+                label={category?.displayName ?? t('home:historyRow.noCategory')}
                 pillBackgroundColor={palette.pillBackgroundColor}
                 textColor={theme.colors.textMuted}
               />

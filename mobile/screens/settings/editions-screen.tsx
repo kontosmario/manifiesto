@@ -61,7 +61,7 @@ export function EditionsScreen() {
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>()
     for (const cat of categoriesQuery.data ?? []) {
-      map.set(cat.id, cat.name)
+      map.set(cat.id, cat.displayName)
     }
     return map
   }, [categoriesQuery.data])

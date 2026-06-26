@@ -22,7 +22,9 @@ export function buildTopCategoryFocus({
   spentInCurrentCycle: number
 }): ExpenseAnalyticsCategoryFocus | null {
   const cycleCategoryTotals = new Map<string, number>()
-  const categoryNameById = new Map(categories.map((category) => [category.id, category.name] as const))
+  const categoryNameById = new Map(
+    categories.map((category) => [category.id, category.displayName ?? category.name] as const),
+  )
 
   expenses.forEach((expense) => {
     const expenseDate = normalizeToStartOfDay(new Date(expense.created_at))

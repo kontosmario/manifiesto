@@ -150,7 +150,7 @@ export function AddFixedQuickSheet({
                       ]}
                       numberOfLines={1}
                     >
-                      {cat.name}
+                      {cat.displayName}
                     </Text>
                   </Pressable>
                 )

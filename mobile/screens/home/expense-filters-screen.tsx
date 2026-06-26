@@ -37,7 +37,7 @@ function buildCategoryLabel(
     return i18n.t('gastos:smartFilter.all')
   }
 
-  return categories.find((category) => category.id === selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all')
+  return categories.find((category) => category.id === selectedCategoryId)?.displayName ?? i18n.t('gastos:smartFilter.all')
 }
 
 export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
