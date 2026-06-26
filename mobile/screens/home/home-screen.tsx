@@ -198,7 +198,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const categoryNameById = useMemo(
     () =>
       new Map(
-        (categoriesQuery.data ?? []).map((category) => [category.id, category.name] as const),
+        (categoriesQuery.data ?? []).map(
+          (category) => [category.id, category.displayName] as const,
+        ),
       ),
     [categoriesQuery.data],
   )

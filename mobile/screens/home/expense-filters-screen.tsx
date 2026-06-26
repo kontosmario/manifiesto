@@ -177,7 +177,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
                 <Chip
                   color={category.color}
                   key={category.id}
-                  label={category.name}
+                  label={category.displayName}
                   onPress={() => setCategorySelectionDraft(category.id)}
                   isActive={resolveSelectedCategoryId(categories, categorySelectionDraft) === category.id}
                 />

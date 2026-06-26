@@ -28,7 +28,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { getLastUserProfile } from '@/lib/last-user-cache'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
-import { MONTH_SHORT } from '@/utils/date-format'
+import { monthShort } from '@/utils/date-format'
 
 interface WelcomeCancelDeletionBannerProps {
   /** Optional: where the CTA routes the user. Defaults to the login flow. */
@@ -39,7 +39,7 @@ function formatScheduledDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   const day = d.getDate()
-  const month = MONTH_SHORT[d.getMonth()]
+  const month = monthShort(d)
   const year = d.getFullYear()
   return `${day} de ${month}. ${year}`
 }

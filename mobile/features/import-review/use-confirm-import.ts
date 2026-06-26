@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
 import { sendFamilyPush } from '@/lib/send-family-push'
@@ -89,7 +90,7 @@ export function useConfirmImport(ctx: ConfirmContext) {
             insertedIncomes === 1
               ? '{actor} registró un ingreso'
               : `{actor} registró ${insertedIncomes} ingresos`,
-          body: `+$${insertedIncomeTotal.toLocaleString('es-AR')}`,
+          body: `+$${insertedIncomeTotal.toLocaleString(getIntlLocale())}`,
           kind: 'income_logged',
           url: '/home',
         }).catch(() => {})

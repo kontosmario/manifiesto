@@ -1,4 +1,5 @@
 import i18n from '@/lib/i18n'
+import { getIntlLocale, getNumberFormat } from '@/lib/i18n/active-locale'
 import type { ControlHeroState } from './control-hero-states'
 
 /**
@@ -130,9 +131,12 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
 
 function formatMoneyCompact(n: number): string {
   const abs = Math.abs(n)
-  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000_000) {
+    const m = getNumberFormat({ minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    return `$${m.format(n / 1_000_000)}M`
+  }
   if (abs >= 10_000) return `$${Math.round(n / 1_000)}k`
-  return `$${Math.round(n).toLocaleString('es-AR')}`
+  return `$${Math.round(n).toLocaleString(getIntlLocale())}`
 }
 
 /**

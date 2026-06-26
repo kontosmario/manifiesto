@@ -15,6 +15,7 @@ import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { getIntlLocale, getNumberFormat } from '@/lib/i18n/active-locale'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -163,9 +164,12 @@ function formatDeltaPct(pct: number): string {
 
 function formatMoneyShort(n: number): string {
   const abs = Math.abs(n)
-  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000_000) {
+    const m = getNumberFormat({ minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    return `$${m.format(n / 1_000_000)}M`
+  }
   if (abs >= 10_000) return `$${Math.round(n / 1_000)}k`
-  return `$${Math.round(n).toLocaleString('es-AR')}`
+  return `$${Math.round(n).toLocaleString(getIntlLocale())}`
 }
 
 /**

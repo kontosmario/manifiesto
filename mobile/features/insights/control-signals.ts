@@ -26,6 +26,7 @@
 //   T3 60-day:    confidence ramps closedDays/21
 
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { Expense } from '@/features/expenses/expense-repository'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
@@ -1830,7 +1831,7 @@ function urgencyWeight(u: 'alta' | 'media' | 'baja'): number {
 
 function fmt(n: number): string {
   const round = Math.round(Math.abs(n))
-  return '$' + round.toLocaleString('es-AR')
+  return '$' + round.toLocaleString(getIntlLocale())
 }
 
 function fmtDelta(n: number): string {

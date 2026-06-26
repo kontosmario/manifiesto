@@ -3,11 +3,12 @@ import {
   type FamilyDashboardMonthlyHistoryTotals,
 } from '@/features/family/family-dashboard.types'
 import { capitalizeText } from '@/utils/pay-cycle'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const monthYearFormatter = new Intl.DateTimeFormat('es-AR', {
+const monthYearFormatOptions: Intl.DateTimeFormatOptions = {
   month: 'long',
   year: 'numeric',
-})
+}
 
 export function buildMonthlyHistoryRows(
   totalsByMonth: Map<string, number>,
@@ -39,7 +40,7 @@ export function buildMonthlyHistoryRows(
       saved,
       goalSpent,
       endBalance,
-      monthLabel: capitalizeText(monthYearFormatter.format(monthStart)),
+      monthLabel: capitalizeText(getDateTimeFormat(monthYearFormatOptions).format(monthStart)),
       totalSpent: spent,
     })
   }

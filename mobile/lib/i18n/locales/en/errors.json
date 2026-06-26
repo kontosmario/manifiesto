@@ -6,14 +6,47 @@
   "rateLimited": "Too many attempts. Wait a moment and try again.",
   "family": {
     "ownerOnlyBlock": "Only the household owner can block members.",
+    "ownerOnlyUnblock": "Only the household owner can unblock members.",
+    "ownerOnlyRemove": "Only the household owner can remove members.",
+    "ownerOnlyTransfer": "Only the household owner can transfer ownership.",
+    "ownerOnlyGoIndividual": "Only the owner can switch the account to individual.",
     "cannotBlockSelf": "You can't block yourself.",
-    "notInFamily": "That user isn't in your household.",
     "cannotBlockOwner": "You can't block another owner.",
+    "cannotRemoveSelf": "You can't remove yourself. Transfer ownership first.",
+    "cannotRemoveOwner": "You can't remove another owner.",
+    "cannotTransferToSelf": "You can't transfer ownership to yourself.",
+    "cannotTransferToBlocked": "You can't transfer ownership to a blocked member.",
+    "notInFamily": "That user isn't in your household.",
+    "notInAFamily": "You're not in a household yet.",
+    "notAMember": "You're not a member of this household.",
     "codeNotFound": "We couldn't find that household code.",
     "inviteNotFound": "We couldn't find that invite.",
     "inviteAlreadyUsed": "That invite was already used.",
     "inviteExpired": "That invite expired.",
-    "notInAFamily": "You're not in a household yet.",
-    "inviteWhileDeleting": "You can't create invites while your account has a scheduled deletion. Cancel the deletion first."
+    "inviteInvalid": "That invite is no longer valid.",
+    "inviteWhileDeleting": "You can't create invites while your account has a scheduled deletion. Cancel the deletion first.",
+    "capReached": "Your household reached your plan's member limit. Switch to Annual or trim the household to invite someone else."
+  },
+  "payment": {
+    "needsCategory": "Set a category before recording the payment.",
+    "noSessionRecord": "You need an active session to record payments.",
+    "noSessionRevert": "You need an active session to revert payments.",
+    "noPermissionRecord": "You don't have permission to record this payment.",
+    "noPermissionRevert": "You don't have permission to revert this payment.",
+    "amountPositive": "The payment amount must be greater than 0.",
+    "amountTooHigh": "The payment amount exceeds the allowed maximum.",
+    "fixedExpenseGone": "The fixed expense tied to this payment no longer exists.",
+    "commitmentNotFound": "We couldn't find that commitment.",
+    "commitmentAlreadyPaid": "This commitment is already up to date.",
+    "commitmentInactive": "You can only record payments on active commitments.",
+    "notFound": "We couldn't find that payment.",
+    "alreadyRecorded": "That payment was already recorded.",
+    "alreadyReverted": "That payment was already reverted."
+  },
+  "savings": {
+    "ownerOnlyContribute": "Only the household owner can contribute to the goal.",
+    "contributionPositive": "The contribution must be greater than zero.",
+    "goalNotFound": "We couldn't find that goal.",
+    "exceedsReserve": "The amount exceeds the available reserve."
   }
 }

@@ -558,5 +558,256 @@
       "freelance": "Freelance",
       "refund": "Reintegro"
     }
+  },
+  "categoryTemplates": {
+    "expense": {
+      "alquiler": {
+        "default": "Alquiler",
+        "name": "Alquiler",
+        "quickDescriptions": [
+          "Alquiler",
+          "Expensas",
+          "Seña"
+        ]
+      },
+      "mercado": {
+        "default": "Mercado",
+        "name": "Mercado",
+        "quickDescriptions": [
+          "Supermercado",
+          "Verdulería",
+          "Kiosco",
+          "Panadería"
+        ]
+      },
+      "transporte": {
+        "default": "Transporte",
+        "name": "Transporte",
+        "quickDescriptions": [
+          "SUBE",
+          "Nafta",
+          "Uber",
+          "Estacionamiento"
+        ]
+      },
+      "ocio": {
+        "default": "Ocio",
+        "name": "Ocio",
+        "quickDescriptions": [
+          "Cine",
+          "Salida",
+          "Streaming",
+          "Juegos"
+        ]
+      },
+      "servicios": {
+        "default": "Servicios",
+        "name": "Servicios",
+        "quickDescriptions": [
+          "Luz",
+          "Gas",
+          "Agua",
+          "Internet"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Salud",
+        "quickDescriptions": [
+          "Farmacia",
+          "Consulta",
+          "Prepaga",
+          "Obra social"
+        ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Educación",
+        "quickDescriptions": [
+          "Cuota",
+          "Curso",
+          "Libros",
+          "Colegio"
+        ]
+      },
+      "mascotas": {
+        "default": "Mascotas",
+        "name": "Mascotas",
+        "quickDescriptions": [
+          "Alimento",
+          "Veterinaria",
+          "Arena",
+          "Peluquería"
+        ]
+      },
+      "ropa": {
+        "default": "Ropa",
+        "name": "Ropa",
+        "quickDescriptions": [
+          "Ropa",
+          "Calzado",
+          "Accesorios"
+        ]
+      },
+      "tecnologia": {
+        "default": "Tecnología",
+        "name": "Tecnología",
+        "quickDescriptions": [
+          "Electrónica",
+          "Accesorio",
+          "Reparación"
+        ]
+      },
+      "regalos": {
+        "default": "Regalos",
+        "name": "Regalos",
+        "quickDescriptions": [
+          "Regalo",
+          "Cumpleaños",
+          "Souvenir"
+        ]
+      },
+      "viajes": {
+        "default": "Viajes",
+        "name": "Viajes",
+        "quickDescriptions": [
+          "Hotel",
+          "Pasajes",
+          "Excursión"
+        ]
+      },
+      "restaurantes": {
+        "default": "Restaurantes",
+        "name": "Restaurantes",
+        "quickDescriptions": [
+          "Restaurante",
+          "Café",
+          "Delivery"
+        ]
+      },
+      "deporte": {
+        "default": "Deporte",
+        "name": "Deporte",
+        "quickDescriptions": [
+          "Gimnasio",
+          "Yoga",
+          "Suplementos"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Suscripciones",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "iCloud"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Impuestos",
+        "quickDescriptions": [
+          "ABL",
+          "Monotributo",
+          "Municipal"
+        ]
+      },
+      "belleza": {
+        "default": "Belleza",
+        "name": "Belleza",
+        "quickDescriptions": [
+          "Peluquería",
+          "Perfumería",
+          "Skincare"
+        ]
+      },
+      "otros": {
+        "default": "Otros",
+        "name": "Otros",
+        "quickDescriptions": [
+          "Varios",
+          "Imprevisto",
+          "Ajuste"
+        ]
+      }
+    },
+    "fixed_expense": {
+      "servicios": {
+        "default": "Servicios",
+        "name": "Servicios",
+        "quickDescriptions": [
+          "Luz",
+          "Gas",
+          "Agua",
+          "Internet"
+        ]
+      },
+      "vivienda": {
+        "default": "Vivienda",
+        "name": "Vivienda",
+        "quickDescriptions": [
+          "Alquiler",
+          "Expensas",
+          "Garage"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Suscripciones",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney+",
+          "iCloud"
+        ]
+      },
+      "seguros": {
+        "default": "Seguros",
+        "name": "Seguros",
+        "quickDescriptions": [
+          "Auto",
+          "Prepaga",
+          "Hogar",
+          "Vida"
+        ]
+      },
+      "cuotas": {
+        "default": "Cuotas",
+        "name": "Cuotas",
+        "quickDescriptions": [
+          "Tarjeta",
+          "Préstamo",
+          "Financiación"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Impuestos",
+        "quickDescriptions": [
+          "ABL",
+          "Monotributo",
+          "Patente"
+        ]
+      },
+      "deudas": {
+        "default": "Deudas",
+        "name": "Deudas",
+        "quickDescriptions": [
+          "Préstamo personal",
+          "Tarjeta",
+          "Familiar"
+        ]
+      },
+      "inversiones": {
+        "default": "Inversiones",
+        "name": "Inversiones",
+        "quickDescriptions": [
+          "Plazo fijo",
+          "Bonos",
+          "Acciones",
+          "Aporte mensual"
+        ]
+      }
+    }
   }
 }

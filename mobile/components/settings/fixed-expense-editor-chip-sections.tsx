@@ -75,7 +75,7 @@ export function FixedExpenseCategorySection({
             color={category.color}
             compact
             isActive={categoryId === category.id}
-            label={category.name}
+            label={category.displayName}
             onPress={() => onChange(category.id)}
           />
         ))}

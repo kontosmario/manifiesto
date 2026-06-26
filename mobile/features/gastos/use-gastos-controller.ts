@@ -16,6 +16,7 @@ import {
   useGastosHeroSummary,
 } from '@/features/gastos/use-gastos-endpoints'
 import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
+import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
 import { computeCupoDiario } from '@/features/gastos/cupo-diario'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
@@ -193,7 +194,9 @@ export function useGastosController(
   const categoriesById = useMemo<Map<string, CategoryLite>>(() => {
     const m = new Map<string, CategoryLite>()
     for (const c of categoriesQuery.data ?? []) {
-      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+      // Display localizado NO destructivo: el RPC de counts no trae
+      // template_id, así que matcheamos por (name, scope='expense').
+      m.set(c.id, { id: c.id, name: localizeCategoryNameByName(c.name, 'expense'), color: c.color })
     }
     return m
   }, [categoriesQuery.data])
@@ -220,12 +223,15 @@ export function useGastosController(
     () =>
       (hero?.top_categories ?? []).map((r) => ({
         id: r.id,
-        label: r.name,
+        // El hero RPC devuelve el `name` crudo (server-side, sin i18n).
+        // Re-resolvemos por id contra el mapa ya localizado; si la
+        // categoría no está en el mapa (raro), caemos al name del RPC.
+        label: categoriesById.get(r.id)?.name ?? r.name,
         color: r.color,
         amount: r.amount,
         percent: r.percent,
       })),
-    [hero?.top_categories],
+    [hero?.top_categories, categoriesById],
   )
 
   // ── Calendar (server-computed moods + per-day totals) ───────────

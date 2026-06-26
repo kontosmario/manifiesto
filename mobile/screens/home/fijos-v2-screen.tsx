@@ -82,7 +82,9 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
   const categoriesById = useMemo(() => {
     const m = new Map<string, { id: string; name: string; color: string }>()
     for (const c of categoriesQuery.data ?? []) {
-      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+      // Display localizado NO destructivo: useCategories ya derivó
+      // displayName (== name crudo si el usuario la renombró).
+      m.set(c.id, { id: c.id, name: c.displayName, color: c.color })
     }
     return m
   }, [categoriesQuery.data])

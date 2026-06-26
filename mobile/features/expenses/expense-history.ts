@@ -117,10 +117,14 @@ export function buildExpenseHistorySnapshot({
       return true
     }
 
+    const categoryForSearch = categoryById.get(expense.category_id)
     const haystack = [
       expense.description,
       expense.creator_display_name,
-      categoryById.get(expense.category_id)?.name ?? '',
+      // Buscar por nombre crudo Y localizado: el usuario puede recordar
+      // cualquiera de los dos según el idioma activo.
+      categoryForSearch?.name ?? '',
+      categoryForSearch?.displayName ?? '',
     ]
       .join(' ')
       .toLowerCase()
@@ -143,7 +147,8 @@ export function buildExpenseHistorySnapshot({
   const activePeriodLabel = activePeriodLabelKey
     ? i18n.t(activePeriodLabelKey)
     : i18n.t('gastos:filtersScreen.cycleFallback')
-  const activeScopeLabel = categoryById.get(selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all')
+  const activeScopeLabel =
+    categoryById.get(selectedCategoryId)?.displayName ?? i18n.t('gastos:smartFilter.all')
   const visibleCount = i18n.t('gastos:history.visibleMovements', { count: filteredExpenses.length })
   const searchSuffix =
     normalizedSearch.length > 0 ? ` · "${searchQuery.trim()}"` : ''

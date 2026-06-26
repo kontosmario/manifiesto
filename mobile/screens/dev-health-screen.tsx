@@ -1,6 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { useDbHealth } from '@/features/dev-health/use-db-health'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { radii } from '@/theme/palette'
 
@@ -82,7 +83,7 @@ export default function DevHealthScreen() {
               />
               <Row
                 label="Computed at"
-                value={new Date(data.computed_at).toLocaleString('es-AR')}
+                value={new Date(data.computed_at).toLocaleString(getIntlLocale())}
                 theme={theme}
                 isLast
               />

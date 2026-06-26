@@ -28,6 +28,7 @@ import {
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { floracionToneForTier } from '@/features/garden/garden-tier'
+import { achievementBody, achievementTitle } from '@/features/achievements/achievement-tiers'
 import type { AchievementViewItem } from '@/features/achievements/use-achievements'
 
 interface FloracionViewProps {
@@ -130,8 +131,8 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
         </View>
 
         <Text style={styles.eyebrow}>{translate('achievements:floracion.eyebrow')}</Text>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.body}>{item.body}</Text>
+        <Text style={styles.title}>{achievementTitle(item.code, item.title)}</Text>
+        <Text style={styles.body}>{achievementBody(item.code, item.body)}</Text>
 
         <View style={styles.chip}>
           <FernMark variant="mint" size={16} />

@@ -15,6 +15,7 @@ import type { Category } from '@/features/categories/use-categories'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import i18n from '@/lib/i18n'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 import { triggerHaptic } from '@/lib/haptics'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -260,14 +261,8 @@ export function AddExpenseDashboard({
   )
 }
 
-const WEEKDAY_LABELS = [
-  'domingo', 'lunes', 'martes', 'miércoles',
-  'jueves', 'viernes', 'sábado',
-]
-const MONTH_LABELS = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
+const WEEKDAY_LONG_OPTIONS: Intl.DateTimeFormatOptions = { weekday: 'long' }
+const MONTH_SHORT_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short' }
 
 function formatForDateLabel(date: Date): string {
   const now = new Date()
@@ -278,8 +273,8 @@ function formatForDateLabel(date: Date): string {
   )
   if (diffDays === 0) return i18n.t('home:addExpenseDashboard.today')
   if (diffDays === 1) return i18n.t('home:addExpenseDashboard.yesterday')
-  const weekday = WEEKDAY_LABELS[date.getDay()]
-  const month = MONTH_LABELS[date.getMonth()]
+  const weekday = getDateTimeFormat(WEEKDAY_LONG_OPTIONS).format(date)
+  const month = getDateTimeFormat(MONTH_SHORT_OPTIONS).format(date)
   return `${weekday} ${date.getDate()} ${month}`
 }
 

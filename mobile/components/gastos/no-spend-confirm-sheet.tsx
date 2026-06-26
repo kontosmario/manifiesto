@@ -102,7 +102,7 @@ export function NoSpendConfirmSheet({
             const cat = expense.category_id
               ? categoryById.get(expense.category_id)
               : null
-            const title = expense.description?.trim() || cat?.name || t('common:terms.expense')
+            const title = expense.description?.trim() || cat?.displayName || t('common:terms.expense')
             return (
               <View
                 key={expense.id}
@@ -132,7 +132,7 @@ export function NoSpendConfirmSheet({
                       style={[styles.rowCategory, { color: theme.colors.textMuted }]}
                       numberOfLines={1}
                     >
-                      {cat?.name ?? t('gastos:movementRow.noCategory')}
+                      {cat?.displayName ?? t('gastos:movementRow.noCategory')}
                     </Text>
                   </View>
                 </View>

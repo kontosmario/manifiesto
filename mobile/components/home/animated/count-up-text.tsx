@@ -58,8 +58,12 @@ const SAMPLE_INTERVAL_MS = 52
 // Pico del destello (0–1). Sutil: alpha ~0.45 y radio ~0.45·18 ≈ 8px al pico.
 const GLOW_PEAK = 0.45
 
-// Formateo SEGURO PARA WORKLET (Intl crashea en el UI runtime). 'money' agrega
-// separador de miles con puntos (es-AR) y "$"; 'integer' es el entero pelado.
+// Formateo SEGURO PARA WORKLET (Intl crashea en el UI runtime, y getIntlLocale
+// lee i18n.language que no existe en el worklet thread). Por eso el separador de
+// miles queda HARDCODEADO a "." (estilo es-AR) — NO es locale-aware a propósito:
+// el conteo fluido corre en el UI thread y no puede tocar Intl/i18n. Es la única
+// excepción i18n del módulo; el path JS (JsCountText) sí formatea con el
+// `format` prop del caller, que ya es locale-aware. 'integer' es el entero pelado.
 function formatCountWorklet(n: number, unit: CountUnit): string {
   'worklet'
   if (unit === 'integer') return `${Math.round(n)}`

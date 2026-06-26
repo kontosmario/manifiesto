@@ -25,6 +25,7 @@ import { useExpenses } from '@/features/expenses/use-expenses'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -193,7 +194,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                           <Text style={[styles.categoryMeta, { color: theme.colors.textMuted }]}>
                             {t('gastos:categoriesScreen.categoryMeta', {
                               count: categoryExpenseCountById.get(category.id) ?? 0,
-                              date: new Date(category.created_at).toLocaleDateString('es-AR'),
+                              date: new Date(category.created_at).toLocaleDateString(getIntlLocale()),
                             })}
                           </Text>
                         </View>

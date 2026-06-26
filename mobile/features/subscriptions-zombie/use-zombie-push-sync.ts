@@ -5,6 +5,7 @@ import {
 } from '@/lib/persistent-kv'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { AuditFeedItem, FixedExpenseRow } from './types'
 
 const STORAGE_KEY = 'subs-zombie-notified:v1'
@@ -88,7 +89,7 @@ export function useZombiePushSync(args: {
             body: i18n.t('insights:subscriptions.push.manyBody', {
               names,
               more,
-              total: `$${total.toLocaleString('es-AR')}`,
+              total: `$${total.toLocaleString(getIntlLocale())}`,
             }),
             kind: 'subscription_zombie',
             url: '/asistente',
@@ -106,7 +107,7 @@ export function useZombiePushSync(args: {
               ? i18n.t('insights:subscriptions.push.consensusTitle', { name: p.name })
               : i18n.t('insights:subscriptions.push.unevenTitle', { name: p.name })
           const body = i18n.t('insights:subscriptions.push.singleBody', {
-            amount: `$${p.amount.toLocaleString('es-AR')}`,
+            amount: `$${p.amount.toLocaleString(getIntlLocale())}`,
           })
           try {
             await sendFamilyPush({

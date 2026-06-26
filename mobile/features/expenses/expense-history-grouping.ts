@@ -5,12 +5,13 @@ import {
   formatLocalDateKey,
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const dayGroupFormatter = new Intl.DateTimeFormat('es-AR', {
+const dayGroupFormatOptions: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: '2-digit',
   month: 'short',
-})
+}
 
 export function groupExpensesByDay(expenses: Expense[], today: Date): ExpenseDaySection[] {
   const todayKey = formatLocalDateKey(today)
@@ -41,7 +42,7 @@ export function groupExpensesByDay(expenses: Expense[], today: Date): ExpenseDay
         ? 'Hoy'
         : groupKey === yesterdayKey
           ? 'Ayer'
-          : capitalizeText(dayGroupFormatter.format(normalizedDate))
+          : capitalizeText(getDateTimeFormat(dayGroupFormatOptions).format(normalizedDate))
 
     const nextGroup: ExpenseDaySection = {
       data: [expense],

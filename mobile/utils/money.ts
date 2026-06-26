@@ -1,15 +1,52 @@
+import { getIntlLocale } from '@/lib/i18n/active-locale'
+
 export type MoneyCurrency = 'ARS' | 'USD'
 
-export const currencyFormatter = new Intl.NumberFormat('es-AR', {
+/**
+ * Formatters de DISPLAY locale-aware. El locale se resuelve EN EL MOMENTO de
+ * formatear (getIntlLocale lee el idioma activo de i18n), no se congela en un
+ * singleton 'es-AR'. Memoizamos un Intl.NumberFormat por (locale + opts) para
+ * no reconstruirlo en cada llamada, y exponemos un objeto `{ format }` que
+ * delega — así los call sites existentes (`currencyFormatter.format(x)`) siguen
+ * funcionando sin cambios mientras el formato sigue al idioma del usuario.
+ */
+type NumberFormatFactory = { format: (value: number) => string }
+
+function makeLocaleAwareFormatter(
+  options: Intl.NumberFormatOptions,
+): NumberFormatFactory {
+  const cache = new Map<string, Intl.NumberFormat>()
+  return {
+    format(value: number): string {
+      const locale = getIntlLocale()
+      let formatter = cache.get(locale)
+      if (!formatter) {
+        formatter = new Intl.NumberFormat(locale, options)
+        cache.set(locale, formatter)
+      }
+      return formatter.format(value)
+    },
+  }
+}
+
+export const currencyFormatter = makeLocaleAwareFormatter({
   style: 'currency',
   currency: 'ARS',
 })
 
-export const usdFormatter = new Intl.NumberFormat('es-AR', {
+export const usdFormatter = makeLocaleAwareFormatter({
   style: 'currency',
   currency: 'USD',
 })
 
+// ⚠️ INPUT — NO locale-aware. Estos tres formatters alimentan
+// `formatPriceInputValue`, que renderiza el valor DENTRO del numpad propio de
+// la app. El numpad usa SIEMPRE la coma como separador decimal (convención
+// fija del input, independiente del idioma de la UI): el parser
+// `normalizePriceInput`/`parsePrice` espera coma-decimal y `serializePrice`
+// emite coma. Si estos siguieran al idioma activo, en 'en' el field mostraría
+// "1,234.56" mientras el parser sigue esperando coma → el monto tipeado se
+// rompería. Por eso quedan anclados en 'es-AR'.
 const usdInputFormatter = new Intl.NumberFormat('es-AR', {
   style: 'currency',
   currency: 'USD',
@@ -28,6 +65,11 @@ const integerInputFormatter = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
+// ⚠️ INPUT — convención fija coma-decimal, NO locale-dependiente. El numpad
+// propio de la app emite la coma como separador decimal en todos los idiomas,
+// así que el parsing (normalizePriceInput/parsePrice) y la serialización
+// (serializePrice) trabajan siempre con coma. Localizar esto rompería el
+// contrato con el numpad y con los valores ya serializados.
 export function normalizePriceInput(rawValue: string): string {
   const cleaned = rawValue.replace(/[^\d.,]/g, '')
   if (!cleaned) {
@@ -136,19 +178,24 @@ export function formatSignedCurrency(value: number): string {
   return currencyFormatter.format(0)
 }
 
-const homeIntegerFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
+const homeIntegerFormatter = makeLocaleAwareFormatter({ maximumFractionDigits: 0 })
 
 export function formatMoney(n: number, opts: { zeroAsDash?: boolean } = {}): string {
   if (opts.zeroAsDash && n === 0) return '—'
   return '$' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
 }
 
-/** "US$ 841" — entero, sin decimales, separador de miles es-AR. Para mostrar
- *  equivalentes en dólares de forma compacta (no usa el currency style de
- *  usdFormatter, que mete ",00"). */
+/** "US$ 841" — entero, sin decimales, separador de miles según idioma activo.
+ *  Para mostrar equivalentes en dólares de forma compacta (no usa el currency
+ *  style de usdFormatter, que mete ",00"/".00"). */
 export function formatUsd(n: number): string {
   return 'US$ ' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
 }
+
+const shortDecimalFormatter = makeLocaleAwareFormatter({
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+})
 
 export function formatMoneyWithSign(n: number): string {
   const sign = n > 0 ? '+' : n < 0 ? '-' : ''
@@ -158,7 +205,10 @@ export function formatMoneyWithSign(n: number): string {
 export function formatMoneyShort(n: number): string {
   const abs = Math.abs(n)
   const sign = n < 0 ? '-' : ''
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`
+  // El separador decimal del tramo "M" sigue al idioma activo ("1,5M" en es,
+  // "1.5M" en en); el resto son enteros sin separador.
+  if (abs >= 1_000_000)
+    return `${sign}$${shortDecimalFormatter.format(abs / 1_000_000)}M`
   if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`
   return `${sign}$${Math.round(abs)}`
 }

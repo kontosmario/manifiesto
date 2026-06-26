@@ -7,11 +7,12 @@ import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
 interface ExpenseHistoryRowCardProps {
   category: Category | null
@@ -77,7 +78,7 @@ export function ExpenseHistoryRowCard({
           </View>
 
           <Text style={[styles.expenseMeta, { color: theme.colors.textMuted }]}>
-            {expense.creator_display_name} · {shortDateFormatter.format(new Date(expense.created_at))}
+            {expense.creator_display_name} · {getDateTimeFormat(shortDateOptions).format(new Date(expense.created_at))}
           </Text>
         </View>
       </View>

@@ -3,6 +3,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import i18n from '@/lib/i18n'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { localizeCategoryName } from './localize-category-name'
 
 const CATEGORY_FALLBACK_COLORS = [
   '#89C8F7',
@@ -56,7 +57,19 @@ function fallbackCategoryColor(categoryId: string): string {
 export interface Category {
   id: string
   family_id: string
+  /**
+   * Nombre CRUDO guardado en DB. Load-bearing: es la fuente para el
+   * matching de rename contra `category_templates`. NO mostrar este
+   * campo en UI directamente — usar `displayName`.
+   */
   name: string
+  /**
+   * Nombre A MOSTRAR (localizado). Si la categoría sigue coincidiendo
+   * con el name default de su template, viene traducido al idioma
+   * activo; si el usuario la renombró (o es custom), == `name` crudo.
+   * Derivado en el cliente — NO se persiste.
+   */
+  displayName: string
   color: string
   template_id?: string | null
   scope: CategoryScope
@@ -116,20 +129,33 @@ export function useCategories(familyId?: string, scope: CategoryScope = 'expense
             color: fallbackCategoryColor(category.id),
             template_id: null,
             scope: 'expense' as CategoryScope,
+            // Pre-scope schema: sin template_id → displayName == name crudo.
+            displayName: category.name,
           }))
         }
 
         throw error
       }
 
-      return ((data as RawCategory[] | null) ?? []).map((category) => ({
-        ...category,
-        color:
-          typeof category.color === 'string' && category.color.trim() !== ''
-            ? category.color
-            : fallbackCategoryColor(category.id),
-        scope: normalizeScope(category.scope),
-      }))
+      return ((data as RawCategory[] | null) ?? []).map((category) => {
+        const scope = normalizeScope(category.scope)
+        return {
+          ...category,
+          color:
+            typeof category.color === 'string' && category.color.trim() !== ''
+              ? category.color
+              : fallbackCategoryColor(category.id),
+          scope,
+          // Display localizado NO destructivo: si la categoría sigue
+          // matcheando el name default de su template, se traduce; si
+          // el usuario la renombró, == name crudo.
+          displayName: localizeCategoryName({
+            name: category.name,
+            template_id: category.template_id,
+            scope,
+          }),
+        }
+      })
     },
   })
 }

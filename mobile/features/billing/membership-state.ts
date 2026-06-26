@@ -4,6 +4,7 @@
  * en compilación) → testeable en el env node de vitest.
  */
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
 
 export type MembershipTone = 'active' | 'warn' | 'comped'
@@ -20,18 +21,20 @@ export interface MembershipVariant {
   note?: string
 }
 
-const MESES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
-
-/** Fecha corta es-AR ("14 jun 2027"). UTC para ser determinista (sin TZ ni
- *  Intl): el día exacto de una renovación a un año vista es informativo. */
+/** Fecha corta locale-aware ("14 jun 2027" / "Jun 14, 2027"). Anclada a UTC
+ *  para ser determinista (el día exacto de una renovación a un año vista es
+ *  informativo, no debe correrse por TZ). Se usa Intl con timeZone:'UTC' para
+ *  que el mes siga al idioma activo sin perder ese determinismo. */
 export function formatDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+  return new Intl.DateTimeFormat(getIntlLocale(), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(d)
 }
 
 export function membershipVariant(

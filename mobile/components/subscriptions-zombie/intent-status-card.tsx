@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useAppTheme } from '@/theme/theme-provider'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { IntentKind } from '@/features/subscriptions-zombie/types'
 
 interface Props {
@@ -53,7 +54,7 @@ export function IntentStatusCard({
       {(intent === 'cancel' || intent === 'pause') && monthlySaving > 0 ? (
         <Text style={[styles.savings, { color: theme.colors.primary }]}>
           {t('insights:subscriptions.status.savings', {
-            amount: `$${monthlySaving.toLocaleString('es-AR')}`,
+            amount: `$${monthlySaving.toLocaleString(getIntlLocale())}`,
           })}
         </Text>
       ) : null}

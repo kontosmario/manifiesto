@@ -10,7 +10,7 @@ import { getStateTokens } from '@/theme/state-tokens'
 import type { IngresosCiclo } from '@/features/insights/use-control-v2-data'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
-import { MONTH_SHORT } from '@/utils/date-format'
+import { monthShort } from '@/utils/date-format'
 
 interface ControlV2IngresosCardProps {
   ingresos: IngresosCiclo
@@ -33,8 +33,11 @@ const MAX_VISIBLE = 3
 /** "2026-06-04" → "4 jun" sin pasar por Date (evita el corrimiento
  *  timezone de `new Date('YYYY-MM-DD')`, que parsea como UTC). */
 function formatFechaCorta(isoDate: string): string {
-  const [, m, d] = isoDate.split('-')
-  const month = MONTH_SHORT[Number(m) - 1] ?? ''
+  const [y, m, d] = isoDate.split('-')
+  // Date local anclada a mediodía para evitar el corrimiento timezone de
+  // `new Date('YYYY-MM-DD')` (que parsea como UTC); solo se usa para el mes.
+  const date = new Date(Number(y), Number(m) - 1, 1, 12, 0, 0, 0)
+  const month = Number.isFinite(date.getTime()) ? monthShort(date) : ''
   return `${Number(d)} ${month}`
 }
 

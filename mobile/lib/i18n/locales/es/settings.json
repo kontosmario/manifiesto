@@ -142,9 +142,18 @@
     "errorPercent": "Debe estar entre 0 y 100.",
     "errorAmount": "Monto inválido.",
     "mode": {
-      "none": { "label": "Sin colchón", "hint": "No reservar" },
-      "fixed": { "label": "Monto fijo", "hint": "En ARS por día" },
-      "percent": { "label": "Porcentaje", "hint": "% del presupuesto" }
+      "none": {
+        "label": "Sin colchón",
+        "hint": "No reservar"
+      },
+      "fixed": {
+        "label": "Monto fijo",
+        "hint": "En ARS por día"
+      },
+      "percent": {
+        "label": "Porcentaje",
+        "hint": "% del presupuesto"
+      }
     }
   },
   "savingsGoal": {
@@ -724,10 +733,22 @@
   },
   "cycleConfig": {
     "type": {
-      "monthly": { "title": "Mensual", "subtitle": "Una vez al mes" },
-      "biweekly": { "title": "Quincenal", "subtitle": "Cada 14 días" },
-      "weekly": { "title": "Semanal", "subtitle": "Cada 7 días" },
-      "custom": { "title": "Custom", "subtitle": "Cada N días" }
+      "monthly": {
+        "title": "Mensual",
+        "subtitle": "Una vez al mes"
+      },
+      "biweekly": {
+        "title": "Quincenal",
+        "subtitle": "Cada 14 días"
+      },
+      "weekly": {
+        "title": "Semanal",
+        "subtitle": "Cada 7 días"
+      },
+      "custom": {
+        "title": "Custom",
+        "subtitle": "Cada N días"
+      }
     },
     "helper": {
       "monthly": "El ciclo dura 28-31 días según el mes.",
@@ -908,5 +929,12 @@
     "paymentIssue": "Problema de pago",
     "noRenew": "No se renueva",
     "active": "Activa"
+  },
+  "profile": {
+    "title": "Perfil",
+    "displayName": "Nombre visible",
+    "avatar": "Avatar",
+    "email": "Email",
+    "noEmail": "Sin email"
   }
 }

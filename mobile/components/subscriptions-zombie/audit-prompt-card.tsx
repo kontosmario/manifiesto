@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Avatar } from '@/components/ui/avatar'
 import { useAppTheme } from '@/theme/theme-provider'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { UsageLevelButtons } from './usage-level-buttons'
 import type {
   UsageAuditRecord,
@@ -66,7 +67,7 @@ export function AuditPromptCard({
       <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {t('insights:subscriptions.prompt.perMonth', {
-          amount: `$${fijoAmount.toLocaleString('es-AR')}`,
+          amount: `$${fijoAmount.toLocaleString(getIntlLocale())}`,
         })}
       </Text>
 

@@ -266,7 +266,7 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
         accessibilityRole="radio"
         accessibilityState={{ selected }}
         accessibilityLabel={t('home:categoryRail.selectAccessibility', {
-          name: category.name,
+          name: category.displayName,
         })}
         hitSlop={4}
         onPressIn={() => {
@@ -301,7 +301,7 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
-            {category.name}
+            {category.displayName}
           </Text>
         </Animated.View>
       </Pressable>

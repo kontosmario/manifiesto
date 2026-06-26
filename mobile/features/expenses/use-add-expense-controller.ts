@@ -5,6 +5,7 @@ import {
   useCategoryTemplates,
 } from '@/features/categories/use-category-templates'
 import { type Category, useCategories } from '@/features/categories/use-categories'
+import { localizeQuickDescriptions } from '@/features/categories/localize-category-name'
 import { filterVariableExpenseCategories } from '@/features/expenses/variable-expense-categories'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
 import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/expenses/category-ranking'
@@ -21,6 +22,9 @@ const MAX_QUICK_DESCRIPTION_SUGGESTIONS = 6
 const QUICK_AMOUNTS = [5000, 15000, 30000, 50000, 100000] as const
 
 function normalizeSuggestionLabel(value: string) {
+  // NO display: normalización para matching/dedup de sugerencias (case- y
+  // acento-insensible). El locale 'es-AR' acá no es formato visible sino la
+  // semántica de lowercase; se mantiene fijo a propósito (no locale-aware).
   return value
     .trim()
     .toLocaleLowerCase('es-AR')
@@ -105,10 +109,17 @@ export function useAddExpenseController({
 
   const quickDescriptionSuggestions = useMemo(() => {
     if (!selectedCategory) return []
-    const templateDescriptions =
-      categoryTemplates.find((t) => t.id === selectedCategory.template_id)?.quickDescriptions ??
-      categoryTemplates.find((t) => t.name === selectedCategory.name)?.quickDescriptions ??
-      []
+    const matchedTemplate =
+      categoryTemplates.find((t) => t.id === selectedCategory.template_id) ??
+      categoryTemplates.find((t) => t.name === selectedCategory.name) ??
+      null
+    // Localización NO destructiva de los quick_descriptions del template
+    // (estos NO son datos del usuario — viven en category_templates).
+    // El `name` del template es el default ES (key estable). Este flujo
+    // es siempre de categorías variables → scope 'expense'.
+    const templateDescriptions = matchedTemplate
+      ? localizeQuickDescriptions('expense', matchedTemplate.name, matchedTemplate.quickDescriptions)
+      : []
     const fromHistory = pickTopCategoryDescriptions(expenses, selectedCategory.id, 6)
     const merged = [...fromHistory, ...templateDescriptions]
     const seen = new Set<string>()

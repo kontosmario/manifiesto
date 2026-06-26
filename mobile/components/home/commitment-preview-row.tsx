@@ -7,11 +7,12 @@ import { fixedExpenseKindLabel } from '@/features/fixed-expenses/fixed-expense-t
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
 export function CommitmentPreviewRow({
   item,
@@ -36,7 +37,7 @@ export function CommitmentPreviewRow({
           : Number.isNaN(nextDueDate.getTime())
             ? t('home:commitmentRow.noDueDate')
             : t('home:commitmentRow.dueOn', {
-                date: shortDateFormatter.format(nextDueDate),
+                date: getDateTimeFormat(shortDateOptions).format(nextDueDate),
               })
   const metaBits = [fixedExpenseKindLabel(item.kind), dueText]
 

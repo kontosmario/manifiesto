@@ -558,5 +558,256 @@
       "freelance": "Freelance",
       "refund": "Refund"
     }
+  },
+  "categoryTemplates": {
+    "expense": {
+      "alquiler": {
+        "default": "Alquiler",
+        "name": "Rent",
+        "quickDescriptions": [
+          "Rent",
+          "HOA fees",
+          "Deposit"
+        ]
+      },
+      "mercado": {
+        "default": "Mercado",
+        "name": "Groceries",
+        "quickDescriptions": [
+          "Supermarket",
+          "Greengrocer",
+          "Convenience store",
+          "Bakery"
+        ]
+      },
+      "transporte": {
+        "default": "Transporte",
+        "name": "Transport",
+        "quickDescriptions": [
+          "Transit card",
+          "Fuel",
+          "Uber",
+          "Parking"
+        ]
+      },
+      "ocio": {
+        "default": "Ocio",
+        "name": "Leisure",
+        "quickDescriptions": [
+          "Cinema",
+          "Night out",
+          "Streaming",
+          "Games"
+        ]
+      },
+      "servicios": {
+        "default": "Servicios",
+        "name": "Utilities",
+        "quickDescriptions": [
+          "Electricity",
+          "Gas",
+          "Water",
+          "Internet"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Health",
+        "quickDescriptions": [
+          "Pharmacy",
+          "Appointment",
+          "Private health",
+          "Health plan"
+        ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Education",
+        "quickDescriptions": [
+          "Tuition",
+          "Course",
+          "Books",
+          "School"
+        ]
+      },
+      "mascotas": {
+        "default": "Mascotas",
+        "name": "Pets",
+        "quickDescriptions": [
+          "Pet food",
+          "Vet",
+          "Litter",
+          "Grooming"
+        ]
+      },
+      "ropa": {
+        "default": "Ropa",
+        "name": "Clothing",
+        "quickDescriptions": [
+          "Clothing",
+          "Footwear",
+          "Accessories"
+        ]
+      },
+      "tecnologia": {
+        "default": "Tecnología",
+        "name": "Tech",
+        "quickDescriptions": [
+          "Electronics",
+          "Accessory",
+          "Repair"
+        ]
+      },
+      "regalos": {
+        "default": "Regalos",
+        "name": "Gifts",
+        "quickDescriptions": [
+          "Gift",
+          "Birthday",
+          "Souvenir"
+        ]
+      },
+      "viajes": {
+        "default": "Viajes",
+        "name": "Travel",
+        "quickDescriptions": [
+          "Hotel",
+          "Tickets",
+          "Excursion"
+        ]
+      },
+      "restaurantes": {
+        "default": "Restaurantes",
+        "name": "Restaurants",
+        "quickDescriptions": [
+          "Restaurant",
+          "Coffee",
+          "Delivery"
+        ]
+      },
+      "deporte": {
+        "default": "Deporte",
+        "name": "Sports",
+        "quickDescriptions": [
+          "Gym",
+          "Yoga",
+          "Supplements"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Subscriptions",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "iCloud"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Taxes",
+        "quickDescriptions": [
+          "Property tax",
+          "Self-employed tax",
+          "Local tax"
+        ]
+      },
+      "belleza": {
+        "default": "Belleza",
+        "name": "Beauty",
+        "quickDescriptions": [
+          "Hair salon",
+          "Perfumery",
+          "Skincare"
+        ]
+      },
+      "otros": {
+        "default": "Otros",
+        "name": "Other",
+        "quickDescriptions": [
+          "Misc",
+          "Unexpected",
+          "Adjustment"
+        ]
+      }
+    },
+    "fixed_expense": {
+      "servicios": {
+        "default": "Servicios",
+        "name": "Utilities",
+        "quickDescriptions": [
+          "Electricity",
+          "Gas",
+          "Water",
+          "Internet"
+        ]
+      },
+      "vivienda": {
+        "default": "Vivienda",
+        "name": "Housing",
+        "quickDescriptions": [
+          "Rent",
+          "HOA fees",
+          "Garage"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Subscriptions",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney+",
+          "iCloud"
+        ]
+      },
+      "seguros": {
+        "default": "Seguros",
+        "name": "Insurance",
+        "quickDescriptions": [
+          "Car",
+          "Private health",
+          "Home",
+          "Life"
+        ]
+      },
+      "cuotas": {
+        "default": "Cuotas",
+        "name": "Installments",
+        "quickDescriptions": [
+          "Credit card",
+          "Loan",
+          "Financing"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Taxes",
+        "quickDescriptions": [
+          "Property tax",
+          "Self-employed tax",
+          "Vehicle tax"
+        ]
+      },
+      "deudas": {
+        "default": "Deudas",
+        "name": "Debts",
+        "quickDescriptions": [
+          "Personal loan",
+          "Credit card",
+          "Family"
+        ]
+      },
+      "inversiones": {
+        "default": "Inversiones",
+        "name": "Investments",
+        "quickDescriptions": [
+          "Fixed deposit",
+          "Bonds",
+          "Stocks",
+          "Monthly contribution"
+        ]
+      }
+    }
   }
 }

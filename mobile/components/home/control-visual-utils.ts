@@ -1,5 +1,6 @@
 import { withAlpha } from '@/theme/color-utils'
 import type { AppTheme } from '@/theme/palette'
+import { getNumberFormat } from '@/lib/i18n/active-locale'
 
 export type SignalTone = 'default' | 'success' | 'warning'
 export type VisualTone = 'primary' | 'success' | 'warning'
@@ -11,10 +12,10 @@ export interface SignalPalette {
   iconBackgroundColor: string
 }
 
-const compactMoneyFormatter = new Intl.NumberFormat('es-AR', {
+const compactMoneyOptions: Intl.NumberFormatOptions = {
   maximumFractionDigits: 1,
   minimumFractionDigits: 0,
-})
+}
 
 export function clamp(value: number, min = 0, max = 1) {
   return Math.max(min, Math.min(value, max))
@@ -81,6 +82,7 @@ export function getSignalPalette(
 export function formatCompactMoney(value: number) {
   const absoluteValue = Math.abs(value)
   const prefix = value < 0 ? '-$' : '$'
+  const compactMoneyFormatter = getNumberFormat(compactMoneyOptions)
 
   if (absoluteValue >= 1_000_000) {
     return `${prefix}${compactMoneyFormatter.format(absoluteValue / 1_000_000)}M`

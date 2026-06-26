@@ -1,14 +1,15 @@
 import type { NotificationSeverity } from '@/features/notifications/use-notifications'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const notificationDayMonthFormatter = new Intl.DateTimeFormat('es-AR', {
+const notificationDayMonthOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
-const notificationTimeFormatter = new Intl.DateTimeFormat('es-AR', {
+const notificationTimeOptions: Intl.DateTimeFormatOptions = {
   hour: '2-digit',
   minute: '2-digit',
-})
+}
 
 export type NotificationGroup =
   | 'gastos'
@@ -172,18 +173,18 @@ export function formatRelativeNotificationTime(value: string, now: Date = new Da
 
   if (dayDiff === 0) {
     if (diffHours < 12) return `hace ${diffHours} h`
-    return notificationTimeFormatter.format(parsed)
+    return getDateTimeFormat(notificationTimeOptions).format(parsed)
   }
 
   if (dayDiff === 1) {
-    return `ayer ${notificationTimeFormatter.format(parsed)}`
+    return `ayer ${getDateTimeFormat(notificationTimeOptions).format(parsed)}`
   }
 
   if (dayDiff < 7) {
-    return notificationDayMonthFormatter.format(parsed)
+    return getDateTimeFormat(notificationDayMonthOptions).format(parsed)
   }
 
-  return notificationDayMonthFormatter.format(parsed)
+  return getDateTimeFormat(notificationDayMonthOptions).format(parsed)
 }
 
 export type NotificationSectionKey = 'unread' | 'today' | 'yesterday' | 'thisWeek' | 'older'

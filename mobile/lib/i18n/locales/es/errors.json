@@ -6,14 +6,47 @@
   "rateLimited": "Demasiados intentos. Espera un momento y prueba de nuevo.",
   "family": {
     "ownerOnlyBlock": "Solo el dueño del hogar puede bloquear integrantes.",
+    "ownerOnlyUnblock": "Solo el dueño del hogar puede desbloquear integrantes.",
+    "ownerOnlyRemove": "Solo el dueño del hogar puede eliminar integrantes.",
+    "ownerOnlyTransfer": "Solo el dueño del hogar puede transferir la propiedad.",
+    "ownerOnlyGoIndividual": "Solo el dueño puede pasar la cuenta a individual.",
     "cannotBlockSelf": "No puedes bloquearte a ti mismo.",
-    "notInFamily": "Ese usuario no está en tu hogar.",
     "cannotBlockOwner": "No puedes bloquear a otro dueño.",
+    "cannotRemoveSelf": "No puedes eliminarte a ti mismo. Transfiere la propiedad primero.",
+    "cannotRemoveOwner": "No puedes eliminar a otro dueño.",
+    "cannotTransferToSelf": "No puedes transferirte la propiedad a ti mismo.",
+    "cannotTransferToBlocked": "No puedes transferir la propiedad a un integrante bloqueado.",
+    "notInFamily": "Ese usuario no está en tu hogar.",
+    "notInAFamily": "No estás en un hogar todavía.",
+    "notAMember": "No eres integrante de este hogar.",
     "codeNotFound": "No encontramos ese código de hogar.",
     "inviteNotFound": "No encontramos esa invitación.",
     "inviteAlreadyUsed": "Esa invitación ya se usó.",
     "inviteExpired": "Esa invitación venció.",
-    "notInAFamily": "No estás en un hogar todavía.",
-    "inviteWhileDeleting": "No puedes generar invitaciones mientras tu cuenta tenga una baja agendada. Cancela la baja primero."
+    "inviteInvalid": "Esa invitación ya no es válida.",
+    "inviteWhileDeleting": "No puedes generar invitaciones mientras tu cuenta tenga una baja agendada. Cancela la baja primero.",
+    "capReached": "Tu hogar alcanzó el máximo de integrantes de tu plan. Pasa al Anual o reduce el hogar para invitar a alguien más."
+  },
+  "payment": {
+    "needsCategory": "Define una categoría antes de registrar el pago.",
+    "noSessionRecord": "Necesitas una sesión activa para registrar pagos.",
+    "noSessionRevert": "Necesitas una sesión activa para revertir pagos.",
+    "noPermissionRecord": "No tienes permisos para registrar este pago.",
+    "noPermissionRevert": "No tienes permisos para revertir este pago.",
+    "amountPositive": "El monto del pago debe ser mayor a 0.",
+    "amountTooHigh": "El monto del pago supera el máximo permitido.",
+    "fixedExpenseGone": "El gasto fijo asociado al pago ya no existe.",
+    "commitmentNotFound": "No encontramos ese compromiso.",
+    "commitmentAlreadyPaid": "Este compromiso ya está al día.",
+    "commitmentInactive": "Solo puedes registrar pagos sobre compromisos activos.",
+    "notFound": "No encontramos ese pago.",
+    "alreadyRecorded": "Ese pago ya estaba registrado.",
+    "alreadyReverted": "Ese pago ya estaba revertido."
+  },
+  "savings": {
+    "ownerOnlyContribute": "Solo el dueño del hogar puede aportar a la meta.",
+    "contributionPositive": "El aporte debe ser mayor a cero.",
+    "goalNotFound": "No encontramos esa meta.",
+    "exceedsReserve": "El monto supera la reserva disponible."
   }
 }

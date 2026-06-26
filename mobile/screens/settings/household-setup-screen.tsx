@@ -42,6 +42,7 @@ import {
   resolveFlexibleTargetPercent,
 } from '@/features/settings/household-setup-wizard.model'
 import { triggerHaptic } from '@/lib/haptics'
+import { getNumberFormat } from '@/lib/i18n/active-locale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 import { typography } from '@/theme/typography'
@@ -56,10 +57,12 @@ interface HouseholdSetupWizardContentProps extends HouseholdSetupScreenProps {
 }
 
 const TOTAL_STEPS = 3
-const CURRENCY_FORMATTER = new Intl.NumberFormat('es-AR', {
+const CURRENCY_FORMAT_OPTIONS: Intl.NumberFormatOptions = {
   currency: 'ARS',
   style: 'currency',
-})
+}
+const formatCurrency = (value: number) =>
+  getNumberFormat(CURRENCY_FORMAT_OPTIONS).format(value)
 
 function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputSnapshot {
   return {
@@ -159,9 +162,9 @@ function HouseholdSetupWizardContent({
     monthlyIncome,
   })
   const formattedBenchmarkFund =
-    benchmarkFund > 0 ? CURRENCY_FORMATTER.format(benchmarkFund) : t('settings:householdSetup.pending')
+    benchmarkFund > 0 ? formatCurrency(benchmarkFund) : t('settings:householdSetup.pending')
   const formattedMonthlySavingsGoal =
-    monthlySavingsGoal > 0 ? CURRENCY_FORMATTER.format(monthlySavingsGoal) : '$ 0'
+    monthlySavingsGoal > 0 ? formatCurrency(monthlySavingsGoal) : '$ 0'
   const savingsPresets = buildHouseholdSavingsPresets({
     monthlyIncome,
   })

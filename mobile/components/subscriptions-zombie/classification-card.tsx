@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { AppTheme } from '@/theme/palette'
 import type {
   Classification,
@@ -70,7 +71,7 @@ export function ClassificationCard({
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
         {t('insights:subscriptions.classification.consensusBody', {
           count: monthsObserved,
-          total: `$${total.toLocaleString('es-AR')}`,
+          total: `$${total.toLocaleString(getIntlLocale())}`,
         })}
       </Text>
       <Text style={[styles.q, { color: theme.colors.text }]}>

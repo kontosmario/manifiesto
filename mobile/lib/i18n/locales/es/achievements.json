@@ -36,5 +36,79 @@
       "gold": "GRAN FLORACIÓN",
       "legendary": "ESPECIE LEGENDARIA"
     }
+  },
+  "catalog": {
+    "first_cycle_under_budget": {
+      "title": "Te sobró mes",
+      "body": "Cerraste tu primer ciclo gastando menos. Margen real, en tu bolsillo."
+    },
+    "first_expense": {
+      "title": "El primer brote",
+      "body": "Cargaste tu primer gasto. Desde hoy, nada se te escapa."
+    },
+    "first_fixed": {
+      "title": "El armazón del mes",
+      "body": "Tu primer fijo cargado: ya sabes qué se va sí o sí."
+    },
+    "first_goal": {
+      "title": "Le pusiste nombre",
+      "body": "Tu primera meta tiene rumbo. Ahorrar para algo cambia todo."
+    },
+    "first_paid_fixed": {
+      "title": "Cuenta saldada",
+      "body": "Pagaste tu primer fijo y lo registraste. Cabeza liviana."
+    },
+    "goal_25": {
+      "title": "Primer cuarto",
+      "body": "Un cuarto de tu meta, juntado. Arrancar era lo difícil."
+    },
+    "goal_50": {
+      "title": "Mitad y subiendo",
+      "body": "La mitad ya es tuya. De aquí se ve la cima."
+    },
+    "goal_75": {
+      "title": "Casi en la mano",
+      "body": "Tres cuartos. La meta dejó de ser idea."
+    },
+    "goal_completed": {
+      "title": "Meta florecida",
+      "body": "Llegaste entera. Lo que planeaste, se hizo plata."
+    },
+    "no_spend_cycle_15": {
+      "title": "Medio ciclo zen",
+      "body": "Quince días quietos. La mitad del mes, en paz."
+    },
+    "no_spend_cycle_3": {
+      "title": "Tres días en calma",
+      "body": "Tres jornadas sin gastar en un ciclo. El freno también se entrena."
+    },
+    "no_spend_cycle_7": {
+      "title": "Semana serena",
+      "body": "Siete días sin gasto en el ciclo. Ya es un ritmo."
+    },
+    "no_spend_lifetime_50": {
+      "title": "Cincuenta sin gastar",
+      "body": "50 días sin gasto desde que arrancaste. Veterana del freno."
+    },
+    "streak_14": {
+      "title": "Dos semanas en pie",
+      "body": "Catorce días firmes. Ya no es esfuerzo, es costumbre."
+    },
+    "streak_30": {
+      "title": "Un mes sin fallar",
+      "body": "30 días seguidos. Esto ya echó raíces."
+    },
+    "streak_60": {
+      "title": "Dos meses de raíz",
+      "body": "60 días. La constancia ya tiene tronco propio."
+    },
+    "streak_7": {
+      "title": "Siete al hilo",
+      "body": "Una semana sin saltearte uno. El hábito ya asoma."
+    },
+    "streak_90": {
+      "title": "Leyenda viva",
+      "body": "90 días sin perderte uno. Esto ya eres tú."
+    }
   }
 }

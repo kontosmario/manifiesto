@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
 import {
+  achievementBody,
+  achievementTitle,
   formatEarnedDate,
   tierShort,
   tierTone,
@@ -122,8 +124,12 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
           </Text>
         )}
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>{b.title}</Text>
-        <Text style={[styles.body, { color: theme.colors.textMuted }]}>{b.body}</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          {achievementTitle(b.code, b.title)}
+        </Text>
+        <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+          {achievementBody(b.code, b.body)}
+        </Text>
 
         {earned ? (
           <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>

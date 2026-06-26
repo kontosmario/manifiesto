@@ -33,7 +33,7 @@ export function buildExpenseBreakdown({
 
       totalsByCategory.set(expense.category_id, {
         color: category?.color ?? primaryColor,
-        label: category?.name ?? 'Sin categoria',
+        label: category?.displayName ?? 'Sin categoria',
         total: (previous?.total ?? 0) + expense.price,
       })
     })

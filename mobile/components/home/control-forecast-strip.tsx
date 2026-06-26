@@ -4,15 +4,16 @@ import { clamp, formatCompactMoney, getSignalPalette } from '@/components/home/c
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
-const weekdayFormatter = new Intl.DateTimeFormat('es-AR', {
+const weekdayOptions: Intl.DateTimeFormatOptions = {
   weekday: 'short',
-})
+}
 
 export interface ControlForecastStripPoint {
   dateIso: string
@@ -70,8 +71,10 @@ export function ControlForecastStrip({
           const dayLabel =
             index === 0
               ? t('home:forecastStrip.tomorrowShort')
-              : shortDateFormatter.format(pointDate)
-          const weekdayLabel = weekdayFormatter.format(pointDate).replace('.', '')
+              : getDateTimeFormat(shortDateOptions).format(pointDate)
+          const weekdayLabel = getDateTimeFormat(weekdayOptions)
+            .format(pointDate)
+            .replace('.', '')
 
           return (
             <View key={point.dateIso} style={styles.forecastItem}>

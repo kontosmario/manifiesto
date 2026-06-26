@@ -142,9 +142,18 @@
     "errorPercent": "It must be between 0 and 100.",
     "errorAmount": "Invalid amount.",
     "mode": {
-      "none": { "label": "No buffer", "hint": "Don't reserve" },
-      "fixed": { "label": "Fixed amount", "hint": "In ARS per day" },
-      "percent": { "label": "Percentage", "hint": "% of the budget" }
+      "none": {
+        "label": "No buffer",
+        "hint": "Don't reserve"
+      },
+      "fixed": {
+        "label": "Fixed amount",
+        "hint": "In ARS per day"
+      },
+      "percent": {
+        "label": "Percentage",
+        "hint": "% of the budget"
+      }
     }
   },
   "savingsGoal": {
@@ -724,10 +733,22 @@
   },
   "cycleConfig": {
     "type": {
-      "monthly": { "title": "Monthly", "subtitle": "Once a month" },
-      "biweekly": { "title": "Biweekly", "subtitle": "Every 14 days" },
-      "weekly": { "title": "Weekly", "subtitle": "Every 7 days" },
-      "custom": { "title": "Custom", "subtitle": "Every N days" }
+      "monthly": {
+        "title": "Monthly",
+        "subtitle": "Once a month"
+      },
+      "biweekly": {
+        "title": "Biweekly",
+        "subtitle": "Every 14 days"
+      },
+      "weekly": {
+        "title": "Weekly",
+        "subtitle": "Every 7 days"
+      },
+      "custom": {
+        "title": "Custom",
+        "subtitle": "Every N days"
+      }
     },
     "helper": {
       "monthly": "The cycle lasts 28-31 days depending on the month.",
@@ -908,5 +929,12 @@
     "paymentIssue": "Payment issue",
     "noRenew": "Won't renew",
     "active": "Active"
+  },
+  "profile": {
+    "title": "Profile",
+    "displayName": "Display name",
+    "avatar": "Avatar",
+    "email": "Email",
+    "noEmail": "No email"
   }
 }

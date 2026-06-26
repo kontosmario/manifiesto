@@ -1,4 +1,5 @@
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { Expense } from '@/features/expenses/use-expenses'
 import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
@@ -290,5 +291,5 @@ function carryoverAmount(openingBudget: number, baseDailyBudget: number) {
 function formatSignedCurrency(value: number) {
   const absoluteValue = Math.abs(value)
   const prefix = value < 0 ? '-' : ''
-  return `${prefix}$${absoluteValue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
+  return `${prefix}$${absoluteValue.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}`
 }

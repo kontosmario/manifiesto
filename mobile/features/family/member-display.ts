@@ -1,5 +1,6 @@
 import type { FamilyMemberRole } from './use-family-admin'
 import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 
 /** Etiqueta humana del rol para los badges. */
 export function roleLabel(role: FamilyMemberRole): string {
@@ -13,7 +14,7 @@ export function formatMemberSince(iso: string): string {
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) return i18n.t('settings:memberSince.fallback')
   try {
-    const formatted = parsed.toLocaleDateString('es-AR', {
+    const formatted = parsed.toLocaleDateString(getIntlLocale(), {
       month: 'long',
       year: 'numeric',
     })

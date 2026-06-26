@@ -1,6 +1,6 @@
 import type { PayCycle } from '@/utils/pay-cycle'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
-import { formatDayMonthShort, MONTH_SHORT, WEEKDAY_SHORT } from '@/utils/date-format'
+import { formatDayMonthShort, monthShort, weekdayShort } from '@/utils/date-format'
 
 /**
  * Label del ciclo activo para mostrar en hero de Home / Gastos / Fijos.
@@ -31,10 +31,10 @@ export function formatCycleSummary(config: FinanceCycleConfig): string {
   const [y, m, d] = config.cycle_anchor_date.split('-').map(Number)
   const date = new Date(y, (m ?? 1) - 1, d ?? 1)
   if (config.cycle_type === 'biweekly') {
-    return `Quincenal · desde ${date.getDate()} ${MONTH_SHORT[date.getMonth()]}`
+    return `Quincenal · desde ${date.getDate()} ${monthShort(date)}`
   }
   if (config.cycle_type === 'weekly') {
-    return `Semanal · desde ${WEEKDAY_SHORT[date.getDay()]} ${date.getDate()} ${MONTH_SHORT[date.getMonth()]}`
+    return `Semanal · desde ${weekdayShort(date)} ${date.getDate()} ${monthShort(date)}`
   }
   return `Custom · cada ${config.cycle_length_days} días`
 }

@@ -82,7 +82,7 @@ export function ImportReviewSummary({
             row={row}
             categoryName={
               row.kind === 'expense' && row.categoryId
-                ? (categoryById.get(row.categoryId)?.name ?? null)
+                ? (categoryById.get(row.categoryId)?.displayName ?? null)
                 : null
             }
             // Cap the stagger at 5 items: with 8-12 movements the tail used

@@ -25,7 +25,7 @@ import { useCancelAccountDeletion } from '@/features/auth/use-delete-account'
 import { triggerHaptic } from '@/lib/haptics'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
-import { MONTH_SHORT } from '@/utils/date-format'
+import { monthShort } from '@/utils/date-format'
 import { getErrorMessage, isRateLimitError } from '@/utils/error-message'
 
 interface CancelDeletionBannerProps {
@@ -37,7 +37,7 @@ function formatScheduledDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   const day = d.getDate()
-  const month = MONTH_SHORT[d.getMonth()]
+  const month = monthShort(d)
   const year = d.getFullYear()
   return `${day} de ${month}. ${year}`
 }

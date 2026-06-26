@@ -34,6 +34,7 @@ import {
   type AchievementViewItem,
 } from '@/features/achievements/use-achievements'
 import {
+  achievementTitle,
   tierIsPremium,
   tierTone,
 } from '@/features/achievements/achievement-tiers'
@@ -246,13 +247,14 @@ function BadgeTile({
   const tone = tierTone(item.tier, theme.isDark)
   const earned = item.earned
   const premium = earned && tierIsPremium(item.tier)
+  const title = achievementTitle(item.code, item.title)
 
   const lockedBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={item.title}
+      accessibilityLabel={title}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -314,7 +316,7 @@ function BadgeTile({
           ]}
           numberOfLines={2}
         >
-          {item.title}
+          {title}
         </Text>
         {!earned ? (
           <View
