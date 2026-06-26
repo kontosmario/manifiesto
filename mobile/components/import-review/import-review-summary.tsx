@@ -156,7 +156,7 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
         accessible
         accessibilityRole={onJumpTo ? 'button' : 'text'}
         accessibilityLabel={a11yLabel}
-        accessibilityHint={onJumpTo ? 'Tocá para editar este movimiento' : undefined}
+        accessibilityHint={onJumpTo ? 'Toca para editar este movimiento' : undefined}
         style={({ pressed }) => [
           styles.item,
           pressed && onJumpTo ? styles.itemPressed : null,

@@ -4,9 +4,9 @@
  * by every add-form (add-expense, add-income, add-fijo, the
  * import-review wizard) so the wording stays identical across surfaces:
  *
- *   ["monto"]                  → "Completá monto para continuar."
- *   ["monto", "categoría"]     → "Completá monto y categoría para continuar."
- *   ["nombre", "monto", "fecha"] → "Completá nombre, monto y fecha para continuar."
+ *   ["monto"]                  → "Completa monto para continuar."
+ *   ["monto", "categoría"]     → "Completa monto y categoría para continuar."
+ *   ["nombre", "monto", "fecha"] → "Completa nombre, monto y fecha para continuar."
  *
  * Caps at 3 visible items so the line never wraps past two lines on a
  * small screen; anything beyond gets an ellipsis tail.
@@ -23,5 +23,5 @@ export function formatMissingFields(fields: readonly string[]): string {
     joined = `${visible.slice(0, -1).join(', ')} y ${visible[visible.length - 1]}`
   }
   const tail = fields.length > visible.length ? '…' : ''
-  return `Completá ${joined}${tail} para continuar.`
+  return `Completa ${joined}${tail} para continuar.`
 }

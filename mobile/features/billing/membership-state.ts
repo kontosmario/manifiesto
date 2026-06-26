@@ -78,7 +78,7 @@ export function membershipVariant(
       note: 'El plan lo administra quien lo contrató en tu hogar.',
     }
   }
-  // De acá en adelante: el COMPRADOR (gestiona su propia sub).
+  // De aquí en adelante: el COMPRADOR (gestiona su propia sub).
   if (snap.subscriptionStatus === 'grace') {
     return {
       tone: 'warn',

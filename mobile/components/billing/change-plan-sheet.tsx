@@ -13,7 +13,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  *
  * Controlado: el `selected` lo maneja el host (billing-screen), que lo
  * inicializa al `scheduledPlanId` al abrir. Confirmar solo tiene efecto si
- * elegís algo distinto a lo que ya va a renovar.
+ * eliges algo distinto a lo que ya va a renovar.
  */
 export interface ChangePlanSheetProps {
   visible: boolean
@@ -70,7 +70,7 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
               { color: theme.colors.textMuted },
             ]}
           >
-            Es tu plan al renovar. Elegí otro para cambiar.
+            Es tu plan al renovar. Elige otro para cambiar.
           </Text>
         ) : null}
       </View>

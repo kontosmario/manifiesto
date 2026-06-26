@@ -6,7 +6,7 @@
 // device que puede ocurrir en cualquier pantalla. El TransitionOverlay
 // lee AMBAS fuentes y renderiza el mismo fallback de error; el botón
 // Reintentar decide a quién avisar (RETRY a la máquina si el viaje
-// estaba en bridge-error, hide acá si fue takeover global).
+// estaba en bridge-error, hide aquí si fue takeover global).
 //
 // El GlobalConnectivityWatcher (debounce 2.5s + resume grace 3s) es el
 // único emisor de show; hide ocurre al volver online (watcher) o al

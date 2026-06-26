@@ -105,7 +105,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
 
               {/* Sub-línea solo cuando HAY pendientes. Con la lista vacía
                   el EmptyState ("Todo al día") es el único dueño del
-                  mensaje — antes se duplicaba acá y en el empty state. */}
+                  mensaje — antes se duplicaba aquí y en el empty state. */}
               {count > 0 ? (
                 <View style={styles.subRow}>
                   <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>

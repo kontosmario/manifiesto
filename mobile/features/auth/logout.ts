@@ -12,7 +12,7 @@ import { clearProtectionPromptDismissal } from '@/features/auth/protection-promp
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 
 // Imports ESTÁTICOS a propósito (2026-06-11): los `await import()` que
-// había acá no ahorraban nada en producción (todos estos módulos ya
+// había aquí no ahorraban nada en producción (todos estos módulos ya
 // están en el grafo estático vía otros imports) pero en Expo Go cada
 // uno costaba un round-trip de bundling a Metro — medido ~2.5s de
 // "nada visible" al tocar EMPEZAR con sesión colgada. La única
@@ -91,7 +91,7 @@ export async function logoutSession(input: {
     // signed out mid-onboarding without seeing the screen, they should
     // see it again on the next login.
     userId ? clearBiometricSetupShown(userId) : Promise.resolve(),
-    // Sprint R-3 · R-3.2 — clear the "Configurá Face ID o PIN"
+    // Sprint R-3 · R-3.2 — clear the "Configura Face ID o PIN"
     // dismissal stamp so the next sign-in (same or different user)
     // re-evaluates fresh. Without this, a user who dismissed the
     // banner yesterday and logs out / back in today would skip the

@@ -242,7 +242,7 @@ export function BillingScreen({
       //    ocurrió → limpiamos.
       //  · DEFERRED → downgrade CONFIRMADO (sin transacción) → MANTENEMOS el
       //    banner hasta que el server reconcilie (es el objetivo del fix; no lo
-      //    limpiamos acá o desaparecería antes de tiempo en sandbox/prod-lag).
+      //    limpiamos aquí o desaparecería antes de tiempo en sandbox/prod-lag).
       // Edge raro: un cancel >8s resuelve por timeout como DEFERRED y deja el
       // banner pegado; se auto-cura al remontar la pantalla (refetch del server).
       if (
@@ -280,7 +280,7 @@ export function BillingScreen({
               onError: (e) =>
                 Alert.alert(
                   'No pudimos cerrar sesión',
-                  getErrorMessage(e, 'Probá de nuevo en un momento.'),
+                  getErrorMessage(e, 'Prueba de nuevo en un momento.'),
                 ),
               onSuccess: () => {},
             })

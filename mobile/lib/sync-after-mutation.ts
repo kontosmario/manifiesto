@@ -170,7 +170,7 @@ export async function syncAllAfterMutation(
   // ── Profile — cambios de avatar / display name aparecen en:
   //   · `homeSnapshotQueryKey` (header del Home muestra avatar+nombre).
   //   · `familyMembersKey` (family strip + family roster en Settings).
-  //   · `['profile', userId]` (Settings + onboarding leen acá la fuente
+  //   · `['profile', userId]` (Settings + onboarding leen aquí la fuente
   //     primaria de display_name / avatar_url; sin invalidate quedan
   //     stale tras un upsert). Code review M2 mobile FIX-ROUND.
   if (familyId && has('profile')) {

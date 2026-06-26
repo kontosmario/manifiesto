@@ -62,7 +62,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
   async promptBiometric() {
     authFlowLog('adapter', 'promptBiometric → mostrando prompt')
     const result = await authenticateBiometricAccess({
-      promptMessage: 'Desbloqueá Manifiesto',
+      promptMessage: 'Desbloquea Manifiesto',
       disableDeviceFallback: true,
     })
     authFlowLog('adapter', 'promptBiometric resolvió', {
@@ -86,7 +86,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
 
   async confirmSession() {
     // FAST PATH (99%): sesión activa en el cliente (auto-refresh corrió
-    // en background). NO llamar refreshSession acá — el token del
+    // en background). NO llamar refreshSession aquí — el token del
     // Keychain puede estar invalidated por una rotación previa.
     const { data } = await supabase.auth.getSession()
     if (data.session) {

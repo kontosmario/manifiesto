@@ -80,9 +80,9 @@ const STEP_EYEBROWS: Record<number, string> = {
 
 const STEP_TITLES: Record<number, string> = {
   1: '¿Cómo se llama tu meta?',
-  2: '¿Cuánto necesitás juntar?',
-  3: '¿En cuánto tiempo querés llegar?',
-  4: 'Revisá los detalles',
+  2: '¿Cuánto necesitas juntar?',
+  3: '¿En cuánto tiempo quieres llegar?',
+  4: 'Revisa los detalles',
 }
 
 /**
@@ -152,7 +152,7 @@ export function CreateSavingsGoalWizardSheet({
     setCustomMonthsNumpadExpanded(false)
   }, [visible])
 
-  // Colapsar numpad al cambiar de step (no dismiss kbd acá — el dismiss
+  // Colapsar numpad al cambiar de step (no dismiss kbd aquí — el dismiss
   // vive en goNext/goBack que se disparan por interacción explícita).
   useEffect(() => {
     if (step !== 2) setNumpadExpanded(false)

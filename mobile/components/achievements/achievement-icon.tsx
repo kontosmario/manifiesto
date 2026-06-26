@@ -34,7 +34,7 @@ export interface AchievementIconProps {
 }
 
 /** Códigos con ícono custom, en orden de sort_order (firsts → racha → meta →
- *  bajo cupo → sin gasto). El caller cae a emoji si el code no está acá. */
+ *  bajo cupo → sin gasto). El caller cae a emoji si el code no está aquí. */
 export const ACHIEVEMENT_ICON_CODES = [
   'first_expense',
   'first_fixed',

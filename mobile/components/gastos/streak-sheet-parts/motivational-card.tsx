@@ -8,7 +8,7 @@ import { getAtRiskTone, getStatusTone } from './streak-sheet-tone'
  * Cards mostradas debajo del WeekActivity según `derived.status`:
  *   • ShieldNotice — at_risk con escudos disponibles
  *   • ConsequenceCard — at_risk sin escudos (warning rojo de qué se pierde)
- *   • RecoveryCard — broken (copy de "podés volver")
+ *   • RecoveryCard — broken (copy de "puedes volver")
  *   • MotivationalCard — active (mensaje + récord personal)
  *   • PersonalStats — siempre (récord + total logged)
  *   • FreezeInfo — siempre (caption del sistema de escudos)
@@ -65,7 +65,7 @@ export function ConsequenceCard({ data, derived }: ConsequenceCardProps) {
     : { fg: '#C03A2A', bg: 'rgba(224,85,85,0.08)', border: 'rgba(224,85,85,0.24)' }
   const lost = Math.max(0, data.currentStreak - derived.regressionDay)
   const rows = [
-    `Volvés al día ${derived.regressionDay} (inicio de ${derived.levelLabel})`,
+    `Vuelves al día ${derived.regressionDay} (inicio de ${derived.levelLabel})`,
     `Pierdes ${lost} ${lost === 1 ? 'día' : 'días'} de progreso ganados`,
     `Necesitarías ${derived.daysToNextLevel + lost} días más para llegar a ${derived.nextLevelLabel}`,
   ]

@@ -87,7 +87,7 @@ if (
 // fuera de pantalla.
 //
 // Tabs tienen `freezeOnBlur: false` explícito (memory: rompe gestos
-// RNGH cuando true) así que enableFreeze() acá NO los afecta · sólo
+// RNGH cuando true) así que enableFreeze() aquí NO los afecta · sólo
 // activa el freezing en los Stack screens (settings, notifications,
 // modals add-expense / add-income / etc.) que SÍ declaran
 // `freezeOnBlur: true`. Net: massive perf win en navegación stack sin

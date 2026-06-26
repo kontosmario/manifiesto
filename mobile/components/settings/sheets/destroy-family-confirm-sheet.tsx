@@ -122,7 +122,7 @@ export function DestroyFamilyConfirmSheet({
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
                 {isAccount
                   ? 'Se eliminan tus gastos, fijos, metas y toda tu configuración. Tu cuenta vuelve al onboarding desde cero. Tu suscripción se mantiene.'
-                  : `Como sos el dueño, salirte cierra el hogar para todos. Tu familia, gastos, fijos, metas y configuración se eliminan. Los ${memberLabel} pierden acceso y empiezan de nuevo.`}
+                  : `Como eres el dueño, salirte cierra el hogar para todos. Tu familia, gastos, fijos, metas y configuración se eliminan. Los ${memberLabel} pierden acceso y empiezan de nuevo.`}
               </Text>
             </View>
           </View>
@@ -139,13 +139,13 @@ export function DestroyFamilyConfirmSheet({
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="restart-alt"
-                label="Volvés a empezar el onboarding desde cero."
+                label="Vuelves a empezar el onboarding desde cero."
               />
               <BulletRow
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="verified"
-                label="Tu suscripción no se toca: seguís con tu plan."
+                label="Tu suscripción no se toca: sigues con tu plan."
               />
             </View>
           ) : (

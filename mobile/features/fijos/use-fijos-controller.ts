@@ -208,7 +208,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     summary.paidItems.length,
   ])
 
-  // Mantené el tab activo SIEMPRE válido + default al más urgente visible.
+  // Mantén el tab activo SIEMPRE válido + default al más urgente visible.
   //  - Si el tab activo se quedó sin datos (ej. pagaste el último vencido), la
   //    tab desaparece → saltamos a la primera visible (orden de urgencia).
   //  - En la primera carga (sin interacción del user) abrimos en la más urgente

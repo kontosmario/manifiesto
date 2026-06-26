@@ -17,7 +17,7 @@ interface GardenHeroProps {
 }
 
 const HERO_SUB =
-  'Una semilla por cada día que registrás. Los huecos son días que no cargaste, tranquilo: el jardín sigue.'
+  'Una semilla por cada día que registras. Los huecos son días que no cargaste, tranquilo: el jardín sigue.'
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   const { theme } = useAppTheme()

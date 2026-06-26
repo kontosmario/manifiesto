@@ -2,7 +2,7 @@
  * Slot único para la captura compartida vía share sheet (share-to-import).
  *
  * La Share Extension despierta la app con una imagen; el listener del
- * root la deposita acá y el ShareImportHost la consume RECIÉN cuando el
+ * root la deposita aquí y el ShareImportHost la consume RECIÉN cuando el
  * auth flow está `ready` y los datos del wizard cargaron (decisión
  * spec 2026-06-12: unlock primero, wizard después — la imagen nunca se
  * procesa antes de autenticar; mientras espera solo existe como path).

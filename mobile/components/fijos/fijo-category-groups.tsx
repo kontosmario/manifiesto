@@ -190,7 +190,7 @@ function ItemSlot({
   isPending?: boolean
 }) {
   // FijoRow ya wrappea el card en SwipeRow internamente (con la acción
-  // 'Eliminar' cuando recibe onDelete). No hace falta wrappear acá —
+  // 'Eliminar' cuando recibe onDelete). No hace falta wrappear aquí —
   // hacerlo causaba double-wrap y press-halo. Solo pasamos los handlers.
   return (
     <FijoRow

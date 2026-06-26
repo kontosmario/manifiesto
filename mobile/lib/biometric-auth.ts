@@ -257,7 +257,7 @@ export async function getBiometricCredentials(): Promise<BiometricCredentialsPay
   // Lectura SIN prompt: el blob se guarda con `credentialStoreOptions` (sin
   // requireAuthentication). El Face ID ya se pidió en el gate explícito del
   // login (`authenticateBiometricAccess`) — no queremos un segundo prompt
-  // acá. Si el read falla, devolvemos null y el caller cae limpio al
+  // aquí. Si el read falla, devolvemos null y el caller cae limpio al
   // sign-in por contraseña.
   let rawValue: string | null = null
   try {
@@ -345,7 +345,7 @@ export async function authenticateBiometricAccess(
   setBiometricPromptInFlight(true)
   try {
     return await LocalAuthentication.authenticateAsync({
-      promptMessage: options?.promptMessage ?? 'Desbloqueá tu acceso guardado',
+      promptMessage: options?.promptMessage ?? 'Desbloquea tu acceso guardado',
       cancelLabel: 'Cancelar',
       fallbackLabel:
         disableDeviceFallback || Platform.OS !== 'ios' ? undefined : 'Usar código',

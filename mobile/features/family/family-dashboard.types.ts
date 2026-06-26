@@ -60,7 +60,7 @@ export interface FamilyDashboardSnapshot {
    * el spent del ciclo (`actualSpentInCurrentCycle`, `variableSpentInCurrentCycle`),
    * la presión de fijos y la división del cupo diario. Para usuarios
    * `monthly` coincide con `payCycle`; para weekly/biweekly/custom es
-   * el mes calendario. UIs que necesitan "lo del mes" leen de acá; UIs
+   * el mes calendario. UIs que necesitan "lo del mes" leen de aquí; UIs
    * que necesitan "lo del cobro" (countdown, confirmar sueldo) siguen
    * leyendo `payCycle`.
    *

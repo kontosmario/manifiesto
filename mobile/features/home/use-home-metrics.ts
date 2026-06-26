@@ -313,7 +313,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     const projectionReliable = cycleDay >= 4
     const incomeConfigured = dashboard.monthlyIncome > 0
     // PostgREST devuelve numeric como string → Number() defensivo.
-    // `normalizeFinancePayload` ya lo coerciona, pero acá lo dejamos
+    // `normalizeFinancePayload` ya lo coerciona, pero aquí lo dejamos
     // explícito por si llega data desde otro camino (fallback / cache
     // optimista) sin pasar por el normalize.
     const monthlyReserveAmount = Math.max(

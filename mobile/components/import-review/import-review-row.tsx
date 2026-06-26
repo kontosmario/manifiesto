@@ -402,7 +402,7 @@ function CategorySection({
 }) {
   if (categories.length === 0) return null
   // Render the rail flat — `warning` only swaps its label color + text
-  // ("Elegí una categoría") via the rail's own animated style. No
+  // ("Elige una categoría") via the rail's own animated style. No
   // wrapper that would change the section's layout height when the
   // warning state toggles. Subtle, smooth, no jump.
   return (
@@ -484,15 +484,15 @@ function formatDayLabel(iso: string): string {
 function warningLabel(w: ReviewRow['warnings'][number]): string {
   switch (w) {
     case 'foreign-currency':
-      return 'Moneda no soportada. Editá el monto en ARS.'
+      return 'Moneda no soportada. Edita el monto en ARS.'
     case 'swap-ambiguous':
-      return 'Cambio de moneda. Verificá antes de cargar.'
+      return 'Cambio de moneda. Verifica antes de cargar.'
     case 'no-merchant':
-      return 'Sin descripción. Completá antes de confirmar.'
+      return 'Sin descripción. Completa antes de confirmar.'
     case 'no-date':
       return 'Sin fecha clara. Asumimos hoy.'
     case 'value-zero':
-      return 'Monto 0. Editá antes de confirmar.'
+      return 'Monto 0. Edita antes de confirmar.'
     case 'future-date':
       return 'La fecha era futura. La ajustamos a hoy — revisala.'
   }

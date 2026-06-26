@@ -65,9 +65,9 @@ export function buildApplyReserveMutation(
  *   · family-finance: la fuente de monthly_reserve_amount y
  *     current_cycle_starting_balance.
  *   · savings-goal: el current_amount cuando target='meta'.
- *   · cycle-acumulado: el hero del Home consulta acá para mostrar
+ *   · cycle-acumulado: el hero del Home consulta aquí para mostrar
  *     contexto positivo cuando se sumó al cycle.
- *   · home-snapshot: el chip "Reserva" del Home se hidrata desde acá.
+ *   · home-snapshot: el chip "Reserva" del Home se hidrata desde aquí.
  *   · syncAllAfterMutation: cubre control snapshots y otros derivados.
  */
 export function useApplyReserveDecision(familyId?: string, userId?: string) {

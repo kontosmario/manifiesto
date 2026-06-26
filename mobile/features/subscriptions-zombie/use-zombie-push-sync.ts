@@ -76,7 +76,7 @@ export function useZombiePushSync(args: {
         try {
           await sendFamilyPush({
             familyId,
-            title: `Tenés ${pending.length} suscripciones que casi no usás`,
+            title: `Tienes ${pending.length} suscripciones que casi no usas`,
             body: `${names}${more} · $${total.toLocaleString('es-AR')}/mes. Toca para revisar.`,
             kind: 'subscription_zombie',
             url: '/asistente',

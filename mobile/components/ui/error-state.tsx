@@ -21,7 +21,7 @@ interface ErrorStateProps {
 
 export function ErrorState({
   actionLabel = 'Intentar de nuevo',
-  description = 'No pudimos cargar esta información. Revisá tu conexión e intentá otra vez.',
+  description = 'No pudimos cargar esta información. Revisa tu conexión e intenta otra vez.',
   title = 'Algo salió mal',
   onAction,
 }: ErrorStateProps) {

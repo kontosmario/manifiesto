@@ -38,17 +38,17 @@ export function biometricFeedbackForError(
   if (SILENT_ERRORS.has(error)) return null
   if (LOCKOUT_ERRORS.has(error)) {
     return {
-      message: `${label} está bloqueado por varios intentos. Usá tu contraseña para entrar.`,
+      message: `${label} está bloqueado por varios intentos. Usa tu contraseña para entrar.`,
     }
   }
   if (UNAVAILABLE_ERRORS.has(error)) {
     return {
-      message: `${label} no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.`,
+      message: `${label} no está disponible. Revisa Ajustes → Manifiesto → Face ID o usa tu contraseña.`,
     }
   }
   // Catch-all for any other non-cancel failure (e.g. authentication_failed,
   // invalid_context, unknown). Don't leave the user stuck without feedback.
   return {
-    message: `No pudimos iniciar ${label}. Usá tu contraseña para entrar.`,
+    message: `No pudimos iniciar ${label}. Usa tu contraseña para entrar.`,
   }
 }

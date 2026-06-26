@@ -27,7 +27,7 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     const exceso = Math.max(0, Math.abs(state.libreHoy))
     return {
       primary: 'Te pasaste del mes.',
-      secondary: `Faltan ${state.proximoSueldoEnDias} días al cobro. Cuidá lo que queda.`,
+      secondary: `Faltan ${state.proximoSueldoEnDias} días al cobro. Cuida lo que queda.`,
       status: 'urgent',
       primaryNumber: exceso,
       primaryLabel: 'POR ENCIMA',
@@ -38,8 +38,8 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (!state.alcanzaElMes) {
     const diasQueAguantas = Math.max(1, state.diaAgotamiento - state.diaActual)
     return {
-      primary: `Te quedás sin plata en ${diasQueAguantas} ${diasQueAguantas === 1 ? 'día' : 'días'}.`,
-      secondary: `Bajá el ritmo o llegás justo al cobro.`,
+      primary: `Te quedas sin plata en ${diasQueAguantas} ${diasQueAguantas === 1 ? 'día' : 'días'}.`,
+      secondary: `Baja el ritmo o llegas justo al cobro.`,
       status: 'urgent',
       primaryNumber: diasQueAguantas,
       primaryLabel: 'DÍAS HASTA AGOTAR',
@@ -53,7 +53,7 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (state.libreHoy < -state.cupoDiario * 0.5) {
     return {
       primary: `Vas ${formatMoneyCompact(Math.abs(state.libreHoy))} arriba del cupo.`,
-      secondary: 'Pasaste el cupo del día — corregí mañana.',
+      secondary: 'Pasaste el cupo del día — corrige mañana.',
       status: 'urgent',
       primaryNumber: Math.abs(state.libreHoy),
       primaryLabel: 'POR ENCIMA HOY',
@@ -66,14 +66,14 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (state.libreHoy < 0) {
     return {
       primary: `Pasaste el cupo de hoy por ${formatMoneyCompact(Math.abs(state.libreHoy))}.`,
-      secondary: `Acomodá el ritmo para los días que quedan.`,
+      secondary: `Acomoda el ritmo para los días que quedan.`,
       status: 'caution',
       primaryNumber: Math.abs(state.libreHoy),
       primaryLabel: 'POR ENCIMA HOY',
     }
   }
 
-  // 4b. Meta diaria auto-impuesta · pasaste tu goal pero seguís bajo
+  // 4b. Meta diaria auto-impuesta · pasaste tu goal pero sigues bajo
   //     el cupo real. Soft warning — el user opted into el goal, hay
   //     que respetarlo como threshold primario antes que el cupo del
   //     sistema.
@@ -85,7 +85,7 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     const excesoMeta = state.gastoHoy - state.dailyGoalAmount
     return {
       primary: 'Pasaste tu meta diaria.',
-      secondary: `Seguís bajo el cupo, pero superaste tu meta por ${formatMoneyCompact(excesoMeta)}.`,
+      secondary: `Sigues bajo el cupo, pero superaste tu meta por ${formatMoneyCompact(excesoMeta)}.`,
       status: 'caution',
       primaryNumber: Math.max(0, state.libreHoy),
       primaryLabel: 'LIBRE HOY',

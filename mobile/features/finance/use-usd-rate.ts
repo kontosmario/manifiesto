@@ -30,7 +30,7 @@ async function fetchUsdRate(currency: string): Promise<UsdRate> {
 /**
  * Cotización USD para la moneda dada, traída del backend (edge function
  * `usd-rate`, que cachea 3h + tiene fallback). `staleTime` 1h porque el valor se
- * mueve pocas veces al día. Pasá la moneda del hogar (family_finance.local_currency).
+ * mueve pocas veces al día. Pasa la moneda del hogar (family_finance.local_currency).
  */
 export function useUsdRate(currency: string | undefined) {
   return useQuery({

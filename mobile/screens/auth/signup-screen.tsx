@@ -131,7 +131,7 @@ export function SignupScreen() {
       setErrorMessage(resendConfirm.error)
       return
     }
-    setInfoMessage('Te reenviamos el email. Revisá también spam.')
+    setInfoMessage('Te reenviamos el email. Revisa también spam.')
     await triggerHaptic('success')
   }, [confirmationEmail, resendCooldownSeconds, resendConfirm])
 
@@ -206,7 +206,7 @@ export function SignupScreen() {
           // Cancel / error / expired — no avanzamos.
           setSubmitting(false)
           await triggerHaptic('warning')
-          setErrorMessage('No pudimos verificar el captcha. Probá de nuevo.')
+          setErrorMessage('No pudimos verificar el captcha. Prueba de nuevo.')
           return
         }
         captchaToken = token
@@ -277,7 +277,7 @@ export function SignupScreen() {
           // Ofrecé el enrolamiento de Face ID (igual que el login con
           // email). El gate por created_at adentro hace que las cuentas
           // NUEVAS lo salteen (van a la pantalla biometric-setup) y solo las
-          // EXISTENTES reciban la oferta acá.
+          // EXISTENTES reciban la oferta aquí.
           await offerBiometricEnrollmentAfterSocial()
           // Mismo rationale que el path de email: la máquina bridgea y
           // resuelve el destino (biometric-setup → onboarding para
@@ -465,8 +465,8 @@ export function SignupScreen() {
                   Te mandamos un mail a {maskEmail(confirmationEmail)}
                 </Text>
                 <Text style={[styles.confirmationBody, { color: theme.colors.textSoft }]}>
-                  Si es una cuenta nueva, confirmá desde el link del email
-                  (revisá spam). Si ya tenías cuenta con este email, iniciá
+                  Si es una cuenta nueva, confirma desde el link del email
+                  (revisa spam). Si ya tenías cuenta con este email, inicia
                   sesión.
                 </Text>
                 <View style={styles.confirmationActions}>
@@ -504,7 +504,7 @@ export function SignupScreen() {
                       {resendConfirm.isPending
                         ? 'Enviando…'
                         : resendConfirm.rateLimited
-                          ? 'Reintentá en unos minutos'
+                          ? 'Reintenta en unos minutos'
                           : resendCooldownSeconds > 0
                             ? `Reenviar en ${resendCooldownSeconds}s`
                             : 'Reenviar email'}
@@ -550,7 +550,7 @@ export function SignupScreen() {
                       { color: theme.colors.text },
                     ]}
                   >
-                    ¿Ya tenés cuenta? Iniciá sesión
+                    ¿Ya tienes cuenta? Inicia sesión
                   </Text>
                 </Pressable>
               </View>
@@ -693,7 +693,7 @@ const EASE_OUT_STRONG = Easing.bezier(0.23, 1, 0.32, 1)
 /**
  * CTA "Crear cuenta" con TODOS sus estados en transiciones fluidas:
  *  - disabled↔enabled: bg muted→verde y label soft→cream interpolados
- *    (220ms) — el estado "ya podés enviar" se gana, no aparece.
+ *    (220ms) — el estado "ya puedes enviar" se gana, no aparece.
  *  - press: scale 0.97 en 120ms / release 160ms (feedback inmediato).
  *  - flecha: ligada al progress (opacity + translateX −6→0) y crossfade
  *    a spinner durante el submit. Slot de ancho fijo: cero layout shift.

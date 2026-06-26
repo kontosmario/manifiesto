@@ -133,8 +133,8 @@ export function AuthCallbackScreen() {
       >
         <BrandedPanel elevated style={styles.card} variant="accent">
           <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-            Puede ser tu conexión o un problema temporal. Probá de nuevo o
-            volvé al login.
+            Puede ser tu conexión o un problema temporal. Prueba de nuevo o
+            vuelve al login.
           </Text>
           <View style={styles.actions}>
             <AppButton label="Reintentar" onPress={handleRetry} />

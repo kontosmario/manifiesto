@@ -467,7 +467,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
             />
           ) : (
             <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
-              {isPaused ? 'En pausa. Soltá para seguir.' : 'Mantené presionado para pausar.'}
+              {isPaused ? 'En pausa. Suelta para seguir.' : 'Mantén presionado para pausar.'}
             </Text>
           )}
         </View>

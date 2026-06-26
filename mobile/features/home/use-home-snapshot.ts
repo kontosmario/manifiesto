@@ -369,8 +369,8 @@ function seedCaches(
   // Recent activity feed para Home: filtra commitment_id ANTES de slicear.
   // Bug histórico: si los 6 más recientes eran 5 fijos auto-pagados + 1
   // gasto manual, el filter client-side dejaba solo 1 row visible (todo
-  // commitment_id se descarta porque vive en la vista de Fijos, no acá).
-  // Pre-filtrar el seed acá garantiza que el primer paint de Home tenga
+  // commitment_id se descarta porque vive en la vista de Fijos, no aquí).
+  // Pre-filtrar el seed aquí garantiza que el primer paint de Home tenga
   // 6 gastos manuales si el dataset los tiene. `payload.expenses` viene
   // con limit 120 desde home_snapshot SQL — buffer suficiente para
   // sobrevivir días con cascada de fijos pagados.
@@ -436,7 +436,7 @@ function seedCaches(
   if (payload.payments_cycle_start && payload.payments_cycle_end) {
     // Signature de fixed expense ids debe matchear con la que arma el
     // consumer hook (`useFixedExpensePayments`). El consumer pasa
-    // `fixedExpenses.map(f => f.id)`; replicamos lo mismo acá usando
+    // `fixedExpenses.map(f => f.id)`; replicamos lo mismo aquí usando
     // los rows crudos del payload para que la key sea idéntica.
     const idsSignature = fixedExpenseIdsSignature(
       payload.fixed_expenses

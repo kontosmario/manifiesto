@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.2,
   },
-  // Tabular nums acá porque el total se renderea en columna right-aligned
+  // Tabular nums aquí porque el total se renderea en columna right-aligned
   // por encima del groupTotal de la siguiente sección. Sin tabular, los
   // dígitos proporcionales (1 vs 8) hacen que la columna wobblee al
   // scrollear. Mismo principio para GastoRow.amount.

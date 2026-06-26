@@ -323,7 +323,7 @@ export function Step2Summary(props: Step2SummaryProps) {
             accessibilityRole="switch"
             accessibilityState={{ checked: alreadyPaidCurrentCuota }}
             accessibilityLabel="Ya pagué la cuota más reciente"
-            accessibilityHint="Activá si ya pagaste la cuota del mes en curso. El fijo arranca con el pago registrado y la próxima cuota apuntando al mes siguiente."
+            accessibilityHint="Activa si ya pagaste la cuota del mes en curso. El fijo arranca con el pago registrado y la próxima cuota apuntando al mes siguiente."
           >
             <View style={styles.reminderLeft}>
               <Text allowFontScaling={false} style={styles.reminderEmoji}>

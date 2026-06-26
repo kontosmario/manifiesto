@@ -68,7 +68,7 @@ function resolveTz(): string {
  * Deriva el estado del jardín (grilla 7×5 + cierre de semana) a partir del
  * motor de rachas existente (`useStreak`) y del historial de gastos
  * (`useExpenses`). El "brote" se planta al registrar un gasto variable o
- * fijo (trigger server-side) o al marcar un día sin gasto; acá solo se LEE
+ * fijo (trigger server-side) o al marcar un día sin gasto; aquí solo se LEE
  * y se deriva. Días salteados no rompen el jardín — se muestran como brote
  * tenue (la madurez depende de la antigüedad del día).
  */

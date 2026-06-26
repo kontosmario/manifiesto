@@ -146,7 +146,7 @@ export function AddExpenseTabButton({
             toast.error(
               error instanceof Error
                 ? error.message
-                : 'No se pudo marcar. Reintentá en un momento.',
+                : 'No se pudo marcar. Reintenta en un momento.',
             )
           },
         },
@@ -223,7 +223,7 @@ export function AddExpenseTabButton({
 
   const handleOpenImport = async () => {
     if (!familyId || !userId) {
-      toast.error('Necesitás estar en sesión para importar.')
+      toast.error('Necesitas estar en sesión para importar.')
       return
     }
     // El FAB overlay usa un <Modal> que está cerrando justo cuando esta
@@ -308,7 +308,7 @@ export function AddExpenseTabButton({
                 toast.error(
                   error instanceof Error
                     ? error.message
-                    : 'No se pudo revertir. Reintentá en un momento.',
+                    : 'No se pudo revertir. Reintenta en un momento.',
                 )
               },
             })
@@ -347,7 +347,7 @@ export function AddExpenseTabButton({
     <>
       <Pressable
         accessibilityLabel="Agregar gasto"
-        accessibilityHint="Mantené presionado para más acciones"
+        accessibilityHint="Mantén presionado para más acciones"
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         android_ripple={{

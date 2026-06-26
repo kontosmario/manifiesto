@@ -2,7 +2,7 @@
  * URLs legales / soporte expuestos en-app.
  *
  * Single source of truth para Privacy, Terms y contacto. Si cambia el
- * dominio o el inbox, se actualiza acá y se propaga a welcome, signup,
+ * dominio o el inbox, se actualiza aquí y se propaga a welcome, signup,
  * settings y la Delete Account confirmation sheet.
  *
  * Las URLs apuntan a `manifiestoapp.com` (dominio del producto comprado
@@ -31,7 +31,7 @@ export function buildSupportMailto(params: {
 }): string {
   const subject = encodeURIComponent(params.subject ?? 'Soporte Manifiesto')
   const lines = [
-    'Contanos qué pasó:',
+    'Cuéntanos qué pasó:',
     '',
     '',
     '— No borrar ↓ —',

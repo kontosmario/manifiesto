@@ -5,7 +5,7 @@
  *
  *   al_dia_temprano      mañana · gasté poquito · todo en orden
  *   al_dia_tarde         tarde · vas en línea con el prorrateo
- *   adelantado           gastaste menos que el prorrateo, tenés margen
+ *   adelantado           gastaste menos que el prorrateo, tienes margen
  *   atrasado_leve        gastaste un poco más que el ritmo de la hora
  *   atrasado_critico     gastaste mucho más que el cupo de hoy
  *   no_alcanza           a este ritmo no llegás al cobro
@@ -38,7 +38,7 @@ export interface ControlHeroState {
 
   // Proyección
   alcanzaElMes: boolean
-  diaAgotamiento: number // si seguís el ritmo, te quedás sin plata el día X
+  diaAgotamiento: number // si sigues el ritmo, te quedás sin plata el día X
   proyectadoMes: number
 
   // Motivación
@@ -89,7 +89,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'al_dia_temprano',
     label: 'Al día (mañana)',
-    description: 'Día 10/30 · 09:30 · gastaste poquito hoy, recién arrancás el día',
+    description: 'Día 10/30 · 09:30 · gastaste poquito hoy, recién arrancas el día',
     cupoDiario: 32_000,
     gastoHoy: 2_500,
     libreHoy: 29_500,
@@ -161,7 +161,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'adelantado',
     label: 'Adelantado',
-    description: 'Día 14/30 · 20:00 · gastaste menos del prorrateo, tenés margen',
+    description: 'Día 14/30 · 20:00 · gastaste menos del prorrateo, tienes margen',
     cupoDiario: 32_000,
     gastoHoy: 14_000,
     libreHoy: 18_000,
@@ -269,7 +269,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'no_alcanza',
     label: 'No alcanza al cobro',
-    description: 'Día 14/30 · venís gastando mucho · te quedás sin plata el día 24',
+    description: 'Día 14/30 · vienes gastando mucho · te quedas sin plata el día 24',
     cupoDiario: 32_000,
     gastoHoy: 38_000,
     libreHoy: -6_000,

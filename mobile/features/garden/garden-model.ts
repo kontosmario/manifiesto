@@ -159,7 +159,7 @@ export function deriveGardenCells(
  * Hueco RECUPERABLE de la semana recién cerrada (espejo cliente de
  * `recover_garden_day`). Devuelve el ISO del único día faltante si la semana
  * anterior está EXACTAMENTE 6/7 (gasto ∪ marca ∪ recuperado), el hueco es un día
- * real post-inicio, y tenés ≥1 escudo. Si no, `null` (no hay oferta de plantar).
+ * real post-inicio, y tienes ≥1 escudo. Si no, `null` (no hay oferta de plantar).
  * El server revalida todo — esto es solo para la UI.
  */
 export function deriveRecoverableGap(
@@ -223,7 +223,7 @@ export function weekCloseCopy(score: number): {
       bloom: false,
       label: 'Semana tranquila',
       title: 'Unos pocos brotes.',
-      sub: 'Asomaron algunas semillas. Sin culpa — la próxima arrancás con todo.',
+      sub: 'Asomaron algunas semillas. Sin culpa — la próxima arrancas con todo.',
     }
   return {
     stage: 'none',

@@ -197,7 +197,7 @@ export function StepSavings({
           {/* Emoji — mismo set que el wizard de Settings (EMOJI_PALETTE). */}
           <View style={styles.emojiSection}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              ELEGÍ UN ÍCONO
+              ELIGE UN ÍCONO
             </Text>
             <ScrollView
               horizontal

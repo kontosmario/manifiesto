@@ -51,7 +51,7 @@ export function ForgotPasswordScreen() {
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [numpadVisible, setNumpadVisible] = useState(false)
-  // Cuando el numpad (InAppNumpad) está abierto, su altura llega por acá. La
+  // Cuando el numpad (InAppNumpad) está abierto, su altura llega por aquí. La
   // usamos para subir el contenido (flex-start + padding) y que las celdas + la
   // acción no queden tapadas por el sheet.
   const numpadOffset = useNumpadOffset()
@@ -65,7 +65,7 @@ export function ForgotPasswordScreen() {
   const handleSubmit = useCallback(async () => {
     const normalized = normalizeEmail(email)
     if (!normalized.includes('@')) {
-      setErrorMessage('Ingresá un email válido.')
+      setErrorMessage('Ingresa un email válido.')
       await triggerHaptic('warning')
       return
     }
@@ -78,7 +78,7 @@ export function ForgotPasswordScreen() {
         const token = await captcha.request()
         if (!token) {
           await triggerHaptic('warning')
-          setErrorMessage('No pudimos verificar el captcha. Probá de nuevo.')
+          setErrorMessage('No pudimos verificar el captcha. Prueba de nuevo.')
           return
         }
         captchaToken = token
@@ -93,7 +93,7 @@ export function ForgotPasswordScreen() {
   }, [captcha, email, passwordReset])
 
   // Fallback por código: navega a reset-password con email+otp. La verificación
-  // (verifyOtp) + el gate seguro viven en reset-password — acá solo pasamos el
+  // (verifyOtp) + el gate seguro viven en reset-password — aquí solo pasamos el
   // código tipeado. Funciona en Expo Go / dev / TestFlight (no usa deep-link).
   const submitCode = useCallback(
     (value: string) => {
@@ -171,7 +171,7 @@ export function ForgotPasswordScreen() {
               </FadeInUp>
               <FadeInUp reduced={reduced} delay={200}>
                 <Text style={[styles.title, { color: theme.colors.text }]}>
-                  Revisá tu mail
+                  Revisa tu mail
                 </Text>
               </FadeInUp>
               <FadeInUp reduced={reduced} delay={300}>
@@ -180,8 +180,8 @@ export function ForgotPasswordScreen() {
                   <Text style={[styles.subStrong, { color: theme.colors.text }]}>
                     {sentTo}
                   </Text>{' '}
-                  con un link y un código. Tocá el link, o si no te abre la app,
-                  ingresá el código de 6 dígitos acá abajo. Vale por una hora.
+                  con un link y un código. Toca el link, o si no te abre la app,
+                  ingresa el código de 6 dígitos aquí abajo. Vale por una hora.
                 </Text>
               </FadeInUp>
             </View>
@@ -190,7 +190,7 @@ export function ForgotPasswordScreen() {
           <View style={styles.actionsStack}>
             <FadeInUp reduced={reduced} delay={400}>
               <Text style={[styles.codeLabel, { color: theme.colors.textSoft }]}>
-                ¿El link no te abrió la app? Ingresá el código del mail
+                ¿El link no te abrió la app? Ingresa el código del mail
               </Text>
               <CodeInput
                 active={numpadVisible}
@@ -253,7 +253,7 @@ export function ForgotPasswordScreen() {
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={300}>
               <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-                Decinos el email de tu cuenta y te mandamos un link para crear
+                Dinos el email de tu cuenta y te mandamos un link para crear
                 una contraseña nueva.
               </Text>
             </FadeInUp>
@@ -323,7 +323,7 @@ function FadeInUp({ delay = 0, duration = 600, reduced, style, children }: FadeI
 }
 
 // Métricas espejadas de login-screen.tsx — cualquier cambio allá debe
-// reflejarse acá para que las tres superficies de auth lean como una.
+// reflejarse aquí para que las tres superficies de auth lean como una.
 const styles = StyleSheet.create({
   fill: {
     flex: 1,

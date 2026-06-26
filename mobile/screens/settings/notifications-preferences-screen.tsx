@@ -84,7 +84,7 @@ export function NotificationsPreferencesScreen() {
       updateMutation.mutate(patch, {
         onError: () => {
           void triggerHaptic('error')
-          Alert.alert('No pudimos guardar', 'Revisá tu conexión e intentá de nuevo.')
+          Alert.alert('No pudimos guardar', 'Revisa tu conexión e intenta de nuevo.')
         },
       })
     },

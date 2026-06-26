@@ -140,7 +140,7 @@ function ClosingSceneRender({
         ]}
         accessibilityRole="header"
       >
-        Tenés{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+        Tienes{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
       </Text>
       {payload.achievementsEarnedInCycle > 0 ? (
         <View
@@ -197,7 +197,7 @@ function ClosingSceneRender({
           )}
           {!past ? (
             <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
-              ¿Qué hacés con esto?
+              ¿Qué haces con esto?
             </Text>
           ) : null}
           <View style={closingStyles.optionsStack}>
@@ -215,7 +215,7 @@ function ClosingSceneRender({
                   ? 'Aporte realizado'
                   : goalTitle
                     ? 'Aporte directo'
-                    : 'Primero creá una meta'
+                    : 'Primero crea una meta'
               }
               selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
               disabled={Boolean(past) || !payload.activeGoal}

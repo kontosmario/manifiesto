@@ -68,13 +68,13 @@ export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {
     return {
       buttonLabel: 'Continuar',
       subtitle: 'Finanzas claras, todos los días.',
-      title: 'Entrá a tu espacio',
+      title: 'Entra a tu espacio',
     }
   }
 
   return {
     buttonLabel: 'Crear cuenta',
-    subtitle: 'Empieza hoy, ordená el resto.',
+    subtitle: 'Empieza hoy, ordena el resto.',
     title: 'Súmate a Manifiesto',
   }
 }

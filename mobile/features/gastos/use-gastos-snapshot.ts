@@ -253,7 +253,7 @@ export function useGastosSnapshot(args: UseGastosSnapshotArgs) {
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     // Si la queryKey cambia (p.ej. cupoDiario se movió ≥1 peso por una
-    // mutación/realtime real), mantené la data anterior en pantalla en vez
+    // mutación/realtime real), mantén la data anterior en pantalla en vez
     // de devolver undefined → el gate `if (!snapshot.data)` NO cae al
     // skeleton, el contenido se queda quieto y la nueva data entra en
     // background. Mata el swap contenido↔skeleton (el "flicker" de Gastos).

@@ -46,7 +46,7 @@ export function Step2Amount({
             ? `Editar monto. Valor actual ${
                 goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
               }`
-            : `Tocá para editar el monto. Valor actual ${
+            : `Toca para editar el monto. Valor actual ${
                 goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
               }`
         }
@@ -125,7 +125,7 @@ export function Step2Amount({
             { color: theme.colors.textMuted },
           ]}
         >
-          Tocá el monto para editarlo. Solo números enteros — sin centavos.
+          Toca el monto para editarlo. Solo números enteros — sin centavos.
         </Text>
       ) : null}
 

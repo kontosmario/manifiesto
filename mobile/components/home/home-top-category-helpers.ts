@@ -159,7 +159,7 @@ export function computeTopCategoryFallback(
     return {
       kind: 'empty',
       primary: 'Carga tu primer gasto',
-      secondary: 'Arrancá el ciclo registrando algo',
+      secondary: 'Arranca el ciclo registrando algo',
     }
   }
 

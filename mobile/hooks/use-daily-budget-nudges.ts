@@ -88,7 +88,7 @@ export function useDailyBudgetNudges() {
       // que el push, ver el guard de arriba), así que nunca fue un fallback para
       // "sin push": si tenías permiso llegaban las DOS. Cancelamos cualquiera que
       // haya quedado agendada de versiones previas para que deje de dispararse en
-      // installs existentes; ya no se re-agenda. (Se conserva "Cerrá tu día", la
+      // installs existentes; ya no se re-agenda. (Se conserva "Cierra tu día", la
       // del umbral 70%, que es contextual y no se pisa con nada server-side.)
       const scheduled = await Notifications.getAllScheduledNotificationsAsync()
       const staleCheckins = scheduled.filter(
@@ -109,11 +109,11 @@ export function useDailyBudgetNudges() {
       if (!hasThresholdLog && hasCrossedThreshold && hour < 18 && !isCancelled) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Cerrá tu día',
+            title: 'Cierra tu día',
             // Sprint Q · Q-1: no amounts on the lock screen. The
             // contextual amount/projection lives in `data` so the
             // in-app surface can still tailor the message.
-            body: 'Mirá cómo te fue hoy.',
+            body: 'Mira cómo te fue hoy.',
             data: {
               kind: THRESHOLD_NOTIFICATION_KEY,
               url: '/expenses',

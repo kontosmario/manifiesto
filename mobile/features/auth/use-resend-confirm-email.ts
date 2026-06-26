@@ -97,7 +97,7 @@ export function useResendConfirmEmail(
       purgeOldSendTimestamps()
       if (sendTimestamps.length >= MAX_SENDS_PER_WINDOW) {
         setError(
-          'Esperá unos minutos antes de pedir otro email. Ya enviamos varios.',
+          'Espera unos minutos antes de pedir otro email. Ya enviamos varios.',
         )
         return
       }
@@ -110,7 +110,7 @@ export function useResendConfirmEmail(
         setError(
           err instanceof Error
             ? err.message
-            : 'No pudimos reenviar el email. Intentá de nuevo.',
+            : 'No pudimos reenviar el email. Intenta de nuevo.',
         )
       }
     },

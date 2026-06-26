@@ -48,26 +48,26 @@ const COPY: Record<
   success: {
     title: '¡Bienvenido al hogar!',
     body: (planName) =>
-      `Tu ${planName ?? 'plan'} ya está activo. Acceso completo para vos y tu hogar.`,
+      `Tu ${planName ?? 'plan'} ya está activo. Acceso completo para ti y tu hogar.`,
   },
   planChanged: {
     title: 'Plan actualizado',
     body: () =>
-      'Listo. Vas a ver el cambio reflejado en "Mi suscripción" — al instante si fue una mejora, o en tu próxima renovación si fue un cambio a un plan menor.',
+      'Listo. Verás el cambio reflejado en "Mi suscripción" — al instante si fue una mejora, o en tu próxima renovación si fue un cambio a un plan menor.',
   },
   restored: {
     title: 'Recuperamos tu suscripción',
-    body: () => 'Ya tenés acceso a tu plan en este dispositivo.',
+    body: () => 'Ya tienes acceso a tu plan en este dispositivo.',
   },
   error: {
     title: 'No pudimos confirmar tu compra',
     body: (_p, reason) =>
-      reason ?? 'Reintentá en un momento. No se te cobró nada.',
+      reason ?? 'Reintenta en un momento. No se te cobró nada.',
   },
   restoreError: {
     title: 'No pudimos restaurar',
     body: (_p, reason) =>
-      reason ?? 'Reintentá en un momento.',
+      reason ?? 'Reintenta en un momento.',
   },
 }
 

@@ -72,13 +72,13 @@ export function CancelDeletionBanner({
         const rateLimited = isRateLimitError(error)
         Alert.alert(
           rateLimited
-            ? 'Probá de vuelta en unos segundos'
+            ? 'Prueba de nuevo en unos segundos'
             : 'No pudimos cancelar la baja',
           rateLimited
-            ? 'Probá nuevamente en unos segundos. Tu solicitud de baja sigue agendada — está todo bien y vas a poder cancelarla cuando quieras.'
+            ? 'Prueba nuevamente en unos segundos. Tu solicitud de baja sigue agendada — está todo bien y vas a poder cancelarla cuando quieras.'
             : getErrorMessage(
                 error,
-                'Probá nuevamente en un momento. Si el problema persiste, escribinos a soporte@manifiestoapp.com.',
+                'Prueba nuevamente en un momento. Si el problema persiste, escríbenos a soporte@manifiestoapp.com.',
               ),
         )
       },
@@ -92,8 +92,8 @@ export function CancelDeletionBanner({
       accessibilityRole="alert"
       accessibilityLabel={
         formatted
-          ? `Tu cuenta se eliminará el ${formatted}. Tocá para cancelar.`
-          : 'Tu cuenta tiene una baja agendada. Tocá para cancelar.'
+          ? `Tu cuenta se eliminará el ${formatted}. Toca para cancelar.`
+          : 'Tu cuenta tiene una baja agendada. Toca para cancelar.'
       }
       style={[
         styles.shell,
@@ -115,8 +115,8 @@ export function CancelDeletionBanner({
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
             {formatted
-              ? `Tu cuenta se eliminará el ${formatted}. Cancelá si no fuiste vos.`
-              : 'Tu cuenta tiene una baja agendada. Cancelá si no fuiste vos.'}
+              ? `Tu cuenta se eliminará el ${formatted}. Cancela si no fuiste tú.`
+              : 'Tu cuenta tiene una baja agendada. Cancela si no fuiste tú.'}
           </Text>
         </View>
       </View>

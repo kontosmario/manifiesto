@@ -242,7 +242,7 @@ function MetaCardImpl({
                   style={[styles.footerText, { color: accentFg, flex: 1 }]}
                   numberOfLines={1}
                 >
-                  <Text style={styles.footerStrong}>¡Lo lograste!</Text> Disfrutá tu meta.
+                  <Text style={styles.footerStrong}>¡Lo lograste!</Text> Disfruta tu meta.
                 </Text>
               ) : (
                 <Text

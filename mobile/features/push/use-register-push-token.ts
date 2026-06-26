@@ -18,7 +18,7 @@ const RETRY_BASE_MS = 4000
  * `push_subscriptions` cada vez que aparece un userId activo (post
  * login / refresh / cold start). No pide permisos por sí mismo: el
  * priming de `onboarding-success-screen` y el toggle de Settings son
- * los puntos de entrada del prompt nativo. Acá sólo "completamos"
+ * los puntos de entrada del prompt nativo. Aquí sólo "completamos"
  * el registro si el permiso ya fue concedido.
  *
  * Reintentos (push audit 2026-06-15): sólo memorizamos el (user, family)
@@ -69,7 +69,7 @@ export function useRegisterPushToken(
       // Guard de concurrencia: jamás dejar dos registros solapados. La
       // causa raíz del flood (audit 2026-06-23): `setupPushNotifications`
       // llama `getExpoPushTokenAsync`, que re-emite el device token vía
-      // `addPushTokenListener` → re-entra acá → fan-out de decenas de
+      // `addPushTokenListener` → re-entra aquí → fan-out de decenas de
       // invokes concurrentes → 429 auto-infligido. Con el guard, las
       // re-entradas durante un registro en vuelo se descartan (no se
       // encolan), así el loop muere en una iteración.

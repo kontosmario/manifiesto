@@ -239,7 +239,7 @@ function FijosHeroCardImpl({
           {/* CycleRouteLine ocupa el slot del subtitle viejo —
               comunicación temporal del ciclo via boarding pass
               graphic + today marker. Reemplaza el "X días al cierre"
-              de texto que vivía acá antes. */}
+              de texto que vivía aquí antes. */}
           <CycleRouteLine
             cycleLabel={mes}
             cycleDayIndex={cycleDayIndex}
@@ -279,7 +279,7 @@ function FijosHeroCardImpl({
               />
               {/* Item count absorbed del StatCard viejo "Por pagar".
                   Cuando hay vencidos, el badge "X VENCIDOS" arriba
-                  los contabiliza — no duplicamos esa info acá. */}
+                  los contabiliza — no duplicamos esa info aquí. */}
               <Text style={[styles.montoSub, { color: '#F2A78C' }]}>
                 {cantidadPendientes} {cantidadPendientes === 1 ? 'pendiente' : 'pendientes'}
               </Text>

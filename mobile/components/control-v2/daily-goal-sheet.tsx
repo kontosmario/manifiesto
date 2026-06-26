@@ -59,7 +59,7 @@ interface DailyGoalSheetProps {
   initialBufferMode: 'none' | 'fixed' | 'percent'
   initialBufferPercent: number
   /** User-level statistics used to craft a stats-aware invitation
-   *  copy. The subtitle reads as a personal observation ("Llevás N
+   *  copy. The subtitle reads as a personal observation ("Llevas N
    *  días bajo cupo, ¿probás un techo más ajustado?") instead of
    *  generic feature copy — the goal feels offered to *you*. */
   userStats: {
@@ -92,20 +92,20 @@ interface DailyGoalSheetProps {
  */
 function pickGoalSubtitle(stats: DailyGoalSheetProps['userStats']): string {
   if (stats.racha >= 5) {
-    return `Llevás ${stats.racha} días seguidos cerrando bajo cupo. Tu disciplina ya es real — ¿probás un techo un poco más ajustado y ves cómo se acelera tu meta del mes?`
+    return `Llevas ${stats.racha} días seguidos cerrando bajo cupo. Tu disciplina ya es real — ¿pruebas un techo un poco más ajustado y ves cómo se acelera tu meta del mes?`
   }
   if (stats.closedDays >= 5 && stats.diasGanadores / stats.closedDays >= 0.7) {
     const pct = Math.round((stats.diasGanadores / stats.closedDays) * 100)
-    return `${pct}% de los días del mes los cerrás dentro del cupo. Vos ya tenés el control — ponerte una meta más exigente te da el empuje para que el progreso se sienta más rápido.`
+    return `${pct}% de los días del mes los cierras dentro del cupo. Tú ya tienes el control — ponerte una meta más exigente te da el empuje para que el progreso se sienta más rápido.`
   }
   if (stats.momentum <= 0.85 && stats.closedDays >= 7) {
     const pct = Math.round((1 - stats.momentum) * 100)
     return `Tu gasto bajó ${pct}% vs la semana anterior. Buen momento para fijar un techo personal y consolidar el cambio antes de que se afloje.`
   }
   if (stats.noSpendCount >= 3) {
-    return `Llevás ${stats.noSpendCount} días sin gasto este mes. Una meta diaria un toque más ajustada te ayuda a sumar más días así, casi sin esfuerzo.`
+    return `Llevas ${stats.noSpendCount} días sin gasto este mes. Una meta diaria un toque más ajustada te ayuda a sumar más días así, casi sin esfuerzo.`
   }
-  return 'Tu cupo real no cambia — esto es un techo personal que vos elegís para acelerar tu meta del mes.'
+  return 'Tu cupo real no cambia — esto es un techo personal que tú eliges para acelerar tu meta del mes.'
 }
 
 function clampPercentToStep(percent: number): number {
@@ -160,12 +160,12 @@ export function DailyGoalSheet({
   //   · Saving: spinner state (loading prop owns the visual)
   //   · Not dirty: "Guardar" disabled (parking/landing state)
   //   · Going from active → 100% (turning meta off): "Quitar mi meta"
-  //   · Going from inactive → active (first time): "Activá mi meta"
+  //   · Going from inactive → active (first time): "Activa mi meta"
   //   · Adjusting an existing active meta: "Guardar mi meta"
   const ctaLabel = (() => {
     if (!dirty) return 'Guardar'
     if (selectedPct >= 100 && wasActive) return 'Quitar mi meta'
-    if (!wasActive) return 'Activá mi meta'
+    if (!wasActive) return 'Activa mi meta'
     return 'Guardar mi meta'
   })()
 
@@ -241,7 +241,7 @@ export function DailyGoalSheet({
               </>
             ) : (
               <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
-                Sin meta extra · jugás con todo tu cupo
+                Sin meta extra · juegas con todo tu cupo
               </Text>
             )}
           </View>
@@ -343,7 +343,7 @@ export function DailyGoalSheet({
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: theme.colors.text }]}
               >
-                Si cerrás cada día con tu meta, llegás al cobro con{' '}
+                Si cierras cada día con tu meta, llegas al cobro con{' '}
                 <Text style={[styles.impactStrong, { color: theme.colors.primary }]}>
                   {formatMoneyShort(projectedCycleSaving)}
                 </Text>{' '}
@@ -358,7 +358,7 @@ export function DailyGoalSheet({
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: theme.colors.textMuted }]}
               >
-                Activá una meta diaria un poco más exigente y vas a ver
+                Activa una meta diaria un poco más exigente y vas a ver
                 cómo el ahorro del mes se acelera.
               </Animated.Text>
             )}

@@ -179,13 +179,13 @@ export function SwipeRow({
 
       // Decisión del target en dos pasadas:
       // 1) Flick fuerte → respeta la intención de la dirección del finger
-      //    (cerrá aunque estés más del 50% abierto si flickás cerrando).
+      //    (cierra aunque estés más del 50% abierto si flickás cerrando).
       // 2) Sin flick → snap-to-nearest extremo (intuitivo, Apple-style).
       let target = 0
       if (Math.abs(vx) > FLICK_VELOCITY_PX_S) {
         if (vx < 0 && rightActions.length > 0) target = -rightWidth
         else if (vx > 0 && leftActions.length > 0) target = leftWidth
-        // else: cerrá (target = 0)
+        // else: cierra (target = 0)
       } else {
         if (rightActions.length > 0 && dx < -rightWidth / 2) target = -rightWidth
         else if (leftActions.length > 0 && dx > leftWidth / 2) target = leftWidth

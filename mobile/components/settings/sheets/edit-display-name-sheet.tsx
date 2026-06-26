@@ -37,7 +37,7 @@ export function EditDisplayNameSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Cómo aparecés en gastos, actividad y resúmenes compartidos."
+      subtitle="Cómo apareces en gastos, actividad y resúmenes compartidos."
       title="Nombre visible"
       visible={visible}
     >

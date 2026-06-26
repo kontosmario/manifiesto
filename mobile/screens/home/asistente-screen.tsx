@@ -97,7 +97,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const reduced = useReducedMotion()
   // `signals` ya viene filtrado (blocklist + dismissed) y vacío hasta que los
   // filtros cargaron (signalsReady) — el filtrado es central en useControlV2Data,
-  // no acá. Así el push (abajo) tampoco dispara sobre señales descartadas.
+  // no aquí. Así el push (abajo) tampoco dispara sobre señales descartadas.
   const { signals, signalsReady, usingMock } = useControlV2Data(familyId, userId)
 
   // Pipe high-confidence signals into push notifications. The hook is
@@ -596,7 +596,7 @@ function InsightCard({
           onLongPress={onLongPressBubble}
           delayLongPress={350}
           accessibilityRole="button"
-          accessibilityLabel={`${task.title}. Mantené presionado para opciones.`}
+          accessibilityLabel={`${task.title}. Mantén presionado para opciones.`}
         >
           <View style={styles.head}>
             {/* Materialized icon tile — keeps the per-signal icon as

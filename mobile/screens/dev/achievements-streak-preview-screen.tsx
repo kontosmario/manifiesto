@@ -147,7 +147,7 @@ export function AchievementsStreakPreviewScreen() {
             LOGROS — DISPARAR MODAL
           </Text>
           <Text style={[styles.sectionHint, { color: theme.colors.textSoft }]}>
-            Tocá cualquier logro para previsualizar el modal de celebración. No
+            Toca cualquier logro para previsualizar el modal de celebración. No
             toca la base de datos — usa el emitter local que el Bridge subscribe.
           </Text>
           {isLoading ? null : (
@@ -229,7 +229,7 @@ export function AchievementsStreakPreviewScreen() {
             `useAchievementUnlocks(userId)` filtrado por `user_id=eq.X`.{'\n'}•
             `AchievementUnlockBridge` (montado en AppStackShell) escucha y abre
             la modal con confetti + haptic.{'\n'}• La galería en Settings → "Tu
-            progreso" → "Logros" leé el catálogo + earned y muestra el merge.
+            progreso" → "Logros" lee el catálogo + earned y muestra el merge.
           </Text>
         </View>
       </View>
@@ -341,7 +341,7 @@ const FALLBACK_ACHIEVEMENT_PREVIEWS: AchievementViewItem[] = [
   {
     code: 'sample_legendary',
     title: 'Leyenda',
-    body: 'Cien días imparable. Sos parte del manifiesto.',
+    body: 'Cien días imparable. Eres parte del manifiesto.',
     icon: '👑',
     tier: 'legendary',
     sort_order: 4,

@@ -42,7 +42,7 @@ export function ExpenseEditorModal({
     <ModalCard
       visible={visible}
       title={title}
-      subtitle="Actualiza sólo lo necesario y mantené el historial limpio."
+      subtitle="Actualiza sólo lo necesario y mantén el historial limpio."
       onClose={onClose}
     >
       <View

@@ -53,7 +53,7 @@ function buildSectionData(
 /**
  * Map controller groups → SectionList sections (audit §2.3 — list
  * virtualizada). Cada day = 1 section, sin movimientos = empty section
- * que no renderea rows. Acá mezclamos income events del cycle dentro
+ * que no renderea rows. Aquí mezclamos income events del cycle dentro
  * del mismo bucket por día (sorted por created_at desc). Si un día
  * tiene SOLO income (sin expenses), creamos sección nueva. El income
  * NO afecta `total` (que es total de gastos).

@@ -47,7 +47,7 @@ export function AdminScreen() {
       <Screen title="Super admin" canGoBack>
         <View style={styles.empty}>
           <Text style={[theme.typography.body, { color: theme.colors.textMuted }]}>
-            No tenés acceso a esta sección.
+            No tienes acceso a esta sección.
           </Text>
         </View>
       </Screen>
@@ -58,7 +58,7 @@ export function AdminScreen() {
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Super admin"
-      subtitle="Buscá un usuario por email y activá su acceso MVP (completo, de por vida)."
+      subtitle="Busca un usuario por email y activa su acceso MVP (completo, de por vida)."
       canGoBack
       scrollable
     >
@@ -87,13 +87,13 @@ export function AdminScreen() {
 
         {setMvp.isError ? (
           <Text style={[theme.typography.caption, { color: theme.colors.danger }]}>
-            No se pudo actualizar. Reintentá.
+            No se pudo actualizar. Reintenta.
           </Text>
         ) : null}
 
         {trimmed.length < 2 ? (
           <Text style={[theme.typography.caption, styles.hint, { color: theme.colors.textMuted }]}>
-            Escribí al menos 2 caracteres.
+            Escribe al menos 2 caracteres.
           </Text>
         ) : search.isFetching ? (
           <Text style={[theme.typography.caption, styles.hint, { color: theme.colors.textMuted }]}>

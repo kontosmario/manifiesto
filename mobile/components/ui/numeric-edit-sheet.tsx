@@ -301,7 +301,7 @@ export function NumericEditSheet({
                 accessibilityLabel={
                   numpadExpanded
                     ? `Editar monto. Valor actual ${displayText}`
-                    : `Tocá para editar el monto. Valor actual ${displayText}`
+                    : `Toca para editar el monto. Valor actual ${displayText}`
                 }
                 accessibilityState={{ expanded: numpadExpanded }}
                 disabled={numpadDisabled}

@@ -349,7 +349,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         // redirige a onboarding-success en cuanto completeOnboarding flipea
         // onboarding_completed_at en el cache (setQueryData SINCRÓNICO en
         // onSuccess, antes de que este await resuelva). Un router.replace
-        // imperativo acá apuntaba al MISMO destino → doble navegación + doble
+        // imperativo aquí apuntaba al MISMO destino → doble navegación + doble
         // transición (el parpadeo). Single source = el Redirect del gate.
         return
       }

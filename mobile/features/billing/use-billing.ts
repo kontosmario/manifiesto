@@ -14,7 +14,7 @@ import type { BillingPlan, BillingPlanId } from './billing-plans'
  *  • LA FUENTE DE VERDAD DEL ENTITLEMENT ES EL SERVER. `status.activePlanId`
  *    NO sale de StoreKit local sino del snapshot de `useEntitlement(userId)`
  *    (RPC `family_entitlement_snapshot`, cascada comped > familia > trial >
- *    bloqueado). StoreKit acá solo DISPARA la compra/restore; el acceso lo
+ *    bloqueado). StoreKit aquí solo DISPARA la compra/restore; el acceso lo
  *    resuelve el backend tras verificar el JWS en la edge `validate-purchase`.
  *
  *  • appAccountToken = familyId. Atamos la transacción de Apple al hogar para
@@ -124,7 +124,7 @@ const EXPO_GO_REASON = 'IAP no disponible en Expo Go'
 
 // Mensajes accionables (ES, sin tecnicismos) por código de la edge function.
 const PURCHASE_FALLBACK_REASON =
-  'No pudimos confirmar tu compra. Reintentá en un momento.'
+  'No pudimos confirmar tu compra. Reintenta en un momento.'
 export const CANCELLED_REASON = 'Cancelaste la compra.'
 // Centinela INTERNO (no se muestra): un cambio de plan DIFERIDO (downgrade)
 // confirmado no emite transacción → no llega purchaseUpdated/purchaseError.
@@ -280,7 +280,7 @@ export function useBilling() {
         })
         subscriptions.push(updated, failed)
 
-        // Precios localizados: una sola vez, ya con la conexión lista (acá el
+        // Precios localizados: una sola vez, ya con la conexión lista (aquí el
         // orden está garantizado, evita el race de llamarlo desde el mount de
         // la pantalla). Falla suave → la UI cae al hardcode de billing-plans.
         iap
@@ -394,7 +394,7 @@ export function useBilling() {
       if (!familyId) {
         return {
           ok: false,
-          reason: 'No pudimos identificar tu hogar. Reintentá en un momento.',
+          reason: 'No pudimos identificar tu hogar. Reintenta en un momento.',
         }
       }
       // Single-flight: si ya hay una compra en vuelo, no abrimos otra.
@@ -429,7 +429,7 @@ export function useBilling() {
           })
           .catch((error: unknown) => {
             // Rechazo sincrónico de la store (p.ej. no preparada): resolvemos
-            // la pendiente acá; el errorListener puede no disparar.
+            // la pendiente aquí; el errorListener puede no disparar.
             const reason =
               error instanceof Error && error.message
                 ? error.message
@@ -465,7 +465,7 @@ export function useBilling() {
           continue
         }
         // 409 SUBSCRIPTION_BOUND_TO_OTHER_FAMILY: distinguible, mensaje
-        // accionable. Cortamos acá — no tiene sentido seguir.
+        // accionable. Cortamos aquí — no tiene sentido seguir.
         if (
           result.code === 'SUBSCRIPTION_BOUND_TO_OTHER_FAMILY' ||
           result.status === 409
@@ -486,14 +486,14 @@ export function useBilling() {
       if (!anyValidated) {
         return {
           ok: false,
-          reason: 'No pudimos restaurar tu suscripción. Reintentá en un momento.',
+          reason: 'No pudimos restaurar tu suscripción. Reintenta en un momento.',
         }
       }
       return { ok: true }
     } catch {
       return {
         ok: false,
-        reason: 'No pudimos restaurar tus compras. Reintentá en un momento.',
+        reason: 'No pudimos restaurar tus compras. Reintenta en un momento.',
       }
     }
   }, [queryClient, userId])

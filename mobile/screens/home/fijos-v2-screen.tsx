@@ -184,7 +184,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         onAction: () => {
           const paymentId = findLatestRealPaymentId(fixedExpenseId)
           if (!paymentId) {
-            toast.error('No pudimos deshacer todavía — probá de nuevo en 1s.')
+            toast.error('No pudimos deshacer todavía — prueba de nuevo en 1s.')
             return
           }
           handleRevertPaid(paymentId)
@@ -544,7 +544,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
               Banner contextual de fijos programados sin pagar — vive
               encima del listado, visible en todas las tabs. Renderea
               null cuando no hay future items (99% del tiempo). Cuando
-              aparece, comunica "tenés N fijos cargados sin pagar
+              aparece, comunica "tienes N fijos cargados sin pagar
               todavía" con un layout collapsible. Reemplazó la tab
               "Próximos" que casi siempre quedaba vacía.
             */}

@@ -59,7 +59,7 @@ export function ConversionSettingsSheet({
     <ModalCard
       visible={visible}
       title="Cotización en dólares"
-      subtitle="Mostrá tu saldo convertido a dólares según tu moneda. Se actualiza sola."
+      subtitle="Muestra tu saldo convertido a dólares según tu moneda. Se actualiza sola."
       onClose={onClose}
     >
       <View style={[styles.toggleRow, { borderColor: theme.colors.line }]}>
@@ -82,7 +82,7 @@ export function ConversionSettingsSheet({
       {enabled ? (
         <View style={styles.pickerWrap}>
           <Text style={[styles.pickerLabel, { color: theme.colors.textMuted }]}>
-            {currency ? 'Tu moneda' : 'Elegí tu moneda'}
+            {currency ? 'Tu moneda' : 'Elige tu moneda'}
           </Text>
           <View style={styles.list}>
             {SUPPORTED_CURRENCIES.map((code) => {

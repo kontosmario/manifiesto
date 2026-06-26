@@ -142,7 +142,7 @@ function ControlV2VsMesCardImpl({
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
             Cuando confirmes tu próximo cobro, vamos a cerrar el mes y vas a ver
-            acá cómo vas gastando comparado con el mes anterior.
+            aquí cómo vas gastando comparado con el mes anterior.
           </Text>
         </View>
       </RiseView>
@@ -243,7 +243,7 @@ function ControlV2VsMesCardImpl({
             <>Todavía no registraste gastos este mes.</>
           ) : !reliable ? (
             <>
-              Llevás{' '}
+              Llevas{' '}
               <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>{' '}
               gastado. En unos días te comparo con {mesPasadoNombre}.
             </>

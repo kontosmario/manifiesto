@@ -183,7 +183,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   // del asistente: `useControlV2Data` ya devuelve `signals` filtrado por
   // blocklist + dismissed, y `signalsReady=false` hasta que esos filtros
   // cargaron. Por eso el conteo es directo (`signals.length`) y 0 hasta estar
-  // listo — sin re-filtrar acá, sin provisorios que después bajan, y siempre
+  // listo — sin re-filtrar aquí, sin provisorios que después bajan, y siempre
   // matcheando lo que el usuario ve adentro. userId real → aplica su blocklist.
   // `defer: true` evita que el chain pesado compita con el first-paint del Home.
   const { signals: assistantSignals, signalsReady: assistantReady } = useControlV2Data(

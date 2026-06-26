@@ -336,7 +336,7 @@ export function LoginScreen() {
   // OAuth web (signInWithOAuth + PKCE) que ya corre en el botón de Google
   // del signup; en login disparamos LOGIN_SUCCESS en vez de SIGNUP_SUCCESS.
   // Cierra el dead-end de un usuario que creó la cuenta con Google y no
-  // tenía forma de volver a entrar desde acá.
+  // tenía forma de volver a entrar desde aquí.
   const googleAvailable = isGoogleSignInConfigured()
   const [googleSigningIn, setGoogleSigningIn] = useState(false)
   const [googleError, setGoogleError] = useState<string | null>(null)
@@ -1341,7 +1341,7 @@ function UnconfirmedEmailBanner({
   const label = busy
     ? 'Reenviando…'
     : rateLimited
-      ? 'Reintentá en unos minutos'
+      ? 'Reinténtalo en unos minutos'
       : cooldownSeconds > 0
         ? `Reenviar en ${cooldownSeconds}s`
         : 'Reenviar email'
@@ -1353,11 +1353,11 @@ function UnconfirmedEmailBanner({
       ]}
     >
       <Text style={[styles.unconfirmedTitle, { color: colors.text }]}>
-        Confirmá tu email para entrar
+        Confirma tu email para entrar
       </Text>
       <Text style={[styles.unconfirmedBody, { color: colors.textSoft }]}>
-        Te mandamos un link cuando creaste la cuenta. Si no lo ves, revisá
-        spam o pedí uno nuevo.
+        Te mandamos un link cuando creaste la cuenta. Si no lo ves, revisa
+        spam o pide uno nuevo.
       </Text>
       <Pressable
         accessibilityLabel="Reenviar email de confirmación"

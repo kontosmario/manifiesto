@@ -107,7 +107,7 @@ function ControlV2AlcanciaCardImpl({
   // Settings. Reusa upsert con todos los fields existentes + isActive=true.
   // Pasamos userId también: sin él, syncAllAfterMutation no invalida
   // home_snapshot (gate `if (userId)`). Resultado: la MetaCard del
-  // Home podía no aparecer después de activar la meta desde acá hasta
+  // Home podía no aparecer después de activar la meta desde aquí hasta
   // expirar el staleTime (60s) o force-quit. Code review v3 finding.
   const upsertGoal = useUpsertSavingsGoal(familyId, userId)
 

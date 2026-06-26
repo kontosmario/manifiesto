@@ -43,7 +43,7 @@ function formatFechaCorta(isoDate: string): string {
  * Auditoría 2026-06-11: Home ya sumaba estos movimientos al
  * disponible pero Control los ignoraba por completo — ni en el cupo
  * ni visualmente. Esta card cierra la mitad visual: el adapter ya
- * los suma al ingreso efectivo, acá el usuario VE qué entró y cuánto
+ * los suma al ingreso efectivo, aquí el usuario VE qué entró y cuánto
  * suma a su cupo diario.
  *
  * Diseño:

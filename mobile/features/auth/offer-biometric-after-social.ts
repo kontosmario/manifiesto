@@ -19,12 +19,12 @@ const BRAND_NEW_ACCOUNT_WINDOW_MS = 5 * 60_000
  *
  * Reglas:
  *  - Salta cuentas **recién creadas** (created_at < 5 min): esas van a la
- *    pantalla `biometric-setup`, así que prompteear acá sería doble. Usamos
+ *    pantalla `biometric-setup`, así que prompteear aquí sería doble. Usamos
  *    `created_at` y NO el flag `getBiometricSetupShown`, porque ese flag da
  *    falso para cuentas viejas (creadas antes de que existiera esa pantalla)
  *    y las dejaba sin oferta — el bug que esto corrige.
  *  - Si ya hay credenciales → refresca el token en silencio (sin prompt).
- *  - Si no → dispara el prompt "Activá <X> para entrar más rápido".
+ *  - Si no → dispara el prompt "Activa <X> para entrar más rápido".
  *
  * Best-effort: nunca tira. El caller NO debe bloquear el acceso por esto.
  */
@@ -48,7 +48,7 @@ export async function offerBiometricEnrollmentAfterSocial(): Promise<void> {
     // guardamos nada y salimos sin ruido.
     if (!state.hasSavedCredentials) {
       const result = await authenticateBiometricAccess({
-        promptMessage: `Activá ${state.label} para entrar más rápido la próxima vez.`,
+        promptMessage: `Activa ${state.label} para entrar más rápido la próxima vez.`,
       })
       if (!result.success) return
     }

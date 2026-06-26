@@ -58,7 +58,7 @@ export function CaptchaModal({ visible, onComplete }: CaptchaModalProps) {
       if (!isCaptchaConfigured()) {
         if (__DEV__) {
           console.warn(
-            '[captcha] EXPO_PUBLIC_HCAPTCHA_SITE_KEY no está configurada — saltando captcha. Configurá la key en EAS secrets antes de submit a producción.',
+            '[captcha] EXPO_PUBLIC_HCAPTCHA_SITE_KEY no está configurada — saltando captcha. Configura la key en EAS secrets antes de submit a producción.',
           )
         }
         onCompleteRef.current(null)

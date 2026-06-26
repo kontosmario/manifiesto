@@ -70,7 +70,7 @@ export function RequireGuest({
   // Accepted for backward compatibility — no longer affects routing.
   // El BootScreen (destino del redirect de abajo, vía máquina auth-flow)
   // es el single source of truth del ruteo con sesión (lock /
-  // onboarding / join / home), así que este flag es no-op acá.
+  // onboarding / join / home), así que este flag es no-op aquí.
   allowFamilylessSession: _allowFamilylessSession = false,
   children,
 }: {
@@ -101,7 +101,7 @@ export function RequireGuest({
   // Locked users con session pueden acceder a guest routes para entrar
   // con password (que es válido como método de auth). Los protected
   // routes siguen bloqueados por RequireAuth que valida AMBOS session
-  // Y isAppUnlocked. La seguridad se preserva en RequireAuth, no acá.
+  // Y isAppUnlocked. La seguridad se preserva en RequireAuth, no aquí.
   if (session && isUnlocked) {
     authFlowLog('require-guest', 'redirect / (session + unlocked)')
     return <Redirect href="/" />

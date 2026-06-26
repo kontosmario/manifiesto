@@ -45,7 +45,7 @@ export function HourPickerSheet({
     <ModalCard
       visible={visible}
       title={title}
-      subtitle={subtitle ?? 'Deslizá hasta la hora que quieras.'}
+      subtitle={subtitle ?? 'Desliza hasta la hora que quieras.'}
       onClose={onClose}
     >
       <View style={styles.wrap}>

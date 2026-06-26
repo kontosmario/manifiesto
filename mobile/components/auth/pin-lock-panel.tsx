@@ -16,7 +16,7 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  * máquina auth-flow está en `locked:pin` (spec 2026-06-11). Extraído
  * de la ex pin-unlock-screen; diseño, lockout y screen-capture
  * protection intactos. La sesión ya fue verificada en `probing`, así
- * que acá no hay session check: solo verificación local del PIN.
+ * que aquí no hay session check: solo verificación local del PIN.
  *
  *  - PIN correcto → PIN_OK (la máquina entra al bridge premium)
  *  - "Olvidé mi PIN" → USE_PASSWORD_FALLBACK (login con password)

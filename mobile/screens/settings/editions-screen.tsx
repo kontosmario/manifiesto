@@ -109,7 +109,7 @@ export function EditionsScreen() {
       >
         <ErrorState
           title="No pudimos cargar tus ediciones"
-          description="Probá de nuevo en un momento."
+          description="Prueba de nuevo en un momento."
         />
       </Screen>
     )
@@ -119,7 +119,7 @@ export function EditionsScreen() {
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Ediciones"
-      subtitle="Cada ciclo cerrado es una edición de Manifiesto. Tocá una para revivirla."
+      subtitle="Cada ciclo cerrado es una edición de Manifiesto. Toca una para revivirla."
       canGoBack
     >
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />

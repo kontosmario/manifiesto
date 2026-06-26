@@ -161,7 +161,7 @@ export function AppTabs() {
       // hace por default:
       //   1. Pre-mount de los view controllers de cada tab (no lazy).
       //   2. Switch instantáneo (zero animation JS).
-      // Replicamos ambos acá:
+      // Replicamos ambos aquí:
       //
       //   `lazy: false` · pre-monta los 5 tab screens al app start.
       //   Cuando el user tap Gastos/Fijos/Control por primera vez, el

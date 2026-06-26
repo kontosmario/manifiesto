@@ -59,7 +59,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     void Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
       Alert.alert(
         'No pudimos abrir el navegador',
-        'Probá copiar el enlace manualmente: ' + PRIVACY_POLICY_URL,
+        'Prueba copiar el enlace manualmente: ' + PRIVACY_POLICY_URL,
       )
     })
   }, [hasPrivacy])
@@ -69,7 +69,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     void Linking.openURL(TERMS_OF_SERVICE_URL).catch(() => {
       Alert.alert(
         'No pudimos abrir el navegador',
-        'Probá copiar el enlace manualmente: ' + TERMS_OF_SERVICE_URL,
+        'Prueba copiar el enlace manualmente: ' + TERMS_OF_SERVICE_URL,
       )
     })
   }, [hasTerms])
@@ -85,7 +85,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     void Linking.openURL(url).catch(() => {
       Alert.alert(
         'No pudimos abrir tu mail',
-        `Escribinos a ${SUPPORT_EMAIL} desde la app de correo que prefieras.`,
+        `Escríbenos a ${SUPPORT_EMAIL} desde la app de correo que prefieras.`,
       )
     })
   }, [appVersion, buildNumber, hasSupport, userId])
@@ -180,7 +180,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
           {/* FOOTER cálido — refuerza la identidad del producto. */}
           <RiseView delay={240}>
             <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
-              Hecho con ♥ en Argentina
+              Hecho con ♥ para Latinoamérica
             </Text>
           </RiseView>
         </View>

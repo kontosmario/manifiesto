@@ -104,7 +104,7 @@ async function fetchExpoPushToken(): Promise<string | null> {
     const response = await Notifications.getExpoPushTokenAsync({ projectId })
     return response.data ?? null
   } catch {
-    // El error más común acá es `aps-environment entitlement missing`
+    // El error más común aquí es `aps-environment entitlement missing`
     // en builds sideloaded sin Apple Dev firma. El path automático
     // tiene que tragar el error: el toggle manual de Settings ya
     // expone el error vía mutation a la UI.

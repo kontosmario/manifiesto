@@ -272,7 +272,7 @@ export function buildControlDataFromSnapshot(
   // weekly×4.33, quarterly/3…) que **no** coincidía con la
   // presión real del ciclo y desalineaba el cupo entre Control y
   // Home. Ahora ambas vistas reportan el mismo número.
-  // Override del cycle starting balance — debe respetarse acá igual
+  // Override del cycle starting balance — debe respetarse aquí igual
   // que en el dashboard de Home. Sin esto, Home reportaba un cupo
   // distinto al de Control (caso típico: sumar reserva al mes).
   // Owner feedback 2026-06-08.

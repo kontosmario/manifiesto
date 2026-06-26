@@ -366,7 +366,7 @@ export function financeInputToStoragePayload(
     // — solo lo escribe el RPC `record_month_close_decision` (Spec B).
     // Si el upsert lo incluyera, sobrescribiría la reserva acumulada
     // a 0 en cada save de cualquier otra config (sueldo, ahorro, etc).
-    // Lo dejamos en 0 acá para satisfacer el tipo, y el repository
+    // Lo dejamos en 0 aquí para satisfacer el tipo, y el repository
     // se asegura de NO incluir esta columna en el upsert body.
     monthly_reserve_amount: 0,
   }

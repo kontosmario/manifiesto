@@ -32,7 +32,7 @@ import * as ScreenCapture from 'expo-screen-capture'
 // Trade-off de seguridad: las pantallas sensibles (PIN, password, login,
 // signup, reauth) ya NO bloquean screenshot/recording — un atacante con
 // acceso a la pantalla podría capturar credenciales tipeadas. Para
-// re-activar (todo, o solo algunas pantallas) poné este flag en true.
+// re-activar (todo, o solo algunas pantallas) pon este flag en true.
 const SCREEN_CAPTURE_PROTECTION_ENABLED = false
 
 /**

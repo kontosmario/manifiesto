@@ -81,7 +81,7 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
   const navigateNext = useCallback(() => {
     // Antes de Home pasamos por la bienvenida al acceso completo (trial-welcome).
     // Esa pantalla decide si anunciar el período de acceso o saltar a Home según
-    // el entitlement. El pre-prompt de notifs queda acá (lo ve toda cuenta nueva,
+    // el entitlement. El pre-prompt de notifs queda aquí (lo ve toda cuenta nueva,
     // también las que esa pantalla saltea).
     router.replace('/(app)/trial-welcome')
   }, [router])
@@ -104,7 +104,7 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
     setPrimeVisible(false)
     // Disparamos el prompt nativo. El token se va a registrar más
     // tarde (next mount) vía `setupPushNotifications` en el shell —
-    // acá sólo nos interesa el flujo de permiso. Si el user rechaza
+    // aquí sólo nos interesa el flujo de permiso. Si el user rechaza
     // o no responde, no bloqueamos la navegación a Home.
     try {
       await requestNotificationPermissions()

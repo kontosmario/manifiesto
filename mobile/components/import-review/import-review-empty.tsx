@@ -11,7 +11,7 @@ export function ImportReviewEmpty() {
         No vi gastos en esa captura.
       </Text>
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-        Probá con otra imagen.
+        Prueba con otra imagen.
       </Text>
     </View>
   )

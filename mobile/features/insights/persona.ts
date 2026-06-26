@@ -36,12 +36,12 @@ export const PERSONA_PROFILES: Record<UserPersona, PersonaProfile> = {
   firefighter: {
     framing: 'loss',
     label: 'Reactivo',
-    description: 'Te aviso solo cuando hay algo importante; el resto del tiempo, te dejo tranqui.',
+    description: 'Te aviso solo cuando hay algo importante; el resto del tiempo, te dejo tranquilo.',
   },
   avoider: {
     framing: 'gain',
     label: 'Conservador',
-    description: 'Te hablo con calma y de a poco, con pasos chicos que sí podés dar.',
+    description: 'Te hablo con calma y de a poco, con pasos chicos que sí puedes dar.',
   },
   optimizer: {
     framing: 'gain',

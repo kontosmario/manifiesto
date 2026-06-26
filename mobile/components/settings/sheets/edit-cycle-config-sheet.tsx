@@ -39,7 +39,7 @@ export function EditCycleConfigSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Elegí cómo cobrás. Cambiar el tipo aplica al próximo cobro — el ciclo actual sigue su curso."
+      subtitle="Elige cómo cobras. Cambiar el tipo aplica al próximo cobro — el ciclo actual sigue su curso."
       title="Ciclo de cobro"
       visible={visible}
     >

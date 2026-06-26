@@ -64,8 +64,8 @@ export const loadingLabels = {
 } as const
 
 export const errorMessages = {
-  network: 'No pudimos conectarnos. Revisá tu conexión.',
+  network: 'No pudimos conectarnos. Revisa tu conexión.',
   server:  'Algo falló del lado del servidor. Prueba de nuevo.',
   data:    'Los datos llegaron incompletos. Actualiza para reintentar.',
-  auth:    'Tu sesión venció. Volvé a iniciar sesión.',
+  auth:    'Tu sesión venció. Vuelve a iniciar sesión.',
 } as const

@@ -63,7 +63,7 @@ export interface CycleWrappedPayload {
   /**
    * Spec B: decisión pendiente sobre el saldo a favor del ciclo que se
    * está mostrando. Cuando viene, la closing scene del modal cambia de
-   * "Tenés $X para administrar" a un flujo de selección de 3 opciones
+   * "Tienes $X para administrar" a un flujo de selección de 3 opciones
    * (meta / acumular / reserva). El CTA "Empezar el próximo" aplica
    * la decisión seleccionada antes de dismissar.
    *

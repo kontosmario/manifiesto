@@ -311,7 +311,7 @@ export async function setPin(pin: string): Promise<void> {
   // before reaching here; this throw is the defense-in-depth gate.
   if (isWeakPin(pin)) {
     throw new WeakPinError(
-      'Ese PIN es demasiado fácil de adivinar. Evitá repeticiones (1111) o secuencias (1234).',
+      'Ese PIN es demasiado fácil de adivinar. Evita repeticiones (1111) o secuencias (1234).',
     )
   }
   const salt = randomSalt()

@@ -436,7 +436,7 @@ function DayCell({
       accessibilityLabel={`Filtrar día ${day}`}
       // Layout-affecting styles van EN el Pressable porque es el child
       // directo de `gridRow` (flexDirection: row, gap: 6). Sin `flex: 1`
-      // acá, la cell colapsa al tamaño del contenido y rompe el grid
+      // aquí, la cell colapsa al tamaño del contenido y rompe el grid
       // (las empty cells `<View style={dayCell} />` retienen flex: 1
       // → mismatch de anchos por columna). El Animated.View interno
       // toma el visual chrome y la transformación de press scale.

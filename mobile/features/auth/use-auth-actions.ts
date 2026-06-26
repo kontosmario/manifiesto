@@ -145,7 +145,7 @@ export function useCompleteAuthCallback() {
       // PKCE moves the secret material to a code-for-token exchange
       // bound to the device's verifier, closing that vector.
       if (!code) {
-        throw new Error('Falta el código de confirmación. Volvé a intentar el acceso.')
+        throw new Error('Falta el código de confirmación. Vuelve a intentar el acceso.')
       }
       const { error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {

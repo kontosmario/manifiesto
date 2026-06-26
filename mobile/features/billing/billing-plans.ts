@@ -99,7 +99,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
   },
 }
 
-export const BILLING_TRIAL_DAYS = 14
+export const BILLING_TRIAL_DAYS = 30
 
 export function getBillingPlan(cycle: BillingCycle): BillingPlan {
   return cycle === 'yearly'

@@ -272,7 +272,7 @@ export function useDeleteNotification(familyId?: string, userId?: string) {
 
       // Removemos el id de toda lista cacheada bajo la familia (cualquier
       // userId/limit). El badge de unread cuenta server-side; no lo
-      // tocamos acá, pero la invalidación en onSettled lo refresca.
+      // tocamos aquí, pero la invalidación en onSettled lo refresca.
       const snapshots: PreviousListSnapshot[] = []
       const queries = queryClient.getQueriesData<FamilyNotification[]>({
         queryKey: familyKey,
@@ -324,7 +324,7 @@ export function useDeleteAllNotifications(familyId?: string, userId?: string) {
         .from('notifications')
         .delete()
         .eq('family_id', familyId)
-        // No barremos señales del asistente — no se muestran acá y
+        // No barremos señales del asistente — no se muestran aquí y
         // borrarlas afectaría silenciosamente otra superficie.
         .not('kind', 'like', 'advisor_%')
 

@@ -98,14 +98,14 @@ export function checkPasswordPolicy(password: string): PasswordPolicyResult {
   if (isAllDigits || isAllAlpha) {
     return {
       ok: false,
-      error: 'Combiná letras y números para una contraseña más segura.',
+      error: 'Combina letras y números para una contraseña más segura.',
     }
   }
 
   if (COMMON_PASSWORDS.has(password.toLowerCase())) {
     return {
       ok: false,
-      error: 'Esa contraseña es muy común. Elegí una más difícil de adivinar.',
+      error: 'Esa contraseña es muy común. Elige una más difícil de adivinar.',
     }
   }
 

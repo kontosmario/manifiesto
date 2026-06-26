@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    // boxShadow theme-aware se aplica inline en el JSX (no acá) para
+    // boxShadow theme-aware se aplica inline en el JSX (no aquí) para
     // que dependa de theme.isDark — los styles estáticos no pueden.
   },
 })

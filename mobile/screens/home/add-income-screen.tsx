@@ -249,7 +249,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                 },
               ]}
             >
-              {flagKind ? 'Elegí de dónde viene' : '¿De dónde?'}
+              {flagKind ? 'Elige de dónde viene' : '¿De dónde?'}
             </Text>
             <View style={styles.kindGrid}>
               {KINDS.map((k) => {

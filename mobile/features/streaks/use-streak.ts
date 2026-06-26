@@ -491,7 +491,7 @@ function buildCopy(input: {
       const shieldsLabel = `${n} ${n === 1 ? 'escudo' : 'escudos'}`
       return {
         headline: tone.atRiskHeadlineWithShield,
-        message: `${tone.atRiskMessage} Tenés ${shieldsLabel} disponible${n === 1 ? '' : 's'} — si no registrás hoy se consume uno solo a la medianoche.`,
+        message: `${tone.atRiskMessage} Tienes ${shieldsLabel} disponible${n === 1 ? '' : 's'} — si no registras hoy se consume uno solo a la medianoche.`,
       }
     }
     // Without shields, the streak goes to ZERO at the next cron run
@@ -501,7 +501,7 @@ function buildCopy(input: {
     const dayWord = data.currentStreak === 1 ? 'día' : 'días'
     return {
       headline: tone.atRiskHeadlineNoShield,
-      message: `${tone.atRiskMessage} Llevás ${data.currentStreak} ${dayWord} — sin escudos, si no registrás se corta y mañana arrancás de cero.`,
+      message: `${tone.atRiskMessage} Llevas ${data.currentStreak} ${dayWord} — sin escudos, si no registras se corta y mañana arrancas de cero.`,
     }
   }
 
@@ -517,12 +517,12 @@ function buildCopy(input: {
       headline: 'La racha se cortó',
       message: `Tu marca personal sigue siendo ${data.longestStreak} ${
         data.longestStreak === 1 ? 'día' : 'días'
-      }. Cargá un movimiento hoy y arrancá una nueva.`,
+      }. Carga un movimiento hoy y arranca una nueva.`,
     }
   }
   return {
     headline: 'La racha se cortó',
-    message: 'Una racha nueva empieza con un solo registro. Cargá hoy y arrancás día 1.',
+    message: 'Una racha nueva empieza con un solo registro. Carga hoy y arrancas día 1.',
   }
 }
 
@@ -555,7 +555,7 @@ function resolveDayTone(intensity: AtRiskIntensity): DayTone {
       return {
         atRiskHeadlineWithShield: 'Cuidado — se acerca el corte',
         atRiskHeadlineNoShield: 'Faltan pocas horas para medianoche',
-        atRiskMessage: 'Si registras ahora, evitás cualquier sobresalto.',
+        atRiskMessage: 'Si registras ahora, evitas cualquier sobresalto.',
       }
     case 'critical':
       return {

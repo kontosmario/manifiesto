@@ -139,7 +139,7 @@ export function CoachModeScreen({
             <MaterialIcons name="info-outline" size={28} color="#9FBFA9" />
             <Text style={styles.emptyTitle}>Esta señal ya no está activa</Text>
             <Text style={styles.emptyBody}>
-              Pudo haber expirado o haber sido marcada como vista. Volvé al asistente para ver lo que hay ahora.
+              Pudo haber expirado o haber sido marcada como vista. Vuelve al asistente para ver lo que hay ahora.
             </Text>
             <Pressable
               onPress={onClose}

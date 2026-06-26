@@ -25,7 +25,7 @@ const HELPER: Record<FinanceCycleConfig['cycle_type'], string> = {
   monthly:  'El ciclo dura 28-31 días según el mes.',
   biweekly: 'A partir de esta fecha, cada 14 días.',
   weekly:   'A partir de esta fecha, cada 7 días.',
-  custom:   'Indicá la fecha del próximo cobro y cuántos días dura el ciclo.',
+  custom:   'Indica la fecha del próximo cobro y cuántos días dura el ciclo.',
 }
 
 const CUSTOM_LENGTH_MIN = 1

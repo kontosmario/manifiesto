@@ -19,7 +19,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
  * feel responsive").
  *
  * Haptic ya lo dispara `useTabHaptics()` vía `screenListeners` del
- * `<Tabs>` parent · no duplicamos acá.
+ * `<Tabs>` parent · no duplicamos aquí.
  */
 export function TabBarPressable(props: BottomTabBarButtonProps) {
   const {

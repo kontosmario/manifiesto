@@ -16,7 +16,7 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  *      por home_snapshot en cold start + por la salary confirmation
  *      flow). Si está, devolvemos sin tocar red.
  *   2. Si no, fetcheia hasta 12 ciclos (vs 6 del control intelligence —
- *      acá queremos un año completo para que el archivo crezca).
+ *      aquí queremos un año completo para que el archivo crezca).
  *
  * Skipea ciclos vacíos (`expenses_count === 0`): no hay "edición" si
  * el mes no tuvo movimientos, lo cual mantiene consistencia con el

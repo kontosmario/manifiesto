@@ -87,7 +87,7 @@ export function Step3Months({
             accessibilityLabel={
               customMonthsNumpadExpanded
                 ? `Plazo personalizado. Valor actual ${customMonthsParsed} meses`
-                : `Tocá para editar plazo personalizado. Valor actual ${customMonthsParsed} meses`
+                : `Toca para editar plazo personalizado. Valor actual ${customMonthsParsed} meses`
             }
             accessibilityState={{ expanded: customMonthsNumpadExpanded }}
             onPress={() => {
@@ -127,7 +127,7 @@ export function Step3Months({
                 ]}
               >
                 {customPlaceholder
-                  ? 'Tocá para tipear'
+                  ? 'Toca para tipear'
                   : `${customMonthsParsed} ${customMonthsParsed === 1 ? 'mes' : 'meses'}`}
               </Text>
               {!customMonthsNumpadExpanded ? (

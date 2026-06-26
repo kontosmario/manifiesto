@@ -13,7 +13,7 @@
 //   We can't fix the data-staleness at this layer — only an
 //   authenticated round-trip can confirm the field. What we CAN do is
 //   change the messaging from a forceful "tu cuenta SE ELIMINARÁ el X"
-//   to a soft "TENÍAS una baja agendada · iniciá sesión para verificar
+//   to a soft "TENÍAS una baja agendada · inicia sesión para verificar
 //   el estado". That removes the false urgency for the user who
 //   already cancelled elsewhere, while still nudging the user who
 //   really does have a pending deletion to log in. After login,
@@ -77,8 +77,8 @@ export function WelcomeCancelDeletionBanner({
   // panic them, just route them to login where the server-side
   // refresh will resolve it.
   const accessibilityMessage = formatted
-    ? `Tenías una baja agendada para el ${formatted}. Iniciá sesión para verificar el estado.`
-    : 'Tenías una baja de cuenta agendada. Iniciá sesión para verificar el estado.'
+    ? `Tenías una baja agendada para el ${formatted}. Inicia sesión para verificar el estado.`
+    : 'Tenías una baja de cuenta agendada. Inicia sesión para verificar el estado.'
 
   return (
     <View
@@ -102,7 +102,7 @@ export function WelcomeCancelDeletionBanner({
               : 'Tenías una baja agendada para tu cuenta.'}
           </Text>
           <Text style={styles.hint}>
-            Si ya cancelaste la baja en otro dispositivo, iniciá sesión
+            Si ya cancelaste la baja en otro dispositivo, inicia sesión
             para actualizar el estado.
           </Text>
         </View>

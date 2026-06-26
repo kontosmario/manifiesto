@@ -98,7 +98,7 @@ export function TabBarBackground() {
 // `radii['2xl']` es 28 pero el floating tab bar style en
 // `elevation.ts` setea borderRadius 32 — mismatch entre el shell de
 // la tab bar y este background → halo visible en los corners cuando
-// el blur material está activo. Hardcodeamos 32 acá para que el
+// el blur material está activo. Hardcodeamos 32 aquí para que el
 // glass clip exactamente con la tab bar shell. Si el shell cambia,
 // actualizar ambos en sync.
 const TAB_BAR_RADIUS = 32

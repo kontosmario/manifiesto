@@ -200,7 +200,7 @@ export function AddFijoV2Screen({
             void triggerHaptic('error')
             Alert.alert(
               'Fijo creado, pero no pudimos marcarlo como pagado',
-              `${getErrorMessage(paymentError, errorMessages.server)}\n\nPodés tocar "Registrar pago" desde el listado.`,
+              `${getErrorMessage(paymentError, errorMessages.server)}\n\nPuedes tocar "Registrar pago" desde el listado.`,
             )
             handleClose()
             return
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    // No marginHorizontal acá: el StickyFooter sit adentro del Screen
+    // No marginHorizontal aquí: el StickyFooter sit adentro del Screen
     // ScrollView content, que ya aplica un 20pt horizontal padding.
     // Agregar margin encima double-padea el CTA, dejándolo ~40pt más
     // estrecho que los inputs arriba.

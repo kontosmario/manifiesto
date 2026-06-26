@@ -388,7 +388,7 @@ function fuseSignals(
       // a fake number was the original bug.
       const sharePct = dominance.title.match(/(\d+)%/)?.[1]
       const sharePhrase = sharePct
-        ? ` Además, ya se lleva el ${sharePct}% de todo lo que gastaste este mes: es donde más podés ahorrar.`
+        ? ` Además, ya se lleva el ${sharePct}% de todo lo que gastaste este mes: es donde más puedes ahorrar.`
         : ''
       const merged: ControlAdvisorTask = {
         ...catAccel,
@@ -460,7 +460,7 @@ function tryComposePerfectStorm(
     confidence: Math.min(...present.map((t) => t.confidence)),
     dataDays: Math.max(...present.map((t) => t.dataDays)),
     dummyExplanation:
-      'Cuando los fijos pesan demasiado y al mismo tiempo gastás más de lo que tenés disponible hoy o aceleraste el gasto en los últimos días, no es un problema aislado: es la suma. El plan integral baja a la vez la presión estructural y el día a día.',
+      'Cuando los fijos pesan demasiado y al mismo tiempo gastas más de lo que tienes disponible hoy o aceleraste el gasto en los últimos días, no es un problema aislado: es la suma. El plan integral baja a la vez la presión estructural y el día a día.',
     composedOf,
     action: { kind: 'open-coach-mode', signalId: 'super-perfect-storm', topic: 'crisis' },
   }
@@ -572,7 +572,7 @@ function buildPaydayProximity(
     emoji: '📆',
     cat: 'Hasta el cobro',
     title: `Te quedan ${fmt(remaining)} y faltan ${args.diasRestantes} días al cobro`,
-    body: `Para llegar bien al próximo cobro, gastá hasta ${fmt(sustainable)} por día.`,
+    body: `Para llegar bien al próximo cobro, gasta hasta ${fmt(sustainable)} por día.`,
     impact: `Hasta ${fmt(sustainable)} por día`,
     impactRaw: Math.round((args.cupoDiario - sustainable) * args.diasRestantes),
     impactScope: 'cycle',
@@ -581,7 +581,7 @@ function buildPaydayProximity(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Es lo que te queda dividido por los días hasta el próximo cobro: cuánto podés gastar por día para no quedar en cero.',
+      'Es lo que te queda dividido por los días hasta el próximo cobro: cuánto puedes gastar por día para no quedar en cero.',
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
   }
 }
@@ -603,7 +603,7 @@ function buildEndOfCycleAcceleration(
     id: 'end-acceleration',
     emoji: '⚠️',
     cat: 'Cierre',
-    title: `Venís gastando ${fmt(last3Avg)}/día, por encima de tu promedio`,
+    title: `Vienes gastando ${fmt(last3Avg)}/día, por encima de tu promedio`,
     body: `Estos últimos 3 días gastaste ${fmt(last3Avg)}/día contra ${fmt(cycleAvg)}/día del resto del mes. Quedan ${args.diasRestantes} días — a este paso, el mes termina en rojo.`,
     impact: `Volver al promedio: ${fmtDelta(-extra)}`,
     impactRaw: Math.round(extra),
@@ -653,7 +653,7 @@ function buildRecoveryPath(
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Cuando gastás mucho más de lo disponible hoy, bajar mucho lo que podés gastar el resto del mes no funciona. Mejor reajustar la meta de ahorro o reordenar algún gasto fijo antes que sostener un objetivo imposible.',
+        'Cuando gastas mucho más de lo disponible hoy, bajar mucho lo que puedes gastar el resto del mes no funciona. Mejor reajustar la meta de ahorro o reordenar algún gasto fijo antes que sostener un objetivo imposible.',
       action: { kind: 'open-settings-modal', modal: 'savings-percent' },
     }
   }
@@ -661,8 +661,8 @@ function buildRecoveryPath(
     id: 'recovery-soft',
     emoji: '🧭',
     cat: 'Recuperación',
-    title: 'Ajusté lo que podés gastar por día',
-    body: `Hoy te pasaste por ${fmt(overspend)}. Si de acá a fin de mes gastás ${fmt(newCupo)}/día, el mes igual cierra bien.`,
+    title: 'Ajusté lo que puedes gastar por día',
+    body: `Hoy te pasaste por ${fmt(overspend)}. Si de aquí a fin de mes gastas ${fmt(newCupo)}/día, el mes igual cierra bien.`,
     impact: `Nuevo límite: ${fmt(newCupo)}/día`,
     impactRaw: Math.round(overspend),
     impactScope: 'oneTime',
@@ -799,7 +799,7 @@ function buildCategoryAcceleration(
   const titleSuffix = spike ? ' (gasto puntual)' : ''
   const body = spike
     ? `Gastaste ${fmt(topNow.amount)} en ${topNow.name} este mes, contra ${fmt(historicalAvg)} de costumbre. Casi todo fue esta última semana — capaz algo puntual (un viaje, un regalo, una compra grande). ¿Fue eso o cambió algo?`
-    : `Gastaste ${fmt(topNow.amount)} en ${topNow.name} este mes, contra ${fmt(historicalAvg)} de costumbre. Vino subiendo de a poco. ¿Querés frenarlo o ya es parte de tus gastos?`
+    : `Gastaste ${fmt(topNow.amount)} en ${topNow.name} este mes, contra ${fmt(historicalAvg)} de costumbre. Vino subiendo de a poco. ¿Quieres frenarlo o ya es parte de tus gastos?`
   return {
     id: 'cat-accel',
     emoji: spike ? '🎯' : '📈',
@@ -819,7 +819,7 @@ function buildCategoryAcceleration(
       Math.max(0.5, rampSummaries(args.summaries.length)),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara lo que gastás ahora en una categoría con lo que solés gastar. Verlo a tiempo te deja decidir si frenar o si es algo puntual.',
+      'Compara lo que gastas ahora en una categoría con lo que sueles gastar. Verlo a tiempo te deja decidir si frenar o si es algo puntual.',
     action: {
       kind: 'open-expenses-filtered',
       filter: { categoryId: topNow.id },
@@ -897,7 +897,7 @@ function buildCategoryDominance(
     emoji: '🎯',
     cat: top.name,
     title: `${top.name} se lleva ${fmt(top.amount)} de tu gasto`,
-    body: `De los ${fmt(total)} que gastaste este mes, ${fmt(top.amount)} fueron en ${top.name}. Si gastás un poco menos ahí, se nota más que recortar en varias categorías chicas.`,
+    body: `De los ${fmt(total)} que gastaste este mes, ${fmt(top.amount)} fueron en ${top.name}. Si gastas un poco menos ahí, se nota más que recortar en varias categorías chicas.`,
     impact: `Reducir 10%: +${fmt(save10)}/mes`,
     impactRaw: Math.round(save10),
     cta: 'Entendido',
@@ -905,7 +905,7 @@ function buildCategoryDominance(
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuando una categoría concentra casi la mitad del gasto, es donde más podés ahorrar. Una reducción pequeña en esa categoría libera más dinero que varios ajustes chicos en otras.',
+      'Cuando una categoría concentra casi la mitad del gasto, es donde más puedes ahorrar. Una reducción pequeña en esa categoría libera más dinero que varios ajustes chicos en otras.',
     action: { kind: 'dismiss', dismissId: `cat-dominance-${top.id}` },
   }
 }
@@ -1104,8 +1104,8 @@ function buildWeeklyPattern(
       id: 'weekly-pattern',
       emoji: '🗓️',
       cat: 'Patrón',
-      title: `Los ${dowName} gastás más`,
-      body: `Los ${dowName} gastás bastante más que un día normal. En todo el mes, eso suma ${fmt(dowExtra)} de más.`,
+      title: `Los ${dowName} gastas más`,
+      body: `Los ${dowName} gastas bastante más que un día normal. En todo el mes, eso suma ${fmt(dowExtra)} de más.`,
       impact: `+${fmt(dowExtra)}/mes`,
       impactRaw: Math.round(dowExtra),
       cta: 'Entendido',
@@ -1122,8 +1122,8 @@ function buildWeeklyPattern(
     id: 'weekly-pattern',
     emoji: '🎉',
     cat: 'Fin de semana',
-    title: `Los findes gastás más`,
-    body: `De lunes a viernes gastás ${fmt(wkdayAvgValue)} por día. Sábados y domingos, ${fmt(weekendAvgValue)} por día. Ahí es donde más podés recortar.`,
+    title: `Los findes gastas más`,
+    body: `De lunes a viernes gastas ${fmt(wkdayAvgValue)} por día. Sábados y domingos, ${fmt(weekendAvgValue)} por día. Ahí es donde más puedes recortar.`,
     impact: `+${fmt(wkExtra)}/mes ajustando`,
     impactRaw: Math.round(wkExtra),
     cta: 'Entendido',
@@ -1160,7 +1160,7 @@ function buildFijosRatioHealth(
       excess: fmt(excess),
       comprometidoPct: Math.round(ratio * 100),
     }),
-    impact: `Bajando alguno: liberás ${fmt(excess)}/mes`,
+    impact: `Bajando alguno: liberas ${fmt(excess)}/mes`,
     impactRaw: Math.round(excess),
     cta: 'Ver fijos',
     urgency: severity,
@@ -1198,7 +1198,7 @@ function buildIncomeVolatility(
       : `Cobraste ${fmt(args.ingresoMes)} este mes — menos que de costumbre`,
     body: better
       ? `Otros meses cobrabas cerca de ${fmt(historicalAvg)}; este mes te entró ${fmt(Math.abs(delta))} más. Buen momento para guardar un poco de esa diferencia.`
-      : `Otros meses cobrabas cerca de ${fmt(historicalAvg)}; este mes te entró ${fmt(Math.abs(delta))} menos. Cuidá los gastos hasta que se recupere.`,
+      : `Otros meses cobrabas cerca de ${fmt(historicalAvg)}; este mes te entró ${fmt(Math.abs(delta))} menos. Cuida los gastos hasta que se recupere.`,
     impact: fmtDelta(delta),
     impactRaw: Math.abs(Math.round(delta)),
     cta: better ? 'Ver meta' : 'Ver fijos',
@@ -1206,7 +1206,7 @@ function buildIncomeVolatility(
     confidence: rampSummaries(args.summaries.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara lo que cobraste este mes con lo que solés cobrar. Si entra bastante menos, conviene cuidar los gastos; si entra más, guardá la diferencia.',
+      'Compara lo que cobraste este mes con lo que sueles cobrar. Si entra bastante menos, conviene cuidar los gastos; si entra más, guarda la diferencia.',
     action,
   }
 }
@@ -1239,8 +1239,8 @@ function buildSubUsageCheckin(
       { label: 'Casi nunca', action: { kind: 'sub-usage-answer', fixedExpenseId: c.fixedExpenseId, level: 'casi_nunca', dismissId: id } },
     ]
     if (score.flag === 'hard') {
-      title = `Venís sin usar ${c.name} hace ~2 meses`
-      body = `Respondiste que casi no usás ${c.name} y cuesta ${fmt(c.amount)}/mes. ¿Realmente necesitás pagarla? Cancelarla te ahorra ${fmt(c.amount * 12)} al año.`
+      title = `Vienes sin usar ${c.name} hace ~2 meses`
+      body = `Respondiste que casi no usas ${c.name} y cuesta ${fmt(c.amount)}/mes. ¿Realmente necesitas pagarla? Cancelarla te ahorra ${fmt(c.amount * 12)} al año.`
       urgency = 'alta'
       replies = [
         { label: 'Cancelar', action: { kind: 'sub-usage-cancel', fixedExpenseId: c.fixedExpenseId, dismissId: id } },
@@ -1248,15 +1248,15 @@ function buildSubUsageCheckin(
       ]
     } else if (score.flag === 'soft') {
       title = `${c.name}: ¿la estás aprovechando?`
-      body = `Las últimas veces dijiste que la usás poco. Cuesta ${fmt(c.amount)}/mes — si no le sacás provecho, conviene revisarla.`
+      body = `Las últimas veces dijiste que la usas poco. Cuesta ${fmt(c.amount)}/mes — si no le sacas provecho, conviene revisarla.`
       urgency = 'media'
     } else if (score.prompt === 'pay') {
       title = `Pagaste ${c.name} · ¿cuánto la usaste?`
       body = `Registramos el pago de ${c.name} (${fmt(c.amount)}/mes). ¿Cuánto la usaste el último mes?`
       urgency = 'baja'
     } else {
-      title = `¿Seguís usando ${c.name}?`
-      body = `Hace un tiempo no nos contás cómo va ${c.name} (${fmt(c.amount)}/mes). ¿La seguís usando?`
+      title = `¿Sigues usando ${c.name}?`
+      body = `Hace un tiempo no nos cuentas cómo va ${c.name} (${fmt(c.amount)}/mes). ¿La sigues usando?`
       urgency = 'baja'
     }
     out.push({
@@ -1273,7 +1273,7 @@ function buildSubUsageCheckin(
       confidence: 1.0,
       dataDays: args.view.detalleDias.length,
       dummyExplanation:
-        'Te preguntamos por las suscripciones que pagás para ver si realmente las usás. Si venís diciendo que no, te avisamos para que decidas si vale la pena seguir pagándolas.',
+        'Te preguntamos por las suscripciones que pagas para ver si realmente las usas. Si vienes diciendo que no, te avisamos para que decidas si vale la pena seguir pagándolas.',
       replies,
     })
     if (out.length >= 2) break // cap 1-2, como el zombi
@@ -1349,7 +1349,7 @@ function buildSavingsFeasibility(
     emoji: '🎯',
     cat: goal.title,
     title: `Para "${goal.title}" te faltan ${fmt(shortfall)} este mes`,
-    body: `Para llegar a tiempo tendrías que guardar como ${fmt(monthlyNeeded / 4)} por semana. Este mes vas por ${fmt(monthlyActual)} — guardá un poco más y llegás.`,
+    body: `Para llegar a tiempo tendrías que guardar como ${fmt(monthlyNeeded / 4)} por semana. Este mes vas por ${fmt(monthlyActual)} — guarda un poco más y llegas.`,
     impact: `Te faltan ${fmt(shortfall)} este mes`,
     impactRaw: Math.round(shortfall),
     cta: 'Ver meta',
@@ -1357,7 +1357,7 @@ function buildSavingsFeasibility(
     confidence: rampOneCycle(args.view.detalleDias.length),
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Compara lo que estás guardando este mes con lo que necesitás para llegar a tu meta a tiempo. Ajustar temprano hace el esfuerzo más chico.',
+      'Compara lo que estás guardando este mes con lo que necesitas para llegar a tu meta a tiempo. Ajustar temprano hace el esfuerzo más chico.',
     action: { kind: 'open-savings-goal' },
   }
 }
@@ -1438,7 +1438,7 @@ function buildHighSingleExpense(
     emoji: '💥',
     cat: 'Gasto único',
     title: `Movimiento alto hoy: ${fmt(price)}`,
-    body: `Hoy registraste ${fmt(price)} en un solo movimiento — ${pct}% de lo que podés gastar hoy (${fmt(args.cupoDiario)}). Mira si conviene compensar el resto del día.`,
+    body: `Hoy registraste ${fmt(price)} en un solo movimiento — ${pct}% de lo que puedes gastar hoy (${fmt(args.cupoDiario)}). Mira si conviene compensar el resto del día.`,
     impact: `Hoy: ${fmt(price)}`,
     impactRaw: Math.round(price),
     impactScope: 'oneTime',
@@ -1447,7 +1447,7 @@ function buildHighSingleExpense(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuando un solo gasto ocupa una porción grande de lo que podés gastar hoy, el resto del día queda muy comprometido. Verlo apenas pasa permite reaccionar.',
+      'Cuando un solo gasto ocupa una porción grande de lo que puedes gastar hoy, el resto del día queda muy comprometido. Verlo apenas pasa permite reaccionar.',
     action: {
       kind: 'open-expenses-filtered',
       filter: { focusExpenseId: max.id },
@@ -1524,7 +1524,7 @@ function buildDataGapWarning(
     emoji: '📭',
     cat: 'Registros',
     title: `${daysSince} días sin gastos cargados`,
-    body: `Si tuviste movimientos esos días, registralos para que el cierre del mes refleje la realidad. Si no, ignorá este aviso.`,
+    body: `Si tuviste movimientos esos días, regístralos para que el cierre del mes refleje la realidad. Si no, ignora este aviso.`,
     impact: `Hace ${daysSince} días`,
     impactRaw: 0,
     impactScope: 'oneTime',
@@ -1592,7 +1592,7 @@ function buildIncomeMissing(
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
     dummyExplanation:
-      'Cuando el día de pago configurado ya pasó pero el mes no se confirmó, el resto del cálculo (lo que podés gastar hoy) trabaja con el mes anterior. Confirmar aquí restablece la base.',
+      'Cuando el día de pago configurado ya pasó pero el mes no se confirmó, el resto del cálculo (lo que puedes gastar hoy) trabaja con el mes anterior. Confirmar aquí restablece la base.',
     action: { kind: 'navigate', route: '/(app)/(tabs)/control' },
   }
 }
@@ -1663,7 +1663,7 @@ function buildForecastPaydayGap(
     emoji: '⏳',
     cat: 'Predicción',
     title: `Riesgo: $0 ${gapDays} día${gapDays === 1 ? '' : 's'} antes del cobro`,
-    body: `Si gastas como los últimos días, llegas a $0 unos ${gapDays} ${gapDays === 1 ? 'día' : 'días'} antes del próximo cobro. Hay tiempo para corregir si recortás ahora.`,
+    body: `Si gastas como los últimos días, llegas a $0 unos ${gapDays} ${gapDays === 1 ? 'día' : 'días'} antes del próximo cobro. Hay tiempo para corregir si recortas ahora.`,
     impact: `Faltan ${fmt(gapAmount)}`,
     impactRaw: gapAmount,
     impactScope: 'oneTime',
@@ -1692,7 +1692,7 @@ function buildStreakEncouragement(
     body: `Vas controlado. A este paso, el cierre del mes deja ${fmt(
       Math.max(0, args.view.sobrantePresupuestadoMes),
     )} sin gastar.`,
-    impact: `Lo que podés gastar hoy: ${fmt(args.cupoDiario)}`,
+    impact: `Lo que puedes gastar hoy: ${fmt(args.cupoDiario)}`,
     impactRaw: 0,
     cta: 'Entendido',
     urgency: 'baja',

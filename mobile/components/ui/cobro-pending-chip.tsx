@@ -19,7 +19,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 type Surface = 'hero' | 'header'
 
 interface CobroPendingChipProps {
-  /** Días desde el día de cobro. 0 → "Cobrá hoy", N → "+N días sin cobrar". */
+  /** Días desde el día de cobro. 0 → "Cobra hoy", N → "+N días sin cobrar". */
   daysOverdue: number
   /** 'hero' = sobre la card oscura del Home (crema sobre durazno).
    *  'header' = sobre el fondo del tab (ámbar theme-aware). */
@@ -33,7 +33,7 @@ interface CobroPendingChipProps {
 }
 
 function cobroLabel(daysOverdue: number): string {
-  if (daysOverdue <= 0) return 'Cobrá hoy'
+  if (daysOverdue <= 0) return 'Cobra hoy'
   return `+${daysOverdue} ${daysOverdue === 1 ? 'día' : 'días'} sin cobrar`
 }
 
@@ -143,7 +143,7 @@ export function CobroPendingChip({
       onPressOut={press.onPressOut}
       hitSlop={12}
       accessibilityRole="button"
-      accessibilityLabel={`${text}. Tocá para confirmar tu cobro`}
+      accessibilityLabel={`${text}. Toca para confirmar tu cobro`}
     >
       {body}
     </Pressable>

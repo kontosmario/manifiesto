@@ -41,7 +41,7 @@ interface HomeHeroCardProps {
   /** Equivalente del saldo en dólares. Render como una línea susurro bajo el
    *  monto, SOLO cuando la conversión está activa y hay un rate real. `null` =
    *  no se muestra (loading / off / sin moneda / USD). El valor del dólar NO se
-   *  muestra acá (vive en el sheet de Settings). */
+   *  muestra aquí (vive en el sheet de Settings). */
   usdConversion?: { saldoUsd: number } | null
 }
 
@@ -65,13 +65,13 @@ function HomeHeroCardImpl({
 
   // Day chip swaps to a warning state when the user hasn't confirmed
   // their cobro after payday. The neutral "día N de M" copy is
-  // replaced by either "Cobrá hoy" (payday is today) or "+N {día/días}
+  // replaced by either "Cobra hoy" (payday is today) or "+N {día/días}
   // sin cobrar" with a warm peach tint. The chip is informational
   // only — taps live on the FamilyStrip pill — so it pulses gently
   // to communicate the warning without inviting interaction.
   const dayChipLabel = data.paydayPending
     ? data.paydayDaysOverdue <= 0
-      ? 'Cobrá hoy'
+      ? 'Cobra hoy'
       : `+${data.paydayDaysOverdue} ${data.paydayDaysOverdue === 1 ? 'día' : 'días'} sin cobrar`
     : `día ${data.cycleDay} de ${data.cycleTotalDays}`
 
@@ -346,7 +346,7 @@ function HomeHeroCardImpl({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel={`Tenés ${formatMoney(data.acumulado.amount)} acumulado del mes pasado.`}
+                  accessibilityLabel={`Tienes ${formatMoney(data.acumulado.amount)} acumulado del mes pasado.`}
                   style={[
                     styles.adjustedChip,
                     theme.mode === 'dark'
@@ -500,7 +500,7 @@ function HomeHeroCardImpl({
               // Reserva acumulada del cierre de meses anteriores
               // (Spec B — wrapped decisión "Guardar como reserva").
               // Read-only: la única forma de tocar este monto es vía
-              // el wrapped. Lo surface acá para que la plata no
+              // el wrapped. Lo surface aquí para que la plata no
               // Tono AMBER/GOLD (semánticamente "valor guardado/reserva"
               // — wallet → gold reserve). Antes era indigo igual que el
               // chip "+\$X al mes" → 2 chips indigo conviviendo se leían
@@ -510,7 +510,7 @@ function HomeHeroCardImpl({
               <RiseView delay={160}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel={`Tenés ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
+                  accessibilityLabel={`Tienes ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
                   style={[
                     styles.savingsChip,
                     {

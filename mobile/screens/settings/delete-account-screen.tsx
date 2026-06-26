@@ -115,7 +115,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
 
   // Bloqueamos el flow si el user es owner de una familia con otros
   // miembros activos. El RPC también lo valida, pero anticipamos el
-  // feedback acá para evitar un round-trip que termina en error.
+  // feedback aquí para evitar un round-trip que termina en error.
   const otherActiveMembers = useMemo(() => {
     const rows = memberStatsQuery.data ?? []
     return rows.filter(
@@ -193,7 +193,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
           'No pudimos programar la baja',
           getErrorMessage(
             error,
-            'Probá nuevamente en un momento. Si el problema persiste, escribinos a soporte.',
+            'Prueba nuevamente en un momento. Si el problema persiste, escríbenos a soporte.',
           ),
         )
       },
@@ -275,12 +275,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
     if (isReauthChecking || requestDeletion.isPending) return
     const trimmedPassword = passwordValue
     if (!trimmedPassword) {
-      setPasswordError('Ingresá tu contraseña para confirmar.')
+      setPasswordError('Ingresa tu contraseña para confirmar.')
       return
     }
     if (!accountEmail) {
       setPasswordError(
-        'No pudimos identificar tu email. Reintentá en un momento.',
+        'No pudimos identificar tu email. Reintenta en un momento.',
       )
       return
     }
@@ -300,7 +300,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         // Mensaje genérico — no distinguimos entre "wrong password" y
         // "rate limit" para no leakear señal a un atacante.
         setPasswordError(
-          'La contraseña no coincide. Probá nuevamente.',
+          'La contraseña no coincide. Prueba nuevamente.',
         )
         void triggerHaptic('error')
         return
@@ -334,14 +334,14 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       if (!hasHardware || !isEnrolled) {
         Alert.alert(
           'Biometría no disponible',
-          'Configurá Face ID / huella en los ajustes del sistema para confirmar la baja.',
+          'Configura Face ID / huella en los ajustes del sistema para confirmar la baja.',
         )
         setReauthChecking(false)
         setStep('confirm')
         return
       }
       const result = await authenticateBiometricAccess({
-        promptMessage: 'Confirmá la baja de tu cuenta',
+        promptMessage: 'Confirma la baja de tu cuenta',
       })
       if (result.success) {
         void triggerHaptic('success')
@@ -358,7 +358,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       setStep('confirm')
       Alert.alert(
         'No pudimos confirmar',
-        getErrorMessage(error, 'Probá nuevamente.'),
+        getErrorMessage(error, 'Prueba nuevamente.'),
       )
     }
   }, [isReauthChecking, performRequestDeletion, requestDeletion.isPending])
@@ -390,7 +390,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         canGoBack={!onClose}
         contentContainerStyle={styles.screenContent}
-        subtitle="Antes de borrar tu cuenta, cerrá tu hogar o esperá a que los demás se retiren."
+        subtitle="Antes de borrar tu cuenta, cierra tu hogar o espera a que los demás se retiren."
         title="Eliminar cuenta"
       >
         <View style={styles.sectionStack}>
@@ -413,12 +413,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             />
             <View style={{ flex: 1, gap: 6 }}>
               <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
-                No podés borrar tu cuenta todavía
+                No puedes borrar tu cuenta todavía
               </Text>
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
-                Sos dueño de un hogar con otros miembros activos. Para borrar
-                tu cuenta, primero eliminá el hogar (se cierra para todos) o
-                pediles a los demás que se retiren, y volvé acá.
+                Eres dueño de un hogar con otros miembros activos. Para borrar
+                tu cuenta, primero elimina el hogar (se cierra para todos) o
+                pídeles a los demás que se retiren, y vuelve aquí.
               </Text>
             </View>
           </View>
@@ -437,12 +437,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         step === 'review'
           ? 'Vas a programar la baja de tu cuenta.'
           : step === 'confirm'
-            ? 'Escribí ELIMINAR para confirmar.'
+            ? 'Escribe ELIMINAR para confirmar.'
             : step === 'reauth-pin'
-              ? 'Ingresá tu PIN para confirmar.'
+              ? 'Ingresa tu PIN para confirmar.'
               : step === 'reauth-password'
-                ? 'Ingresá la contraseña de tu cuenta.'
-                : 'Confirmá con biometría para programar la baja.'
+                ? 'Ingresa la contraseña de tu cuenta.'
+                : 'Confirma con biometría para programar la baja.'
       }
       title="Eliminar cuenta"
     >
@@ -477,7 +477,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                   style={[styles.warningBody, { color: theme.colors.textMuted }]}
                 >
                   Tu cuenta queda agendada para borrarse en 30 días. Durante
-                  ese plazo podés cancelar la baja entrando de nuevo. Pasados
+                  ese plazo puedes cancelar la baja entrando de nuevo. Pasados
                   los 30 días, todos tus datos personales se borran
                   definitivamente.
                 </Text>
@@ -520,7 +520,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="receipt-long"
-                label="Tu suscripción al plan (si tenés activa)."
+                label="Tu suscripción al plan (si tienes activa)."
               />
 
               <View
@@ -586,7 +586,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Para destrabar el botón, escribí{' '}
+                Para destrabar el botón, escribe{' '}
                 <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
                   {CONFIRM_PHRASE}
                 </Text>{' '}
@@ -595,7 +595,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
 
               <TextInput
                 ref={inputRef}
-                accessibilityLabel={`Escribí ${CONFIRM_PHRASE} para confirmar`}
+                accessibilityLabel={`Escribe ${CONFIRM_PHRASE} para confirmar`}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 onChangeText={setPhrase}
@@ -672,7 +672,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Ingresá tu PIN
+                Ingresa tu PIN
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
@@ -733,12 +733,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Confirmá tu contraseña
+                Confirma tu contraseña
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Como no tenés PIN ni biometría configurados, pedimos la
+                Como no tienes PIN ni biometría configurados, pedimos la
                 contraseña de tu cuenta como verificación final antes de
                 programar la baja.
               </Text>
@@ -839,12 +839,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 style={{ alignSelf: 'center' }}
               />
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Confirmá con {biometricState?.label ?? 'biometría'}
+                Confirma con {biometricState?.label ?? 'biometría'}
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Si no apareció el prompt, tocá "Reintentar".
+                Si no apareció el prompt, toca "Reintentar".
               </Text>
               <AppButton
                 disabled={isReauthChecking || requestDeletion.isPending}

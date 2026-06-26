@@ -51,7 +51,7 @@ export function NoSpendConfirmSheet({
     <ModalCard
       onClose={onCancel}
       subtitle="Te mostramos qué cargaste hoy para que verifiques antes de marcar el día como sin gasto."
-      title="Hoy ya tenés gastos cargados"
+      title="Hoy ya tienes gastos cargados"
       visible={visible}
       footer={
         <View style={styles.footerStack}>
@@ -158,7 +158,7 @@ export function NoSpendConfirmSheet({
         >
           <MaterialIcons name="info" size={16} color={theme.colors.textMuted} />
           <Text style={[styles.tipText, { color: theme.colors.textSoft }]}>
-            Si te confundís, podés revertir la marca tocando "Marcado ✓" en el
+            Si te confundes, puedes revertir la marca tocando "Marcado ✓" en el
             mismo botón del FAB.
           </Text>
         </View>

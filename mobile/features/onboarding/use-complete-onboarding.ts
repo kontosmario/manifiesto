@@ -43,7 +43,7 @@ export function useCompleteOnboarding(userId?: string) {
       )
       await queryClient.invalidateQueries({ queryKey: profileQueryKey(userId) })
       // Al completar el onboarding se setea onboarding_completed_at → el
-      // SubscriptionGate recién acá puede bloquear. Refrescamos el entitlement
+      // SubscriptionGate recién aquí puede bloquear. Refrescamos el entitlement
       // para que el gate evalúe el snapshot correcto (trial de la familia nueva),
       // no un BLOCKED stale de la ventana sin-familia del reset.
       await queryClient.invalidateQueries({ queryKey: entitlementQueryKey(userId) })

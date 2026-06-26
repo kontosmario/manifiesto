@@ -212,7 +212,7 @@ export function AddQuickActionsOverlay({
           ]}
         >
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            ¿Qué cargás?
+            ¿Qué cargas?
           </Text>
 
           {primary ? (

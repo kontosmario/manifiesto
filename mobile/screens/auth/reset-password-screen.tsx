@@ -65,7 +65,7 @@ export function ResetPasswordScreen() {
 
   const code = typeof params.code === 'string' ? params.code : null
   // Fallback OTP: el mail trae un código de 6 dígitos; forgot-password navega
-  // acá con ?email=&otp= cuando el deep-link no abre la app. verifyOtp deja la
+  // aquí con ?email=&otp= cuando el deep-link no abre la app. verifyOtp deja la
   // misma sesión de recovery que el exchange del PKCE → el resto es idéntico.
   const otp = typeof params.otp === 'string' ? params.otp : null
   const email = typeof params.email === 'string' ? params.email : null
@@ -88,7 +88,7 @@ export function ResetPasswordScreen() {
     | 'timeout'
   >(code || hasOtp ? 'exchanging' : 'error')
   const [exchangeError, setExchangeError] = useState<string | null>(
-    code || hasOtp ? null : 'El link es inválido o ya expiró. Pedinos uno nuevo.',
+    code || hasOtp ? null : 'El link es inválido o ya expiró. Pídenos uno nuevo.',
   )
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -158,7 +158,7 @@ export function ResetPasswordScreen() {
             error,
             code
               ? 'No pudimos validar el link.'
-              : 'Código inválido o vencido. Pedí uno nuevo.',
+              : 'Código inválido o vencido. Pide uno nuevo.',
           ),
         )
         setStage('error')
@@ -238,7 +238,7 @@ export function ResetPasswordScreen() {
   const handleFrictionCancel = useCallback(() => {
     setStage('error')
     setExchangeError(
-      'Saliste sin cambiar la contraseña. Si vos no pediste este cambio, escribinos a soporte@manifiestoapp.com.',
+      'Saliste sin cambiar la contraseña. Si tú no pediste este cambio, escríbenos a soporte@manifiestoapp.com.',
     )
   }, [])
 
@@ -254,7 +254,7 @@ export function ResetPasswordScreen() {
         eyebrow="Un paso más"
         onBack={goToLogin}
         subtitle="Antes de cambiar la contraseña pedimos tu PIN o biometría en este dispositivo."
-        title="Confirmá tu identidad"
+        title="Confirma tu identidad"
       >
         <Text style={[styles.body, { color: theme.colors.textSoft }]}>
           Esto evita que alguien con acceso temporal a tu email pueda bloquearte
@@ -279,7 +279,7 @@ export function ResetPasswordScreen() {
       <AuthShell
         eyebrow="Importante"
         onBack={goToLogin}
-        subtitle="Leé esto con atención. Sin PIN ni biometría guardada en este dispositivo, este es el único momento en el que podemos avisarte."
+        subtitle="Lee esto con atención. Sin PIN ni biometría guardada en este dispositivo, este es el único momento en el que podemos avisarte."
         title="Antes de continuar"
       >
         <FreshInstallResetFriction
@@ -304,7 +304,7 @@ export function ResetPasswordScreen() {
         title="Está tardando más de lo normal"
       >
         <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-          Probá pedir otro link de recuperación o volver al login.
+          Prueba pedir otro link de recuperación o volver al login.
         </Text>
         <AppButton
           label="Pedir nuevo link"
@@ -337,7 +337,7 @@ export function ResetPasswordScreen() {
       <AuthShell
         eyebrow="Listo"
         onBack={() => router.replace('/')}
-        subtitle="Ya podés entrar con tu nueva contraseña."
+        subtitle="Ya puedes entrar con tu nueva contraseña."
         title="Contraseña actualizada"
       >
         <AppButton label="Ir al inicio" onPress={() => router.replace('/')} />
@@ -349,7 +349,7 @@ export function ResetPasswordScreen() {
     <AuthShell
       eyebrow="Casi listo"
       onBack={goToLogin}
-      subtitle={`Elegí una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
+      subtitle={`Elige una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
       title="Nueva contraseña"
     >
       <View
@@ -361,7 +361,7 @@ export function ResetPasswordScreen() {
         <MaterialIcons name="lock" size={18} color={theme.colors.primary} />
         <Text style={[styles.disclaimerText, { color: theme.colors.textSoft }]}>
           Importante: esta será tu contraseña para iniciar sesión en Manifiesto.
-          Elegí una segura y que recuerdes.
+          Elige una segura y que recuerdes.
         </Text>
       </View>
       <PasswordField

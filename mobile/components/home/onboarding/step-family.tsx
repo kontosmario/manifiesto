@@ -227,7 +227,7 @@ export function StepFamily({
           <OptionCard
             emoji="🔗"
             title="Unirme con código"
-            meta="Pegá el código que te pasaron."
+            meta="Pega el código que te pasaron."
             onPress={() => setPanel('join')}
             accessibilityLabel="Unirme con código"
             theme={theme}

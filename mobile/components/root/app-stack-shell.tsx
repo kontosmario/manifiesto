@@ -70,7 +70,7 @@ const MODAL_ANIMATION =
 const STACK_DEV_LISTENERS = withStackDevLog({})
 
 export function AppStackShell() {
-  // Theme se lee acá para inyectar `contentStyle.backgroundColor` en el
+  // Theme se lee aquí para inyectar `contentStyle.backgroundColor` en el
   // Stack — cierra el white flash entre push/pop screens en dark mode
   // (native-stack default es blanco en el screen content container,
   // visible durante el slide).
@@ -209,7 +209,7 @@ export function AppStackShell() {
             visual transition work itself. Pure-navigation pushes to
             `/(tabs)` after login (and any internal swap) become
             free UI-thread work. */}
-        {/* freezeOnBlur: false SOLO acá (override del global true). Con
+        {/* freezeOnBlur: false SOLO aquí (override del global true). Con
             freezeOnBlur, al pushear una pantalla de Settings (card full-screen)
             el screen (tabs) se congela vía react-freeze + react-native-screens
             lo desconecta; al volver, Reanimated sigue avanzando los shared

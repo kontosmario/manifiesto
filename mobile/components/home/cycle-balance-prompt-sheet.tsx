@@ -103,7 +103,7 @@ export function OnboardingAvailableSheet(props: SharedProps) {
         helperEmpty:
           'Anota el monto en mano. Lo usamos para arrancar este mes con la realidad.',
         saveLabel: 'Guardar saldo',
-        eyebrow: 'O AJUSTÁ EL SALDO',
+        eyebrow: 'O AJUSTA EL SALDO',
         chipTitle: 'Tengo el sueldo completo',
         chipSubtitle: 'Igual al monto configurado',
         chipA11y: (formatted) =>
@@ -132,7 +132,7 @@ export function SalaryConfirmationSheet(props: SharedProps) {
         helperEmpty:
           'Anota el monto que recibiste este mes. Solo aplica a este mes.',
         saveLabel: 'Guardar cobro',
-        eyebrow: 'O AJUSTÁ EL MONTO COBRADO',
+        eyebrow: 'O AJUSTA EL MONTO COBRADO',
         chipTitle: 'Cobré el sueldo completo',
         chipSubtitle: 'Igual al sueldo recurrente',
         chipA11y: (formatted) =>
@@ -195,7 +195,7 @@ function CycleBalancePromptSheetBase({
       displayPlaceholder="$ 0"
       maxIntegerDigits={11}
       maxDecimalDigits={2}
-      // Numpad arranca colapsado — la primary action acá es el quick
+      // Numpad arranca colapsado — la primary action aquí es el quick
       // confirm CTA del header. El numpad de ajuste fino aparece solo
       // si el user tapea el display.
       numpadCollapsedByDefault

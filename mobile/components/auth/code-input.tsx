@@ -48,7 +48,7 @@ export function CodeInput({
 
   return (
     <Pressable
-      accessibilityHint="Tocá para abrir el teclado, mantené apretado para pegar"
+      accessibilityHint="Toca para abrir el teclado, mantén apretado para pegar"
       accessibilityLabel={`Código de ${length} dígitos`}
       accessibilityRole="button"
       disabled={disabled}

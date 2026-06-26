@@ -80,7 +80,7 @@ export async function fetchCurrentCycleAcumulado(
   // Reconstruimos el sobrante con la fórmula canónica (incluye extra_income
   // del ciclo y resta savings_goal_amount — NO savings_delta, que era doble
   // resta y daba ~0). El RPC ya hizo su versión al persistir pero no guardó
-  // el monto, así que lo derivamos del summary acá.
+  // el monto, así que lo derivamos del summary aquí.
   const sobrante = computeSobranteFromSummary(summary)
   if (sobrante <= 0) return null
   return {

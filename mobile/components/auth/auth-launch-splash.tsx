@@ -231,7 +231,7 @@ export function AuthLaunchSplash({
                 fern del welcome aterriza ~20px más arriba que el del
                 splash — el "saltito" reportado 2026-06-11. */}
             <Text style={styles.ctaReserveDisclosure}>
-              Solo guardamos tu email y lo que cargues acá (gastos, fijos, miembros del hogar). Nada se vende.
+              Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.
             </Text>
             <Text style={styles.ctaReserveFineprint}>
               Al continuar aceptas los Términos y la Privacidad

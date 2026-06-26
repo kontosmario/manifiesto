@@ -190,7 +190,7 @@ export function useGastosCalendarSummary(args: UseGastosCalendarSummaryArgs) {
     // 5 min — mismo razonamiento que useGastosHeroSummary: el seed
     // del snapshot + mutations/realtime cubren los cambios reales.
     staleTime: 5 * 60_000,
-    // El cupoDiario es parte de la key; si se mueve, mantené el calendario
+    // El cupoDiario es parte de la key; si se mueve, mantén el calendario
     // anterior visible mientras llega el nuevo (no parpadear a vacío).
     placeholderData: keepPreviousData,
     queryFn: async () => {

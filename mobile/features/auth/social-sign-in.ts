@@ -212,7 +212,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
     return {
       status: 'unavailable',
       error:
-        'Google sign-in está temporalmente deshabilitado en esta versión. Probá con Apple o email + contraseña.',
+        'Google sign-in está temporalmente deshabilitado en esta versión. Prueba con Apple o email + contraseña.',
     }
   }
 

@@ -237,7 +237,7 @@ export function RootLayoutShell() {
 
 /**
  * Themed root container. Vive dentro de AppProviders (que monta el
- * AppThemeProvider), entonces `useAppTheme()` está disponible acá.
+ * AppThemeProvider), entonces `useAppTheme()` está disponible aquí.
  *
  * Razón de existir: el `<Tabs animation="shift">` desliza las escenas
  * horizontalmente, y durante la transición hay un frame donde el
@@ -245,7 +245,7 @@ export function RootLayoutShell() {
  * entrante. Si ese parent no tiene un bg theme-aware, en dark mode
  * el default-blanco de RN se cuela como flash visible.
  *
- * Setear `backgroundColor: theme.colors.canvas` acá garantiza que
+ * Setear `backgroundColor: theme.colors.canvas` aquí garantiza que
  * incluso en el frame de overlap, el fondo expuesto sea forest deep
  * (#12211A) en dark mode o cream (#F4F2ED) en light. Sin flash.
  */

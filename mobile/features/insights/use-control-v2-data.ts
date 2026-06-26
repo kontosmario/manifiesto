@@ -138,7 +138,7 @@ export interface ControlV2ViewModel {
   /** Señales VISIBLES del asistente: ya filtradas por blocklist (familias
    *  bloqueadas) Y por dismissed (descartadas), y vacías hasta que ambos
    *  filtros cargaron (`signalsReady`). Source of truth único — todos los
-   *  consumidores leen de acá, no re-filtran. */
+   *  consumidores leen de aquí, no re-filtran. */
   signals: ControlAdvisorTask[]
   /** `true` cuando los filtros async (blocklist + dismissals) ya cargaron y
    *  `signals` es confiable. Las superficies que LISTAN señales deben mostrar

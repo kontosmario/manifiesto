@@ -58,7 +58,7 @@ export function CycleWrappedCta({
   const label = hasPendingDecision
     ? leftoverSelected
       ? 'Confirmar y empezar'
-      : 'Elegí una opción'
+      : 'Elige una opción'
     : 'Empezar el próximo'
 
   // Una sola progress shared value que dispara opacity + shadow al
@@ -124,7 +124,7 @@ export function CycleWrappedCta({
         if (leftoverSelected === 'meta') {
           if (!payload.activeGoal) {
             // Sin meta: la opción NO debe ser seleccionable
-            // (gating en la card). Defensa por si llega acá.
+            // (gating en la card). Defensa por si llega aquí.
             setApplyingLeftover(false)
             return
           }

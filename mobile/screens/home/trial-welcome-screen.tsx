@@ -10,7 +10,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 /**
  * Bienvenida al acceso completo. Sits between the onboarding-success screen y
  * Home — tanto en un alta nueva como tras "Reiniciar mi cuenta" (ambos reentran
- * por wizard → success → acá).
+ * por wizard → success → aquí).
  *
  * Reusa la pantalla de planes REAL (BillingScreen) en modo bienvenida: muestra
  * los planes + el disclosure 3.1.2 de Apple + Términos/Privacidad/Restaurar, y

@@ -200,7 +200,7 @@ export function useAdvisorNotificationSync({
   userId,
 }: SyncArgs): void {
   // Prefs cross-device (notification_preferences + user_advisor_prefs).
-  // Se leen acá adentro para no tocar los 2 call sites; react-query
+  // Se leen aquí adentro para no tocar los 2 call sites; react-query
   // deduplica con las mismas queries que ya usa la pantalla.
   const notifPrefs = useNotificationPreferences().data
   const advisorEnabled = useAdvisorPreferences().data?.advisorEnabled ?? true
@@ -236,14 +236,14 @@ export function useAdvisorNotificationSync({
       const nextCache = { ...cache }
 
       // Anti-spam: si califican >2 señales en la misma corrida, mandamos
-      // UNA sola push "Tenés N alertas en Control" en vez de una por señal.
+      // UNA sola push "Tienes N alertas en Control" en vez de una por señal.
       // 1-2 → individuales. En ambos casos bumpeamos el cooldown de TODAS
       // las señales incluidas para no re-pushear.
       if (eligible.length > 2) {
         await sendFamilyPush({
           familyId: familyId!,
-          title: `Tenés ${eligible.length} alertas en Control`,
-          body: `${eligible[0].title} y ${eligible.length - 1} más. Tocá para revisar.`,
+          title: `Tienes ${eligible.length} alertas en Control`,
+          body: `${eligible[0].title} y ${eligible.length - 1} más. Toca para revisar.`,
           kind: 'advisor_digest',
           url: '/(app)/(tabs)/control',
         }).catch(() => {

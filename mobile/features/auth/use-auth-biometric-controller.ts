@@ -164,7 +164,7 @@ export function useAuthBiometricController({
           return
         }
 
-        // FaceID success: el haptic acá; LOGIN_SUCCESS (con su propio
+        // FaceID success: el haptic aquí; LOGIN_SUCCESS (con su propio
         // min-hold de 1.2s) recién cuando la sesión esté restaurada.
         void triggerHaptic('success')
 
@@ -237,7 +237,7 @@ export function useAuthBiometricController({
         onErrorMessage(
           getErrorMessage(
             error,
-            `Tu sesión expiró. Ingresá con tu contraseña una vez para reactivar ${biometricState.label}.`,
+            `Tu sesión expiró. Ingresa con tu contraseña una vez para reactivar ${biometricState.label}.`,
           ),
         )
       } finally {

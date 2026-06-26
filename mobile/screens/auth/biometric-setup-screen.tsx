@@ -29,8 +29,8 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  * Pre-onboarding biometric setup screen. Sits between signup and
  * the 5-step wizard. Two modes:
  *
- *   - Modo A (`isAvailable=true`): Activá Face ID + Activar / Ahora no
- *   - Modo B (`isAvailable=false`): Activalo cuando quieras + Continuar
+ *   - Modo A (`isAvailable=true`): Activa Face ID + Activar / Ahora no
+ *   - Modo B (`isAvailable=false`): Actívalo cuando quieras + Continuar
  *
  * On any interaction we mark the per-user flag so the gate doesn't
  * route here again, then `router.replace('/(app)/onboarding')`.
@@ -177,15 +177,15 @@ function BiometricSetupBody({
       isAvailable
         ? {
             iconName: 'scan-circle-outline' as keyof typeof Ionicons.glyphMap,
-            title: `Activá ${label}`,
-            body: 'Entrá más rápido y con más seguridad.',
+            title: `Activa ${label}`,
+            body: 'Entra más rápido y con más seguridad.',
             primaryLabel: `Activar ${label}`,
             secondaryLabel: 'Ahora no' as string | null,
           }
         : {
             iconName: 'lock-closed-outline' as keyof typeof Ionicons.glyphMap,
-            title: 'Activalo cuando quieras',
-            body: `Tu dispositivo no tiene ${label} configurado. Podés activarlo más adelante desde Ajustes → Seguridad.`,
+            title: 'Actívalo cuando quieras',
+            body: `Tu dispositivo no tiene ${label} configurado. Puedes activarlo más adelante desde Ajustes → Seguridad.`,
             primaryLabel: 'Continuar',
             secondaryLabel: null as string | null,
           },

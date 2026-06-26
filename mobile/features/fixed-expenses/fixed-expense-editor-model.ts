@@ -85,7 +85,7 @@ export function buildFixedExpenseSubmitState(values: FixedExpenseEditorValues): 
   canSubmit: boolean
   payload: FixedExpenseEditorSubmitPayload | null
   /** Human-readable list of required fields the user still needs to
-   *  fill. Used by the screen to render "Completá X y Z para
+   *  fill. Used by the screen to render "Completa X y Z para
    *  continuar." under a look-disabled Guardar button. */
   missingFields: string[]
 } {

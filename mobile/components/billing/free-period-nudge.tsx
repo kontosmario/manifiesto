@@ -32,7 +32,7 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
     ? 'Último día de acceso completo'
     : `Te quedan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}`
   const subtitle = urgent
-    ? 'Seguí sin cortes · desde $3.33/mes'
+    ? 'Sigue sin cortes · desde $3.33/mes'
     : 'de acceso completo'
   const ctaLabel = urgent ? 'Suscribirme' : 'Ver planes'
 

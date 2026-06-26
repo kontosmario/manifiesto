@@ -81,6 +81,6 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
   return {
     kind: 'partial',
     label: `${formatMoneyShort(remaining)} de meta ${formatMoneyShort(target)}`,
-    a11y: `Llevás apartados ${formatMoney(remaining)} de los ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
+    a11y: `Llevas apartados ${formatMoney(remaining)} de los ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
   }
 }

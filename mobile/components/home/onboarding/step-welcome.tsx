@@ -51,7 +51,7 @@ export function StepWelcome({
             {isRejoin ? 'Hola de nuevo 👋' : 'Hola 👋'}
           </Text>
           <Text style={[styles.subcopy, { color: theme.colors.heroMuted }]}>
-            Contanos cómo quieres que te llamemos.
+            Cuéntanos cómo quieres que te llamemos.
           </Text>
         </View>
       </RiseView>

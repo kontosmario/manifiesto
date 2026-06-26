@@ -57,7 +57,7 @@ export function useAuthSession() {
         // `gcTime: Infinity` (más abajo) significaba que un signOut que
         // NO propaga via onAuthStateChange (raro, pero posible si algún
         // path llama directo a clearLocal()) dejaba la sesión vieja
-        // viva en memoria. Acá la flushiamos a null explícitamente
+        // viva en memoria. Aquí la flushiamos a null explícitamente
         // — siempre seguro porque el evento que disparó este handler
         // ES SIGNED_OUT, no hay sesión válida.
         queryClient.setQueryData(authQueryKeys.session, null)

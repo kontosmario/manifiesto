@@ -52,7 +52,7 @@ export async function activateBiometricForSession(
   }
 
   const result = await authenticateBiometricAccess({
-    promptMessage: `Activá ${state.label} para entrar más rápido la próxima vez.`,
+    promptMessage: `Activa ${state.label} para entrar más rápido la próxima vez.`,
   })
 
   if (!result.success) {

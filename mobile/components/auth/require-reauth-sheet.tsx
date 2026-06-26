@@ -137,7 +137,7 @@ export function RequireReauthSheet({
       setPinLength(len)
       // Biometric tiene precedencia: es la UX más fluida y respaldada
       // por OS. PIN es el fallback determinista. Si NINGUNO está
-      // configurado, mostramos el placeholder "configurá primero".
+      // configurado, mostramos el placeholder "configura primero".
       // H7: when `allowPinFallback` is false and biometric is available,
       // we go biometric-only. If biometric isn't available we still let
       // PIN serve as the primary factor (no fallback because there's
@@ -188,7 +188,7 @@ export function RequireReauthSheet({
           return
         }
         const result = await authenticateBiometricAccess({
-          promptMessage: `Confirmá: ${actionLabel.toLowerCase()}`,
+          promptMessage: `Confirma: ${actionLabel.toLowerCase()}`,
         })
         if (result.success) {
           void triggerHaptic('success')
@@ -261,7 +261,7 @@ export function RequireReauthSheet({
   return (
     <ModalCard
       visible={visible}
-      title="Confirmá tu identidad"
+      title="Confirma tu identidad"
       subtitle={`Vamos a ${actionLabel.toLowerCase()}. Pedimos una verificación rápida.`}
       onClose={onCancel}
     >
@@ -282,12 +282,12 @@ export function RequireReauthSheet({
             style={{ alignSelf: 'center' }}
           />
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Confirmá con {biometricState?.label ?? 'biometría'}
+            Confirma con {biometricState?.label ?? 'biometría'}
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
             {biometricFailed
-              ? 'Si no apareció el prompt o cancelaste, tocá "Reintentar".'
-              : 'Si no apareció el prompt, tocá "Reintentar".'}
+              ? 'Si no apareció el prompt o cancelaste, toca "Reintentar".'
+              : 'Si no apareció el prompt, toca "Reintentar".'}
           </Text>
           <View style={styles.actionsRow}>
             <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />
@@ -305,7 +305,7 @@ export function RequireReauthSheet({
       {method === 'pin' ? (
         <View style={styles.pinBlock}>
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Ingresá tu PIN
+            Ingresa tu PIN
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
             Pedimos tu PIN como última verificación antes de continuar.
@@ -350,11 +350,11 @@ export function RequireReauthSheet({
             style={{ alignSelf: 'center' }}
           />
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Configurá un PIN o biometría
+            Configura un PIN o biometría
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
             Para confirmar acciones importantes necesitamos verificar tu
-            identidad. Activá un PIN o Face ID desde Ajustes y volvé.
+            identidad. Activa un PIN o Face ID desde Ajustes y vuelve.
           </Text>
           <View style={styles.actionsRow}>
             <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />

@@ -447,7 +447,7 @@ export function HomeDashboard({
         await applyDecision.mutateAsync(input)
         setDecisionSheetOpen(false)
       } catch {
-        toast.error('No pudimos guardar tu decisión. Probá de nuevo en un rato.')
+        toast.error('No pudimos guardar tu decisión. Prueba de nuevo en un rato.')
       }
     },
     [applyDecision],
@@ -457,7 +457,7 @@ export function HomeDashboard({
   // 'skip' en DB. La query sigue devolviendo el row pendiente y la
   // sheet vuelve a aparecer en el próximo mount de Home. Solo
   // meta/acumular/reserva la hacen desaparecer realmente.
-  // (V1 persistía 'skip' acá; UX confuso — el copy dice "después" pero
+  // (V1 persistía 'skip' aquí; UX confuso — el copy dice "después" pero
   // el comportamiento era "nunca más". Removido.)
   const handleSkipDecision = useCallback(() => {
     setDecisionSheetOpen(false)
@@ -610,12 +610,12 @@ export function HomeDashboard({
         onApplyLeftoverDecision: pendingForWrapped
           ? async (input) => {
               // El catch de la CTA solo resetea su spinner — el
-              // feedback al user sale de acá. Re-throw para que la
+              // feedback al user sale de aquí. Re-throw para que la
               // CTA NO dispare confetti en el path de error.
               try {
                 await applyDecision.mutateAsync(input)
               } catch (err) {
-                toast.error('No pudimos guardar tu decisión. Probá de nuevo en un rato.')
+                toast.error('No pudimos guardar tu decisión. Prueba de nuevo en un rato.')
                 throw err
               }
             }
@@ -933,7 +933,7 @@ export function HomeDashboard({
           showMembers={!isSolo}
         />
       </TourTarget>
-      {/* La card de "confirmá tu saldo" se confirma DENTRO de un Modal
+      {/* La card de "confirma tu saldo" se confirma DENTRO de un Modal
           full-screen (NumericEditSheet). Si la desmontáramos al instante en
           que el dato flippea, el colapso correría OCULTO detrás del modal y la
           card "desaparecía de golpe" al revelarse Home. CollapsingReveal la

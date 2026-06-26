@@ -130,7 +130,7 @@ export function NumpadGrid({
                 }
                 accessibilityHint={
                   key === 'backspace'
-                    ? 'Mantené presionado para limpiar todo'
+                    ? 'Mantén presionado para limpiar todo'
                     : undefined
                 }
                 onPress={() => handleKeyPress(key)}

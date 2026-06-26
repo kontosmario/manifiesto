@@ -44,7 +44,7 @@ export function EditSavingsPercentSheet({
     }
     const amount = deriveSavingsGoalAmount(monthlyIncome, parsed)
     if (amount <= 0) {
-      return 'Fijá un ingreso mensual para proyectar el monto de ahorro.'
+      return 'Fija un ingreso mensual para proyectar el monto de ahorro.'
     }
     return `Equivale a ${currencyFormatter.format(amount)} por mes.`
   }, [isValid, monthlyIncome, parsed])

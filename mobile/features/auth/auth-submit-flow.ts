@@ -1,7 +1,7 @@
 import type { AuthMode } from '@/features/auth/auth-flow'
 
 const EMAIL_CONFIRMATION_INFO =
-  'Revisá tu email para confirmar la cuenta y después ingresa.'
+  'Revisa tu email para confirmar la cuenta y después ingresa.'
 
 export type AuthSubmitResolution =
   | {

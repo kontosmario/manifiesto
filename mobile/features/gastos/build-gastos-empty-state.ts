@@ -63,19 +63,19 @@ export function buildGastosEmptyState(
     // ve este variant en vez del onboarding "primer gasto" engañoso.
     // El gate principal del isEmptyAccount ya valida que el branch del
     // SectionList se monte cuando hasRecentExpensesOutsideCycle es
-    // true, así que esta condición acá es defensiva.
+    // true, así que esta condición aquí es defensiva.
     if (hasRecentExpensesOutsideCycle) {
       return {
         kind: 'pending-confirm',
         primary: 'Tus gastos esperan al mes nuevo',
         secondary:
-          'Ya registraste movimientos del próximo ciclo. Confirmá tu cobro para que aparezcan acá.',
+          'Ya registraste movimientos del próximo ciclo. Confirma tu cobro para que aparezcan aquí.',
         actionLabel: 'Confirmar cobro',
         onAction: onGoToHome,
         iconName: 'event-available',
       }
     }
-    // No empty-state CTA acá a propósito — el home Variables band + el
+    // No empty-state CTA aquí a propósito — el home Variables band + el
     // Add tab ya cubren "registrar el primer gasto". Surfacearlo una
     // tercera vez es redundante.
     return {

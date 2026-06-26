@@ -87,7 +87,7 @@ function GardenGridImpl({
 }: GardenGridProps) {
   const { theme } = useAppTheme()
   const weeks = toWeeks(cells)
-  // Columna de HOY (0..6) → resaltamos su letra en el encabezado ("estás acá").
+  // Columna de HOY (0..6) → resaltamos su letra en el encabezado ("estás aquí").
   const todayIndex = cells.findIndex((c) => c.isToday)
   const todayCol = todayIndex >= 0 ? todayIndex % GARDEN_COLS : -1
 
@@ -114,7 +114,7 @@ function GardenGridImpl({
         {weeks.map((week, wi) => (
           <View key={wi} style={styles.week}>
             {week.map((cell) => {
-              // Hueco recuperable: celda tappable con afiche "plantá el día que faltó".
+              // Hueco recuperable: celda tappable con afiche "planta el día que faltó".
               if (cell.iso === recoverableGapIso && onPlantGap) {
                 return (
                   <Pressable

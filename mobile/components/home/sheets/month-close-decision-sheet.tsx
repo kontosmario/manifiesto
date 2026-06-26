@@ -42,7 +42,7 @@ export function MonthCloseDecisionSheet({
 
   // `period_label` viene formateado por el backend ("Mayo 2026" o
   // "20 may → 19 jun" según cycle_type). Lo usamos tal cual.
-  const subtitle = `Cerraste ${pending.periodLabel} con un saldo a favor. ¿Qué hacés con esa plata?`
+  const subtitle = `Cerraste ${pending.periodLabel} con un saldo a favor. ¿Qué haces con esa plata?`
 
   const handlePickOption = (id: OptionId) => {
     void triggerHaptic('selection')
@@ -90,7 +90,7 @@ export function MonthCloseDecisionSheet({
         <OptionCard
           icon="track-changes"
           title={activeGoal ? `Sumar a ${activeGoal.title}` : 'A una meta'}
-          subtitle={activeGoal ? 'Aporte al goal activo' : 'Primero creá una meta en Home'}
+          subtitle={activeGoal ? 'Aporte al goal activo' : 'Primero crea una meta en Home'}
           selected={selected === 'meta'}
           disabled={!activeGoal}
           onPress={() => activeGoal && handlePickOption('meta')}

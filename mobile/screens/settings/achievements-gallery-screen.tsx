@@ -90,7 +90,7 @@ export function AchievementsGalleryScreen() {
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Logros"
-      subtitle="Tu colección de hitos — se desbloquean solos a medida que usás Manifiesto."
+      subtitle="Tu colección de hitos — se desbloquean solos a medida que usas Manifiesto."
       canGoBack
       bodyStyle={styles.body}
       backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
@@ -98,7 +98,7 @@ export function AchievementsGalleryScreen() {
       {error && !data ? (
         <ErrorState
           title="No pudimos cargar tus logros"
-          description="Probá de nuevo en un momento."
+          description="Prueba de nuevo en un momento."
           onAction={handleRetry}
         />
       ) : !data ? (
@@ -137,12 +137,12 @@ function ProgressRingHero({
 
   const subtitle =
     earnedCount === 0
-      ? 'Empezá a usar Manifiesto y se van desbloqueando solos.'
+      ? 'Empieza a usar Manifiesto y se van desbloqueando solos.'
       : pct >= 100
-        ? '¡Los tenés todos! Sos leyenda.'
+        ? '¡Los tienes todos! Eres leyenda.'
         : pct >= 50
           ? 'Vas por más de la mitad. Imparable.'
-          : 'Buen comienzo. Seguí sumando.'
+          : 'Buen comienzo. Sigue sumando.'
 
   return (
     <LinearGradient

@@ -91,7 +91,7 @@ export function ReserveBlock({
       void triggerHaptic('selection')
       Alert.alert(
         'Meta pausada',
-        `Tu meta "${goal.title}" está inactiva. Activala con el botón "Activar meta" de arriba y volvé a aportar.`,
+        `Tu meta "${goal.title}" está inactiva. Actívala con el botón "Activar meta" de arriba y vuelve a aportar.`,
       )
       return
     }

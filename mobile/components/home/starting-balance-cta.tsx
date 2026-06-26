@@ -41,10 +41,10 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
   }
 
   return (
-    <TourTarget order={tourOrder} tour={TOUR_KEYS.home} text="Confirmá cuánta plata tenés disponible hoy para arrancar el ciclo.">
+    <TourTarget order={tourOrder} tour={TOUR_KEYS.home} text="Confirma cuánta plata tienes disponible hoy para arrancar el ciclo.">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Confirmá tu saldo inicial del mes"
+        accessibilityLabel="Confirma tu saldo inicial del mes"
         onPress={handlePress}
         style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
       >
@@ -70,7 +70,7 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
               style={[styles.title, { color: theme.colors.heroText }]}
               numberOfLines={1}
             >
-              Confirmá tu saldo inicial
+              Confirma tu saldo inicial
             </Text>
             <View style={[styles.ctaPill, { backgroundColor: theme.colors.heroAccent }]}>
               <Text style={[styles.ctaPillText, { color: PILL_TEXT }]}>

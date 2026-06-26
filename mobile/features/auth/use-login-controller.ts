@@ -77,7 +77,7 @@ export function useLoginController(options?: UseLoginControllerOptions) {
   // if you need the previous implementation.
   const handleSignedInTransition = useCallback(() => {
     // La máquina hace todo: marca unlocked, prefetchea el snapshot,
-    // espera el bridge opaco y navega al destino resuelto. Acá solo
+    // espera el bridge opaco y navega al destino resuelto. Aquí solo
     // confirmamos la identidad.
     authFlowLog('login-controller', 'handleSignedInTransition: dispatch LOGIN_SUCCESS')
     dispatchAuthFlow({ type: 'LOGIN_SUCCESS' })

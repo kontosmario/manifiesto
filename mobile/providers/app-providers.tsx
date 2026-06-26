@@ -16,12 +16,12 @@ function StatusBarBridge() {
   return <StatusBar animated style={theme.isDark ? 'light' : 'dark'} />
 }
 
-// Canvas colors hard-coded acá porque GestureHandlerRootView vive
+// Canvas colors hard-coded aquí porque GestureHandlerRootView vive
 // FUERA del AppThemeProvider y no puede usar `useAppTheme()`.
 // Estos hex deben mantenerse en sync con `palette.ts:canvas` para
 // que el "very-root" layer no flashee blanco durante transiciones
 // de tab (`shift`) o stack push antes de que el navigator
-// theme-aware tome el control. Si la paleta cambia, actualizar acá.
+// theme-aware tome el control. Si la paleta cambia, actualizar aquí.
 const CANVAS_LIGHT = '#F4F2ED'
 const CANVAS_DARK = '#12211A'
 

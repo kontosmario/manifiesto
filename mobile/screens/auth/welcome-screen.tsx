@@ -57,7 +57,7 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
 
   // Destino guest: la máquina auth-flow nunca muestra el bridge en el
   // camino a welcome (probes → guest → navigate), y LOGOUT la deja en
-  // `guest` con el overlay escondido — no hay splash que dismissear acá.
+  // `guest` con el overlay escondido — no hay splash que dismissear aquí.
 
   return (
     <View style={styles.root}>
@@ -118,7 +118,7 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
             <SecondaryCta label="Ya tengo cuenta" onPress={isBusy ? () => {} : onLogin} />
 
             <Text style={styles.dataDisclosure}>
-              Solo guardamos tu email y lo que cargues acá (gastos, fijos, miembros del hogar). Nada se vende.
+              Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.
             </Text>
             <Text style={styles.fineprint}>
               Al continuar aceptas los{' '}
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   // fineprint, márgenes) DEBE espejarse en el ctaReserve invisible de
   // auth-launch-splash.tsx — si las alturas divergen, el fern del
   // welcome aterriza a distinta Y que el del splash y el handoff salta
-  // (bug del 2026-06-11: el dataDisclosure se agregó solo acá y el
+  // (bug del 2026-06-11: el dataDisclosure se agregó solo aquí y el
   // hero quedó ~20px más arriba).
   ctaBlock: {
     paddingTop: 8,

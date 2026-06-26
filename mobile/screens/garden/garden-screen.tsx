@@ -20,14 +20,14 @@ interface GardenScreenProps {
 }
 
 const FOOTNOTE =
-  'Tu jardín crece solo: cada gasto que registrás planta el brote del día. ¿No gastaste? Marcá el día sin gastos en el calendario y también suma.'
+  'Tu jardín crece solo: cada gasto que registras planta el brote del día. ¿No gastaste? Marca el día sin gastos en el calendario y también suma.'
 
 /**
  * Pantalla "Mi jardín" — vista dedicada de la racha (accesible desde Gastos).
  * Casi de solo lectura: el brote se planta automáticamente al registrar un gasto
  * o pago de fijo (trigger server-side) o al marcar un día sin gastos. La ÚNICA
  * acción manual es "plantar el día que faltó" (recovery del 6/7): si la semana
- * cerrada quedó 6/7 y tenés un escudo, la celda del hueco es tappable y consume
+ * cerrada quedó 6/7 y tienes un escudo, la celda del hueco es tappable y consume
  * el escudo para plantar un brote "recuperado" (no florece). Ver `recover_garden_day`.
  */
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
@@ -48,8 +48,8 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
       if (recover.isPending) return
       void triggerHaptic('selection')
       Alert.alert(
-        'Plantá el día que faltó',
-        `La semana pasada registraste 6 de 7 días. Plantá el que falta con una semilla guardada (tenés ${seeds}). No florece como una semana perfecta, pero completás tu jardín.`,
+        'Planta el día que faltó',
+        `La semana pasada registraste 6 de 7 días. Planta el que falta con una semilla guardada (tienes ${seeds}). No florece como una semana perfecta, pero completas tu jardín.`,
         [
           { text: 'Ahora no', style: 'cancel' },
           {
@@ -59,7 +59,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
                 onSuccess: () => void triggerHaptic('success'),
                 onError: (e) => {
                   void triggerHaptic('error')
-                  Alert.alert('No se pudo plantar', e.message || 'Intentá de nuevo en un rato.')
+                  Alert.alert('No se pudo plantar', e.message || 'Intenta de nuevo en un rato.')
                 },
               }),
           },
@@ -74,7 +74,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       title="Mi jardín"
-      subtitle="Un brote por cada día que registrás."
+      subtitle="Un brote por cada día que registras."
       canGoBack
       rightSlot={
         <View

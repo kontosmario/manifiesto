@@ -297,7 +297,7 @@ function FijoRowReal({
                 (ui-ux-pro-max: primary action no escondida).
 
                 Solo render para `pending`/`overdue`; `paid`/`future` no
-                muestran nada acá. Visual detallado vive en
+                muestran nada aquí. Visual detallado vive en
                 ./fijo-row-parts/inline-pay-button.tsx — incluye el halo
                 pulse de overdue + ref-guard contra unmount.
               */}

@@ -109,7 +109,7 @@ export function ImpactBar({
 
   // La barra LLEGA en vez de aparecer pintada: el fill "antes" crece, y el
   // segmento "delta" (lo que agregás) se suma DESPUÉS con un stagger → el ojo
-  // ve "esto es lo que sumás". reduceMotion → directo al valor final.
+  // ve "esto es lo que sumas". reduceMotion → directo al valor final.
   const beforeProgress = useSharedValue(reduced ? 1 : 0)
   const deltaProgress = useSharedValue(reduced ? 1 : 0)
 

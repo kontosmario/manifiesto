@@ -103,7 +103,7 @@ export function ControlV2Header({
           hitSlop={6}
           accessibilityRole={goalEditable && onPressGoal ? 'button' : 'text'}
           accessibilityLabel={`Score ${score}, ${scoreLabel}${
-            goalEditable && onPressGoal ? '. Tocá para ajustar tu meta diaria.' : ''
+            goalEditable && onPressGoal ? '. Toca para ajustar tu meta diaria.' : ''
           }`}
           accessibilityHint={
             goalEditable && onPressGoal
@@ -145,7 +145,7 @@ export function ControlV2Header({
           accessibilityRole="button"
           accessibilityLabel={`Mi meta diaria: ${formatMoneyShort(
             dailyGoalAmount as number,
-          )}. Tocá para ajustarla.`}
+          )}. Toca para ajustarla.`}
         >
           <Animated.View
             style={[

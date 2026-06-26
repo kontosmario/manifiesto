@@ -148,7 +148,7 @@ const config: ExpoConfig = {
     [
       'expo-local-authentication',
       {
-        faceIDPermission: 'Permití Face ID para desbloquear tu acceso guardado en Manifiesto.',
+        faceIDPermission: 'Permite Face ID para desbloquear tu acceso guardado en Manifiesto.',
       },
     ],
     // Sign in with Apple — requires the iOS entitlement which the

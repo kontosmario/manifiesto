@@ -103,7 +103,7 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
  * marked_days). De esa forma los hooks adentro del controller leen
  * cache hot y no disparan sus 6 RPCs propias en cold-start.
  *
- * `usePayCycle` y `useFamilyDashboard` se calculan acá pero no firen
+ * `usePayCycle` y `useFamilyDashboard` se calculan aquí pero no firen
  * red porque sus dependencias (family_finance, fixed_expenses,
  * expenses) ya están seeded por home_snapshot.
  */
@@ -323,9 +323,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             if (message.includes('EXPENSES_EXIST_ON_DATE')) {
               toast.error('Ese día tiene gastos registrados — no se puede marcar como sin gasto.')
             } else if (message.includes('FUTURE_DATE_NOT_ALLOWED')) {
-              toast.error('No podés marcar un día que aún no ocurrió.')
+              toast.error('No puedes marcar un día que aún no ocurrió.')
             } else {
-              toast.error('No se pudo marcar. Reintentá en un momento.')
+              toast.error('No se pudo marcar. Reintenta en un momento.')
             }
           },
         },
@@ -349,7 +349,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             toast.error(
               error instanceof Error
                 ? error.message
-                : 'No se pudo revertir. Reintentá en un momento.',
+                : 'No se pudo revertir. Reintenta en un momento.',
             )
           },
         },
@@ -450,7 +450,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     () => Array.from(controller.categoriesById.values()),
     [controller.categoriesById],
   )
-  // NO deferimos acá: el GastosAdvisorChip NO está "below the fold" — vive
+  // NO deferimos aquí: el GastosAdvisorChip NO está "below the fold" — vive
   // en el header del SectionList (gastos-list-header), arriba de los
   // movimientos. Con `defer: true` las signals resolvían ~600ms después del
   // primer paint → el chip montaba de null (altura 0 → ~52px) → el
@@ -799,7 +799,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         // Default scrollable Screen (mismo patrón que Fijos). NO usar
-        // `styles.screenContent` acá — ese estilo es del SectionList y
+        // `styles.screenContent` aquí — ese estilo es del SectionList y
         // fuerza `paddingBottom: 0`, que dejaba el empty state sin poder
         // scrollearse hasta el final. Este usa el bottom-padding default
         // del Screen (clearance del tab bar).
@@ -814,7 +814,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         // tour-host abortaba (cutout sin posicionar = "el tour no anda").
         // Apuntando `tourScrollRef` al ScrollView del empty: `measureSv`
         // mide el viewport (resolveMeasureNode cae al scrollRef porque
-        // `tourMeasureRef` queda sin attach acá) y el auto-scroll funciona
+        // `tourMeasureRef` queda sin attach aquí) y el auto-scroll funciona
         // para los pasos de abajo (calendar/list) cuando el contenido
         // supera el viewport. Mismo enfoque que Fijos.
         scrollRef={tourScrollRef as unknown as RefObject<ScrollView | null>}

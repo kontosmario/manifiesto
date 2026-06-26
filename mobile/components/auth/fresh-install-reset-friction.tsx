@@ -218,8 +218,8 @@ export function FreshInstallResetFriction({
               },
             ]}
           >
-            Si vos NO pediste este cambio, cerrá esta pantalla AHORA y
-            avisanos a{' '}
+            Si tú NO pediste este cambio, cierra esta pantalla AHORA y
+            avísanos a{' '}
             <Text
               accessibilityRole="link"
               onPress={handleEmailSupport}

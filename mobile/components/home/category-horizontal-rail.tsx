@@ -50,7 +50,7 @@ interface CategoryHorizontalRailProps {
    *  (default) the columns sit inside a horizontal ScrollView. */
   staticGrid?: boolean
   /** When true, the label above the rail tints to `theme.colors.warning`
-   *  and the label text overrides to "Elegí una categoría". Used by
+   *  and the label text overrides to "Elige una categoría". Used by
    *  callers that need to surface "this field is required and unfilled"
    *  without wrapping the rail in extra chrome (which would change
    *  layout). The tint glides in smoothly via Reanimated. */
@@ -103,7 +103,7 @@ export function CategoryHorizontalRail({
       [theme.colors.textMuted, theme.colors.warning],
     ),
   }))
-  const labelText = warning ? 'Elegí una categoría' : label
+  const labelText = warning ? 'Elige una categoría' : label
 
   const columns = useMemo(() => {
     const chunked: Category[][] = []

@@ -48,7 +48,7 @@ export function Step1Title({
         <Text
           style={[typography.eyebrow, { color: theme.colors.textMuted }]}
         >
-          ELEGÍ UN ÍCONO
+          ELIGE UN ÍCONO
         </Text>
         <ScrollView
           horizontal

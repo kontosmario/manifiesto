@@ -524,7 +524,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 {/* Hero card nueva · variante A · El Titular. Reemplaza
                     al ControlV2HoyCard original que era "0 comprensible
                     nada intuitivo" según owner. El nuevo hero comunica
-                    state-aware "qué tenés que saber sin vueltas":
+                    state-aware "qué tienes que saber sin vueltas":
                     headline editorial + primary number + 3 mini stats
                     + particles + shine + breathe dot color-coded. */}
                 <ControlV2Hero
@@ -539,7 +539,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
 
             {/* AsesorCard removido — los signals viven en el icon de
                 acceso rápido en Home (entry point al chat completo).
-                Mantenerlo acá duplicaba la surface. */}
+                Mantenerlo aquí duplicaba la surface. */}
 
             <TourTarget
               tour={CONTROL_TOUR}

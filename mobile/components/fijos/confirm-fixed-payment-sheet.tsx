@@ -77,7 +77,7 @@ export function ConfirmFixedPaymentSheet({
     // aperturas y queremos arrancar limpios (modo "same", monto
     // precargado con el último valor). El lint warn de
     // `set-state-in-effect` aplica cuando esto causa re-render
-    // innecesario; acá el reset SOLO ocurre cuando `visible` flipea
+    // innecesario; aquí el reset SOLO ocurre cuando `visible` flipea
     // a true (sheet recién abierto), no en cada render — necesario
     // para resetear estado stale de la apertura anterior.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate on open

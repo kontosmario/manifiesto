@@ -13,7 +13,7 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  *
  *   1. Aumentar la tasa de aceptación: el usuario ve POR QUÉ le
  *      conviene aceptar antes de que iOS le tire el prompt nativo
- *      (única chance — si dice no acá, hay que mandarlo a Ajustes).
+ *      (única chance — si dice no aquí, hay que mandarlo a Ajustes).
  *   2. Permitir "Más tarde" sin gastar el prompt nativo: el iOS
  *      prompt solo se dispara si el usuario tap "Permitir" en
  *      nuestro sheet. Si elige "Más tarde", guardamos cooldown 7d.
@@ -79,12 +79,12 @@ function copyFor(type: PermissionPrimeType, biometricLabel: string): PrimeCopy {
 
   return {
     icon: 'fingerprint',
-    title: 'Desbloqueá más rápido',
-    subtitle: `Usá ${biometricLabel} para entrar sin escribir tu contraseña.`,
+    title: 'Desbloquea más rápido',
+    subtitle: `Usa ${biometricLabel} para entrar sin escribir tu contraseña.`,
     reasons: [
-      { icon: 'face', text: `Ingresá con ${biometricLabel}` },
+      { icon: 'face', text: `Ingresa con ${biometricLabel}` },
       { icon: 'lock', text: 'Tus datos siempre cifrados' },
-      { icon: 'settings', text: 'Podés desactivarlo cuando quieras' },
+      { icon: 'settings', text: 'Puedes desactivarlo cuando quieras' },
     ],
     primaryLabel: 'Activar',
     secondaryLabel: 'Más tarde',

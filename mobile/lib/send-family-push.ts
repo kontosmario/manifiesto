@@ -10,7 +10,7 @@ interface SendFamilyPushInput {
 }
 
 // Token que los callers sociales ("{actor} cargó un gasto") ponen en el
-// título; lo reemplazamos acá por el nombre de quien dispara el push. Así
+// título; lo reemplazamos aquí por el nombre de quien dispara el push. Así
 // el nombre se resuelve en UN solo lugar y cada call site solo elige el
 // verbo. Los pushes sin el token (zombie/advisor) quedan intactos.
 const ACTOR_TOKEN = '{actor}'

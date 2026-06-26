@@ -141,7 +141,7 @@ function ShareImportListenerNative({ mod }: { mod: ShareIntentModule }) {
   }, [hasShareIntent, shareIntent, resetShareIntent])
 
   useEffect(() => {
-    if (error) toast.error('No pude recibir esa captura. Probá de nuevo.')
+    if (error) toast.error('No pude recibir esa captura. Prueba de nuevo.')
   }, [error])
 
   return null

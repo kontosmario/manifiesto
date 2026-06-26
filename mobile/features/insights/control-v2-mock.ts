@@ -213,7 +213,7 @@ export const CONTROL_MOCK: ControlMockData = {
       { category_id: null, name: 'Otros', color: '#8A8A8A', total: 270_000, count: 8, pct: 16 },
     ],
     byMember: [
-      { user_id: null, display_name: 'Vos', total: 1_120_000, count: 40 },
+      { user_id: null, display_name: 'Tú', total: 1_120_000, count: 40 },
       { user_id: null, display_name: 'Compa', total: 567_000, count: 22 },
     ],
     dailyTotals: [

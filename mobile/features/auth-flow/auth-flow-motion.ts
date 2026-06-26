@@ -1,5 +1,5 @@
 // Tokens de timing del flujo auth — spec 2026-06-11 (validados con
-// docs/auth-flow-demo.html). Cambiar el feel = cambiar un número acá.
+// docs/auth-flow-demo.html). Cambiar el feel = cambiar un número aquí.
 
 /** Fade-in del bridge sobre la superficie fern idéntica. */
 export const BRIDGE_FADE_IN_MS = 180

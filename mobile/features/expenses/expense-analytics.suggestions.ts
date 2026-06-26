@@ -42,7 +42,7 @@ export function buildExpenseAnalyticsSuggestions({
 
   if (adjustmentNeededPerDay > 0) {
     suggestions.push({
-      detail: `Para llegar al próximo cobro sin quedarte corto, intentá bajar alrededor de ${currencyFormatter.format(
+      detail: `Para llegar al próximo cobro sin quedarte corto, intenta bajar alrededor de ${currencyFormatter.format(
         adjustmentNeededPerDay,
       )} por día desde mañana.`,
       title: 'Necesitas ajustar el ritmo diario',

@@ -29,7 +29,7 @@ export function ImportReviewHeader({
 
   const title = (() => {
     if (mode === 'summary') return 'Resumen final'
-    if (total <= 1) return 'Revisá el movimiento'
+    if (total <= 1) return 'Revisa el movimiento'
     return `Movimiento ${stepIndex} de ${total}`
   })()
 

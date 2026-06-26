@@ -94,7 +94,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
       <Screen
         canGoBack
         contentContainerStyle={styles.screenContent}
-        subtitle="Administrá el catálogo con la misma experiencia modal de Agregar gasto."
+        subtitle="Administra el catálogo con la misma experiencia modal de Agregar gasto."
         title="Categorias"
         titleColor={headerPalette.titleColor}
       >
@@ -120,7 +120,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                     Catalogo
                   </Text>
                   <Text style={[styles.sectionTitle, theme.typography.sectionTitle, { color: theme.colors.text }]}>
-                    Ordená cómo se clasifica el gasto
+                    Ordena cómo se clasifica el gasto
                   </Text>
                 </View>
 

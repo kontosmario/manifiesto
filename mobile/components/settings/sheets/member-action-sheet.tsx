@@ -101,7 +101,7 @@ export function MemberActionSheet({
       onClose()
     } catch (e) {
       void triggerHaptic('error')
-      setError(getErrorMessage(e, 'Intentalo de nuevo en un momento.'))
+      setError(getErrorMessage(e, 'Inténtalo de nuevo en un momento.'))
       setSubmitting(false)
     }
   }
@@ -229,7 +229,7 @@ export function MemberActionSheet({
           {/* Acciones — filas centradas (iOS action-sheet feel) */}
           {isMe ? (
             <Text style={[styles.ownerNote, { color: theme.colors.textMuted }]}>
-              Sos el dueño de la familia. Desde acá gestionás al resto de los
+              Eres el dueño de la familia. Desde aquí gestionas al resto de los
               integrantes.
             </Text>
           ) : (

@@ -105,7 +105,7 @@ export function buildFamilyDashboardSnapshot({
   // y la presión de fijos. Para monthly users coincide con `payCycle`; para
   // weekly/biweekly/custom es el mes calendario (sin regresión: el call-site
   // puede pasarlo explícito para mantener identidad estable con el hook,
-  // si no lo derivamos acá).
+  // si no lo derivamos aquí).
   const accounting =
     monthlyAccounting ?? computeMonthlyAccountingWindow(cycleConfig, todayDate)
 

@@ -63,7 +63,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
         // told to start over.
         if (isWeakPin(next)) {
           setErrorMessage(
-            'Ese PIN es muy fácil de adivinar. Evitá repeticiones (1111) o secuencias (1234).',
+            'Ese PIN es muy fácil de adivinar. Evita repeticiones (1111) o secuencias (1234).',
           )
           setErrorToken((t) => t + 1)
           setValue('')
@@ -78,7 +78,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
       }
       // confirm phase
       if (next !== first) {
-        setErrorMessage('Los PINs no coinciden. Probá de nuevo.')
+        setErrorMessage('Los PINs no coinciden. Prueba de nuevo.')
         setErrorToken((t) => t + 1)
         setValue('')
         setPhase('enter')
@@ -98,7 +98,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
           const message =
             err instanceof Error && err.message
               ? err.message
-              : 'No pudimos guardar tu PIN. Probá de nuevo.'
+              : 'No pudimos guardar tu PIN. Prueba de nuevo.'
           setErrorMessage(message)
           setErrorToken((t) => t + 1)
           setValue('')
@@ -132,7 +132,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {phase === 'enter'
-          ? `Elegí un PIN de ${pinLength} dígitos para entrar a la app. Evitá secuencias y repeticiones.`
+          ? `Elige un PIN de ${pinLength} dígitos para entrar a la app. Evita secuencias y repeticiones.`
           : 'Ingresalo de nuevo para confirmar.'}
       </Text>
 

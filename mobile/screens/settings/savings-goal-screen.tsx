@@ -42,7 +42,7 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
   // state punteaba a Control · Tu Alcancía, pero ese card cae a un estado
   // bloqueado ("Disponible pronto") cuando no hay días con gasto — así que una
   // cuenta nueva sin meta no tenía NINGÚN camino para crearla. El wizard es un
-  // sheet self-contained: lo hosteamos acá y al crear, la query invalida y la
+  // sheet self-contained: lo hosteamos aquí y al crear, la query invalida y la
   // pantalla pasa al viewer.
   const [wizardOpen, setWizardOpen] = useState(false)
 
@@ -134,7 +134,7 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
             Aún no configuraste una meta de ahorro
           </Text>
           <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>
-            Definí cuánto querés juntar y en cuánto tiempo. La meta aparece en
+            Define cuánto quieres juntar y en cuánto tiempo. La meta aparece en
             Home y suma tus aportes.
           </Text>
           <View style={styles.emptyCta}>
@@ -213,7 +213,7 @@ function SavingsGoalViewer({
       void triggerHaptic('error')
       Alert.alert(
         'No pudimos eliminar',
-        err instanceof Error ? err.message : 'Intentá de nuevo.',
+        err instanceof Error ? err.message : 'Intenta de nuevo.',
       )
     }
   }
@@ -307,7 +307,7 @@ function SavingsGoalViewer({
               {/* Por mes */}
               {monthly != null ? (
                 <Text style={[styles.insightLine, { color: theme.colors.textMuted }]}>
-                  Ahorrando {currencyFormatter.format(monthly)} por mes, llegás en{' '}
+                  Ahorrando {currencyFormatter.format(monthly)} por mes, llegas en{' '}
                   {targetMonths} {targetMonths === 1 ? 'mes' : 'meses'}.
                 </Text>
               ) : (

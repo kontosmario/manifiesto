@@ -384,7 +384,7 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
             .catch(() => {
               Alert.alert(
                 'No pudimos guardar tu respuesta',
-                'Probá de nuevo en unos segundos.',
+                'Prueba de nuevo en unos segundos.',
               )
             })
           return
@@ -411,7 +411,7 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
             .catch(() => {
               Alert.alert(
                 'No pudimos registrar la cancelación',
-                'Probá de nuevo en unos segundos.',
+                'Prueba de nuevo en unos segundos.',
               )
             })
           return

@@ -179,7 +179,7 @@ export const PaywallView = memo(function PaywallView({
           El pago se cargará a tu cuenta de Apple ID al confirmar la compra. La
           suscripción se renueva automáticamente al mismo precio salvo que la
           canceles al menos 24 horas antes de que termine el período actual; el
-          cargo de renovación se hace dentro de esas 24 horas. Podés gestionarla
+          cargo de renovación se hace dentro de esas 24 horas. Puedes gestionarla
           o cancelarla cuando quieras desde los Ajustes de tu cuenta en la App
           Store.
         </Text>

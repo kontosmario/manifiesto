@@ -12,7 +12,7 @@
 // Controls in one place:
 //  1. Avisos: master on/off + push (cuándo / no molestar / nivel).
 //  2. Tu estilo: persona inferida o elegida a mano (checklist).
-//  3. Tus avisos: resumen de a cuáles les hacés caso (solo lectura).
+//  3. Tus avisos: resumen de a cuáles les haces caso (solo lectura).
 //  4. "Avisos que ocultaste" = `user_signal_blocklist` rows + unblock.
 //  5. "Borrar lo que aprendió de mí": hard delete of own
 //     `advisor_interactions` rows (gated by RLS — `delete_own` policy,
@@ -73,8 +73,8 @@ const FAMILY_LABELS: Record<string, string> = {
   'fijos-ratio': 'Tus pagos fijos pesan mucho',
   'small-leaks': 'Gastos chicos que suman',
   'night-impulse': 'Compras de noche',
-  'weekly-pattern': 'Un día que gastás más',
-  zombie: 'Servicios que pagás y no usás',
+  'weekly-pattern': 'Un día que gastas más',
+  zombie: 'Servicios que pagas y no usas',
   hike: 'Algo que te aumentó',
   'undetected-sub': 'Pagos que se repiten cada mes',
   cap: 'Límites que te pusiste',
@@ -82,9 +82,9 @@ const FAMILY_LABELS: Record<string, string> = {
   'cat-accel': 'Una categoría que se disparó',
   'cat-win': 'Dónde gastaste menos',
   'member-imbalance': 'Quién gasta más en casa',
-  'savings-feasibility': '¿Llegás a tu meta de ahorro?',
+  'savings-feasibility': '¿Llegas a tu meta de ahorro?',
   'savings-over': 'Vas adelantado con el ahorro',
-  'streak-ok': 'Venís anotando todos los días',
+  'streak-ok': 'Vienes anotando todos los días',
   'positive-forecast': 'Te va a sobrar plata',
   'high-single-expense': 'Una compra grande puntual',
   duplicate: 'Te cobraron dos veces',
@@ -97,7 +97,7 @@ const FAMILY_LABELS: Record<string, string> = {
   'income-missing': 'Un cobro que falta confirmar',
   causal: 'Costumbres que te hacen gastar',
   'super-perfect-storm': 'Varias cosas juntas para cuidar',
-  'super-savings-momentum': 'Venís ahorrando bien',
+  'super-savings-momentum': 'Vienes ahorrando bien',
   'super-hidden-drain': 'Plata que se te va sin notarlo',
 }
 
@@ -114,7 +114,7 @@ function engagementPhrase(ctr: number, acted: number): string {
   return 'rara vez'
 }
 
-// El mismo dato como ícono de tendencia: refuerza "le hacés caso / no" de un
+// El mismo dato como ícono de tendencia: refuerza "le haces caso / no" de un
 // vistazo, sin pedir leer.
 function engagementIcon(ctr: number, acted: number): IconName {
   if (acted === 0) return 'remove'
@@ -268,7 +268,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 {
                   onError: () => {
                     void triggerHaptic('error')
-                    Alert.alert('No pudimos mostrarlo', 'Probá de nuevo en unos segundos.')
+                    Alert.alert('No pudimos mostrarlo', 'Prueba de nuevo en unos segundos.')
                   },
                 },
               )
@@ -284,7 +284,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const handleClearHistory = useCallback(() => {
     Alert.alert(
       'Borrar lo que el asistente aprendió',
-      'Borra todo lo que el asistente fue aprendiendo de cómo usás la app. Va a arrancar de cero y tratarte como a alguien nuevo hasta volver a conocerte. No se puede deshacer.',
+      'Borra todo lo que el asistente fue aprendiendo de cómo usas la app. Va a arrancar de cero y tratarte como a alguien nuevo hasta volver a conocerte. No se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -306,7 +306,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               })
               Alert.alert('Listo', 'El asistente arranca de cero.')
             } catch {
-              Alert.alert('No pudimos borrar', 'Probá de nuevo. Si sigue igual, escribinos.')
+              Alert.alert('No pudimos borrar', 'Prueba de nuevo. Si sigue igual, escríbenos.')
             }
           },
         },
@@ -318,9 +318,9 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   // Footnote de "Tu estilo" según el modo.
   const styleFooter = prefs.useInferredPersona
     ? totalShown < 10
-      ? 'Recién te empiezo a conocer. Con el uso me ajusto a cómo manejás tu plata.'
-      : 'Lo elegí mirando cómo venís usando la app. Si querés, cambialo vos.'
-    : 'Lo elegiste vos. Tocá otro para cambiarlo, o volvé a automático arriba.'
+      ? 'Recién te empiezo a conocer. Con el uso me ajusto a cómo manejas tu plata.'
+      : 'Lo elige mirando cómo vienes usando la app. Si quieres, cámbialo tú.'
+    : 'Lo elegiste tú. Toca otro para cambiarlo, o vuelve a automático arriba.'
 
   return (
     <Screen
@@ -368,7 +368,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           <SettingsSwitchRow
             icon="auto-awesome"
             label="Asistente financiero"
-            helper="Si lo apagás, deja de darte avisos y consejos."
+            helper="Si lo apagas, deja de darte avisos y consejos."
             value={advisorEnabled}
             onValueChange={(v) => updatePrefs.mutate({ advisorEnabled: v })}
             isLast={!advisorEnabled}
@@ -378,7 +378,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               <SettingsSwitchRow
                 icon="notifications"
                 label="Notificaciones en el celular"
-                helper="Si lo apagás, los avisos aparecen solo cuando abrís la app."
+                helper="Si lo apagas, los avisos aparecen solo cuando abres la app."
                 value={pushEnabled}
                 onValueChange={(v) => updateNotifPrefs.mutate({ advisorPushEnabled: v })}
                 isLast={!pushEnabled}
@@ -417,7 +417,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           <SettingsSwitchRow
             icon="auto-fix-high"
             label="Elegir el estilo por mí"
-            helper="Si lo apagás, lo elegís vos abajo."
+            helper="Si lo apagas, lo eliges tú abajo."
             value={prefs.useInferredPersona}
             onValueChange={handleToggleInferred}
           />
@@ -453,10 +453,10 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         </SettingsGroup>
       </RiseView>
 
-      {/* 3. Tus avisos: solo lectura, a cuáles les hacés caso. */}
+      {/* 3. Tus avisos: solo lectura, a cuáles les haces caso. */}
       {showStats ? (
         <RiseView delay={200} style={styles.block}>
-          <SettingsGroup title="Tus avisos" footer="Cuánto le hacés caso a cada tipo.">
+          <SettingsGroup title="Tus avisos" footer="Cuánto le haces caso a cada tipo.">
             {topFamilies.map(([family, s], i) => (
               <SettingsRow
                 key={family}
@@ -476,8 +476,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
           title="Avisos que ocultaste"
           footer={
             blocklist.length > 0
-              ? 'Tocá uno para que ese aviso vuelva a aparecer.'
-              : 'Si ocultás un tipo de aviso, aparece acá.'
+              ? 'Toca uno para que ese aviso vuelva a aparecer.'
+              : 'Si ocultas un tipo de aviso, aparece aquí.'
           }
         >
           {blocklist.length > 0 ? (
@@ -501,7 +501,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       <RiseView delay={320} style={styles.block}>
         <SettingsGroup
           title="Privacidad"
-          footer="Lo que hacés en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
+          footer="Lo que haces en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
         >
           <SettingsRow
             icon="delete-outline"

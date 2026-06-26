@@ -13,7 +13,7 @@ import { ReserveBlock } from './reserve-block'
 
 // Mismo umbral que el card principal — vale en este file para que el
 // callout muestre el progreso ("Gasto en X de Y días") sin necesidad
-// de prop drilling extra. Si se actualiza acá, también actualizar en
+// de prop drilling extra. Si se actualiza aquí, también actualizar en
 // `control-v2-alcancia-card.tsx`.
 const MIN_SPEND_DAYS = 3
 
@@ -57,7 +57,7 @@ export function ControlV2AlcanciaCardEmpty({
 
   // Crear meta NO depende de días con gasto (a diferencia del vault). Cuando no
   // hay meta, el candado "Disponible pronto" es engañoso (no existe una meta a
-  // la que mover) → ofrecemos crearla acá mismo con el wizard self-contained.
+  // la que mover) → ofrecemos crearla aquí mismo con el wizard self-contained.
   const [wizardOpen, setWizardOpen] = useState(false)
   const ctaPress = usePressScale({ pressedScale: 0.97 })
   const accentFg = theme.colors.success

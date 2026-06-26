@@ -246,7 +246,7 @@ function ControlV2PatronCardImpl({
                   >
                     {dowPlural(mejorDow.name)}
                   </Text>{' '}
-                  sos el más ahorrativo
+                  eres el más ahorrativo
                 </>
               ) : null}
               .

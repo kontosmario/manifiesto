@@ -271,14 +271,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     if (!biometricState.isAvailable) {
       Alert.alert(
         'Acceso rápido no disponible',
-        `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema y volvé a intentarlo.`,
+        `Configura ${biometricState.label.toLowerCase()} en los ajustes del sistema y vuelve a intentarlo.`,
       )
       return
     }
     if (!userEmail) {
       Alert.alert(
         'Sesión inválida',
-        'Iniciá sesión nuevamente para activar el acceso rápido.',
+        'Inicia sesión nuevamente para activar el acceso rápido.',
       )
       return
     }
@@ -300,7 +300,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       // grab the live Supabase refresh token (no password handling)
       // and save it paired with the user's email.
       const biometricResult = await authenticateBiometricAccess({
-        promptMessage: `Activá ${biometricState.label} para entrar más rápido la próxima vez.`,
+        promptMessage: `Activa ${biometricState.label} para entrar más rápido la próxima vez.`,
       })
       if (!biometricResult.success) {
         return
@@ -310,7 +310,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       if (!refreshToken) {
         Alert.alert(
           'No pudimos completar',
-          'No encontramos una sesión activa. Volvé a entrar manualmente y probá de nuevo.',
+          'No encontramos una sesión activa. Vuelve a entrar manualmente y prueba de nuevo.',
         )
         return
       }
@@ -328,7 +328,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       }
       Alert.alert(
         'No pudimos guardar',
-        'Hubo un problema activando el acceso rápido. Probá nuevamente.',
+        'Hubo un problema activando el acceso rápido. Prueba nuevamente.',
       )
     } finally {
       setBiometricBusy(false)
@@ -372,7 +372,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       router.push('/(app)/pin-setup')
       return
     }
-    Alert.alert('PIN de acceso', '¿Qué querés hacer?', [
+    Alert.alert('PIN de acceso', '¿Qué quieres hacer?', [
       { text: 'Cambiar PIN', onPress: () => router.push('/(app)/pin-setup') },
       {
         text: 'Quitar PIN',
@@ -646,14 +646,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       return
     }
     // Aviso extra: si su acceso viene del hogar y su período libre
-    // personal ya venció, al salir pasa al plan gratuito (bloqueo). Lo
+    // personal ya venció, al salir queda sin plan (bloqueo). Lo
     // comunicamos antes — y de paso implica que re-entrar no reinicia nada.
     const ent = entitlementQuery.data
     const willLoseAccess = ent?.source === 'family' && ent.trialDaysLeft === 0
     const baseMsg =
       'Vas a salir del grupo familiar actual. Tus gastos y configuración compartida quedan con el hogar — sólo se desvincula tu cuenta.'
     const message = willLoseAccess
-      ? `${baseMsg}\n\nAdemás, tu período de prueba ya finalizó: al salir pasás al plan gratuito y deberás suscribirte para seguir usando la app.`
+      ? `${baseMsg}\n\nAdemás, tu acceso completo ya finalizó: al salir te quedas sin plan y deberás suscribirte para seguir usando la app.`
       : baseMsg
     Alert.alert(
       'Salir del hogar',
@@ -672,7 +672,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handleConfirmConvertToSolo = useCallback(() => {
     Alert.alert(
       'Pasar a cuenta individual',
-      'Se quitará a los demás miembros y tendrán que volver a configurar su cuenta. Los gastos y la configuración compartida quedan con vos. Esta acción no se puede deshacer.',
+      'Se quitará a los demás miembros y tendrán que volver a configurar su cuenta. Los gastos y la configuración compartida quedan contigo. Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -806,7 +806,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const currencyValue = financeSnapshot.localCurrency ?? null
   const conversionRowValue = !usdRateEnabled
     ? 'Desactivada'
-    : (currencyValue ?? 'Elegí tu moneda')
+    : (currencyValue ?? 'Elige tu moneda')
   const currentCycleConfig = useMemo<FinanceCycleConfig>(
     () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
     [dashboard.familyFinanceQuery.data],
@@ -1031,12 +1031,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       <Text
                         style={[styles.ownerText, { color: theme.colors.heroAccent }]}
                       >
-                        Sos el dueño de la familia
+                        Eres el dueño de la familia
                       </Text>
                     </View>
                   ) : role === 'member' ? (
                     <Text style={[styles.memberHint, { color: theme.colors.heroMuted2 }]}>
-                      Sos miembro. Solo el dueño puede editar el hogar.
+                      Eres miembro. Solo el dueño puede editar el hogar.
                     </Text>
                   ) : null}
                 </View>
@@ -1095,7 +1095,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  helper="Mostrá tu saldo convertido a dólares según tu moneda."
+                  helper="Muestra tu saldo convertido a dólares según tu moneda."
                   icon="currency-exchange"
                   label="Cotización en dólares"
                   onPress={() => setConversionSheetOpen(true)}
@@ -1124,7 +1124,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* 2b. RESERVA ACUMULADA — solo visible si hay reserva > 0.
                 Read-only: la única forma de tocar este monto es vía la
                 decisión "Guardar como reserva" del wrapped de cierre
-                de mes (Spec B). Surface acá para que la plata no
+                de mes (Spec B). Surface aquí para que la plata no
                 desaparezca visualmente del Settings. */}
             {Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) > 0 ? (
               <RiseView delay={200}>
@@ -1190,7 +1190,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   value="Ver galería"
                 />
                 <SettingsRow
-                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que podés revivir."
+                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que puedes revivir."
                   icon="auto-stories"
                   isLast
                   label="Ediciones"
@@ -1200,7 +1200,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 6. ASISTENTE — del acá en adelante todos comparten delay 420
+            {/* 6. ASISTENTE — del aquí en adelante todos comparten delay 420
                 (aparecen juntos, están below-the-fold). */}
             <RiseView delay={420}>
               <SettingsGroup title="Asistente">
@@ -1234,7 +1234,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 8. ACCESO RÁPIDO — toggle de biometría sin necesidad de
                 cerrar sesión. Permite activar Face ID / huella desde
-                acá si el usuario lo declinó en el post-login, o
+                aquí si el usuario lo declinó en el post-login, o
                 desactivarlo (limpia el refresh token guardado). El
                 row queda disabled si el dispositivo no tiene
                 biometría enrolada.
@@ -1244,16 +1244,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 tono más claro de recomendación (no de info neutral) +
                 link "Recordame mañana" para dismissear 24h. Reemplaza al
                 banner sticky que estaba en el top del home. La señal
-                ambient en home (gear icon dot) trae al user acá; el
+                ambient en home (gear icon dot) trae al user aquí; el
                 texto contextual le explica qué hacer. */}
             <RiseView delay={420}>
               <SettingsGroup
                 footer={
                   protectionPrompt.visible
-                    ? 'Tu cuenta no está protegida. Activá Face ID o creá un PIN para que solo vos puedas entrar.'
+                    ? 'Tu cuenta no está protegida. Activa Face ID o crea un PIN para que solo tú puedas entrar.'
                     : biometricState.isAvailable
-                      ? `Usá ${biometricState.label} para entrar más rápido la próxima vez.`
-                      : `Configurá ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
+                      ? `Usa ${biometricState.label} para entrar más rápido la próxima vez.`
+                      : `Configura ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
                 }
                 title="Acceso rápido"
               >
@@ -1332,7 +1332,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             <RiseView delay={420}>
               <SettingsGroup
                 title="Ayuda"
-                footer="Volvé a ver cualquier tutorial cuando quieras."
+                footer="Vuelve a ver cualquier tutorial cuando quieras."
               >
                 <SettingsRow
                   icon="home"
@@ -1404,7 +1404,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   destructive
                   helper={
                     isOwnerDestroyFlow
-                      ? 'Como sos el dueño, salirte cierra el hogar para todos.'
+                      ? 'Como eres el dueño, salirte cierra el hogar para todos.'
                       : undefined
                   }
                   icon={isOwnerDestroyFlow ? 'delete-forever' : 'logout'}
@@ -1431,7 +1431,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     icon="person-remove"
                     isLast
                     label="Pasar a cuenta individual"
-                    helper="Quita a los demás miembros y deja la cuenta solo para vos."
+                    helper="Quita a los demás miembros y deja la cuenta solo para ti."
                     onPress={handleConfirmConvertToSolo}
                   />
                 </SettingsGroup>
@@ -1446,7 +1446,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       icon="group-add"
                       isLast
                       label="Compartir con mi familia o pareja"
-                      helper="Activá el modo familiar para invitar y compartir gastos."
+                      helper="Activa el modo familiar para invitar y compartir gastos."
                       onPress={handleConfirmConvertToFamily}
                     />
                   </SettingsGroup>
@@ -1473,7 +1473,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               <RiseView delay={420}>
                 <SettingsGroup title="Super admin">
                   <SettingsRow
-                    helper="Activá acceso MVP (completo, de por vida) por email."
+                    helper="Activa acceso MVP (completo, de por vida) por email."
                     icon="admin-panel-settings"
                     isLast
                     label="Cuentas MVP"
@@ -1493,7 +1493,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 />
                 <SettingsRow
                   destructive
-                  helper="Borra tus datos en 30 días. Podés cancelar antes."
+                  helper="Borra tus datos en 30 días. Puedes cancelar antes."
                   icon="delete-forever"
                   isLast
                   label="Eliminar cuenta"
@@ -1582,7 +1582,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
                   />
                   <SettingsRow
-                    helper="Abrí el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
+                    helper="Abre el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
                     icon="preview"
                     label="Vista previa: wizard de importación"
                     onPress={() => {
@@ -1590,7 +1590,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     }}
                   />
                   <SettingsRow
-                    helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Borralas después desde Gastos."
+                    helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Bórralas después desde Gastos."
                     icon="bug-report"
                     isLast
                     label="Test import: carga REAL con mocks"
@@ -1760,7 +1760,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   // Envuelve el contenido textual: como el card aloja también el
-  // absoluteFill de las partículas, el `gap` vive acá (no en el card)
+  // absoluteFill de las partículas, el `gap` vive aquí (no en el card)
   // para no descolocar el fondo de partículas.
   heroContent: {
     gap: 6,

@@ -208,7 +208,7 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       // VERIFICACIÓN ACTIVA (round-trip real) en vez de confiar en NetInfo:
       // si NetInfo quedó "stuck" en offline (snapshot stale al resumir, o su
       // probe por defecto bloqueado), confiar en él haría que el Reintentar
-      // NUNCA funcione aunque el usuario tenga internet. Acá hacemos un GET
+      // NUNCA funcione aunque el usuario tenga internet. Aquí hacemos un GET
       // real a endpoints confiables. Si hay conexión, escondemos la vista y
       // revelamos la pantalla de abajo; si sigue offline, el fallback queda
       // (el haptic del tap ya dio feedback de que el intento ocurrió).
@@ -244,8 +244,8 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       : 'No pudimos cargar tu espacio'
 
   const body = errorKind === 'unknown'
-    ? 'Algo no respondió. Intentá de nuevo.'
-    : 'Revisá tu wifi o datos móviles e intentá de nuevo.'
+    ? 'Algo no respondió. Intenta de nuevo.'
+    : 'Revisa tu wifi o datos móviles e intenta de nuevo.'
 
   return (
     <Animated.View

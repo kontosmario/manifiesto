@@ -145,7 +145,7 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
           onMomentumScrollEnd={settle}
           accessibilityRole="adjustable"
           accessibilityLabel={accessibilityLabel ?? 'Hora'}
-          accessibilityHint="Deslizá para cambiar la hora. El número del centro es el elegido."
+          accessibilityHint="Desliza para cambiar la hora. El número del centro es el elegido."
         >
           {DATA.map((hour, idx) => (
             <HourTile

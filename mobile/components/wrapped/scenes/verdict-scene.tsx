@@ -49,7 +49,7 @@ export function resolveVerdictTone(savingsDelta: number, isDark: boolean): Verdi
       ctaBg: isDark ? '#F2A78C' : '#B84014',
       ctaFg: isDark ? '#3B1107' : '#FFFBF2',
       eyebrow: 'CERRASTE EXCEDIDO',
-      copyPositive: 'Empezás el siguiente con menos colchón.',
+      copyPositive: 'Empiezas el siguiente con menos colchón.',
     }
   }
   return {

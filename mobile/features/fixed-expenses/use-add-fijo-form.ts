@@ -1,6 +1,6 @@
 // Hook con todo el state + validación del wizard add-fijo. Extraído de
 // `add-fijo-v2-screen.tsx` para que la screen sea sólo composición:
-// monta los step views, recibe el state machine acá y delega los
+// monta los step views, recibe el state machine aquí y delega los
 // callbacks.
 //
 // Mantiene EXACTAMENTE la misma lógica del screen pre-refactor:
