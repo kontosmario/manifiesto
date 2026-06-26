@@ -36,5 +36,10 @@
     "success": "Win",
     "warning": "Heads up",
     "alert": "Alert"
+  },
+  "avatar": {
+    "selectAction": "Select",
+    "selected": "Selected",
+    "pickA11y": "Pick avatar {{name}}"
   }
 }

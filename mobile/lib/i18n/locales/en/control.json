@@ -286,7 +286,7 @@
     "metaInactiva": "GOAL · INACTIVE",
     "subSpendOver": "Spending under the allowance on {{range}} closed this month.",
     "subSpendNoClosed": "No closed days yet — we start calculating tomorrow.",
-    "subSpendUnder": "This week spending went over the allowance almost every day. When it drops, we'll save it here.",
+    "subSpendUnder": "This week, spending went over the allowance almost every day. When it drops, we'll save it here.",
     "subSpendDays": "{{ganadores}} of {{total}} days",
     "ctaActivar": "Activate goal · {{emoji}} {{title}}",
     "ctaCrear": "Create a savings goal",

@@ -32,7 +32,7 @@
   },
   "forecastStrip": {
     "title": "Next few days",
-    "legend": "Marker: daily cap {{cap}}",
+    "legend": "Marker: daily allowance {{cap}}",
     "tomorrowShort": "Tmr"
   },
   "streakWidget": {
@@ -85,8 +85,8 @@
   },
   "hero": {
     "payToday": "Payday today",
-    "daysOverdue_one": "+{{count}} day unpaid",
-    "daysOverdue_other": "+{{count}} days unpaid",
+    "daysOverdue_one": "+{{count}} day without pay",
+    "daysOverdue_other": "+{{count}} days without pay",
     "cycleDay": "day {{day}} of {{total}}",
     "a11yBalance": "Month balance: {{amount}}.",
     "a11yDailyAllowance": "Daily allowance: {{amount}}.",
@@ -315,7 +315,7 @@
     "allPaid": "All paid",
     "allPaidA11y": "All {{count}} fixed expenses for the month are paid.",
     "addFixedHint": "Opens the screen to add a fixed expense",
-    "notPaidYet": "Not paid yet"
+    "notPaidYet": "Not collected yet"
   },
   "metaCard": {
     "addError": "We couldn't add the contribution",

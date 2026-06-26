@@ -36,5 +36,10 @@
     "success": "Logro",
     "warning": "Atención",
     "alert": "Alerta"
+  },
+  "avatar": {
+    "selectAction": "Seleccionar",
+    "selected": "Elegido",
+    "pickA11y": "Elegir avatar {{name}}"
   }
 }

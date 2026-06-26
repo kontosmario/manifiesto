@@ -368,7 +368,7 @@
     "passwordVerifyError": "We couldn't verify the password.",
     "biometricTitle": "Confirm with {{method}}",
     "biometricFallback": "biometrics",
-    "biometricRetryHelper": "If the prompt didn't appear, tap \"Retry\".",
+    "biometricRetryHelper": "If the prompt didn't show up, tap \"Retry\".",
     "biometricUnavailableTitle": "Biometrics unavailable",
     "biometricUnavailableMessage": "Set up Face ID / fingerprint in your system settings to confirm the deletion.",
     "biometricPrompt": "Confirm your account deletion",

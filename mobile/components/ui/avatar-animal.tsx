@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import {
   AVATAR_LABELS,
   getAvatarComponent,
@@ -119,15 +120,17 @@ function AvatarAnimalRowImpl({
   selected = false,
   onSelect,
   label,
-  actionLabel = 'Seleccionar',
+  actionLabel,
 }: AvatarAnimalRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const resolvedLabel = label ?? AVATAR_LABELS[slug]
+  const resolvedActionLabel = actionLabel ?? t('common:avatar.selectAction')
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Elegir avatar ${resolvedLabel}`}
+      accessibilityLabel={t('common:avatar.pickA11y', { name: resolvedLabel })}
       accessibilityState={{ selected }}
       onPress={() => onSelect?.(slug)}
       style={({ pressed }) => [
@@ -171,7 +174,7 @@ function AvatarAnimalRowImpl({
             },
           ]}
         >
-          {selected ? 'Elegido' : actionLabel}
+          {selected ? t('common:avatar.selected') : resolvedActionLabel}
         </Text>
       </View>
     </Pressable>

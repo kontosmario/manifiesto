@@ -23,14 +23,26 @@ export interface AsesorActionMeta {
   fallbackLabelKey?: string
 }
 
-const GENERIC_LABELS = new Set([
-  'Entendido',
-  'Ver',
-  'Ver detalle',
-  'Ver fijos',
-  'Ver meta',
-  'Ver gastos',
-])
+// CTAs "genéricas" que los builders emiten cuando NO tienen un verbo
+// específico. Se identifican por su i18n KEY (no por el texto) y se
+// resuelven en el idioma ACTIVO para comparar — sino, en inglés el
+// builderCta ("View"/"Got it") nunca matchearía un Set en español y el
+// fallback kind-specific dejaría de dispararse.
+const GENERIC_CTA_KEYS = [
+  'insights:cta.entendido',
+  'insights:cta.verDetalle',
+  'insights:cta.verFijos',
+  'insights:cta.verMeta',
+  'insights:cta.verGastos',
+  'home:alerts.view',
+] as const
+
+function isGenericCta(builderCta: string): boolean {
+  for (const key of GENERIC_CTA_KEYS) {
+    if (i18n.t(key) === builderCta) return true
+  }
+  return false
+}
 
 /**
  * Map every `action.kind` to a unique visual identity (icon + haptic +
@@ -141,7 +153,7 @@ export function resolveCtaLabel(
   builderCta: string,
   action: ControlAction | undefined,
 ): string {
-  if (!GENERIC_LABELS.has(builderCta)) return builderCta
+  if (!isGenericCta(builderCta)) return builderCta
   const meta = getActionMeta(action)
   return meta.fallbackLabelKey ? i18n.t(meta.fallbackLabelKey) : builderCta
 }

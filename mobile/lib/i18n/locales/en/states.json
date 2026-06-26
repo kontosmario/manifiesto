@@ -222,7 +222,7 @@
       "addButton": "Here you add a new fixed expense. Add rent, a subscription or any recurring commitment — you set how often it's due and the app adds it to the cycle automatically."
     },
     "control": {
-      "hoy": "Your daily pulse: how much you have free today and how you're doing against your daily allowance. In green you're on pace; if you go red, you've crossed the ceiling.",
+      "hoy": "Your daily pulse: how much you have left today and how you're doing against your daily allowance. In green you're on pace; if you go red, you've crossed the ceiling.",
       "asesor": "The financial advisor. It reads your patterns and flags what matters: expenses that got out of control, fixed expenses you don't use, savings opportunities. Tap a card to resolve each case.",
       "alcanza": "Will you make it to month's end? We project the close at your current pace. If the projection falls short, it shows the estimated day your allowance runs out and how much you need to adjust.",
       "alcancia": "Your piggy bank for the month: what you DIDN'T spend each day accumulates here. It's the automatic savings you generate by staying below the daily allowance. Tap the card to see the detail.",
