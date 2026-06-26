@@ -403,7 +403,7 @@ function ControlV2PatronCardImpl({
                   ]}
                   numberOfLines={1}
                 >
-                  {d.name}
+                  {dowShortName(d.name)}
                   {isToday ? ' ·' : ''}
                 </Text>
               )
@@ -560,7 +560,7 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
                 style={[styles.dayLabel, { color: theme.colors.textMuted, fontWeight: '600' }]}
                 numberOfLines={1}
               >
-                {d}
+                {dowShortName(d)}
               </Text>
             ))}
           </View>
@@ -656,6 +656,12 @@ function dowPlural(name: string): string {
 // abbrev when the name doesn't match the table.
 function dowFullName(name: string): string {
   return i18n.t(`control:patron.dowFull.${name}`, { defaultValue: name })
+}
+
+// Short label for the chart axis ("Lun", "Mar" → "Mon", "Tue"). Resolved
+// from i18n by the abbrev key; falls back to the abbrev when unmatched.
+function dowShortName(name: string): string {
+  return i18n.t(`control:patron.dowShort.${name}`, { defaultValue: name })
 }
 
 const styles = StyleSheet.create({

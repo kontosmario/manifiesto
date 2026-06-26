@@ -137,7 +137,7 @@ export const GREETING_NAME_MAX_CHARS = 22
  */
 export function getGreetingName(displayName?: string | null): string {
   const cleaned = (displayName ?? '').replace(/\s+/g, ' ').trim()
-  if (!cleaned) return 'Usuario'
+  if (!cleaned) return i18n.t('home:greeting.fallbackName')
   const givenNames = cleaned.split(' ').slice(0, 2).join(' ')
   if (givenNames.length <= GREETING_NAME_MAX_CHARS) return givenNames
   return `${givenNames.slice(0, GREETING_NAME_MAX_CHARS - 1).trimEnd()}…`

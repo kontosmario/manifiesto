@@ -21,6 +21,15 @@
       "6": "SÁBADO"
     }
   },
+  "weekdayInitials": {
+    "0": "L",
+    "1": "M",
+    "2": "X",
+    "3": "J",
+    "4": "V",
+    "5": "S",
+    "6": "D"
+  },
   "empty": {
     "headingMissingIncome": "Configura tu sueldo para empezar",
     "headingMissingExpenses": "Registra tu primer gasto",
@@ -234,6 +243,15 @@
       "Vie": "Viernes",
       "Sáb": "Sábados",
       "Dom": "Domingos"
+    },
+    "dowShort": {
+      "Lun": "Lun",
+      "Mar": "Mar",
+      "Mié": "Mié",
+      "Jue": "Jue",
+      "Vie": "Vie",
+      "Sáb": "Sáb",
+      "Dom": "Dom"
     }
   },
   "cobertura": {
@@ -596,6 +614,20 @@
       "9": "octubre",
       "10": "noviembre",
       "11": "diciembre"
+    },
+    "short": {
+      "0": "ene",
+      "1": "feb",
+      "2": "mar",
+      "3": "abr",
+      "4": "may",
+      "5": "jun",
+      "6": "jul",
+      "7": "ago",
+      "8": "sep",
+      "9": "oct",
+      "10": "nov",
+      "11": "dic"
     }
   }
 }

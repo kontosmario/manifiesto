@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { BrandedPanel } from '@/components/ui/branded-panel'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { withAlpha } from '@/theme/color-utils'
@@ -31,6 +32,7 @@ function BreakdownRow({
   value: number
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const share = total > 0 ? value / total : 0
 
   return (
@@ -48,7 +50,7 @@ function BreakdownRow({
       </View>
       <ProgressBar color={color} total={Math.max(total, 1)} value={value} />
       <Text style={[styles.breakdownRowShare, { color: theme.colors.textMuted }]}>
-        {Math.round(share * 100)}% del total visible
+        {t('home:historyHero.shareOfTotal', { pct: Math.round(share * 100) })}
       </Text>
     </View>
   )
@@ -61,11 +63,12 @@ export function ExpenseHistoryHeroCard({
   title,
 }: ExpenseHistoryHeroCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <BrandedPanel elevated style={styles.heroCard} variant="hero">
       <View style={styles.heroCopy}>
-        <Text style={[styles.eyebrow, { color: theme.colors.primaryStrong }]}>Total visible</Text>
+        <Text style={[styles.eyebrow, { color: theme.colors.primaryStrong }]}>{t('home:historyHero.eyebrow')}</Text>
         <Text style={[styles.heroValue, { color: theme.colors.text }]}>
           {currencyFormatter.format(filteredTotal)}
         </Text>
@@ -100,7 +103,7 @@ export function ExpenseHistoryHeroCard({
           ]}
         >
           <Text style={[styles.heroEmptyTitle, { color: theme.colors.text }]}>
-            Todavia no hay lectura
+            {t('home:historyHero.emptyTitle')}
           </Text>
         </View>
       )}

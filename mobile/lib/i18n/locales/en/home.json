@@ -31,7 +31,7 @@
     "tapToEdit": "Tap to edit"
   },
   "forecastStrip": {
-    "title": "Next few days radar",
+    "title": "Next few days",
     "legend": "Marker: daily cap {{cap}}",
     "tomorrowShort": "Tmr"
   },
@@ -122,7 +122,7 @@
     "metaTitleWithGoal": "Add to {{goal}}",
     "metaTitle": "To a goal",
     "metaSubtitleActive": "Contribute to the active goal",
-    "metaSubtitleEmpty": "First create a goal in Home",
+    "metaSubtitleEmpty": "First create a goal on Home",
     "accumulateTitle": "Add to the current month",
     "accumulateSubtitle": "Stays as extra available this month",
     "reserveTitle": "Save as reserve",
@@ -156,7 +156,8 @@
   "greeting": {
     "night": "Good night",
     "morning": "Good morning",
-    "afternoon": "Good afternoon"
+    "afternoon": "Good afternoon",
+    "fallbackName": "User"
   },
   "alerts": {
     "dueWhen": {
@@ -273,6 +274,15 @@
     "noResultsSubtitle": "Try another period, another category, or clear the search.",
     "noResultsTitle": "No results found",
     "clearFilters": "Clear filters"
+  },
+  "historyHero": {
+    "eyebrow": "Visible total",
+    "shareOfTotal": "{{pct}}% of visible total",
+    "emptyTitle": "No reading yet"
+  },
+  "historySectionHeader": {
+    "movements_one": "{{count}} entry",
+    "movements_other": "{{count}} entries"
   },
   "monthSummary": {
     "trendVsPrev": "{{sign}}{{pct}}% vs prev",

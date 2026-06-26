@@ -31,8 +31,6 @@ interface ControlV2SemanaCardProps {
   diasConGasto?: number
 }
 
-const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
-
 /**
  * "Cómo vienes esta semana" — auditada y alineada con la familia.
  *
@@ -398,7 +396,10 @@ function ControlV2SemanaCardImpl({
           <View style={styles.dayLabelsRow}>
             <View style={styles.dayLabels}>
               {last7.map((d, i) => {
-                const dowLetter = DAY_NAMES[d.dow] ?? ''
+                const dowLetter =
+                  d.dow >= 0 && d.dow <= 6
+                    ? t(`control:weekdayInitials.${d.dow}`)
+                    : ''
                 return (
                   <Text
                     key={`${d.dia}-${i}`}

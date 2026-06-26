@@ -126,6 +126,8 @@
   },
   "streakSheet": {
     "daysLabel": "días",
+    "flameIconA11y_one": "Racha: {{count}} día, estado {{status}}",
+    "flameIconA11y_other": "Racha: {{count}} días, estado {{status}}",
     "levelEyebrow": "NIVEL",
     "last7Days": "Últimos 7 días",
     "retryLater": "Reintenta en un momento.",
@@ -191,6 +193,11 @@
   "summaryChip": {
     "day": "día {{day}}",
     "text": "{{count}} mov · {{period}} · {{cat}}"
+  },
+  "breakdown": {
+    "noCategory": "Sin categoria",
+    "topByCategory": "Mas peso por categoria",
+    "topByPerson": "Mas peso por persona"
   },
   "dayGroup": {
     "today": "Hoy",

@@ -156,7 +156,8 @@
   "greeting": {
     "night": "Buenas noches",
     "morning": "Buen día",
-    "afternoon": "Buenas tardes"
+    "afternoon": "Buenas tardes",
+    "fallbackName": "Usuario"
   },
   "alerts": {
     "dueWhen": {
@@ -273,6 +274,15 @@
     "noResultsSubtitle": "Proba otro periodo, otra categoria o limpia la busqueda.",
     "noResultsTitle": "No encontramos resultados",
     "clearFilters": "Limpiar filtros"
+  },
+  "historyHero": {
+    "eyebrow": "Total visible",
+    "shareOfTotal": "{{pct}}% del total visible",
+    "emptyTitle": "Todavia no hay lectura"
+  },
+  "historySectionHeader": {
+    "movements_one": "{{count}} movimiento",
+    "movements_other": "{{count}} movimientos"
   },
   "monthSummary": {
     "trendVsPrev": "{{sign}}{{pct}}% vs prev",

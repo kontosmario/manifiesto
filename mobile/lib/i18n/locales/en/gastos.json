@@ -74,8 +74,8 @@
   "sectionMeta": {
     "expenses_one": "{{count}} expense",
     "expenses_other": "{{count}} expenses",
-    "incomes_one": "{{count}} income",
-    "incomes_other": "{{count}} incomes",
+    "incomes_one": "{{count}} income entry",
+    "incomes_other": "{{count}} income entries",
     "none": "no movements"
   },
   "calendar": {
@@ -126,12 +126,14 @@
   },
   "streakSheet": {
     "daysLabel": "days",
+    "flameIconA11y_one": "Streak: {{count}} day, status {{status}}",
+    "flameIconA11y_other": "Streak: {{count}} days, status {{status}}",
     "levelEyebrow": "LEVEL",
     "last7Days": "Last 7 days",
     "retryLater": "Try again in a moment.",
     "saving": "Saving…",
     "reverting": "Reverting…",
-    "noExpenseToday": "I didn't spend today",
+    "noExpenseToday": "No spending today",
     "markNoSpendA11y": "Mark the day as no spend",
     "unmarkLabel": "Undo \"no spend today\"",
     "unmarkNoSpendA11y": "Undo the no-spend mark for this day",
@@ -140,7 +142,7 @@
     "markAlert": {
       "title": "Mark day as no spend",
       "message": "Confirm you didn't spend today? Your streak keeps going and you add a day to your progress. You can undo it if an expense shows up later.",
-      "confirm": "Yes, I didn't spend",
+      "confirm": "Yes, no spending today",
       "errorTitle": "Couldn't mark the day"
     },
     "unmarkAlert": {
@@ -191,6 +193,11 @@
   "summaryChip": {
     "day": "day {{day}}",
     "text": "{{count}} mov · {{period}} · {{cat}}"
+  },
+  "breakdown": {
+    "noCategory": "No category",
+    "topByCategory": "Top by category",
+    "topByPerson": "Top by person"
   },
   "dayGroup": {
     "today": "Today",
@@ -293,7 +300,7 @@
     "carryover": {
       "titlePositive": "You're managing the cycle well",
       "titleNegative": "The carryover is squeezing you today",
-      "detailPositive": "You're carrying {{amount}} of room built up below your pace.",
+      "detailPositive": "You've built up {{amount}} of breathing room under your pace.",
       "detailNegative": "You're carrying {{amount}} of overspend from previous days."
     },
     "buffer": {
@@ -352,7 +359,7 @@
     },
     "weeklyPace": {
       "label": "Weekly pace",
-      "helperNoBase": "Not enough basis yet to compare weeks.",
+      "helperNoBase": "Not enough data yet to compare weeks.",
       "helperHeavier": "This week is running heavier.",
       "helperLighter": "This week is running lighter or steady."
     },
@@ -420,8 +427,8 @@
     "summary": {
       "expensesCount_one": "{{count}} expense",
       "expensesCount_other": "{{count}} expenses",
-      "incomesCount_one": "{{count}} income",
-      "incomesCount_other": "{{count}} incomes",
+      "incomesCount_one": "{{count}} income entry",
+      "incomesCount_other": "{{count}} income entries",
       "and": " and ",
       "nothingToLoad": "Nothing to load",
       "willLoad": "You're going to load {{summary}}.",
@@ -503,7 +510,7 @@
     "associatedExpenses_one": "{{count}} associated expense",
     "associatedExpenses_other": "{{count}} associated expenses",
     "usedInFilterSuffix": " · used in the current filter",
-    "tapRowHint": "Tap a row to rename or delete the right category.",
+    "tapRowHint": "Tap a row to rename or delete that category.",
     "cannotDeleteWarning": "This category can't be deleted because it already has movements.",
     "manageCategoryA11y": "Manage category {{name}}",
     "categoryMeta_one": "{{count}} expense · created {{date}}",
@@ -552,7 +559,7 @@
     },
     "quickDescriptions": {
       "transfer": "Transfer",
-      "bonus13th": "13th-month bonus",
+      "bonus13th": "13th salary",
       "workBonus": "Work bonus",
       "birthdayGift": "Birthday gift",
       "freelance": "Freelance",

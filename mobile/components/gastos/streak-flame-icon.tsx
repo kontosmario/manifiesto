@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { AnimatedFlame, FLAME_PALETTE } from '@/components/gastos/animated-flame'
 import {
@@ -24,6 +25,7 @@ interface StreakFlameIconProps {
  */
 function StreakFlameIconImpl({ data, onPress }: StreakFlameIconProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const derived = deriveStreak(data)
   const palette = FLAME_PALETTE[derived.status]
   // Press scale Emil-grade. Antes el Pressable no tenía NINGÚN feedback
@@ -50,7 +52,10 @@ function StreakFlameIconImpl({ data, onPress }: StreakFlameIconProps) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Racha: ${data.currentStreak} días, estado ${derived.status}`}
+      accessibilityLabel={t('gastos:streakSheet.flameIconA11y', {
+        count: data.currentStreak,
+        status: derived.status,
+      })}
     >
       <Animated.View
         style={[

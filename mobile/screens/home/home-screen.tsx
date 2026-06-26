@@ -140,7 +140,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   }, [snapshot, familyId, telemetry.sessionId])
 
   const { data: profile } = useMyProfile(userId)
-  const displayName = profile?.display_name ?? 'Usuario'
+  const displayName = profile?.display_name ?? t('home:greeting.fallbackName')
 
   // Sprint R-3 — No-credentials defense. Surfaces a banner when the
   // signed-in user has neither biometric nor PIN configured, the only

@@ -68,7 +68,7 @@ export function PinLockPanel() {
           } else {
             setLockoutMessage(null)
           }
-          setErrorToken((t) => t + 1)
+          setErrorToken((prev) => prev + 1)
           setValue('')
           setChecking(false)
         })
@@ -77,7 +77,7 @@ export function PinLockPanel() {
           // corrupto / hash inválido) el UI quedaba con `checking=true`
           // para siempre. Reseteamos como intento fallido y dejamos
           // que el user reintente. Code review screens-B4.
-          setErrorToken((t) => t + 1)
+          setErrorToken((prev) => prev + 1)
           setValue('')
           setChecking(false)
         })

@@ -65,7 +65,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
         // told to start over.
         if (isWeakPin(next)) {
           setErrorMessage(t('auth:pinSetup.weakPin'))
-          setErrorToken((t) => t + 1)
+          setErrorToken((prev) => prev + 1)
           setValue('')
           return
         }
@@ -79,7 +79,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
       // confirm phase
       if (next !== first) {
         setErrorMessage(t('auth:pinSetup.mismatch'))
-        setErrorToken((t) => t + 1)
+        setErrorToken((prev) => prev + 1)
         setValue('')
         setPhase('enter')
         setFirst('')
@@ -100,7 +100,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
               ? err.message
               : t('auth:pinSetup.saveFailed')
           setErrorMessage(message)
-          setErrorToken((t) => t + 1)
+          setErrorToken((prev) => prev + 1)
           setValue('')
           setPhase('enter')
           setFirst('')

@@ -1,7 +1,5 @@
 import type { AuthMode } from '@/features/auth/auth-flow'
-
-const EMAIL_CONFIRMATION_INFO =
-  'Revisa tu email para confirmar la cuenta y después ingresa.'
+import i18n from '@/lib/i18n'
 
 export type AuthSubmitResolution =
   | {
@@ -39,7 +37,7 @@ export function resolveAuthSubmitResolution({
 
   if (!hasSession) {
     return {
-      infoMessage: EMAIL_CONFIRMATION_INFO,
+      infoMessage: i18n.t('auth:emailConfirmationInfo'),
       type: 'email-confirmation',
     }
   }

@@ -116,7 +116,12 @@ function buildPeriodRange(
   // periodEnd es exclusivo. Para display restamos un día.
   const lastDay = new Date(end.year, end.month - 1, end.day)
   lastDay.setDate(lastDay.getDate() - 1)
-  return `${start.day} ${MES_ABBR[start.month - 1]} – ${lastDay.getDate()} ${MES_ABBR[lastDay.getMonth()]}`
+  return `${start.day} ${monthAbbr(start.month - 1)} – ${lastDay.getDate()} ${monthAbbr(lastDay.getMonth())}`
+}
+
+/** Abreviatura del mes (0-indexed) localizada. */
+function monthAbbr(monthIdx: number): string {
+  return i18n.t(`control:months.short.${monthIdx}`)
 }
 
 interface PickTopCategoryArgs {
@@ -194,8 +199,3 @@ function isoToMs(iso: string): number {
   if (!parsed) return 0
   return new Date(parsed.year, parsed.month - 1, parsed.day).getTime()
 }
-
-const MES_ABBR = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-] as const

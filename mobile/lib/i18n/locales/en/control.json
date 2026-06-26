@@ -21,6 +21,15 @@
       "6": "SATURDAY"
     }
   },
+  "weekdayInitials": {
+    "0": "M",
+    "1": "T",
+    "2": "W",
+    "3": "T",
+    "4": "F",
+    "5": "S",
+    "6": "S"
+  },
   "empty": {
     "headingMissingIncome": "Set up your salary to start",
     "headingMissingExpenses": "Log your first expense",
@@ -43,7 +52,7 @@
     "footerAlCobro": "to payday",
     "metaChipLabel": "GOAL",
     "exhausto": {
-      "primary": "You went over for the month.",
+      "primary": "You're over budget for the month.",
       "secondary": "{{days}} days to payday. Watch what's left.",
       "label": "OVER"
     },
@@ -97,7 +106,7 @@
     "timelineHoy": "TODAY",
     "timelineProxSueldo": "NEXT PAY",
     "timelineDia": "day {{day}}",
-    "headlineExhausto": "Free budget passed around day {{day}} of the month.",
+    "headlineExhausto": "Free budget used up around day {{day}} of the month.",
     "headlineComodo": "The budget lasts the whole month — with plenty of room.",
     "headlineJusto": "It reaches the next payday, but tightly.",
     "headlineNoAlcanza": "At your current pace, the budget runs out on day {{day}} of the month.",
@@ -162,7 +171,7 @@
     "pillPrimerosDias": "Early days",
     "pillRecienArranca": "Just started",
     "pillVasBien": "Doing well",
-    "pillOjo": "Watch out this month",
+    "pillOjo": "Watch out",
     "headlineNoSpend": "You haven't logged any expenses this month yet.",
     "headlineUnreliablePrefix": "You've spent ",
     "headlineUnreliableSuffix": " so far. In a few days I'll compare you with {{mes}}.",
@@ -187,7 +196,7 @@
   "patron": {
     "eyebrow": "YOUR WEEKLY PATTERN",
     "stateIntenso": "Heavy {{day}}",
-    "stateAlto": "High {{day}}",
+    "stateAlto": "Pricey {{day}}",
     "statePareja": "Even spread",
     "headlineBalancedPrefix": "No single day spikes. Your spending is ",
     "headlineBalancedStrong": "balanced",
@@ -234,6 +243,15 @@
       "Vie": "Fridays",
       "Sáb": "Saturdays",
       "Dom": "Sundays"
+    },
+    "dowShort": {
+      "Lun": "Mon",
+      "Mar": "Tue",
+      "Mié": "Wed",
+      "Jue": "Thu",
+      "Vie": "Fri",
+      "Sáb": "Sat",
+      "Dom": "Sun"
     }
   },
   "cobertura": {
@@ -338,7 +356,7 @@
     "heroCupoReal": "Real allowance {{amount}}",
     "heroDiasAlCobro_one": "{{count}} day to payday",
     "heroDiasAlCobro_other": "{{count}} days to payday",
-    "heroSinMeta": "No extra goal · you play with your full allowance",
+    "heroSinMeta": "No extra goal · you use your full allowance",
     "stepperA11ySinMeta": "No daily goal",
     "stepperA11yMeta": "Daily goal at {{pct}}% of the real allowance",
     "impactActivePrefix": "If you close each day at your goal, you reach payday with ",
@@ -488,7 +506,7 @@
     "impactSiVuelvesPromedio": "If you return to average",
     "impactTotalFiltraciones": "Total leaks",
     "impactSiBajas20": "If you cut 20%",
-    "impactPremiumSemanal": "Weekly premium",
+    "impactPremiumSemanal": "Weekly extra",
     "impactExcesoUmbral": "Excess vs threshold",
     "impactAReservar": "To set aside",
     "impactHastaCobro": "To payday",
@@ -506,7 +524,7 @@
   },
   "coach": {
     "topicCrisis": "Full plan",
-    "topicLeaks": "Drain audit",
+    "topicLeaks": "Leak audit",
     "headerDefault": "Guided mode",
     "closeA11y": "Close guided mode",
     "emptyTitle": "This signal is no longer active",
@@ -596,6 +614,20 @@
       "9": "October",
       "10": "November",
       "11": "December"
+    },
+    "short": {
+      "0": "Jan",
+      "1": "Feb",
+      "2": "Mar",
+      "3": "Apr",
+      "4": "May",
+      "5": "Jun",
+      "6": "Jul",
+      "7": "Aug",
+      "8": "Sep",
+      "9": "Oct",
+      "10": "Nov",
+      "11": "Dec"
     }
   }
 }

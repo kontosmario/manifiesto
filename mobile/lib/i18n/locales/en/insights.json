@@ -161,7 +161,7 @@
     "velocity": {
       "cat": "Pace",
       "impactFrenar": "Slow down: {{delta}}",
-      "impactMantener": "Keep up the spending pace",
+      "impactMantener": "Hold your spending pace",
       "explanation": "It compares your recent spending pace (last 7 days) against the month's average. If spending sped up, it estimates the closing amount to anticipate how the month will end.",
       "stressCritical": "Closing over budget",
       "stressWarn": "Pace above target",
@@ -190,7 +190,7 @@
       "categoryFallback": "Category",
       "titleBreach": "{{name}}: limit exceeded",
       "titleWarning": "{{name}} at {{pct}}% of the limit",
-      "bodyBreach": "Your limit was {{cap}} and you've spent {{spent}}. Over by: {{excess}}.",
+      "bodyBreach": "Your limit was {{cap}} and you've spent {{spent}}. Over by {{excess}}.",
       "bodyWarning": "You've spent {{spent}} of the {{cap}} you set as a limit. {{remaining}} left to close the month.",
       "impactBreach": "Stop now: {{delta}}",
       "impactWarning": "Stay under {{cap}}",
@@ -216,7 +216,7 @@
       "explanation": "Expenses under $5,000 seem trivial one by one, but together they add up to a big slice of the month. Seeing them together helps spot where the budget \"drip\" concentrates."
     },
     "nightImpulse": {
-      "cat": "Time of day",
+      "cat": "Late night",
       "title": "{{amount}} on late-night purchases",
       "body": "{{count}} of {{total}} purchases were made after 10pm, adding up to {{amount}}. At night, relaxed at home, it's easier to overspend without thinking.",
       "impact": "Cut 20%: +{{amount}}/mo",
@@ -285,8 +285,8 @@
     },
     "highSingle": {
       "cat": "Single expense",
-      "title": "Big movement today: {{price}}",
-      "body": "Today you logged {{price}} in a single movement — {{pct}}% of what you can spend today ({{cupo}}). See if it's worth balancing out the rest of the day.",
+      "title": "Big charge today: {{price}}",
+      "body": "Today you logged {{price}} in a single charge — {{pct}}% of what you can spend today ({{cupo}}). See if it's worth balancing out the rest of the day.",
       "impact": "Today: {{price}}",
       "explanation": "When a single expense takes a big share of what you can spend today, the rest of the day is very committed. Seeing it right away lets you react."
     },
@@ -412,5 +412,8 @@
     "digestTitle": "You have {{count}} alerts in Control",
     "digestBody_one": "{{first}} and {{count}} more. Tap to review.",
     "digestBody_other": "{{first}} and {{count}} more. Tap to review."
+  },
+  "memberWarning": {
+    "title": "👥 Financial Assistant alert"
   }
 }

@@ -57,7 +57,7 @@
     "titleUrgent": "Last day of full access",
     "title_one": "{{count}} day left",
     "title_other": "{{count}} days left",
-    "subtitleUrgent": "Stay uninterrupted · from $3.33/mo",
+    "subtitleUrgent": "No interruptions · from $3.33/mo",
     "subtitle": "of full access",
     "ctaSubscribe": "Subscribe",
     "ctaSeePlans": "See plans",
@@ -118,7 +118,7 @@
     "statusGrace": "PAYMENT ISSUE",
     "heroLineGrace": "Retrying until {{date}}",
     "statusNoRenew": "WON'T RENEW",
-    "heroLineNoRenew": "Active until {{date}}",
+    "heroLineNoRenew": "Access until {{date}}",
     "statusActive": "ACTIVE",
     "heroLineActive": "Renews on {{date}}"
   },

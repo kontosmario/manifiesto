@@ -412,5 +412,8 @@
     "digestTitle": "Tienes {{count}} alertas en Control",
     "digestBody_one": "{{first}} y {{count}} más. Toca para revisar.",
     "digestBody_other": "{{first}} y {{count}} más. Toca para revisar."
+  },
+  "memberWarning": {
+    "title": "👥 Aviso del Asistente Financiero"
   }
 }

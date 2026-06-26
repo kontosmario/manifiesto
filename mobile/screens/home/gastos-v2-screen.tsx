@@ -259,8 +259,8 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       // an income via the add-income form; using created_at would file
       // a backdated income under "today" and miss the actual day in
       // the cycle. Same fix applied in `home-activity-section.tsx`.
-      const t = incomeHappenedAtMs(i)
-      return Number.isFinite(t) && t >= startMs && t < endMs
+      const eventMs = incomeHappenedAtMs(i)
+      return Number.isFinite(eventMs) && eventMs >= startMs && eventMs < endMs
     })
   }, [incomeEventsQuery.data, controller.cycleStart, controller.cycleEnd])
 
