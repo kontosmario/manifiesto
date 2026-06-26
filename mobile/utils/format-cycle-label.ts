@@ -1,6 +1,7 @@
 import type { PayCycle } from '@/utils/pay-cycle'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatDayMonthShort, monthShort, weekdayShort } from '@/utils/date-format'
+import i18n from '@/lib/i18n'
 
 /**
  * Label del ciclo activo para mostrar en hero de Home / Gastos / Fijos.
@@ -15,9 +16,9 @@ export function formatCycleLabel(
   lastDay.setDate(lastDay.getDate() - 1)
   const range = `${formatDayMonthShort(cycle.start)} → ${formatDayMonthShort(lastDay)}`
   if (cycleType === 'monthly') return range
-  if (cycleType === 'biweekly') return `${range} · quincena`
-  if (cycleType === 'weekly') return `${range} · semana`
-  return `${range} · cada ${cycle.days} días`
+  if (cycleType === 'biweekly') return i18n.t('common:cycle.biweekly', { range })
+  if (cycleType === 'weekly') return i18n.t('common:cycle.weekly', { range })
+  return i18n.t('common:cycle.custom', { range, days: cycle.days })
 }
 
 /**
@@ -26,15 +27,19 @@ export function formatCycleLabel(
  */
 export function formatCycleSummary(config: FinanceCycleConfig): string {
   if (config.cycle_type === 'monthly') {
-    return `Mensual · día ${config.salary_payment_day}`
+    return i18n.t('common:cycle.summaryMonthly', { day: config.salary_payment_day })
   }
   const [y, m, d] = config.cycle_anchor_date.split('-').map(Number)
   const date = new Date(y, (m ?? 1) - 1, d ?? 1)
   if (config.cycle_type === 'biweekly') {
-    return `Quincenal · desde ${date.getDate()} ${monthShort(date)}`
+    return i18n.t('common:cycle.summaryBiweekly', {
+      date: `${date.getDate()} ${monthShort(date)}`,
+    })
   }
   if (config.cycle_type === 'weekly') {
-    return `Semanal · desde ${weekdayShort(date)} ${date.getDate()} ${monthShort(date)}`
+    return i18n.t('common:cycle.summaryWeekly', {
+      date: `${weekdayShort(date)} ${date.getDate()} ${monthShort(date)}`,
+    })
   }
-  return `Custom · cada ${config.cycle_length_days} días`
+  return i18n.t('common:cycle.summaryCustom', { days: config.cycle_length_days })
 }

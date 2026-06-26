@@ -41,5 +41,19 @@
     "selectAction": "Select",
     "selected": "Selected",
     "pickA11y": "Pick avatar {{name}}"
+  },
+  "cycle": {
+    "biweekly": "{{range}} · biweekly",
+    "weekly": "{{range}} · weekly",
+    "custom": "{{range}} · every {{days}} days",
+    "summaryMonthly": "Monthly · day {{day}}",
+    "summaryBiweekly": "Biweekly · from {{date}}",
+    "summaryWeekly": "Weekly · from {{date}}",
+    "summaryCustom": "Custom · every {{days}} days"
+  },
+  "form": {
+    "missing": "Fill in {{fields}} to continue.",
+    "join2": "{{a}} and {{b}}",
+    "joinN": "{{list}} and {{last}}"
   }
 }

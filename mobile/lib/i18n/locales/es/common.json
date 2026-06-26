@@ -41,5 +41,19 @@
     "selectAction": "Seleccionar",
     "selected": "Elegido",
     "pickA11y": "Elegir avatar {{name}}"
+  },
+  "cycle": {
+    "biweekly": "{{range}} · quincena",
+    "weekly": "{{range}} · semana",
+    "custom": "{{range}} · cada {{days}} días",
+    "summaryMonthly": "Mensual · día {{day}}",
+    "summaryBiweekly": "Quincenal · desde {{date}}",
+    "summaryWeekly": "Semanal · desde {{date}}",
+    "summaryCustom": "Custom · cada {{days}} días"
+  },
+  "form": {
+    "missing": "Completa {{fields}} para continuar.",
+    "join2": "{{a}} y {{b}}",
+    "joinN": "{{list}} y {{last}}"
   }
 }

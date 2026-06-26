@@ -91,9 +91,13 @@ export function AddExpenseDashboard({
   // and clear field-by-field as the user completes each input.
   const initialTokenRef = useRef(highlightToken)
   const isFlagged = highlightToken > initialTokenRef.current
-  const flagAmount = isFlagged && missingFields.includes('monto')
-  const flagDescription = isFlagged && missingFields.includes('descripción')
-  const flagCategory = isFlagged && missingFields.includes('categoría')
+  // Comparar contra el MISMO valor localizado que produce el controller
+  // (i18n.t de las mismas keys), no contra el literal ES — sino el resaltado
+  // de campo faltante dejaba de dispararse en inglés.
+  const flagAmount = isFlagged && missingFields.includes(t('gastos:import.field.amount'))
+  const flagDescription =
+    isFlagged && missingFields.includes(t('gastos:import.field.description'))
+  const flagCategory = isFlagged && missingFields.includes(t('gastos:import.field.category'))
 
   const canSubmit = missingFields.length === 0
 

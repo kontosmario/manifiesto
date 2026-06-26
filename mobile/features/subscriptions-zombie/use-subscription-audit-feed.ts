@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
 import { subscriptionsZombieQueryKeys } from './query-keys'
 import { buildFeed } from './subscription-audit-engine'
 import type {
@@ -169,11 +168,11 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
               status: r.status,
               frequency: r.frequency,
               categoryId: r.category_id,
-              // Display localizado NO destructivo: el join trae name+scope
-              // (no template_id), así que matcheamos por (name, scope).
-              categoryName: cat?.name
-                ? localizeCategoryNameByName(cat.name, cat.scope)
-                : null,
+              // RAW name (no localizar): este campo SOLO alimenta el gate
+              // del engine (categoryName === 'Suscripciones'), nunca se
+              // muestra. Localizarlo rompía la feature en EN (en inglés el
+              // display es 'Subscriptions' y el gate nunca matcheaba).
+              categoryName: cat?.name ?? null,
               categoryScope: cat?.scope ?? null,
               nextDueOn: r.next_due_on,
               lastPaidAt: r.last_paid_at,
