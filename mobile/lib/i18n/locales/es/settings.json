@@ -936,5 +936,11 @@
     "avatar": "Avatar",
     "email": "Email",
     "noEmail": "Sin email"
+  },
+  "dev": {
+    "animationsFooter": "Solo visibles en desarrollo. Útil para iterar animaciones.",
+    "importPreviewLabel": "Vista previa: wizard de importación",
+    "demoFilterFooter": "Filtra las tarjetas demo por tipo de acción para probar cada bucket por separado.",
+    "filterAction": "Acción"
   }
 }

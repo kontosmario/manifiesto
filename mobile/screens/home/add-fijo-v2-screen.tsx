@@ -39,7 +39,6 @@ import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
-import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -203,7 +202,7 @@ export function AddFijoV2Screen({
             Alert.alert(
               t('fijos:wizard.errors.createdNotPaidTitle'),
               t('fijos:wizard.errors.createdNotPaidBody', {
-                error: getErrorMessage(paymentError, errorMessages.server),
+                error: getErrorMessage(paymentError, t('states:error.server')),
               }),
             )
             handleClose()
@@ -218,7 +217,7 @@ export function AddFijoV2Screen({
         isEditing
           ? t('fijos:wizard.errors.updateFailed')
           : t('fijos:wizard.errors.createFailed'),
-        getErrorMessage(error, errorMessages.server),
+        getErrorMessage(error, t('states:error.server')),
       )
     }
   }

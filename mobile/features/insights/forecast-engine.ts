@@ -208,6 +208,11 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
       day: iso,
       event: 'fixed_payment',
       expectedAmount: Math.round(amount),
+      // @i18n-ignore (not user-facing yet): `inflectionDays[].description`
+      // no se renderiza en ninguna UI hoy (ningún componente lee
+      // `forecast.inflectionDays`); es copy reservada para una
+      // visualización futura. Extraer a `insights:` cuando se cablee a
+      // una pantalla real.
       description: 'Pago fijo programado',
     })
   }
@@ -224,6 +229,8 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
         day: isoDay(dayDate),
         event: 'historical_high_dow',
         expectedAmount: Math.round(bucket.avg),
+        // @i18n-ignore (not user-facing yet): ver nota arriba — copy de
+        // inflectionDays sin consumidor de UI todavía.
         description: `${DOW_NAMES_FULL[projectDow]} suele ser caro`,
       })
     }
@@ -239,6 +246,8 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
       day: isoDay(paydayPrev),
       event: 'paydate_proximity',
       expectedAmount: 0,
+      // @i18n-ignore (not user-facing yet): ver nota arriba — copy de
+      // inflectionDays sin consumidor de UI todavía.
       description: 'Último día antes del cobro',
     })
   }

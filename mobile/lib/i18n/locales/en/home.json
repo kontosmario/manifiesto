@@ -255,6 +255,17 @@
     "emptySubtitle": "You have no pending notifications.",
     "markRead": "Mark read"
   },
+  "notifTime": {
+    "noDate": "No date",
+    "now": "now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}}h ago",
+    "yesterdayAt": "yesterday {{time}}"
+  },
+  "dailyBudgetNudge": {
+    "closeDayTitle": "Wrap up your day",
+    "closeDayBody": "See how today went."
+  },
   "expenseEditor": {
     "subtitle": "Update only what you need and keep your history clean.",
     "quickEdit": "Quick edit",

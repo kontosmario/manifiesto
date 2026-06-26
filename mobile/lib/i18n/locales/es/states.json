@@ -1,4 +1,9 @@
 {
+  "semantic": {
+    "positive": "Saludable",
+    "caution": "Atención",
+    "critical": "Crítico"
+  },
   "empty": {
     "expensesThisCycle": {
       "title": "Todavía no hay gastos este mes",
@@ -47,7 +52,9 @@
     "notifications": "Cargando novedades",
     "settings": "Cargando tus preferencias",
     "import": "Cargando importación",
-    "generic": "Cargando"
+    "generic": "Cargando",
+    "preparingSpace": "Preparando tu espacio...",
+    "preparingSession": "Preparando tu sesión..."
   },
   "error": {
     "network": "No pudimos conectarnos. Revisa tu conexión.",

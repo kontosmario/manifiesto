@@ -415,5 +415,133 @@
   },
   "memberWarning": {
     "title": "👥 Financial Assistant alert"
+  },
+  "controlActions": {
+    "hero": {
+      "noBase": {
+        "eyebrow": "Missing setup",
+        "title": "Your financial setup is missing",
+        "detail": "Set your income, savings and payday so the app can guide you."
+      },
+      "salaryPending": {
+        "eyebrow": "New month",
+        "title": "Confirm your payday to get caught up",
+        "detail": "Confirm your latest payday and I'll bring this month's numbers up to date."
+      },
+      "overToday": {
+        "eyebrow": "Watch out today",
+        "title": "You overspent today",
+        "detail": "You spent more than you had for today, and there's {{remaining}} until your next payday."
+      },
+      "overdue": {
+        "eyebrow": "Watch out this month",
+        "title": "You have overdue fixed expenses",
+        "detail_one": "You have {{count}} overdue fixed expense and {{amount}} still unpaid.",
+        "detail_other": "You have {{count}} overdue fixed expenses and {{amount}} still unpaid."
+      },
+      "adjustDaily": {
+        "eyebrow": "Small tweak",
+        "title": "A small tweak gets you there",
+        "detail": "Spending about {{amount}} less per day gets you comfortably to month-end."
+      },
+      "dueSoon": {
+        "eyebrow": "Next few days",
+        "title": "Fixed expenses are coming: set money aside",
+        "detail_one": "{{count}} fixed expense is coming up, so it's worth setting aside {{amount}} to avoid running short by month-end.",
+        "detail_other": "{{count}} fixed expenses are coming up, so it's worth setting aside {{amount}} to avoid running short by month-end."
+      },
+      "zeroStreak": {
+        "eyebrow": "Good news",
+        "title": "You're stacking up savings",
+        "detail": "You've gone {{count}} days in a row without spending — that leaves you more money for the rest of the month."
+      },
+      "steady": {
+        "eyebrow": "Quick read",
+        "title": "The cycle is under control",
+        "detail": "There's {{remaining}} until payday and you're still within the expected range today."
+      }
+    },
+    "today": {
+      "noBase": {
+        "title": "Finish your financial setup first",
+        "detail": "Without income, a savings goal and a payday, there's no reliable reference to make decisions."
+      },
+      "salaryPending": {
+        "title": "Confirm your payday before logging more",
+        "detail": "Doing it now keeps the new cycle from getting mixed up with the previous one."
+      },
+      "overToday": {
+        "title": "Today it's best to cut variable spending",
+        "detail": "If you stop here, tomorrow you'll open with {{opening}}."
+      },
+      "remainingToday": {
+        "title": "Use what's still left for today as your guide",
+        "detail": "Your real cap for the rest of the day is {{remaining}}."
+      },
+      "overdue": {
+        "title": "Pay your overdue fixed expenses first",
+        "detail_one": "There's {{count}} overdue item and it's already pushing the cycle.",
+        "detail_other": "There are {{count}} overdue items and they're already pushing the cycle."
+      },
+      "reserve": {
+        "title": "Set money aside for the fixed expenses coming up",
+        "detail": "Setting aside {{amount}} keeps you from running short when your next fixed expenses are due."
+      },
+      "flexibleOver": {
+        "title": "You've already gone over your day-to-day budget",
+        "detail": "Your plan (half for fixed expenses, {{flexiblePct}}% for day-to-day and {{savingsPct}}% for savings) left you {{target}} for day-to-day, and you've already spent {{spent}}."
+      },
+      "adjustDaily": {
+        "title": "It's worth spending a bit less per day",
+        "detail": "From tomorrow, try to cut about {{amount}} per day."
+      },
+      "zeroStreak": {
+        "title": "Protect the money you've already saved",
+        "detail_one": "You've already gone {{count}} day in a row without spending.",
+        "detail_other": "You've already gone {{count}} days in a row without spending."
+      },
+      "onPlan": {
+        "title": "You're on track with your monthly plan",
+        "detail": "You still have {{remaining}} for day-to-day spending this month."
+      },
+      "protectSavings": {
+        "title": "Avoid dipping into savings if you don't have to",
+        "detail": "There's still {{remaining}} of your savings goal untouched."
+      }
+    },
+    "cyclePlan": {
+      "noBase": {
+        "title": "Turn on your control framework first",
+        "detail": "A clear financial baseline is what turns your history into useful decisions."
+      },
+      "adjustDaily": {
+        "title": "Fix your daily pace before reworking the whole budget",
+        "detail": "The suggested adjustment is {{amount}} per day for the rest of the month."
+      },
+      "dailyCap": {
+        "title": "Use a daily cap instead of reviewing each expense in isolation",
+        "detail": "The simple cap to hold the close is {{amount}} per day."
+      },
+      "topCategory": {
+        "title": "Start with {{category}}",
+        "detail": "{{category}} already accounts for {{pct}}% of the month."
+      },
+      "recurringFocus": {
+        "title": "Audit repeat spending before the small stuff",
+        "detail": "\"{{label}}\" showed up {{count}} times and adds up to {{total}}."
+      },
+      "committed": {
+        "title": "Set aside what's committed first, then look at the rest",
+        "detail": "There's {{amount}} committed across fixed expenses, installments and debt this month."
+      },
+      "weekend": {
+        "title": "Set a specific limit for the weekend",
+        "detail": "Weekends run {{pct}}% above your Monday-to-Friday average."
+      },
+      "steady": {
+        "title": "Keep your current pace and keep logging",
+        "detail": "You still have {{remaining}} today and the projection isn't flagging anything serious."
+      }
+    }
   }
 }

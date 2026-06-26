@@ -11,6 +11,15 @@ import type { ControlAdvisorTask } from './control-v2-mock'
 // title, body, impact, impactRaw, urgency, confidence, dataDays,
 // action). Copy is illustrative — keep it short and recognizable so
 // the tester can map a card to the scenario it represents.
+//
+// @i18n-ignore (dev preview): toda la copy de este fixture es SOLO de
+// desarrollo. Se consume únicamente cuando el "Modo demo del asistente"
+// está activo (Settings → Desarrollo), un toggle gated por `__DEV__`
+// que nunca se renderiza en builds de producción. Las señales reales
+// que ve el usuario las construye `control-signals.ts` y ya están
+// extraídas al namespace `insights:signals.*`. No se extrae esta copy
+// sintética para no contaminar el bundle de traducciones con strings
+// que nadie ve.
 export function getAssistantDemoSignals(): ControlAdvisorTask[] {
   return [
     // ── Crisis / super-signals ──────────────────────────────────

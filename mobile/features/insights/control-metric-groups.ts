@@ -1,3 +1,9 @@
+// @i18n-ignore (dead code): ni `buildHeroMetrics` ni `buildTodayMetrics`
+// tienen consumidores en la app (no se importan en ningún
+// componente/screen/hook). Las strings de `label`/`helper` no llegan a
+// ninguna pantalla, así que no se extraen al namespace de i18n. Si se
+// re-cablea este módulo a una UI real, extraer la copy a `insights:` en
+// esa misma PR.
 import type { DailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import type { ExpenseAnalyticsSummary } from '@/features/expenses/expense-analytics'
 import { formatRemainingDays, type CommitmentSummary, type MetricDescriptor } from '@/features/insights/control-model'

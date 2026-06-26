@@ -39,7 +39,6 @@ import { logHomeEvent } from '@/features/home/log-home-event'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { HOME_TOUR, useRegisterTourScrollView } from '@/features/tours'
-import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useEntitlement } from '@/features/billing/use-entitlement'
@@ -273,7 +272,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       ),
       {
         onError: (error: unknown) => {
-          setSalaryErrorMessage(getErrorMessage(error, errorMessages.server))
+          setSalaryErrorMessage(getErrorMessage(error, t('states:error.server')))
           void triggerHaptic('error')
         },
         onSuccess: () => {
@@ -305,7 +304,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         void triggerHaptic('error')
         Alert.alert(
           t('home:homeScreen.deleteError'),
-          getErrorMessage(error, errorMessages.server),
+          getErrorMessage(error, t('states:error.server')),
         )
       },
       onSuccess: () => {
@@ -325,7 +324,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             void triggerHaptic('error')
             Alert.alert(
               t('home:homeScreen.deleteError'),
-              getErrorMessage(error, errorMessages.server),
+              getErrorMessage(error, t('states:error.server')),
             )
           },
           onSuccess: () => {
@@ -384,7 +383,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         <ErrorState
           description={getErrorMessage(
             dashboard.dashboardError,
-            errorMessages.server,
+            t('states:error.server'),
           )}
           title={t('home:homeScreen.dashboardError')}
           onAction={() => {

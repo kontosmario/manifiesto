@@ -502,8 +502,9 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       if (familyId) {
         const pushBody = `${variables.description.trim()} · $${variables.price}`
         void sendFamilyPush({
-          familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title: '{actor} cargó un gasto',
+          familyId,
           body: pushBody,
           kind: 'expense_logged',
           url: '/home',

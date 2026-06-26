@@ -74,7 +74,6 @@ import { toast } from '@/lib/toast-bus'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
-import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -411,7 +410,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       deleteExpenseMutation.mutate(expenseId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
-          Alert.alert(i18n.t('gastos:errors.deleteTitle'), getErrorMessage(error, errorMessages.server))
+          Alert.alert(i18n.t('gastos:errors.deleteTitle'), getErrorMessage(error, i18n.t('states:error.server')))
         },
         onSuccess: () => void triggerHaptic('success'),
       })
@@ -431,7 +430,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             void triggerHaptic('error')
             Alert.alert(
               i18n.t('gastos:errors.deleteTitle'),
-              getErrorMessage(error, errorMessages.server),
+              getErrorMessage(error, i18n.t('states:error.server')),
             )
           },
           onSuccess: () => void triggerHaptic('success'),
@@ -764,7 +763,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         scrollable={false}
       >
         <ErrorState
-          description={getErrorMessage(controller.error, errorMessages.server)}
+          description={getErrorMessage(controller.error, i18n.t('states:error.server'))}
           title={t('gastos:errors.loadTitle')}
           onAction={() => {
             void controller.refetchAll()

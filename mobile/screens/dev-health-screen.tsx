@@ -12,6 +12,8 @@ function fmtBytes(b: number): string {
   return `${(b / 1024 ** 3).toFixed(2)} GB`
 }
 
+// @i18n-ignore (dev-only: toda esta pantalla es diagnóstico DB Health gated por __DEV__ —
+// labels/títulos/estados en español son copy interno de tooling, NO copy de producción y no se traducen)
 export default function DevHealthScreen() {
   const { theme } = useAppTheme()
   const { data, isLoading, isError, error, refetch, isRefetching } = useDbHealth()
@@ -72,6 +74,7 @@ export default function DevHealthScreen() {
             {/* ── Resumen ───────────────────────────── */}
             <SectionCard title="Resumen" theme={theme}>
               <Row
+                // @i18n-ignore (dev-only: pantalla de diagnóstico DB Health gated por __DEV__, copy interno de tooling)
                 label="Tamaño DB"
                 value={data.db_size_pretty}
                 theme={theme}

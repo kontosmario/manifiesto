@@ -31,5 +31,10 @@
     "activate": "Turn on",
     "later": "Later",
     "tryAgain": "Try again"
+  },
+  "severity": {
+    "success": "Win",
+    "warning": "Heads up",
+    "alert": "Alert"
   }
 }

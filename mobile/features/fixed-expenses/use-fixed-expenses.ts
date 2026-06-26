@@ -148,8 +148,9 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
       if (familyId) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
         void sendFamilyPush({
-          familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title: '{actor} sumó un gasto fijo',
+          familyId,
           body: pushBody,
           kind: 'fixed_created',
           url: '/fixed-expenses',
@@ -233,8 +234,9 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
       if (familyId) {
         const pushBody = `${variables.name.trim()} · $${variables.amount}`
         void sendFamilyPush({
-          familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title: '{actor} editó un gasto fijo',
+          familyId,
           body: pushBody,
           kind: 'fixed_edited',
           url: '/fixed-expenses',
@@ -612,8 +614,9 @@ export function useDeleteFixedExpense(familyId?: string, userId?: string) {
     onSuccess: () => {
       if (familyId) {
         void sendFamilyPush({
-          familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title: '{actor} eliminó un gasto fijo',
+          familyId,
           body: '',
           kind: 'fixed_deleted',
           url: '/fixed-expenses',

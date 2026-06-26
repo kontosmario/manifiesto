@@ -11,6 +11,13 @@
  *   no_alcanza           a este ritmo no llegás al cobro
  *   exhausto             ya te pasaste del cupo total del ciclo
  *   inicio_ciclo         día 1-2 del ciclo, métricas sin sentido aún
+ *
+ * @i18n-ignore (dev preview): `CONTROL_HERO_STATES` es un fixture de
+ * SOLO desarrollo — no tiene consumidor en runtime de producción (sólo
+ * el TYPE `ControlHeroState` se usa en la app real, vía
+ * control-v2-hero.tsx). Los `label`/`description`/`diaLabel`/`scoreLabel`
+ * de cada estado son rótulos internos del preview, nunca renderizados al
+ * usuario final, así que no se extraen al namespace de i18n.
  */
 
 export interface ControlHeroState {
@@ -88,7 +95,9 @@ const HORA_F = (h: number, m: number): number => h + m / 60
 export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'al_dia_temprano',
+    // @i18n-ignore (dev preview)
     label: 'Al día (mañana)',
+    // @i18n-ignore (dev preview)
     description: 'Día 10/30 · 09:30 · gastaste poquito hoy, recién arrancas el día',
     cupoDiario: 32_000,
     gastoHoy: 2_500,
@@ -124,7 +133,9 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   },
   {
     id: 'al_dia_tarde',
+    // @i18n-ignore (dev preview)
     label: 'Al día (tarde)',
+    // @i18n-ignore (dev preview)
     description: 'Día 14/30 · 18:00 · vas en línea con el prorrateo del día',
     cupoDiario: 32_000,
     gastoHoy: 22_000,
@@ -161,6 +172,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'adelantado',
     label: 'Adelantado',
+    // @i18n-ignore (dev preview)
     description: 'Día 14/30 · 20:00 · gastaste menos del prorrateo, tienes margen',
     cupoDiario: 32_000,
     gastoHoy: 14_000,
@@ -197,6 +209,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'atrasado_leve',
     label: 'Atrasado leve',
+    // @i18n-ignore (dev preview)
     description: 'Día 14/30 · 14:00 · gastaste un poco arriba del ritmo de la hora',
     cupoDiario: 32_000,
     gastoHoy: 25_000,
@@ -232,7 +245,9 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   },
   {
     id: 'atrasado_critico',
+    // @i18n-ignore (dev preview)
     label: 'Atrasado crítico',
+    // @i18n-ignore (dev preview)
     description: 'Día 14/30 · 11:00 · ya gastaste más del cupo de TODO el día',
     cupoDiario: 32_000,
     gastoHoy: 41_000,
@@ -269,6 +284,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'no_alcanza',
     label: 'No alcanza al cobro',
+    // @i18n-ignore (dev preview)
     description: 'Día 14/30 · vienes gastando mucho · te quedas sin plata el día 24',
     cupoDiario: 32_000,
     gastoHoy: 38_000,
@@ -305,6 +321,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'exhausto',
     label: 'Exhausto (pasado del mes)',
+    // @i18n-ignore (dev preview)
     description: 'Día 22/30 · ya gastaste $145k MÁS que el cupo total del mes',
     cupoDiario: 32_000,
     gastoHoy: 45_000,
@@ -341,6 +358,7 @@ export const CONTROL_HERO_STATES: ControlHeroState[] = [
   {
     id: 'inicio_ciclo',
     label: 'Inicio de ciclo',
+    // @i18n-ignore (dev preview)
     description: 'Día 2/30 · recién arrancaste, casi sin métricas todavía',
     cupoDiario: 32_000,
     gastoHoy: 8_500,

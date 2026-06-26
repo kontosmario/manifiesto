@@ -35,7 +35,6 @@ import {
   useRevertFixedExpensePayment,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import { triggerHaptic } from '@/lib/haptics'
-import { errorMessages } from '@/lib/copy/states'
 import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -128,7 +127,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
           void triggerHaptic('error')
           Alert.alert(
             t('fijos:alerts.revertFailedTitle'),
-            getErrorMessage(error, errorMessages.server),
+            getErrorMessage(error, t('states:error.server')),
           )
         },
         onSuccess: () => {
@@ -253,7 +252,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
               void triggerHaptic('error')
               Alert.alert(
                 t('fijos:alerts.recordFailedTitle'),
-                getErrorMessage(error, errorMessages.server),
+                getErrorMessage(error, t('states:error.server')),
               )
             },
             onSuccess: () => {
@@ -292,7 +291,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
             void triggerHaptic('error')
             Alert.alert(
               t('fijos:alerts.recordFailedTitle'),
-              getErrorMessage(error, errorMessages.server),
+              getErrorMessage(error, t('states:error.server')),
             )
           },
           onSuccess: () => {
@@ -350,7 +349,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
                 void triggerHaptic('error')
                 Alert.alert(
                   t('fijos:alerts.deleteFailedTitle'),
-                  getErrorMessage(error, errorMessages.server),
+                  getErrorMessage(error, t('states:error.server')),
                 )
               },
               onSuccess: () => void triggerHaptic('success'),
@@ -384,7 +383,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         scrollable={false}
       >
         <ErrorState
-          description={getErrorMessage(controller.error, errorMessages.server)}
+          description={getErrorMessage(controller.error, t('states:error.server'))}
           title={t('fijos:screen.loadError')}
         />
       </Screen>

@@ -255,6 +255,17 @@
     "emptySubtitle": "No tienes notificaciones pendientes.",
     "markRead": "Marcar leída"
   },
+  "notifTime": {
+    "noDate": "Sin fecha",
+    "now": "ahora",
+    "minutesAgo": "hace {{count}} min",
+    "hoursAgo": "hace {{count}} h",
+    "yesterdayAt": "ayer {{time}}"
+  },
+  "dailyBudgetNudge": {
+    "closeDayTitle": "Cierra tu día",
+    "closeDayBody": "Mira cómo te fue hoy."
+  },
   "expenseEditor": {
     "subtitle": "Actualiza sólo lo necesario y mantén el historial limpio.",
     "quickEdit": "Edición rápida",

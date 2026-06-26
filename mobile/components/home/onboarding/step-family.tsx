@@ -14,7 +14,6 @@ import {
   type FamilyPeek,
 } from '@/features/family/use-family-actions'
 import type { AccountKind } from '@/features/family/account-kind'
-import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -79,7 +78,7 @@ export function StepFamily({
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(t('onboarding:family.errorCreateFamily'), getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorCreateFamily'), getErrorMessage(error, t('states:error.server')))
     }
   }
 
@@ -94,7 +93,7 @@ export function StepFamily({
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(t('onboarding:family.errorCreateAccount'), getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorCreateAccount'), getErrorMessage(error, t('states:error.server')))
     }
   }
 
@@ -113,7 +112,7 @@ export function StepFamily({
       onJoinPeek(result)
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(t('onboarding:family.errorValidateCode'), getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorValidateCode'), getErrorMessage(error, t('states:error.server')))
     }
   }
 

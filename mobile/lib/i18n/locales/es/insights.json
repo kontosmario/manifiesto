@@ -415,5 +415,133 @@
   },
   "memberWarning": {
     "title": "👥 Aviso del Asistente Financiero"
+  },
+  "controlActions": {
+    "hero": {
+      "noBase": {
+        "eyebrow": "Base faltante",
+        "title": "Falta el marco financiero",
+        "detail": "Defini ingreso, ahorro y dia de cobro para que la app pueda guiarte."
+      },
+      "salaryPending": {
+        "eyebrow": "Nuevo mes",
+        "title": "Confirma tu cobro para ponerte al dia",
+        "detail": "Confirma tu ultimo cobro y pongo al dia tus numeros del mes."
+      },
+      "overToday": {
+        "eyebrow": "Ojo hoy",
+        "title": "Hoy gastaste de mas",
+        "detail": "Hoy gastaste mas de lo que tenias para hoy, y faltan {{remaining}} para el proximo cobro."
+      },
+      "overdue": {
+        "eyebrow": "Ojo del mes",
+        "title": "Tenes pagos fijos vencidos",
+        "detail_one": "Tenes {{count}} pago fijo vencido y {{amount}} todavia sin pagar.",
+        "detail_other": "Tenes {{count}} pagos fijos vencidos y {{amount}} todavia sin pagar."
+      },
+      "adjustDaily": {
+        "eyebrow": "Ajuste chico",
+        "title": "Con un ajuste chico llegas bien",
+        "detail": "Bajando como {{amount}} por dia, llegas bien a fin de mes."
+      },
+      "dueSoon": {
+        "eyebrow": "Proximos dias",
+        "title": "Se vienen gastos fijos: conviene apartar plata",
+        "detail_one": "Se viene {{count}} pago fijo y conviene apartar {{amount}} para no quedar corto a fin de mes.",
+        "detail_other": "Se vienen {{count}} pagos fijos y conviene apartar {{amount}} para no quedar corto a fin de mes."
+      },
+      "zeroStreak": {
+        "eyebrow": "Buena noticia",
+        "title": "Venis sumando plata sin gastar",
+        "detail": "Llevas {{count}} dias seguidos sin gastar — asi te queda mas plata para el resto del mes."
+      },
+      "steady": {
+        "eyebrow": "Lectura rapida",
+        "title": "El ciclo viene controlado",
+        "detail": "Quedan {{remaining}} para el cobro y hoy todavia estas dentro del rango previsto."
+      }
+    },
+    "today": {
+      "noBase": {
+        "title": "Completa primero la configuracion financiera",
+        "detail": "Sin ingreso, ahorro meta y dia de cobro no hay una referencia confiable para decidir."
+      },
+      "salaryPending": {
+        "title": "Confirma el cobro antes de seguir cargando",
+        "detail": "Hacerlo ahora evita que el ciclo nuevo quede mezclado con el anterior."
+      },
+      "overToday": {
+        "title": "Hoy conviene cortar el gasto variable",
+        "detail": "Si frenas aqui, manana abres con {{opening}}."
+      },
+      "remainingToday": {
+        "title": "Toma como referencia lo que todavia queda hoy",
+        "detail": "Tu tope real para lo que queda del dia es {{remaining}}."
+      },
+      "overdue": {
+        "title": "Paga primero los fijos vencidos",
+        "detail_one": "Hay {{count}} caso vencido y eso ya esta empujando el ciclo.",
+        "detail_other": "Hay {{count}} casos vencidos y eso ya esta empujando el ciclo."
+      },
+      "reserve": {
+        "title": "Aparta plata para los pagos fijos que vienen",
+        "detail": "Apartar {{amount}} te evita quedar corto cuando venzan los proximos pagos fijos."
+      },
+      "flexibleOver": {
+        "title": "Ya te pasaste de lo del dia a dia",
+        "detail": "Tu plan (mitad para los pagos fijos, {{flexiblePct}}% para el dia a dia y {{savingsPct}}% para ahorrar) te dejaba {{target}} para el dia a dia, y ya llevas {{spent}}."
+      },
+      "adjustDaily": {
+        "title": "Conviene gastar un poco menos por dia",
+        "detail": "Desde manana intenta bajar alrededor de {{amount}} por dia."
+      },
+      "zeroStreak": {
+        "title": "Cuida la plata que ya ahorraste",
+        "detail_one": "Ya llevas {{count}} dia seguido sin gastar.",
+        "detail_other": "Ya llevas {{count}} dias seguidos sin gastar."
+      },
+      "onPlan": {
+        "title": "Vas bien con tu plan del mes",
+        "detail": "Todavia te quedan {{remaining}} para gastos del dia a dia este mes."
+      },
+      "protectSavings": {
+        "title": "Evita comer ahorro si no hace falta",
+        "detail": "Todavia quedan {{remaining}} del objetivo de ahorro sin tocar."
+      }
+    },
+    "cyclePlan": {
+      "noBase": {
+        "title": "Activa primero el marco de control",
+        "detail": "Una base financiera clara es lo que convierte el historial en decisiones utiles."
+      },
+      "adjustDaily": {
+        "title": "Corrige el ritmo diario antes de tocar todo el presupuesto",
+        "detail": "El ajuste sugerido es de {{amount}} por dia durante lo que queda del mes."
+      },
+      "dailyCap": {
+        "title": "Usa un cap diario en vez de revisar cada gasto aislado",
+        "detail": "El tope simple para sostener el cierre es {{amount}} por dia."
+      },
+      "topCategory": {
+        "title": "Empieza por {{category}}",
+        "detail": "{{category}} ya explica {{pct}}% del mes."
+      },
+      "recurringFocus": {
+        "title": "Audita el gasto repetido antes que el gasto chico",
+        "detail": "\"{{label}}\" aparecio {{count}} veces y suma {{total}}."
+      },
+      "committed": {
+        "title": "Separa primero lo comprometido y despues mira el resto",
+        "detail": "Hay {{amount}} comprometidos entre fijos, cuotas y deuda para este mes."
+      },
+      "weekend": {
+        "title": "Pon un limite especifico al fin de semana",
+        "detail": "Los fines de semana vienen {{pct}}% arriba del promedio de lunes a viernes."
+      },
+      "steady": {
+        "title": "Manten el ritmo actual y segui registrando",
+        "detail": "Hoy todavia te quedan {{remaining}} y la proyeccion no marca alertas fuertes."
+      }
+    }
   }
 }

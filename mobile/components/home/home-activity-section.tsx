@@ -6,7 +6,6 @@ import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
-import { errorMessages } from '@/lib/copy/states'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -142,7 +141,7 @@ function HomeActivitySectionImpl({
   if (errorKind) {
     return (
       <ErrorState
-        description={errorKind === 'network' ? errorMessages.network : errorMessages.server}
+        description={errorKind === 'network' ? t('states:error.network') : t('states:error.server')}
         onAction={onRetry}
       />
     )

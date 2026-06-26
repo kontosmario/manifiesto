@@ -1557,10 +1557,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* DEV — "sacados de lado": DESARROLLO + FILTRO DEMO al final,
                 justo antes del footer, intactos (delays como estaban).
                 Solo en builds de desarrollo. */}
+            {/* @i18n-ignore — bloque solo-dev (__DEV__), copy interno de tooling */}
             {__DEV__ ? (
               <RiseView delay={320}>
                 <SettingsGroup
-                  footer="Solo visibles en desarrollo. Útil para iterar animaciones."
+                  footer={t('settings:dev.animationsFooter')}
                   title="Desarrollo"
                 >
                   <SettingsRow
@@ -1632,7 +1633,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   <SettingsRow
                     helper="Abre el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
                     icon="preview"
-                    label="Vista previa: wizard de importación"
+                    label={t('settings:dev.importPreviewLabel')}
                     onPress={() => {
                       setImportPreviewState(buildPreviewReviewState())
                     }}
@@ -1653,10 +1654,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* 7b. Filtro del modo demo. Solo aparece cuando el modo
                 demo está encendido — en la lista normal de señales no
                 tiene sentido filtrar. */}
+            {/* @i18n-ignore — bloque solo-dev (__DEV__), copy interno de tooling */}
             {__DEV__ && assistantDemoMode ? (
               <RiseView delay={320}>
                 <SettingsGroup
-                  footer="Filtra las tarjetas demo por tipo de acción para probar cada bucket por separado."
+                  footer={t('settings:dev.demoFilterFooter')}
                   title="Filtro demo"
                 >
                   <View style={styles.appearanceInner}>
@@ -1666,7 +1668,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                         { label: 'Todas', value: 'all' },
                         { label: 'Read-only', value: 'read-only' },
                         { label: 'Routing', value: 'routing' },
-                        { label: 'Acción', value: 'action' },
+                        { label: t('settings:dev.filterAction'), value: 'action' },
                       ]}
                       value={assistantDemoFilter}
                     />

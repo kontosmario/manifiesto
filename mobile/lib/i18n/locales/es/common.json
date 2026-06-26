@@ -31,5 +31,10 @@
     "activate": "Activar",
     "later": "Más tarde",
     "tryAgain": "Intentar de nuevo"
+  },
+  "severity": {
+    "success": "Logro",
+    "warning": "Atención",
+    "alert": "Alerta"
   }
 }

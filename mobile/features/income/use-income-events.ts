@@ -191,6 +191,7 @@ export function useCreateIncomeEvent(userId?: string) {
       if (input.skipPush) return
       // Push a la familia. El trigger DB trg_income_notification ya
       // emite la notif al feed; este push es la entrega al device.
+      // @i18n-ignore (server-bound: este label cae en el body del push que reciben OTROS integrantes; se debe localizar por idioma del RECEPTOR server-side, no con t() del emisor — follow-up)
       const kindLabel =
         input.kind === 'transfer'
           ? 'Transferencia'
@@ -202,8 +203,9 @@ export function useCreateIncomeEvent(userId?: string) {
       const desc = input.description?.trim() || kindLabel
       const pushBody = `${desc} · +$${created.amount}`
       void sendFamilyPush({
-        familyId: input.familyId,
+        // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
         title: '{actor} registró un ingreso',
+        familyId: input.familyId,
         body: pushBody,
         kind: 'income_logged',
         url: '/home',

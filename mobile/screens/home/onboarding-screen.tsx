@@ -52,7 +52,6 @@ import { logoutSession } from '@/features/auth/logout'
 import { authQueryKeys } from '@/features/auth/use-auth-session'
 import { supabase } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
-import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 import { parsePrice } from '@/utils/money'
@@ -287,7 +286,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         void triggerHaptic('error')
         Alert.alert(
           t('onboarding:errors.logoutTitle'),
-          getErrorMessage(error, errorMessages.server),
+          getErrorMessage(error, t('states:error.server')),
         )
       },
       onSuccess: () => {
@@ -423,7 +422,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       // joiner). Sin replace imperativo redundante → una sola transición.
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(t('onboarding:errors.finishTitle'), getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:errors.finishTitle'), getErrorMessage(error, t('states:error.server')))
     } finally {
       setSubmitting(false)
     }
@@ -456,7 +455,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         await handleFinish()
       } catch (error) {
         void triggerHaptic('error')
-        Alert.alert(t('onboarding:errors.saveTitle'), getErrorMessage(error, errorMessages.server))
+        Alert.alert(t('onboarding:errors.saveTitle'), getErrorMessage(error, t('states:error.server')))
       }
       return
     }
@@ -476,7 +475,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           void triggerHaptic('error')
           Alert.alert(
             t('onboarding:errors.saveNameTitle'),
-            getErrorMessage(error, errorMessages.server),
+            getErrorMessage(error, t('states:error.server')),
           )
         },
       })
@@ -486,7 +485,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           void triggerHaptic('error')
           Alert.alert(
             t('onboarding:errors.saveAvatarTitle'),
-            getErrorMessage(error, errorMessages.server),
+            getErrorMessage(error, t('states:error.server')),
           )
         },
       })

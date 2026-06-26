@@ -30,6 +30,7 @@ export function ActivityOcrPreviewScreen() {
     setStage({ kind: 'picking' })
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
+      // @i18n-ignore (dev-only: pantalla de preview de OCR gated por __DEV__, copy interno de tooling)
       setStage({ kind: 'error', message: 'Permiso denegado a galería.' })
       return
     }

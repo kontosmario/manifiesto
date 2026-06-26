@@ -9,7 +9,6 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useAddExpenseController } from '@/features/expenses/use-add-expense-controller'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
-import { errorMessages } from '@/lib/copy/states'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -78,7 +77,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
 
       {shouldShowErrorState ? (
         <ErrorState
-          description={getErrorMessage(categoriesLoadError, errorMessages.server)}
+          description={getErrorMessage(categoriesLoadError, t('states:error.server'))}
           title={t('gastos:addExpense.formErrorTitle')}
           onAction={() => {
             void controller.categoriesQuery.refetch()

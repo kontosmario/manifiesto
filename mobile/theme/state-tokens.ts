@@ -20,6 +20,7 @@
 import type { ComponentProps } from 'react'
 import type { MaterialIcons } from '@expo/vector-icons'
 import type { AppTheme } from '@/theme/palette'
+import i18n from '@/lib/i18n'
 
 /**
  * Four universal states. Pick one — there is no fifth.
@@ -72,7 +73,7 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.success, 0.35),
         fillSoft: hexAlpha(theme.colors.success, 0.55),
         icon: 'check-circle',
-        label: 'Saludable',
+        label: i18n.t('states:semantic.positive'),
       }
     case 'caution':
       return {
@@ -81,7 +82,7 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.warning, 0.35),
         fillSoft: hexAlpha(theme.colors.warning, 0.55),
         icon: 'priority-high',
-        label: 'Atención',
+        label: i18n.t('states:semantic.caution'),
       }
     case 'critical':
       return {
@@ -90,7 +91,7 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.danger, 0.35),
         fillSoft: hexAlpha(theme.colors.danger, 0.55),
         icon: 'error-outline',
-        label: 'Crítico',
+        label: i18n.t('states:semantic.critical'),
       }
     case 'neutral':
       return {
@@ -99,7 +100,8 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.textMuted, 0.20),
         fillSoft: hexAlpha(theme.colors.textMuted, 0.40),
         icon: 'schedule',
-        label: 'Sin datos', // @copy-allow — canonical definition in state-tokens, matches emptyStates.noData.title
+        // Reusa la key canónica del empty-state "Sin datos" (states:empty.noData.title).
+        label: i18n.t('states:empty.noData.title'),
       }
   }
 }

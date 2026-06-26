@@ -10,7 +10,6 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { motionDurations } from '@/lib/motion/tokens'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { loadingLabels } from '@/lib/copy/states'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 
 interface Props {
@@ -80,7 +79,7 @@ export function ImportReviewFooter({
   const totalSubmittable = expensesCount + incomesCount
 
   const primaryLabel = (() => {
-    if (busy) return `${loadingLabels.import}…`
+    if (busy) return `${t('states:loading.import')}…`
     if (isSummary) {
       // All-skipped: the CTA now closes (the sheet routes this to onClose),
       // so it must read as a real action, not an inert "nada para cargar".
