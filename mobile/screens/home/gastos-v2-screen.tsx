@@ -10,6 +10,7 @@ import {
   type SectionListData,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -75,6 +76,7 @@ import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
 import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
+import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface GastosV2ScreenProps {
@@ -187,6 +189,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // arman cuando el user interactúa, nunca durante el settle del primer attach.
   const openLayoutGate = useOpenLayoutGate()
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const safeAreaInsets = useSafeAreaInsets()
   // Auto-start the Gastos guided tour on first visit. No-op once seen.
@@ -315,17 +318,17 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           onSuccess: () => {
             void triggerHaptic('success')
             confetti.celebrate({ durationMs: 2000, origin: 'top' })
-            toast.success('Día sin gastos registrado')
+            toast.success(i18n.t('gastos:noSpend.markedSuccess'))
           },
           onError: (error: unknown) => {
             void triggerHaptic('error')
-            const message = error instanceof Error ? error.message : 'Error desconocido'
+            const message = error instanceof Error ? error.message : i18n.t('gastos:noSpend.unknownError')
             if (message.includes('EXPENSES_EXIST_ON_DATE')) {
-              toast.error('Ese día tiene gastos registrados — no se puede marcar como sin gasto.')
+              toast.error(i18n.t('gastos:noSpend.expensesExist'))
             } else if (message.includes('FUTURE_DATE_NOT_ALLOWED')) {
-              toast.error('No puedes marcar un día que aún no ocurrió.')
+              toast.error(i18n.t('gastos:noSpend.futureDate'))
             } else {
-              toast.error('No se pudo marcar. Reintenta en un momento.')
+              toast.error(i18n.t('gastos:noSpend.markFailed'))
             }
           },
         },
@@ -342,14 +345,14 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         {
           onSuccess: () => {
             void triggerHaptic('selection')
-            toast.info('Marca de día sin gastos removida.')
+            toast.info(i18n.t('gastos:noSpend.unmarkedSuccess'))
           },
           onError: (error: unknown) => {
             void triggerHaptic('error')
             toast.error(
               error instanceof Error
                 ? error.message
-                : 'No se pudo revertir. Reintenta en un momento.',
+                : i18n.t('gastos:noSpend.unmarkFailed'),
             )
           },
         },
@@ -408,7 +411,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       deleteExpenseMutation.mutate(expenseId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
-          Alert.alert('No pudimos eliminar', getErrorMessage(error, errorMessages.server))
+          Alert.alert(i18n.t('gastos:errors.deleteTitle'), getErrorMessage(error, errorMessages.server))
         },
         onSuccess: () => void triggerHaptic('success'),
       })
@@ -427,7 +430,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
           onError: (error: unknown) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos eliminar',
+              i18n.t('gastos:errors.deleteTitle'),
               getErrorMessage(error, errorMessages.server),
             )
           },
@@ -762,7 +765,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
       >
         <ErrorState
           description={getErrorMessage(controller.error, errorMessages.server)}
-          title="No pudimos cargar tus gastos"
+          title={t('gastos:errors.loadTitle')}
           onAction={() => {
             void controller.refetchAll()
           }}
@@ -827,7 +830,7 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               step and the flame keep working on the empty screen. */}
           <GastosHeader
             familyId={familyId}
-            subtitle={`Ciclo ${controller.cycleLabel}`}
+            subtitle={t('gastos:header.cycleSubtitle', { cycle: controller.cycleLabel })}
             rightSlot={
               <TourTarget
                 tour={GASTOS_TOUR}
@@ -950,11 +953,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
               <View
                 style={styles.loadingMoreRow}
                 accessibilityRole="text"
-                accessibilityLabel="Cargando más movimientos"
+                accessibilityLabel={t('gastos:list.loadingMoreA11y')}
               >
                 <ActivityIndicator size="small" color={theme.colors.textMuted} />
                 <Text style={[styles.loadingMoreText, { color: theme.colors.textMuted }]}>
-                  Cargando más días…
+                  {t('gastos:list.loadingMoreDays')}
                 </Text>
               </View>
             ) : null}
@@ -972,9 +975,9 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
                 <Text
                   style={[styles.endOfList, { color: theme.colors.textMuted }]}
                   accessibilityRole="text"
-                  accessibilityLabel="Fin del mes"
+                  accessibilityLabel={t('gastos:list.endOfMonthA11y')}
                 >
-                  FIN DEL MES
+                  {t('gastos:list.endOfMonth')}
                 </Text>
                 <View
                   style={[

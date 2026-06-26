@@ -6,6 +6,7 @@ import {
   View,
   type AccessibilityActionEvent,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import {
   Gesture,
   GestureDetector,
@@ -104,9 +105,11 @@ export function SwipeRow({
   onSwipeOpenHaptic = 'selection',
   borderRadius = 14,
   isProcessing = false,
-  processingLabel = 'Procesando…',
+  processingLabel,
   actionWidth = 96,
 }: SwipeRowProps) {
+  const { t } = useTranslation()
+  const resolvedProcessingLabel = processingLabel ?? t('states:swipeRow.processing')
   const theme = useThemeTokens()
   const translateX = useSharedValue(0)
   // Posición de translateX cuando arranca el gesto. Sin esto, un segundo
@@ -310,7 +313,7 @@ export function SwipeRow({
               { color: theme.colors.text },
             ]}
           >
-            {processingLabel}
+            {resolvedProcessingLabel}
           </Text>
         </Animated.View>
       ) : null}

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,11 +21,15 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  actionLabel = 'Intentar de nuevo',
-  description = 'No pudimos cargar esta información. Revisa tu conexión e intenta otra vez.',
-  title = 'Algo salió mal',
+  actionLabel,
+  description,
+  title,
   onAction,
 }: ErrorStateProps) {
+  const { t } = useTranslation()
+  const resolvedActionLabel = actionLabel ?? t('states:errorState.action')
+  const resolvedDescription = description ?? t('states:errorState.description')
+  const resolvedTitle = title ?? t('states:errorState.title')
   const { theme } = useAppTheme()
   const pulse = useSharedValue(1)
 
@@ -71,16 +76,16 @@ export function ErrorState({
         <MaterialIcons color={theme.colors.danger} name="error-outline" size={24} />
       </Animated.View>
       <Text style={[styles.title, theme.typography.titleMedium, { color: theme.colors.text }]}>
-        {title}
+        {resolvedTitle}
       </Text>
       <Text style={[styles.description, theme.typography.body, { color: theme.colors.textMuted }]}>
-        {description}
+        {resolvedDescription}
       </Text>
       {onAction ? (
         <AppButton
           fullWidth={false}
           haptic="error"
-          label={actionLabel}
+          label={resolvedActionLabel}
           onPress={onAction}
           variant="secondary"
         />

@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -59,6 +60,7 @@ function HomeHeroCardImpl({
   usdConversion = null,
 }: HomeHeroCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const projPositive = data.projectedClose >= 0
   const projColor = projPositive ? theme.colors.heroAccent : '#F8D1C3'
@@ -71,9 +73,12 @@ function HomeHeroCardImpl({
   // to communicate the warning without inviting interaction.
   const dayChipLabel = data.paydayPending
     ? data.paydayDaysOverdue <= 0
-      ? 'Cobra hoy'
-      : `+${data.paydayDaysOverdue} ${data.paydayDaysOverdue === 1 ? 'día' : 'días'} sin cobrar`
-    : `día ${data.cycleDay} de ${data.cycleTotalDays}`
+      ? t('home:hero.payToday')
+      : t('home:hero.daysOverdue', { count: data.paydayDaysOverdue })
+    : t('home:hero.cycleDay', {
+        day: data.cycleDay,
+        total: data.cycleTotalDays,
+      })
 
   // Subtle scale pulse for the warning chip. Only animates when
   // pending; gets parked at 1 with reduced motion. Layout-safe
@@ -116,18 +121,18 @@ function HomeHeroCardImpl({
   // chip / number / chip in document order. The fall-through for the
   // setup state stays simple — there's no number to announce yet.
   const a11yLabel = data.incomeConfigured
-    ? `Saldo del mes: ${formatMoney(data.availableToday)}. ${
+    ? `${t('home:hero.a11yBalance', { amount: formatMoney(data.availableToday) })} ${
         data.dailyBudget != null
-          ? `Cupo diario: ${formatMoney(data.dailyBudget)}.`
+          ? t('home:hero.a11yDailyAllowance', { amount: formatMoney(data.dailyBudget) })
           : ''
       } ${
         data.projectionReliable && data.projectedClose != null
-          ? `Cierre proyectado: ${formatMoney(data.projectedClose)}.`
+          ? t('home:hero.a11yProjectedClose', { amount: formatMoney(data.projectedClose) })
           : ''
       } ${savingsChip ? savingsChip.a11y : ''} ${
-        usdConversion ? `Equivale a ${formatUsd(usdConversion.saldoUsd)}.` : ''
+        usdConversion ? t('home:hero.a11yUsdEquivalent', { amount: formatUsd(usdConversion.saldoUsd) }) : ''
       }`.trim()
-    : 'Configura tu ingreso mensual para activar el seguimiento del mes.'
+    : t('home:hero.setupA11y')
 
   return (
     <RiseView delay={60}>
@@ -155,7 +160,7 @@ function HomeHeroCardImpl({
           // flavored body.
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Configurar tu ingreso mensual"
+            accessibilityLabel={t('home:hero.configureIncomeAccessibility')}
             onPress={onPressConfigureIncome}
             onPressIn={setupPress.onPressIn}
             onPressOut={setupPress.onPressOut}
@@ -172,7 +177,7 @@ function HomeHeroCardImpl({
                     <Text
                       style={[styles.label, { color: theme.colors.heroAccent }]}
                     >
-                      Empieza aquí
+                      {t('home:hero.startHere')}
                     </Text>
                   </View>
                 </View>
@@ -184,7 +189,7 @@ function HomeHeroCardImpl({
                     { color: theme.colors.heroText },
                   ]}
                 >
-                  Configura tu ingreso mensual
+                  {t('home:hero.setupTitle')}
                 </Text>
                 <Text
                   style={[
@@ -192,8 +197,7 @@ function HomeHeroCardImpl({
                     { color: theme.colors.heroMuted },
                   ]}
                 >
-                  Una vez que cargues tu sueldo y tus fijos, te decimos
-                  cuánto puedes gastar por día y cómo vas a cerrar el ciclo.
+                  {t('home:hero.setupBody')}
                 </Text>
               </RiseView>
               <RiseView delay={160}>
@@ -209,7 +213,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.setupCtaText, { color: theme.colors.heroAccent }]}
                   >
-                    Configurar ahora
+                    {t('home:hero.configureNow')}
                   </Text>
                   <MaterialIcons
                     name="arrow-forward"
@@ -238,7 +242,7 @@ function HomeHeroCardImpl({
                 glow={theme.colors.heroAccent}
               />
               <Text style={[styles.label, { color: theme.colors.heroAccent }]}>
-                Saldo del mes
+                {t('home:hero.monthBalance')}
               </Text>
             </View>
             {data.paydayPending ? (
@@ -314,7 +318,7 @@ function HomeHeroCardImpl({
           <RiseView delay={100}>
             <Text
               accessibilityRole="text"
-              accessibilityLabel={`Equivale a ${formatUsd(usdConversion.saldoUsd)}.`}
+              accessibilityLabel={t('home:hero.a11yUsdEquivalent', { amount: formatUsd(usdConversion.saldoUsd) })}
               numberOfLines={1}
               maxFontSizeMultiplier={1.4}
               style={[
@@ -346,7 +350,7 @@ function HomeHeroCardImpl({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel={`Tienes ${formatMoney(data.acumulado.amount)} acumulado del mes pasado.`}
+                  accessibilityLabel={t('home:hero.acumuladoA11y', { amount: formatMoney(data.acumulado.amount) })}
                   style={[
                     styles.adjustedChip,
                     theme.mode === 'dark'
@@ -371,7 +375,10 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroAccent }]}
                   >
-                    {`+${formatMoneyShort(data.acumulado.amount)} de ${data.acumulado.periodLabel.toLowerCase()}`}
+                    {t('home:hero.acumuladoChip', {
+                      amount: formatMoneyShort(data.acumulado.amount),
+                      period: data.acumulado.periodLabel.toLowerCase(),
+                    })}
                   </Text>
                 </View>
               </RiseView>
@@ -383,7 +390,7 @@ function HomeHeroCardImpl({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel={`Sumaste ${formatMoney(data.cycleBalanceDiff)} al saldo del mes`}
+                  accessibilityLabel={t('home:hero.addedToMonthA11y', { amount: formatMoney(data.cycleBalanceDiff) })}
                   style={[
                     styles.adjustedChip,
                     {
@@ -408,7 +415,7 @@ function HomeHeroCardImpl({
                       { color: theme.colors.heroAccent },
                     ]}
                   >
-                    {`+${formatMoneyShort(data.cycleBalanceDiff)} al mes`}
+                    {t('home:hero.addedToMonthChip', { amount: formatMoneyShort(data.cycleBalanceDiff) })}
                   </Text>
                 </View>
               </RiseView>
@@ -420,7 +427,7 @@ function HomeHeroCardImpl({
               <RiseView delay={120}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel="Saldo ajustado para este mes"
+                  accessibilityLabel={t('home:hero.adjustedBalanceA11y')}
                   style={[
                     styles.adjustedChip,
                     {
@@ -440,7 +447,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.adjustedChipText, { color: theme.colors.heroMuted }]}
                   >
-                    Saldo ajustado
+                    {t('home:hero.adjustedBalanceChip')}
                   </Text>
                 </View>
               </RiseView>
@@ -510,7 +517,7 @@ function HomeHeroCardImpl({
               <RiseView delay={160}>
                 <View
                   accessibilityRole="text"
-                  accessibilityLabel={`Tienes ${formatMoney(data.monthlyReserveAmount)} en reserva acumulada`}
+                  accessibilityLabel={t('home:hero.reserveA11y', { amount: formatMoney(data.monthlyReserveAmount) })}
                   style={[
                     styles.savingsChip,
                     {
@@ -539,7 +546,7 @@ function HomeHeroCardImpl({
                     maxFontSizeMultiplier={1.4}
                     numberOfLines={1}
                   >
-                    {`Reserva ${formatMoneyShort(data.monthlyReserveAmount)}`}
+                    {t('home:hero.reserveChip', { amount: formatMoneyShort(data.monthlyReserveAmount) })}
                   </Text>
                 </View>
               </RiseView>
@@ -559,13 +566,13 @@ function HomeHeroCardImpl({
               ]}
             >
               <Text style={[styles.tileLabel, { color: theme.colors.heroAccent }]}>
-                Puedes gastar por día
+                {t('home:hero.canSpendPerDay')}
               </Text>
               <Text style={[styles.tileValue, { color: theme.colors.heroText }]}>
                 {formatMoneyShort(data.dailyBudget)}
               </Text>
               <Text style={[styles.tileSub, { color: theme.colors.heroText }]}>
-                hasta fin de ciclo
+                {t('home:hero.untilCycleEnd')}
               </Text>
             </View>
           </RiseView>
@@ -581,7 +588,7 @@ function HomeHeroCardImpl({
               ]}
             >
               <Text style={[styles.tileLabel, { color: theme.colors.heroText }]}>
-                Vas a cerrar con
+                {t('home:hero.youWillCloseWith')}
               </Text>
               {data.projectionReliable ? (
                 <>
@@ -600,12 +607,12 @@ function HomeHeroCardImpl({
                       accessibilityLabel={(() => {
                         const pct = Math.abs(Math.round(projectedCloseTrend * 100))
                         if (projectedCloseTrend > 0) {
-                          return `${pct} por ciento más que el ciclo anterior.`
+                          return t('home:hero.trendUpA11y', { pct })
                         }
                         if (projectedCloseTrend < 0) {
-                          return `${pct} por ciento menos que el ciclo anterior.`
+                          return t('home:hero.trendDownA11y', { pct })
                         }
-                        return 'Mismo ritmo que el ciclo anterior.'
+                        return t('home:hero.trendFlatA11y')
                       })()}
                     >
                       <MaterialIcons
@@ -640,12 +647,15 @@ function HomeHeroCardImpl({
                         ]}
                         maxFontSizeMultiplier={1.4}
                       >
-                        {`${projectedCloseTrend > 0 ? '+' : projectedCloseTrend < 0 ? '−' : ''}${Math.abs(Math.round(projectedCloseTrend * 100))}% vs ciclo anterior`}
+                        {t('home:hero.trendVsPrevCycle', {
+                          sign: projectedCloseTrend > 0 ? '+' : projectedCloseTrend < 0 ? '−' : '',
+                          pct: Math.abs(Math.round(projectedCloseTrend * 100)),
+                        })}
                       </Text>
                     </View>
                   ) : (
                     <Text style={[styles.tileSub, { color: theme.colors.heroMuted2 }]}>
-                      si sigues este ritmo
+                      {t('home:hero.ifYouKeepThisPace')}
                     </Text>
                   )}
                 </>

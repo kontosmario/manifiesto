@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
@@ -104,6 +105,7 @@ function PinKey({
   onPress: () => void
   disabled: boolean
 }) {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const press = usePressScale({ pressedScale: 0.92 })
   const isBack = label === 'back'
@@ -114,7 +116,7 @@ function PinKey({
       onPressOut={press.onPressOut}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={isBack ? 'Borrar' : label}
+      accessibilityLabel={isBack ? t('auth:pinPad.deleteA11y') : label}
       hitSlop={6}
     >
       <Animated.View

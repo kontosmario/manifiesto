@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, AppState, Modal, RefreshControl, StyleSheet, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -88,6 +89,7 @@ export function BillingScreen({
   onContinue?: () => void
 } = {}) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
   const { familyId } = useImportWizardContext()
@@ -98,8 +100,8 @@ export function BillingScreen({
   // libre. Compliance: "acceso completo", nunca "prueba/gratis".
   const welcomeContinueLabel =
     snap.daysLeft != null
-      ? `Empezar con ${snap.daysLeft} ${snap.daysLeft === 1 ? 'día' : 'días'} de acceso completo`
-      : 'Empezar con acceso completo'
+      ? t('billing:screen.welcomeCta', { count: snap.daysLeft })
+      : t('billing:screen.welcomeCtaFallback')
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
   // Guardamos el `kind` junto al plan: el retry desde el sheet de error debe
@@ -268,19 +270,19 @@ export function BillingScreen({
   // desmonta el Modal del SubscriptionGate (sin sesión no hay gate).
   const handleLogout = useCallback(() => {
     Alert.alert(
-      '¿Cerrar sesión?',
-      'Vas a volver a la pantalla de inicio. Tu cuenta y tus datos quedan guardados.',
+      t('billing:logout.confirmTitle'),
+      t('billing:logout.confirmMessage'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('billing:logout.cancel'), style: 'cancel' },
         {
-          text: 'Cerrar sesión',
+          text: t('billing:logout.confirm'),
           style: 'destructive',
           onPress: () => {
             void logoutSession({
               onError: (e) =>
                 Alert.alert(
-                  'No pudimos cerrar sesión',
-                  getErrorMessage(e, 'Prueba de nuevo en un momento.'),
+                  t('billing:logout.errorTitle'),
+                  getErrorMessage(e, t('billing:logout.errorFallback')),
                 ),
               onSuccess: () => {},
             })
@@ -288,7 +290,7 @@ export function BillingScreen({
         },
       ],
     )
-  }, [])
+  }, [t])
 
   const isErrorSheet =
     sheet?.variant === 'error' || sheet?.variant === 'restoreError'
@@ -299,7 +301,7 @@ export function BillingScreen({
       // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack={!lockMode && !welcomeMode}
-      title="Plan del hogar"
+      title={t('billing:screen.title')}
       scrollable
       refreshControl={
         <RefreshControl

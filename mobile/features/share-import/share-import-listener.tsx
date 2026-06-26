@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AppState, Linking } from 'react-native'
+import i18n from '@/lib/i18n'
 import { isExpoGo } from '@/lib/runtime-environment'
 import { setPendingShare } from '@/features/share-import/pending-share-store'
 import { toast } from '@/lib/toast-bus'
@@ -125,12 +126,12 @@ function ShareImportListenerNative({ mod }: { mod: ShareIntentModule }) {
     )
     if (images.length === 0) {
       // Android puede dejar pasar tipos no-imagen (filter laxo).
-      toast.error('Solo puedo importar capturas de pantalla.')
+      toast.error(i18n.t('gastos:shareImport.onlyScreenshots'))
       resetShareIntent()
       return
     }
     if (images.length > 1) {
-      toast.info('Procesamos la primera captura — de a una por ahora.')
+      toast.info(i18n.t('gastos:shareImport.firstOnly'))
     }
     const raw = images[0].path
     const uri = raw.startsWith('file://') ? raw : `file://${raw}`
@@ -141,7 +142,7 @@ function ShareImportListenerNative({ mod }: { mod: ShareIntentModule }) {
   }, [hasShareIntent, shareIntent, resetShareIntent])
 
   useEffect(() => {
-    if (error) toast.error('No pude recibir esa captura. Prueba de nuevo.')
+    if (error) toast.error(i18n.t('gastos:shareImport.receiveError'))
   }, [error])
 
   return null

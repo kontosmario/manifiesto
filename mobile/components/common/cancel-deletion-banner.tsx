@@ -19,6 +19,7 @@
 import { useCallback, useMemo } from 'react'
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { useCancelAccountDeletion } from '@/features/auth/use-delete-account'
 import { triggerHaptic } from '@/lib/haptics'
@@ -46,6 +47,7 @@ export function CancelDeletionBanner({
   scheduledAt,
 }: CancelDeletionBannerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cancelDeletion = useCancelAccountDeletion(userId)
 
   const formatted = useMemo(
@@ -72,13 +74,13 @@ export function CancelDeletionBanner({
         const rateLimited = isRateLimitError(error)
         Alert.alert(
           rateLimited
-            ? 'Prueba de nuevo en unos segundos'
-            : 'No pudimos cancelar la baja',
+            ? t('states:accountDeletion.rateLimitTitle')
+            : t('states:accountDeletion.failTitle'),
           rateLimited
-            ? 'Prueba nuevamente en unos segundos. Tu solicitud de baja sigue agendada — está todo bien y vas a poder cancelarla cuando quieras.'
+            ? t('states:accountDeletion.rateLimitBody')
             : getErrorMessage(
                 error,
-                'Prueba nuevamente en un momento. Si el problema persiste, escríbenos a soporte@manifiestoapp.com.',
+                t('states:accountDeletion.failBody'),
               ),
         )
       },
@@ -92,8 +94,8 @@ export function CancelDeletionBanner({
       accessibilityRole="alert"
       accessibilityLabel={
         formatted
-          ? `Tu cuenta se eliminará el ${formatted}. Toca para cancelar.`
-          : 'Tu cuenta tiene una baja agendada. Toca para cancelar.'
+          ? t('states:accountDeletion.a11yDated', { date: formatted })
+          : t('states:accountDeletion.a11yUndated')
       }
       style={[
         styles.shell,
@@ -111,18 +113,22 @@ export function CancelDeletionBanner({
         />
         <View style={styles.copy}>
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            Baja de cuenta agendada
+            {t('states:accountDeletion.title')}
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
             {formatted
-              ? `Tu cuenta se eliminará el ${formatted}. Cancela si no fuiste tú.`
-              : 'Tu cuenta tiene una baja agendada. Cancela si no fuiste tú.'}
+              ? t('states:accountDeletion.bodyDated', { date: formatted })
+              : t('states:accountDeletion.bodyUndated')}
           </Text>
         </View>
       </View>
       <AppButton
         disabled={cancelDeletion.isPending}
-        label={cancelDeletion.isPending ? 'Cancelando…' : 'Cancelar eliminación'}
+        label={
+          cancelDeletion.isPending
+            ? t('states:accountDeletion.cancelling')
+            : t('states:accountDeletion.cancel')
+        }
         loading={cancelDeletion.isPending}
         onPress={handleCancel}
         variant="danger"

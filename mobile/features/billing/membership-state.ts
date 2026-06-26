@@ -3,6 +3,7 @@
  * "Mi suscripción". Sin imports de RN/supabase (solo el tipo, que se borra
  * en compilación) → testeable en el env node de vitest.
  */
+import i18n from '@/lib/i18n'
 import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
 
 export type MembershipTone = 'active' | 'warn' | 'comped'
@@ -48,19 +49,19 @@ export function membershipVariant(
   if (snap.source === 'mvp') {
     return {
       tone: 'active',
-      statusLabel: 'MVP',
-      heroLine: 'Acceso total de por vida',
+      statusLabel: i18n.t('billing:membership.statusMvp'),
+      heroLine: i18n.t('billing:membership.heroLineMvp'),
       primaryAction: null,
       canManage: false,
-      note: 'Tu cuenta tiene acceso completo, sin vencimiento.',
+      note: i18n.t('billing:membership.noteMvp'),
     }
   }
   // Cortesía (acceso manual): no hay sub que gestionar.
   if (snap.source === 'comped') {
     return {
       tone: 'comped',
-      statusLabel: 'CORTESÍA',
-      heroLine: 'Acceso de cortesía',
+      statusLabel: i18n.t('billing:membership.statusComped'),
+      heroLine: i18n.t('billing:membership.heroLineComped'),
       primaryAction: null,
       canManage: false,
     }
@@ -71,19 +72,21 @@ export function membershipVariant(
   if (snap.source === 'family' && !snap.isPurchaser) {
     return {
       tone: 'active',
-      statusLabel: 'MIEMBRO DEL HOGAR',
-      heroLine: 'Tu hogar cubre tu acceso',
+      statusLabel: i18n.t('billing:membership.statusFamilyMember'),
+      heroLine: i18n.t('billing:membership.heroLineFamilyMember'),
       primaryAction: null,
       canManage: false,
-      note: 'El plan lo administra quien lo contrató en tu hogar.',
+      note: i18n.t('billing:membership.noteFamilyMember'),
     }
   }
   // De aquí en adelante: el COMPRADOR (gestiona su propia sub).
   if (snap.subscriptionStatus === 'grace') {
     return {
       tone: 'warn',
-      statusLabel: 'PROBLEMA DE PAGO',
-      heroLine: `Reintentando hasta ${formatDate(snap.graceExpiresAt)}`,
+      statusLabel: i18n.t('billing:membership.statusGrace'),
+      heroLine: i18n.t('billing:membership.heroLineGrace', {
+        date: formatDate(snap.graceExpiresAt),
+      }),
       primaryAction: 'fixPayment',
       canManage: true,
     }
@@ -91,16 +94,20 @@ export function membershipVariant(
   if (!snap.autoRenew) {
     return {
       tone: 'warn',
-      statusLabel: 'NO SE RENOVARÁ',
-      heroLine: `Habilitado hasta ${formatDate(snap.expiresAt)}`,
+      statusLabel: i18n.t('billing:membership.statusNoRenew'),
+      heroLine: i18n.t('billing:membership.heroLineNoRenew', {
+        date: formatDate(snap.expiresAt),
+      }),
       primaryAction: 'reactivate',
       canManage: true,
     }
   }
   return {
     tone: 'active',
-    statusLabel: 'ACTIVA',
-    heroLine: `Se renueva el ${formatDate(snap.expiresAt)}`,
+    statusLabel: i18n.t('billing:membership.statusActive'),
+    heroLine: i18n.t('billing:membership.heroLineActive', {
+      date: formatDate(snap.expiresAt),
+    }),
     primaryAction: 'change',
     canManage: true,
   }

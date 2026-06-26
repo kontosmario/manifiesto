@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import {
   mapSavingsGoalRow,
   type SavingsGoal,
@@ -33,7 +34,7 @@ export function useAddSavingsContribution(
         p_amount: amount,
       })
       if (error) throw error
-      if (!data) throw new Error('No se pudo registrar el aporte')
+      if (!data) throw new Error(i18n.t('settings:savingsGoalValidation.contributionFailed'))
       return mapSavingsGoalRow(data as SavingsGoalRow)
     },
     onSuccess: (updated) => {

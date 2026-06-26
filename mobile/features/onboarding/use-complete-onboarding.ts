@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
 import { entitlementQueryKey } from '@/features/billing/use-entitlement'
@@ -15,7 +16,7 @@ export function useCompleteOnboarding(userId?: string) {
   return useMutation({
     mutationFn: async () => {
       if (!userId) {
-        throw new Error('No hay sesión activa para completar el onboarding.')
+        throw new Error(i18n.t('onboarding:errors.noActiveSession'))
       }
 
       const completedAt = new Date().toISOString()

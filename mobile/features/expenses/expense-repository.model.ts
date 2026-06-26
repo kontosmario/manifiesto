@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js'
+import i18n from '@/lib/i18n'
 
 export interface RawExpense {
   category_id: string
@@ -130,11 +131,11 @@ export const EXPENSE_PRICE_MAX = 1_000_000_000
 export function validateExpenseDescription(description: string) {
   const normalizedDescription = description.trim()
   if (!normalizedDescription) {
-    throw new Error('La descripción es obligatoria.')
+    throw new Error(i18n.t('gastos:errors.descriptionRequired'))
   }
   if (normalizedDescription.length > EXPENSE_DESCRIPTION_MAX_LENGTH) {
     throw new Error(
-      `La descripción no puede superar los ${EXPENSE_DESCRIPTION_MAX_LENGTH} caracteres.`,
+      i18n.t('gastos:errors.descriptionTooLong', { max: EXPENSE_DESCRIPTION_MAX_LENGTH }),
     )
   }
   return normalizedDescription
@@ -152,7 +153,7 @@ export function normalizeExpenseNotes(notes: string | null | undefined): string 
   if (!trimmed) return null
   if (trimmed.length > EXPENSE_NOTES_MAX_LENGTH) {
     throw new Error(
-      `La nota no puede superar los ${EXPENSE_NOTES_MAX_LENGTH} caracteres.`,
+      i18n.t('gastos:errors.noteTooLong', { max: EXPENSE_NOTES_MAX_LENGTH }),
     )
   }
   return trimmed
@@ -160,10 +161,10 @@ export function normalizeExpenseNotes(notes: string | null | undefined): string 
 
 export function validateExpensePrice(price: number) {
   if (!Number.isFinite(price) || price < 0) {
-    throw new Error('El precio debe ser un número mayor o igual a 0.')
+    throw new Error(i18n.t('gastos:errors.priceInvalid'))
   }
   if (price > EXPENSE_PRICE_MAX) {
-    throw new Error('El precio supera el máximo permitido.')
+    throw new Error(i18n.t('gastos:errors.priceTooHigh'))
   }
 }
 

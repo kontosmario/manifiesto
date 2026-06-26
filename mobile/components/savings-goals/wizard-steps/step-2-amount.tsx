@@ -6,6 +6,7 @@ import Animated, {
   SlideOutDown,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
 import { motionEasings } from '@/lib/motion/tokens'
 import { radii } from '@/theme/palette'
@@ -36,19 +37,17 @@ export function Step2Amount({
   onDone,
 }: Step2AmountProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isPlaceholder = goalAmount <= 0
+  const amountSpoken = goalAmount > 0 ? formatMoney(goalAmount) : t('settings:savingsWizard.undefined')
   return (
     <View style={styles.step2Body}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
           numpadExpanded
-            ? `Editar monto. Valor actual ${
-                goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
-              }`
-            : `Toca para editar el monto. Valor actual ${
-                goalAmount > 0 ? formatMoney(goalAmount) : 'sin definir'
-              }`
+            ? t('settings:savingsWizard.editAmountA11y', { amount: amountSpoken })
+            : t('settings:savingsWizard.tapEditAmountA11y', { amount: amountSpoken })
         }
         accessibilityState={{ expanded: numpadExpanded }}
         onPress={() => {
@@ -70,7 +69,7 @@ export function Step2Amount({
             { color: theme.colors.textMuted },
           ]}
         >
-          MONTO OBJETIVO
+          {t('settings:savingsWizard.targetAmountEyebrow')}
         </Text>
         <View style={styles.displayValueRow}>
           <Text
@@ -111,7 +110,7 @@ export function Step2Amount({
                   { color: theme.colors.textMuted },
                 ]}
               >
-                Editar
+                {t('common:actions.edit')}
               </Text>
             </View>
           ) : null}
@@ -125,7 +124,7 @@ export function Step2Amount({
             { color: theme.colors.textMuted },
           ]}
         >
-          Toca el monto para editarlo. Solo números enteros — sin centavos.
+          {t('settings:savingsWizard.amountHelper')}
         </Text>
       ) : null}
 

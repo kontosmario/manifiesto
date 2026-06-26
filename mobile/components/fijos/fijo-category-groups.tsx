@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
@@ -46,11 +47,12 @@ export function FijoCategoryGroups({
   pendingFixedExpenseId,
 }: FijoCategoryGroupsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   if (groups.length === 0) {
     return (
       <View style={styles.emptyWrap}>
         <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-          No hay fijos para este filtro.
+          {t('fijos:categoryGroups.empty')}
         </Text>
       </View>
     )
@@ -98,6 +100,7 @@ function CategoryGroup({
   pendingFixedExpenseId?: string | null
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(true)
   const emoji = pickIconForFixedExpenseCategory(group.label)
   // Press scale subtle 0.98 — toda la row es tap-target grande, escala
@@ -112,7 +115,9 @@ function CategoryGroup({
         onPressOut={press.onPressOut}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityLabel={`Categoría ${group.label}`}
+        accessibilityLabel={t('fijos:categoryGroups.categoryAccessibility', {
+          label: group.label,
+        })}
       >
         <Animated.View style={[styles.header, press.animatedStyle]}>
         <View style={styles.headerLeft}>
@@ -130,7 +135,7 @@ function CategoryGroup({
           <View>
             <Text style={[styles.title, { color: theme.colors.text }]}>{group.label}</Text>
             <Text style={[styles.count, { color: theme.colors.textMuted }]}>
-              {group.items.length} {group.items.length === 1 ? 'ítem' : 'ítems'}
+              {t('fijos:categoryGroups.itemCount', { count: group.items.length })}
             </Text>
           </View>
         </View>

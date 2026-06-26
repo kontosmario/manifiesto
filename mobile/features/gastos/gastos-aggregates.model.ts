@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Expense } from '@/features/expenses/use-expenses'
 
 // ─── Types still consumed by the controller / endpoints ─────────────
@@ -110,8 +111,8 @@ export function groupGastosByDay(input: { expenses: Expense[]; today: Date }): G
   for (const value of map.values()) {
     const diffDays = Math.round((todayMs - value.sortKey) / 86_400_000)
     let label: string
-    if (diffDays === 0) label = 'Hoy'
-    else if (diffDays === 1) label = 'Ayer'
+    if (diffDays === 0) label = i18n.t('gastos:dayGroup.today')
+    else if (diffDays === 1) label = i18n.t('gastos:dayGroup.yesterday')
     else {
       const d = new Date(value.sortKey)
       label = `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`

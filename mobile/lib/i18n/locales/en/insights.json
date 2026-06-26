@@ -1,1 +1,416 @@
-{}
+{
+  "asistente": {
+    "header": {
+      "title": "Assistant",
+      "potentialSuffix": "/mo potential",
+      "subtitle_one": "{{count}} action that can move the needle",
+      "subtitle_other": "{{count}} actions that can move the needle",
+      "subtitleIdle": "All good for now"
+    },
+    "card": {
+      "longPressHint": "Press and hold for options.",
+      "seen": "Seen",
+      "seenA11y": "Mark as seen",
+      "ctaA11y": "{{cta}} for {{title}}",
+      "replyA11y": "{{label}} for {{title}}"
+    },
+    "loading": "Checking your signals…",
+    "longPress": {
+      "question": "What do you want to do with this suggestion?",
+      "why": "Why am I seeing this?",
+      "whyDefault": "This suggestion is based on patterns detected in your expenses this month. The CTA action is the most direct lever to move the number.",
+      "blockFamily": "Stop showing this type",
+      "blockSuccessTitle": "Done",
+      "blockSuccessBody": "You won't see more \"{{family}}\" signals until you unblock them from Settings.",
+      "blockErrorTitle": "We couldn't save it",
+      "blockErrorBody": "Try again in a few seconds.",
+      "cancel": "Cancel"
+    },
+    "empty": {
+      "firstTimeTitle": "Ready to start",
+      "firstTimeBody": "Add your income and a couple of expenses so the assistant can look at your numbers.",
+      "reviewedTitle": "You've reviewed every suggestion",
+      "reviewedBody": "The assistant keeps watching your numbers. If the patterns persist, the suggestions will come back."
+    }
+  },
+  "dispatcher": {
+    "openLinkErrorTitle": "We couldn't open the link",
+    "openLinkErrorBody": "Try again later.",
+    "saveAnswerErrorTitle": "We couldn't save your answer",
+    "saveAnswerErrorBody": "Try again in a few seconds.",
+    "cancelIntentErrorTitle": "We couldn't record the cancellation",
+    "cancelIntentErrorBody": "Try again in a few seconds."
+  },
+  "persona": {
+    "planner": {
+      "label": "Planner",
+      "description": "I show you the numbers and the details: you like to understand before acting."
+    },
+    "firefighter": {
+      "label": "Reactive",
+      "description": "I only ping you when something matters; the rest of the time, I leave you alone."
+    },
+    "avoider": {
+      "label": "Cautious",
+      "description": "I speak calmly and step by step, with small moves you can actually make."
+    },
+    "optimizer": {
+      "label": "Optimizer",
+      "description": "I look for chances to save and make the most of the good months."
+    }
+  },
+  "preferences": {
+    "noSession": "Session not available."
+  },
+  "cta": {
+    "verFijos": "View fixed expenses",
+    "entendido": "Got it",
+    "ajustar": "Adjust",
+    "verGastos": "View expenses",
+    "verDetalle": "View detail",
+    "verMeta": "View goal",
+    "responder": "Answer",
+    "comparar": "Compare",
+    "revisar": "Review",
+    "cargarGastos": "Add expenses",
+    "actualizar": "Update",
+    "ajustarPlan": "Adjust plan",
+    "planIntegral": "Full plan",
+    "capitalizar": "Capitalize"
+  },
+  "reply": {
+    "mucho": "A lot",
+    "aVeces": "Sometimes",
+    "casiNunca": "Almost never",
+    "cancelar": "Cancel",
+    "laSigoUsando": "Still using it"
+  },
+  "copy": {
+    "recoveryHard_loss": "If you don't drop to {{newCupo}} a day, the month is going to close {{overspend}} more expensive than you planned, and that complicates next month too.",
+    "recoveryHard_gain": "By spending less than {{newCupo}} a day over these {{diasRestantes}} days, you'll reach month-end without going over.",
+    "recoveryHard_neutral": "To finish the month well you'd have to spend less than {{newCupo}} a day — that's very little. Better to lower your savings target a bit, or push a big payment to later.",
+    "velocitySlowerOver": "Even though you're going easier than usual, you're still {{over}} above what you planned. Keep it up and you'll make it.",
+    "velocitySlower": "You're spending more calmly than usual — that's how you reach month-end fine.",
+    "velocityFaster_loss_over": "If you keep spending like this, the month is going to close {{over}} more expensive than you planned. Ease off a bit these days and you'll make it.",
+    "velocityFaster_loss": "You're a little fast for this point in the month, but you can still make it. Watch the next few days.",
+    "velocityFaster_gain_over": "By spending {{over}} less over the rest of the month, you'll land right on what you planned.",
+    "velocityFaster_gain": "You're doing well, within what you planned for this month.",
+    "velocityFaster_neutral_over": "At this pace, the month is going to close {{over}} more expensive than you planned. Ease off a bit and you'll make it.",
+    "velocityFaster_neutral": "If you keep this up, you'll reach month-end without going over what you planned.",
+    "fijosRatio_loss": "Your fixed expenses (rent, utilities, subscriptions) eat up a big chunk of your salary: if an unexpected expense shows up, you've got almost no cushion left. Lowering the biggest one frees up {{excess}} a month.",
+    "fijosRatio_gain": "If you lower your fixed expenses (rent, utilities, subscriptions), you keep {{excess}} more a month for daily life or for saving. The biggest one moves the needle most.",
+    "fijosRatio_neutral": "Your fixed expenses (rent, utilities, subscriptions) take up a big chunk of your salary: little is left to eat, go out and save. Lowering the biggest one frees up {{excess}} a month.",
+    "positiveForecastGoal_loss": "If you don't save it now, that leftover ({{sobra}}) will go into next month's expenses. Move {{proposed}} to \"{{goalTitle}}\" before it's gone.",
+    "positiveForecastGoal_gain": "You're ahead: at month-end you've got {{sobra}} to spare. Take advantage and move {{proposed}} to \"{{goalTitle}}\".",
+    "positiveForecastGoal_neutral": "If you keep this up, at month-end you've got {{sobra}} to spare. A good move: send {{proposed}} to \"{{goalTitle}}\" and keep the rest saved just in case.",
+    "positiveForecast_loss": "You'll have {{sobra}} to spare at month-end — easy to spend without noticing. Better decide now where to keep it.",
+    "positiveForecast_gain": "Good month: you've got {{sobra}} to spare. Great time to start a savings goal.",
+    "positiveForecast_neutral": "If you keep this up, at month-end you've got {{sobra}} to spare. That money can go to a savings goal or stay put just in case."
+  },
+  "signals": {
+    "superStorm": {
+      "cat": "Confluence",
+      "title": "Critical confluence",
+      "body_two": "Two factors are lining up: {{factors}}. A full plan is suggested.",
+      "body_three": "Three factors are lining up: {{factors}}. A full plan is suggested.",
+      "impact": "Combined load: {{amount}}",
+      "explanation": "When fixed expenses weigh too much and at the same time you're spending more than you have available today or you sped up spending in the last few days, it's not an isolated problem: it's the sum. The full plan lowers both the structural pressure and the day-to-day at once."
+    },
+    "superSavings": {
+      "cat": "Streak",
+      "title": "Positive streak",
+      "body": "You've got a sustained streak, the month closes with money to spare, and there are categories in your favor. Now's the time to take advantage: raise the goal or reassign the leftover.",
+      "explanation": "The combination of three positive signals at once — streak, leftover money and a category win — sustains real change. Good moment to raise the goal or put the leftover to work."
+    },
+    "stressWeek": {
+      "cat": "Fixed expenses",
+      "title": "{{count}} fixed expenses due in 7 days",
+      "body": "{{names}} add up to {{total}}. It's better to set that amount aside to avoid surprises.",
+      "bodyMore_one": "{{names}} and {{count}} more add up to {{total}}. It's better to set that amount aside to avoid surprises.",
+      "bodyMore_other": "{{names}} and {{count}} more add up to {{total}}. It's better to set that amount aside to avoid surprises.",
+      "impact": "Set aside {{total}}",
+      "explanation": "A \"fixed expense\" is a recurring monthly payment (rent, utilities, subscriptions). When several land in the same week, fewer pesos are left for day-to-day spending. We warn you ahead of time to avoid surprises."
+    },
+    "paydayProximity": {
+      "cat": "Until payday",
+      "title": "You have {{remaining}} left and {{days}} days until payday",
+      "body": "To reach the next payday in good shape, spend up to {{perDay}} a day.",
+      "impact": "Up to {{perDay}} a day",
+      "explanation": "It's what you have left divided by the days until your next payday: how much you can spend per day without hitting zero."
+    },
+    "endAcceleration": {
+      "cat": "Close",
+      "title": "You're spending {{perDay}}/day, above your average",
+      "body": "These last 3 days you spent {{last3Avg}}/day against {{cycleAvg}}/day for the rest of the month. {{days}} days left — at this pace, the month ends in the red.",
+      "impact": "Back to average: {{delta}}",
+      "explanation": "It's common to loosen control at the end of the month, right when spending spikes most. Comparing the last 3 days against the month's average helps catch the change in time."
+    },
+    "recoveryHard": {
+      "cat": "Recovery",
+      "title": "You overspent quite a bit today",
+      "impact": "To recover: {{overspend}}",
+      "explanation": "When you spend much more than you have available today, cutting how much you can spend for the rest of the month doesn't work. Better to readjust the savings goal or reorder a fixed expense than to hold an impossible target."
+    },
+    "recoverySoft": {
+      "cat": "Recovery",
+      "title": "I adjusted how much you can spend per day",
+      "body": "You overspent by {{overspend}} today. If you spend {{newCupo}}/day from now to month-end, the month still closes fine.",
+      "impact": "New limit: {{newCupo}}/day",
+      "explanation": "When the excess is moderate, it spreads across the remaining days and leaves a slightly lower daily limit. If you stick to that limit, the month closes within budget."
+    },
+    "velocity": {
+      "cat": "Pace",
+      "impactFrenar": "Slow down: {{delta}}",
+      "impactMantener": "Keep up the spending pace",
+      "explanation": "It compares your recent spending pace (last 7 days) against the month's average. If spending sped up, it estimates the closing amount to anticipate how the month will end.",
+      "stressCritical": "Closing over budget",
+      "stressWarn": "Pace above target",
+      "stressWatch": "Elevated pace",
+      "stressStable": "Steady pace"
+    },
+    "positiveForecast": {
+      "cat": "Close",
+      "title": "Money to spare: {{sobra}}",
+      "impactGoal": "+{{proposed}} to the goal",
+      "impactClose": "+{{sobra}} at close",
+      "ctaMover": "Move {{proposed}}",
+      "ctaVerMeta": "View goal",
+      "explanation": "It estimates the month's close by combining your current spending pace with the days remaining. When the result is positive, it shows how much money you have to spare for your savings goal or reserve."
+    },
+    "catAccel": {
+      "titleSpikeSuffix": " (one-off expense)",
+      "bodySpike": "You spent {{amount}} on {{category}} this month, against {{avg}} usually. Almost all of it was this past week — maybe something one-off (a trip, a gift, a big purchase). Was it that or did something change?",
+      "bodyTrend": "You spent {{amount}} on {{category}} this month, against {{avg}} usually. It's been creeping up. Do you want to rein it in or is it now part of your expenses?",
+      "title": "{{category}} jumped this month{{suffix}}",
+      "impact": "Back to average: {{delta}}/mo",
+      "explanation": "It compares what you're spending now in a category with what you usually spend. Seeing it in time lets you decide whether to rein it in or if it's a one-off.",
+      "fuseShare": " On top of that, it already takes up {{pct}}% of everything you spent this month: that's where you can save the most."
+    },
+    "cap": {
+      "categoryFallback": "Category",
+      "titleBreach": "{{name}}: limit exceeded",
+      "titleWarning": "{{name}} at {{pct}}% of the limit",
+      "bodyBreach": "Your limit was {{cap}} and you've spent {{spent}}. Over by: {{excess}}.",
+      "bodyWarning": "You've spent {{spent}} of the {{cap}} you set as a limit. {{remaining}} left to close the month.",
+      "impactBreach": "Stop now: {{delta}}",
+      "impactWarning": "Stay under {{cap}}",
+      "explanation": "If you set a monthly cap on a category, the app warns you when you get close or go over it. It works like a personal goal: it helps rein in spending before it affects the month's close."
+    },
+    "catDominance": {
+      "title": "{{category}} takes {{amount}} of your spending",
+      "body": "Of the {{total}} you spent this month, {{amount}} went to {{category}}. Spending a little less there shows up more than trimming several small categories.",
+      "impact": "Cut 10%: +{{save}}/mo",
+      "explanation": "When one category concentrates nearly half the spending, that's where you can save most. A small cut in that category frees up more money than several small tweaks elsewhere."
+    },
+    "catWin": {
+      "title": "{{category}} −{{pct}}% vs average",
+      "body": "You spent {{now}} this month vs {{avg}} on average. If you keep it up, that's {{annual}} a year.",
+      "impact": "+{{delta}}/mo sustained",
+      "explanation": "It spots categories where this month's spending is clearly below the historical average. Showing the yearly equivalent helps sustain the change over time."
+    },
+    "smallLeaks": {
+      "cat": "Drip",
+      "title": "{{count}} small expenses add up to {{total}}",
+      "body": "Purchases under $5,000 (kiosk, delivery, coffee) make up {{pct}}% of the month's spending. They tend to go unnoticed one by one.",
+      "impact": "Cut 30%: {{amount}}/mo",
+      "explanation": "Expenses under $5,000 seem trivial one by one, but together they add up to a big slice of the month. Seeing them together helps spot where the budget \"drip\" concentrates."
+    },
+    "nightImpulse": {
+      "cat": "Time of day",
+      "title": "{{amount}} on late-night purchases",
+      "body": "{{count}} of {{total}} purchases were made after 10pm, adding up to {{amount}}. At night, relaxed at home, it's easier to overspend without thinking.",
+      "impact": "Cut 20%: +{{amount}}/mo",
+      "explanation": "Buying at night, relaxed at home, tends to lead to overspending. Leaving the purchase for the next day helps cut several of those."
+    },
+    "weeklyPattern": {
+      "catDow": "Pattern",
+      "titleDow": "You spend more on {{day}}",
+      "bodyDow": "On {{day}} you spend quite a bit more than a normal day. Across the month, that adds up to {{extra}} extra.",
+      "impactDow": "+{{extra}}/mo",
+      "explanationDow": "It groups spending by day of the week and computes the average for each. It pinpoints the day that concentrates the most recurring spending.",
+      "catWeekend": "Weekend",
+      "titleWeekend": "You spend more on weekends",
+      "bodyWeekend": "Monday to Friday you spend {{weekday}} a day. Saturdays and Sundays, {{weekend}} a day. That's where you can cut the most.",
+      "impactWeekend": "+{{extra}}/mo if adjusted",
+      "explanationWeekend": "Weekends concentrate outings, delivery and social plans that raise the spending average. Small tweaks on Saturday and Sunday add up to several thousand at close without affecting the rest of the week."
+    },
+    "fijosRatio": {
+      "cat": "Fixed expenses",
+      "title": "Your fixed expenses weigh too much",
+      "impact": "Lowering one: you free up {{excess}}/mo",
+      "explanation": "When your fixed expenses pass half your salary, very little is left for unexpected costs and savings."
+    },
+    "incomeVolatility": {
+      "cat": "Income",
+      "titleBetter": "You earned {{amount}} this month — more than usual",
+      "titleWorse": "You earned {{amount}} this month — less than usual",
+      "bodyBetter": "Other months you earned around {{avg}}; this month {{delta}} more came in. Good time to save a bit of that difference.",
+      "bodyWorse": "Other months you earned around {{avg}}; this month {{delta}} less came in. Watch your spending until it recovers.",
+      "explanation": "It compares what you earned this month with what you usually earn. If quite a bit less comes in, it's worth watching spending; if more comes in, save the difference."
+    },
+    "subUsage": {
+      "cat": "Subscriptions",
+      "titleHard": "You haven't been using {{name}} for ~2 months",
+      "bodyHard": "You said you barely use {{name}} and it costs {{amount}}/mo. Do you really need to pay for it? Cancelling it saves you {{annual}} a year.",
+      "titleSoft": "{{name}}: are you getting value from it?",
+      "bodySoft": "The last few times you said you use it little. It costs {{amount}}/mo — if you're not getting value, it's worth reviewing.",
+      "titlePay": "You paid {{name}} · how much did you use it?",
+      "bodyPay": "We logged the payment for {{name}} ({{amount}}/mo). How much did you use it last month?",
+      "titleReask": "Are you still using {{name}}?",
+      "bodyReask": "It's been a while since you told us how {{name}} ({{amount}}/mo) is going. Are you still using it?",
+      "impact": "{{amount}}/mo",
+      "explanation": "We ask about the subscriptions you pay for to see if you actually use them. If you keep saying no, we let you know so you can decide whether they're worth paying for."
+    },
+    "hike": {
+      "cat": "Fixed expenses",
+      "nameFallback": "A fixed expense",
+      "title": "{{name}}: {{pct}}% increase",
+      "body": "It went from {{prev}} to {{next}}. Over 12 months that's {{annual}} more. Comparing other providers or renegotiating can recover part of the increase.",
+      "impact": "Up to {{delta}}/mo by negotiating",
+      "explanation": "It detects increases in fixed expenses as they're added. The increases seem small month to month, but built up over a year they often justify looking for alternatives or renegotiating with the provider."
+    },
+    "savingsFeasibility": {
+      "title": "For \"{{goal}}\" you're short {{shortfall}} this month",
+      "body": "To get there on time you'd have to save about {{perWeek}} a week. This month you're at {{actual}} — save a little more and you'll make it.",
+      "impact": "You're short {{shortfall}} this month",
+      "explanation": "It compares what you're saving this month with what you need to reach your goal on time. Adjusting early makes the effort smaller."
+    },
+    "savingsOver": {
+      "title_one": "Goal ahead by {{count}} month",
+      "title_other": "Goal ahead by {{count}} months",
+      "body": "This month you saved {{actual}} when the plan asked for {{planned}}. At this pace, {{goal}} arrives in {{newMonths}} months instead of {{months}}.",
+      "impact_one": "−{{count}} month to the goal",
+      "impact_other": "−{{count}} months to the goal",
+      "explanation": "When monthly savings beat the plan, we recompute the estimated completion date. You can keep the pace to arrive sooner or raise the goal."
+    },
+    "highSingle": {
+      "cat": "Single expense",
+      "title": "Big movement today: {{price}}",
+      "body": "Today you logged {{price}} in a single movement — {{pct}}% of what you can spend today ({{cupo}}). See if it's worth balancing out the rest of the day.",
+      "impact": "Today: {{price}}",
+      "explanation": "When a single expense takes a big share of what you can spend today, the rest of the day is very committed. Seeing it right away lets you react."
+    },
+    "duplicate": {
+      "cat": "Possible duplicate",
+      "title": "{{count}} similar charges in 48h",
+      "body": "I spotted {{count}} charges for \"{{description}}\" at ~{{amount}} in under 48h. Can you confirm they're different?",
+      "impact": "Review: {{amount}}",
+      "explanation": "Two charges with almost identical description and amount within a few hours are usually a duplicate from the merchant or the manual entry. The idea is for the user to confirm it."
+    },
+    "dataGap": {
+      "cat": "Records",
+      "title_one": "{{count}} day without logged expenses",
+      "title_other": "{{count}} days without logged expenses",
+      "body": "If you had movements those days, log them so the month's close reflects reality. If not, ignore this notice.",
+      "impact_one": "{{count}} day ago",
+      "impact_other": "{{count}} days ago",
+      "explanation": "Signals depend on expenses being logged. A long pause without records usually means something wasn't recorded, not that nothing was spent."
+    },
+    "savingsMilestone": {
+      "title": "You hit the goal!",
+      "body": "You completed 100% of \"{{goal}}\" with {{amount}} saved. Good time to set the next one.",
+      "impact": "Total: {{total}}",
+      "explanation": "A milestone is for celebrating and riding the momentum: the next goal starts with the habit already built, not from scratch."
+    },
+    "incomeMissing": {
+      "cat": "Payday",
+      "title": "Expected income not confirmed",
+      "body": "Your income was expected but the cycle wasn't confirmed. If it arrived, update the new cycle's balance. If the date changed, adjust your payday.",
+      "impactExpected": "Expected income: {{amount}}",
+      "impactConfirm": "Confirm income",
+      "explanation": "When your configured payday has passed but the month wasn't confirmed, the rest of the math (what you can spend today) works off the previous month. Confirming here resets the baseline."
+    },
+    "cycleStart": {
+      "cat": "Cycle start",
+      "title": "Tight month: {{pct}}% free",
+      "bodyWithGoal": "After fixed expenses and the goal, you've got {{libre}} free ({{pct}}% of income). When it's low, any surprise leaves you short. Pausing the goal this month or renegotiating a fixed expense gives you breathing room.",
+      "bodyNoGoal": "After fixed expenses, you've got {{libre}} free ({{pct}}% of income). When it's low, any surprise leaves you short. Pausing the goal this month or renegotiating a fixed expense gives you breathing room.",
+      "impact": "Breathing room needed: {{gap}}",
+      "explanation": "\"Free\" is what's left of your income after paying fixed expenses and setting aside the savings goal. If it starts low, any surprise leaves you short. Better to flag it at the start of the month while there's still time to adjust."
+    },
+    "forecastPaydayGap": {
+      "cat": "Forecast",
+      "title_one": "Risk: $0 {{count}} day before payday",
+      "title_other": "Risk: $0 {{count}} days before payday",
+      "body_one": "If you spend like the last few days, you'll hit $0 about {{count}} day before your next payday. There's time to fix it if you cut back now.",
+      "body_other": "If you spend like the last few days, you'll hit $0 about {{count}} days before your next payday. There's time to fix it if you cut back now.",
+      "impact": "Short by {{amount}}",
+      "explanation": "We compare what you have left with what you could end up spending in the worst case (expensive days + fixed expenses). If the math comes out less than the days left until payday, this alert lights up."
+    },
+    "streak": {
+      "cat": "Streak",
+      "title": "{{count}} days in a row without going over",
+      "body": "You're in control. At this pace, the month's close leaves {{amount}} unspent.",
+      "impact": "What you can spend today: {{cupo}}",
+      "explanation": "It counts days in a row where the day's spending stayed under control. Seeing the streak reinforces the habit and makes the month's progress visible."
+    },
+    "fallbackCategory": "Other"
+  },
+  "subscriptions": {
+    "followup": {
+      "titlePaymentRecurred": "{{name}} was charged again.",
+      "titleNoPayment": "{{name}} wasn't charged this month.",
+      "titleAwaiting_one": "{{count}} day ago you were going to cancel {{name}}.",
+      "titleAwaiting_other": "{{count}} days ago you were going to cancel {{name}}.",
+      "askPaymentRecurred": "Did something happen?",
+      "askNoPayment": "Can you confirm you cancelled it?",
+      "askAwaiting": "Did you manage to?",
+      "confirmDone": "Yes, done",
+      "stillNo": "Not yet",
+      "changedMind": "Changed my mind"
+    },
+    "classification": {
+      "unevenBody": "Only one person in the group uses it. Is that what you expected?",
+      "unevenOk": "Yes, it's fine",
+      "consensusBody_one": "The household barely uses it.\nIn {{count}} month that was {{total}}.",
+      "consensusBody_other": "The household barely uses it.\nIn {{count}} months that was {{total}}.",
+      "consensusQuestion": "What do you want to do?",
+      "cancel": "I'll cancel it",
+      "pause": "I'll pause it",
+      "downgrade": "I'll downgrade the plan",
+      "keep": "I'll keep paying for it"
+    },
+    "status": {
+      "intentCancel": "is going to cancel",
+      "intentPause": "is going to pause",
+      "intentDowngrade": "is going to downgrade the plan of",
+      "today": "today",
+      "rel_one": "{{count}} day ago",
+      "rel_other": "{{count}} days ago",
+      "savings": "Estimated savings: {{amount}} / mo"
+    },
+    "prompt": {
+      "perMonth": "{{amount}} / mo",
+      "someoneFallback": "Someone",
+      "levelMucho": "uses it a lot",
+      "levelAVeces": "sometimes",
+      "levelCasiNunca": "almost never",
+      "relAMoment": "a moment ago",
+      "relHours": "{{count}}h ago",
+      "relDays_one": "{{count}} day ago",
+      "relDays_other": "{{count}} days ago",
+      "questionAndYou": "And you?",
+      "questionUsing": "Are you using it?",
+      "answered": "You already answered — waiting for the rest."
+    },
+    "levelButtons": {
+      "mucho": "I use it a lot",
+      "aVeces": "Sometimes",
+      "casiNunca": "Almost never"
+    },
+    "push": {
+      "manyTitle": "You have {{count}} subscriptions you barely use",
+      "manyBody": "{{names}}{{more}} · {{total}}/mo. Tap to review.",
+      "more_one": " and {{count}} more",
+      "more_other": " and {{count}} more",
+      "consensusTitle": "{{name}} — the household barely uses it",
+      "unevenTitle": "{{name}} — uneven use in the household",
+      "singleBody": "You pay {{amount}} a month. Tap to review."
+    }
+  },
+  "push": {
+    "digestTitle": "You have {{count}} alerts in Control",
+    "digestBody_one": "{{first}} and {{count}} more. Tap to review.",
+    "digestBody_other": "{{first}} and {{count}} more. Tap to review."
+  }
+}

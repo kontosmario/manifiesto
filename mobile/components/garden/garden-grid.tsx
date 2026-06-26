@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Svg, { Circle } from 'react-native-svg'
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { Sprout } from './sprout'
@@ -26,12 +27,13 @@ const GAP = 7
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 // Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
-const LEGEND: Array<{ label: string; color: string }> = [
-  { label: 'semilla', color: '#C29A5E' },
-  { label: 'creciendo', color: '#A9D57F' },
-  { label: 'arraigado', color: '#4F9E45' },
-  { label: 'floración', color: '#E2935E' },
-  { label: 'salteado', color: '#CBC6B6' },
+// `key` resuelve el label vía i18n (garden:legend.*).
+const LEGEND: Array<{ key: string; color: string }> = [
+  { key: 'seed', color: '#C29A5E' },
+  { key: 'growing', color: '#A9D57F' },
+  { key: 'rooted', color: '#4F9E45' },
+  { key: 'bloom', color: '#E2935E' },
+  { key: 'skipped', color: '#CBC6B6' },
 ]
 
 function isPlanted(stage: BroteStage): boolean {
@@ -86,6 +88,7 @@ function GardenGridImpl({
   onPlantGap,
 }: GardenGridProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const weeks = toWeeks(cells)
   // Columna de HOY (0..6) → resaltamos su letra en el encabezado ("estás aquí").
   const todayIndex = cells.findIndex((c) => c.isToday)
@@ -121,7 +124,7 @@ function GardenGridImpl({
                     key={cell.iso}
                     onPress={() => onPlantGap(cell.iso)}
                     accessibilityRole="button"
-                    accessibilityLabel="Plantar el día que faltó la semana pasada"
+                    accessibilityLabel={t('garden:grid.plantGapLabel')}
                     style={({ pressed }) => [
                       styles.cell,
                       styles.plantable,
@@ -169,14 +172,16 @@ function GardenGridImpl({
         >
           {LEGEND.map((l) => (
             <View
-              key={l.label}
+              key={l.key}
               style={[
                 styles.chip,
                 { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : '#F2EFE6' },
               ]}
             >
               <View style={[styles.dot, { backgroundColor: l.color }]} />
-              <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>{l.label}</Text>
+              <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>
+                {t(`garden:legend.${l.key}`)}
+              </Text>
             </View>
           ))}
         </Animated.View>

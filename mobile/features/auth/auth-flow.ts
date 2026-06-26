@@ -1,5 +1,6 @@
 import * as Linking from 'expo-linking'
 import { isExpoGo } from '@/lib/runtime-environment'
+import i18n from '@/lib/i18n'
 import { checkPasswordPolicy } from '@/features/auth/password-policy'
 
 export type AuthMode = 'sign-in' | 'sign-up'
@@ -66,16 +67,16 @@ export function getPasswordResetRedirectTo() {
 export function buildAuthHelperCopy(mode: AuthMode): AuthHelperCopy {
   if (mode === 'sign-in') {
     return {
-      buttonLabel: 'Continuar',
-      subtitle: 'Finanzas claras, todos los días.',
-      title: 'Entra a tu espacio',
+      buttonLabel: i18n.t('auth:helperCopy.signInButton'),
+      subtitle: i18n.t('auth:helperCopy.signInSubtitle'),
+      title: i18n.t('auth:helperCopy.signInTitle'),
     }
   }
 
   return {
-    buttonLabel: 'Crear cuenta',
-    subtitle: 'Empieza hoy, ordena el resto.',
-    title: 'Súmate a Manifiesto',
+    buttonLabel: i18n.t('auth:helperCopy.signUpButton'),
+    subtitle: i18n.t('auth:helperCopy.signUpSubtitle'),
+    title: i18n.t('auth:helperCopy.signUpTitle'),
   }
 }
 
@@ -85,7 +86,7 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
   const trimmedDisplayName = draft.displayName.trim()
 
   if (!normalizedEmail || !normalizedEmail.includes('@')) {
-    return { error: 'Ingresa un email válido.' }
+    return { error: i18n.t('auth:validation.invalidEmail') }
   }
 
   // Sprint H · H1: differentiate sign-in vs sign-up password validation.
@@ -99,19 +100,19 @@ export function validateAuthSubmission(draft: AuthSubmissionDraft) {
   if (draft.mode === 'sign-up') {
     const policy = checkPasswordPolicy(trimmedPassword)
     if (!policy.ok) {
-      return { error: policy.error ?? 'La contraseña no cumple los requisitos.' }
+      return { error: policy.error ?? i18n.t('auth:validation.passwordPolicy') }
     }
   } else {
     if (trimmedPassword.length === 0) {
-      return { error: 'Ingresa tu contraseña.' }
+      return { error: i18n.t('auth:validation.emptyPassword') }
     }
     if (trimmedPassword.length > 72) {
-      return { error: 'La contraseña no puede tener más de 72 caracteres.' }
+      return { error: i18n.t('auth:validation.passwordTooLong') }
     }
   }
 
   if (draft.mode === 'sign-up' && trimmedDisplayName.length < 2) {
-    return { error: 'Agrega un nombre para tu perfil.' }
+    return { error: i18n.t('auth:validation.addName') }
   }
 
   return {

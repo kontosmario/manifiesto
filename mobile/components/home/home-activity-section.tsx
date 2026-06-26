@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
@@ -54,11 +55,11 @@ type MovementItem =
   | { kind: 'expense'; iso: string; expense: Expense }
   | { kind: 'income'; iso: string; income: IncomeEvent }
 
-const INCOME_KIND_LABEL: Record<IncomeEventKind, string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Ingreso',
+const INCOME_KIND_LABEL_KEY: Record<IncomeEventKind, string> = {
+  transfer: 'home:activitySection.incomeKind.transfer',
+  bonus: 'home:activitySection.incomeKind.bonus',
+  gift: 'home:activitySection.incomeKind.gift',
+  other: 'home:activitySection.incomeKind.other',
 }
 
 const INCOME_KIND_ICON: Record<IncomeEventKind, string> = {
@@ -102,6 +103,7 @@ function HomeActivitySectionImpl({
   pendingIncomeId,
   limit = 6,
 }: HomeActivitySectionProps) {
+  const { t } = useTranslation()
   const memberById = useMemo(() => {
     const map = new Map<string, (typeof familyMembers)[number]>()
     for (const m of familyMembers) map.set(m.id, m)
@@ -160,15 +162,15 @@ function HomeActivitySectionImpl({
         const delay = Math.min(180 + index * 40, 360)
         if (m.kind === 'income') {
           const income = m.income
-          const kindLabel = INCOME_KIND_LABEL[income.kind]
+          const kindLabel = t(INCOME_KIND_LABEL_KEY[income.kind])
           const title = income.description?.trim() || kindLabel
           const row = (
             <ActivityRowV2
               icon={INCOME_KIND_ICON[income.kind]}
               title={title}
-              category={`Ingreso · ${kindLabel}`}
+              category={t('home:activitySection.incomeCategory', { kind: kindLabel })}
               categoryColor={INCOME_TILE_COLOR}
-              whoName={memberById.get(income.created_by)?.name ?? 'Alguien'}
+              whoName={memberById.get(income.created_by)?.name ?? t('home:activitySection.someone')}
               whoColor={memberById.get(income.created_by)?.color ?? '#329315'}
               amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
               delay={delay}
@@ -178,7 +180,7 @@ function HomeActivitySectionImpl({
             return <View key={`income-${income.id}`}>{row}</View>
           }
           const dangerAction: SwipeAction = {
-            label: 'Eliminar',
+            label: t('home:activitySection.delete'),
             tone: 'danger',
             icon: 'delete',
             onPress: () => onDeleteIncome(income.id),
@@ -186,7 +188,7 @@ function HomeActivitySectionImpl({
           return (
             <SwipeRow
               key={`income-${income.id}`}
-              accessibilityHint="Desliza hacia la izquierda para eliminar"
+              accessibilityHint={t('home:activitySection.swipeDeleteHint')}
               rightActions={[dangerAction]}
               isProcessing={pendingIncomeId === income.id}
             >
@@ -195,9 +197,9 @@ function HomeActivitySectionImpl({
           )
         }
         const expense = m.expense
-        const categoryName = categoryNameById.get(expense.category_id) ?? 'Sin categoría'
+        const categoryName = categoryNameById.get(expense.category_id) ?? t('home:activitySection.noCategory')
         const dangerAction: SwipeAction = {
-          label: 'Eliminar',
+          label: t('home:activitySection.delete'),
           tone: 'danger',
           icon: 'delete',
           onPress: () => onDelete(expense.id),
@@ -205,7 +207,7 @@ function HomeActivitySectionImpl({
         return (
           <SwipeRow
             key={`expense-${expense.id}`}
-            accessibilityHint="Desliza hacia la izquierda para eliminar"
+            accessibilityHint={t('home:activitySection.swipeDeleteHint')}
             rightActions={[dangerAction]}
             isProcessing={pendingExpenseId === expense.id}
           >
@@ -214,7 +216,7 @@ function HomeActivitySectionImpl({
               title={expense.description || categoryName}
               category={categoryName}
               categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}
-              whoName={memberById.get(expense.created_by)?.name ?? 'Alguien'}
+              whoName={memberById.get(expense.created_by)?.name ?? t('home:activitySection.someone')}
               whoColor={memberById.get(expense.created_by)?.color ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
               delay={delay}

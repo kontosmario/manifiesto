@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import {
   currencyFormatter,
@@ -27,6 +28,7 @@ export function EditMyContributionSheet({
   onClose,
   onSave,
 }: EditMyContributionSheetProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(() => serializePrice(currentValue))
 
   useEffect(() => {
@@ -49,32 +51,32 @@ export function EditMyContributionSheet({
   return (
     <NumericEditSheet
       visible={visible}
-      title={isSolo ? 'Ingreso mensual' : 'Mi aporte mensual'}
+      title={isSolo ? t('settings:editContribution.titleSolo') : t('settings:editContribution.title')}
       subtitle={
         isSolo
-          ? 'Es tu ingreso mensual. Lo usamos para calcular tu presupuesto.'
-          : 'Es lo que tú aportas al ingreso del hogar. El total del hogar se recalcula automáticamente con la suma de los aportes de cada miembro.'
+          ? t('settings:editContribution.subtitleSolo')
+          : t('settings:editContribution.subtitle')
       }
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-      displayEyebrow={isSolo ? 'INGRESO' : 'MI APORTE'}
+      displayEyebrow={isSolo ? t('settings:editContribution.eyebrowSolo') : t('settings:editContribution.eyebrow')}
       displayPlaceholder="$ 0"
       helper={
         isValid
           ? isSolo
             ? undefined
-            : `Total del hogar: ${currencyFormatter.format(projectedTotal)}.`
-          : 'Ingresa un monto válido (puede ser 0).'
+            : t('settings:editContribution.helperTotal', { amount: currencyFormatter.format(projectedTotal) })
+          : t('settings:editContribution.helperInvalid')
       }
       errorText={
         showError
           ? isSolo
-            ? 'El ingreso no puede ser negativo.'
-            : 'El aporte no puede ser negativo.'
+            ? t('settings:editContribution.errorSolo')
+            : t('settings:editContribution.error')
           : undefined
       }
-      saveLabel={isSolo ? 'Guardar' : 'Guardar aporte'}
+      saveLabel={isSolo ? t('common:actions.save') : t('settings:editContribution.save')}
       saveDisabled={!hasChanged}
       isSaving={isSaving}
       onSave={() => {

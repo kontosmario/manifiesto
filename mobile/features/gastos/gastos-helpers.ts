@@ -2,6 +2,7 @@
 // para que la screen pueda concentrarse en orquestación (data fetching,
 // estado UI, render). Cero side effects: todos los exports son
 // funciones puras + constantes. Testeables aislados sin renderer.
+import i18n from '@/lib/i18n'
 import type { IncomeEvent } from '@/features/income/use-income-events'
 import type { Expense } from '@/features/expenses/use-expenses'
 
@@ -53,14 +54,14 @@ export const MONTHS_ES = [
 export function incomeKindFallback(kind: IncomeEvent['kind']): string {
   switch (kind) {
     case 'transfer':
-      return 'Transferencia'
+      return i18n.t('gastos:incomeRow.kind.transfer')
     case 'bonus':
-      return 'Bono'
+      return i18n.t('gastos:incomeRow.kind.bonus')
     case 'gift':
-      return 'Regalo'
+      return i18n.t('gastos:incomeRow.kind.gift')
     case 'other':
     default:
-      return 'Ingreso'
+      return i18n.t('gastos:incomeRow.kind.other')
   }
 }
 
@@ -98,12 +99,12 @@ export function incomeHappenedAtMs(income: IncomeEvent): number {
 export function sectionMetaCopy(expenseCount: number, incomeCount: number): string {
   const parts: string[] = []
   if (expenseCount > 0) {
-    parts.push(`${expenseCount} gasto${expenseCount === 1 ? '' : 's'}`)
+    parts.push(i18n.t('gastos:sectionMeta.expenses', { count: expenseCount }))
   }
   if (incomeCount > 0) {
-    parts.push(`${incomeCount} ingreso${incomeCount === 1 ? '' : 's'}`)
+    parts.push(i18n.t('gastos:sectionMeta.incomes', { count: incomeCount }))
   }
-  if (parts.length === 0) return 'sin movimientos'
+  if (parts.length === 0) return i18n.t('gastos:sectionMeta.none')
   return parts.join(' · ')
 }
 
@@ -174,5 +175,11 @@ export function composeRowA11yLabel(args: {
   iso: string
 }): string {
   const time = formatTime(args.iso)
-  return `${args.title}, ${args.amount} pesos en ${args.categoryName}, cargado por ${args.whoName} a las ${time}.`
+  return i18n.t('gastos:movementRow.a11yLabel', {
+    title: args.title,
+    amount: args.amount,
+    categoryName: args.categoryName,
+    whoName: args.whoName,
+    time,
+  })
 }

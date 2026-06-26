@@ -1,4 +1,5 @@
 import { memo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -41,34 +42,44 @@ export interface PurchaseResultSheetProps {
   onRetry?: () => void
 }
 
-const COPY: Record<
-  PurchaseResultVariant,
-  { title: string; body: (planName?: string, reason?: string) => string }
-> = {
-  success: {
-    title: '¡Bienvenido al hogar!',
-    body: (planName) =>
-      `Tu ${planName ?? 'plan'} ya está activo. Acceso completo para ti y tu hogar.`,
-  },
-  planChanged: {
-    title: 'Plan actualizado',
-    body: () =>
-      'Listo. Verás el cambio reflejado en "Mi suscripción" — al instante si fue una mejora, o en tu próxima renovación si fue un cambio a un plan menor.',
-  },
-  restored: {
-    title: 'Recuperamos tu suscripción',
-    body: () => 'Ya tienes acceso a tu plan en este dispositivo.',
-  },
-  error: {
-    title: 'No pudimos confirmar tu compra',
-    body: (_p, reason) =>
-      reason ?? 'Reintenta en un momento. No se te cobró nada.',
-  },
-  restoreError: {
-    title: 'No pudimos restaurar',
-    body: (_p, reason) =>
-      reason ?? 'Reintenta en un momento.',
-  },
+type TFn = ReturnType<typeof useTranslation>['t']
+
+/** Copy localizado por variante. `body` resuelve plan/motivo en runtime. */
+function copyFor(
+  variant: PurchaseResultVariant,
+  t: TFn,
+): { title: string; body: (planName?: string, reason?: string) => string } {
+  switch (variant) {
+    case 'success':
+      return {
+        title: t('billing:purchaseResult.successTitle'),
+        body: (planName) =>
+          t('billing:purchaseResult.successBody', {
+            plan: planName ?? t('billing:purchaseResult.successBodyFallbackPlan'),
+          }),
+      }
+    case 'planChanged':
+      return {
+        title: t('billing:purchaseResult.planChangedTitle'),
+        body: () => t('billing:purchaseResult.planChangedBody'),
+      }
+    case 'restored':
+      return {
+        title: t('billing:purchaseResult.restoredTitle'),
+        body: () => t('billing:purchaseResult.restoredBody'),
+      }
+    case 'error':
+      return {
+        title: t('billing:purchaseResult.errorTitle'),
+        body: (_p, reason) => reason ?? t('billing:purchaseResult.errorBody'),
+      }
+    case 'restoreError':
+      return {
+        title: t('billing:purchaseResult.restoreErrorTitle'),
+        body: (_p, reason) =>
+          reason ?? t('billing:purchaseResult.restoreErrorBody'),
+      }
+  }
 }
 
 export const PurchaseResultSheet = memo(function PurchaseResultSheet({
@@ -80,22 +91,33 @@ export const PurchaseResultSheet = memo(function PurchaseResultSheet({
   onRetry,
 }: PurchaseResultSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
-  const copy = COPY[variant]
+  const copy = copyFor(variant, t)
   const isCelebration = variant === 'success'
   const ctaLabel =
     variant === 'success'
-      ? 'Empezar'
+      ? t('billing:purchaseResult.ctaStart')
       : variant === 'planChanged'
-        ? 'Entendido'
-        : 'Listo'
+        ? t('billing:purchaseResult.ctaUnderstood')
+        : t('billing:purchaseResult.ctaDone')
 
   const footer = isError(variant) ? (
     <View style={styles.footerCol}>
       {onRetry ? (
-        <AppButton label="Reintentar" variant="primary" fullWidth onPress={onRetry} />
+        <AppButton
+          label={t('billing:purchaseResult.retry')}
+          variant="primary"
+          fullWidth
+          onPress={onRetry}
+        />
       ) : null}
-      <AppButton label="Cerrar" variant="ghost" fullWidth onPress={onClose} />
+      <AppButton
+        label={t('billing:purchaseResult.close')}
+        variant="ghost"
+        fullWidth
+        onPress={onClose}
+      />
     </View>
   ) : (
     <AppButton label={ctaLabel} variant="primary" fullWidth onPress={onClose} />

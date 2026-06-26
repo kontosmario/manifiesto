@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -46,6 +47,7 @@ export function ControlV2AlcanciaCardEmpty({
   monthlyReserveAmount,
 }: ControlV2AlcanciaCardEmptyProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
   const tileBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)'
@@ -72,7 +74,7 @@ export function ControlV2AlcanciaCardEmpty({
     <RiseView delay={180}>
       <View
         accessibilityRole="text"
-        accessibilityLabel="Tu alcancía: esperando más días con gasto"
+        accessibilityLabel={t('control:alcancia.empty.a11y')}
         style={[
           styles.card,
           styles.emptyCard,
@@ -82,10 +84,10 @@ export function ControlV2AlcanciaCardEmpty({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={muted} glow={muted} />
           <Text style={[styles.eyebrow, { color: muted }]} numberOfLines={1}>
-            TU ALCANCÍA · ESTE CICLO
+            {t('control:alcancia.eyebrow')}
           </Text>
           <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
-            <Text style={[styles.emptyPillText, { color: muted }]}>Pronto</Text>
+            <Text style={[styles.emptyPillText, { color: muted }]}>{t('control:alcancia.empty.soon')}</Text>
           </View>
         </View>
 
@@ -109,7 +111,7 @@ export function ControlV2AlcanciaCardEmpty({
         {goal == null ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Crear meta de ahorro"
+            accessibilityLabel={t('control:alcancia.empty.ctaCrearA11y')}
             onPress={handleCreatePress}
             onPressIn={ctaPress.onPressIn}
             onPressOut={ctaPress.onPressOut}
@@ -123,7 +125,7 @@ export function ControlV2AlcanciaCardEmpty({
             >
               <MaterialIcons name="add" size={16} color={accentFg} />
               <Text style={[styles.ctaText, { color: accentFg }]} numberOfLines={1}>
-                Crear meta de ahorro
+                {t('control:alcancia.empty.ctaCrear')}
               </Text>
               <MaterialIcons name="chevron-right" size={18} color={accentFg} />
             </Animated.View>
@@ -134,16 +136,22 @@ export function ControlV2AlcanciaCardEmpty({
           >
             <MaterialIcons name="lock-outline" size={16} color={muted} />
             <Text style={[styles.ctaText, { color: muted }]} numberOfLines={1}>
-              Disponible pronto
+              {t('control:alcancia.empty.disponiblePronto')}
             </Text>
           </View>
         )}
 
         {/* 3 mini-tiles inertes — labels reales, valores en dash. */}
         <View style={styles.tilesRow}>
-          {(['Sin gastos', 'Bajo cupo', 'Racha'] as const).map((label) => (
+          {(
+            [
+              ['sinGastos', t('control:alcancia.empty.tileSinGastos')],
+              ['bajoCupo', t('control:alcancia.empty.tileBajoCupo')],
+              ['racha', t('control:alcancia.empty.tileRacha')],
+            ] as const
+          ).map(([key, label]) => (
             <View
-              key={label}
+              key={key}
               style={[styles.tile, { backgroundColor: tileBg, borderColor: tileBorder }]}
             >
               <View style={styles.tileHead}>
@@ -172,11 +180,13 @@ export function ControlV2AlcanciaCardEmpty({
           <MaterialIcons name="schedule" size={16} color={muted} />
           <View style={styles.calloutBody}>
             <Text style={[styles.emptyCalloutText, { color: text }]}>
-              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para
-              sugerirte cuánto mover a tu meta según tu ritmo.
+              {t('control:alcancia.empty.callout', { days: MIN_SPEND_DAYS })}
             </Text>
             <Text style={[styles.emptyProgress, { color: muted }]}>
-              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+              {t('control:alcancia.empty.progress', {
+                progress: progreso,
+                days: MIN_SPEND_DAYS,
+              })}
             </Text>
           </View>
         </View>

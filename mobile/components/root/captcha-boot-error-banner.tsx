@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Platform, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { getCaptchaBootError } from '@/lib/captcha-config'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -23,6 +24,7 @@ export function CaptchaBootErrorBanner() {
   // Memoise once — the error value is fixed at module-load time.
   const message = useMemo(() => getCaptchaBootError(), [])
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
 
   if (!message) return null
@@ -41,7 +43,7 @@ export function CaptchaBootErrorBanner() {
       accessibilityLabel={message}
     >
       <Text style={styles.text} numberOfLines={2}>
-        Captcha desactivado en este build. No mergear a producción.
+        {t('states:captchaBanner.message')}
       </Text>
     </View>
   )

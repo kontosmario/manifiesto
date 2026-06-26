@@ -16,6 +16,7 @@ import Animated, {
   interpolateColor,
   useReducedMotion,
 } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import type { Category } from '@/features/categories/use-categories'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { triggerHaptic } from '@/lib/haptics'
@@ -79,13 +80,14 @@ export function CategoryHorizontalRail({
   onSelect,
   rows = 3,
   iconResolver = pickIconForCategory,
-  label = 'Categoría',
+  label,
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
   staticGrid = false,
   warning = false,
 }: CategoryHorizontalRailProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
   // Smooth label tint transition when `warning` toggles. iOS-cubic at
   // standard duration so the color glides in instead of snapping.
@@ -103,7 +105,9 @@ export function CategoryHorizontalRail({
       [theme.colors.textMuted, theme.colors.warning],
     ),
   }))
-  const labelText = warning ? 'Elige una categoría' : label
+  const labelText = warning
+    ? t('home:categoryRail.warningLabel')
+    : (label ?? t('home:categoryRail.label'))
 
   const columns = useMemo(() => {
     const chunked: Category[][] = []
@@ -228,6 +232,7 @@ interface CategoryTileProps {
 
 function CategoryTile({ category, selected, iconResolver, width, height, onPress }: CategoryTileProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
@@ -260,7 +265,9 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected }}
-        accessibilityLabel={`Seleccionar ${category.name}`}
+        accessibilityLabel={t('home:categoryRail.selectAccessibility', {
+          name: category.name,
+        })}
         hitSlop={4}
         onPressIn={() => {
           if (reduceMotion) return

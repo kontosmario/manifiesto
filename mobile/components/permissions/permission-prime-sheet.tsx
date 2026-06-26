@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { ModalCard } from '@/components/ui/modal-card'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -61,33 +63,37 @@ interface PrimeCopy {
   secondaryLabel: string
 }
 
-function copyFor(type: PermissionPrimeType, biometricLabel: string): PrimeCopy {
+function copyFor(
+  type: PermissionPrimeType,
+  biometricLabel: string,
+  t: TFunction,
+): PrimeCopy {
   if (type === 'notifications') {
     return {
       icon: 'notifications',
-      title: 'Te avisamos cuando importa',
-      subtitle: 'Solo notificaciones que valen la pena leer.',
+      title: t('states:permissions.notifications.title'),
+      subtitle: t('states:permissions.notifications.subtitle'),
       reasons: [
-        { icon: 'payments', text: 'Tu cobro confirmado del mes' },
-        { icon: 'trending-up', text: 'Alertas de gastos atípicos' },
-        { icon: 'emoji-events', text: 'Logros de la familia' },
+        { icon: 'payments', text: t('states:permissions.notifications.reason1') },
+        { icon: 'trending-up', text: t('states:permissions.notifications.reason2') },
+        { icon: 'emoji-events', text: t('states:permissions.notifications.reason3') },
       ],
-      primaryLabel: 'Permitir',
-      secondaryLabel: 'Más tarde',
+      primaryLabel: t('states:permissions.notifications.primary'),
+      secondaryLabel: t('states:permissions.notifications.secondary'),
     }
   }
 
   return {
     icon: 'fingerprint',
-    title: 'Desbloquea más rápido',
-    subtitle: `Usa ${biometricLabel} para entrar sin escribir tu contraseña.`,
+    title: t('states:permissions.biometric.title'),
+    subtitle: t('states:permissions.biometric.subtitle', { method: biometricLabel }),
     reasons: [
-      { icon: 'face', text: `Ingresa con ${biometricLabel}` },
-      { icon: 'lock', text: 'Tus datos siempre cifrados' },
-      { icon: 'settings', text: 'Puedes desactivarlo cuando quieras' },
+      { icon: 'face', text: t('states:permissions.biometric.reason1', { method: biometricLabel }) },
+      { icon: 'lock', text: t('states:permissions.biometric.reason2') },
+      { icon: 'settings', text: t('states:permissions.biometric.reason3') },
     ],
-    primaryLabel: 'Activar',
-    secondaryLabel: 'Más tarde',
+    primaryLabel: t('states:permissions.biometric.primary'),
+    secondaryLabel: t('states:permissions.biometric.secondary'),
   }
 }
 
@@ -99,10 +105,11 @@ export function PermissionPrimeSheet({
   biometricLabel = 'Face ID',
 }: PermissionPrimeSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const copy = useMemo(
-    () => copyFor(type, biometricLabel),
-    [type, biometricLabel],
+    () => copyFor(type, biometricLabel, t),
+    [type, biometricLabel, t],
   )
 
   const handleAllow = () => {

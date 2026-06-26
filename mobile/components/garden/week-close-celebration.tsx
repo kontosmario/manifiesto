@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -43,6 +44,7 @@ function stageForDay(registered: boolean, weekStage: WeekClose['stage']): BroteS
  */
 export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebrationProps) {
   const reduced = useReducedMotion()
+  const { t: translate } = useTranslation()
   const t = useSharedValue(0)
   const pop = useSharedValue(0.94)
   const perfect = weekClose.score >= 7
@@ -69,7 +71,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
     <Animated.View pointerEvents="auto" style={[styles.scrim, scrimStyle]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cerrar cierre de semana"
+        accessibilityLabel={translate('garden:weekCloseCelebration.closeLabel')}
         onPress={onContinue}
         style={StyleSheet.absoluteFill}
       />
@@ -77,12 +79,16 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
       {perfect && <ConfettiBurst pulseToken={1} originY={120} />}
 
       <Animated.View style={[styles.content, contentStyle]}>
-        <Text style={[styles.eyebrow, { color: labelColor }]}>CIERRE DE SEMANA</Text>
+        <Text style={[styles.eyebrow, { color: labelColor }]}>
+          {translate('garden:weekCloseCelebration.eyebrow')}
+        </Text>
         <Text style={styles.title}>{weekClose.title}</Text>
         <View style={styles.chip}>
           <Text style={[styles.chipLabel, { color: labelColor }]}>{weekClose.label}</Text>
           <View style={styles.chipDot} />
-          <Text style={styles.chipCount}>{weekClose.score} de 7 días</Text>
+          <Text style={styles.chipCount}>
+            {translate('garden:weekCloseCelebration.count', { score: weekClose.score })}
+          </Text>
         </View>
 
         {/* Fila de 7 brotes que crecen escalonados. */}
@@ -119,7 +125,9 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
         <Text style={styles.sub}>{weekClose.sub}</Text>
 
         <Pressable onPress={onContinue} style={styles.button} accessibilityRole="button">
-          <Text style={styles.buttonText}>Seguir cultivando</Text>
+          <Text style={styles.buttonText}>
+            {translate('garden:weekCloseCelebration.continue')}
+          </Text>
         </Pressable>
       </Animated.View>
     </Animated.View>

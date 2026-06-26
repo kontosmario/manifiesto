@@ -115,7 +115,6 @@ interface SettingsScreenProps {
   // Legacy familyCode prop removed — invites generate ephemeral codes now.
 }
 
-const DISABLED_HINT = 'Solo el dueño puede editar'
 
 export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const router = useRouter()
@@ -123,6 +122,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const isNavSettled = useIsNavigationSettled()
   const { preference, setPreference, theme } = useAppTheme()
   const { t } = useTranslation()
+  const DISABLED_HINT = t('settings:settingsScreen.disabledHint')
   const {
     preference: langPreference,
     setPreference: setLangPreference,
@@ -278,15 +278,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     if (isBiometricBusy) return
     if (!biometricState.isAvailable) {
       Alert.alert(
-        'Acceso rápido no disponible',
-        `Configura ${biometricState.label.toLowerCase()} en los ajustes del sistema y vuelve a intentarlo.`,
+        t('settings:biometric.unavailableTitle'),
+        t('settings:biometric.unavailableMessage', {
+          method: biometricState.label.toLowerCase(),
+        }),
       )
       return
     }
     if (!userEmail) {
       Alert.alert(
-        'Sesión inválida',
-        'Inicia sesión nuevamente para activar el acceso rápido.',
+        t('settings:biometric.invalidSessionTitle'),
+        t('settings:biometric.invalidSessionMessage'),
       )
       return
     }
@@ -308,7 +310,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       // grab the live Supabase refresh token (no password handling)
       // and save it paired with the user's email.
       const biometricResult = await authenticateBiometricAccess({
-        promptMessage: `Activa ${biometricState.label} para entrar más rápido la próxima vez.`,
+        promptMessage: t('settings:biometric.activatePrompt', {
+          method: biometricState.label,
+        }),
       })
       if (!biometricResult.success) {
         return
@@ -317,8 +321,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       const refreshToken = sessionResponse.data.session?.refresh_token
       if (!refreshToken) {
         Alert.alert(
-          'No pudimos completar',
-          'No encontramos una sesión activa. Vuelve a entrar manualmente y prueba de nuevo.',
+          t('settings:biometric.noSessionTitle'),
+          t('settings:biometric.noSessionMessage'),
         )
         return
       }
@@ -335,19 +339,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         console.error('[biometric] activation failed:', error)
       }
       Alert.alert(
-        'No pudimos guardar',
-        'Hubo un problema activando el acceso rápido. Prueba nuevamente.',
+        t('settings:biometric.saveFailedTitle'),
+        t('settings:biometric.saveFailedMessage'),
       )
     } finally {
       setBiometricBusy(false)
     }
-  }, [biometricState, isBiometricBusy, userEmail])
+  }, [biometricState, isBiometricBusy, userEmail, t])
 
   const biometricRowValue = !biometricState.isAvailable
-    ? 'No disponible'
+    ? t('settings:rowValue.unavailable')
     : biometricState.hasSavedCredentials
-      ? 'Activado'
-      : 'Desactivado'
+      ? t('settings:rowValue.enabled')
+      : t('settings:rowValue.disabled')
 
   const [pinIsSet, setPinIsSet] = useState(false)
   const refreshPinState = useCallback(async () => {
@@ -380,10 +384,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       router.push('/(app)/pin-setup')
       return
     }
-    Alert.alert('PIN de acceso', '¿Qué quieres hacer?', [
-      { text: 'Cambiar PIN', onPress: () => router.push('/(app)/pin-setup') },
+    Alert.alert(t('settings:pin.title'), t('settings:pin.prompt'), [
+      { text: t('settings:pin.change'), onPress: () => router.push('/(app)/pin-setup') },
       {
-        text: 'Quitar PIN',
+        text: t('settings:pin.remove'),
         style: 'destructive',
         onPress: async () => {
           const { clearPin } = await import('@/lib/pin-lock')
@@ -391,9 +395,9 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           await refreshPinState()
         },
       },
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('common:actions.cancel'), style: 'cancel' },
     ])
-  }, [pinIsSet, router, refreshPinState])
+  }, [pinIsSet, router, refreshPinState, t])
 
   const supportsPushActivation = supportsRemotePushNotifications
   const shouldShowErrorState = Boolean(
@@ -412,8 +416,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
   const showError = useCallback(async (error: unknown, fallbackMessage: string) => {
     await triggerHaptic('error')
-    Alert.alert('Algo salió mal', getErrorMessage(error, fallbackMessage))
-  }, [])
+    Alert.alert(t('settings:errors.genericTitle'), getErrorMessage(error, fallbackMessage))
+  }, [t])
 
   const saveProfile = useCallback(
     (nextDisplayName: string) => {
@@ -423,11 +427,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           setNameSheetOpen(false)
         },
         onError: (error: unknown) => {
-          void showError(error, 'No se pudo actualizar el nombre.')
+          void showError(error, t('settings:errors.updateName'))
         },
       })
     },
-    [showError, updateDisplayNameMutation],
+    [showError, updateDisplayNameMutation, t],
   )
 
   const saveAvatar = useCallback(
@@ -438,11 +442,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           setAvatarSheetOpen(false)
         },
         onError: (error: unknown) => {
-          void showError(error, 'No se pudo actualizar el avatar.')
+          void showError(error, t('settings:errors.updateAvatar'))
         },
       })
     },
-    [showError, updateAvatarMutation],
+    [showError, updateAvatarMutation, t],
   )
 
   const saveFinanceSnapshot = useCallback(
@@ -454,11 +458,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           onDone()
         },
         onError: (error: unknown) => {
-          void showError(error, 'No se pudieron guardar las métricas del hogar.')
+          void showError(error, t('settings:errors.saveHouseholdMetrics'))
         },
       })
     },
-    [showError, upsertFamilyFinanceMutation],
+    [showError, upsertFamilyFinanceMutation, t],
   )
 
   const handleSaveMyContribution = useCallback(
@@ -469,11 +473,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           setIncomeSheetOpen(false)
         },
         onError: (error: unknown) => {
-          void showError(error, 'No se pudo actualizar tu aporte.')
+          void showError(error, t('settings:errors.updateContribution'))
         },
       })
     },
-    [showError, updateMyContributionMutation],
+    [showError, updateMyContributionMutation, t],
   )
 
   const handleSaveCycleConfig = useCallback(
@@ -540,8 +544,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handlePushActivation = useCallback(() => {
     if (!supportsRemotePushNotifications) {
       Alert.alert(
-        'Requiere development build',
-        'Expo Go ya no soporta notificaciones push remotas desde SDK 53. Abre la app en un development build para activarlas.',
+        t('settings:push.devBuildTitle'),
+        t('settings:push.devBuildMessage'),
       )
       return
     }
@@ -553,11 +557,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           void hasPushSubscriptionQuery.refetch()
         },
         onError: (error: unknown) => {
-          void showError(error, 'No se pudo activar push.')
+          void showError(error, t('settings:errors.enablePush'))
         },
       },
     )
-  }, [enablePushMutation, familyId, hasPushSubscriptionQuery, showError, userId])
+  }, [enablePushMutation, familyId, hasPushSubscriptionQuery, showError, userId, t])
 
   // Invite sheet — generates a single-use 8-char code on open
   // (server-side, with 10/min rate limit) and shows it big with
@@ -606,11 +610,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // hacerlo con un solo tap (Sprint B · B1). El skip-window de 5min
   // del hook evita doble fricción si el user ya re-autenticó hace poco.
   const runLeaveFamily = useCallback(async () => {
-    const ok = await leaveFamilyReauth.requireReauth('Salir del hogar')
+    const ok = await leaveFamilyReauth.requireReauth(t('settings:leaveHousehold.title'))
     if (!ok) return
     leaveFamilyMutation.mutate(undefined, {
       onError: (error: unknown) => {
-        void showError(error, 'No se pudo desvincular la cuenta del grupo.')
+        void showError(error, t('settings:errors.leaveFamily'))
       },
       onSuccess: () => {
         void triggerHaptic('success')
@@ -618,7 +622,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         router.replace('/(app)/onboarding')
       },
     })
-  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError])
+  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError, t])
 
   // Reset de cuenta INDIVIDUAL. Una cuenta solo es internamente una `families`
   // kind='solo' con un único miembro, así que el MISMO RPC leave_current_family
@@ -628,11 +632,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // completar (useCompleteOnboarding). Reusamos la mutation tal cual; solo cambia
   // el copy del confirm. No hace falta backend nuevo.
   const runResetAccount = useCallback(async () => {
-    const ok = await leaveFamilyReauth.requireReauth('Reiniciar mi cuenta')
+    const ok = await leaveFamilyReauth.requireReauth(t('settings:resetAccount.title'))
     if (!ok) return
     leaveFamilyMutation.mutate(undefined, {
       onError: (error: unknown) => {
-        void showError(error, 'No se pudo reiniciar la cuenta.')
+        void showError(error, t('settings:errors.resetAccount'))
       },
       onSuccess: () => {
         void triggerHaptic('success')
@@ -640,7 +644,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         router.replace('/(app)/onboarding')
       },
     })
-  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError])
+  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError, t])
 
   const handleConfirmResetAccount = useCallback(() => {
     void triggerHaptic('warning')
@@ -658,66 +662,65 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     // comunicamos antes — y de paso implica que re-entrar no reinicia nada.
     const ent = entitlementQuery.data
     const willLoseAccess = ent?.source === 'family' && ent.trialDaysLeft === 0
-    const baseMsg =
-      'Vas a salir del grupo familiar actual. Tus gastos y configuración compartida quedan con el hogar — sólo se desvincula tu cuenta.'
+    const baseMsg = t('settings:leaveHousehold.baseMessage')
     const message = willLoseAccess
-      ? `${baseMsg}\n\nAdemás, tu acceso completo ya finalizó: al salir te quedas sin plan y deberás suscribirte para seguir usando la app.`
+      ? `${baseMsg}\n\n${t('settings:leaveHousehold.lostAccessNote')}`
       : baseMsg
     Alert.alert(
-      'Salir del hogar',
+      t('settings:leaveHousehold.title'),
       message,
       [
-        { style: 'cancel', text: 'Cancelar' },
+        { style: 'cancel', text: t('common:actions.cancel') },
         {
           style: 'destructive',
-          text: 'Salir',
+          text: t('settings:leaveHousehold.leave'),
           onPress: () => void runLeaveFamily(),
         },
       ],
     )
-  }, [isOwnerDestroyFlow, runLeaveFamily, entitlementQuery.data])
+  }, [isOwnerDestroyFlow, runLeaveFamily, entitlementQuery.data, t])
 
   const handleConfirmConvertToSolo = useCallback(() => {
     Alert.alert(
-      'Pasar a cuenta individual',
-      'Se quitará a los demás miembros y tendrán que volver a configurar su cuenta. Los gastos y la configuración compartida quedan contigo. Esta acción no se puede deshacer.',
+      t('settings:convertToSolo.title'),
+      t('settings:convertToSolo.message'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Pasar a individual',
+          text: t('settings:convertToSolo.confirm'),
           style: 'destructive',
           onPress: () =>
             convertToSolo.mutate(undefined, {
-              onError: (error) => void showError(error, 'No pudimos cambiar el tipo de cuenta.'),
+              onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
             }),
         },
       ],
     )
-  }, [convertToSolo, showError])
+  }, [convertToSolo, showError, t])
 
   const handleConfirmConvertToFamily = useCallback(() => {
     Alert.alert(
-      'Compartir con tu familia',
-      'Tu cuenta pasa a modo familiar. Vas a poder invitar a otras personas y compartir los gastos.',
+      t('settings:convertToFamily.title'),
+      t('settings:convertToFamily.message'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Activar',
+          text: t('settings:convertToFamily.confirm'),
           onPress: () =>
             convertToFamily.mutate(undefined, {
-              onError: (error) => void showError(error, 'No pudimos cambiar el tipo de cuenta.'),
+              onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
             }),
         },
       ],
     )
-  }, [convertToFamily, showError])
+  }, [convertToFamily, showError, t])
 
   const handleConfirmLogout = useCallback(() => {
-    Alert.alert('Cerrar sesión', 'Vas a salir de la app en este dispositivo.', [
-      { style: 'cancel', text: 'Cancelar' },
+    Alert.alert(t('settings:logout.title'), t('settings:logout.message'), [
+      { style: 'cancel', text: t('common:actions.cancel') },
       {
         style: 'destructive',
-        text: 'Salir',
+        text: t('settings:leaveHousehold.leave'),
         onPress: () => {
           // Logout va directo a welcome sin pasar por el WarmFernLogo
           // splash. El splash (auth-transition-splash) tiene piso de
@@ -730,13 +733,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           // AppEntryGate ve session=null + Keychain limpio →
           // Redirect a /(auth)/welcome direct.
           void logoutSession({
-            onError: (error) => void showError(error, 'No se pudo cerrar sesión.'),
+            onError: (error) => void showError(error, t('settings:errors.logout')),
             onSuccess: () => router.replace('/'),
           })
         },
       },
     ])
-  }, [router, showError])
+  }, [router, showError, t])
 
   // Footer "Manifiesto X.Y.Z (build N)" — Apple Review usa el build
   // number para identificar la versión que está revisando.
@@ -803,18 +806,20 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       ? currencyFormatter.format(myContribution)
       : familyMembersDetailQuery.isLoading
         ? '…'
-        : 'Definir'
+        : t('settings:rowValue.define')
   const householdTotalSubtitle =
     financeSnapshot.monthlyIncome > 0
-      ? `Total del hogar: ${currencyFormatter.format(financeSnapshot.monthlyIncome)}`
+      ? t('settings:household.total', {
+          amount: currencyFormatter.format(financeSnapshot.monthlyIncome),
+        })
       : undefined
   // Conversión a dólares (toggle + moneda). Sin asumir ARS: la moneda puede ser
   // null (cuenta que todavía no eligió). El rate en uso vive dentro del sheet.
   const usdRateEnabled = financeSnapshot.usdRateEnabled ?? false
   const currencyValue = financeSnapshot.localCurrency ?? null
   const conversionRowValue = !usdRateEnabled
-    ? 'Desactivada'
-    : (currencyValue ?? 'Elige tu moneda')
+    ? t('settings:conversion.rowDisabled')
+    : (currencyValue ?? t('settings:conversion.chooseCurrency'))
   const currentCycleConfig = useMemo<FinanceCycleConfig>(
     () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
     [dashboard.familyFinanceQuery.data],
@@ -823,22 +828,31 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const savingsPercentValue = `${financeSnapshot.savingsGoalPercent}%`
   const bufferValueLabel =
     financeSnapshot.dailyBudgetBufferMode === 'none'
-      ? 'Sin colchón'
+      ? t('settings:buffer.none')
       : financeSnapshot.dailyBudgetBufferMode === 'percent'
-        ? `${financeSnapshot.dailyBudgetBufferValue}% diario`
-        : `${currencyFormatter.format(financeSnapshot.dailyBudgetBufferValue)}/día`
+        ? t('settings:buffer.percentDaily', { value: financeSnapshot.dailyBudgetBufferValue })
+        : t('settings:buffer.perDay', {
+            amount: currencyFormatter.format(financeSnapshot.dailyBudgetBufferValue),
+          })
   const savingsGoalSubtitle = savingsGoalQuery.data
     ? savingsGoalQuery.data.isActive
       ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
-      : `Inactiva · ${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title}`
-    : 'Sin meta configurada'
+      : t('settings:savingsGoal.inactiveSubtitle', {
+          emoji: savingsGoalQuery.data.emoji,
+          title: savingsGoalQuery.data.title,
+        })
+    : t('settings:savingsGoal.noGoal')
   const pushValue = !supportsPushActivation
-    ? 'Dev build'
+    ? t('settings:push.devBuildValue')
     : hasPushSubscriptionQuery.data
-      ? 'Activo'
-      : 'Activar'
+      ? t('settings:push.active')
+      : t('settings:push.activate')
   const themeValue =
-    preference === 'system' ? 'Sistema' : preference === 'light' ? 'Claro' : 'Oscuro'
+    preference === 'system'
+      ? t('settings:theme.system')
+      : preference === 'light'
+        ? t('settings:theme.light')
+        : t('settings:theme.dark')
 
   // Chip de plan/estado para la hero de marca (forest). Derivado del
   // entitlement resuelto server-side. Compliance billing: el copy del
@@ -877,23 +891,23 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     if (ent.source === 'trial') {
       const days = ent.daysLeft ?? 0
       return {
-        label: `Acceso completo · ${days} ${days === 1 ? 'día' : 'días'}`,
+        label: t('settings:planChip.trial', { count: days }),
         ...TONES.positive,
       }
     }
     // 2) Sin acceso o plan gratuito → "Sin plan".
     if (!ent.hasAccess || ent.source === 'free') {
-      return { label: 'Sin plan', ...TONES.neutral }
+      return { label: t('settings:planChip.noPlan'), ...TONES.neutral }
     }
     // 3) Resto (mvp/comped/family/grace/no-renew/active) → variante.
     const variant = membershipVariant(ent)
     const LABELS: Record<string, string> = {
-      MVP: 'MVP',
-      'CORTESÍA': 'Cortesía',
-      'MIEMBRO DEL HOGAR': 'Miembro del hogar',
-      'PROBLEMA DE PAGO': 'Problema de pago',
-      'NO SE RENOVARÁ': 'No se renueva',
-      ACTIVA: 'Activa',
+      MVP: t('settings:planChip.mvp'),
+      'CORTESÍA': t('settings:planChip.comped'),
+      'MIEMBRO DEL HOGAR': t('settings:planChip.member'),
+      'PROBLEMA DE PAGO': t('settings:planChip.paymentIssue'),
+      'NO SE RENOVARÁ': t('settings:planChip.noRenew'),
+      ACTIVA: t('settings:planChip.active'),
     }
     const label = LABELS[variant.statusLabel] ?? variant.statusLabel
     const tone =
@@ -903,7 +917,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           ? TONES.neutral
           : TONES.positive
     return { label, ...tone }
-  }, [entitlementQuery.data])
+  }, [entitlementQuery.data, t])
 
   return (
     <Screen
@@ -912,10 +926,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       contentContainerStyle={styles.screenContent}
       subtitle={
         isSolo
-          ? 'Tu perfil y la configuración base de tu cuenta.'
-          : 'Preferencias del hogar, tu perfil y la configuración base de la familia.'
+          ? t('settings:screen.subtitleSolo')
+          : t('settings:screen.subtitleFamily')
       }
-      title="Ajustes"
+      title={t('settings:screen.title')}
     >
       {/* Mute the 19 descendant RiseViews during the ~340ms native
           stack push. Without this gate the screen entry overlays 19
@@ -934,10 +948,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             description={getErrorMessage(
               settingsLoadError,
               isSolo
-                ? 'No pudimos cargar ajustes, métricas y preferencias de tu cuenta.'
-                : 'No pudimos cargar ajustes, métricas y preferencias del hogar.',
+                ? t('settings:loadError.descriptionSolo')
+                : t('settings:loadError.descriptionFamily'),
             )}
-            title="No pudimos abrir ajustes"
+            title={t('settings:loadError.title')}
             onAction={() => {
               void Promise.all([
                 profileQuery.refetch(),
@@ -1009,17 +1023,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     ) : null}
                   </View>
                   <Text style={[styles.heroEyebrow, { color: theme.colors.heroText }]}>
-                    {isSolo ? 'TU CUENTA' : 'TU HOGAR'}
+                    {isSolo ? t('settings:hero.eyebrowSolo') : t('settings:hero.eyebrowFamily')}
                   </Text>
                   <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
-                    {displayName.trim() || 'Perfil sin nombre'}
+                    {displayName.trim() || t('settings:hero.unnamedProfile')}
                   </Text>
                   <Text style={[styles.heroSub, { color: theme.colors.heroMuted }]}>
                     {isSolo
-                      ? 'Tu cuenta personal'
+                      ? t('settings:hero.personalAccount')
                       : totalMembers === 1
-                        ? 'Hogar individual'
-                        : `Hogar de ${totalMembers} ${totalMembers === 1 ? 'persona' : 'personas'}`}
+                        ? t('settings:hero.soloHousehold')
+                        : t('settings:hero.householdOfN', { count: totalMembers })}
                   </Text>
                   {isOwner && !isSolo ? (
                     <View
@@ -1039,12 +1053,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       <Text
                         style={[styles.ownerText, { color: theme.colors.heroAccent }]}
                       >
-                        Eres el dueño de la familia
+                        {t('settings:hero.ownerPill')}
                       </Text>
                     </View>
                   ) : role === 'member' ? (
                     <Text style={[styles.memberHint, { color: theme.colors.heroMuted2 }]}>
-                      Eres miembro. Solo el dueño puede editar el hogar.
+                      {t('settings:hero.memberHint')}
                     </Text>
                   ) : null}
                 </View>
@@ -1053,24 +1067,24 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 1. PERFIL */}
             <RiseView delay={80}>
-              <SettingsGroup title="Perfil">
+              <SettingsGroup title={t('settings:profile.title')}>
                 <SettingsRow
                   icon="person"
-                  label="Nombre visible"
+                  label={t('settings:profile.displayName')}
                   onPress={() => setNameSheetOpen(true)}
-                  value={displayName.trim() || 'Definir'}
+                  value={displayName.trim() || t('settings:rowValue.define')}
                 />
                 <SettingsRow
                   icon="face"
-                  label="Avatar"
+                  label={t('settings:profile.avatar')}
                   onPress={() => setAvatarSheetOpen(true)}
-                  value={profileQuery.data?.avatar_animal ?? 'Elegir'}
+                  value={profileQuery.data?.avatar_animal ?? t('settings:rowValue.choose')}
                 />
                 <SettingsRow
                   icon="mail-outline"
                   isLast
-                  label="Email"
-                  value={session?.user.email ?? 'Sin email'}
+                  label={t('settings:profile.email')}
+                  value={session?.user.email ?? t('settings:profile.noEmail')}
                 />
               </SettingsGroup>
             </RiseView>
@@ -1081,14 +1095,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 footer={
                   isOwner
                     ? undefined
-                    : 'Estos valores los configura el dueño de la familia.'
+                    : t('settings:household.ownerOnlyFooter')
                 }
-                title={isSolo ? 'Tu cuenta' : 'Hogar'}
+                title={isSolo ? t('settings:household.titleSolo') : t('settings:household.title')}
               >
                 <SettingsRow
                   helper={isSolo ? undefined : householdTotalSubtitle}
                   icon="attach-money"
-                  label={isSolo ? 'Ingreso mensual' : 'Mi aporte mensual'}
+                  label={isSolo ? t('settings:household.monthlyIncome') : t('settings:household.myContribution')}
                   onPress={() => setIncomeSheetOpen(true)}
                   value={myContributionValue}
                 />
@@ -1096,16 +1110,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
                   icon="autorenew"
-                  label="Ciclo de cobro"
+                  label={t('settings:household.payCycle')}
                   onPress={() => setCycleConfigSheetOpen(true)}
                   value={cycleConfigValue}
                 />
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
-                  helper="Muestra tu saldo convertido a dólares según tu moneda."
+                  helper={t('settings:household.usdRateHelper')}
                   icon="currency-exchange"
-                  label="Cotización en dólares"
+                  label={t('settings:household.usdRate')}
                   onPress={() => setConversionSheetOpen(true)}
                   value={conversionRowValue}
                 />
@@ -1113,7 +1127,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
                   icon="savings"
-                  label="Meta de ahorro %"
+                  label={t('settings:household.savingsPercent')}
                   onPress={() => setSavingsSheetOpen(true)}
                   value={savingsPercentValue}
                 />
@@ -1122,7 +1136,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   disabledHint={DISABLED_HINT}
                   icon="shield"
                   isLast
-                  label="Buffer diario"
+                  label={t('settings:household.dailyBuffer')}
                   onPress={() => setBufferSheetOpen(true)}
                   value={bufferValueLabel}
                 />
@@ -1136,7 +1150,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 desaparezca visualmente del Settings. */}
             {Number(dashboard.familyFinanceQuery.data?.monthly_reserve_amount ?? 0) > 0 ? (
               <RiseView delay={200}>
-                <SettingsGroup title="Reserva acumulada">
+                <SettingsGroup title={t('settings:reserve.title')}>
                   <View style={styles.reserveInner}>
                     <Text
                       style={[styles.reserveAmount, { color: theme.colors.text }]}
@@ -1151,7 +1165,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     <Text
                       style={[styles.reserveSub, { color: theme.colors.textMuted }]}
                     >
-                      Plata guardada del cierre de meses anteriores.
+                      {t('settings:reserve.subtitle')}
                     </Text>
                   </View>
                 </SettingsGroup>
@@ -1160,14 +1174,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 3. META DE AHORRO */}
             <RiseView delay={260}>
-              <SettingsGroup title="Metas de ahorro">
+              <SettingsGroup title={t('settings:savingsGoal.groupTitle')}>
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
                   helper={savingsGoalSubtitle}
                   icon="flag"
                   isLast
-                  label="Meta"
+                  label={t('settings:savingsGoal.rowLabel')}
                   onPress={() => router.push('/(app)/savings-goal')}
                 />
               </SettingsGroup>
@@ -1175,35 +1189,35 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 4. PLAN DEL HOGAR */}
             <RiseView delay={320}>
-              <SettingsGroup title="Tu plan">
+              <SettingsGroup title={t('settings:plan.groupTitle')}>
                 <SettingsRow
-                  helper="Tu suscripción, las personas incluidas y la facturación."
+                  helper={t('settings:plan.helper')}
                   icon="workspace-premium"
                   isLast
-                  label="Plan del hogar"
+                  label={t('settings:plan.rowLabel')}
                   onPress={() => router.push('/settings/plan' as never)}
-                  value="Ver planes"
+                  value={t('settings:plan.rowValue')}
                 />
               </SettingsGroup>
             </RiseView>
 
             {/* 5. TU PROGRESO — LOGROS + EDICIONES */}
             <RiseView delay={380}>
-              <SettingsGroup title="Tu progreso">
+              <SettingsGroup title={t('settings:progress.groupTitle')}>
                 <SettingsRow
-                  helper="Hitos que vas desbloqueando con cada acción dentro de Manifiesto."
+                  helper={t('settings:progress.achievementsHelper')}
                   icon="emoji-events"
-                  label="Logros"
+                  label={t('settings:progress.achievements')}
                   onPress={() => router.push('/settings/achievements' as never)}
-                  value="Ver galería"
+                  value={t('settings:progress.achievementsValue')}
                 />
                 <SettingsRow
-                  helper="Tu archivo de Manifiestos. Cada ciclo cerrado queda como una edición que puedes revivir."
+                  helper={t('settings:progress.editionsHelper')}
                   icon="auto-stories"
                   isLast
-                  label="Ediciones"
+                  label={t('settings:progress.editions')}
                   onPress={() => router.push('/settings/editions' as never)}
-                  value="Ver archivo"
+                  value={t('settings:progress.editionsValue')}
                 />
               </SettingsGroup>
             </RiseView>
@@ -1211,11 +1225,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* 6. ASISTENTE — del aquí en adelante todos comparten delay 420
                 (aparecen juntos, están below-the-fold). */}
             <RiseView delay={420}>
-              <SettingsGroup title="Asistente">
+              <SettingsGroup title={t('settings:assistant.groupTitle')}>
                 <SettingsRow
                   icon="auto-awesome"
                   isLast
-                  label="Preferencias del asistente"
+                  label={t('settings:assistant.preferences')}
                   onPress={() => router.push('/settings/asistente' as never)}
                 />
               </SettingsGroup>
@@ -1223,17 +1237,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 7. NOTIFICACIONES */}
             <RiseView delay={420}>
-              <SettingsGroup title="Notificaciones">
+              <SettingsGroup title={t('settings:notifications.groupTitle')}>
                 <SettingsRow
                   icon="tune"
-                  label="Gestionar notificaciones"
+                  label={t('settings:notifications.manage')}
                   onPress={() => router.push('/settings/notifications' as never)}
                 />
                 <SettingsRow
                   icon="notifications-active"
                   isLast
                   isLoading={supportsPushActivation && enablePushMutation.isPending}
-                  label="Habilitar push"
+                  label={t('settings:notifications.enablePush')}
                   onPress={handlePushActivation}
                   value={pushValue}
                 />
@@ -1258,27 +1272,29 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               <SettingsGroup
                 footer={
                   protectionPrompt.visible
-                    ? 'Tu cuenta no está protegida. Activa Face ID o crea un PIN para que solo tú puedas entrar.'
+                    ? t('settings:fastAccess.unprotectedFooter')
                     : biometricState.isAvailable
-                      ? `Usa ${biometricState.label} para entrar más rápido la próxima vez.`
-                      : `Configura ${biometricState.label.toLowerCase()} en los ajustes del sistema para activarlo.`
+                      ? t('settings:fastAccess.availableFooter', { method: biometricState.label })
+                      : t('settings:fastAccess.unavailableFooter', {
+                          method: biometricState.label.toLowerCase(),
+                        })
                 }
-                title="Acceso rápido"
+                title={t('settings:fastAccess.groupTitle')}
               >
                 <SettingsRow
                   disabled={!biometricState.isAvailable}
                   icon="fingerprint"
                   isLoading={isBiometricBusy}
-                  label={`Entrar con ${biometricState.label}`}
+                  label={t('settings:fastAccess.enterWith', { method: biometricState.label })}
                   onPress={handleBiometricToggle}
                   value={biometricRowValue}
                 />
                 <SettingsRow
                   icon="dialpad"
                   isLast
-                  label="PIN de acceso"
+                  label={t('settings:fastAccess.pinLabel')}
                   onPress={handlePinPress}
-                  value={pinIsSet ? 'Activado' : 'Desactivado'}
+                  value={pinIsSet ? t('settings:rowValue.enabled') : t('settings:rowValue.disabled')}
                 />
               </SettingsGroup>
               {protectionPrompt.visible ? (
@@ -1290,14 +1306,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 9. APARIENCIA */}
             <RiseView delay={420}>
-              <SettingsGroup footer={`Tema actual: ${themeValue}.`} title="Apariencia">
+              <SettingsGroup footer={t('settings:theme.footer', { theme: themeValue })} title={t('settings:theme.groupTitle')}>
                 <View style={styles.appearanceInner}>
                   <SegmentedControl
                     onChange={setPreference}
                     options={[
-                      { label: 'Sistema', value: 'system' },
-                      { label: 'Claro', value: 'light' },
-                      { label: 'Oscuro', value: 'dark' },
+                      { label: t('settings:theme.system'), value: 'system' },
+                      { label: t('settings:theme.light'), value: 'light' },
+                      { label: t('settings:theme.dark'), value: 'dark' },
                     ]}
                     value={preference}
                   />
@@ -1339,20 +1355,20 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               <SettingsGroup
                 footer={
                   motionPreference === 'always'
-                    ? 'Las animaciones decorativas están desactivadas siempre.'
+                    ? t('settings:motion.footerAlways')
                     : motionPreference === 'never'
-                      ? 'Las animaciones decorativas se ejecutan aunque el dispositivo sea más lento.'
-                      : 'Se desactivan automáticamente en dispositivos antiguos para mantener la fluidez.'
+                      ? t('settings:motion.footerNever')
+                      : t('settings:motion.footerAuto')
                 }
-                title="Animaciones"
+                title={t('settings:motion.groupTitle')}
               >
                 <View style={styles.appearanceInner}>
                   <SegmentedControl
                     onChange={setMotionPreference}
                     options={[
-                      { label: 'Reducir', value: 'always' },
-                      { label: 'Auto', value: 'auto' },
-                      { label: 'Todas', value: 'never' },
+                      { label: t('settings:motion.reduce'), value: 'always' },
+                      { label: t('settings:motion.auto'), value: 'auto' },
+                      { label: t('settings:motion.all'), value: 'never' },
                     ]}
                     value={motionPreference}
                   />
@@ -1363,33 +1379,33 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* 11. AYUDA · TUTORIALES */}
             <RiseView delay={420}>
               <SettingsGroup
-                title="Ayuda"
-                footer="Vuelve a ver cualquier tutorial cuando quieras."
+                title={t('settings:help.groupTitle')}
+                footer={t('settings:help.footer')}
               >
                 <SettingsRow
                   icon="home"
-                  label="Ver tutorial de Inicio"
+                  label={t('settings:help.tutorialHome')}
                   onPress={() => void handleRewatchTour(TOUR_KEYS.home)}
                 />
                 <SettingsRow
                   icon="receipt-long"
-                  label="Ver tutorial de Gastos"
+                  label={t('settings:help.tutorialExpenses')}
                   onPress={() => void handleRewatchTour(TOUR_KEYS.gastos)}
                 />
                 <SettingsRow
                   icon="event-repeat"
-                  label="Ver tutorial de Fijos"
+                  label={t('settings:help.tutorialFixed')}
                   onPress={() => void handleRewatchTour(TOUR_KEYS.fijos)}
                 />
                 <SettingsRow
                   icon="insights"
-                  label="Ver tutorial de Control"
+                  label={t('settings:help.tutorialControl')}
                   onPress={() => void handleRewatchTour(TOUR_KEYS.control)}
                 />
                 <SettingsRow
                   icon="restart-alt"
-                  label="Volver a ver todos los tutoriales"
-                  helper="Resetea los 4 tutoriales — el próximo ingreso a cada pantalla los vuelve a mostrar."
+                  label={t('settings:help.rewatchAll')}
+                  helper={t('settings:help.rewatchAllHelper')}
                   onPress={() => void handleResetAllTours()}
                   isLast
                 />
@@ -1400,12 +1416,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 La pantalla dedicada centraliza el footer "Hecho con ♥",
                 la versión y el contacto que antes estaban dispersos. */}
             <RiseView delay={420}>
-              <SettingsGroup title="Información">
+              <SettingsGroup title={t('settings:info.groupTitle')}>
                 <SettingsRow
-                  helper="Versión, política de privacidad, términos y soporte."
+                  helper={t('settings:info.aboutHelper')}
                   icon="info-outline"
                   isLast
-                  label="Acerca de"
+                  label={t('settings:info.about')}
                   onPress={() => router.push('/(app)/settings/about')}
                 />
               </SettingsGroup>
@@ -1418,17 +1434,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {!isSolo ? (
             <>
             <RiseView delay={420}>
-              <SettingsGroup title="Familia">
+              <SettingsGroup title={t('settings:family.groupTitle')}>
                 <SettingsRow
                   icon="person-add"
-                  label="Invitar a alguien"
-                  helper="Genera un código de un solo uso, válido por 7 días."
+                  label={t('settings:family.invite')}
+                  helper={t('settings:family.inviteHelper')}
                   onPress={handleOpenShareInvite}
                 />
                 {isOwner ? (
                   <SettingsRow
                     icon="group"
-                    label="Gestionar miembros"
+                    label={t('settings:family.manageMembers')}
                     onPress={() => router.push('/settings/family-admin' as never)}
                   />
                 ) : null}
@@ -1436,12 +1452,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   destructive
                   helper={
                     isOwnerDestroyFlow
-                      ? 'Como eres el dueño, salirte cierra el hogar para todos.'
+                      ? t('settings:family.ownerLeaveHelper')
                       : undefined
                   }
                   icon={isOwnerDestroyFlow ? 'delete-forever' : 'logout'}
                   isLast
-                  label={isOwnerDestroyFlow ? 'Eliminar el hogar' : 'Salir del hogar'}
+                  label={isOwnerDestroyFlow ? t('settings:family.deleteHousehold') : t('settings:family.leaveHousehold')}
                   onPress={handleConfirmLeave}
                 />
                 {/*
@@ -1457,13 +1473,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             </RiseView>
             {isOwner ? (
               <RiseView delay={440}>
-                <SettingsGroup title="Tipo de cuenta">
+                <SettingsGroup title={t('settings:accountType.groupTitle')}>
                   <SettingsRow
                     destructive
                     icon="person-remove"
                     isLast
-                    label="Pasar a cuenta individual"
-                    helper="Quita a los demás miembros y deja la cuenta solo para ti."
+                    label={t('settings:accountType.toSolo')}
+                    helper={t('settings:accountType.toSoloHelper')}
                     onPress={handleConfirmConvertToSolo}
                   />
                 </SettingsGroup>
@@ -1473,26 +1489,26 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             ) : (
               <>
                 <RiseView delay={420}>
-                  <SettingsGroup title="Tipo de cuenta">
+                  <SettingsGroup title={t('settings:accountType.groupTitle')}>
                     <SettingsRow
                       icon="group-add"
                       isLast
-                      label="Compartir con mi familia o pareja"
-                      helper="Activa el modo familiar para invitar y compartir gastos."
+                      label={t('settings:accountType.toFamily')}
+                      helper={t('settings:accountType.toFamilyHelper')}
                       onPress={handleConfirmConvertToFamily}
                     />
                   </SettingsGroup>
                 </RiseView>
                 <RiseView delay={440}>
                   <SettingsGroup
-                    footer="Borra tus gastos, fijos, metas y configuración, y reinicia el onboarding desde cero. No se puede deshacer."
-                    title="Reiniciar"
+                    footer={t('settings:resetAccount.footer')}
+                    title={t('settings:resetAccount.groupTitle')}
                   >
                     <SettingsRow
                       destructive
                       icon="restart-alt"
                       isLast
-                      label="Reiniciar mi cuenta"
+                      label={t('settings:resetAccount.rowLabel')}
                       onPress={handleConfirmResetAccount}
                     />
                   </SettingsGroup>
@@ -1503,12 +1519,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             {/* 14. SUPER ADMIN — solo kontosmario@gmail.com. */}
             {isSuperAdmin ? (
               <RiseView delay={420}>
-                <SettingsGroup title="Super admin">
+                <SettingsGroup title={t('settings:superAdmin.groupTitle')}>
                   <SettingsRow
-                    helper="Activa acceso MVP (completo, de por vida) por email."
+                    helper={t('settings:superAdmin.helper')}
                     icon="admin-panel-settings"
                     isLast
-                    label="Cuentas MVP"
+                    label={t('settings:superAdmin.rowLabel')}
                     onPress={() => router.push('/(app)/settings/admin' as never)}
                   />
                 </SettingsGroup>
@@ -1517,18 +1533,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* 15. CUENTA */}
             <RiseView delay={420}>
-              <SettingsGroup title="Cuenta">
+              <SettingsGroup title={t('settings:account.groupTitle')}>
                 <SettingsRow
                   icon="power-settings-new"
-                  label="Cerrar sesión"
+                  label={t('settings:account.logout')}
                   onPress={handleConfirmLogout}
                 />
                 <SettingsRow
                   destructive
-                  helper="Borra tus datos en 30 días. Puedes cancelar antes."
+                  helper={t('settings:account.deleteHelper')}
                   icon="delete-forever"
                   isLast
-                  label="Eliminar cuenta"
+                  label={t('settings:account.delete')}
                   // La pantalla dedicada `delete-account` contiene el
                   // disclaimer extendido + el step de re-auth (PIN /
                   // biometría) que antes vivían en el sheet. El sheet

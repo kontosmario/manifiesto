@@ -1,5 +1,6 @@
 import { Alert } from 'react-native'
 import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
 import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
@@ -47,6 +48,7 @@ interface Props {
  * the Settings list — same defaults, same mutations, same haptics.
  */
 export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
+  const { t } = useTranslation()
   const active = useActiveSettingsModal()
 
   // Data hooks (mirror settings-screen.tsx). All cached by React Query
@@ -112,8 +114,8 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
 
   const showError = useCallback((error: unknown, fallback: string) => {
     void triggerHaptic('error')
-    Alert.alert('No pudimos guardar', getErrorMessage(error, fallback))
-  }, [])
+    Alert.alert(t('settings:notif.saveErrorTitle'), getErrorMessage(error, fallback))
+  }, [t])
 
   const saveFinanceSnapshot = useCallback(
     (next: FamilyFinanceInputSnapshot, onDone: () => void) => {
@@ -123,11 +125,11 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
           onDone()
         },
         onError: (error: unknown) => {
-          showError(error, 'No se pudieron guardar las métricas del hogar.')
+          showError(error, t('settings:errors.saveHouseholdMetrics'))
         },
       })
     },
-    [showError, upsertFamilyFinanceMutation],
+    [showError, upsertFamilyFinanceMutation, t],
   )
 
   const handleSaveMyContribution = useCallback(
@@ -137,10 +139,10 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
           void triggerHaptic('success')
           closeSettingsModal()
         },
-        onError: (error: unknown) => showError(error, 'No se pudo actualizar tu aporte.'),
+        onError: (error: unknown) => showError(error, t('settings:errors.updateContribution')),
       })
     },
-    [showError, updateMyContributionMutation],
+    [showError, updateMyContributionMutation, t],
   )
 
   const handleSavePayday = useCallback(
@@ -194,10 +196,10 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
           void triggerHaptic('success')
           closeSettingsModal()
         },
-        onError: (error: unknown) => showError(error, 'No se pudo actualizar tu nombre.'),
+        onError: (error: unknown) => showError(error, t('settings:errors.updateNameAlt')),
       })
     },
-    [showError, updateDisplayNameMutation],
+    [showError, updateDisplayNameMutation, t],
   )
 
   const handleSaveAvatar = useCallback(
@@ -207,10 +209,10 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
           void triggerHaptic('success')
           closeSettingsModal()
         },
-        onError: (error: unknown) => showError(error, 'No se pudo actualizar el avatar.'),
+        onError: (error: unknown) => showError(error, t('settings:errors.updateAvatar')),
       })
     },
-    [showError, updateAvatarMutation],
+    [showError, updateAvatarMutation, t],
   )
 
   return (

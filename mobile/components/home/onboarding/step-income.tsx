@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CycleConfigSection } from '@/components/finance/cycle-config-section'
@@ -24,15 +25,16 @@ export function StepIncome({
   amountCardRef,
 }: StepIncomeProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const parsed = parsePrice(monthlyIncomeRaw)
   const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 
   return (
     <View style={styles.stack}>
       <RiseView>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Tu sueldo base</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{t('onboarding:income.title')}</Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Lo usamos para calcular tu presupuesto del día.
+          {t('onboarding:income.subcopy')}
         </Text>
       </RiseView>
 
@@ -42,18 +44,18 @@ export function StepIncome({
             amount={amount}
             isActive={isNumpadActive}
             onPress={onRequestNumpad}
-            label="Sueldo mensual"
+            label={t('onboarding:income.amountLabel')}
           />
         </View>
       </RiseView>
 
       <RiseView delay={140}>
         <Text style={[styles.eyebrow, styles.dayEyebrow, { color: theme.colors.textMuted }]}>
-          TU CICLO DE COBRO
+          {t('onboarding:income.cycleEyebrow')}
         </Text>
         <CycleConfigSection value={cycleConfig} onChange={onChangeCycleConfig} />
         <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-          Siempre puedes editarlo desde Ajustes.
+          {t('onboarding:income.cycleHint')}
         </Text>
       </RiseView>
     </View>

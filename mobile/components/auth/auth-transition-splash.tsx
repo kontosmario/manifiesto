@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   FadeIn,
@@ -198,6 +199,7 @@ interface ErrorFallbackProps {
 }
 
 function ErrorFallback({ errorKind }: ErrorFallbackProps) {
+  const { t } = useTranslation()
   const [isChecking, setChecking] = useState(false)
 
   const handleRetry = async () => {
@@ -238,14 +240,14 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
   // covers the user's primary need: "tell me what's wrong + let me
   // retry".
   const title = errorKind === 'network'
-    ? 'Sin conexión a internet'
+    ? t('auth:transitionSplash.errorNetworkTitle')
     : errorKind === 'timeout'
-      ? 'La conexión está demorando'
-      : 'No pudimos cargar tu espacio'
+      ? t('auth:transitionSplash.errorTimeoutTitle')
+      : t('auth:transitionSplash.errorUnknownTitle')
 
   const body = errorKind === 'unknown'
-    ? 'Algo no respondió. Intenta de nuevo.'
-    : 'Revisa tu wifi o datos móviles e intenta de nuevo.'
+    ? t('auth:transitionSplash.errorUnknownBody')
+    : t('auth:transitionSplash.errorNetworkBody')
 
   return (
     <Animated.View
@@ -261,7 +263,7 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
       <Text style={styles.errorBody}>{body}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Reintentar"
+        accessibilityLabel={t('auth:transitionSplash.retry')}
         accessibilityState={{ busy: isChecking }}
         onPress={() => {
           void handleRetry()
@@ -276,7 +278,7 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
         ]}
       >
         <Text style={styles.retryLabel}>
-          {isChecking ? 'Reintentando…' : 'Reintentar'}
+          {isChecking ? t('auth:transitionSplash.retrying') : t('auth:transitionSplash.retry')}
         </Text>
       </Pressable>
     </Animated.View>

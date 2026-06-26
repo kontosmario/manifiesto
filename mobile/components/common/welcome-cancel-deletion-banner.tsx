@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { getLastUserProfile } from '@/lib/last-user-cache'
 import { radii } from '@/theme/palette'
@@ -48,6 +49,7 @@ export function WelcomeCancelDeletionBanner({
 }: WelcomeCancelDeletionBannerProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
 
@@ -77,8 +79,8 @@ export function WelcomeCancelDeletionBanner({
   // panic them, just route them to login where the server-side
   // refresh will resolve it.
   const accessibilityMessage = formatted
-    ? `Tenías una baja agendada para el ${formatted}. Inicia sesión para verificar el estado.`
-    : 'Tenías una baja de cuenta agendada. Inicia sesión para verificar el estado.'
+    ? t('states:welcomeAccountDeletion.a11yDated', { date: formatted })
+    : t('states:welcomeAccountDeletion.a11yUndated')
 
   return (
     <View
@@ -95,28 +97,27 @@ export function WelcomeCancelDeletionBanner({
       <View style={styles.row}>
         <MaterialIcons color={theme.colors.danger} name="warning-amber" size={22} />
         <View style={styles.copy}>
-          <Text style={styles.title}>Posible baja de cuenta agendada</Text>
+          <Text style={styles.title}>{t('states:welcomeAccountDeletion.title')}</Text>
           <Text style={styles.body}>
             {formatted
-              ? `Tenías una baja agendada para el ${formatted}.`
-              : 'Tenías una baja agendada para tu cuenta.'}
+              ? t('states:welcomeAccountDeletion.bodyDated', { date: formatted })
+              : t('states:welcomeAccountDeletion.bodyUndated')}
           </Text>
           <Text style={styles.hint}>
-            Si ya cancelaste la baja en otro dispositivo, inicia sesión
-            para actualizar el estado.
+            {t('states:welcomeAccountDeletion.hint')}
           </Text>
         </View>
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Iniciar sesión para verificar el estado de la baja"
+        accessibilityLabel={t('states:welcomeAccountDeletion.ctaA11y')}
         onPress={() => router.push(loginHref as never)}
         style={({ pressed }) => [
           styles.cta,
           { backgroundColor: theme.colors.danger, opacity: pressed ? 0.85 : 1 },
         ]}
       >
-        <Text style={styles.ctaLabel}>Iniciar sesión para verificar</Text>
+        <Text style={styles.ctaLabel}>{t('states:welcomeAccountDeletion.cta')}</Text>
       </Pressable>
     </View>
   )

@@ -37,7 +37,5 @@ export const controlV2Tokens = {
   },
 } as const
 
-export const controlV2Copy = {
-  title: 'Control',
-  subtitle: 'El estado de tus finanzas, día a día.',
-} as const
+// Title/subtitle copy migrated to i18n (`control:header.title` /
+// `control:header.subtitle`) — see control-v2-header.tsx.

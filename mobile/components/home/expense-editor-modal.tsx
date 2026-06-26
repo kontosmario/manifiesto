@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -33,6 +34,7 @@ export function ExpenseEditorModal({
   isBusy = false,
 }: ExpenseEditorModalProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [description, setDescription] = useState(() => expense?.description ?? '')
   const [price, setPrice] = useState(() => (expense ? serializePrice(expense.price) : ''))
   const [isPriceFocused, setPriceFocused] = useState(false)
@@ -42,7 +44,7 @@ export function ExpenseEditorModal({
     <ModalCard
       visible={visible}
       title={title}
-      subtitle="Actualiza sólo lo necesario y mantén el historial limpio."
+      subtitle={t('home:expenseEditor.subtitle')}
       onClose={onClose}
     >
       <View
@@ -54,9 +56,9 @@ export function ExpenseEditorModal({
           },
         ]}
       >
-        <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>Edición rápida</Text>
+        <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>{t('home:expenseEditor.quickEdit')}</Text>
         <Text style={[styles.introText, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
-          Cambia la descripción o el monto final. El resto del movimiento se conserva.
+          {t('home:expenseEditor.introText')}
         </Text>
       </View>
 
@@ -64,18 +66,18 @@ export function ExpenseEditorModal({
         autoCapitalize="sentences"
         autoCorrect={false}
         autoFocus
-        label="Descripción"
+        label={t('home:expenseEditor.descriptionLabel')}
         maxLength={60}
         onChangeText={setDescription}
-        placeholder="Ej: Supermercado"
+        placeholder={t('home:expenseEditor.descriptionPlaceholder')}
         returnKeyType="done"
         value={description}
       />
 
       <TextField
-        helper="Ingresa el valor final en pesos."
+        helper={t('home:expenseEditor.amountHelper')}
         keyboardType="decimal-pad"
-        label="Monto"
+        label={t('home:expenseEditor.amountLabel')}
         onBlur={() => setPriceFocused(false)}
         onChangeText={(value) => setPrice(normalizePriceInput(value))}
         onFocus={() => setPriceFocused(true)}
@@ -95,7 +97,7 @@ export function ExpenseEditorModal({
             })
           }}
         />
-        <AppButton label="Cancelar" onPress={onClose} variant="ghost" />
+        <AppButton label={t('home:expenseEditor.cancel')} onPress={onClose} variant="ghost" />
       </View>
     </ModalCard>
   )

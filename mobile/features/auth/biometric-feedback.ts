@@ -8,6 +8,8 @@
 // to a generic "use your password" message so the user is never stuck
 // without guidance.
 
+import i18n from '@/lib/i18n'
+
 export interface BiometricFeedback {
   message: string
 }
@@ -38,17 +40,17 @@ export function biometricFeedbackForError(
   if (SILENT_ERRORS.has(error)) return null
   if (LOCKOUT_ERRORS.has(error)) {
     return {
-      message: `${label} está bloqueado por varios intentos. Usa tu contraseña para entrar.`,
+      message: i18n.t('auth:biometric.lockout', { label }),
     }
   }
   if (UNAVAILABLE_ERRORS.has(error)) {
     return {
-      message: `${label} no está disponible. Revisa Ajustes → Manifiesto → Face ID o usa tu contraseña.`,
+      message: i18n.t('auth:biometric.unavailable', { label }),
     }
   }
   // Catch-all for any other non-cancel failure (e.g. authentication_failed,
   // invalid_context, unknown). Don't leave the user stuck without feedback.
   return {
-    message: `No pudimos iniciar ${label}. Usa tu contraseña para entrar.`,
+    message: i18n.t('auth:biometric.failed', { label }),
   }
 }

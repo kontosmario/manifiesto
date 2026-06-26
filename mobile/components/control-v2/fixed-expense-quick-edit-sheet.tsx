@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -26,6 +27,7 @@ export function FixedExpenseQuickEditSheet({
   inline,
 }: FixedExpenseQuickEditSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   const [amountText, setAmountText] = useState(
     String(Math.max(0, Math.round(initialAmount))),
@@ -49,17 +51,19 @@ export function FixedExpenseQuickEditSheet({
   const deltaHint =
     parsedAmount > 0 && delta !== 0
       ? delta < 0
-        ? `Bajas ${formatMoneyShort(Math.abs(delta))} respecto del último monto.`
-        : `Subes ${formatMoneyShort(delta)} respecto del último monto.`
-      : 'Si lo dejas igual no se registra ningún cambio.'
+        ? t('control:fixedEdit.deltaBaja', {
+            amount: formatMoneyShort(Math.abs(delta)),
+          })
+        : t('control:fixedEdit.deltaSube', { amount: formatMoneyShort(delta) })
+      : t('control:fixedEdit.deltaIgual')
 
   return (
     <ModalCard
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title="Ajustar gasto fijo"
-      subtitle="Cambia el nombre o el monto. El resto de la configuración (frecuencia, día de pago, categoría) se mantiene."
+      title={t('control:fixedEdit.title')}
+      subtitle={t('control:fixedEdit.subtitle')}
     >
       <View style={styles.body}>
         <View
@@ -72,7 +76,7 @@ export function FixedExpenseQuickEditSheet({
           ]}
         >
           <Text style={[styles.snapshotEyebrow, { color: theme.colors.textMuted }]}>
-            ÚLTIMO MONTO
+            {t('control:fixedEdit.ultimoMonto')}
           </Text>
           <Text style={[styles.snapshotValue, { color: theme.colors.text }]}>
             {currencyFormatter.format(initialAmount)}
@@ -80,28 +84,28 @@ export function FixedExpenseQuickEditSheet({
         </View>
 
         <TextField
-          label="Nombre"
+          label={t('control:fixedEdit.labelNombre')}
           value={name}
           onChangeText={setName}
-          placeholder="Edenor, Netflix…"
-          accessibilityLabel="Nombre del gasto fijo"
+          placeholder={t('control:fixedEdit.placeholderNombre')}
+          accessibilityLabel={t('control:fixedEdit.a11yNombre')}
           maxLength={60}
         />
 
         <TextField
-          label="Monto mensual"
+          label={t('control:fixedEdit.labelMonto')}
           value={amountText}
           onChangeText={setAmountText}
           keyboardType="number-pad"
           inputMode="numeric"
-          placeholder="0"
-          accessibilityLabel="Monto del gasto fijo"
+          placeholder={t('control:fixedEdit.placeholderMonto')}
+          accessibilityLabel={t('control:fixedEdit.a11yMonto')}
           helper={deltaHint}
         />
 
         <AppButton
           variant="primary"
-          label="Guardar cambios"
+          label={t('control:fixedEdit.cta')}
           loading={isSaving}
           disabled={!isValid}
           onPress={() => {

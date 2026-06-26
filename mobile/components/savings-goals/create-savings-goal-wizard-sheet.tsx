@@ -24,6 +24,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
@@ -71,20 +72,6 @@ const DISMISS_VELOCITY = 650
 // (misma curva). Antes se redeclaraba aquí + en 3 step files.
 const EXPO_OUT = motionEasings.enterSmooth
 
-const STEP_EYEBROWS: Record<number, string> = {
-  1: 'PASO 1 DE 4',
-  2: 'PASO 2 DE 4',
-  3: 'PASO 3 DE 4',
-  4: 'RESUMEN',
-}
-
-const STEP_TITLES: Record<number, string> = {
-  1: '¿Cómo se llama tu meta?',
-  2: '¿Cuánto necesitas juntar?',
-  3: '¿En cuánto tiempo quieres llegar?',
-  4: 'Revisa los detalles',
-}
-
 /**
  * Wizard guiado para crear una meta de ahorro inline desde cualquier
  * surface — alcancía CTA, ReserveBlock "A una meta", o cualquier otro
@@ -117,6 +104,7 @@ export function CreateSavingsGoalWizardSheet({
   onClose,
 }: CreateSavingsGoalWizardSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
@@ -188,10 +176,10 @@ export function CreateSavingsGoalWizardSheet({
     : null
 
   const submitLabel = suggestedApply
-    ? `Crear y aportar ${formatMoneyShort(suggestedApply)}`
-    : 'Crear meta'
+    ? t('settings:savingsWizard.createAndContribute', { amount: formatMoneyShort(suggestedApply) })
+    : t('settings:savingsWizard.createGoal')
 
-  const ctaLabel = step < STEP_COUNT ? 'Continuar' : submitLabel
+  const ctaLabel = step < STEP_COUNT ? t('common:actions.continue') : submitLabel
   const ctaDisabled =
     (step === 1 && !canContinueStep1) ||
     (step === 2 && !canContinueStep2) ||
@@ -237,8 +225,8 @@ export function CreateSavingsGoalWizardSheet({
         onError: (err) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos crear la meta',
-            err instanceof Error ? err.message : 'Reintenta en un momento.',
+            t('settings:savingsWizard.createErrorTitle'),
+            err instanceof Error ? err.message : t('settings:savingsWizard.retry'),
           )
         },
       },
@@ -253,6 +241,7 @@ export function CreateSavingsGoalWizardSheet({
     goalAmount,
     effectiveMonths,
     onCreated,
+    t,
   ])
 
   const handlePrimaryPress = useCallback(() => {
@@ -467,7 +456,7 @@ export function CreateSavingsGoalWizardSheet({
           style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}
         >
           <Pressable
-            accessibilityLabel="Cerrar wizard"
+            accessibilityLabel={t('settings:savingsWizard.closeA11y')}
             accessibilityRole="button"
             onPress={handleDismiss}
             style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
@@ -503,8 +492,8 @@ export function CreateSavingsGoalWizardSheet({
             <WizardStepHeader
               step={step}
               stepCount={STEP_COUNT}
-              eyebrow={STEP_EYEBROWS[step]}
-              title={STEP_TITLES[step]}
+              eyebrow={t(`settings:savingsWizard.eyebrow.${step}`)}
+              title={t(`settings:savingsWizard.title.${step}`)}
               busy={upsertMutation.isPending}
               onGoBack={goBack}
             />
@@ -526,10 +515,10 @@ export function CreateSavingsGoalWizardSheet({
                 loading={upsertMutation.isPending}
                 accessibilityLabel={
                   step < STEP_COUNT
-                    ? `Continuar al paso ${step + 1} de ${STEP_COUNT}`
+                    ? t('settings:savingsWizard.continueA11y', { next: step + 1, total: STEP_COUNT })
                     : suggestedApply
-                      ? `Crear meta y aportar ${formatMoney(suggestedApply)}`
-                      : `Crear meta ${titleTrimmed || ''}`.trim()
+                      ? t('settings:savingsWizard.createAndContributeA11y', { amount: formatMoney(suggestedApply) })
+                      : t('settings:savingsWizard.createGoalA11y', { title: titleTrimmed || '' }).trim()
                 }
               />
             </View>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { CycleConfigSection } from '@/components/finance/cycle-config-section'
@@ -20,6 +21,7 @@ export function EditCycleConfigSheet({
   onClose,
   onSave,
 }: EditCycleConfigSheetProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState<FinanceCycleConfig>(currentConfig)
 
   // Rehydrate al abrir el sheet — si el user cierra sin guardar y vuelve
@@ -39,8 +41,8 @@ export function EditCycleConfigSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Elige cómo cobras. Cambiar el tipo aplica al próximo cobro — el ciclo actual sigue su curso."
-      title="Ciclo de cobro"
+      subtitle={t('settings:editCycle.subtitle')}
+      title={t('settings:editCycle.title')}
       visible={visible}
     >
       <View style={styles.stack}>
@@ -51,7 +53,7 @@ export function EditCycleConfigSheet({
         />
         <AppButton
           disabled={!dirty}
-          label="Guardar"
+          label={t('common:actions.save')}
           loading={isSaving}
           onPress={() => {
             if (!dirty) return

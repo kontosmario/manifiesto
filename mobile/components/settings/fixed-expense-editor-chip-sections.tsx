@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { Chip } from '@/components/ui/chip'
 import type { Category } from '@/features/categories/use-categories'
 import {
@@ -33,9 +34,10 @@ export function FixedExpenseKindSection({
   kind,
   onChange,
 }: FixedExpenseKindSectionProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.section}>
-      <FixedExpenseSectionLabel label="Tipo" />
+      <FixedExpenseSectionLabel label={t('settings:fixedEditor.kindLabel')} />
       <View style={styles.chips}>
         {FIXED_EXPENSE_KINDS.map((option) => (
           <Chip
@@ -62,9 +64,10 @@ export function FixedExpenseCategorySection({
   categoryId,
   onChange,
 }: FixedExpenseCategorySectionProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.section}>
-      <FixedExpenseSectionLabel label="Categoría" />
+      <FixedExpenseSectionLabel label={t('settings:fixedEditor.categoryLabel')} />
       <View style={styles.chips}>
         {categories.map((category) => (
           <Chip
@@ -90,9 +93,10 @@ export function FixedExpenseFrequencySection({
   frequency,
   onChange,
 }: FixedExpenseFrequencySectionProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.section}>
-      <FixedExpenseSectionLabel label="Frecuencia" />
+      <FixedExpenseSectionLabel label={t('settings:fixedEditor.frequencyLabel')} />
       <View style={styles.chips}>
         {FIXED_EXPENSE_FREQUENCIES.map((option) => (
           <Chip
@@ -117,9 +121,10 @@ export function FixedExpenseStatusSection({
   status,
   onChange,
 }: FixedExpenseStatusSectionProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.section}>
-      <FixedExpenseSectionLabel label="Estado" />
+      <FixedExpenseSectionLabel label={t('settings:fixedEditor.statusLabel')} />
       <View style={styles.chips}>
         {FIXED_EXPENSE_STATUSES.filter((option) => option !== 'archived').map((option) => (
           <Chip

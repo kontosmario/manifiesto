@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import { TOUR_KEYS } from '../tour-keys'
 import type { TourStepCopy } from './home-tour'
 
@@ -6,22 +7,32 @@ export const FIJOS_TOUR = TOUR_KEYS.fijos
 /**
  * Fijos tour — 4 stops. Adds the "agregar fijo" button on top of
  * the existing 3 (hero / upcoming strip / list).
+ *
+ * `text` vía getter para reaccionar al cambio de idioma en runtime.
  */
 export const FIJOS_TOUR_STEPS = {
   hero: {
     order: 0,
-    text: 'Tus gastos fijos del mes: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.',
+    get text() {
+      return i18n.t('states:tour.fijos.hero')
+    },
   },
   calendar: {
     order: 1,
-    text: 'Lo que vence pronto, en orden cronológico. Cada burbuja muestra el día y la categoría — los números en rojo marcan los que ya pasaron de fecha.',
+    get text() {
+      return i18n.t('states:tour.fijos.calendar')
+    },
   },
   list: {
     order: 2,
-    text: 'La lista de abajo agrupa tus fijos por categoría. Toca uno para marcarlo como pagado, o deslízalo hacia la izquierda para editarlo, pausarlo o eliminarlo.',
+    get text() {
+      return i18n.t('states:tour.fijos.list')
+    },
   },
   addButton: {
     order: 3,
-    text: 'Aquí agregas un fijo nuevo. Suma una renta, una suscripción o cualquier compromiso recurrente — defines cada cuánto vence y la app lo añade automáticamente al ciclo.',
+    get text() {
+      return i18n.t('states:tour.fijos.addButton')
+    },
   },
-} as const satisfies Record<string, TourStepCopy>
+} satisfies Record<string, TourStepCopy>

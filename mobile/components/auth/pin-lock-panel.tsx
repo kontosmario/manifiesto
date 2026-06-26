@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import { useTranslation } from 'react-i18next'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { PinPad } from '@/components/auth/pin-pad'
 import { isPinComplete } from '@/components/auth/pin-pad-model'
@@ -25,6 +26,7 @@ export function PinLockPanel() {
   // Sprint P · Audit #9 P-3: block screen recording / screenshots
   // while the PIN-pad is on screen.
   useScreenCaptureProtection()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
 
   const [value, setValue] = useState('')
@@ -62,7 +64,7 @@ export function PinLockPanel() {
           }
           if (result.lockedForMs > 0) {
             const seconds = Math.ceil(result.lockedForMs / 1000)
-            setLockoutMessage(`Bloqueado ${seconds} seg`)
+            setLockoutMessage(t('auth:pinLock.lockout', { seconds }))
           } else {
             setLockoutMessage(null)
           }
@@ -80,7 +82,7 @@ export function PinLockPanel() {
           setChecking(false)
         })
     },
-    [checking, pinLength],
+    [checking, pinLength, t],
   )
 
   // G4 fix (2026-06-11): NO logout destructivo — fallback a login con
@@ -96,7 +98,7 @@ export function PinLockPanel() {
       <View style={styles.header}>
         <FernLogo size={64} />
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          Ingresa tu PIN
+          {t('auth:pinLock.title')}
         </Text>
       </View>
 
@@ -125,13 +127,13 @@ export function PinLockPanel() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Olvidé mi PIN, ingresar con contraseña"
+        accessibilityLabel={t('auth:pinLock.forgotA11y')}
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={handleForgot}
         style={({ pressed }) => [styles.forgot, { opacity: pressed ? 0.6 : 1 }]}
       >
         <Text style={[styles.forgotText, { color: theme.colors.textMuted }]}>
-          Olvidé mi PIN · usar contraseña
+          {t('auth:pinLock.forgot')}
         </Text>
       </Pressable>
     </View>

@@ -1,17 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export function ImportReviewEmpty() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.wrap}>
       <MaterialIcons name="receipt-long" size={36} color={theme.colors.textMuted} />
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        No vi gastos en esa captura.
+        {t('gastos:import.empty.title')}
       </Text>
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-        Prueba con otra imagen.
+        {t('gastos:import.empty.body')}
       </Text>
     </View>
   )

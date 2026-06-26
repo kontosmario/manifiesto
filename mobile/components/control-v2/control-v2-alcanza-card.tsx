@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -87,6 +88,7 @@ function ControlV2AlcanzaCardImpl({
   cycleStartingBalanceOverride,
 }: ControlV2AlcanzaCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
 
   if (!hasReliableProjection) {
@@ -128,7 +130,7 @@ function ControlV2AlcanzaCardImpl({
             : 'rgba(28,126,58,0.18)',
           icon: 'check-circle' as const,
           canonical: 'Saludable',
-          stateLabel: 'Saldo holgado',
+          stateLabel: t('control:alcanza.stateHolgado'),
           timelineFill: theme.colors.success,
         }
       case 'warn':
@@ -147,7 +149,9 @@ function ControlV2AlcanzaCardImpl({
             : 'rgba(194,122,10,0.20)',
           icon: 'error-outline' as const,
           canonical: 'Atención',
-          stateLabel: alcanzaElMes ? 'Saldo ajustado' : 'Saldo insuficiente',
+          stateLabel: alcanzaElMes
+            ? t('control:alcanza.stateAjustado')
+            : t('control:alcanza.stateInsuficiente'),
           timelineFill: theme.colors.warning,
         }
       case 'critical':
@@ -166,7 +170,7 @@ function ControlV2AlcanzaCardImpl({
             : 'rgba(192,58,42,0.22)',
           icon: 'priority-high' as const,
           canonical: 'Crítico',
-          stateLabel: 'Saldo agotado',
+          stateLabel: t('control:alcanza.stateAgotado'),
           timelineFill: theme.colors.danger,
         }
     }
@@ -188,8 +192,10 @@ function ControlV2AlcanzaCardImpl({
         icon: 'priority-high' as const,
         text:
           restanteMes >= 0
-            ? `Quedan ${formatMoneyShort(Math.max(0, restanteMes))} hasta el próximo cobro. Cuida cada gasto.`
-            : `Presupuesto libre agotado. Cuida el ritmo hasta el próximo cobro.`,
+            ? t('control:alcanza.hintExhaustoQuedan', {
+                amount: formatMoneyShort(Math.max(0, restanteMes)),
+              })
+            : t('control:alcanza.hintExhaustoAgotado'),
       }
     }
     if (!alcanzaElMes) {
@@ -197,30 +203,38 @@ function ControlV2AlcanzaCardImpl({
         icon: 'trending-down' as const,
         text:
           dailyReduction > 0
-            ? `Reduce ${formatMoneyShort(dailyReduction)}/día para llegar holgado al próximo cobro.`
-            : `Reduce el ritmo los próximos ${Math.max(1, diasMes - diaAgotamiento)} días para no quedar corto.`,
+            ? t('control:alcanza.hintReduceDiario', {
+                amount: formatMoneyShort(dailyReduction),
+              })
+            : t('control:alcanza.hintReduceRitmo', {
+                count: Math.max(1, diasMes - diaAgotamiento),
+              }),
       }
     }
     if (isTight) {
       return {
         icon: 'flag' as const,
-        text: `Saldo ajustado — manteniendo el ritmo, el ciclo cierra con ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))} de margen.`,
+        text: t('control:alcanza.hintAjustado', {
+          amount: formatMoneyShort(Math.max(0, sobrantePresupuestadoMes)),
+        }),
       }
     }
     return {
       icon: 'savings' as const,
-      text: `Sobra ${formatMoneyShort(Math.max(0, sobrantePresupuestadoMes))}. Puedes mover parte a tu meta de ahorro.`,
+      text: t('control:alcanza.hintSobra', {
+        amount: formatMoneyShort(Math.max(0, sobrantePresupuestadoMes)),
+      }),
     }
   })()
 
   // ── Headline copy ───────────────────────────────────────────
   const headline = alreadyExhausted
-    ? `Presupuesto libre superado cerca del día ${Math.max(1, diaAgotamiento)} del mes.`
+    ? t('control:alcanza.headlineExhausto', { day: Math.max(1, diaAgotamiento) })
     : alcanzaElMes
       ? isComfortable
-        ? 'El presupuesto alcanza todo el mes — con margen de sobra.'
-        : 'Llega al próximo cobro, pero ajustado.'
-      : `Al ritmo actual, el presupuesto se agota el día ${diaAgotamiento} del mes.`
+        ? t('control:alcanza.headlineComodo')
+        : t('control:alcanza.headlineJusto')
+      : t('control:alcanza.headlineNoAlcanza', { day: diaAgotamiento })
 
   // ── Timeline math (forward-projection only) ─────────────────
   const safeDiasMes = diasMes > 0 ? diasMes : 1
@@ -247,7 +261,7 @@ function ControlV2AlcanzaCardImpl({
             style={[styles.eyebrow, { color: palette.fg }]}
             numberOfLines={1}
           >
-            HASTA CUÁNDO TE ALCANZA
+            {t('control:alcanza.eyebrow')}
           </Text>
           <View
             style={[
@@ -294,38 +308,40 @@ function ControlV2AlcanzaCardImpl({
             <Text
               style={[styles.overrideText, { color: theme.colors.textMuted }]}
             >
-              Trabajando con{' '}
-              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-                {formatMoneyShort(cycleStartingBalanceOverride)}
-              </Text>{' '}
-              confirmados este mes.
+              {t('control:alcanza.overrideWorkingWith', {
+                amount: formatMoneyShort(cycleStartingBalanceOverride),
+              })}
             </Text>
           </View>
         ) : null}
 
         <View style={styles.statsRow}>
           <Stat
-            label="Ritmo"
-            value={`${formatMoneyShort(pacePromedio)}/día`}
-            sub={`promedio ${closedDays} días`}
+            label={t('control:alcanza.statRitmo')}
+            value={t('control:alcanza.perDia', {
+              amount: formatMoneyShort(pacePromedio),
+            })}
+            sub={t('control:alcanza.statRitmoSub', { days: closedDays })}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <Stat
-            label="Cupo"
-            value={`${formatMoneyShort(cupoDiario)}/día`}
-            sub="presupuesto libre"
+            label={t('control:alcanza.statCupo')}
+            value={t('control:alcanza.perDia', {
+              amount: formatMoneyShort(cupoDiario),
+            })}
+            sub={t('control:alcanza.statCupoSub')}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <Stat
-            label={alreadyExhausted ? 'Te queda' : 'Sobrante'}
+            label={alreadyExhausted ? t('control:alcanza.statTeQueda') : t('control:alcanza.statSobrante')}
             value={
               alreadyExhausted
                 ? formatMoneyShort(Math.max(0, restanteMes))
                 : `${sobrantePresupuestadoMes >= 0 ? '+' : ''}${formatMoneyShort(sobrantePresupuestadoMes)}`
             }
-            sub={alreadyExhausted ? 'hasta cobrar' : 'al cierre'}
+            sub={alreadyExhausted ? t('control:alcanza.statSubHastaCobrar') : t('control:alcanza.statSubAlCierre')}
             text={
               alreadyExhausted
                 ? palette.fg
@@ -355,17 +371,17 @@ function ControlV2AlcanzaCardImpl({
               <Text
                 style={[styles.timelineLabel, { color: theme.colors.textMuted }]}
               >
-                INICIO
+                {t('control:alcanza.timelineInicio')}
               </Text>
               <Text
                 style={[styles.timelineLabel, { color: theme.colors.textMuted }]}
               >
-                HOY
+                {t('control:alcanza.timelineHoy')}
               </Text>
               <Text
                 style={[styles.timelineLabel, { color: theme.colors.textMuted }]}
               >
-                PRÓX. SUELDO
+                {t('control:alcanza.timelineProxSueldo')}
               </Text>
             </View>
             <View style={styles.timelineTrack}>
@@ -425,7 +441,7 @@ function ControlV2AlcanzaCardImpl({
                     style={[styles.runoutTag, { color: palette.fg }]}
                     numberOfLines={1}
                   >
-                    día {diaAgotamiento}
+                    {t('control:alcanza.timelineDia', { day: diaAgotamiento })}
                   </Text>
                 </View>
               ) : null}
@@ -464,6 +480,7 @@ function ControlV2AlcanzaCardImpl({
  */
 function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
   // Clamp del progreso mostrado: nunca por encima del umbral aunque el
@@ -475,7 +492,7 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
     <RiseView delay={140}>
       <View
         accessibilityRole="text"
-        accessibilityLabel="Hasta cuándo te alcanza: esperando más días con gasto"
+        accessibilityLabel={t('control:alcanza.empty.a11y')}
         style={[
           styles.card,
           styles.emptyCard,
@@ -488,11 +505,11 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
             style={[styles.eyebrow, { color: theme.colors.textMuted }]}
             numberOfLines={1}
           >
-            HASTA CUÁNDO TE ALCANZA
+            {t('control:alcanza.eyebrow')}
           </Text>
           <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
             <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
-              Pronto
+              {t('control:alcanza.empty.soon')}
             </Text>
           </View>
         </View>
@@ -503,8 +520,14 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
 
         {/* 3 stats inertes — labels reales, valores como dashes/barras. */}
         <View style={styles.statsRow}>
-          {(['Ritmo', 'Cupo', 'Sobrante'] as const).map((label) => (
-            <View key={label} style={styles.stat}>
+          {(
+            [
+              ['statRitmo', t('control:alcanza.statRitmo')],
+              ['statCupo', t('control:alcanza.statCupo')],
+              ['statSobrante', t('control:alcanza.statSobrante')],
+            ] as const
+          ).map(([key, label]) => (
+            <View key={key} style={styles.stat}>
               <Text
                 style={[styles.statLabel, { color: theme.colors.textMuted }]}
                 numberOfLines={1}
@@ -533,13 +556,13 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
         >
           <View style={styles.timelineLabels}>
             <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
-              INICIO
+              {t('control:alcanza.timelineInicio')}
             </Text>
             <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
-              HOY
+              {t('control:alcanza.timelineHoy')}
             </Text>
             <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
-              PRÓX. SUELDO
+              {t('control:alcanza.timelineProxSueldo')}
             </Text>
           </View>
           <View style={styles.timelineTrack}>
@@ -560,11 +583,13 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
           <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
           <View style={styles.calloutBody}>
             <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-              Registra gastos en al menos {MIN_CLOSED_DAYS_FLOOR} días distintos para
-              proyectar hasta qué día del mes te alcanza el dinero libre.
+              {t('control:alcanza.empty.callout', { days: MIN_CLOSED_DAYS_FLOOR })}
             </Text>
             <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
-              Gasto en {progreso} de {MIN_CLOSED_DAYS_FLOOR} días.
+              {t('control:alcanza.empty.progress', {
+                progress: progreso,
+                days: MIN_CLOSED_DAYS_FLOOR,
+              })}
             </Text>
           </View>
         </View>

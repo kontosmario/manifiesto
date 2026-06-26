@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import type { BufferMode } from '@/features/settings/settings-form.model'
 import {
@@ -21,11 +22,7 @@ interface EditBufferSheetProps {
   onSave: (nextMode: BufferMode, nextValue: number) => void
 }
 
-const MODE_OPTIONS: Array<{ key: BufferMode; label: string; hint: string }> = [
-  { key: 'none', label: 'Sin colchón', hint: 'No reservar' },
-  { key: 'fixed', label: 'Monto fijo', hint: 'En ARS por día' },
-  { key: 'percent', label: 'Porcentaje', hint: '% del presupuesto' },
-]
+const MODE_KEYS: BufferMode[] = ['none', 'fixed', 'percent']
 
 export function EditBufferSheet({
   visible,
@@ -36,6 +33,7 @@ export function EditBufferSheet({
   onSave,
 }: EditBufferSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [mode, setMode] = useState<BufferMode>(currentMode)
   const [draft, setDraft] = useState(() => serializePrice(currentValue))
 
@@ -67,22 +65,22 @@ export function EditBufferSheet({
   const canSave = isValid && hasChanged
 
   const helper = useMemo(() => {
-    if (mode === 'none') return 'No se reservará dinero para imprevistos.'
+    if (mode === 'none') return t('settings:buffer.helperNone')
     if (!isValid) {
       return mode === 'percent'
-        ? 'Ingresa un porcentaje entre 0 y 100.'
-        : 'Ingresa un monto válido.'
+        ? t('settings:buffer.helperInvalidPercent')
+        : t('settings:buffer.helperInvalidAmount')
     }
-    if (mode === 'percent') return `Reservaremos ${parsed}% del presupuesto diario.`
-    return `Reservaremos ${currencyFormatter.format(parsed)} por día.`
-  }, [mode, isValid, parsed])
+    if (mode === 'percent') return t('settings:buffer.helperPercent', { percent: parsed })
+    return t('settings:buffer.helperFixed', { amount: currencyFormatter.format(parsed) })
+  }, [mode, isValid, parsed, t])
 
   const showError = mode !== 'none' && !isValid && draft.length > 0
   const errorText =
     showError && mode === 'percent'
-      ? 'Debe estar entre 0 y 100.'
+      ? t('settings:buffer.errorPercent')
       : showError
-        ? 'Monto inválido.'
+        ? t('settings:buffer.errorAmount')
         : undefined
 
   const handleMode = (next: BufferMode) => {
@@ -93,21 +91,21 @@ export function EditBufferSheet({
   return (
     <NumericEditSheet
       visible={visible}
-      title="Buffer diario"
-      subtitle="Dinero que quieres reservar antes de proyectar tu presupuesto variable."
+      title={t('settings:buffer.sheetTitle')}
+      subtitle={t('settings:buffer.sheetSubtitle')}
       rawValue={mode === 'none' ? '' : draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => {
-        if (mode === 'none') return 'Sin colchón'
+        if (mode === 'none') return t('settings:buffer.none')
         if (mode === 'percent') return raw ? `${raw}%` : ''
         return formatPriceInputValue(raw, false)
       }}
       displayEyebrow={
         mode === 'none'
-          ? 'SIN COLCHÓN'
+          ? t('settings:buffer.eyebrowNone')
           : mode === 'percent'
-            ? '% DIARIO'
-            : 'MONTO DIARIO'
+            ? t('settings:buffer.eyebrowPercent')
+            : t('settings:buffer.eyebrowFixed')
       }
       displayPlaceholder={mode === 'percent' ? '0%' : '$ 0'}
       helper={helper}
@@ -115,7 +113,7 @@ export function EditBufferSheet({
       maxIntegerDigits={mode === 'percent' ? 3 : undefined}
       maxDecimalDigits={mode === 'percent' ? 0 : undefined}
       numpadDisabled={mode === 'none'}
-      saveLabel="Guardar colchón"
+      saveLabel={t('settings:buffer.saveLabel')}
       saveDisabled={!canSave}
       isSaving={isSaving}
       onSave={() => {
@@ -125,14 +123,14 @@ export function EditBufferSheet({
       onClose={onClose}
       headerExtra={
         <View style={styles.modeGrid}>
-          {MODE_OPTIONS.map((option) => {
-            const isOn = option.key === mode
+          {MODE_KEYS.map((modeKey) => {
+            const isOn = modeKey === mode
             return (
               <Pressable
-                key={option.key}
+                key={modeKey}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isOn }}
-                onPress={() => handleMode(option.key)}
+                onPress={() => handleMode(modeKey)}
                 style={[
                   styles.modeCard,
                   {
@@ -147,7 +145,7 @@ export function EditBufferSheet({
                     { color: isOn ? '#FFFFFF' : theme.colors.text },
                   ]}
                 >
-                  {option.label}
+                  {t(`settings:buffer.mode.${modeKey}.label`)}
                 </Text>
                 <Text
                   numberOfLines={1}
@@ -156,7 +154,7 @@ export function EditBufferSheet({
                     { color: isOn ? '#FFFFFF' : theme.colors.textMuted },
                   ]}
                 >
-                  {option.hint}
+                  {t(`settings:buffer.mode.${modeKey}.hint`)}
                 </Text>
               </Pressable>
             )

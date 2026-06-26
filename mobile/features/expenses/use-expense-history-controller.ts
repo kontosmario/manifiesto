@@ -16,6 +16,7 @@ import {
   useUpdateExpense,
 } from '@/features/expenses/use-expenses'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import i18n from '@/lib/i18n'
 import type { AppTheme } from '@/theme/palette'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -92,22 +93,22 @@ export function useExpenseHistoryController(familyId: string, theme: AppTheme) {
     ],
   )
 
-  const heroSubtitle = expensesQuery.isLoading ? 'Cargando movimientos.' : snapshot.heroSubtitle
+  const heroSubtitle = expensesQuery.isLoading ? i18n.t('gastos:history.loadingMovements') : snapshot.heroSubtitle
 
   const handleError = (error: unknown, fallbackMessage: string) => {
-    Alert.alert('Algo salio mal', getErrorMessage(error, fallbackMessage))
+    Alert.alert(i18n.t('gastos:errors.somethingWrongNoAccent'), getErrorMessage(error, fallbackMessage))
   }
 
   const handleDeleteExpense = (expense: Expense) => {
-    Alert.alert('Borrar gasto', 'Esta accion no se puede deshacer.', [
-      { style: 'cancel', text: 'Cancelar' },
+    Alert.alert(i18n.t('gastos:history.deleteTitle'), i18n.t('gastos:history.deleteMessage'), [
+      { style: 'cancel', text: i18n.t('common:actions.cancel') },
       {
         style: 'destructive',
-        text: 'Borrar',
+        text: i18n.t('gastos:history.deleteConfirm'),
         onPress: () => {
           deleteExpenseMutation.mutate(expense.id, {
             onError: (error: unknown) => {
-              handleError(error, 'No se pudo borrar el gasto.')
+              handleError(error, i18n.t('gastos:errors.deleteFailed'))
             },
           })
         },
@@ -148,7 +149,7 @@ export function useExpenseHistoryController(familyId: string, theme: AppTheme) {
           },
           {
             onError: (error: unknown) => {
-              handleError(error, 'No se pudo actualizar el gasto.')
+              handleError(error, i18n.t('gastos:errors.updateFailed'))
             },
             onSuccess: () => {
               setEditingExpense(null)

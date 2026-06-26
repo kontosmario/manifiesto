@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
@@ -18,6 +19,7 @@ export function TrendBadge({
   variant?: 'price' | 'arrears'
 }) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const up = deltaPct > 0
   const isArrears = up && variant === 'arrears'
   // Bg alpha-based para que funcione sobre cualquier canvas (card en
@@ -43,15 +45,20 @@ export function TrendBadge({
         : '#B84014'
   // "int." suffix cuando es arrears para que el chip se lea como
   // "incremento con intereses" sin alargar mucho la pill.
-  const label = `${up ? '+' : ''}${deltaPct}%${isArrears ? ' int.' : ''}`
+  const valueStr = `${up ? '+' : ''}${deltaPct}`
+  const label = isArrears
+    ? t('fijos:trendBadge.labelArrears', { value: valueStr })
+    : t('fijos:trendBadge.label', { value: valueStr })
   return (
     <View
       style={[styles.trendBadge, { backgroundColor: bg }]}
       accessibilityRole="text"
       accessibilityLabel={
         isArrears
-          ? `Incremento con intereses ${deltaPct} por ciento respecto al último pago`
-          : `Tendencia ${up ? 'subió' : 'bajó'} ${Math.abs(deltaPct)} por ciento`
+          ? t('fijos:trendBadge.arrearsAccessibility', { deltaPct })
+          : up
+            ? t('fijos:trendBadge.trendUpAccessibility', { pct: Math.abs(deltaPct) })
+            : t('fijos:trendBadge.trendDownAccessibility', { pct: Math.abs(deltaPct) })
       }
     >
       <Text style={[styles.trendBadgeText, { color: fg }]}>{label}</Text>

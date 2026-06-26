@@ -9,6 +9,8 @@
 // produces an `Aún calculando · faltan N días` framing so the user
 // understands *why* the number is missing and *when* to expect it.
 
+import i18n from '@/lib/i18n'
+
 export interface ProjectionWaitCopy {
   /** Top line — explains the state. */
   label: string
@@ -25,9 +27,9 @@ export function formatProjectionWaitCopy(
   // tile grows taller than its sibling. Drop the "faltan" verb to
   // shave the joined string under the 22-char ceiling guarded by the
   // unit test.
-  const detail = days === 1 ? '1 día' : `${days} días`
+  const detail = i18n.t('home:projectionWait.detail', { count: days })
   return {
-    label: 'Aún calculando',
+    label: i18n.t('home:projectionWait.label'),
     detail,
   }
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { AppButton } from '@/components/ui/button'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -19,6 +20,7 @@ import {
 import { useExpenseHistoryFilters } from '@/features/expenses/expense-history-filters.store'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { radii } from '@/theme/palette'
+import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface ExpenseFiltersScreenProps {
@@ -32,14 +34,15 @@ function buildCategoryLabel(
   const selectedCategoryId = resolveSelectedCategoryId(categories, categorySelection)
 
   if (!selectedCategoryId) {
-    return 'Todas'
+    return i18n.t('gastos:smartFilter.all')
   }
 
-  return categories.find((category) => category.id === selectedCategoryId)?.name ?? 'Todas'
+  return categories.find((category) => category.id === selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all')
 }
 
 export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const headerPalette = buildScreenHeaderPalette(theme)
   const categoriesQuery = useCategories(familyId)
@@ -63,8 +66,8 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
     <Screen
       canGoBack
       contentContainerStyle={styles.screenContent}
-      subtitle="Ajusta período, categoría y búsqueda con el mismo patrón modal de Agregar gasto."
-      title="Filtros"
+      subtitle={t('gastos:filtersScreen.subtitle')}
+      title={t('gastos:filtersScreen.title')}
       titleColor={headerPalette.titleColor}
     >
       <View style={styles.sectionStack}>
@@ -73,10 +76,10 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
         <BrandedPanel style={styles.formCard}>
           <View style={styles.sectionIntro}>
             <Text style={[styles.sectionEyebrow, { color: theme.colors.primaryStrong }]}>
-              Historial
+              {t('common:terms.history')}
             </Text>
             <Text style={[styles.sectionTitle, theme.typography.sectionTitle, { color: theme.colors.text }]}>
-              Define qué quieres mirar
+              {t('gastos:filtersScreen.defineTitle')}
             </Text>
           </View>
 
@@ -90,9 +93,12 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
                 },
               ]}
             >
-              <Text style={[styles.highlightLabel, { color: theme.colors.textMuted }]}>Periodo</Text>
+              <Text style={[styles.highlightLabel, { color: theme.colors.textMuted }]}>{t('gastos:filtersScreen.period')}</Text>
               <Text style={[styles.highlightValue, { color: theme.colors.text }]}>
-                {PERIOD_OPTIONS.find((option) => option.key === periodFilterDraft)?.label ?? 'Ciclo'}
+                {(() => {
+                  const opt = PERIOD_OPTIONS.find((option) => option.key === periodFilterDraft)
+                  return opt ? t(opt.labelKey) : t('gastos:filtersScreen.cycleFallback')
+                })()}
               </Text>
             </View>
             <View
@@ -104,20 +110,20 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
                 },
               ]}
             >
-              <Text style={[styles.highlightLabel, { color: theme.colors.textMuted }]}>Categoria</Text>
+              <Text style={[styles.highlightLabel, { color: theme.colors.textMuted }]}>{t('gastos:filtersScreen.category')}</Text>
               <Text style={[styles.highlightValue, { color: theme.colors.text }]}>
                 {selectedCategoryLabel}
               </Text>
             </View>
           </View>
 
-          {categoriesQuery.isLoading ? <LoadingBlock label="Cargando categorias..." /> : null}
+          {categoriesQuery.isLoading ? <LoadingBlock label={t('gastos:filtersScreen.loadingCategories')} /> : null}
 
           {!categoriesQuery.isLoading && categories.length === 0 ? (
             <EmptyState
               icon="category"
-              subtitle="Todavia no hay categorias. Igual puedes aplicar período y búsqueda libre."
-              title="Sin categorias"
+              subtitle={t('gastos:filtersScreen.noCategoriesSubtitle')}
+              title={t('gastos:filtersScreen.noCategoriesTitle')}
             />
           ) : null}
 
@@ -130,7 +136,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
               },
             ]}
           >
-            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>Periodo</Text>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('gastos:filtersScreen.period')}</Text>
             <ScrollView
               contentContainerStyle={styles.chipsRow}
               horizontal
@@ -139,7 +145,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
               {PERIOD_OPTIONS.map((option) => (
                 <Chip
                   key={option.key}
-                  label={option.label}
+                  label={t(option.labelKey)}
                   onPress={() => setPeriodFilterDraft(option.key)}
                   isActive={periodFilterDraft === option.key}
                 />
@@ -156,14 +162,14 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
               },
             ]}
           >
-            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>Categoria</Text>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('gastos:filtersScreen.category')}</Text>
             <ScrollView
               contentContainerStyle={styles.chipsRow}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
               <Chip
-                label="Todas"
+                label={t('gastos:smartFilter.all')}
                 onPress={() => setCategorySelectionDraft(ALL_CATEGORIES_KEY)}
                 isActive={resolveSelectedCategoryId(categories, categorySelectionDraft) === ''}
               />
@@ -182,10 +188,10 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
           <TextField
             autoCapitalize="none"
             autoCorrect={false}
-            helper="Descripción, categoría o persona."
-            label="Buscar"
+            helper={t('gastos:filtersScreen.searchHelper')}
+            label={t('gastos:filtersScreen.searchLabel')}
             onChangeText={setSearchQueryDraft}
-            placeholder="Ej: supermercado, nafta, Agus"
+            placeholder={t('gastos:filtersScreen.searchPlaceholder')}
             returnKeyType="search"
             value={searchQueryDraft}
           />
@@ -194,7 +200,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
         <View style={styles.actions}>
           <AppButton
             disabled={!isDirty}
-            label="Aplicar filtros"
+            label={t('gastos:filtersScreen.apply')}
             onPress={() => {
               filters.setCategorySelection(
                 resolveSelectedCategoryId(categories, categorySelectionDraft) || ALL_CATEGORIES_KEY,
@@ -205,7 +211,7 @@ export function ExpenseFiltersScreen({ familyId }: ExpenseFiltersScreenProps) {
             }}
           />
           <AppButton
-            label="Limpiar filtros"
+            label={t('gastos:clearFilters.label')}
             onPress={() => {
               setCategorySelectionDraft(ALL_CATEGORIES_KEY)
               setPeriodFilterDraft('cycle')

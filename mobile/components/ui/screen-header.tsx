@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { withAlpha } from '@/theme/color-utils'
 import { buildMinimumTouchTargetHitSlop, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
@@ -24,6 +25,7 @@ export function ScreenHeader({
   titleColor,
 }: ScreenHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View style={styles.header}>
@@ -31,7 +33,7 @@ export function ScreenHeader({
         <View style={styles.headerTitleRow}>
           {canGoBack ? (
             <Pressable
-              accessibilityLabel="Volver"
+              accessibilityLabel={t('common:actions.back')}
               accessibilityRole="button"
               android_ripple={{
                 borderless: false,

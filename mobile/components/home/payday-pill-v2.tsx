@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -21,14 +22,15 @@ interface PaydayPillV2Props {
  */
 export function PaydayPillV2({ daysUntilPayday, isPending = false, onPress }: PaydayPillV2Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   if (daysUntilPayday == null) return null
   const label = isPending
-    ? '¿Ya cobraste?'
+    ? t('home:paydayPill.didYouGetPaid')
     : daysUntilPayday === 0
-      ? 'Sueldo hoy'
+      ? t('home:paydayPill.payToday')
       : daysUntilPayday === 1
-        ? 'Sueldo mañana'
-        : `Sueldo en ${daysUntilPayday} días`
+        ? t('home:paydayPill.payTomorrow')
+        : t('home:paydayPill.payInDays', { count: daysUntilPayday })
 
   // The pill emphasizes the action when there's something to do:
   // a real "pending" state OR the literal payday day. In both cases
@@ -97,8 +99,8 @@ export function PaydayPillV2({ daysUntilPayday, isPending = false, onPress }: Pa
         accessibilityLabel={label}
         accessibilityHint={
           isPending
-            ? 'Abre el diálogo para confirmar que cobraste'
-            : 'Abre el diálogo para confirmar el monto que recibiste'
+            ? t('home:paydayPill.confirmPaidHint')
+            : t('home:paydayPill.confirmAmountHint')
         }
       >
         {content}

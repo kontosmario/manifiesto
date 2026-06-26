@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import Animated from 'react-native-reanimated'
 import { useGarden } from '@/features/garden/use-garden'
@@ -21,6 +22,7 @@ interface StreakWeekWidgetProps {
  */
 function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const router = useRouter()
   const press = usePressScale({ pressedScale: 0.98 })
   const { data } = useGarden(familyId, userId)
@@ -40,7 +42,9 @@ function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Tu jardín: racha de ${data.currentStreak} días. Abrir.`}
+      accessibilityLabel={t('home:streakWidget.accessibility', {
+        count: data.currentStreak,
+      })}
     >
       <Animated.View
         style={[
@@ -78,7 +82,7 @@ function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
           <Text style={[styles.countNumber, { color: theme.colors.text }]}>
             {data.currentStreak}
           </Text>
-          <Text style={[styles.countLabel, { color: theme.colors.textMuted }]}>días</Text>
+          <Text style={[styles.countLabel, { color: theme.colors.textMuted }]}>{t('home:streakWidget.daysLabel')}</Text>
         </View>
       </Animated.View>
     </Pressable>

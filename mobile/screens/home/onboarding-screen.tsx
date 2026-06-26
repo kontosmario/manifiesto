@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { Screen } from '@/components/ui/screen'
 import { StickyFooter } from '@/components/ui/sticky-footer'
@@ -78,6 +79,7 @@ function readOAuthName(meta: Record<string, unknown> | undefined): string {
 export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const profileQuery = useMyProfile(userId)
   // The home_snapshot RPC seeds the profile cache with the original
@@ -284,7 +286,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       onError: (error) => {
         void triggerHaptic('error')
         Alert.alert(
-          'No pudimos cerrar la sesión',
+          t('onboarding:errors.logoutTitle'),
           getErrorMessage(error, errorMessages.server),
         )
       },
@@ -294,7 +296,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         router.replace('/(auth)/welcome')
       },
     })
-  }, [router])
+  }, [router, t])
 
   const handleBack = useCallback(() => {
     // On step 1 there's no previous step inside the wizard, so the
@@ -304,12 +306,12 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     //   start over from the welcome screen
     if (step === 1) {
       Alert.alert(
-        '¿Salir del setup?',
-        'Tu progreso queda guardado. Puedes cerrar la sesión y volver al inicio cuando quieras.',
+        t('onboarding:exitDialog.title'),
+        t('onboarding:exitDialog.message'),
         [
-          { text: 'Seguir aquí', style: 'cancel' },
+          { text: t('onboarding:exitDialog.stay'), style: 'cancel' },
           {
-            text: 'Cerrar sesión',
+            text: t('onboarding:exitDialog.logout'),
             style: 'destructive',
             onPress: handleLogout,
           },
@@ -318,11 +320,11 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       return
     }
     actions.back()
-  }, [step, actions, handleLogout])
+  }, [step, actions, handleLogout, t])
 
   const handleFinish = useCallback(async () => {
     if (!state.familyId) {
-      Alert.alert('Falta la familia', 'Crea o uníte a una familia antes de terminar.')
+      Alert.alert(t('onboarding:errors.missingFamilyTitle'), t('onboarding:errors.missingFamilyMessage'))
       return
     }
     setSubmitting(true)
@@ -421,7 +423,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       // joiner). Sin replace imperativo redundante → una sola transición.
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert('No pudimos terminar el setup', getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:errors.finishTitle'), getErrorMessage(error, errorMessages.server))
     } finally {
       setSubmitting(false)
     }
@@ -443,6 +445,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     upsertSavingsGoal,
     consumeInvite,
     completeOnboarding,
+    t,
   ])
 
   const handlePrimary = useCallback(async () => {
@@ -453,7 +456,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         await handleFinish()
       } catch (error) {
         void triggerHaptic('error')
-        Alert.alert('No pudimos guardar', getErrorMessage(error, errorMessages.server))
+        Alert.alert(t('onboarding:errors.saveTitle'), getErrorMessage(error, errorMessages.server))
       }
       return
     }
@@ -472,7 +475,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         onError: (error: unknown) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos guardar tu nombre',
+            t('onboarding:errors.saveNameTitle'),
             getErrorMessage(error, errorMessages.server),
           )
         },
@@ -482,7 +485,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         onError: (error: unknown) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos guardar el avatar',
+            t('onboarding:errors.saveAvatarTitle'),
             getErrorMessage(error, errorMessages.server),
           )
         },
@@ -497,6 +500,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     updateAvatar,
     handleFinish,
     actions,
+    t,
   ])
 
   const ctaPress = usePressScale({ pressedScale: 0.97 })
@@ -505,24 +509,24 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
   const stepTitle = (() => {
     switch (step) {
       case 1:
-        return 'Tu nombre'
+        return t('onboarding:chrome.title.name')
       case 2:
-        return 'Tu avatar'
+        return t('onboarding:chrome.title.avatar')
       case 3:
-        return 'Tu hogar'
+        return t('onboarding:chrome.title.household')
       case 4:
-        return 'Tus ingresos'
+        return t('onboarding:chrome.title.income')
       case 5:
-        return isJoiner ? 'Casi listo' : 'Tu ahorro'
+        return isJoiner ? t('onboarding:chrome.title.almostDone') : t('onboarding:chrome.title.savings')
       default:
         return ''
     }
   })()
 
   const primaryLabel = (() => {
-    if (submitting) return isJoiner ? 'Confirmando…' : 'Terminando…'
-    if (step === 5) return isJoiner ? 'Confirmar y unirme' : 'Terminar y empezar'
-    return 'Siguiente'
+    if (submitting) return isJoiner ? t('onboarding:cta.confirming') : t('onboarding:cta.finishing')
+    if (step === 5) return isJoiner ? t('onboarding:cta.confirmAndJoin') : t('onboarding:cta.finishAndStart')
+    return t('onboarding:cta.next')
   })()
 
   // Use `UIManager.measure` with native handles — most reliable

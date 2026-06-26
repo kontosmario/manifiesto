@@ -14,6 +14,7 @@ import { useMemo } from 'react'
 import { useEffect, useState } from 'react'
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
@@ -110,7 +111,7 @@ function coerceSignalsToReadOnly(
 ): ControlAdvisorTask[] {
   return tasks.map((task) => ({
     ...task,
-    cta: 'Entendido',
+    cta: i18n.t('insights:cta.entendido'),
     action: { kind: 'dismiss', dismissId: task.id },
   }))
 }

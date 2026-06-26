@@ -8,7 +8,8 @@
     "payday": "Día de cobro",
     "fixedExpense": "Gasto fijo",
     "fixedExpensePlural": "Gastos fijos",
-    "history": "Historial"
+    "history": "Historial",
+    "income": "Ingreso"
   },
   "actions": {
     "save": "Guardar",
@@ -25,6 +26,10 @@
     "skip": "Omitir",
     "add": "Agregar",
     "remove": "Quitar",
-    "understood": "Entendido"
+    "understood": "Entendido",
+    "allow": "Permitir",
+    "activate": "Activar",
+    "later": "Más tarde",
+    "tryAgain": "Intentar de nuevo"
   }
 }

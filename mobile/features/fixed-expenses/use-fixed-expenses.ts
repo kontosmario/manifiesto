@@ -15,6 +15,7 @@ import {
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
+import i18n from '@/lib/i18n'
 import { captureHikeReduction } from '@/features/insights/fixed-expense-value-capture'
 import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
 import {
@@ -124,7 +125,7 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
   >({
     mutationFn: async (input) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para crear un gasto fijo.')
+        throw new Error(i18n.t('fijos:errors.noFamilyCreate'))
       }
       return await createFixedExpense(familyId, input)
     },
@@ -162,8 +163,8 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
           ctx.previous,
         )
       }
-      toast.error('No se pudo crear el gasto fijo.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.createFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -195,7 +196,7 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
   >({
     mutationFn: async (input) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para editar un gasto fijo.')
+        throw new Error(i18n.t('fijos:errors.noFamilyEdit'))
       }
       await updateFixedExpense(familyId, input)
     },
@@ -247,8 +248,8 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
           ctx.previous,
         )
       }
-      toast.error('No se pudo actualizar el gasto fijo.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.updateFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -282,7 +283,7 @@ export function useUpdateFixedExpenseStatus(familyId?: string, userId?: string) 
   >({
     mutationFn: async ({ fixedExpenseId, status }) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para actualizar el gasto fijo.')
+        throw new Error(i18n.t('fijos:errors.noFamilyUpdate'))
       }
       await updateFixedExpenseStatus(familyId, fixedExpenseId, status)
     },
@@ -310,8 +311,8 @@ export function useUpdateFixedExpenseStatus(familyId?: string, userId?: string) 
           ctx.previous,
         )
       }
-      toast.error('No se pudo actualizar el estado del fijo.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.statusUpdateFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -358,7 +359,7 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
   >({
     mutationFn: async (vars) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para registrar el pago.')
+        throw new Error(i18n.t('fijos:errors.noFamilyRecord'))
       }
       await recordFixedExpensePayment({
         fixedExpenseId: vars.fixedExpenseId,
@@ -476,8 +477,8 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
           (old) => (old ? old.filter((p) => p.id !== optimisticId) : old),
         )
       }
-      toast.error('No se pudo registrar el pago.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.recordPaymentFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(vars),
       })
     },
@@ -524,7 +525,7 @@ export function useRevertFixedExpensePayment(familyId?: string, userId?: string)
   >({
     mutationFn: async (paymentId) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para revertir el pago.')
+        throw new Error(i18n.t('fijos:errors.noFamilyRevert'))
       }
       await revertFixedExpensePayment(paymentId)
     },
@@ -555,8 +556,8 @@ export function useRevertFixedExpensePayment(familyId?: string, userId?: string)
           queryClient.setQueryData(JSON.parse(serializedKey), value)
         }
       }
-      toast.error('No se pudo revertir el pago.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.revertPaymentFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(paymentId),
       })
     },
@@ -590,7 +591,7 @@ export function useDeleteFixedExpense(familyId?: string, userId?: string) {
   >({
     mutationFn: async (fixedExpenseId) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para borrar un gasto fijo.')
+        throw new Error(i18n.t('fijos:errors.noFamilyDelete'))
       }
       await deleteFixedExpense(familyId, fixedExpenseId)
     },
@@ -626,8 +627,8 @@ export function useDeleteFixedExpense(familyId?: string, userId?: string) {
           ctx.previous,
         )
       }
-      toast.error('No se pudo borrar el gasto fijo.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('fijos:errors.deleteFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(fixedExpenseId),
       })
     },

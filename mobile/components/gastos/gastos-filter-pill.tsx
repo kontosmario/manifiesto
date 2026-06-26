@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   cancelAnimation,
@@ -45,6 +46,7 @@ function GastosFilterPillImpl({
   onSelect,
 }: GastosFilterPillProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const pillLayout = useGatedLayout(LinearTransition.duration(220))
   // Estabilidad: useCallback baked sobre selectId (primitivo string|null)
   // + onSelect (stable useCallback'd upstream). Reemplaza la arrow
@@ -178,11 +180,20 @@ function GastosFilterPillImpl({
         accessibilityState={{ selected: active }}
         accessibilityLabel={
           count != null
-            ? `${label}, ${count} ${count === 1 ? 'movimiento' : 'movimientos'}${active ? ', filtro activo' : ''}`
-            : `${label}${active ? ', filtro activo' : ''}`
+            ? t('gastos:filterPill.a11yWithCount', {
+                label,
+                count,
+                context: active ? 'active' : undefined,
+              })
+            : t('gastos:filterPill.a11yNoCount', {
+                label,
+                context: active ? 'active' : undefined,
+              })
         }
         accessibilityHint={
-          active ? 'Doble tap para quitar el filtro' : 'Doble tap para filtrar por esta categoría'
+          active
+            ? t('gastos:filterPill.hintRemove')
+            : t('gastos:filterPill.hintApply')
         }
       >
         <Animated.View

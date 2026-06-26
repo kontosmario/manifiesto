@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import type { AvatarSlug } from '@/assets/avatars'
 import { PaydayPillV2 } from '@/components/home/payday-pill-v2'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -27,6 +28,7 @@ const MAX_AVATARS = 4
 
 export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday, paydayPending, onPaydayPress, showMembers = true }: FamilyStripProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const visible = members.slice(0, MAX_AVATARS)
   const overflow = members.length - visible.length
   return (
@@ -37,7 +39,12 @@ export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday,
             <View
               style={styles.avatars}
               accessible
-              accessibilityLabel={`Miembros del hogar: ${members.length === 0 ? 'ninguno' : members.map((m) => m.name).join(', ')}.`}
+              accessibilityLabel={t('home:familyStrip.membersAccessibility', {
+                members:
+                  members.length === 0
+                    ? t('home:familyStrip.none')
+                    : members.map((m) => m.name).join(', '),
+              })}
             >
               {visible.map((m, i) => (
                 <View key={m.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
@@ -64,7 +71,7 @@ export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday,
               ) : null}
             </View>
             <Text style={[styles.familyLabel, { color: theme.colors.textMuted }]}>
-              Miembros · <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
+              {t('home:familyStrip.membersLabel')} <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
             </Text>
           </>
         ) : null}

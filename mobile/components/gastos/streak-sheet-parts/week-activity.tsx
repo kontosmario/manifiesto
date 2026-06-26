@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { StatusTone } from './streak-sheet-tone'
@@ -10,6 +11,7 @@ interface WeekActivityProps {
 
 export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
   const emptyDotBg = theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)'
   return (
@@ -21,7 +23,7 @@ export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
         ]}
       >
         <Text style={[styles.cardLabel, { color: theme.colors.textMuted }]}>
-          Últimos 7 días
+          {t('gastos:streakSheet.last7Days')}
         </Text>
         <View style={styles.weekRow}>
           {weekActivity.map((logged, i) => {

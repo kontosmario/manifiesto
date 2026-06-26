@@ -1,5 +1,6 @@
 import { memo, useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   useAnimatedStyle,
@@ -99,6 +100,7 @@ function ControlV2VsMesCardImpl({
   onVerCierre,
 }: ControlV2VsMesCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const reduceMotion = useReducedMotion() ?? false
 
@@ -119,7 +121,7 @@ function ControlV2VsMesCardImpl({
           <View style={styles.eyebrowRow}>
             <BreatheDot size={7} color={neutralFg} glow={neutralFg} />
             <Text style={[styles.eyebrow, { color: neutralFg }]} numberOfLines={1}>
-              CÓMO VAS ESTE MES
+              {t('control:vsmes.eyebrow')}
             </Text>
             <View
               style={[
@@ -132,17 +134,16 @@ function ControlV2VsMesCardImpl({
             >
               <MaterialIcons name="schedule" size={11} color={neutralFg} />
               <Text style={[styles.statePillText, { color: neutralFg }]} numberOfLines={1}>
-                Sin cierre todavía
+                {t('control:vsmes.stateSinCierre')}
               </Text>
             </View>
           </View>
 
           <Text style={[styles.headline, { color: theme.colors.text }]}>
-            Todavía no cerraste un mes.
+            {t('control:vsmes.emptyHeadline')}
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-            Cuando confirmes tu próximo cobro, vamos a cerrar el mes y vas a ver
-            aquí cómo vas gastando comparado con el mes anterior.
+            {t('control:vsmes.emptyBody')}
           </Text>
         </View>
       </RiseView>
@@ -187,7 +188,9 @@ function ControlV2VsMesCardImpl({
   // el ciclo arranca.
   const pill = !reliable
     ? {
-        text: hasSpend ? 'Primeros días' : 'Recién arranca',
+        text: hasSpend
+          ? t('control:vsmes.pillPrimerosDias')
+          : t('control:vsmes.pillRecienArranca'),
         fg: theme.colors.textMuted,
         bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.05)',
         border: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,42,30,0.12)',
@@ -195,14 +198,14 @@ function ControlV2VsMesCardImpl({
       }
     : positive
       ? {
-          text: 'Vas bien',
+          text: t('control:vsmes.pillVasBien'),
           fg: theme.colors.success,
           bg: isDark ? 'rgba(122,216,163,0.16)' : 'rgba(28,126,58,0.10)',
           border: isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)',
           icon: 'trending-down' as const,
         }
       : {
-          text: 'Ojo este mes',
+          text: t('control:vsmes.pillOjo'),
           fg: theme.colors.warning,
           bg: isDark ? 'rgba(243,186,87,0.16)' : 'rgba(194,122,10,0.10)',
           border: isDark ? 'rgba(243,186,87,0.34)' : 'rgba(194,122,10,0.26)',
@@ -227,7 +230,7 @@ function ControlV2VsMesCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={accentFg} glow={accentFg} />
           <Text style={[styles.eyebrow, { color: accentFg }]} numberOfLines={1}>
-            CÓMO VAS ESTE MES
+            {t('control:vsmes.eyebrow')}
           </Text>
           <View style={[styles.statePill, { backgroundColor: pill.bg, borderColor: pill.border }]}>
             <MaterialIcons name={pill.icon} size={11} color={pill.fg} />
@@ -240,21 +243,28 @@ function ControlV2VsMesCardImpl({
         {/* ── Headline: estado real del ciclo, en una frase ── */}
         <Text style={[styles.headline, { color: theme.colors.text }]}>
           {!hasSpend ? (
-            <>Todavía no registraste gastos este mes.</>
+            <>{t('control:vsmes.headlineNoSpend')}</>
           ) : !reliable ? (
             <>
-              Llevas{' '}
-              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>{' '}
-              gastado. En unos días te comparo con {mesPasadoNombre}.
+              {t('control:vsmes.headlineUnreliablePrefix')}
+              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>
+              {t('control:vsmes.headlineUnreliableSuffix', { mes: mesPasadoNombre })}
             </>
           ) : (
             <>
-              Vas gastando{' '}
-              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>,{' '}
+              {t('control:vsmes.headlineSpendingPrefix')}
+              <Text style={styles.headlineStrong}>{formatMoneyShort(esteMes)}</Text>
+              {', '}
               <Text style={[styles.headlineStrong, { color: accentFg }]}>
-                {formatMoneyShort(diff)} {positive ? 'menos' : 'más'}
-              </Text>{' '}
-              que en {mesPasadoNombre}.
+                {positive
+                  ? t('control:vsmes.headlineDeltaMenos', {
+                      amount: formatMoneyShort(diff),
+                    })
+                  : t('control:vsmes.headlineDeltaMas', {
+                      amount: formatMoneyShort(diff),
+                    })}
+              </Text>
+              {t('control:vsmes.headlineSpendingSuffix', { mes: mesPasadoNombre })}
             </>
           )}
         </Text>
@@ -272,7 +282,7 @@ function ControlV2VsMesCardImpl({
             delay={140}
           />
           <CompareBar
-            label="Este mes"
+            label={t('control:vsmes.barEsteMes')}
             value={formatMoneyShort(esteMes)}
             pct={(esteMes / maxVal) * 100}
             fillColor={barFg}
@@ -294,13 +304,13 @@ function ControlV2VsMesCardImpl({
           <View style={styles.recapRow}>
             <MaterialIcons name="event-available" size={13} color={theme.colors.textMuted} />
             <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
-              En {mesPasadoNombre} gastaste{' '}
+              {t('control:vsmes.recapGastaste', { mes: mesPasadoNombre })}
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {formatMoneyShort(mesPasadoTotal)}
               </Text>
               {mesPasadoSavingsDelta > 0 ? (
                 <>
-                  {' '}y ahorraste{' '}
+                  {t('control:vsmes.recapAhorraste')}
                   <Text style={{ color: theme.colors.success, fontWeight: '700' }}>
                     {formatMoneyShort(mesPasadoSavingsDelta)}
                   </Text>
@@ -312,7 +322,7 @@ function ControlV2VsMesCardImpl({
             <View style={styles.recapRow}>
               <MaterialIcons name="local-mall" size={13} color={theme.colors.textMuted} />
               <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
-                Donde más gastaste:{' '}
+                {t('control:vsmes.recapDondeMas')}
                 <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                   {mesPasadoTopCatLabel}
                 </Text>
@@ -332,23 +342,24 @@ function ControlV2VsMesCardImpl({
                 style={[styles.recapText, { color: theme.colors.textMuted }]}
                 numberOfLines={2}
               >
-                {outlierDaysExcluded === 1 ? 'Día atípico' : 'Días atípicos'} fuera del
-                ritmo típico:{' '}
+                {outlierDaysExcluded === 1
+                  ? t('control:vsmes.recapDiaAtipico')
+                  : t('control:vsmes.recapDiasAtipicos')}
+                {t('control:vsmes.recapAtipicosFueraRitmo')}
                 <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                   {outlierDaysExcluded}
                 </Text>
                 {outlierDaysTotal != null && outlierDaysTotal > 0 ? (
                   <>
-                    {' '}(suman{' '}
+                    {t('control:vsmes.recapAtipicosSuman')}
                     <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                       {formatMoneyShort(outlierDaysTotal)}
                     </Text>
-                    ).
+                    {t('control:vsmes.recapAtipicosExcluye')}
                   </>
                 ) : (
-                  <>.</>
-                )}{' '}
-                La proyección los excluye para no inflar el cierre.
+                  <>{t('control:vsmes.recapAtipicosExcluyeNoSum')}</>
+                )}
               </Text>
             </View>
           ) : null}
@@ -363,7 +374,7 @@ function ControlV2VsMesCardImpl({
               style={[styles.recapText, { color: theme.colors.textMuted }]}
               numberOfLines={2}
             >
-              Compara solo gastos variables — los fijos no entran.
+              {t('control:vsmes.recapSoloVariables')}
             </Text>
           </View>
         </View>
@@ -376,7 +387,7 @@ function ControlV2VsMesCardImpl({
               onVerCierre()
             }}
             accessibilityRole="button"
-            accessibilityLabel={`Ver el cierre de ${mesPasadoNombre} con animación`}
+            accessibilityLabel={t('control:vsmes.ctaVerCierreA11y', { mes: mesPasadoNombre })}
             style={({ pressed }) => [
               styles.cta,
               {
@@ -387,7 +398,7 @@ function ControlV2VsMesCardImpl({
           >
             <MaterialIcons name="slideshow" size={16} color={ctaFg} />
             <Text style={[styles.ctaText, { color: ctaFg }]} numberOfLines={1}>
-              Ver el cierre de {mesPasadoNombre}
+              {t('control:vsmes.ctaVerCierre', { mes: mesPasadoNombre })}
             </Text>
             <MaterialIcons name="chevron-right" size={18} color={ctaFg} />
           </Pressable>

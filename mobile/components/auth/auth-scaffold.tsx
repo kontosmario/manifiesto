@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'
 import Animated, {
   Easing,
@@ -31,6 +32,7 @@ interface AuthShellProps {
  * de acciones (abajo), con el hero en el medio (space-between).
  */
 export function AuthShell({ onBack, eyebrow, title, subtitle, children }: AuthShellProps) {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
 
@@ -40,7 +42,7 @@ export function AuthShell({ onBack, eyebrow, title, subtitle, children }: AuthSh
 
       <View style={styles.topNav}>
         <Pressable
-          accessibilityLabel="Volver"
+          accessibilityLabel={t('auth:common.back')}
           accessibilityRole="button"
           hitSlop={DEFAULT_HIT_SLOP}
           onPress={onBack}

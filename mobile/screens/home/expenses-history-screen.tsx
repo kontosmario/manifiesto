@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { ExpenseEditorModal } from '@/components/home/expense-editor-modal'
 import { ExpenseHistoryContentCard } from '@/components/home/expense-history-content-card'
@@ -21,11 +22,12 @@ interface ExpensesHistoryScreenProps {
 
 export function ExpensesHistoryScreen({
   familyId,
-  title = 'Historial',
+  title,
   subtitle,
   canGoBack = false,
 }: ExpensesHistoryScreenProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const controller = useExpenseHistoryController(familyId, theme)
   const {
@@ -72,7 +74,7 @@ export function ExpensesHistoryScreen({
         }
         scrollable={false}
         subtitle={subtitle}
-        title={title}
+        title={title ?? t('common:terms.history')}
         titleColor={headerPalette.titleColor}
       >
         <View style={styles.sectionStack}>
@@ -84,9 +86,9 @@ export function ExpensesHistoryScreen({
             <ErrorState
               description={getErrorMessage(
                 screenError,
-                'No pudimos cargar el historial y sus filtros.',
+                t('gastos:historyScreen.loadErrorDescription'),
               )}
-              title="No pudimos cargar el historial"
+              title={t('gastos:historyScreen.loadErrorTitle')}
               onAction={() => {
                 void Promise.all([
                   expensesQuery.refetch(),
@@ -127,8 +129,8 @@ export function ExpensesHistoryScreen({
           isBusy={isBusy}
           onClose={actions.closeExpenseEditor}
           onSubmit={actions.submitExpenseUpdate}
-          submitLabel="Actualizar"
-          title="Editar gasto"
+          submitLabel={t('gastos:historyScreen.update')}
+          title={t('gastos:historyScreen.editExpense')}
           visible
         />
       ) : null}

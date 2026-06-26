@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
@@ -72,6 +73,7 @@ export function FijosProximosCard({
   empty = false,
 }: FijosProximosCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const router = useRouter()
   const dismissedHikes = useDismissedHikes()
 
@@ -144,7 +146,7 @@ export function FijosProximosCard({
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              POR PAGAR · ESTE MES
+              {t('fijos:proximos.eyebrow')}
             </Text>
             {hasUrgent ? (
               <UrgentHeaderDot
@@ -154,7 +156,7 @@ export function FijosProximosCard({
           </View>
           {hasUpcoming ? (
             <Text style={[styles.headerCount, { color: theme.colors.textMuted }]}>
-              {upcoming.length} {upcoming.length === 1 ? 'ítem' : 'ítems'}
+              {t('fijos:proximos.itemCount', { count: upcoming.length })}
             </Text>
           ) : null}
         </View>
@@ -171,7 +173,7 @@ export function FijosProximosCard({
           <View style={styles.calmRow}>
             <MaterialIcons name="check-circle" size={18} color={theme.colors.primary} />
             <Text style={[styles.calmText, { color: theme.colors.text }]}>
-              Sin pendientes. Vuelve a chequear en unos días.
+              {t('fijos:proximos.calm')}
             </Text>
           </View>
         )}
@@ -181,7 +183,7 @@ export function FijosProximosCard({
           <>
             <View style={styles.alertsBreak}>
               <Text style={[styles.alertsLabel, { color: theme.colors.textMuted }]}>
-                AVISOS
+                {t('fijos:proximos.alertsLabel')}
               </Text>
               <View
                 style={[styles.alertsLine, { backgroundColor: theme.colors.line }]}

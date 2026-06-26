@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -21,11 +22,11 @@ const KIND_EMOJI: Record<IncomeEventKind, string> = {
   other: '💵',
 }
 
-const KIND_PILL: Record<IncomeEventKind, string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Ingreso',
+const KIND_PILL_KEY: Record<IncomeEventKind, string> = {
+  transfer: 'gastos:incomeRow.kind.transfer',
+  bonus: 'gastos:incomeRow.kind.bonus',
+  gift: 'gastos:incomeRow.kind.gift',
+  other: 'gastos:incomeRow.kind.other',
 }
 
 /**
@@ -59,8 +60,9 @@ function IncomeRowImpl({
   time,
 }: IncomeRowProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const emoji = KIND_EMOJI[kind]
-  const pillLabel = KIND_PILL[kind]
+  const pillLabel = t(KIND_PILL_KEY[kind])
   const accent = theme.colors.primary
 
   // Same memoization shape as GastoRow so the row stays cheap during

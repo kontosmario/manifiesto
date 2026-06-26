@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { Category } from '@/features/categories/use-categories'
@@ -18,11 +20,11 @@ interface Props {
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
-const INCOME_KIND_LABELS: Record<IncomeKind, string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Otro',
+const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
+  transfer: 'gastos:import.incomeKind.transfer',
+  bonus: 'gastos:import.incomeKind.bonus',
+  gift: 'gastos:import.incomeKind.gift',
+  other: 'gastos:import.incomeKind.other',
 }
 
 /**
@@ -46,20 +48,19 @@ export function ImportReviewSummary({
   onJumpTo,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const submittable = rows.filter((r) => r.kind !== 'skip')
 
   const categoryById = new Map(categories.map((c) => [c.id, c]))
 
   const subtitleParts: string[] = []
   if (expensesCount > 0) {
-    subtitleParts.push(`${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`)
+    subtitleParts.push(t('gastos:import.summary.expensesCount', { count: expensesCount }))
   }
   if (incomesCount > 0) {
-    subtitleParts.push(
-      `${incomesCount} ingreso${incomesCount === 1 ? '' : 's'}`,
-    )
+    subtitleParts.push(t('gastos:import.summary.incomesCount', { count: incomesCount }))
   }
-  const subtitle = subtitleParts.join(' y ')
+  const subtitle = subtitleParts.join(t('gastos:import.summary.and'))
   const isEmpty = expensesCount + incomesCount === 0
 
   return (
@@ -71,7 +72,7 @@ export function ImportReviewSummary({
           { color: theme.colors.text },
         ]}
       >
-        {isEmpty ? 'Sin nada para cargar' : `Vas a cargar ${subtitle}.`}
+        {isEmpty ? t('gastos:import.summary.nothingToLoad') : t('gastos:import.summary.willLoad', { summary: subtitle })}
       </Animated.Text>
 
       <View style={styles.list}>
@@ -99,9 +100,7 @@ export function ImportReviewSummary({
             .easing(EASE_IOS)}
           style={[styles.skippedLine, { color: theme.colors.textMuted }]}
         >
-          {skippedCount === 1
-            ? '1 movimiento que salteaste no se va a cargar.'
-            : `${skippedCount} movimientos que salteaste no se van a cargar.`}
+          {t('gastos:import.summary.skippedLine', { count: skippedCount })}
         </Animated.Text>
       ) : null}
     </View>
@@ -127,6 +126,7 @@ interface SummaryItemProps {
  */
 function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const sign = row.kind === 'income' ? '+' : ''
   const tint = row.kind === 'income' ? theme.colors.primary : theme.colors.text
 
@@ -134,7 +134,7 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
     const dateLabel = formatRelativeDate(row.date)
     const sub =
       row.kind === 'income'
-        ? INCOME_KIND_LABELS[row.incomeKind]
+        ? t(INCOME_KIND_LABEL_KEYS[row.incomeKind])
         : (categoryName ?? '—')
     return `${dateLabel} · ${sub}`
   })()
@@ -142,7 +142,13 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
   // One a11y node per movement, read as a single phrase. Without this the
   // '+' on income is silent and gasto/ingreso sound identical at the most
   // critical step (what you're about to load).
-  const a11yLabel = `${row.kind === 'income' ? 'Ingreso' : 'Gasto'}, ${row.description}, ${sign === '+' ? 'más ' : ''}$${formatThousands(row.amount)}, ${meta}`
+  const a11yLabel = t('gastos:import.summary.itemA11y', {
+    kind: row.kind === 'income' ? t('gastos:import.incomeKind.incomeLabel') : t('common:terms.expense'),
+    description: row.description,
+    plus: sign === '+' ? t('gastos:import.summary.plusPrefix') : '',
+    amount: formatThousands(row.amount),
+    meta,
+  })
 
   return (
     <Animated.View
@@ -156,7 +162,7 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
         accessible
         accessibilityRole={onJumpTo ? 'button' : 'text'}
         accessibilityLabel={a11yLabel}
-        accessibilityHint={onJumpTo ? 'Toca para editar este movimiento' : undefined}
+        accessibilityHint={onJumpTo ? t('gastos:import.summary.editHint') : undefined}
         style={({ pressed }) => [
           styles.item,
           pressed && onJumpTo ? styles.itemPressed : null,
@@ -212,9 +218,9 @@ function formatRelativeDate(iso: string): string {
   const diffDays = Math.round(
     (targetMid.getTime() - today.getTime()) / 86_400_000,
   )
-  if (diffDays === 0) return 'hoy'
-  if (diffDays === -1) return 'ayer'
-  if (diffDays === 1) return 'mañana'
+  if (diffDays === 0) return i18n.t('gastos:import.relativeDate.today')
+  if (diffDays === -1) return i18n.t('gastos:import.relativeDate.yesterday')
+  if (diffDays === 1) return i18n.t('gastos:import.relativeDate.tomorrow')
   const weekdays = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
   const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
   return `${weekdays[target.getDay()]} ${target.getDate()} ${months[target.getMonth()]}`

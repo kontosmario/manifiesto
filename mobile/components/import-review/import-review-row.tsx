@@ -8,6 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -15,6 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
 import { motionDurations } from '@/lib/motion/tokens'
 import { AmountCard } from '@/components/home/amount-card'
@@ -55,11 +57,11 @@ interface Props {
 }
 
 const INCOME_KINDS: IncomeKind[] = ['transfer', 'bonus', 'gift', 'other']
-const INCOME_KIND_LABELS: Record<IncomeKind, string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Otro',
+const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
+  transfer: 'gastos:import.incomeKind.transfer',
+  bonus: 'gastos:import.incomeKind.bonus',
+  gift: 'gastos:import.incomeKind.gift',
+  other: 'gastos:import.incomeKind.other',
 }
 
 /**
@@ -83,6 +85,7 @@ export function ImportReviewRow({
   onUnskip,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [numpadVisible, setNumpadVisible] = useState(false)
   // `isFlagged` becomes true the first time the parent bumps
   // `highlightToken` while this row was mounted. Stays true for the
@@ -92,9 +95,9 @@ export function ImportReviewRow({
   // `missingFields` updates with every patch.
   const initialTokenRef = useRef(highlightToken)
   const isFlagged = highlightToken > initialTokenRef.current
-  const flagDescription = isFlagged && missingFields.includes('descripción')
-  const flagAmount = isFlagged && missingFields.includes('monto')
-  const flagCategory = isFlagged && missingFields.includes('categoría')
+  const flagDescription = isFlagged && missingFields.includes(t('gastos:import.field.description'))
+  const flagAmount = isFlagged && missingFields.includes(t('gastos:import.field.amount'))
+  const flagCategory = isFlagged && missingFields.includes(t('gastos:import.field.category'))
   // Local raw mirrors the row's numeric amount so the shared numpad
   // can edit it in-place. Source of truth stays in the controller —
   // `rawValue` is just the display state. Re-syncs whenever an external
@@ -127,7 +130,7 @@ export function ImportReviewRow({
             style={[styles.skipLabel, { color: theme.colors.textMuted }]}
             numberOfLines={2}
           >
-            Saltado
+            {t('gastos:import.row.skipped')}
           </Text>
         </View>
         <Text
@@ -138,11 +141,11 @@ export function ImportReviewRow({
         </Text>
         <PressScale
           onPress={onUnskip}
-          accessibilityLabel="Restaurar este movimiento"
+          accessibilityLabel={t('gastos:import.row.restoreMovement')}
           style={[styles.restoreBtn, { borderColor: theme.colors.line }]}
         >
           <Text style={[styles.restoreLabel, { color: theme.colors.primary }]}>
-            Restaurar este movimiento
+            {t('gastos:import.row.restoreMovement')}
           </Text>
         </PressScale>
       </View>
@@ -199,7 +202,7 @@ export function ImportReviewRow({
           amount={row.amount}
           isActive={numpadVisible}
           onPress={handleOpenNumpad}
-          label={row.kind === 'income' ? 'Monto del ingreso' : 'Monto'}
+          label={row.kind === 'income' ? t('gastos:import.row.incomeAmount') : t('gastos:import.row.amount')}
           size="compact"
           warning={flagAmount}
         />
@@ -212,13 +215,13 @@ export function ImportReviewRow({
 
       <RiseView delay={120} style={styles.rhythmTop}>
         <TextField
-          label="Descripción"
+          label={t('gastos:import.row.description')}
           value={row.description}
-          onChangeText={(t) => onPatch({ description: t })}
+          onChangeText={(next) => onPatch({ description: next })}
           autoCapitalize="sentences"
           autoCorrect={false}
           maxLength={60}
-          placeholder="Ej: Supermercado"
+          placeholder={t('gastos:import.row.descriptionPlaceholder')}
           returnKeyType="done"
           warning={flagDescription}
         />
@@ -228,7 +231,7 @@ export function ImportReviewRow({
         <View style={styles.field}>
           <View style={styles.dateLabelRow}>
             <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-              Fecha
+              {t('gastos:import.row.date')}
             </Text>
             <Text style={[styles.dateValue, { color: theme.colors.text }]}>
               {formatDayLabel(row.date)}
@@ -263,7 +266,7 @@ export function ImportReviewRow({
       <RiseView delay={300}>
         <NotesRow
           notes={row.notes ?? ''}
-          onChange={(t) => onPatch({ notes: t === '' ? null : t })}
+          onChange={(next) => onPatch({ notes: next === '' ? null : next })}
         />
       </RiseView>
 
@@ -353,9 +356,10 @@ function KindToggle({
   onChange: (kind: ReviewRowKind) => void
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const options: ReadonlyArray<{ key: ReviewRowKind; label: string }> = [
-    { key: 'expense', label: 'Gasto' },
-    { key: 'income', label: 'Ingreso' },
+    { key: 'expense', label: t('common:terms.expense') },
+    { key: 'income', label: t('gastos:import.incomeKind.incomeLabel') },
   ]
   return (
     <View style={styles.toggleRow}>
@@ -400,6 +404,7 @@ function CategorySection({
   onSelect: (id: string) => void
   warning?: boolean
 }) {
+  const { t } = useTranslation()
   if (categories.length === 0) return null
   // Render the rail flat — `warning` only swaps its label color + text
   // ("Elige una categoría") via the rail's own animated style. No
@@ -410,7 +415,7 @@ function CategorySection({
       categories={categories.slice()}
       selectedCategoryId={selectedCategoryId ?? ''}
       onSelect={onSelect}
-      label="Categoría"
+      label={t('gastos:import.row.category')}
       rows={1}
       warning={warning}
     />
@@ -425,10 +430,11 @@ function IncomeKindSection({
   onSelect: (k: IncomeKind) => void
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-        Tipo de ingreso
+        {t('gastos:import.row.incomeType')}
       </Text>
       <View style={styles.kindRow}>
         {INCOME_KINDS.map((k) => {
@@ -454,7 +460,7 @@ function IncomeKindSection({
                   { color: active ? theme.colors.textOnPrimary : theme.colors.text },
                 ]}
               >
-                {INCOME_KIND_LABELS[k]}
+                {t(INCOME_KIND_LABEL_KEYS[k])}
               </Text>
             </PressScale>
           )
@@ -473,9 +479,9 @@ function formatDayLabel(iso: string): string {
   const t = new Date(d)
   t.setHours(0, 0, 0, 0)
   const diff = Math.round((t.getTime() - today.getTime()) / 86_400_000)
-  if (diff === 0) return 'hoy'
-  if (diff === -1) return 'ayer'
-  if (diff === 1) return 'mañana'
+  if (diff === 0) return i18n.t('gastos:import.relativeDate.today')
+  if (diff === -1) return i18n.t('gastos:import.relativeDate.yesterday')
+  if (diff === 1) return i18n.t('gastos:import.relativeDate.tomorrow')
   const wd = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
   const mo = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
   return `${wd[d.getDay()]} ${d.getDate()} ${mo[d.getMonth()]}`
@@ -484,17 +490,17 @@ function formatDayLabel(iso: string): string {
 function warningLabel(w: ReviewRow['warnings'][number]): string {
   switch (w) {
     case 'foreign-currency':
-      return 'Moneda no soportada. Edita el monto en ARS.'
+      return i18n.t('gastos:import.warning.foreignCurrency')
     case 'swap-ambiguous':
-      return 'Cambio de moneda. Verifica antes de cargar.'
+      return i18n.t('gastos:import.warning.swapAmbiguous')
     case 'no-merchant':
-      return 'Sin descripción. Completa antes de confirmar.'
+      return i18n.t('gastos:import.warning.noMerchant')
     case 'no-date':
-      return 'Sin fecha clara. Asumimos hoy.'
+      return i18n.t('gastos:import.warning.noDate')
     case 'value-zero':
-      return 'Monto 0. Edita antes de confirmar.'
+      return i18n.t('gastos:import.warning.valueZero')
     case 'future-date':
-      return 'La fecha era futura. La ajustamos a hoy — revisala.'
+      return i18n.t('gastos:import.warning.futureDate')
   }
 }
 

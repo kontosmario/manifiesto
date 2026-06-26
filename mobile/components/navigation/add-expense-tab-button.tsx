@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { AddExpenseTabButtonFace } from '@/components/navigation/add-expense-tab-button-face'
 import {
   AddQuickActionsOverlay,
@@ -81,6 +82,7 @@ export function AddExpenseTabButton({
   accessibilityState?: { selected?: boolean }
 }) {
   const router = useRouter()
+  const { t } = useTranslation()
 
   const session = useAuthSession()
   const userId = session.data?.user.id
@@ -138,7 +140,7 @@ export function AddExpenseTabButton({
           onSuccess: () => {
             void triggerHaptic('success')
             confetti.celebrate({ durationMs: 2000, origin: 'top' })
-            toast.success('Día sin gastos registrado')
+            toast.success(t('states:addFab.registered'))
             setConfirmSheetVisible(false)
           },
           onError: (error: unknown) => {
@@ -146,13 +148,13 @@ export function AddExpenseTabButton({
             toast.error(
               error instanceof Error
                 ? error.message
-                : 'No se pudo marcar. Reintenta en un momento.',
+                : t('states:addFab.markFailed'),
             )
           },
         },
       )
     },
-    [markNoExpenseMutation],
+    [markNoExpenseMutation, t],
   )
 
   const { theme } = useAppTheme()
@@ -223,7 +225,7 @@ export function AddExpenseTabButton({
 
   const handleOpenImport = async () => {
     if (!familyId || !userId) {
-      toast.error('Necesitas estar en sesión para importar.')
+      toast.error(t('states:addFab.needSession'))
       return
     }
     // El FAB overlay usa un <Modal> que está cerrando justo cuando esta
@@ -245,10 +247,10 @@ export function AddExpenseTabButton({
         // silent
         break
       case 'permission-denied':
-        toast.error('Necesito acceso a tus fotos para importar capturas.')
+        toast.error(t('states:addFab.needPhotos'))
         break
       case 'error':
-        toast.error(`No pude leer esa captura: ${result.message}`)
+        toast.error(t('states:addFab.readFailed', { message: result.message }))
         break
     }
   }
@@ -256,7 +258,7 @@ export function AddExpenseTabButton({
   const quickActions: QuickAction[] = [
     {
       key: 'expense',
-      label: 'Gasto',
+      label: t('common:terms.expense'),
       icon: 'add',
       tier: 'primary',
       // No accentColor on purpose — the primary tile is already
@@ -265,7 +267,7 @@ export function AddExpenseTabButton({
     },
     {
       key: 'import',
-      label: 'Importar captura',
+      label: t('states:quickActions.import'),
       icon: 'document-scanner',
       accentColor: ACCENT_IMPORT,
       // QuickAction.onPress es () => void; envolvemos el async handler
@@ -277,7 +279,9 @@ export function AddExpenseTabButton({
     },
     {
       key: 'no-spend',
-      label: hasMarkedToday ? 'Marcado ✓' : 'Día sin gasto',
+      label: hasMarkedToday
+        ? t('states:quickActions.noSpendMarked')
+        : t('states:quickActions.noSpend'),
       icon: 'eco',
       visualState: hasMarkedToday ? 'marked' : 'default',
       accentColor: ACCENT_NO_SPEND,
@@ -293,7 +297,7 @@ export function AddExpenseTabButton({
         switch (decision.kind) {
           case 'noop':
             if (decision.reason === 'no-family') {
-              toast.info('Estamos preparando tu cuenta, intenta de nuevo en un instante.')
+              toast.info(t('states:addFab.preparingAccount'))
             }
             return
 
@@ -301,14 +305,14 @@ export function AddExpenseTabButton({
             unmarkNoExpenseMutation.mutate(undefined, {
               onSuccess: () => {
                 void triggerHaptic('selection')
-                toast.info('Marca de día sin gastos removida.')
+                toast.info(t('states:addFab.unmarked'))
               },
               onError: (error: unknown) => {
                 void triggerHaptic('error')
                 toast.error(
                   error instanceof Error
                     ? error.message
-                    : 'No se pudo revertir. Reintenta en un momento.',
+                    : t('states:addFab.unmarkFailed'),
                 )
               },
             })
@@ -329,14 +333,14 @@ export function AddExpenseTabButton({
     },
     {
       key: 'income',
-      label: 'Ingreso',
+      label: t('common:terms.income'),
       icon: 'trending-up',
       accentColor: ACCENT_INCOME,
       onPress: () => router.push('/(app)/add-income'),
     },
     {
       key: 'fixed',
-      label: 'Gasto fijo',
+      label: t('common:terms.fixedExpense'),
       icon: 'event-repeat',
       accentColor: ACCENT_FIXED,
       onPress: () => router.push('/(app)/add-fixed-expense'),
@@ -346,8 +350,8 @@ export function AddExpenseTabButton({
   return (
     <>
       <Pressable
-        accessibilityLabel="Agregar gasto"
-        accessibilityHint="Mantén presionado para más acciones"
+        accessibilityLabel={t('states:addFab.label')}
+        accessibilityHint={t('states:addFab.hint')}
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         android_ripple={{

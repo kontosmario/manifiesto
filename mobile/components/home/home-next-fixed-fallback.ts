@@ -7,6 +7,8 @@
 // stay symmetric. The empty-state band invites the user to add their
 // first fijo.
 
+import i18n from '@/lib/i18n'
+
 export interface NextFixedFallback {
   kind: 'empty'
   primary: string
@@ -30,7 +32,7 @@ export function computeNextFixedFallback(
   if (input.fixedCount > 0) return null
   return {
     kind: 'empty',
-    primary: 'Carga tu primer gasto fijo',
-    secondary: 'Alquiler, servicios, suscripciones',
+    primary: i18n.t('home:nextFixedFallback.primary'),
+    secondary: i18n.t('home:nextFixedFallback.secondary'),
   }
 }

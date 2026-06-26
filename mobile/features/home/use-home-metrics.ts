@@ -21,6 +21,7 @@ import {
   isHikeDismissed,
   useDismissedHikes,
 } from '@/features/fijos/use-hike-dismiss-store'
+import i18n from '@/lib/i18n'
 
 const MONTH_SHORT_ES = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
@@ -432,13 +433,18 @@ function buildAlerts(input: {
   const next = input.upcoming[0]
   if (next && next.daysUntilDue <= 3) {
     const days = next.daysUntilDue
-    const when = days === 0 ? 'hoy' : days === 1 ? 'mañana' : `en ${days}d`
+    const when =
+      days === 0
+        ? i18n.t('home:alerts.dueWhen.today')
+        : days === 1
+          ? i18n.t('home:alerts.dueWhen.tomorrow')
+          : i18n.t('home:alerts.dueWhen.inDays', { days })
     alerts.push({
       id: `upcoming-${next.id}`,
       type: 'upcoming_fixed',
-      title: `${next.name} vence ${when}`,
+      title: i18n.t('home:alerts.upcomingTitle', { name: next.name, when }),
       subtitle: `$${Math.round(Number(next.amount ?? 0)).toLocaleString('es-AR')}`,
-      actionLabel: 'Marcar pagado',
+      actionLabel: i18n.t('home:alerts.markPaid'),
       actionRoute: `/(app)/(tabs)/fixed-expenses`,
       urgency: days <= 1 ? 'high' : 'medium',
     })
@@ -450,9 +456,9 @@ function buildAlerts(input: {
     alerts.push({
       id: 'zombies',
       type: 'zombie_subscription',
-      title: `${n} ${n === 1 ? 'suscripción zombi' : 'suscripciones zombi'}`,
-      subtitle: 'sin uso hace más de 45 días',
-      actionLabel: 'Revisar',
+      title: i18n.t('home:alerts.zombieTitle', { count: n }),
+      subtitle: i18n.t('home:alerts.zombieSubtitle'),
+      actionLabel: i18n.t('home:alerts.review'),
       actionRoute: '/(app)/(tabs)/fixed-expenses',
       urgency: 'medium',
     })
@@ -464,9 +470,12 @@ function buildAlerts(input: {
     alerts.push({
       id: `hike-${topHike.fixedExpenseId}`,
       type: 'price_hike',
-      title: `${topHike.name} subió +${topHike.deltaPct}%`,
-      subtitle: 'vs mes pasado',
-      actionLabel: 'Ver',
+      title: i18n.t('home:alerts.hikeTitle', {
+        name: topHike.name,
+        pct: topHike.deltaPct,
+      }),
+      subtitle: i18n.t('home:alerts.hikeSubtitle'),
+      actionLabel: i18n.t('home:alerts.view'),
       actionRoute: '/(app)/(tabs)/fixed-expenses',
       urgency: 'low',
     })

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -38,6 +39,7 @@ interface Props {
  */
 export function ControlHeroTitular({ state }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const palette = buildControlHeroPalette()
   const msg = resolveControlMessage(state)
   const tone = statusColor(msg.status, palette)
@@ -92,10 +94,10 @@ export function ControlHeroTitular({ state }: Props) {
           <CountUpText
             value={msg.primaryNumber}
             flourish
-            unit={msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? 'integer' : 'money'}
+            unit={msg.primaryIsDays ? 'integer' : 'money'}
             glowColor={tone}
             duration={900}
-            format={(n) => (msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? String(Math.round(n)) : formatMoney(Math.round(n)))}
+            format={(n) => (msg.primaryIsDays ? String(Math.round(n)) : formatMoney(Math.round(n)))}
             style={[styles.numberValue, { color: tone }]}
           />
         </View>
@@ -104,14 +106,14 @@ export function ControlHeroTitular({ state }: Props) {
       <RiseRow delay={400}>
         <View style={[styles.footerRow, { borderTopColor: 'rgba(255,255,255,0.10)' }]}>
           <FooterStat
-            label="racha"
+            label={t('control:hero.footerRacha')}
             value={state.racha === 0 ? '—' : `${state.racha}d`}
             color={state.racha > 0 ? palette.positive : theme.colors.heroMuted2}
           />
           <Divider />
           {state.vsMesDeltaPct != null ? (
             <FooterStat
-              label="vs mes"
+              label={t('control:hero.footerVsMes')}
               value={formatDeltaPct(state.vsMesDeltaPct)}
               color={
                 state.vsMesMejor === true
@@ -123,7 +125,7 @@ export function ControlHeroTitular({ state }: Props) {
             />
           ) : (
             <FooterStat
-              label="del cupo"
+              label={t('control:hero.footerDelCupo')}
               value={`${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`}
               color={
                 state.gastoHoy > state.cupoDiario ? palette.urgent : theme.colors.heroAccent
@@ -134,7 +136,7 @@ export function ControlHeroTitular({ state }: Props) {
             <>
               <Divider />
               <FooterStat
-                label="sin gastos"
+                label={t('control:hero.footerSinGastos')}
                 value={`🌱 ${state.noSpendDaysCount}`}
                 color={palette.positive}
               />
@@ -142,7 +144,7 @@ export function ControlHeroTitular({ state }: Props) {
           ) : null}
           <Divider />
           <FooterStat
-            label="al cobro"
+            label={t('control:hero.footerAlCobro')}
             value={`${state.proximoSueldoEnDias}d`}
             color={theme.colors.heroText}
           />
@@ -180,6 +182,7 @@ function MetaChip({
   gastoHoy: number
   palette: ReturnType<typeof buildControlHeroPalette>
 }) {
+  const { t } = useTranslation()
   const over = gastoHoy > goal
   const tint = over ? palette.urgent : palette.positive
   return (
@@ -192,7 +195,7 @@ function MetaChip({
         },
       ]}
     >
-      <Text style={[styles.metaChipLabel, { color: tint }]}>META</Text>
+      <Text style={[styles.metaChipLabel, { color: tint }]}>{t('control:hero.metaChipLabel')}</Text>
       <Text style={[styles.metaChipValue, { color: tint }]}>{formatMoneyShort(goal)}</Text>
     </View>
   )

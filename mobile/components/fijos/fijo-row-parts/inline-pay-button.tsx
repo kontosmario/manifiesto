@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -27,6 +28,7 @@ export function InlinePayButton({
   onPress: () => void
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isOverdue = status === 'overdue'
 
   return (
@@ -36,8 +38,8 @@ export function InlinePayButton({
       onPressOut={pressScale.onPressOut}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={isOverdue ? 'Pagar — fijo en mora' : 'Pagar'}
-      accessibilityHint="Abre el sheet para confirmar el monto pagado"
+      accessibilityLabel={isOverdue ? t('fijos:row.payOverdue') : t('fijos:row.pay')}
+      accessibilityHint={t('fijos:row.payHint')}
       style={styles.inlinePayWrap}
     >
       <Animated.View
@@ -53,7 +55,7 @@ export function InlinePayButton({
           color={theme.colors.creamCard}
         />
         <Text style={[styles.inlinePayLabel, { color: theme.colors.creamCard }]}>
-          Pagar
+          {t('fijos:row.pay')}
         </Text>
       </Animated.View>
     </Pressable>

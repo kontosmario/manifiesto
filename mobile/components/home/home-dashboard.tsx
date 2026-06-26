@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCurrentDate } from '@/hooks/use-current-date'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
@@ -168,6 +169,7 @@ export function HomeDashboard({
 }: HomeDashboardProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const today = useCurrentDate()
   const queryClient = useQueryClient()
   const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
@@ -447,7 +449,7 @@ export function HomeDashboard({
         await applyDecision.mutateAsync(input)
         setDecisionSheetOpen(false)
       } catch {
-        toast.error('No pudimos guardar tu decisión. Prueba de nuevo en un rato.')
+        toast.error(t('home:dashboard.saveDecisionError'))
       }
     },
     [applyDecision],
@@ -615,7 +617,7 @@ export function HomeDashboard({
               try {
                 await applyDecision.mutateAsync(input)
               } catch (err) {
-                toast.error('No pudimos guardar tu decisión. Prueba de nuevo en un rato.')
+                toast.error(t('home:dashboard.saveDecisionError'))
                 throw err
               }
             }
@@ -1003,11 +1005,11 @@ export function HomeDashboard({
           y así no interrumpe el par saldo↔variables/fijos. */}
       <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
       <View style={styles.activityHeader}>
-        <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>ACTIVIDAD</Text>
+        <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>{t('home:dashboard.activity')}</Text>
         {recentExpenses.length > 0 || cycleIncome.length > 0 ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ver todo el historial"
+            accessibilityLabel={t('home:dashboard.viewAllHistory')}
             hitSlop={10}
             onPress={handleViewGastos}
             onPressIn={viewAllPress.onPressIn}
@@ -1015,7 +1017,7 @@ export function HomeDashboard({
           >
             <Animated.View style={viewAllPress.animatedStyle}>
               <Text style={[styles.activityLink, { color: theme.colors.primaryStrong }]}>
-                Ver todos
+                {t('home:dashboard.viewAll')}
               </Text>
             </Animated.View>
           </Pressable>

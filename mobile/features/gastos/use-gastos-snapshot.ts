@@ -21,6 +21,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import {
   gastosEndpointKeys,
 } from '@/features/gastos/use-gastos-endpoints'
@@ -218,7 +219,7 @@ export async function fetchGastosSnapshot(
     p_timezone: DEFAULT_TIMEZONE,
   })
   if (error) throw error
-  if (!data) throw new Error('El snapshot de gastos vino vacío.')
+  if (!data) throw new Error(i18n.t('gastos:errors.snapshotEmpty'))
   return data as GastosSnapshotPayload
 }
 

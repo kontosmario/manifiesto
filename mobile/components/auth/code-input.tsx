@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -30,6 +31,7 @@ export function CodeInput({
   onPressCells,
   active,
 }: CodeInputProps) {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
 
   // Long-press = pegar. Extrae los dígitos del portapapeles (sirve aunque hayas
@@ -48,8 +50,8 @@ export function CodeInput({
 
   return (
     <Pressable
-      accessibilityHint="Toca para abrir el teclado, mantén apretado para pegar"
-      accessibilityLabel={`Código de ${length} dígitos`}
+      accessibilityHint={t('auth:codeInput.hint')}
+      accessibilityLabel={t('auth:codeInput.label', { count: length })}
       accessibilityRole="button"
       disabled={disabled}
       onLongPress={() => void handlePaste()}

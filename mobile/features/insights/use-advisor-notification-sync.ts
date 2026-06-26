@@ -22,6 +22,7 @@
 
 import { useEffect } from 'react'
 import { sendFamilyPush } from '@/lib/send-family-push'
+import i18n from '@/lib/i18n'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { useNotificationPreferences } from '@/features/notifications/use-notification-preferences'
 import { useAdvisorPreferences } from '@/features/insights/use-advisor-preferences'
@@ -242,8 +243,11 @@ export function useAdvisorNotificationSync({
       if (eligible.length > 2) {
         await sendFamilyPush({
           familyId: familyId!,
-          title: `Tienes ${eligible.length} alertas en Control`,
-          body: `${eligible[0].title} y ${eligible.length - 1} más. Toca para revisar.`,
+          title: i18n.t('insights:push.digestTitle', { count: eligible.length }),
+          body: i18n.t('insights:push.digestBody', {
+            first: eligible[0].title,
+            count: eligible.length - 1,
+          }),
           kind: 'advisor_digest',
           url: '/(app)/(tabs)/control',
         }).catch(() => {

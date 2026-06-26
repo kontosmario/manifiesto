@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
 import {
@@ -34,6 +35,7 @@ interface BadgeDetailSheetProps {
  */
 export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const visible = badge != null
   // Cachea la medalla (ref en render) para que el body sobreviva la animación
   // de salida del ModalCard, cuando `badge` ya volvió a null.
@@ -116,7 +118,7 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
           </View>
         ) : (
           <Text style={[styles.lockedEyebrow, { color: theme.colors.textMuted }]}>
-            POR DESBLOQUEAR
+            {t('achievements:badgeDetail.locked')}
           </Text>
         )}
 
@@ -125,11 +127,11 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
 
         {earned ? (
           <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
-            Desbloqueado · {formatEarnedDate(b.earned_at)}
+            {t('achievements:badgeDetail.unlockedOn', { date: formatEarnedDate(b.earned_at) })}
           </Text>
         ) : (
           <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
-            Se desbloquea solo cuando lo logres.
+            {t('achievements:badgeDetail.lockedHint')}
           </Text>
         )}
       </View>

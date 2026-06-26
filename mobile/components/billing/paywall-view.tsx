@@ -1,4 +1,5 @@
 import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -61,6 +62,7 @@ export const PaywallView = memo(function PaywallView({
   continueLabel,
 }: PaywallViewProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [selected, setSelected] = useState<BillingPlanId>('hogar-anual')
   const plan = BILLING_PLANS[selected]
   // Precio del CTA: preferimos el displayPrice localizado de StoreKit (mismo
@@ -68,13 +70,19 @@ export const PaywallView = memo(function PaywallView({
   // falló. El sufijo de período lo agregamos nosotros (StoreKit da solo el monto).
   // Mientras StoreKit carga NO mostramos monto en el CTA (queda "Suscribirme" a
   // secas) para no flashear el hardcode y corregirlo al llegar el precio real.
-  const cyclePeriod = plan.cycle === 'yearly' ? '/año' : '/mes'
+  const cyclePeriod =
+    plan.cycle === 'yearly'
+      ? t('billing:paywall.perYear')
+      : t('billing:paywall.perMonth')
   const storePrice = productPrices?.[plan.productId]
   const priceResolved = !!storePrice || !pricesLoading
   const ctaPrice = storePrice ?? `$${plan.priceUsd.toFixed(2)}`
   const subscribeLabel = priceResolved
-    ? `Suscribirme por ${ctaPrice}${cyclePeriod}`
-    : 'Suscribirme'
+    ? t('billing:paywall.subscribeWithPrice', {
+        price: ctaPrice,
+        period: cyclePeriod,
+      })
+    : t('billing:paywall.subscribe')
   const inFreePeriod = snap.source === 'trial' && snap.daysLeft != null
   const caution = getStateTokens('caution', theme)
   const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
@@ -86,7 +94,7 @@ export const PaywallView = memo(function PaywallView({
           <View style={[styles.lockChip, { backgroundColor: caution.bg }]}>
             <MaterialIcons name="lock" size={12} color={caution.fg} />
             <Text style={[styles.lockText, { color: caution.fg }]}>
-              ACCESO PAUSADO
+              {t('billing:paywall.lockChip')}
             </Text>
           </View>
         </RiseView>
@@ -104,7 +112,9 @@ export const PaywallView = memo(function PaywallView({
 
       <RiseView delay={60}>
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          {lockMode ? 'Tu acceso\nestá pausado.' : 'Todo tu hogar,\nen una cuenta.'}
+          {lockMode
+            ? t('billing:paywall.headlineLocked')
+            : t('billing:paywall.headlineDefault')}
         </Text>
       </RiseView>
 
@@ -143,7 +153,7 @@ export const PaywallView = memo(function PaywallView({
         {onContinueFree && inFreePeriod ? (
           <View style={styles.ctaStack}>
             <AppButton
-              label={continueLabel ?? 'Empezar'}
+              label={continueLabel ?? t('billing:paywall.start')}
               variant="primary"
               fullWidth
               onPress={onContinueFree}
@@ -176,12 +186,7 @@ export const PaywallView = memo(function PaywallView({
             { color: theme.colors.textMuted },
           ]}
         >
-          El pago se cargará a tu cuenta de Apple ID al confirmar la compra. La
-          suscripción se renueva automáticamente al mismo precio salvo que la
-          canceles al menos 24 horas antes de que termine el período actual; el
-          cargo de renovación se hace dentro de esas 24 horas. Puedes gestionarla
-          o cancelarla cuando quieras desde los Ajustes de tu cuenta en la App
-          Store.
+          {t('billing:paywall.disclosure')}
         </Text>
       </RiseView>
 
@@ -189,29 +194,29 @@ export const PaywallView = memo(function PaywallView({
         <View style={styles.footer}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Restaurar compras"
+            accessibilityLabel={t('billing:paywall.restorePurchases')}
             hitSlop={8}
             onPress={onRestore}
           >
-            <Text style={linkStyle}>Restaurar compras</Text>
+            <Text style={linkStyle}>{t('billing:paywall.restorePurchases')}</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Términos de uso"
+            accessibilityLabel={t('billing:paywall.termsA11y')}
             hitSlop={8}
             onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
           >
-            <Text style={linkStyle}>Términos</Text>
+            <Text style={linkStyle}>{t('billing:paywall.terms')}</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Política de privacidad"
+            accessibilityLabel={t('billing:paywall.privacyA11y')}
             hitSlop={8}
             onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
           >
-            <Text style={linkStyle}>Privacidad</Text>
+            <Text style={linkStyle}>{t('billing:paywall.privacy')}</Text>
           </Pressable>
         </View>
         {/* Salidas del gate duro: sin esto el usuario con trial vencido que no
@@ -223,7 +228,7 @@ export const PaywallView = memo(function PaywallView({
             {onLogout ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Cerrar sesión"
+                accessibilityLabel={t('billing:paywall.logout')}
                 hitSlop={8}
                 onPress={onLogout}
                 style={({ pressed }) => [
@@ -238,7 +243,7 @@ export const PaywallView = memo(function PaywallView({
                     { color: theme.colors.textMuted, fontWeight: '600' },
                   ]}
                 >
-                  Cerrar sesión
+                  {t('billing:paywall.logout')}
                 </Text>
               </Pressable>
             ) : null}
@@ -250,7 +255,7 @@ export const PaywallView = memo(function PaywallView({
             {onDeleteAccount ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Eliminar cuenta"
+                accessibilityLabel={t('billing:paywall.deleteAccount')}
                 hitSlop={8}
                 onPress={onDeleteAccount}
                 style={({ pressed }) => [
@@ -269,7 +274,7 @@ export const PaywallView = memo(function PaywallView({
                     { color: theme.colors.danger, fontWeight: '600' },
                   ]}
                 >
-                  Eliminar cuenta
+                  {t('billing:paywall.deleteAccount')}
                 </Text>
               </Pressable>
             ) : null}

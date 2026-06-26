@@ -15,7 +15,12 @@
  *
  * Si más adelante se conecta RevenueCat/Stripe, estos `productId`
  * son los que el SDK debe mapear (App Store Connect / Play Console).
+ *
+ * i18n: los campos user-facing (`name`, `tagline`, `effectiveCopy`,
+ * `highlights`) se resuelven vía `i18n.t` con getters, así reflejan el idioma
+ * activo en cada acceso (los consumidores siguen leyendo `plan.name`).
  */
+import i18n from '@/lib/i18n'
 
 export type BillingCycle = 'monthly' | 'yearly'
 
@@ -48,53 +53,62 @@ export interface BillingPlan {
   recommended: boolean
 }
 
-const FEATURES_BASE = [
-  'Una sola fuente de números, contigo y con quien sumes',
-  'Te avisamos cuánto puedes gastar cada día',
-  'Gastos fijos y cuotas ordenados en un solo lugar',
-  'Metas de ahorro con seguimiento automático',
-  'Avisos y recordatorios cuando algo importa',
-  'Ves los gastos en pesos y en dólares',
-  'Modo claro y modo oscuro, tus datos protegidos',
-] as const
+/** Features base (compartidas por ambos planes), resueltas en el idioma activo. */
+function featuresBase(): string[] {
+  return i18n.t('billing:features.base', { returnObjects: true }) as string[]
+}
 
 export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlan>> = {
   'hogar-mensual': {
     id: 'hogar-mensual',
     cycle: 'monthly',
     productId: 'com.manifiesto.app.subscription.monthly',
-    name: 'Plan Mensual',
-    tagline: 'Para empezar sin compromisos.',
+    get name() {
+      return i18n.t('billing:plans.hogar-mensual.name')
+    },
+    get tagline() {
+      return i18n.t('billing:plans.hogar-mensual.tagline')
+    },
     priceUsd: 4.99,
     priceArs: 5490,
     memberCap: 2,
     savingsPercent: 0,
     savingsUsd: 0,
-    highlights: [
-      'Hasta 2 personas en tu plan',
-      ...FEATURES_BASE,
-      'Cancelas cuando quieras',
-    ],
+    get highlights() {
+      return [
+        i18n.t('billing:features.monthlyMembers'),
+        ...featuresBase(),
+        i18n.t('billing:features.monthlyCancel'),
+      ]
+    },
     recommended: false,
   },
   'hogar-anual': {
     id: 'hogar-anual',
     cycle: 'yearly',
     productId: 'com.manifiesto.app.subscription.yearly',
-    name: 'Plan Anual',
-    tagline: 'El plan más elegido.',
+    get name() {
+      return i18n.t('billing:plans.hogar-anual.name')
+    },
+    get tagline() {
+      return i18n.t('billing:plans.hogar-anual.tagline')
+    },
     priceUsd: 39.99,
     priceArs: 43990,
     memberCap: 4,
     savingsPercent: 33,
     savingsUsd: 19.89,
-    effectiveCopy: 'Te sale como USD 3.33 al mes',
-    highlights: [
-      'Hasta 4 personas, ideal para tu grupo familiar',
-      ...FEATURES_BASE,
-      'Atención prioritaria por correo',
-      'Estrenas las nuevas funciones antes que nadie',
-    ],
+    get effectiveCopy() {
+      return i18n.t('billing:plans.hogar-anual.effectiveCopy')
+    },
+    get highlights() {
+      return [
+        i18n.t('billing:features.annualMembers'),
+        ...featuresBase(),
+        i18n.t('billing:features.annualPriority'),
+        i18n.t('billing:features.annualEarlyAccess'),
+      ]
+    },
     recommended: true,
   },
 }

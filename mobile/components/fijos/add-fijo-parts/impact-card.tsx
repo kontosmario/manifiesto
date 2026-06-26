@@ -3,6 +3,7 @@
 // HealthBadge (alto/medio/sano). Extraído de `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -71,6 +72,7 @@ export function ImpactRow({
 
 export function HealthBadge({ pct }: { pct: number }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const tone: 'alto' | 'medio' | 'sano' = pct > 70 ? 'alto' : pct > 50 ? 'medio' : 'sano'
   // V1 health badge palette — alto/medio/sano = high/mid/healthy fijos
   // ratio. AA verified for fg-on-bg en ambos modos.
@@ -86,7 +88,12 @@ export function HealthBadge({ pct }: { pct: number }) {
         sano:  { bg: '#EAFBE4', fg: '#297811' },  // primary-100 / primary-800 — AA
       }
   const { bg, fg } = palette[tone]
-  const label = tone === 'alto' ? 'Alto' : tone === 'medio' ? 'Medio' : 'Sano'
+  const label =
+    tone === 'alto'
+      ? t('fijos:wizard.healthBadge.high')
+      : tone === 'medio'
+        ? t('fijos:wizard.healthBadge.mid')
+        : t('fijos:wizard.healthBadge.healthy')
   return (
     <View style={[styles.healthBadge, { backgroundColor: bg }]}>
       <Text style={[styles.healthBadgeText, { color: fg }]}>{label}</Text>

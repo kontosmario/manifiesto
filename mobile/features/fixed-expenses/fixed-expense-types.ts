@@ -1,3 +1,5 @@
+import i18n from '@/lib/i18n'
+
 export const FIXED_EXPENSE_KINDS = ['recurring', 'periodic', 'installment', 'debt'] as const
 export type FixedExpenseKind = (typeof FIXED_EXPENSE_KINDS)[number]
 
@@ -42,42 +44,42 @@ export interface FixedExpense {
 export function fixedExpenseKindLabel(kind: FixedExpenseKind): string {
   switch (kind) {
     case 'periodic':
-      return 'Periódico'
+      return i18n.t('fijos:kind.periodic')
     case 'installment':
-      return 'Cuotas'
+      return i18n.t('fijos:kind.installment')
     case 'debt':
-      return 'Deuda'
+      return i18n.t('fijos:kind.debt')
     default:
-      return 'Recurrente'
+      return i18n.t('fijos:kind.recurring')
   }
 }
 
 export function fixedExpenseStatusLabel(status: FixedExpenseStatus): string {
   switch (status) {
     case 'paused':
-      return 'Pausado'
+      return i18n.t('fijos:kindStatus.paused')
     case 'completed':
-      return 'Completado'
+      return i18n.t('fijos:kindStatus.completed')
     case 'archived':
-      return 'Archivado'
+      return i18n.t('fijos:kindStatus.archived')
     default:
-      return 'Activo'
+      return i18n.t('fijos:kindStatus.active')
   }
 }
 
 export function fixedExpenseFrequencyLabel(frequency: FixedExpenseFrequency): string {
   switch (frequency) {
     case 'weekly':
-      return 'Semanal'
+      return i18n.t('fijos:frequency.weekly')
     case 'biweekly':
-      return 'Quincenal'
+      return i18n.t('fijos:frequency.biweekly')
     case 'quarterly':
-      return 'Trimestral'
+      return i18n.t('fijos:frequency.quarterly')
     case 'semiannual':
-      return 'Semestral'
+      return i18n.t('fijos:frequency.semiannual')
     case 'annual':
-      return 'Anual'
+      return i18n.t('fijos:frequency.annual')
     default:
-      return 'Mensual'
+      return i18n.t('fijos:frequency.monthly')
   }
 }

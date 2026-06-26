@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { RectButton } from 'react-native-gesture-handler'
+import { useTranslation } from 'react-i18next'
 import type { Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { withAlpha } from '@/theme/color-utils'
@@ -32,10 +33,11 @@ export function ExpenseHistoryRowCard({
   palette,
 }: ExpenseHistoryRowCardProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
 
   return (
     <RectButton
-      accessibilityHint="Doble toque para editar. Tambien podes deslizar hacia la izquierda para acciones."
+      accessibilityHint={t('home:historyRow.editHint')}
       accessibilityLabel={`${expense.description}. ${currencyFormatter.format(expense.price)}.`}
       rippleColor={withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.06)}
       onPress={onPress}
@@ -67,7 +69,7 @@ export function ExpenseHistoryRowCard({
               <ExpenseCategoryPill
                 borderColor={palette.borderColor}
                 color={category?.color ?? theme.colors.primary}
-                label={category?.name ?? 'Sin categoria'}
+                label={category?.name ?? t('home:historyRow.noCategory')}
                 pillBackgroundColor={palette.pillBackgroundColor}
                 textColor={theme.colors.textMuted}
               />
@@ -84,7 +86,7 @@ export function ExpenseHistoryRowCard({
         <Text style={[styles.expensePrice, { color: theme.colors.text }]}>
           {currencyFormatter.format(expense.price)}
         </Text>
-        <Text style={[styles.expenseHint, { color: theme.colors.textSoft }]}>Desliza</Text>
+        <Text style={[styles.expenseHint, { color: theme.colors.textSoft }]}>{t('home:historyRow.swipe')}</Text>
       </View>
     </RectButton>
   )

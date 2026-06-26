@@ -7,6 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { FijoHikeAlert } from '@/features/fijos/fijos-aggregates.model'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
@@ -34,6 +35,7 @@ export function HikeAlertRow({
   onDismiss?: () => void
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const opacity = useSharedValue(reduced ? 1 : 0)
   const y = useSharedValue(reduced ? 0 : 6)
@@ -70,7 +72,10 @@ export function HikeAlertRow({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         accessibilityRole="button"
-        accessibilityLabel={`${hike.name} subió ${hike.deltaPct}%`}
+        accessibilityLabel={t('fijos:proximos.hikeAccessibility', {
+          name: hike.name,
+          deltaPct: hike.deltaPct,
+        })}
         style={styles.alertPressable}
       >
         <Animated.View style={[styles.alertContent, press.animatedStyle]}>
@@ -101,7 +106,7 @@ export function HikeAlertRow({
           onPressOut={dismissPress.onPressOut}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Ya lo vi"
+          accessibilityLabel={t('fijos:proximos.dismissHike')}
         >
           <Animated.View style={[styles.dismissBtn, dismissPress.animatedStyle]}>
             <MaterialIcons name="check" size={13} color={theme.colors.textMuted} />

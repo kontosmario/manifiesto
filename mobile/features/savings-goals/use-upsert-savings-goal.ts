@@ -9,6 +9,7 @@ import type {
 } from '@/features/savings-goals/savings-goal.model'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { toast } from '@/lib/toast-bus'
+import i18n from '@/lib/i18n'
 
 interface MutationVars {
   input: SavingsGoalInput
@@ -99,8 +100,8 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
           ctx.previousLatest,
         )
       }
-      toast.error('No se pudo guardar la meta.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('settings:savingsGoalValidation.saveFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },

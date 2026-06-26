@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -28,6 +29,7 @@ export function CategoryEditorModal({
   isBusy = false,
 }: CategoryEditorModalProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [value, setValue] = useState(initialValue)
   const canSubmit = value.trim().length > 0
 
@@ -42,9 +44,9 @@ export function CategoryEditorModal({
           },
         ]}
       >
-        <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>Nombre visible</Text>
+        <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>{t('settings:categoryEditor.introLabel')}</Text>
         <Text style={[styles.introText, { color: theme.colors.textMuted }]}>
-          Usa un nombre corto y claro para reconocer la categoría rápido en filtros y formularios.
+          {t('settings:categoryEditor.introText')}
         </Text>
       </View>
 
@@ -52,10 +54,10 @@ export function CategoryEditorModal({
         autoCapitalize="sentences"
         autoCorrect={false}
         autoFocus
-        label="Nombre"
+        label={t('settings:categoryEditor.nameLabel')}
         maxLength={40}
         onChangeText={setValue}
-        placeholder="Ej: Transporte"
+        placeholder={t('settings:categoryEditor.namePlaceholder')}
         returnKeyType="done"
         value={value}
       />
@@ -69,7 +71,7 @@ export function CategoryEditorModal({
             await onSubmit(value)
           }}
         />
-        <AppButton label="Cancelar" onPress={onClose} variant="ghost" />
+        <AppButton label={t('common:actions.cancel')} onPress={onClose} variant="ghost" />
       </View>
     </ModalCard>
   )

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useBranchLog, useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
@@ -67,16 +68,6 @@ interface ControlV2ScreenProps {
   userId: string
 }
 
-const DOW_FULL = [
-  'DOMINGO',
-  'LUNES',
-  'MARTES',
-  'MIÉRCOLES',
-  'JUEVES',
-  'VIERNES',
-  'SÁBADO',
-] as const
-
 /**
  * Control v2 — real data + "Asistente Financiero" (local signals) +
  * CTA dispatcher wired to the full app.
@@ -92,6 +83,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   const openLayoutGate = useOpenLayoutGate()
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Auto-start the Control guided tour on first visit. No-op once seen.
   useScreenTour(CONTROL_TOUR)
   // userId → aplica la blocklist del usuario (consistente con el asistente).
@@ -402,9 +394,12 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   // a la medianoche — basta refrescar al day change vía la cache
   // key del Date object generado una vez por render del screen.
   const dayLabel = useMemo(() => {
-    const t = new Date()
-    return `HOY · ${DOW_FULL[t.getDay()]} ${t.getDate()}`
-  }, [])
+    const now = new Date()
+    return t('control:header.dayLabel', {
+      weekday: t(`control:header.weekdays.${now.getDay()}`),
+      day: now.getDate(),
+    })
+  }, [t])
   const fijosRatioPct = useMemo(
     () => (data.ingresoMes > 0 ? (data.fijosMes / data.ingresoMes) * 100 : 0),
     [data.ingresoMes, data.fijosMes],
@@ -444,7 +439,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
             <ControlV2Header
               familyId={familyId}
               score={0}
-              scoreLabel="Pronto"
+              scoreLabel={t('control:header.scorePending')}
               scoreTone={view.scoreToneDark}
             />
             <ControlV2EmptyState

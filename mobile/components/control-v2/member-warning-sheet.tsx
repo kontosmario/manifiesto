@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -53,6 +54,7 @@ export function MemberWarningSheet({
   inline,
 }: MemberWarningSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(initialMessage)
 
   useEffect(() => {
@@ -72,8 +74,8 @@ export function MemberWarningSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title="Enviar aviso"
-      subtitle="El miembro recibe una notificación push del Asistente con el mensaje que escribas."
+      title={t('control:memberWarning.title')}
+      subtitle={t('control:memberWarning.subtitle')}
     >
       <View style={styles.body}>
         <View
@@ -105,13 +107,13 @@ export function MemberWarningSheet({
           )}
           <View style={styles.recipientCopy}>
             <Text style={[styles.recipientEyebrow, { color: theme.colors.textMuted }]}>
-              ENVIAR A
+              {t('control:memberWarning.enviarA')}
             </Text>
             <Text
               style={[styles.recipientName, { color: theme.colors.text }]}
               numberOfLines={1}
             >
-              {targetDisplayName ?? 'Miembro del hogar'}
+              {targetDisplayName ?? t('control:memberWarning.miembroFallback')}
             </Text>
           </View>
         </View>
@@ -121,38 +123,39 @@ export function MemberWarningSheet({
             rest of the input system. The eyebrow ("MENSAJE") is the
             field's own label prop. */}
         <TextField
-          label="Mensaje"
+          label={t('control:memberWarning.labelMensaje')}
           value={draft}
           onChangeText={setDraft}
-          placeholder="Escribe lo que quieras decirle"
+          placeholder={t('control:memberWarning.placeholderMensaje')}
           multiline
           maxLength={MAX_LENGTH + 40}
-          accessibilityLabel="Mensaje del aviso"
+          accessibilityLabel={t('control:memberWarning.a11yMensaje')}
           style={styles.inputBody}
           helper={
             showCounter
               ? remaining < 0
-                ? `Te pasaste por ${Math.abs(remaining)} caracteres`
-                : `${remaining} caracteres restantes`
+                ? t('control:memberWarning.counterOver', {
+                    count: Math.abs(remaining),
+                  })
+                : t('control:memberWarning.counterRemaining', { count: remaining })
               : undefined
           }
         />
         {showCounter && remaining < 0 ? (
           <Text style={[styles.counterError, { color: theme.colors.danger }]}>
-            Vamos a recortar al guardar.
+            {t('control:memberWarning.counterTrim')}
           </Text>
         ) : null}
 
         <Text
           style={[styles.helper, { color: theme.colors.textMuted }]}
         >
-          Llega como notificación firmada por el Asistente. Quien recibe
-          puede verla en su buzón aunque tenga el push apagado.
+          {t('control:memberWarning.helper')}
         </Text>
 
         <AppButton
           variant="primary"
-          label="Enviar aviso"
+          label={t('control:memberWarning.cta')}
           loading={isSending}
           disabled={!isValid}
           onPress={() => {

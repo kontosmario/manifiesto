@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import i18n from '@/lib/i18n'
 import {
   groupGastosByDay,
   type CategoryLite,
@@ -303,7 +304,7 @@ export function useGastosController(
         const c = categoriesById.get(id)
         return {
           id,
-          label: c?.name ?? 'Sin categoría',
+          label: c?.name ?? i18n.t('gastos:movementRow.noCategory'),
           color: c?.color ?? '#888',
           amount,
           percent: Math.round((amount / dayTotal) * 100),
@@ -324,12 +325,12 @@ export function useGastosController(
 
   // ── Summary chip ────────────────────────────────────────────────
   const summaryChip = useMemo(() => {
-    const period = selectedDay != null ? `día ${selectedDay}` : cycleLabel
+    const period = selectedDay != null ? i18n.t('gastos:summaryChip.day', { day: selectedDay }) : cycleLabel
     const cat =
       selectedCategoryId == null
-        ? 'Todas'
-        : (categoriesById.get(selectedCategoryId)?.name ?? 'Todas')
-    return `${filteredCount} mov · ${period} · ${cat}`
+        ? i18n.t('gastos:smartFilter.all')
+        : (categoriesById.get(selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all'))
+    return i18n.t('gastos:summaryChip.text', { count: filteredCount, period, cat })
   }, [
     filteredCount,
     selectedDay,
@@ -436,7 +437,7 @@ function rowToExpense(row: GastosExpenseRow): Expense {
     price: row.price,
     created_at: row.created_at,
     created_by: row.created_by,
-    creator_display_name: row.creator_display_name ?? 'Sin nombre',
+    creator_display_name: row.creator_display_name ?? i18n.t('gastos:misc.noName'),
     paid_in_arrears: row.paid_in_arrears === true,
   }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -19,9 +20,6 @@ interface GardenScreenProps {
   userId: string
 }
 
-const FOOTNOTE =
-  'Tu jardín crece solo: cada gasto que registras planta el brote del día. ¿No gastaste? Marca el día sin gastos en el calendario y también suma.'
-
 /**
  * Pantalla "Mi jardín" — vista dedicada de la racha (accesible desde Gastos).
  * Casi de solo lectura: el brote se planta automáticamente al registrar un gasto
@@ -32,6 +30,7 @@ const FOOTNOTE =
  */
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { data } = useGarden(familyId, userId)
   const recover = useRecoverGardenDay(familyId, userId)
   const [showWeekClose, setShowWeekClose] = useState(false)
@@ -48,33 +47,36 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
       if (recover.isPending) return
       void triggerHaptic('selection')
       Alert.alert(
-        'Planta el día que faltó',
-        `La semana pasada registraste 6 de 7 días. Planta el que falta con una semilla guardada (tienes ${seeds}). No florece como una semana perfecta, pero completas tu jardín.`,
+        t('garden:plantGap.title'),
+        t('garden:plantGap.message', { seeds }),
         [
-          { text: 'Ahora no', style: 'cancel' },
+          { text: t('garden:plantGap.cancel'), style: 'cancel' },
           {
-            text: 'Plantar',
+            text: t('garden:plantGap.confirm'),
             onPress: () =>
               recover.mutate(iso, {
                 onSuccess: () => void triggerHaptic('success'),
                 onError: (e) => {
                   void triggerHaptic('error')
-                  Alert.alert('No se pudo plantar', e.message || 'Intenta de nuevo en un rato.')
+                  Alert.alert(
+                    t('garden:plantGap.errorTitle'),
+                    e.message || t('garden:plantGap.errorFallback'),
+                  )
                 },
               }),
           },
         ],
       )
     },
-    [recover, seeds],
+    [recover, seeds, t],
   )
 
   return (
     <>
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Mi jardín"
-      subtitle="Un brote por cada día que registras."
+      title={t('garden:screen.title')}
+      subtitle={t('garden:screen.subtitle')}
       canGoBack
       rightSlot={
         <View
@@ -117,16 +119,18 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
               ]}
             >
               <View style={styles.gardenHeader}>
-                <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>Tu jardín</Text>
+                <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>
+                  {t('garden:card.title')}
+                </Text>
                 <Pressable
                   onPress={() => setShowLegend((v) => !v)}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Qué significan los brotes"
+                  accessibilityLabel={t('garden:card.legendToggleLabel')}
                   style={styles.legendToggle}
                 >
                   <Text style={[styles.legendToggleText, { color: theme.colors.textMuted }]}>
-                    ¿qué significan?
+                    {t('garden:card.legendToggle')}
                   </Text>
                   <MaterialIcons
                     name={showLegend ? 'expand-less' : 'expand-more'}
@@ -136,7 +140,9 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
                 </Pressable>
               </View>
               <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
-                {data.weeksShown <= 1 ? 'tu primera semana' : `últimas ${data.weeksShown} semanas`}
+                {data.weeksShown <= 1
+                  ? t('garden:card.firstWeek')
+                  : t('garden:card.weeksShown', { count: data.weeksShown })}
               </Text>
               <View style={styles.gridWrap}>
                 <GardenGrid
@@ -149,7 +155,9 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
             </View>
           </RiseView>
           <RiseView delay={225} translateY={0} duration={400}>
-            <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>{FOOTNOTE}</Text>
+            <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
+              {t('garden:screen.footnote')}
+            </Text>
           </RiseView>
         </>
       )}

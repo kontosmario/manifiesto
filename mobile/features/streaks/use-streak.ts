@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
 
@@ -73,17 +74,21 @@ export interface StreakDerived {
 
 export const LEVELS: Array<{
   key: StreakLevel
-  label: string
   from: number
   to: number | null
 }> = [
-  { key: 'arranque', label: 'Arranque', from: 0, to: 7 },
-  { key: 'constante', label: 'Constante', from: 7, to: 14 },
-  { key: 'disciplinado', label: 'Disciplinado', from: 14, to: 30 },
-  { key: 'imparable', label: 'Imparable', from: 30, to: 60 },
-  { key: 'maestro', label: 'Maestro', from: 60, to: 90 },
-  { key: 'leyenda', label: 'Leyenda', from: 90, to: null },
+  { key: 'arranque', from: 0, to: 7 },
+  { key: 'constante', from: 7, to: 14 },
+  { key: 'disciplinado', from: 14, to: 30 },
+  { key: 'imparable', from: 30, to: 60 },
+  { key: 'maestro', from: 60, to: 90 },
+  { key: 'leyenda', from: 90, to: null },
 ]
+
+/** Etiqueta visible del nivel de racha (resuelta vía i18n). */
+export function levelLabel(key: StreakLevel): string {
+  return i18n.t(`garden:levels.${key}`)
+}
 
 // ─────────────────────────────────────────────────────────────
 // Raw Supabase row.
@@ -413,7 +418,8 @@ export function deriveStreak(data: StreakData): StreakDerived {
     status,
     data,
     daysToNextLevel,
-    currentLevelLabel: levelDef.label,
+    currentLevelLabel: levelLabel(levelDef.key),
+    nextLevelKey: nextLevelDef?.key ?? null,
     regressionDay,
     atRiskIntensity,
   })
@@ -421,8 +427,8 @@ export function deriveStreak(data: StreakData): StreakDerived {
   return {
     status,
     level: levelDef.key,
-    levelLabel: levelDef.label,
-    nextLevelLabel: nextLevelDef?.label ?? 'Leyenda',
+    levelLabel: levelLabel(levelDef.key),
+    nextLevelLabel: levelLabel(nextLevelDef?.key ?? 'leyenda'),
     nextLevelThreshold: nextLevelDef?.from ?? 90,
     daysIntoLevel,
     levelTotalDays,
@@ -452,6 +458,7 @@ function buildCopy(input: {
   data: StreakData
   daysToNextLevel: number
   currentLevelLabel: string
+  nextLevelKey: StreakLevel | null
   regressionDay: number
   atRiskIntensity: AtRiskIntensity | null
 }): { headline: string; message: string } {
@@ -459,49 +466,53 @@ function buildCopy(input: {
   // consumers but the new copy doesn't reference it: the server now
   // zeroes the streak on break (no level-boundary regression), so
   // talking about a regression target would be misleading.
-  const { status, data, daysToNextLevel, currentLevelLabel, atRiskIntensity } = input
-  const next = LEVELS.find((l) => l.from > data.currentStreak)
+  const { status, data, daysToNextLevel, currentLevelLabel, nextLevelKey, atRiskIntensity } = input
 
   if (status === 'active') {
     if (data.hasMarkedNoExpenseToday) {
       return {
-        headline: 'Hoy sin gastos — racha protegida',
-        message: `Marcaste el día como "sin gastos". La racha sigue activa en ${currentLevelLabel} y cada día contado suma a tu progreso.`,
+        headline: i18n.t('garden:streakCopy.noSpend.headline'),
+        message: i18n.t('garden:streakCopy.noSpend.message', { level: currentLevelLabel }),
       }
     }
-    if (daysToNextLevel > 0 && daysToNextLevel <= 3 && next) {
+    if (daysToNextLevel > 0 && daysToNextLevel <= 3 && nextLevelKey) {
       return {
-        headline: `¡Casi en ${next.label}!`,
-        message: `Solo ${daysToNextLevel} días más para subir de nivel. Sigue así.`,
+        headline: i18n.t('garden:streakCopy.nearLevel.headline', {
+          level: levelLabel(nextLevelKey),
+        }),
+        message: i18n.t('garden:streakCopy.nearLevel.message', { count: daysToNextLevel }),
       }
     }
     return {
       headline:
         data.currentStreak <= 1
-          ? 'Empezaste tu racha'
-          : `${data.currentStreak} días seguidos, imparable`,
-      message: `Estás en ${currentLevelLabel}. Cada día que registras tu dinero trabaja mejor para ti.`,
+          ? i18n.t('garden:streakCopy.active.headlineStart')
+          : i18n.t('garden:streakCopy.active.headlineStreak', { count: data.currentStreak }),
+      message: i18n.t('garden:streakCopy.active.message', { level: currentLevelLabel }),
     }
   }
 
   if (status === 'at_risk') {
     const tone = resolveDayTone(atRiskIntensity ?? 'calm')
     if (data.freezeTokens > 0) {
-      const n = data.freezeTokens
-      const shieldsLabel = `${n} ${n === 1 ? 'escudo' : 'escudos'}`
       return {
         headline: tone.atRiskHeadlineWithShield,
-        message: `${tone.atRiskMessage} Tienes ${shieldsLabel} disponible${n === 1 ? '' : 's'} — si no registras hoy se consume uno solo a la medianoche.`,
+        message: i18n.t('garden:streakCopy.atRiskWithShield.message', {
+          count: data.freezeTokens,
+          tone: tone.atRiskMessage,
+        }),
       }
     }
     // Without shields, the streak goes to ZERO at the next cron run
     // (true break). Frame consequence as "se corta" rather than the
     // old regression bookkeeping; that copy referenced level
     // boundaries that no longer apply server-side.
-    const dayWord = data.currentStreak === 1 ? 'día' : 'días'
     return {
       headline: tone.atRiskHeadlineNoShield,
-      message: `${tone.atRiskMessage} Llevas ${data.currentStreak} ${dayWord} — sin escudos, si no registras se corta y mañana arrancas de cero.`,
+      message: i18n.t('garden:streakCopy.atRiskNoShield.message', {
+        count: data.currentStreak,
+        tone: tone.atRiskMessage,
+      }),
     }
   }
 
@@ -514,15 +525,15 @@ function buildCopy(input: {
   // boundary).
   if (data.longestStreak >= 7) {
     return {
-      headline: 'La racha se cortó',
-      message: `Tu marca personal sigue siendo ${data.longestStreak} ${
-        data.longestStreak === 1 ? 'día' : 'días'
-      }. Carga un movimiento hoy y arranca una nueva.`,
+      headline: i18n.t('garden:streakCopy.broken.headline'),
+      message: i18n.t('garden:streakCopy.broken.messageWithRecord', {
+        count: data.longestStreak,
+      }),
     }
   }
   return {
-    headline: 'La racha se cortó',
-    message: 'Una racha nueva empieza con un solo registro. Carga hoy y arrancas día 1.',
+    headline: i18n.t('garden:streakCopy.broken.headline'),
+    message: i18n.t('garden:streakCopy.broken.messageFresh'),
   }
 }
 
@@ -538,30 +549,9 @@ interface DayTone {
  * reinforce each other instead of drifting.
  */
 function resolveDayTone(intensity: AtRiskIntensity): DayTone {
-  switch (intensity) {
-    case 'calm':
-      return {
-        atRiskHeadlineWithShield: 'Buen día — tu racha sigue viva',
-        atRiskHeadlineNoShield: 'Hoy todavía no registraste',
-        atRiskMessage: 'Tienes toda la jornada por delante, registra cuando puedas.',
-      }
-    case 'gentle':
-      return {
-        atRiskHeadlineWithShield: 'Tu racha sigue en juego',
-        atRiskHeadlineNoShield: 'Aún no registraste hoy',
-        atRiskMessage: 'Buen momento para anotar el gasto del día antes de que se haga tarde.',
-      }
-    case 'urgent':
-      return {
-        atRiskHeadlineWithShield: 'Cuidado — se acerca el corte',
-        atRiskHeadlineNoShield: 'Faltan pocas horas para medianoche',
-        atRiskMessage: 'Si registras ahora, evitas cualquier sobresalto.',
-      }
-    case 'critical':
-      return {
-        atRiskHeadlineWithShield: 'Última hora — racha en riesgo',
-        atRiskHeadlineNoShield: 'Última hora antes de medianoche',
-        atRiskMessage: 'Registra ya para cerrar el día sin perder progreso.',
-      }
+  return {
+    atRiskHeadlineWithShield: i18n.t(`garden:dayTone.${intensity}.atRiskHeadlineWithShield`),
+    atRiskHeadlineNoShield: i18n.t(`garden:dayTone.${intensity}.atRiskHeadlineNoShield`),
+    atRiskMessage: i18n.t(`garden:dayTone.${intensity}.atRiskMessage`),
   }
 }

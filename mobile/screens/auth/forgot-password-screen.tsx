@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'
 import Animated, {
   Easing,
@@ -41,6 +42,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 
 export function ForgotPasswordScreen() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useAppTheme()
   const reduced = useReducedMotion()
@@ -65,7 +67,7 @@ export function ForgotPasswordScreen() {
   const handleSubmit = useCallback(async () => {
     const normalized = normalizeEmail(email)
     if (!normalized.includes('@')) {
-      setErrorMessage('Ingresa un email válido.')
+      setErrorMessage(t('auth:forgotPassword.errorInvalidEmail'))
       await triggerHaptic('warning')
       return
     }
@@ -78,7 +80,7 @@ export function ForgotPasswordScreen() {
         const token = await captcha.request()
         if (!token) {
           await triggerHaptic('warning')
-          setErrorMessage('No pudimos verificar el captcha. Prueba de nuevo.')
+          setErrorMessage(t('auth:forgotPassword.errorCaptcha'))
           return
         }
         captchaToken = token
@@ -88,9 +90,9 @@ export function ForgotPasswordScreen() {
       setSentTo(normalized)
     } catch (error) {
       await triggerHaptic('error')
-      setErrorMessage(getErrorMessage(error, 'No pudimos enviar el email.'))
+      setErrorMessage(getErrorMessage(error, t('auth:forgotPassword.errorSendFailed')))
     }
-  }, [captcha, email, passwordReset])
+  }, [captcha, email, passwordReset, t])
 
   // Fallback por código: navega a reset-password con email+otp. La verificación
   // (verifyOtp) + el gate seguro viven en reset-password — aquí solo pasamos el
@@ -124,7 +126,7 @@ export function ForgotPasswordScreen() {
   const topNav = (
     <View style={styles.topNav}>
       <Pressable
-        accessibilityLabel="Volver"
+        accessibilityLabel={t('auth:common.back')}
         accessibilityRole="button"
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={handleBack}
@@ -166,22 +168,21 @@ export function ForgotPasswordScreen() {
             <View style={styles.heroBlock}>
               <FadeInUp reduced={reduced} delay={100}>
                 <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
-                  Listo, ya salió
+                  {t('auth:forgotPassword.sentEyebrow')}
                 </Text>
               </FadeInUp>
               <FadeInUp reduced={reduced} delay={200}>
                 <Text style={[styles.title, { color: theme.colors.text }]}>
-                  Revisa tu mail
+                  {t('auth:forgotPassword.sentTitle')}
                 </Text>
               </FadeInUp>
               <FadeInUp reduced={reduced} delay={300}>
                 <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-                  Te mandamos un mail a{' '}
+                  {t('auth:forgotPassword.sentBodyPrefix')}{' '}
                   <Text style={[styles.subStrong, { color: theme.colors.text }]}>
                     {sentTo}
                   </Text>{' '}
-                  con un link y un código. Toca el link, o si no te abre la app,
-                  ingresa el código de 6 dígitos aquí abajo. Vale por una hora.
+                  {t('auth:forgotPassword.sentBodySuffix')}
                 </Text>
               </FadeInUp>
             </View>
@@ -190,7 +191,7 @@ export function ForgotPasswordScreen() {
           <View style={styles.actionsStack}>
             <FadeInUp reduced={reduced} delay={400}>
               <Text style={[styles.codeLabel, { color: theme.colors.textSoft }]}>
-                ¿El link no te abrió la app? Ingresa el código del mail
+                {t('auth:forgotPassword.codeLabel')}
               </Text>
               <CodeInput
                 active={numpadVisible}
@@ -203,13 +204,13 @@ export function ForgotPasswordScreen() {
             <FadeInUp reduced={reduced} delay={500}>
               <AppButton
                 disabled={code.length !== 6}
-                label="Ingresar con el código"
+                label={t('auth:forgotPassword.enterWithCode')}
                 onPress={() => submitCode(code)}
               />
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={600}>
               <AppButton
-                label="Volver a login"
+                label={t('auth:common.backToLogin')}
                 onPress={() => router.replace('/(auth)/login')}
                 variant="ghost"
               />
@@ -243,18 +244,17 @@ export function ForgotPasswordScreen() {
           <View style={styles.heroBlock}>
             <FadeInUp reduced={reduced} delay={100}>
               <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
-                Tranquilo, lo resolvemos
+                {t('auth:forgotPassword.formEyebrow')}
               </Text>
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={200}>
               <Text style={[styles.title, { color: theme.colors.text }]}>
-                Recuperar acceso
+                {t('auth:forgotPassword.formTitle')}
               </Text>
             </FadeInUp>
             <FadeInUp reduced={reduced} delay={300}>
               <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-                Dinos el email de tu cuenta y te mandamos un link para crear
-                una contraseña nueva.
+                {t('auth:forgotPassword.formSub')}
               </Text>
             </FadeInUp>
           </View>
@@ -263,13 +263,13 @@ export function ForgotPasswordScreen() {
         <View style={styles.actionsStack}>
           <FadeInUp reduced={reduced} delay={400}>
             <TextField
-              accessibilityLabel="Email"
+              accessibilityLabel={t('auth:login.emailLabel')}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
-              label="Email de tu cuenta"
+              label={t('auth:forgotPassword.emailLabel')}
               onChangeText={setEmail}
-              placeholder="nombre@correo.com"
+              placeholder={t('auth:common.emailPlaceholder')}
               returnKeyType="go"
               textContentType="emailAddress"
               value={email}
@@ -281,7 +281,7 @@ export function ForgotPasswordScreen() {
           ) : null}
           <FadeInUp reduced={reduced} delay={500}>
             <AppButton
-              label={passwordReset.isPending ? 'Enviando…' : 'Enviar link'}
+              label={passwordReset.isPending ? t('auth:forgotPassword.sending') : t('auth:forgotPassword.send')}
               loading={passwordReset.isPending}
               onPress={() => void handleSubmit()}
             />

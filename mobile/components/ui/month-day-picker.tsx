@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { withAlpha } from '@/theme/color-utils'
@@ -41,6 +42,7 @@ export function MonthDayPicker({
   disabled = false,
 }: MonthDayPickerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const accentColor = accent ?? theme.colors.primary
   // Selected-cell number color flips with theme: in light mode the
   // accent gradient is `brand.deep` (very dark green) so the number
@@ -75,7 +77,7 @@ export function MonthDayPicker({
                 disabled={disabled}
                 onPress={() => handlePick(day)}
                 accessibilityRole="button"
-                accessibilityLabel={`Día ${day}`}
+                accessibilityLabel={t('states:monthDayPicker.dayLabel', { day })}
                 accessibilityState={{ selected: true, disabled }}
                 style={styles.cell}
               >
@@ -109,7 +111,7 @@ export function MonthDayPicker({
               disabled={disabled}
               onPress={() => handlePick(day)}
               accessibilityRole="button"
-              accessibilityLabel={`Día ${day}`}
+              accessibilityLabel={t('states:monthDayPicker.dayLabel', { day })}
               accessibilityState={{ selected: false, disabled }}
               style={({ pressed }) => [
                 styles.cell,
@@ -133,9 +135,11 @@ export function MonthDayPicker({
       <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
         {footer ?? (
           <>
-            Cobras el{' '}
-            <Text style={{ color: theme.colors.text, fontWeight: '800' }}>día {safeValue}</Text>{' '}
-            de cada mes
+            {t('states:monthDayPicker.footerPrefix')}
+            <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
+              {t('states:monthDayPicker.footerDay', { day: safeValue })}
+            </Text>
+            {t('states:monthDayPicker.footerSuffix')}
           </>
         )}
       </Text>

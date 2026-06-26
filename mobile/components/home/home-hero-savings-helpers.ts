@@ -17,6 +17,7 @@
 // tested without rendering.
 
 import { formatMoney, formatMoneyShort } from '@/utils/money'
+import i18n from '@/lib/i18n'
 
 export type SavingsHeroChipKind = 'healthy' | 'partial' | 'consumed'
 
@@ -62,16 +63,24 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
   if (remaining <= 0) {
     return {
       kind: 'consumed',
-      label: 'Sin ahorro este mes',
-      a11y: `Aviso: tus gastos consumieron los ${formatMoney(target)} de ahorro previstos para este mes.`,
+      label: i18n.t('home:savingsHero.consumedLabel'),
+      a11y: i18n.t('home:savingsHero.consumedA11y', {
+        target: formatMoney(target),
+      }),
     }
   }
 
   if (remaining >= target) {
     return {
       kind: 'healthy',
-      label: `Ahorrando ${formatMoneyShort(target)}`,
-      a11y: `Estás apartando ${formatMoney(target)} de ahorro este mes${percent > 0 ? `, equivalente al ${percent} por ciento del ingreso` : ''}.`,
+      label: i18n.t('home:savingsHero.healthyLabel', {
+        target: formatMoneyShort(target),
+      }),
+      a11y: i18n.t('home:savingsHero.healthyA11y', {
+        context: percent > 0 ? 'withPercent' : undefined,
+        target: formatMoney(target),
+        percent,
+      }),
     }
   }
 
@@ -80,7 +89,15 @@ export function computeSavingsHeroChip(args: ComputeArgs): SavingsHeroChip | nul
   // dos números sin relación obvia (owner feedback 2026-06-08).
   return {
     kind: 'partial',
-    label: `${formatMoneyShort(remaining)} de meta ${formatMoneyShort(target)}`,
-    a11y: `Llevas apartados ${formatMoney(remaining)} de los ${formatMoney(target)} previstos para este mes${percent > 0 ? `, ${percent} por ciento del ingreso` : ''}.`,
+    label: i18n.t('home:savingsHero.partialLabel', {
+      remaining: formatMoneyShort(remaining),
+      target: formatMoneyShort(target),
+    }),
+    a11y: i18n.t('home:savingsHero.partialA11y', {
+      context: percent > 0 ? 'withPercent' : undefined,
+      remaining: formatMoney(remaining),
+      target: formatMoney(target),
+      percent,
+    }),
   }
 }

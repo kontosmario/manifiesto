@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import type { StreakDerived } from '@/features/streaks/use-streak'
 import type { StatusTone } from './streak-sheet-tone'
@@ -14,6 +15,7 @@ interface LevelProgressProps {
  * signal. We keep only the textual detail copy so the numbers stay.
  */
 export function LevelProgress({ derived, tone }: LevelProgressProps) {
+  const { t } = useTranslation()
   return (
     <RiseView delay={80} style={{ marginTop: 14 }}>
       <View style={styles.progressHead}>
@@ -21,13 +23,19 @@ export function LevelProgress({ derived, tone }: LevelProgressProps) {
           {derived.levelLabel}
         </Text>
         <Text style={[styles.progressLabel, { color: tone.fg }]}>
-          {derived.daysIntoLevel} / {derived.levelTotalDays} días →{' '}
-          {derived.nextLevelLabel}
+          {t('gastos:levelProgress.daysIntoLevel', {
+            into: derived.daysIntoLevel,
+            total: derived.levelTotalDays,
+            nextLevel: derived.nextLevelLabel,
+          })}
         </Text>
       </View>
       {derived.daysToNextLevel > 0 ? (
         <Text style={[styles.progressSub, { color: tone.soft }]}>
-          {derived.daysToNextLevel} días más para subir a {derived.nextLevelLabel}
+          {t('gastos:levelProgress.daysToNext', {
+            count: derived.daysToNextLevel,
+            nextLevel: derived.nextLevelLabel,
+          })}
         </Text>
       ) : null}
     </RiseView>

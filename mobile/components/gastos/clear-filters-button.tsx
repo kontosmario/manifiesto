@@ -4,6 +4,7 @@
 // patrón que Home Sprint 1) — antes era un fade muerto opacity 0.85
 // sin sensación de tap.
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -11,6 +12,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 export function ClearFiltersButton({ onPress }: { onPress: () => void }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.97 })
   return (
     <Pressable
@@ -18,7 +20,7 @@ export function ClearFiltersButton({ onPress }: { onPress: () => void }) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel="Limpiar todos los filtros activos"
+      accessibilityLabel={t('gastos:clearFilters.a11yLabel')}
       hitSlop={8}
     >
       <Animated.View
@@ -33,7 +35,7 @@ export function ClearFiltersButton({ onPress }: { onPress: () => void }) {
       >
         <MaterialIcons name="filter-alt-off" size={14} color={theme.colors.textMuted} />
         <Text style={[styles.clearFiltersText, { color: theme.colors.textMuted }]}>
-          Limpiar filtros
+          {t('gastos:clearFilters.label')}
         </Text>
       </Animated.View>
     </Pressable>

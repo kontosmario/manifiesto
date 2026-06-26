@@ -14,6 +14,7 @@
 import { useCallback, useRef } from 'react'
 import { useRouter } from 'expo-router'
 import { Alert, Linking } from 'react-native'
+import i18n from '@/lib/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { dismissCard } from '@/features/insights/control-dismiss-store'
 import { useControlAnchors } from '@/features/insights/control-section-anchors'
@@ -341,7 +342,10 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
           void triggerHaptic('selection')
           if (action.dismissId) dismissCard(action.dismissId)
           void Linking.openURL(action.url).catch(() => {
-            Alert.alert('No pudimos abrir el enlace', 'Prueba de nuevo más tarde.')
+            Alert.alert(
+              i18n.t('insights:dispatcher.openLinkErrorTitle'),
+              i18n.t('insights:dispatcher.openLinkErrorBody'),
+            )
           })
           return
         }
@@ -383,8 +387,8 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
             )
             .catch(() => {
               Alert.alert(
-                'No pudimos guardar tu respuesta',
-                'Prueba de nuevo en unos segundos.',
+                i18n.t('insights:dispatcher.saveAnswerErrorTitle'),
+                i18n.t('insights:dispatcher.saveAnswerErrorBody'),
               )
             })
           return
@@ -410,8 +414,8 @@ export function useControlActionDispatcher(ctx: DispatcherContext) {
             )
             .catch(() => {
               Alert.alert(
-                'No pudimos registrar la cancelación',
-                'Prueba de nuevo en unos segundos.',
+                i18n.t('insights:dispatcher.cancelIntentErrorTitle'),
+                i18n.t('insights:dispatcher.cancelIntentErrorBody'),
               )
             })
           return

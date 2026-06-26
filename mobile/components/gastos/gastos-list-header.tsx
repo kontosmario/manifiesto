@@ -6,6 +6,7 @@
 // la screen sigue siendo predecible.
 import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -76,6 +77,7 @@ export interface GastosListHeaderProps {
 
 export function GastosListHeader(props: GastosListHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Gateado: en el primer attach del tab (pre-mounted + detached) NO
   // disparamos las layout transitions de las secciones del header — sino
   // toda la cabecera warpea cuando el data warm se asienta. Se habilita
@@ -133,7 +135,7 @@ export function GastosListHeader(props: GastosListHeaderProps) {
     <View style={styles.headerStack}>
       <Animated.View layout={sectionLayout}>
         <GastosHeader
-          subtitle={`Ciclo ${cycleLabel}`}
+          subtitle={t('gastos:header.cycleSubtitle', { cycle: cycleLabel })}
           rightSlot={
             <TourTarget
               tour={GASTOS_TOUR}
@@ -249,7 +251,7 @@ export function GastosListHeader(props: GastosListHeaderProps) {
       >
         <View style={styles.movimientosTitleRow}>
           <Text style={[styles.movimientosTitle, { color: theme.colors.text }]}>
-            Movimientos
+            {t('gastos:list.movementsTitle')}
           </Text>
           {sectionsLength > 0 ? (
             // El carácter `‹` (U+2039) era ambiguo como flecha. Switch
@@ -262,7 +264,7 @@ export function GastosListHeader(props: GastosListHeaderProps) {
                 color={theme.colors.textMuted}
               />
               <Text style={[styles.swipeHint, { color: theme.colors.textMuted }]}>
-                Desliza para acciones
+                {t('gastos:list.swipeHint')}
               </Text>
             </View>
           ) : null}

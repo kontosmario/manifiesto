@@ -1,1 +1,144 @@
-{}
+{
+  "screen": {
+    "title": "My garden",
+    "subtitle": "A sprout for every day you log.",
+    "footnote": "Your garden grows on its own: every expense you log plants the day's sprout. Didn't spend? Mark the no-spend day on the calendar and it counts too."
+  },
+  "card": {
+    "title": "Your garden",
+    "legendToggleLabel": "What the sprouts mean",
+    "legendToggle": "what do they mean?",
+    "firstWeek": "your first week",
+    "weeksShown": "last {{count}} weeks"
+  },
+  "legend": {
+    "seed": "seed",
+    "growing": "growing",
+    "rooted": "rooted",
+    "bloom": "bloom",
+    "skipped": "skipped"
+  },
+  "grid": {
+    "plantGapLabel": "Plant the day you missed last week"
+  },
+  "plantGap": {
+    "title": "Plant the day you missed",
+    "message": "Last week you logged 6 of 7 days. Plant the missing one with a saved seed (you have {{seeds}}). It won't bloom like a perfect week, but you'll complete your garden.",
+    "cancel": "Not now",
+    "confirm": "Plant",
+    "errorTitle": "Couldn't plant it",
+    "errorFallback": "Try again in a bit."
+  },
+  "hero": {
+    "label": "ACTIVE STREAK",
+    "unit": "sprouts\nin a row",
+    "streakA11y_one": "{{count}} sprout in a row",
+    "streakA11y_other": "{{count}} sprouts in a row",
+    "sub": "A seed for every day you log. The gaps are days you didn't log — no worries, the garden goes on.",
+    "statGarden": "GARDEN",
+    "statRecord": "RECORD",
+    "statSeeds": "SEEDS"
+  },
+  "weekCloseBanner": {
+    "a11y": "Week recap: {{label}}, {{score}} of 7 days",
+    "sub": "Last week · {{score}}/7 days",
+    "chip": "See recap ›"
+  },
+  "weekCloseCelebration": {
+    "closeLabel": "Close week recap",
+    "eyebrow": "WEEK RECAP",
+    "count": "{{score}} of 7 days",
+    "continue": "Keep growing"
+  },
+  "weekClose": {
+    "perfect": {
+      "label": "Perfect week",
+      "title": "Your garden bloomed.",
+      "sub": "You logged all 7 days. Every sprout reached its peak."
+    },
+    "great": {
+      "label": "Great week",
+      "title": "Almost full.",
+      "sub": "Most of your sprouts matured. You were a little short of a full garden."
+    },
+    "going": {
+      "label": "Week underway",
+      "title": "You're finding your rhythm.",
+      "sub": "Your sprouts are growing. One more week like this and they'll fully mature."
+    },
+    "calm": {
+      "label": "Quiet week",
+      "title": "A few sprouts.",
+      "sub": "A few seeds peeked out. No guilt — next time you'll start strong."
+    },
+    "pause": {
+      "label": "A pause",
+      "title": "This week, rest.",
+      "sub": "You didn't log any days, and that's okay. Your garden is waiting, untouched."
+    }
+  },
+  "leafIcon": {
+    "a11y_one": "Your garden: {{count}}-day streak",
+    "a11y_other": "Your garden: {{count}}-day streak"
+  },
+  "levels": {
+    "arranque": "Getting Started",
+    "constante": "Consistent",
+    "disciplinado": "Disciplined",
+    "imparable": "Unstoppable",
+    "maestro": "Master",
+    "leyenda": "Legend"
+  },
+  "streakCopy": {
+    "noSpend": {
+      "headline": "No spending today — streak protected",
+      "message": "You marked the day as \"no spending\". The streak stays active at {{level}}, and every counted day adds to your progress."
+    },
+    "nearLevel": {
+      "headline": "Almost at {{level}}!",
+      "message_one": "Just {{count}} more day to level up. Keep it up.",
+      "message_other": "Just {{count}} more days to level up. Keep it up."
+    },
+    "active": {
+      "headlineStart": "You started your streak",
+      "headlineStreak": "{{count}} days in a row, unstoppable",
+      "message": "You're at {{level}}. Every day you log, your money works better for you."
+    },
+    "atRiskWithShield": {
+      "message_one": "{{tone}} You have {{count}} shield available — if you don't log today, just one is used at midnight.",
+      "message_other": "{{tone}} You have {{count}} shields available — if you don't log today, just one is used at midnight."
+    },
+    "atRiskNoShield": {
+      "message_one": "{{tone}} You're at {{count}} day — no shields, so if you don't log it breaks and tomorrow you start from zero.",
+      "message_other": "{{tone}} You're at {{count}} days — no shields, so if you don't log it breaks and tomorrow you start from zero."
+    },
+    "broken": {
+      "headline": "The streak broke",
+      "messageWithRecord_one": "Your personal best is still {{count}} day. Log an entry today and start a new one.",
+      "messageWithRecord_other": "Your personal best is still {{count}} days. Log an entry today and start a new one.",
+      "messageFresh": "A new streak starts with a single entry. Log today and you're on day 1."
+    }
+  },
+  "dayTone": {
+    "calm": {
+      "atRiskHeadlineWithShield": "Good day — your streak is still alive",
+      "atRiskHeadlineNoShield": "You haven't logged today yet",
+      "atRiskMessage": "You've got the whole day ahead — log whenever you can."
+    },
+    "gentle": {
+      "atRiskHeadlineWithShield": "Your streak is still in play",
+      "atRiskHeadlineNoShield": "You haven't logged today yet",
+      "atRiskMessage": "Good moment to jot down the day's expense before it gets late."
+    },
+    "urgent": {
+      "atRiskHeadlineWithShield": "Careful — the cutoff is near",
+      "atRiskHeadlineNoShield": "Just a few hours until midnight",
+      "atRiskMessage": "If you log now, you'll avoid any last-minute scramble."
+    },
+    "critical": {
+      "atRiskHeadlineWithShield": "Last call — streak at risk",
+      "atRiskHeadlineNoShield": "Last call before midnight",
+      "atRiskMessage": "Log now to close out the day without losing progress."
+    }
+  }
+}

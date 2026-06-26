@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { TextField } from '@/components/ui/text-field'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -25,18 +26,19 @@ export function Step1Title({
   onSelectEmoji,
 }: Step1TitleProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.step1Body}>
       <TextField
-        label="Nombre de la meta"
+        label={t('settings:savingsWizard.nameLabel')}
         value={title}
         onChangeText={(v) => onChangeTitle(v.slice(0, MAX_TITLE))}
-        placeholder="Ej: Viaje a Bariloche"
+        placeholder={t('settings:savingsWizard.namePlaceholder')}
         autoCapitalize="sentences"
         // autoFocus removido a propósito: el teclado nativo en iOS
         // empujaba el sheet entero. Con KeyboardAvoidingView wrap +
         // tap-to-focus el flow se siente más controlado y no flashea.
-        accessibilityLabel="Nombre de la meta"
+        accessibilityLabel={t('settings:savingsWizard.nameLabel')}
         helper={`${title.length}/${MAX_TITLE}`}
       />
 
@@ -48,14 +50,14 @@ export function Step1Title({
         <Text
           style={[typography.eyebrow, { color: theme.colors.textMuted }]}
         >
-          ELIGE UN ÍCONO
+          {t('settings:savingsWizard.chooseIcon')}
         </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.emojiScroll}
           contentContainerStyle={styles.emojiScrollContent}
-          accessibilityLabel="Seleccionar ícono — desliza para ver más"
+          accessibilityLabel={t('settings:savingsWizard.iconScrollA11y')}
         >
           {EMOJI_PALETTE.map((glyph) => {
             const isActive = glyph === selectedEmoji
@@ -64,7 +66,7 @@ export function Step1Title({
                 key={glyph}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`Ícono ${glyph}`}
+                accessibilityLabel={t('settings:savingsWizard.iconA11y', { glyph })}
                 onPress={() => onSelectEmoji(glyph)}
                 style={({ pressed }) => [
                   styles.emojiCard,

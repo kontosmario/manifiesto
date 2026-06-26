@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
@@ -14,10 +15,11 @@ export function ExpenseHistoryRowActions({
   onDelete,
   onEdit,
 }: ExpenseHistoryRowActionsProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.rowActions}>
       <SwipeActionButton
-        label="Editar"
+        label={t('home:historyRowActions.edit')}
         tone="default"
         onPress={() => {
           void triggerHaptic('selection')
@@ -25,7 +27,7 @@ export function ExpenseHistoryRowActions({
         }}
       />
       <SwipeActionButton
-        label="Borrar"
+        label={t('home:historyRowActions.delete')}
         tone="danger"
         onPress={() => {
           void triggerHaptic('warning')

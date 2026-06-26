@@ -46,12 +46,183 @@
     "categories": "Loading categories",
     "notifications": "Loading news",
     "settings": "Loading your preferences",
-    "import": "Loading import"
+    "import": "Loading import",
+    "generic": "Loading"
   },
   "error": {
     "network": "We couldn't connect. Check your connection.",
     "server": "Something failed on the server side. Try again.",
     "data": "The data came in incomplete. Refresh to retry.",
     "auth": "Your session expired. Sign in again."
+  },
+  "errorState": {
+    "title": "Something went wrong",
+    "description": "We couldn't load this. Check your connection and try again.",
+    "action": "Try again"
+  },
+  "errorBoundary": {
+    "title": "Something broke",
+    "body": "Tap retry to reload. If it happens again, close and reopen the app.",
+    "retry": "Try again"
+  },
+  "swipeRow": {
+    "processing": "Processing…"
+  },
+  "cobro": {
+    "today": "Payday is today",
+    "overdue_one": "+{{count}} day without pay",
+    "overdue_other": "+{{count}} days without pay",
+    "confirmHint": "{{label}}. Tap to confirm your pay"
+  },
+  "numericEditor": {
+    "closeLabel": "Close editor",
+    "editAmount": "Edit amount. Current value {{value}}",
+    "editAmountTap": "Tap to edit the amount. Current value {{value}}",
+    "editChip": "Edit"
+  },
+  "numpad": {
+    "closeLabel": "Close numpad",
+    "backspaceLabel": "Delete last digit",
+    "backspaceHint": "Press and hold to clear everything",
+    "commaLabel": "Comma"
+  },
+  "passwordField": {
+    "show": "Show password",
+    "hide": "Hide password"
+  },
+  "hourPicker": {
+    "label": "Hour",
+    "hint": "Swipe to change the hour. The number in the center is the one selected.",
+    "suffix": "h",
+    "sheetSubtitle": "Swipe to the hour you want."
+  },
+  "monthDayPicker": {
+    "dayLabel": "Day {{day}}",
+    "footerPrefix": "You get paid on the ",
+    "footerDay": "{{day}}",
+    "footerSuffix": " of each month"
+  },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "dayLabel": "Day {{day}}",
+    "weekdays": ["M", "T", "W", "T", "F", "S", "S"],
+    "months": [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ]
+  },
+  "accountDeletion": {
+    "title": "Account deletion scheduled",
+    "bodyDated": "Your account will be deleted on {{date}}. Cancel if this wasn't you.",
+    "bodyUndated": "Your account has a deletion scheduled. Cancel if this wasn't you.",
+    "a11yDated": "Your account will be deleted on {{date}}. Tap to cancel.",
+    "a11yUndated": "Your account has a deletion scheduled. Tap to cancel.",
+    "cancel": "Cancel deletion",
+    "cancelling": "Cancelling…",
+    "rateLimitTitle": "Try again in a few seconds",
+    "rateLimitBody": "Try again in a few seconds. Your deletion request is still scheduled — everything's fine and you'll be able to cancel it whenever you want.",
+    "failTitle": "We couldn't cancel the deletion",
+    "failBody": "Try again in a moment. If the problem persists, write to us at soporte@manifiestoapp.com."
+  },
+  "welcomeAccountDeletion": {
+    "title": "Possible account deletion scheduled",
+    "bodyDated": "You had a deletion scheduled for {{date}}.",
+    "bodyUndated": "You had a deletion scheduled for your account.",
+    "hint": "If you already cancelled the deletion on another device, sign in to update the status.",
+    "a11yDated": "You had a deletion scheduled for {{date}}. Sign in to check the status.",
+    "a11yUndated": "You had an account deletion scheduled. Sign in to check the status.",
+    "cta": "Sign in to verify",
+    "ctaA11y": "Sign in to check the deletion status"
+  },
+  "quickActions": {
+    "closeLabel": "Close actions",
+    "eyebrow": "What are you adding?",
+    "import": "Import screenshot",
+    "noSpendMarked": "Marked ✓",
+    "noSpend": "No-spend day"
+  },
+  "addFab": {
+    "label": "Add expense",
+    "hint": "Press and hold for more actions",
+    "registered": "No-spend day logged",
+    "markFailed": "Couldn't mark it. Try again in a moment.",
+    "needSession": "You need to be signed in to import.",
+    "needPhotos": "I need access to your photos to import screenshots.",
+    "readFailed": "I couldn't read that screenshot: {{message}}",
+    "preparingAccount": "We're setting up your account, try again in a moment.",
+    "unmarked": "No-spend day mark removed.",
+    "unmarkFailed": "Couldn't undo it. Try again in a moment."
+  },
+  "permissions": {
+    "notifications": {
+      "title": "We'll tell you when it matters",
+      "subtitle": "Only notifications worth reading.",
+      "reason1": "Your confirmed pay for the month",
+      "reason2": "Alerts for unusual expenses",
+      "reason3": "Your household's achievements",
+      "primary": "Allow",
+      "secondary": "Later"
+    },
+    "biometric": {
+      "title": "Unlock faster",
+      "subtitle": "Use {{method}} to get in without typing your password.",
+      "reason1": "Sign in with {{method}}",
+      "reason2": "Your data is always encrypted",
+      "reason3": "You can turn it off whenever you want",
+      "primary": "Turn on",
+      "secondary": "Later"
+    }
+  },
+  "captchaBanner": {
+    "message": "Captcha disabled in this build. Don't merge to production."
+  },
+  "tabs": {
+    "home": "Home",
+    "expenses": "Expenses",
+    "add": "Add",
+    "fixed": "Fixed",
+    "control": "Control"
+  },
+  "tour": {
+    "labels": {
+      "next": "Next",
+      "previous": "Back",
+      "finish": "Finish",
+      "skip": "Skip"
+    },
+    "home": {
+      "headerActions": "In the top right you have three quick shortcuts: the financial assistant, your notifications inbox and general settings. Tap any of them to open it.",
+      "familyStrip": "Your household and the days left until your next payday. When you get paid, tap the capsule to confirm it and start a new cycle.",
+      "hero": "Your savings goal at a glance: how much you've saved, how much is left and the pace you're going. If you haven't set up your monthly income yet, here's the shortcut to do it.",
+      "variables": "Your variable expenses this month: how much you've spent and which category leads. Tap the card to open the detail in Expenses.",
+      "fixed": "Your fixed commitments this month: how many you paid and which one is due next. Tap the card to open the detail in Fixed.",
+      "meta": "Your savings goal as a digital piggy bank: see how much you've saved, add a quick contribution and adjust the target right here.",
+      "activity": "Your recent movements this month, sorted by date. Swipe a row left to edit or delete it, or tap \"See all\" to open the full screen.",
+      "fab": "The quick actions button. One tap logs an expense instantly. Press and hold to open a menu with three options: expense, fixed expense or income. It's the fastest way to add movements."
+    },
+    "gastos": {
+      "hero": "The month's summary: how much you've spent, which categories lead and your daily average. One glance and you understand how the month is going.",
+      "streak": "Your streak of days logging expenses. Every day you log at least one expense (or mark a no-spend day) adds a day to the flame. The streak unlocks shields and rewards.",
+      "calendar": "The month's calendar with your expenses day by day. Each day's color reflects how much you spent. Tap a day to filter the list and see only that date's movements.",
+      "filters": "Quick filters by category. Tap a chip and the list below adjusts instantly — handy to see, for example, how much you've spent on groceries or transport.",
+      "list": "Your list of movements this month, grouped by day. Tap a row to open the detail, or swipe it left to edit or delete it. The list respects the filter and the day selected above."
+    },
+    "fijos": {
+      "hero": "Your fixed expenses this month: how many you already paid, how much is left to pay and when each one is due. Rent, subscriptions and utilities go here.",
+      "calendar": "What's due soon, in chronological order. Each bubble shows the day and the category — numbers in red mark the ones already past due.",
+      "list": "The list below groups your fixed expenses by category. Tap one to mark it as paid, or swipe it left to edit, pause or delete it.",
+      "addButton": "Here you add a new fixed expense. Add rent, a subscription or any recurring commitment — you set how often it's due and the app adds it to the cycle automatically."
+    },
+    "control": {
+      "hoy": "Your daily pulse: how much you have free today and how you're doing against your daily allowance. In green you're on pace; if you go red, you've crossed the ceiling.",
+      "asesor": "The financial advisor. It reads your patterns and flags what matters: expenses that got out of control, fixed expenses you don't use, savings opportunities. Tap a card to resolve each case.",
+      "alcanza": "Will you make it to month's end? We project the close at your current pace. If the projection falls short, it shows the estimated day your allowance runs out and how much you need to adjust.",
+      "alcancia": "Your piggy bank for the month: what you DIDN'T spend each day accumulates here. It's the automatic savings you generate by staying below the daily allowance. Tap the card to see the detail.",
+      "semana": "Summary of the current week versus the previous one. If a category spiked this week, you'll notice it here before the cycle breaks.",
+      "vsMes": "Comparison against previous months. It tells you whether your current month is above, below or in line with the historical average — useful to spot whether the month is unusual.",
+      "patron": "Your spending pattern by day of the week. If you always overspend on Wednesdays or take care on Mondays, you'll see it here as your own fingerprint.",
+      "cobertura": "Your income coverage: how much your pay covers at this pace and how many days you'd last if you stopped getting paid today. It's the most fundamental financial-health indicator."
+    }
   }
 }

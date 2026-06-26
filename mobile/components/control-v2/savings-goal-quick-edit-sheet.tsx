@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -34,6 +35,7 @@ export function SavingsGoalQuickEditSheet({
   inline,
 }: SavingsGoalQuickEditSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [goalAmountText, setGoalAmountText] = useState(
     String(Math.max(0, Math.round(initialGoalAmount))),
   )
@@ -65,18 +67,21 @@ export function SavingsGoalQuickEditSheet({
   const exceedsCurrent = parsedAmount > 0 && parsedAmount < currentAmount
   const monthlyHint =
     parsedMonths != null && parsedAmount > currentAmount
-      ? `Para llegar en ${parsedMonths} ${parsedMonths === 1 ? 'mes' : 'meses'} sumas ${formatMoneyShort(
-          Math.ceil((parsedAmount - currentAmount) / parsedMonths),
-        )} por mes.`
-      : 'Déjalo vacío si no quieres fijar un plazo.'
+      ? t('control:goalEdit.monthlyHint', {
+          count: parsedMonths,
+          amount: formatMoneyShort(
+            Math.ceil((parsedAmount - currentAmount) / parsedMonths),
+          ),
+        })
+      : t('control:goalEdit.monthlyHintEmpty')
 
   return (
     <ModalCard
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title={`Ajustar meta · ${goalEmoji} ${goalTitle}`}
-      subtitle="Cambia el monto objetivo o el plazo. El avance actual se mantiene."
+      title={t('control:goalEdit.title', { emoji: goalEmoji, title: goalTitle })}
+      subtitle={t('control:goalEdit.subtitle')}
     >
       <View style={styles.body}>
         <View
@@ -89,7 +94,7 @@ export function SavingsGoalQuickEditSheet({
           ]}
         >
           <Text style={[styles.snapshotEyebrow, { color: theme.colors.textMuted }]}>
-            YA AHORRADO
+            {t('control:goalEdit.yaAhorrado')}
           </Text>
           <Text style={[styles.snapshotValue, { color: theme.colors.text }]}>
             {currencyFormatter.format(currentAmount)}
@@ -97,34 +102,36 @@ export function SavingsGoalQuickEditSheet({
         </View>
 
         <TextField
-          label="Monto objetivo"
+          label={t('control:goalEdit.labelMonto')}
           value={goalAmountText}
           onChangeText={setGoalAmountText}
           keyboardType="number-pad"
           inputMode="numeric"
-          placeholder="0"
-          accessibilityLabel="Monto objetivo de la meta"
+          placeholder={t('control:goalEdit.placeholderMonto')}
+          accessibilityLabel={t('control:goalEdit.a11yMonto')}
           helper={
             exceedsCurrent
-              ? `El objetivo no puede ser menor al avance (${formatMoneyShort(currentAmount)}).`
+              ? t('control:goalEdit.exceedsCurrent', {
+                  amount: formatMoneyShort(currentAmount),
+                })
               : undefined
           }
         />
 
         <TextField
-          label="Plazo en meses"
+          label={t('control:goalEdit.labelPlazo')}
           value={monthsText}
           onChangeText={setMonthsText}
           keyboardType="number-pad"
           inputMode="numeric"
-          placeholder="Sin plazo"
-          accessibilityLabel="Plazo objetivo en meses"
+          placeholder={t('control:goalEdit.placeholderPlazo')}
+          accessibilityLabel={t('control:goalEdit.a11yPlazo')}
           helper={monthlyHint}
         />
 
         <AppButton
           variant="primary"
-          label="Guardar cambios"
+          label={t('control:goalEdit.cta')}
           loading={isSaving}
           disabled={!isValid}
           onPress={() => {

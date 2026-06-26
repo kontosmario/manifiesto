@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { GastosFilterPill } from '@/components/gastos/gastos-filter-pill'
 import { pickIconForCategory } from '@/features/gastos/category-icons'
@@ -30,6 +31,7 @@ export function GastosSmartFilter({
   onSelect,
 }: GastosSmartFilterProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const ranked = useMemo(
     () =>
@@ -54,7 +56,7 @@ export function GastosSmartFilter({
     <RiseView delay={140}>
       <View style={styles.container}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          FILTRAR POR CATEGORÍA
+          {t('gastos:smartFilter.eyebrow')}
         </Text>
 
         <ScrollView
@@ -72,7 +74,7 @@ export function GastosSmartFilter({
                   exacto, memo funciona. */}
               <GastosFilterPill
                 active={selectedCategoryId == null}
-                label="Todas"
+                label={t('gastos:smartFilter.all')}
                 emoji="📋"
                 count={totalCount}
                 selectId={null}

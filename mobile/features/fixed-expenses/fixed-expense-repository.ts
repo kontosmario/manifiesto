@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import {
   asFixedExpense,
   buildFixedExpensePayload,
@@ -130,9 +131,7 @@ export async function recordFixedExpensePayment(
   }
 
   if (!sessionResponse.data.session?.user?.id) {
-    throw new Error(
-      'Tu sesion vencio. Volve a iniciar sesion antes de registrar un pago.',
-    )
+    throw new Error(i18n.t('fijos:errors.sessionExpiredPayment'))
   }
 
   // Cliente valida antes del round-trip — la RPC también valida (defense
@@ -143,7 +142,7 @@ export async function recordFixedExpensePayment(
       !Number.isFinite(input.amountOverride) ||
       input.amountOverride <= 0
     ) {
-      throw new Error('El monto del pago debe ser mayor a 0.')
+      throw new Error(i18n.t('fijos:errors.paymentAmountPositive'))
     }
   }
 
@@ -176,9 +175,7 @@ export async function revertFixedExpensePayment(paymentId: string) {
     throw sessionResponse.error
   }
   if (!sessionResponse.data.session?.user?.id) {
-    throw new Error(
-      'Tu sesion vencio. Volve a iniciar sesion antes de revertir un pago.',
-    )
+    throw new Error(i18n.t('fijos:errors.sessionExpiredRevert'))
   }
   const { error } = await supabase.rpc('revert_fixed_expense_payment', {
     p_payment_id: paymentId,

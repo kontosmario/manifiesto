@@ -1,5 +1,6 @@
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AuditFeedItem } from '@/features/subscriptions-zombie/types'
 
@@ -27,18 +28,26 @@ export function IntentFollowupCard({
   now,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   const titleByKind: Record<typeof followUpKind, string> = {
-    payment_recurred: `${fijoName} se volvió a cobrar.`,
-    no_payment_after_due: `${fijoName} no se cobró este mes.`,
-    awaiting_post_due: `Hace ${daysSince(declaredAtIso, now)} días ibas a dar de baja ${fijoName}.`,
+    payment_recurred: t('insights:subscriptions.followup.titlePaymentRecurred', {
+      name: fijoName,
+    }),
+    no_payment_after_due: t('insights:subscriptions.followup.titleNoPayment', {
+      name: fijoName,
+    }),
+    awaiting_post_due: t('insights:subscriptions.followup.titleAwaiting', {
+      count: daysSince(declaredAtIso, now),
+      name: fijoName,
+    }),
   }
 
   const askByKind: Record<typeof followUpKind, string> = {
-    payment_recurred: '¿Pasó algo?',
-    no_payment_after_due: '¿Confirmas que la diste de baja?',
-    awaiting_post_due: '¿Pudiste?',
+    payment_recurred: t('insights:subscriptions.followup.askPaymentRecurred'),
+    no_payment_after_due: t('insights:subscriptions.followup.askNoPayment'),
+    awaiting_post_due: t('insights:subscriptions.followup.askAwaiting'),
   }
 
   return (
@@ -52,7 +61,7 @@ export function IntentFollowupCard({
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Sí, ya está"
+          accessibilityLabel={t('insights:subscriptions.followup.confirmDone')}
           style={({ pressed }) => [
             styles.btnPrimary,
             { backgroundColor: theme.colors.primary },
@@ -61,12 +70,12 @@ export function IntentFollowupCard({
           onPress={onConfirmDone}
         >
           <Text style={[styles.btnPrimaryText, { color: theme.colors.textOnPrimary }]}>
-            Sí, ya está
+            {t('insights:subscriptions.followup.confirmDone')}
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Todavía no"
+          accessibilityLabel={t('insights:subscriptions.followup.stillNo')}
           style={({ pressed }) => [
             styles.btnSecondary,
             {
@@ -78,18 +87,18 @@ export function IntentFollowupCard({
           onPress={onStillNo}
         >
           <Text style={[styles.btnSecondaryText, { color: theme.colors.text }]}>
-            Todavía no
+            {t('insights:subscriptions.followup.stillNo')}
           </Text>
         </Pressable>
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cambié de idea"
+        accessibilityLabel={t('insights:subscriptions.followup.changedMind')}
         style={({ pressed }) => [styles.btnGhost, pressed && styles.btnPressed]}
         onPress={onChangedMind}
       >
         <Text style={[styles.btnGhostText, { color: theme.colors.textMuted }]}>
-          Cambié de idea
+          {t('insights:subscriptions.followup.changedMind')}
         </Text>
       </Pressable>
     </View>

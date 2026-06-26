@@ -4,6 +4,7 @@ import {
   setPersistentValue,
 } from '@/lib/persistent-kv'
 import { sendFamilyPush } from '@/lib/send-family-push'
+import i18n from '@/lib/i18n'
 import type { AuditFeedItem, FixedExpenseRow } from './types'
 
 const STORAGE_KEY = 'subs-zombie-notified:v1'
@@ -72,12 +73,23 @@ export function useZombiePushSync(args: {
           .slice(0, 3)
           .map((p) => p.name)
           .join(', ')
-        const more = pending.length > 3 ? ` y ${pending.length - 3} más` : ''
+        const more =
+          pending.length > 3
+            ? i18n.t('insights:subscriptions.push.more', {
+                count: pending.length - 3,
+              })
+            : ''
         try {
           await sendFamilyPush({
             familyId,
-            title: `Tienes ${pending.length} suscripciones que casi no usas`,
-            body: `${names}${more} · $${total.toLocaleString('es-AR')}/mes. Toca para revisar.`,
+            title: i18n.t('insights:subscriptions.push.manyTitle', {
+              count: pending.length,
+            }),
+            body: i18n.t('insights:subscriptions.push.manyBody', {
+              names,
+              more,
+              total: `$${total.toLocaleString('es-AR')}`,
+            }),
             kind: 'subscription_zombie',
             url: '/asistente',
           })
@@ -91,9 +103,11 @@ export function useZombiePushSync(args: {
           if (cancelled) return
           const title =
             p.classification === 'zombie_consensuado'
-              ? `${p.name} — la familia casi no la usa`
-              : `${p.name} — uso desigual en la familia`
-          const body = `Pagas $${p.amount.toLocaleString('es-AR')} al mes. Toca para revisar.`
+              ? i18n.t('insights:subscriptions.push.consensusTitle', { name: p.name })
+              : i18n.t('insights:subscriptions.push.unevenTitle', { name: p.name })
+          const body = i18n.t('insights:subscriptions.push.singleBody', {
+            amount: `$${p.amount.toLocaleString('es-AR')}`,
+          })
           try {
             await sendFamilyPush({
               familyId,

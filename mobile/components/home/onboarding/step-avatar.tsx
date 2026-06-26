@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import {
   AVATAR_LABELS,
   AVATAR_SLUGS,
@@ -18,13 +19,14 @@ interface StepAvatarProps {
 
 export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View style={styles.stack}>
       <RiseView>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Elige tu avatar</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{t('onboarding:avatar.title')}</Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Lo vas a ver en tu perfil y en la actividad de la familia.
+          {t('onboarding:avatar.subcopy')}
         </Text>
       </RiseView>
 
@@ -53,10 +55,10 @@ export function StepAvatar({ selected, onSelect }: StepAvatarProps) {
       <RiseView delay={140}>
         <View style={styles.gridHeader}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            TODOS LOS AVATARES
+            {t('onboarding:avatar.gridEyebrow')}
           </Text>
           <Text style={[styles.gridCount, { color: theme.colors.textMuted }]}>
-            {AVATAR_SLUGS.length} opciones
+            {t('onboarding:avatar.gridCount', { count: AVATAR_SLUGS.length })}
           </Text>
         </View>
 

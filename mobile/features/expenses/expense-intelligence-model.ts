@@ -3,6 +3,7 @@ import type {
   ExpenseAnalyticsSummary,
 } from '@/features/expenses/expense-analytics'
 import { formatDeltaPercent } from '@/utils/percent'
+import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
 
 export interface IntelligenceMetric {
@@ -30,34 +31,34 @@ export function buildExpenseIntelligenceViewModel(
     analytics.projectedAvailableAtCycleEnd >= 0 ? 'success' : 'warning'
   const headlineText =
     analytics.projectedAvailableAtCycleEnd >= 0
-      ? 'Si sigues así, todavía debería quedar aire al final del mes.'
-      : 'Si sigues así, el mes termina corto y conviene corregir ahora.'
+      ? i18n.t('gastos:intelligence.headline.healthy')
+      : i18n.t('gastos:intelligence.headline.short')
 
   const leadMetrics: IntelligenceMetric[] = [
     {
-      helper: `${analytics.daysRemainingInCycle} días restantes en el mes.`,
+      helper: i18n.t('gastos:intelligence.dailyCap.helper', { count: analytics.daysRemainingInCycle }),
       icon: 'speed',
-      label: 'Tope diario',
+      label: i18n.t('gastos:intelligence.dailyCap.label'),
       tone: analytics.adjustmentNeededPerDay > 0 ? 'warning' : 'default',
       value: currencyFormatter.format(analytics.recommendedDailyCap),
     },
     analytics.adjustmentNeededPerDay > 0
       ? {
-          helper: 'Recorte sugerido para llegar al próximo cobro.',
+          helper: i18n.t('gastos:intelligence.cutPerDay.helper'),
           icon: 'bolt',
-          label: 'Baja por día',
+          label: i18n.t('gastos:intelligence.cutPerDay.label'),
           tone: 'warning',
           value: currencyFormatter.format(analytics.adjustmentNeededPerDay),
         }
       : {
           helper:
             analytics.weeklyDeltaRatio == null
-              ? 'Todavía no hay suficiente base para comparar semanas.'
+              ? i18n.t('gastos:intelligence.weeklyPace.helperNoBase')
               : analytics.weeklyDeltaRatio > 0
-                ? 'Esta semana viene más cargada.'
-                : 'Esta semana viene más liviana o estable.',
+                ? i18n.t('gastos:intelligence.weeklyPace.helperHeavier')
+                : i18n.t('gastos:intelligence.weeklyPace.helperLighter'),
           icon: 'speed',
-          label: 'Ritmo semanal',
+          label: i18n.t('gastos:intelligence.weeklyPace.label'),
           tone:
             analytics.weeklyDeltaRatio == null
               ? 'default'
@@ -67,9 +68,9 @@ export function buildExpenseIntelligenceViewModel(
           value: formatDeltaPercent(analytics.weeklyDeltaRatio),
         },
     {
-      helper: 'Gasto variable acumulado en los últimos 7 días.',
+      helper: i18n.t('gastos:intelligence.last7.helper'),
       icon: 'receipt-long',
-      label: 'Últimos 7 días',
+      label: i18n.t('gastos:intelligence.last7.label'),
       tone: 'default',
       value: currencyFormatter.format(analytics.currentWeekTotal),
     },
@@ -79,11 +80,12 @@ export function buildExpenseIntelligenceViewModel(
 
   if (analytics.topCategory) {
     focusMetrics.push({
-      helper: `${analytics.topCategory.label} suma ${currencyFormatter.format(
-        analytics.topCategory.total,
-      )} en este mes.`,
+      helper: i18n.t('gastos:intelligence.topCategory.helper', {
+        label: analytics.topCategory.label,
+        total: currencyFormatter.format(analytics.topCategory.total),
+      }),
       icon: 'category',
-      label: 'Categoría líder',
+      label: i18n.t('gastos:intelligence.topCategory.label'),
       tone: analytics.topCategory.share >= 0.35 ? 'warning' : 'default',
       value: `${Math.round(analytics.topCategory.share * 100)}%`,
       wide: true,
@@ -92,9 +94,12 @@ export function buildExpenseIntelligenceViewModel(
 
   if (analytics.recurringFocus) {
     focusMetrics.push({
-      helper: `${analytics.recurringFocus.label} apareció ${analytics.recurringFocus.count} veces.`,
+      helper: i18n.t('gastos:intelligence.recurring.helper', {
+        label: analytics.recurringFocus.label,
+        count: analytics.recurringFocus.count,
+      }),
       icon: 'repeat',
-      label: 'Gasto repetido',
+      label: i18n.t('gastos:intelligence.recurring.label'),
       tone: 'warning',
       value: currencyFormatter.format(analytics.recurringFocus.total),
     })
@@ -102,9 +107,9 @@ export function buildExpenseIntelligenceViewModel(
 
   if (analytics.weekendPremiumRatio != null && analytics.weekendPremiumRatio >= 1.05) {
     focusMetrics.push({
-      helper: 'Compara sábados y domingos contra el promedio de lunes a viernes.',
+      helper: i18n.t('gastos:intelligence.weekend.helper'),
       icon: 'weekend',
-      label: 'Fin de semana',
+      label: i18n.t('gastos:intelligence.weekend.label'),
       tone: analytics.weekendPremiumRatio >= 1.25 ? 'warning' : 'default',
       value: `+${Math.round((analytics.weekendPremiumRatio - 1) * 100)}%`,
     })

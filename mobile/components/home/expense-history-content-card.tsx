@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { ExpenseHistoryList } from '@/components/home/expense-history-list'
 import { AppButton } from '@/components/ui/button'
 import { BrandedPanel } from '@/components/ui/branded-panel'
@@ -32,20 +33,21 @@ export function ExpenseHistoryContentCard({
   onDeleteExpense,
   onEditExpense,
 }: ExpenseHistoryContentCardProps) {
+  const { t } = useTranslation()
   return (
     <BrandedPanel style={[styles.historyCard, styles.historyCardFlex]}>
       <SectionHeader
-        subtitle="Toca para editar o desliza cada fila para acciones rapidas."
-        title="Movimientos"
+        subtitle={t('home:historyContent.subtitle')}
+        title={t('home:historyContent.title')}
       />
 
-      {isLoading ? <LoadingBlock label="Cargando gastos..." /> : null}
+      {isLoading ? <LoadingBlock label={t('home:historyContent.loading')} /> : null}
 
       {!isLoading && expensesCount === 0 ? (
         <EmptyState
           icon="receipt-long"
-          subtitle="Carga el primer gasto del hogar para empezar a construir el historial."
-          title="No hay movimientos"
+          subtitle={t('home:historyContent.emptySubtitle')}
+          title={t('home:historyContent.emptyTitle')}
         />
       ) : null}
 
@@ -53,12 +55,12 @@ export function ExpenseHistoryContentCard({
         <View style={styles.emptyFilteredState}>
           <EmptyState
             icon="filter-alt"
-            subtitle="Proba otro periodo, otra categoria o limpia la busqueda."
-            title="No encontramos resultados"
+            subtitle={t('home:historyContent.noResultsSubtitle')}
+            title={t('home:historyContent.noResultsTitle')}
           />
           <AppButton
             fullWidth={false}
-            label="Limpiar filtros"
+            label={t('home:historyContent.clearFilters')}
             onPress={onClearFilters}
             size="compact"
             variant="ghost"

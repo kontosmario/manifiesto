@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   cancelAnimation,
@@ -50,6 +51,7 @@ export function CycleWrappedCta({
   ctaFg: string
   reduced: boolean
 }) {
+  const { t } = useTranslation()
   const hasPendingDecision = Boolean(
     payload?.pendingLeftoverDecision && payload?.onApplyLeftoverDecision,
   )
@@ -57,9 +59,9 @@ export function CycleWrappedCta({
     applyingLeftover || (hasPendingDecision && leftoverSelected === null)
   const label = hasPendingDecision
     ? leftoverSelected
-      ? 'Confirmar y empezar'
-      : 'Elige una opción'
-    : 'Empezar el próximo'
+      ? t('control:wrapped.cta.confirmar')
+      : t('control:wrapped.cta.elegirOpcion')
+    : t('control:wrapped.cta.empezarProximo')
 
   // Una sola progress shared value que dispara opacity + shadow al
   // pasar de disabled → enabled. Más simple que dos animaciones y se

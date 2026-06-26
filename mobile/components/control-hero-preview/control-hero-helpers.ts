@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { ControlHeroState } from './control-hero-states'
 
 /**
@@ -19,6 +20,10 @@ export interface ControlMessage {
   primaryNumber: number
   /** Label arriba del número · ej "LIBRE HOY" */
   primaryLabel: string
+  /** True cuando el primaryNumber es una cuenta de DÍAS (no dinero) —
+   *  gobierna el formato/unidad del CountUp del hero. Reemplaza la
+   *  comparación frágil contra el string del label (que ahora se traduce). */
+  primaryIsDays?: boolean
 }
 
 export function resolveControlMessage(state: ControlHeroState): ControlMessage {
@@ -26,11 +31,13 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (state.alreadyExhausted) {
     const exceso = Math.max(0, Math.abs(state.libreHoy))
     return {
-      primary: 'Te pasaste del mes.',
-      secondary: `Faltan ${state.proximoSueldoEnDias} días al cobro. Cuida lo que queda.`,
+      primary: i18n.t('control:hero.exhausto.primary'),
+      secondary: i18n.t('control:hero.exhausto.secondary', {
+        days: state.proximoSueldoEnDias,
+      }),
       status: 'urgent',
       primaryNumber: exceso,
-      primaryLabel: 'POR ENCIMA',
+      primaryLabel: i18n.t('control:hero.exhausto.label'),
     }
   }
 
@@ -38,11 +45,12 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   if (!state.alcanzaElMes) {
     const diasQueAguantas = Math.max(1, state.diaAgotamiento - state.diaActual)
     return {
-      primary: `Te quedas sin plata en ${diasQueAguantas} ${diasQueAguantas === 1 ? 'día' : 'días'}.`,
-      secondary: `Baja el ritmo o llegas justo al cobro.`,
+      primary: i18n.t('control:hero.noAlcanza.primary', { count: diasQueAguantas }),
+      secondary: i18n.t('control:hero.noAlcanza.secondary'),
       status: 'urgent',
       primaryNumber: diasQueAguantas,
-      primaryLabel: 'DÍAS HASTA AGOTAR',
+      primaryLabel: i18n.t('control:hero.noAlcanza.label'),
+      primaryIsDays: true,
     }
   }
 
@@ -52,11 +60,13 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   // = -$11K aunque libreHoy = +$168K (todo el día por delante).
   if (state.libreHoy < -state.cupoDiario * 0.5) {
     return {
-      primary: `Vas ${formatMoneyCompact(Math.abs(state.libreHoy))} arriba del cupo.`,
-      secondary: 'Pasaste el cupo del día — corrige mañana.',
+      primary: i18n.t('control:hero.criticoHoy.primary', {
+        amount: formatMoneyCompact(Math.abs(state.libreHoy)),
+      }),
+      secondary: i18n.t('control:hero.criticoHoy.secondary'),
       status: 'urgent',
       primaryNumber: Math.abs(state.libreHoy),
-      primaryLabel: 'POR ENCIMA HOY',
+      primaryLabel: i18n.t('control:hero.criticoHoy.label'),
     }
   }
 
@@ -65,11 +75,13 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   // REAL (gastoHoy > cupoDiario), no con prorrateo de las primeras horas.
   if (state.libreHoy < 0) {
     return {
-      primary: `Pasaste el cupo de hoy por ${formatMoneyCompact(Math.abs(state.libreHoy))}.`,
-      secondary: `Acomoda el ritmo para los días que quedan.`,
+      primary: i18n.t('control:hero.cautionHoy.primary', {
+        amount: formatMoneyCompact(Math.abs(state.libreHoy)),
+      }),
+      secondary: i18n.t('control:hero.cautionHoy.secondary'),
       status: 'caution',
       primaryNumber: Math.abs(state.libreHoy),
-      primaryLabel: 'POR ENCIMA HOY',
+      primaryLabel: i18n.t('control:hero.cautionHoy.label'),
     }
   }
 
@@ -84,11 +96,13 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   ) {
     const excesoMeta = state.gastoHoy - state.dailyGoalAmount
     return {
-      primary: 'Pasaste tu meta diaria.',
-      secondary: `Sigues bajo el cupo, pero superaste tu meta por ${formatMoneyCompact(excesoMeta)}.`,
+      primary: i18n.t('control:hero.metaPasada.primary'),
+      secondary: i18n.t('control:hero.metaPasada.secondary', {
+        amount: formatMoneyCompact(excesoMeta),
+      }),
       status: 'caution',
       primaryNumber: Math.max(0, state.libreHoy),
-      primaryLabel: 'LIBRE HOY',
+      primaryLabel: i18n.t('control:hero.metaPasada.label'),
     }
   }
 
@@ -96,21 +110,21 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
   // al cobro" ya vive en el chip dedicado debajo del hero numérico.
   if (state.libreHoy > state.cupoDiario * 0.7) {
     return {
-      primary: 'Vas adelantado.',
+      primary: i18n.t('control:hero.adelantado.primary'),
       secondary: null,
       status: 'positive',
       primaryNumber: state.libreHoy,
-      primaryLabel: 'LIBRE HOY',
+      primaryLabel: i18n.t('control:hero.adelantado.label'),
     }
   }
 
   // 6. Default positive · sin secondary (igual que rama 5).
   return {
-    primary: 'Vas bien hoy.',
+    primary: i18n.t('control:hero.bien.primary'),
     secondary: null,
     status: 'positive',
     primaryNumber: state.libreHoy,
-    primaryLabel: 'LIBRE HOY',
+    primaryLabel: i18n.t('control:hero.bien.label'),
   }
 }
 

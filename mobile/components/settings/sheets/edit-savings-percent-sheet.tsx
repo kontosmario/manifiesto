@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import {
   MAX_SAVINGS_GOAL_PERCENT,
@@ -23,6 +24,7 @@ export function EditSavingsPercentSheet({
   onClose,
   onSave,
 }: EditSavingsPercentSheetProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(() => String(currentValue))
 
   useEffect(() => {
@@ -40,34 +42,34 @@ export function EditSavingsPercentSheet({
 
   const helper = useMemo(() => {
     if (!isValid) {
-      return `Debe estar entre 0 y ${MAX_SAVINGS_GOAL_PERCENT}%.`
+      return t('settings:editSavingsPercent.helperInvalid', { max: MAX_SAVINGS_GOAL_PERCENT })
     }
     const amount = deriveSavingsGoalAmount(monthlyIncome, parsed)
     if (amount <= 0) {
-      return 'Fija un ingreso mensual para proyectar el monto de ahorro.'
+      return t('settings:editSavingsPercent.helperNoIncome')
     }
-    return `Equivale a ${currencyFormatter.format(amount)} por mes.`
-  }, [isValid, monthlyIncome, parsed])
+    return t('settings:editSavingsPercent.helperAmount', { amount: currencyFormatter.format(amount) })
+  }, [isValid, monthlyIncome, parsed, t])
 
   return (
     <NumericEditSheet
       visible={visible}
-      title="Meta de ahorro"
-      subtitle={`Porcentaje del ingreso mensual que quieres reservar para ahorro. Máximo ${MAX_SAVINGS_GOAL_PERCENT}%.`}
+      title={t('settings:editSavingsPercent.title')}
+      subtitle={t('settings:editSavingsPercent.subtitle', { max: MAX_SAVINGS_GOAL_PERCENT })}
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => (raw ? `${raw}%` : '')}
-      displayEyebrow="% SOBRE INGRESO"
+      displayEyebrow={t('settings:editSavingsPercent.eyebrow')}
       displayPlaceholder="20%"
       helper={helper}
       errorText={
         showError
-          ? `Ingresa un porcentaje entre 0 y ${MAX_SAVINGS_GOAL_PERCENT}.`
+          ? t('settings:editSavingsPercent.error', { max: MAX_SAVINGS_GOAL_PERCENT })
           : undefined
       }
       maxIntegerDigits={3}
       maxDecimalDigits={0}
-      saveLabel="Guardar meta"
+      saveLabel={t('settings:editSavingsPercent.save')}
       saveDisabled={!hasChanged}
       isSaving={isSaving}
       onSave={() => {

@@ -23,6 +23,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
@@ -84,6 +85,7 @@ export function LoginScreen() {
   // credential form (email + password). Prevents replay of typed creds
   // from a screen recording captured by malware in side-loaded context.
   useScreenCaptureProtection()
+  const { t } = useTranslation()
   const router = useRouter()
   const reducedMotion = useReducedMotion()
   // Sprint F · F14: captcha for password sign-in. The hook is a no-op
@@ -208,9 +210,9 @@ export function LoginScreen() {
     if (cachedName) return cachedName.split(' ')[0]
     const sourceEmail = email || lastUser?.email || ''
     const fromEmail = sourceEmail.includes('@') ? sourceEmail.split('@')[0] : ''
-    if (!fromEmail) return 'amigo'
+    if (!fromEmail) return t('auth:login.fallbackName')
     return fromEmail.charAt(0).toUpperCase() + fromEmail.slice(1)
-  }, [email, lastUser])
+  }, [email, lastUser, t])
 
   // Animations
   const reduced = reducedMotion || isReducedMotionEnabled
@@ -373,20 +375,20 @@ export function LoginScreen() {
     await resendConfirm.resend(email)
     if (!resendConfirm.error) {
       void triggerHaptic('success')
-      actions.setInfoMessage('Si esa cuenta existe, te llegará un email.')
+      actions.setInfoMessage(t('auth:login.resendInfoSent'))
     } else {
       void triggerHaptic('warning')
     }
-  }, [actions, email, resendConfirm])
+  }, [actions, email, resendConfirm, t])
   const handleAppleSignIn = useCallback(async () => {
     if (appleSigningIn || isBusy) return
     void triggerHaptic('selection')
     if (!appleAvailable) {
       Alert.alert(
-        'No disponible',
+        t('auth:common.notAvailable'),
         Platform.OS === 'ios'
-          ? 'Sign in with Apple no está habilitado en este dispositivo.'
-          : 'Sign in with Apple solo está disponible en iOS.',
+          ? t('auth:common.appleNotEnabledOnDevice')
+          : t('auth:common.appleOnlyOnIos'),
       )
       return
     }
@@ -407,19 +409,19 @@ export function LoginScreen() {
       }
       if (result.status === 'cancelled') return
       await triggerHaptic('warning')
-      setAppleError(result.error ?? 'No pudimos continuar con Apple.')
+      setAppleError(result.error ?? t('auth:common.appleSignInFailed'))
     } finally {
       setAppleSigningIn(false)
     }
-  }, [appleAvailable, appleSigningIn, isBusy])
+  }, [appleAvailable, appleSigningIn, isBusy, t])
 
   const handleGoogleSignIn = useCallback(async () => {
     if (googleSigningIn || isBusy) return
     void triggerHaptic('selection')
     if (!googleAvailable) {
       Alert.alert(
-        'No disponible',
-        'Google sign-in todavía no está configurado en este build.',
+        t('auth:common.notAvailable'),
+        t('auth:common.googleNotConfigured'),
       )
       return
     }
@@ -437,11 +439,11 @@ export function LoginScreen() {
       }
       if (result.status === 'cancelled') return
       await triggerHaptic('warning')
-      setGoogleError(result.error ?? 'No pudimos continuar con Google.')
+      setGoogleError(result.error ?? t('auth:common.googleSignInFailed'))
     } finally {
       setGoogleSigningIn(false)
     }
-  }, [googleAvailable, googleSigningIn, isBusy])
+  }, [googleAvailable, googleSigningIn, isBusy, t])
 
   const handleUsePassword = useCallback(() => {
     void triggerHaptic('selection')
@@ -480,8 +482,8 @@ export function LoginScreen() {
 
   const ctaLabel =
     status === 'scanning'
-      ? 'Reconociendo'
-      : `Entrar con ${biometricState.label || 'Face ID'}`
+      ? t('auth:login.scanning')
+      : t('auth:login.signInWith', { label: biometricState.label || 'Face ID' })
 
   const ctaBg = DARK_GREEN
 
@@ -516,7 +518,7 @@ export function LoginScreen() {
         {/* Top nav */}
         <View style={styles.topNav}>
           <Pressable
-            accessibilityLabel="Volver"
+            accessibilityLabel={t('auth:common.back')}
             accessibilityRole="button"
             hitSlop={DEFAULT_HIT_SLOP}
             onPress={handleBack}
@@ -546,7 +548,7 @@ export function LoginScreen() {
               </FadeInUp>
               <FadeInUp reduced={reduced} {...fadeUp(200)}>
                 <Text style={[styles.title, { color: theme.colors.text }]}>
-                  Hola, {greeting}
+                  {t('auth:login.greetingTitle', { name: greeting })}
                 </Text>
               </FadeInUp>
 
@@ -586,7 +588,7 @@ export function LoginScreen() {
                   style={[styles.emailMicro, { color: theme.colors.textSoft }]}
                   numberOfLines={1}
                 >
-                  {email || lastUser?.email || 'tu cuenta guardada'}
+                  {email || lastUser?.email || t('auth:login.savedAccountFallback')}
                 </Text>
               </FadeInUp>
 
@@ -600,12 +602,12 @@ export function LoginScreen() {
             <View style={styles.heroBlock}>
               <FadeInUp reduced={reduced} {...fadeUp(100)}>
                 <Text style={[styles.eyebrow, { color: theme.colors.textSoft }]}>
-                  Qué bueno verte
+                  {t('auth:login.firstTimeEyebrow')}
                 </Text>
               </FadeInUp>
               <FadeInUp reduced={reduced} {...fadeUp(200)}>
                 <Text style={[styles.title, { color: theme.colors.text }]}>
-                  ¡Hola de vuelta! 👋
+                  {t('auth:login.firstTimeTitle')}
                 </Text>
               </FadeInUp>
 
@@ -625,7 +627,7 @@ export function LoginScreen() {
 
               <FadeInUp reduced={reduced} {...fadeUp(400)}>
                 <Text style={[styles.welcomeBackSub, { color: theme.colors.textSoft }]}>
-                  Ingresa tus datos para volver a tu cuenta.
+                  {t('auth:login.firstTimeSub')}
                 </Text>
               </FadeInUp>
             </View>
@@ -671,7 +673,7 @@ export function LoginScreen() {
                 ) : (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="¿No te llegó el email de confirmación?"
+                    accessibilityLabel={t('auth:login.confirmResendQuestion')}
                     hitSlop={DEFAULT_HIT_SLOP}
                     onPress={handleOpenConfirmResend}
                     style={({ pressed }) => [
@@ -685,7 +687,7 @@ export function LoginScreen() {
                         { color: theme.colors.textSoft },
                       ]}
                     >
-                      ¿No te llegó el email de confirmación?
+                      {t('auth:login.confirmResendQuestion')}
                     </Text>
                   </Pressable>
                 )}
@@ -740,7 +742,7 @@ export function LoginScreen() {
 
                 <View style={styles.secondaryRow}>
                   <Pressable
-                    accessibilityLabel="Usar contraseña"
+                    accessibilityLabel={t('auth:login.usePassword')}
                     accessibilityRole="button"
                     hitSlop={DEFAULT_HIT_SLOP}
                     onPress={handleUsePassword}
@@ -751,11 +753,11 @@ export function LoginScreen() {
                     ]}
                   >
                     <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-                      Usar contraseña
+                      {t('auth:login.usePassword')}
                     </Text>
                   </Pressable>
                   <Pressable
-                    accessibilityLabel="Cambiar cuenta"
+                    accessibilityLabel={t('auth:login.changeAccount')}
                     accessibilityRole="button"
                     hitSlop={DEFAULT_HIT_SLOP}
                     onPress={handleSwitchAccount}
@@ -766,7 +768,7 @@ export function LoginScreen() {
                     ]}
                   >
                     <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-                      Cambiar cuenta
+                      {t('auth:login.changeAccount')}
                     </Text>
                   </Pressable>
                 </View>
@@ -793,7 +795,7 @@ export function LoginScreen() {
               // Face ID CTA and show just the secondary actions.
               <View style={styles.secondaryRow}>
                 <Pressable
-                  accessibilityLabel="Usar contraseña"
+                  accessibilityLabel={t('auth:login.usePassword')}
                   accessibilityRole="button"
                   hitSlop={DEFAULT_HIT_SLOP}
                   onPress={handleUsePassword}
@@ -804,11 +806,11 @@ export function LoginScreen() {
                   ]}
                 >
                   <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-                    Usar contraseña
+                    {t('auth:login.usePassword')}
                   </Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel="Cambiar cuenta"
+                  accessibilityLabel={t('auth:login.changeAccount')}
                   accessibilityRole="button"
                   hitSlop={DEFAULT_HIT_SLOP}
                   onPress={handleSwitchAccount}
@@ -819,7 +821,7 @@ export function LoginScreen() {
                   ]}
                 >
                   <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>
-                    Cambiar cuenta
+                    {t('auth:login.changeAccount')}
                   </Text>
                 </Pressable>
               </View>
@@ -896,6 +898,7 @@ function PasswordForm({
   passwordRef,
   colors,
 }: PasswordFormProps) {
+  const { t } = useTranslation()
   const isUsePassword = mode === 'use-password'
   const formRouter = useRouter()
   return (
@@ -908,13 +911,13 @@ function PasswordForm({
       */}
       {isUsePassword ? null : (
         <TextField
-          accessibilityLabel="Email"
+          accessibilityLabel={t('auth:login.emailLabel')}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          label="Email"
+          label={t('auth:login.emailLabel')}
           onChangeText={onChangeEmail}
-          placeholder="nombre@correo.com"
+          placeholder={t('auth:common.emailPlaceholder')}
           ref={emailRef}
           returnKeyType="next"
           textContentType="emailAddress"
@@ -924,10 +927,10 @@ function PasswordForm({
       )}
 
       <PasswordField
-        accessibilityLabel="Contraseña"
-        label="Contraseña"
+        accessibilityLabel={t('auth:login.passwordLabel')}
+        label={t('auth:login.passwordLabel')}
         onChangeText={onChangePassword}
-        placeholder="••••••••"
+        placeholder={t('auth:common.passwordPlaceholder')}
         ref={passwordRef}
         returnKeyType="go"
         textContentType="password"
@@ -939,7 +942,7 @@ function PasswordForm({
       {!errorMessage && infoMessage ? <FeedbackPill intent="info" message={infoMessage} /> : null}
 
       <Pressable
-        accessibilityLabel="Continuar"
+        accessibilityLabel={t('auth:login.continue')}
         accessibilityRole="button"
         disabled={isBusy}
         onPress={onSubmit}
@@ -948,31 +951,31 @@ function PasswordForm({
           { backgroundColor: DARK_GREEN, opacity: pressed || isBusy ? 0.85 : 1 },
         ]}
       >
-        <Text style={styles.primaryCtaLabel}>Continuar</Text>
+        <Text style={styles.primaryCtaLabel}>{t('auth:login.continue')}</Text>
       </Pressable>
 
       <Pressable
-        accessibilityLabel="Olvidé mi contraseña"
+        accessibilityLabel={t('auth:login.forgotPasswordA11y')}
         accessibilityRole="button"
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={() => formRouter.push('/(auth)/forgot-password')}
         style={({ pressed }) => [styles.forgotLink, pressed && { opacity: 0.6 }]}
       >
         <Text style={[styles.cancelLabel, { color: colors.textSoft }]}>
-          ¿Olvidaste tu contraseña?
+          {t('auth:login.forgotPasswordQuestion')}
         </Text>
       </Pressable>
 
       {onCancel ? (
         <Pressable
-          accessibilityLabel="Elegir otro método de inicio de sesión"
+          accessibilityLabel={t('auth:login.chooseAnotherMethodA11y')}
           accessibilityRole="button"
           hitSlop={DEFAULT_HIT_SLOP}
           onPress={onCancel}
           style={({ pressed }) => [styles.cancelLink, pressed && { opacity: 0.6 }]}
         >
           <Text style={[styles.cancelLabel, { color: colors.textSoft }]}>
-            Volver · elegir otro método
+            {t('auth:login.chooseAnotherMethod')}
           </Text>
         </Pressable>
       ) : null}
@@ -1337,14 +1340,15 @@ function UnconfirmedEmailBanner({
   onResend,
   colors,
 }: UnconfirmedEmailBannerProps) {
+  const { t } = useTranslation()
   const disabled = busy || rateLimited || cooldownSeconds > 0
   const label = busy
-    ? 'Reenviando…'
+    ? t('auth:login.unconfirmed.resending')
     : rateLimited
-      ? 'Reinténtalo en unos minutos'
+      ? t('auth:login.unconfirmed.rateLimited')
       : cooldownSeconds > 0
-        ? `Reenviar en ${cooldownSeconds}s`
-        : 'Reenviar email'
+        ? t('auth:login.unconfirmed.cooldown', { seconds: cooldownSeconds })
+        : t('auth:login.unconfirmed.resend')
   return (
     <View
       style={[
@@ -1353,14 +1357,13 @@ function UnconfirmedEmailBanner({
       ]}
     >
       <Text style={[styles.unconfirmedTitle, { color: colors.text }]}>
-        Confirma tu email para entrar
+        {t('auth:login.unconfirmed.title')}
       </Text>
       <Text style={[styles.unconfirmedBody, { color: colors.textSoft }]}>
-        Te mandamos un link cuando creaste la cuenta. Si no lo ves, revisa
-        spam o pide uno nuevo.
+        {t('auth:login.unconfirmed.body')}
       </Text>
       <Pressable
-        accessibilityLabel="Reenviar email de confirmación"
+        accessibilityLabel={t('auth:login.unconfirmed.resendA11y')}
         accessibilityRole="button"
         disabled={disabled}
         onPress={onResend}
@@ -1399,17 +1402,18 @@ interface AppleSignInRowProps {
 }
 
 function AppleSignInRow({ busy, error, onPress, colors, withDivider }: AppleSignInRowProps) {
+  const { t } = useTranslation()
   return (
     <View>
       {withDivider ? (
         <View style={styles.appleDivider}>
           <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
-          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>O</Text>
+          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>{t('auth:common.or')}</Text>
           <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
         </View>
       ) : null}
       <Pressable
-        accessibilityLabel="Continuar con Apple"
+        accessibilityLabel={t('auth:common.continueWithApple')}
         accessibilityRole="button"
         disabled={busy}
         onPress={onPress}
@@ -1425,7 +1429,7 @@ function AppleSignInRow({ busy, error, onPress, colors, withDivider }: AppleSign
           />
         </Svg>
         <Text style={styles.appleButtonLabel}>
-          {busy ? 'Conectando…' : 'Continuar con Apple'}
+          {busy ? t('auth:common.connecting') : t('auth:common.continueWithApple')}
         </Text>
       </Pressable>
       {error ? (
@@ -1444,17 +1448,18 @@ interface GoogleSignInRowProps {
 }
 
 function GoogleSignInRow({ busy, error, onPress, colors, withDivider }: GoogleSignInRowProps) {
+  const { t } = useTranslation()
   return (
     <View>
       {withDivider ? (
         <View style={styles.appleDivider}>
           <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
-          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>O</Text>
+          <Text style={[styles.appleDividerLabel, { color: colors.textSoft }]}>{t('auth:common.or')}</Text>
           <View style={[styles.appleDividerLine, { backgroundColor: colors.line }]} />
         </View>
       ) : null}
       <Pressable
-        accessibilityLabel="Continuar con Google"
+        accessibilityLabel={t('auth:common.continueWithGoogle')}
         accessibilityRole="button"
         disabled={busy}
         onPress={onPress}
@@ -1465,7 +1470,7 @@ function GoogleSignInRow({ busy, error, onPress, colors, withDivider }: GoogleSi
       >
         <GoogleIcon />
         <Text style={[styles.googleButtonLabel, { color: colors.text }]}>
-          {busy ? 'Conectando…' : 'Continuar con Google'}
+          {busy ? t('auth:common.connecting') : t('auth:common.continueWithGoogle')}
         </Text>
       </Pressable>
       {error ? (

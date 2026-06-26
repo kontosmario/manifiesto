@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native'
+import i18n from '@/lib/i18n'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { currencyFormatter } from '@/utils/money'
 import { detailStyles } from './detail-styles'
@@ -28,14 +29,14 @@ export function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
       return (
         <View style={detailStyles.stage}>
           <Text style={[detailStyles.eyebrow, { color: 'rgba(59,17,7,0.74)' }]}>
-            EL GASTO QUE MÁS PESÓ
+            {i18n.t('control:wrapped.topExpense.eyebrow')}
           </Text>
           <Text
             style={[detailStyles.titleDisplay, { color: '#3B1107' }]}
             numberOfLines={3}
             accessibilityRole="header"
           >
-            {top.description || 'Sin descripción'}
+            {top.description || i18n.t('control:wrapped.topExpense.sinDescripcion')}
           </Text>
           <Text style={[detailStyles.amount, { color: '#8E2A0C', marginTop: 16 }, amountHalo]}>
             {currencyFormatter.format(top.price)}
@@ -49,16 +50,18 @@ export function buildTopExpenseScene(payload: CycleWrappedPayload): Scene {
   }
 }
 
+// Date pattern (order + separators) lives in i18n; the month name is
+// resolved from `control:months.long.*`. NOT an Intl formatter — it's a
+// fixed-shape long date for the wrapped scene.
 function formatLongDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
   if (!match) return ''
   const year = Number(match[1])
   const day = Number(match[3])
-  const month = Number(match[2])
-  return `${day} de ${MONTH_NAMES[month - 1]}, ${year}`
+  const monthIdx = Number(match[2]) - 1
+  return i18n.t('control:wrapped.topExpense.dateFormat', {
+    day,
+    month: i18n.t(`control:months.long.${monthIdx}`),
+    year,
+  })
 }
-
-const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-] as const

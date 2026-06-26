@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -46,6 +47,7 @@ interface GastosEmptyStateProps {
  */
 export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyStateProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
@@ -85,17 +87,15 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
             />
           </View>
           <Text style={[styles.introTitle, { color: theme.colors.text }]}>
-            Todavía no registras gastos
+            {t('gastos:emptyState.introTitle')}
           </Text>
           <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
-            Aquí ves cada movimiento del hogar: cuánto llevas gastado en el
-            ciclo, tu cupo diario y el detalle por día. Agrega el primero para
-            empezar.
+            {t('gastos:emptyState.introBody')}
           </Text>
           <View style={styles.introCta}>
             <AppButton
               haptic="light"
-              label="Cargar mi primer gasto"
+              label={t('gastos:emptyState.addFirstCta')}
               onPress={onAddFirst}
               variant="primary"
             />
@@ -106,7 +106,7 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
       {/* ── "Así se va a ver" preview section ──────────────────────── */}
       <RiseView delay={120}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          ASÍ SE VA A VER
+          {t('gastos:emptyState.previewEyebrow')}
         </Text>
       </RiseView>
 
@@ -115,9 +115,9 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         {wrap(
           'hero',
           <PreviewBlock
-            description="Cuánto llevas gastado y tu cupo diario disponible."
+            description={t('gastos:emptyState.preview.heroDescription')}
             icon="donut-large"
-            title="Resumen del mes"
+            title={t('gastos:emptyState.preview.heroTitle')}
           >
             <GastosHeroCard empty />
           </PreviewBlock>,
@@ -129,9 +129,9 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         {wrap(
           'calendar',
           <PreviewBlock
-            description="Un calendario con tus días de gasto del mes."
+            description={t('gastos:emptyState.preview.calendarDescription')}
             icon="calendar-month"
-            title="Mapa del mes"
+            title={t('gastos:emptyState.preview.calendarTitle')}
           >
             <GastosMonthCalendar
               empty
@@ -153,9 +153,9 @@ export function GastosEmptyState({ onAddFirst, renderSection }: GastosEmptyState
         {wrap(
           'list',
           <PreviewBlock
-            description="El detalle por día, con categoría y autor."
+            description={t('gastos:emptyState.preview.listDescription')}
             icon="receipt-long"
-            title="Tus movimientos"
+            title={t('gastos:emptyState.preview.listTitle')}
           >
             <View style={styles.rowsStack}>
               {[0, 1, 2].map((i) => (

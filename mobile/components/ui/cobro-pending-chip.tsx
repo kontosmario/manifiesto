@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { useCobroPending } from '@/features/finance/use-cobro-pending'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -30,11 +31,6 @@ interface CobroPendingChipProps {
   /** Si se pasa, el chip es accionable (Pressable + hitSlop ≥44pt). */
   onPress?: () => void
   style?: ViewStyle
-}
-
-function cobroLabel(daysOverdue: number): string {
-  if (daysOverdue <= 0) return 'Cobra hoy'
-  return `+${daysOverdue} ${daysOverdue === 1 ? 'día' : 'días'} sin cobrar`
 }
 
 // Mismo lenguaje durazno del hero. 'hero' va sobre la card oscura (crema
@@ -62,6 +58,7 @@ export function CobroPendingChip({
   style,
 }: CobroPendingChipProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const press = usePressScale({ pressedScale: 0.96 })
 
@@ -113,7 +110,10 @@ export function CobroPendingChip({
             text: '#9A3412',
           }
 
-  const text = cobroLabel(daysOverdue)
+  const text =
+    daysOverdue <= 0
+      ? t('states:cobro.today')
+      : t('states:cobro.overdue', { count: daysOverdue })
 
   // pulse (hero) y press-scale (header accionable) nunca coexisten — el
   // hero es read-only y el header no pulsa — así que no hay conflicto de
@@ -143,7 +143,7 @@ export function CobroPendingChip({
       onPressOut={press.onPressOut}
       hitSlop={12}
       accessibilityRole="button"
-      accessibilityLabel={`${text}. Toca para confirmar tu cobro`}
+      accessibilityLabel={t('states:cobro.confirmHint', { label: text })}
     >
       {body}
     </Pressable>

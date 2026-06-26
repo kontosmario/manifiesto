@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { triggerHaptic } from '@/lib/haptics'
@@ -26,6 +27,7 @@ export function EditPaydaySheet({
   onSave,
 }: EditPaydaySheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [selected, setSelected] = useState(currentValue)
   const [cellSize, setCellSize] = useState(0)
 
@@ -51,8 +53,8 @@ export function EditPaydaySheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="El día del mes en que cobras el ingreso. Usamos esta fecha para calcular el ciclo y avisarte cuando corresponde confirmar."
-      title="Día de cobro"
+      subtitle={t('settings:editPayday.subtitle')}
+      title={t('settings:editPayday.title')}
       visible={visible}
     >
       <View style={styles.stack}>
@@ -62,7 +64,7 @@ export function EditPaydaySheet({
             return (
               <Pressable
                 key={day}
-                accessibilityLabel={`Día ${day}`}
+                accessibilityLabel={t('settings:editPayday.dayA11y', { day })}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isOn }}
                 hitSlop={4}
@@ -94,7 +96,7 @@ export function EditPaydaySheet({
         </View>
         <AppButton
           disabled={!canSave}
-          label={`Guardar día ${selected}`}
+          label={t('settings:editPayday.saveDay', { day: selected })}
           loading={isSaving}
           onPress={() => {
             if (!canSave) return

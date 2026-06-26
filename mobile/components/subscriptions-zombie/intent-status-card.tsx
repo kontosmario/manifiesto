@@ -1,5 +1,7 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { IntentKind } from '@/features/subscriptions-zombie/types'
 
@@ -12,17 +14,16 @@ interface Props {
   now: Date
 }
 
-const INTENT_LABEL: Record<IntentKind, string> = {
-  cancel: 'va a dar de baja',
-  pause: 'va a pausar',
-  downgrade: 'va a bajar el plan de',
+const INTENT_LABEL_KEY: Record<IntentKind, string> = {
+  cancel: 'insights:subscriptions.status.intentCancel',
+  pause: 'insights:subscriptions.status.intentPause',
+  downgrade: 'insights:subscriptions.status.intentDowngrade',
 }
 
-function rel(iso: string, now: Date): string {
+function rel(iso: string, now: Date, t: TFunction): string {
   const days = Math.floor((now.getTime() - Date.parse(iso)) / 86_400_000)
-  if (days === 0) return 'hoy'
-  if (days === 1) return 'hace 1 día'
-  return `hace ${days} días`
+  if (days === 0) return t('insights:subscriptions.status.today')
+  return t('insights:subscriptions.status.rel', { count: days })
 }
 
 export function IntentStatusCard({
@@ -34,6 +35,7 @@ export function IntentStatusCard({
   now,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   return (
@@ -42,15 +44,17 @@ export function IntentStatusCard({
       accessibilityRole="summary"
     >
       <Text style={[styles.line, { color: theme.colors.text }]}>
-        <Text style={styles.bold}>{declaredByName}</Text> {INTENT_LABEL[intent]}{' '}
+        <Text style={styles.bold}>{declaredByName}</Text> {t(INTENT_LABEL_KEY[intent])}{' '}
         <Text style={styles.bold}>{fijoName}</Text>
       </Text>
       <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
-        {rel(declaredAtIso, now)}
+        {rel(declaredAtIso, now, t)}
       </Text>
       {(intent === 'cancel' || intent === 'pause') && monthlySaving > 0 ? (
         <Text style={[styles.savings, { color: theme.colors.primary }]}>
-          Ahorro estimado: ${monthlySaving.toLocaleString('es-AR')} / mes
+          {t('insights:subscriptions.status.savings', {
+            amount: `$${monthlySaving.toLocaleString('es-AR')}`,
+          })}
         </Text>
       ) : null}
     </View>

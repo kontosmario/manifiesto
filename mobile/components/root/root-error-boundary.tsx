@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import i18n from '@/lib/i18n'
 
 interface RootErrorBoundaryProps {
   children: ReactNode
@@ -39,18 +40,17 @@ export class RootErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <View style={styles.root}>
-          <Text style={styles.title}>Algo se rompió</Text>
+          <Text style={styles.title}>{i18n.t('states:errorBoundary.title')}</Text>
           <Text style={styles.body}>
-            Toca reintentar para volver a cargar. Si vuelve a pasar, cierra y
-            abre la app.
+            {i18n.t('states:errorBoundary.body')}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Reintentar"
+            accessibilityLabel={i18n.t('states:errorBoundary.retry')}
             onPress={this.handleReset}
             style={styles.cta}
           >
-            <Text style={styles.ctaText}>Reintentar</Text>
+            <Text style={styles.ctaText}>{i18n.t('states:errorBoundary.retry')}</Text>
           </Pressable>
         </View>
       )

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
@@ -46,6 +47,7 @@ export function FijoRowDetailPanel({
   onRevertPaid,
 }: FijoRowDetailPanelProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const actionSecondaryPress = usePressScale({ pressedScale: 0.96 })
 
   return (
@@ -71,10 +73,10 @@ export function FijoRowDetailPanel({
         />
         <Text style={[styles.statsEyebrow, { color: accent.solid }]}>
           {fijo.kind === 'installment'
-            ? 'TOTAL DE LA DEUDA'
+            ? t('fijos:detailPanel.totalDebtEyebrow')
             : fijo.kind === 'debt'
-              ? 'DEUDA RESTANTE'
-              : 'SE LLEVA AL AÑO'}
+              ? t('fijos:detailPanel.remainingDebtEyebrow')
+              : t('fijos:detailPanel.annualEyebrow')}
         </Text>
         <Text style={[styles.statsValue, { color: theme.colors.text }]}>
           {formatMoney(fijo.annualCost)}
@@ -87,7 +89,7 @@ export function FijoRowDetailPanel({
               color={theme.colors.textMuted}
             />
             <Text style={[styles.statsPctText, { color: theme.colors.textMuted }]}>
-              {fijo.pctOfIncome}% de tu sueldo mensual
+              {t('fijos:detailPanel.pctOfSalary', { pct: fijo.pctOfIncome })}
             </Text>
           </View>
         ) : null}
@@ -99,7 +101,7 @@ export function FijoRowDetailPanel({
       {fijo.priceHistory.length >= 2 && fijo.trendDeltaPct != null ? (
         <View style={styles.section}>
           <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
-            TENDENCIA
+            {t('fijos:detailPanel.trendEyebrow')}
           </Text>
           <View style={styles.trendRow}>
             <View style={styles.trendSparkSlot}>
@@ -125,14 +127,20 @@ export function FijoRowDetailPanel({
       {/* Este pago. */}
       <View style={styles.section}>
         <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
-          ESTE PAGO
+          {t('fijos:detailPanel.thisPaymentEyebrow')}
         </Text>
         <InfoLine
           icon="event-repeat"
           label={
             fijo.kind === 'installment'
-              ? `Cuota ${(fijo.installments_paid ?? 0) + 1} de ${fijo.installments_total ?? '?'}`
-              : `${frequencyLabel(fijo.frequency)} · día ${fijo.dayOfMonth}`
+              ? t('fijos:detailPanel.installmentLabel', {
+                  current: (fijo.installments_paid ?? 0) + 1,
+                  total: fijo.installments_total ?? '?',
+                })
+              : t('fijos:detailPanel.recurringLabel', {
+                  frequency: frequencyLabel(fijo.frequency),
+                  day: fijo.dayOfMonth,
+                })
           }
           theme={theme}
         />
@@ -143,7 +151,7 @@ export function FijoRowDetailPanel({
         />
         <InfoLine
           icon="local-offer"
-          label={categoryName || 'Sin categoría'}
+          label={categoryName || t('fijos:detailPanel.noCategory')}
           theme={theme}
         />
       </View>
@@ -152,17 +160,21 @@ export function FijoRowDetailPanel({
       {fijo.paymentsLifetime > 0 ? (
         <View style={styles.section}>
           <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
-            HISTORIAL
+            {t('fijos:detailPanel.historyEyebrow')}
           </Text>
           <InfoLine
             icon="receipt-long"
-            label={`${fijo.paymentsLifetime} ${fijo.paymentsLifetime === 1 ? 'cuota registrada' : 'cuotas registradas'}`}
+            label={t('fijos:detailPanel.installmentsRecorded', {
+              count: fijo.paymentsLifetime,
+            })}
             theme={theme}
           />
           {fijo.totalPaidLifetime > 0 ? (
             <InfoLine
               icon="payments"
-              label={`Ya pagaste ${formatMoney(fijo.totalPaidLifetime)} en total`}
+              label={t('fijos:detailPanel.totalPaid', {
+                amount: formatMoney(fijo.totalPaidLifetime),
+              })}
               theme={theme}
             />
           ) : null}
@@ -178,8 +190,8 @@ export function FijoRowDetailPanel({
             onPressOut={actionSecondaryPress.onPressOut}
             style={styles.actionFullWidthWrap}
             accessibilityRole="button"
-            accessibilityLabel="Revertir pago"
-            accessibilityHint="Deshace el pago: borra el movimiento y vuelve el fijo a pendiente."
+            accessibilityLabel={t('fijos:detailPanel.revertPayment')}
+            accessibilityHint={t('fijos:detailPanel.revertPaymentHint')}
           >
             <Animated.View
               style={[
@@ -205,7 +217,7 @@ export function FijoRowDetailPanel({
                     { color: theme.isDark ? '#F2A78C' : '#B84014' },
                   ]}
                 >
-                  Revertir pago
+                  {t('fijos:detailPanel.revertPayment')}
                 </Text>
               </View>
             </Animated.View>
@@ -218,7 +230,7 @@ export function FijoRowDetailPanel({
             onPressOut={actionSecondaryPress.onPressOut}
             style={styles.actionFullWidthWrap}
             accessibilityRole="button"
-            accessibilityLabel="Editar fijo"
+            accessibilityLabel={t('fijos:detailPanel.editFijo')}
           >
             <Animated.View
               style={[
@@ -228,7 +240,7 @@ export function FijoRowDetailPanel({
               ]}
             >
               <Text style={[styles.actionSecondaryText, { color: theme.colors.text }]}>
-                Editar
+                {t('fijos:detailPanel.edit')}
               </Text>
             </Animated.View>
           </Pressable>

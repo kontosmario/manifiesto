@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -30,6 +31,7 @@ export function AddFixedQuickSheet({
   inline,
 }: AddFixedQuickSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   const [amountText, setAmountText] = useState(
     initialAmount && initialAmount > 0 ? String(Math.round(initialAmount)) : '',
@@ -71,46 +73,46 @@ export function AddFixedQuickSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title="Registrar como fijo"
-      subtitle="Lo guardamos como gasto mensual recurrente. Si quieres afinar frecuencia, día de pago o cuotas, después editas desde la lista de gastos fijos."
+      title={t('control:addFixed.title')}
+      subtitle={t('control:addFixed.subtitle')}
     >
       <View style={styles.body}>
         <TextField
-          label="Nombre"
+          label={t('control:addFixed.labelNombre')}
           value={name}
           onChangeText={setName}
-          placeholder="Edenor, Netflix…"
-          accessibilityLabel="Nombre del gasto fijo"
+          placeholder={t('control:addFixed.placeholderNombre')}
+          accessibilityLabel={t('control:addFixed.a11yNombre')}
           maxLength={60}
         />
 
         <TextField
-          label="Monto mensual"
+          label={t('control:addFixed.labelMonto')}
           value={amountText}
           onChangeText={setAmountText}
           keyboardType="number-pad"
           inputMode="numeric"
-          placeholder="0"
-          accessibilityLabel="Monto mensual del gasto fijo"
+          placeholder={t('control:addFixed.placeholderMonto')}
+          accessibilityLabel={t('control:addFixed.a11yMonto')}
         />
 
         <View style={styles.categoryBlock}>
           <Text
             style={[styles.categoryLabel, { color: theme.colors.textMuted }]}
           >
-            CATEGORÍA
+            {t('control:addFixed.categoria')}
           </Text>
           {isCategoriesLoading && categories.length === 0 ? (
             <Text
               style={[styles.categoryHelper, { color: theme.colors.textSoft }]}
             >
-              Cargando categorías…
+              {t('control:addFixed.cargandoCategorias')}
             </Text>
           ) : categories.length === 0 ? (
             <Text
               style={[styles.categoryHelper, { color: theme.colors.textSoft }]}
             >
-              No hay categorías de gastos fijos. Agrega una desde la pantalla de gastos fijos.
+              {t('control:addFixed.sinCategorias')}
             </Text>
           ) : (
             <ScrollView
@@ -158,13 +160,12 @@ export function AddFixedQuickSheet({
         </View>
 
         <Text style={[styles.helper, { color: theme.colors.textMuted }]}>
-          Se registra como mensual recurrente con vencimiento el día de hoy.
-          Edita el resto de los detalles desde la pantalla de fijos cuando quieras.
+          {t('control:addFixed.helper')}
         </Text>
 
         <AppButton
           variant="primary"
-          label="Registrar gasto fijo"
+          label={t('control:addFixed.cta')}
           loading={isSaving}
           disabled={!isValid}
           onPress={() => {

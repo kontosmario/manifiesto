@@ -1,5 +1,6 @@
 import { memo, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
@@ -88,6 +89,7 @@ function FijoRowReal({
   isPending = false,
 }: FijoRowProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   // Gateado: el primer attach del tab no debe disparar la layout
   // transition de la fila (warp). Tras el idle se habilita para expandir/
@@ -164,7 +166,7 @@ function FijoRowReal({
   const actions: SwipeAction[] = []
   if (onDelete) {
     actions.push({
-      label: 'Eliminar',
+      label: t('fijos:row.delete'),
       tone: 'danger',
       icon: 'delete',
       onPress: () => onDelete(fijo.id),
@@ -173,7 +175,7 @@ function FijoRowReal({
 
   return (
     <SwipeRow
-      accessibilityHint="Desliza para eliminar"
+      accessibilityHint={t('fijos:row.swipeDeleteHint')}
       rightActions={actions}
       isProcessing={isPending}
       // Matchea el borderRadius del card interno para que el clip y los
@@ -355,7 +357,7 @@ function FijoRowReal({
                     {
                       color: accent.solid,
                       fontWeight:
-                        status === 'overdue' || detail.label === 'Hoy' ? '800' : '700',
+                        status === 'overdue' || detail.isToday ? '800' : '700',
                     },
                   ]}
                   numberOfLines={1}

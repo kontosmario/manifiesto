@@ -12,6 +12,7 @@
 // chico (counts + flags + callbacks) y reciba el variant ya formado.
 import type { MaterialIcons } from '@expo/vector-icons'
 import type { ComponentProps } from 'react'
+import i18n from '@/lib/i18n'
 
 type IconName = ComponentProps<typeof MaterialIcons>['name']
 
@@ -67,10 +68,9 @@ export function buildGastosEmptyState(
     if (hasRecentExpensesOutsideCycle) {
       return {
         kind: 'pending-confirm',
-        primary: 'Tus gastos esperan al mes nuevo',
-        secondary:
-          'Ya registraste movimientos del próximo ciclo. Confirma tu cobro para que aparezcan aquí.',
-        actionLabel: 'Confirmar cobro',
+        primary: i18n.t('gastos:emptyVariants.pendingConfirm.primary'),
+        secondary: i18n.t('gastos:emptyVariants.pendingConfirm.secondary'),
+        actionLabel: i18n.t('gastos:emptyVariants.pendingConfirm.action'),
         onAction: onGoToHome,
         iconName: 'event-available',
       }
@@ -80,8 +80,8 @@ export function buildGastosEmptyState(
     // tercera vez es redundante.
     return {
       kind: 'global',
-      primary: 'Carga tu primer gasto',
-      secondary: 'Empieza el ciclo registrando uno',
+      primary: i18n.t('gastos:emptyVariants.global.primary'),
+      secondary: i18n.t('gastos:emptyVariants.global.secondary'),
       actionLabel: undefined,
       onAction: undefined,
       iconName: 'add-circle-outline',
@@ -90,9 +90,9 @@ export function buildGastosEmptyState(
   if (filteredCount === 0 && hasAnyFilter) {
     return {
       kind: 'filtered',
-      primary: 'No hay movimientos para este filtro',
-      secondary: 'Prueba quitando algún filtro para ver más',
-      actionLabel: 'Limpiar filtros',
+      primary: i18n.t('gastos:emptyVariants.filtered.primary'),
+      secondary: i18n.t('gastos:emptyVariants.filtered.secondary'),
+      actionLabel: i18n.t('gastos:clearFilters.label'),
       onAction: onClearFilters,
       iconName: 'filter-alt-off',
     }
@@ -100,8 +100,8 @@ export function buildGastosEmptyState(
   if (filteredCount === 0) {
     return {
       kind: 'cycle',
-      primary: 'Aún sin gastos en este mes',
-      secondary: 'Cuando cargues uno, lo vas a ver aquí',
+      primary: i18n.t('gastos:emptyVariants.cycle.primary'),
+      secondary: i18n.t('gastos:emptyVariants.cycle.secondary'),
       actionLabel: undefined,
       onAction: undefined,
       iconName: 'hourglass-empty',

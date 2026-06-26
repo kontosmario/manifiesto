@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { AchievementTier } from './use-achievements'
 
 export interface TierTone {
@@ -41,16 +42,7 @@ export function tierTone(tier: AchievementTier, isDark: boolean): TierTone {
 }
 
 export function tierShort(tier: AchievementTier): string {
-  switch (tier) {
-    case 'bronze':
-      return 'BRONCE'
-    case 'silver':
-      return 'PLATA'
-    case 'gold':
-      return 'ORO'
-    case 'legendary':
-      return 'LEYENDA'
-  }
+  return i18n.t(`achievements:tierShort.${tier}`)
 }
 
 /** Los tiers gold/legendary merecen un glow extra al estar desbloqueados. */

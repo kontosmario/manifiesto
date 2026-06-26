@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { ModalCard } from '@/components/ui/modal-card'
 import { AppButton } from '@/components/ui/button'
@@ -36,11 +37,12 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
   onClose,
 }: ChangePlanSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const noChange = selected === scheduledPlanId
 
   const footer = (
     <AppButton
-      label="Confirmar cambio"
+      label={t('billing:changePlan.confirm')}
       variant="primary"
       fullWidth
       lookDisabled={noChange}
@@ -55,8 +57,8 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
   return (
     <ModalCard
       visible={visible}
-      title="Cambiar de plan"
-      subtitle="Subir de plan es inmediato; bajar se aplica en tu próxima renovación."
+      title={t('billing:changePlan.title')}
+      subtitle={t('billing:changePlan.subtitle')}
       onClose={onClose}
       footer={footer}
     >
@@ -70,7 +72,7 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
               { color: theme.colors.textMuted },
             ]}
           >
-            Es tu plan al renovar. Elige otro para cambiar.
+            {t('billing:changePlan.noChangeHint')}
           </Text>
         ) : null}
       </View>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -36,6 +37,7 @@ export function CycleDateSlider({
   onChange,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
 
   const days = useMemo(
@@ -66,7 +68,7 @@ export function CycleDateSlider({
     <View
       style={styles.container}
       accessibilityRole="adjustable"
-      accessibilityLabel="Fecha del movimiento"
+      accessibilityLabel={t('gastos:import.dateSlider.a11yLabel')}
     >
       <ScrollView
         ref={scrollRef}
@@ -127,6 +129,7 @@ function DayTile({
   mutedColor,
   onPrimary,
 }: TileProps) {
+  const { t } = useTranslation()
   const press = useSharedValue(1)
   // Días futuros: no seleccionables (un gasto no puede ser de mañana).
   const disabled = day.isFuture
@@ -155,7 +158,11 @@ function DayTile({
           })
         }}
         accessibilityRole="button"
-        accessibilityLabel={`día ${day.day}${disabled ? ', fecha futura no disponible' : ''}`}
+        accessibilityLabel={
+          disabled
+            ? t('gastos:import.dateSlider.dayA11yFuture', { day: day.day })
+            : t('gastos:import.dateSlider.dayA11y', { day: day.day })
+        }
         accessibilityState={{ selected: isSelected, disabled }}
         hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
         style={[styles.tile, disabled ? styles.tileDisabled : null]}

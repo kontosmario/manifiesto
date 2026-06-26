@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { AddExpenseDashboard } from '@/components/home/add-expense-dashboard'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -39,6 +40,7 @@ function parseBackdateParam(raw: string | string[] | undefined): Date | null {
 
 export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const params = useLocalSearchParams<{ date?: string | string[] }>()
   const forDate = useMemo(() => parseBackdateParam(params.date), [params.date])
@@ -69,7 +71,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
       canGoBack
       showGrabHandle
       contentContainerStyle={styles.screenContent}
-      title="Agregar gasto"
+      title={t('gastos:addExpense.title')}
       titleColor={headerPalette.titleColor}
     >
       {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
@@ -77,7 +79,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
       {shouldShowErrorState ? (
         <ErrorState
           description={getErrorMessage(categoriesLoadError, errorMessages.server)}
-          title="No pudimos abrir el formulario"
+          title={t('gastos:addExpense.formErrorTitle')}
           onAction={() => {
             void controller.categoriesQuery.refetch()
           }}
@@ -87,7 +89,7 @@ export function AddExpenseScreen({ familyId, userId }: AddExpenseScreenProps) {
           stateKey="categories"
           icon="category"
           action={{
-            label: 'Crear categoría',
+            label: t('gastos:addExpense.createCategory'),
             onPress: () => router.push('/(app)/(tabs)/expenses'),
           }}
         />

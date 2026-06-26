@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
-
-const PHRASE_FAMILY = 'ELIMINAR'
-const PHRASE_ACCOUNT = 'REINICIAR'
 
 interface DestroyFamilyConfirmSheetProps {
   visible: boolean
@@ -43,8 +41,11 @@ export function DestroyFamilyConfirmSheet({
   mode = 'family',
 }: DestroyFamilyConfirmSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isAccount = mode === 'account'
-  const confirmPhrase = isAccount ? PHRASE_ACCOUNT : PHRASE_FAMILY
+  const confirmPhrase = isAccount
+    ? t('settings:destroyFamily.phraseAccount')
+    : t('settings:destroyFamily.phraseFamily')
   const [step, setStep] = useState<1 | 2>(1)
   const [phrase, setPhrase] = useState('')
   const inputRef = useRef<TextInput | null>(null)
@@ -73,9 +74,7 @@ export function DestroyFamilyConfirmSheet({
     [phrase, confirmPhrase],
   )
 
-  const memberLabel = otherActiveMembers === 1
-    ? '1 miembro'
-    : `${otherActiveMembers} miembros`
+  const memberLabel = t('settings:destroyFamily.memberCount', { count: otherActiveMembers })
 
   return (
     <ModalCard
@@ -83,16 +82,16 @@ export function DestroyFamilyConfirmSheet({
       subtitle={
         step === 1
           ? isAccount
-            ? 'Vas a empezar el setup desde cero.'
-            : `Aún hay ${memberLabel} en tu hogar.`
-          : 'Confirma escribiendo la palabra exacta.'
+            ? t('settings:destroyFamily.subtitleAccount')
+            : t('settings:destroyFamily.subtitleFamily', { members: memberLabel })
+          : t('settings:destroyFamily.subtitleConfirm')
       }
       title={
         step === 1
           ? isAccount
-            ? '¿Reiniciar tu cuenta?'
-            : '¿Eliminar tu hogar?'
-          : 'Última confirmación'
+            ? t('settings:destroyFamily.titleAccount')
+            : t('settings:destroyFamily.titleFamily')
+          : t('settings:destroyFamily.titleConfirm')
       }
       visible={visible}
     >
@@ -117,12 +116,12 @@ export function DestroyFamilyConfirmSheet({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
-                {isAccount ? 'Vas a borrar todos tus datos' : 'Vas a borrar todo el hogar'}
+                {isAccount ? t('settings:destroyFamily.warningTitleAccount') : t('settings:destroyFamily.warningTitleFamily')}
               </Text>
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
                 {isAccount
-                  ? 'Se eliminan tus gastos, fijos, metas y toda tu configuración. Tu cuenta vuelve al onboarding desde cero. Tu suscripción se mantiene.'
-                  : `Como eres el dueño, salirte cierra el hogar para todos. Tu familia, gastos, fijos, metas y configuración se eliminan. Los ${memberLabel} pierden acceso y empiezan de nuevo.`}
+                  ? t('settings:destroyFamily.warningBodyAccount')
+                  : t('settings:destroyFamily.warningBodyFamily', { members: memberLabel })}
               </Text>
             </View>
           </View>
@@ -133,19 +132,19 @@ export function DestroyFamilyConfirmSheet({
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="delete-outline"
-                label="Se borran tus gastos, fijos, metas y toda tu configuración."
+                label={t('settings:destroyFamily.accountBullet1')}
               />
               <BulletRow
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="restart-alt"
-                label="Vuelves a empezar el onboarding desde cero."
+                label={t('settings:destroyFamily.accountBullet2')}
               />
               <BulletRow
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="verified"
-                label="Tu suscripción no se toca: sigues con tu plan."
+                label={t('settings:destroyFamily.accountBullet3')}
               />
             </View>
           ) : (
@@ -154,31 +153,31 @@ export function DestroyFamilyConfirmSheet({
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="delete-outline"
-                label="Se borran tus gastos, fijos, metas y la configuración del hogar."
+                label={t('settings:destroyFamily.familyBullet1')}
               />
               <BulletRow
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="people-outline"
-                label={`Los ${memberLabel} pierden acceso compartido.`}
+                label={t('settings:destroyFamily.familyBullet2', { members: memberLabel })}
               />
               <BulletRow
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="restore"
-                label="Si quieres volver, vas a tener que armar un hogar de cero."
+                label={t('settings:destroyFamily.familyBullet3')}
               />
             </View>
           )}
 
           <View style={styles.row}>
             <AppButton
-              label="Cancelar"
+              label={t('common:actions.cancel')}
               onPress={onCancel}
               variant="ghost"
             />
             <AppButton
-              label="Continuar"
+              label={t('common:actions.continue')}
               onPress={() => setStep(2)}
               variant="danger"
             />
@@ -188,11 +187,11 @@ export function DestroyFamilyConfirmSheet({
         <View style={styles.stack}>
           <View style={styles.confirmHelperRow}>
             <Text style={[styles.confirmHelper, { color: theme.colors.textMuted }]}>
-              Escribe{' '}
+              {t('settings:destroyFamily.confirmHelperPrefix')}{' '}
               <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
                 {confirmPhrase}
               </Text>{' '}
-              para habilitar el botón.
+              {t('settings:destroyFamily.confirmHelperSuffix')}
             </Text>
           </View>
 
@@ -205,7 +204,7 @@ export function DestroyFamilyConfirmSheet({
             autoCapitalize="characters"
             autoCorrect={false}
             spellCheck={false}
-            accessibilityLabel="Escribe ELIMINAR para confirmar"
+            accessibilityLabel={t('settings:destroyFamily.inputA11y', { phrase: confirmPhrase })}
             style={[
               styles.input,
               {
@@ -219,20 +218,20 @@ export function DestroyFamilyConfirmSheet({
 
           {phrase.length > 0 && !matches ? (
             <Text style={[styles.errorText, { color: theme.colors.danger }]}>
-              Tiene que coincidir exactamente con {confirmPhrase}.
+              {t('settings:destroyFamily.mismatch', { phrase: confirmPhrase })}
             </Text>
           ) : null}
 
           <View style={styles.row}>
             <AppButton
               disabled={isSubmitting}
-              label="Cancelar"
+              label={t('common:actions.cancel')}
               onPress={onCancel}
               variant="ghost"
             />
             <AppButton
               disabled={!matches || isSubmitting}
-              label={isAccount ? 'Reiniciar mi cuenta' : 'Eliminar para siempre'}
+              label={isAccount ? t('settings:destroyFamily.ctaAccount') : t('settings:destroyFamily.ctaFamily')}
               loading={isSubmitting}
               onPress={onConfirm}
               variant="danger"

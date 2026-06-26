@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 import { supabase } from '@/lib/supabase'
 import { createNoncePair } from '@/lib/auth-nonce'
+import i18n from '@/lib/i18n'
 
 // Sprint O · Audit #8 O-Info (2026-06-14): strip ASCII control bytes +
 // Unicode `Cf` format chars (bidi marks/overrides, zero-width, BOM)
@@ -107,7 +108,7 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
   if (Platform.OS !== 'ios') {
     return {
       status: 'unavailable',
-      error: 'Sign in with Apple solo está disponible en iOS.',
+      error: i18n.t('auth:socialSignIn.appleOnlyOnIos'),
     }
   }
 
@@ -130,7 +131,7 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
     if (!credential.identityToken) {
       return {
         status: 'unavailable',
-        error: 'No recibimos un token válido de Apple.',
+        error: i18n.t('auth:socialSignIn.appleInvalidToken'),
       }
     }
 
@@ -200,7 +201,7 @@ export async function signInWithApple(): Promise<SocialSignInResult> {
     }
     return {
       status: 'unavailable',
-      error: error instanceof Error ? error.message : 'No pudimos iniciar con Apple.',
+      error: error instanceof Error ? error.message : i18n.t('auth:socialSignIn.appleFailed'),
     }
   }
 }
@@ -211,8 +212,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
   if (!GOOGLE_SIGN_IN_ENABLED) {
     return {
       status: 'unavailable',
-      error:
-        'Google sign-in está temporalmente deshabilitado en esta versión. Prueba con Apple o email + contraseña.',
+      error: i18n.t('auth:socialSignIn.googleDisabled'),
     }
   }
 
@@ -237,7 +237,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
     if (error || !data?.url) {
       return {
         status: 'unavailable',
-        error: error?.message ?? 'No pudimos iniciar el flujo con Google.',
+        error: error?.message ?? i18n.t('auth:socialSignIn.googleFlowFailed'),
       }
     }
 
@@ -249,7 +249,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
     if (result.type !== 'success' || !result.url) {
       return {
         status: 'unavailable',
-        error: 'No pudimos completar el inicio con Google.',
+        error: i18n.t('auth:socialSignIn.googleCompleteFailed'),
       }
     }
 
@@ -268,7 +268,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
     if (!code) {
       return {
         status: 'unavailable',
-        error: 'No recibimos el código de autorización de Google.',
+        error: i18n.t('auth:socialSignIn.googleNoCode'),
       }
     }
 
@@ -281,7 +281,7 @@ export async function signInWithGoogle(): Promise<SocialSignInResult> {
   } catch (error) {
     return {
       status: 'unavailable',
-      error: error instanceof Error ? error.message : 'No pudimos iniciar con Google.',
+      error: error instanceof Error ? error.message : i18n.t('auth:socialSignIn.googleFailed'),
     }
   }
 }

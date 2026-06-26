@@ -1,5 +1,6 @@
 import { Alert } from 'react-native'
 import { useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import { MemberWarningSheet } from '@/components/control-v2/member-warning-sheet'
@@ -76,6 +77,7 @@ export function GlobalAdvisorActionHost({
   userId,
   isNested = false,
 }: Props) {
+  const { t } = useTranslation()
   const router = useRouter()
   const pending = usePendingAdvisorAction()
   const hasNested = useHasNestedAdvisorHost()
@@ -253,18 +255,23 @@ export function GlobalAdvisorActionHost({
             }
             clearPendingAdvisorAction()
             Alert.alert(
-              '¡Listo!',
-              `${formatMoney(safeAmount)} sumados a tu alcancía.`,
+              t('control:advisorHost.savingsDoneTitle'),
+              t('control:advisorHost.savingsDoneBody', {
+                amount: formatMoney(safeAmount),
+              }),
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert('No pudimos mover', 'Reintenta en unos segundos.')
+            Alert.alert(
+              t('control:advisorHost.savingsErrorTitle'),
+              t('control:advisorHost.errorRetrySeconds'),
+            )
           },
         },
       )
     },
-    [savingsRequest, goal, addContributionMutation, router, familyId],
+    [savingsRequest, goal, addContributionMutation, router, familyId, t],
   )
 
   // ─── Member warning ───────────────────────────────────────────
@@ -309,19 +316,22 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert('Listo', 'Aviso enviado.')
+            Alert.alert(
+              t('control:advisorHost.warningDoneTitle'),
+              t('control:advisorHost.warningDoneBody'),
+            )
           },
           onError: () => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos enviar',
-              'Reintenta en unos segundos.',
+              t('control:advisorHost.warningErrorTitle'),
+              t('control:advisorHost.errorRetrySeconds'),
             )
           },
         },
       )
     },
-    [warningRequest, warningMutation, familyId, userId],
+    [warningRequest, warningMutation, familyId, userId, t],
   )
 
   // ─── Savings goal edit ─────────────────────────────────────────
@@ -372,19 +382,22 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert('Meta actualizada', 'Guardamos los cambios.')
+            Alert.alert(
+              t('control:advisorHost.goalUpdatedTitle'),
+              t('control:advisorHost.changesSaved'),
+            )
           },
           onError: () => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos guardar',
-              'Reintenta en unos segundos.',
+              t('control:advisorHost.goalSaveErrorTitle'),
+              t('control:advisorHost.errorRetrySeconds'),
             )
           },
         },
       )
     },
-    [goalEditRequest, goal, upsertGoalMutation, router, familyId],
+    [goalEditRequest, goal, upsertGoalMutation, router, familyId, t],
   )
 
   // ─── Fixed expense edit ───────────────────────────────────────
@@ -436,19 +449,22 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert('Gasto fijo actualizado', 'Guardamos los cambios.')
+            Alert.alert(
+              t('control:advisorHost.fixedUpdatedTitle'),
+              t('control:advisorHost.changesSaved'),
+            )
           },
           onError: () => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos guardar',
-              'Reintenta en unos segundos.',
+              t('control:advisorHost.goalSaveErrorTitle'),
+              t('control:advisorHost.errorRetrySeconds'),
             )
           },
         },
       )
     },
-    [fixedEditRequest, targetFixedExpense, updateFixedMutation, familyId],
+    [fixedEditRequest, targetFixedExpense, updateFixedMutation, familyId, t],
   )
 
   // ─── Fixed expense add ────────────────────────────────────────
@@ -492,19 +508,22 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert('Gasto fijo registrado', 'Lo guardamos en tu lista.')
+            Alert.alert(
+              t('control:advisorHost.fixedAddedTitle'),
+              t('control:advisorHost.fixedAddedBody'),
+            )
           },
           onError: () => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos registrar',
-              'Reintenta en unos segundos.',
+              t('control:advisorHost.fixedAddErrorTitle'),
+              t('control:advisorHost.errorRetrySeconds'),
             )
           },
         },
       )
     },
-    [fixedAddRequest, createFixedMutation, familyId],
+    [fixedAddRequest, createFixedMutation, familyId, t],
   )
 
   // Top-level host yields rendering to a nested instance when one
@@ -523,7 +542,7 @@ export function GlobalAdvisorActionHost({
         // the request — so by the time we reach the JSX with `goal
         // !== null`, the sheet is meaningful.
         visible={savingsRequest !== null && goal !== null && goal.isActive}
-        goalTitle={goal?.title ?? 'Tu meta'}
+        goalTitle={goal?.title ?? t('control:advisorHost.goalFallback')}
         remaining={savingsRemaining}
         initialAmount={savingsRequest?.amount}
         isSaving={addContributionMutation.isPending}
@@ -549,7 +568,7 @@ export function GlobalAdvisorActionHost({
         visible={
           goalEditRequest !== null && goal !== null && goal.isActive
         }
-        goalTitle={goal?.title ?? 'Tu meta'}
+        goalTitle={goal?.title ?? t('control:advisorHost.goalFallback')}
         goalEmoji={goal?.emoji ?? '🎯'}
         initialGoalAmount={goal?.goalAmount ?? 0}
         initialTargetMonths={goal?.targetMonths ?? null}

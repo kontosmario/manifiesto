@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
@@ -45,6 +46,7 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  */
 export function EditionsScreen() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
   const { data: family } = useFamily(userId)
@@ -104,12 +106,12 @@ export function EditionsScreen() {
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-        title="Ediciones"
+        title={t('billing:editions.title')}
         canGoBack
       >
         <ErrorState
-          title="No pudimos cargar tus ediciones"
-          description="Prueba de nuevo en un momento."
+          title={t('billing:editions.errorTitle')}
+          description={t('billing:editions.errorDescription')}
         />
       </Screen>
     )
@@ -118,8 +120,8 @@ export function EditionsScreen() {
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Ediciones"
-      subtitle="Cada ciclo cerrado es una edición de Manifiesto. Toca una para revivirla."
+      title={t('billing:editions.title')}
+      subtitle={t('billing:editions.subtitle')}
       canGoBack
     >
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
@@ -127,8 +129,8 @@ export function EditionsScreen() {
         <RiseView>
           <EmptyState
             icon="auto-stories"
-            title="Tu primera edición está en camino"
-            subtitle="Cuando confirmes tu próximo cobro, este archivo se va a empezar a llenar. Una edición por ciclo cerrado."
+            title={t('billing:editions.emptyTitle')}
+            subtitle={t('billing:editions.emptySubtitle')}
           />
         </RiseView>
       ) : (
@@ -163,6 +165,7 @@ interface MastheadProps {
 
 function Masthead({ savedTotal, cycleCount }: MastheadProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View
       style={[
@@ -176,7 +179,7 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
       <Text
         style={[styles.mastheadEyebrow, { color: theme.colors.textMuted }]}
       >
-        TU SALDO ACUMULADO
+        {t('billing:editions.mastheadEyebrow')}
       </Text>
       <CountUpText
         value={savedTotal}
@@ -192,7 +195,7 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
           ]}
         />
         <Text style={[styles.mastheadCaption, { color: theme.colors.textMuted }]}>
-          en {cycleCount} {cycleCount === 1 ? 'edición' : 'ediciones'} cerradas
+          {t('billing:editions.mastheadCaption', { count: cycleCount })}
         </Text>
       </View>
     </View>
@@ -212,9 +215,11 @@ interface EditionRowProps {
 
 function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.97 })
 
   const tone = resolveTone(sobrante, theme.isDark)
+  const toneLabel = t(`billing:editions.${tone.labelKey}`)
   const range = useMemo(
     () => buildShortRange(edition.period_start, edition.period_end),
     [edition.period_start, edition.period_end],
@@ -233,7 +238,10 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         accessibilityRole="button"
-        accessibilityLabel={`Revivir edición ${edition.period_label}, ${tone.label}`}
+        accessibilityLabel={t('billing:editions.reviveLabel', {
+          label: edition.period_label,
+          tone: toneLabel,
+        })}
         style={({ pressed }) => [
           styles.row,
           {
@@ -268,7 +276,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
               ]}
             >
               {edition.expenses_count}{' '}
-              {edition.expenses_count === 1 ? 'mov.' : 'movs.'}
+              {t('billing:editions.movements', { count: edition.expenses_count })}
             </Text>
           </View>
         </View>
@@ -281,7 +289,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
           <Text
             style={[styles.rowAmountLabel, { color: theme.colors.textMuted }]}
           >
-            {tone.label}
+            {toneLabel}
           </Text>
         </View>
 
@@ -300,7 +308,8 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
 interface RowTone {
   dotColor: string
   amountColor: string
-  label: string
+  /** Key relativa al namespace billing (resuelta con t en el componente). */
+  labelKey: 'toneMargin' | 'toneExceeded' | 'toneEven'
 }
 
 function resolveTone(delta: number, isDark: boolean): RowTone {
@@ -308,20 +317,20 @@ function resolveTone(delta: number, isDark: boolean): RowTone {
     return {
       dotColor: isDark ? '#A6EF8F' : '#1F590D',
       amountColor: isDark ? '#A6EF8F' : '#10410A',
-      label: 'margen',
+      labelKey: 'toneMargin',
     }
   }
   if (delta < 0) {
     return {
       dotColor: isDark ? '#F2A78C' : '#B84014',
       amountColor: isDark ? '#F2A78C' : '#8E2A0C',
-      label: 'excedido',
+      labelKey: 'toneExceeded',
     }
   }
   return {
     dotColor: isDark ? '#C3D2C9' : '#3B6D57',
     amountColor: isDark ? '#F4FDF2' : '#12211A',
-    label: 'empatado',
+    labelKey: 'toneEven',
   }
 }
 

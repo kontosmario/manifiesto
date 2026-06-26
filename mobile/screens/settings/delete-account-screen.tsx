@@ -12,6 +12,7 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AppButton } from '@/components/ui/button'
@@ -53,8 +54,6 @@ type Step =
   | 'reauth-biometric'
   | 'reauth-password'
 
-const CONFIRM_PHRASE = 'ELIMINAR'
-
 /**
  * Pantalla dedicada de baja de cuenta (Apple guideline 5.1.1(v)).
  *
@@ -77,6 +76,8 @@ const CONFIRM_PHRASE = 'ELIMINAR'
  */
 export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccountScreenProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
+  const CONFIRM_PHRASE = t('settings:deleteAccount.confirmPhrase')
   const router = useRouter()
   const inputRef = useRef<TextInput | null>(null)
   const passwordInputRef = useRef<TextInput | null>(null)
@@ -175,10 +176,10 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         void logoutSession({
           onError: (error) => {
             Alert.alert(
-              'No pudimos cerrar sesión',
+              t('settings:deleteAccount.logoutErrorTitle'),
               getErrorMessage(
                 error,
-                'Tu cuenta quedó agendada para baja pero hubo un problema al desloguear.',
+                t('settings:deleteAccount.logoutErrorMessage'),
               ),
             )
           },
@@ -190,15 +191,15 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       onError: (error) => {
         void triggerHaptic('error')
         Alert.alert(
-          'No pudimos programar la baja',
+          t('settings:deleteAccount.scheduleErrorTitle'),
           getErrorMessage(
             error,
-            'Prueba nuevamente en un momento. Si el problema persiste, escríbenos a soporte.',
+            t('settings:deleteAccount.scheduleErrorMessage'),
           ),
         )
       },
     })
-  }, [requestDeletion, router])
+  }, [requestDeletion, router, t])
 
   const handleConfirmTyped = useCallback(() => {
     if (!matchesPhrase || requestDeletion.isPending) return
@@ -254,7 +255,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
           }
           if (result.lockedForMs > 0) {
             const seconds = Math.ceil(result.lockedForMs / 1000)
-            setPinLockoutMessage(`Bloqueado ${seconds} seg`)
+            setPinLockoutMessage(t('settings:deleteAccount.pinLockout', { seconds }))
           } else {
             setPinLockoutMessage(null)
           }
@@ -268,20 +269,18 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
           setReauthChecking(false)
         })
     },
-    [isReauthChecking, performRequestDeletion, pinLength],
+    [isReauthChecking, performRequestDeletion, pinLength, t],
   )
 
   const handlePasswordSubmit = useCallback(async () => {
     if (isReauthChecking || requestDeletion.isPending) return
     const trimmedPassword = passwordValue
     if (!trimmedPassword) {
-      setPasswordError('Ingresa tu contraseña para confirmar.')
+      setPasswordError(t('settings:deleteAccount.passwordRequired'))
       return
     }
     if (!accountEmail) {
-      setPasswordError(
-        'No pudimos identificar tu email. Reintenta en un momento.',
-      )
+      setPasswordError(t('settings:deleteAccount.emailUnknown'))
       return
     }
     setReauthChecking(true)
@@ -299,9 +298,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         setReauthChecking(false)
         // Mensaje genérico — no distinguimos entre "wrong password" y
         // "rate limit" para no leakear señal a un atacante.
-        setPasswordError(
-          'La contraseña no coincide. Prueba nuevamente.',
-        )
+        setPasswordError(t('settings:deleteAccount.passwordMismatch'))
         void triggerHaptic('error')
         return
       }
@@ -312,7 +309,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
     } catch (error) {
       setReauthChecking(false)
       setPasswordError(
-        getErrorMessage(error, 'No pudimos verificar la contraseña.'),
+        getErrorMessage(error, t('settings:deleteAccount.passwordVerifyError')),
       )
     }
   }, [
@@ -321,6 +318,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
     passwordValue,
     performRequestDeletion,
     requestDeletion.isPending,
+    t,
   ])
 
   const runBiometricChallenge = useCallback(async () => {
@@ -333,15 +331,15 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       const isEnrolled = await LocalAuthentication.isEnrolledAsync()
       if (!hasHardware || !isEnrolled) {
         Alert.alert(
-          'Biometría no disponible',
-          'Configura Face ID / huella en los ajustes del sistema para confirmar la baja.',
+          t('settings:deleteAccount.biometricUnavailableTitle'),
+          t('settings:deleteAccount.biometricUnavailableMessage'),
         )
         setReauthChecking(false)
         setStep('confirm')
         return
       }
       const result = await authenticateBiometricAccess({
-        promptMessage: 'Confirma la baja de tu cuenta',
+        promptMessage: t('settings:deleteAccount.biometricPrompt'),
       })
       if (result.success) {
         void triggerHaptic('success')
@@ -357,11 +355,11 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       setReauthChecking(false)
       setStep('confirm')
       Alert.alert(
-        'No pudimos confirmar',
-        getErrorMessage(error, 'Prueba nuevamente.'),
+        t('settings:deleteAccount.confirmErrorTitle'),
+        getErrorMessage(error, t('settings:deleteAccount.tryAgain')),
       )
     }
-  }, [isReauthChecking, performRequestDeletion, requestDeletion.isPending])
+  }, [isReauthChecking, performRequestDeletion, requestDeletion.isPending, t])
 
   const handleCancel = useCallback(() => {
     if (requestDeletion.isPending) return
@@ -390,8 +388,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         canGoBack={!onClose}
         contentContainerStyle={styles.screenContent}
-        subtitle="Antes de borrar tu cuenta, cierra tu hogar o espera a que los demás se retiren."
-        title="Eliminar cuenta"
+        subtitle={t('settings:deleteAccount.blockedSubtitle')}
+        title={t('settings:deleteAccount.title')}
       >
         <View style={styles.sectionStack}>
           {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
@@ -413,16 +411,14 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             />
             <View style={{ flex: 1, gap: 6 }}>
               <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
-                No puedes borrar tu cuenta todavía
+                {t('settings:deleteAccount.blockedTitle')}
               </Text>
               <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
-                Eres dueño de un hogar con otros miembros activos. Para borrar
-                tu cuenta, primero elimina el hogar (se cierra para todos) o
-                pídeles a los demás que se retiren, y vuelve aquí.
+                {t('settings:deleteAccount.blockedBody')}
               </Text>
             </View>
           </View>
-          <AppButton label="Entendido" onPress={handleCancel} variant="ghost" />
+          <AppButton label={t('common:actions.understood')} onPress={handleCancel} variant="ghost" />
         </View>
       </Screen>
     )
@@ -435,16 +431,16 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       contentContainerStyle={styles.screenContent}
       subtitle={
         step === 'review'
-          ? 'Vas a programar la baja de tu cuenta.'
+          ? t('settings:deleteAccount.subtitleReview')
           : step === 'confirm'
-            ? 'Escribe ELIMINAR para confirmar.'
+            ? t('settings:deleteAccount.subtitleConfirm', { phrase: CONFIRM_PHRASE })
             : step === 'reauth-pin'
-              ? 'Ingresa tu PIN para confirmar.'
+              ? t('settings:deleteAccount.subtitlePin')
               : step === 'reauth-password'
-                ? 'Ingresa la contraseña de tu cuenta.'
-                : 'Confirma con biometría para programar la baja.'
+                ? t('settings:deleteAccount.subtitlePassword')
+                : t('settings:deleteAccount.subtitleBiometric')
       }
-      title="Eliminar cuenta"
+      title={t('settings:deleteAccount.title')}
     >
       <View style={styles.sectionStack}>
         {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
@@ -471,15 +467,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 <Text
                   style={[styles.warningTitle, { color: theme.colors.text }]}
                 >
-                  Esta acción no es inmediata, pero es seria
+                  {t('settings:deleteAccount.disclaimerTitle')}
                 </Text>
                 <Text
                   style={[styles.warningBody, { color: theme.colors.textMuted }]}
                 >
-                  Tu cuenta queda agendada para borrarse en 30 días. Durante
-                  ese plazo puedes cancelar la baja entrando de nuevo. Pasados
-                  los 30 días, todos tus datos personales se borran
-                  definitivamente.
+                  {t('settings:deleteAccount.disclaimerBody')}
                 </Text>
               </View>
             </View>
@@ -499,28 +492,28 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               <Text
                 style={[styles.tableTitle, { color: theme.colors.text }]}
               >
-                Qué se borra
+                {t('settings:deleteAccount.deletedTitle')}
               </Text>
               <ImpactRow
                 color={theme.colors.danger}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="delete-outline"
-                label="Tu perfil, avatar y configuración personal."
+                label={t('settings:deleteAccount.deletedProfile')}
               />
               <ImpactRow
                 color={theme.colors.danger}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="notifications-off"
-                label="Tus suscripciones de notificaciones push."
+                label={t('settings:deleteAccount.deletedPush')}
               />
               <ImpactRow
                 color={theme.colors.danger}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="receipt-long"
-                label="Tu suscripción al plan (si tienes activa)."
+                label={t('settings:deleteAccount.deletedSubscription')}
               />
 
               <View
@@ -530,39 +523,39 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               <Text
                 style={[styles.tableTitle, { color: theme.colors.text }]}
               >
-                Qué se preserva
+                {t('settings:deleteAccount.preservedTitle')}
               </Text>
               <ImpactRow
                 color={theme.colors.primaryStrong}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="history"
-                label="El historial de gastos del hogar (con autor 'Anónimo')."
+                label={t('settings:deleteAccount.preservedHistory')}
               />
               <ImpactRow
                 color={theme.colors.primaryStrong}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="group"
-                label="La familia si quedan otros miembros activos."
+                label={t('settings:deleteAccount.preservedFamily')}
               />
               <ImpactRow
                 color={theme.colors.primaryStrong}
                 colorMuted={theme.colors.textMuted}
                 colorText={theme.colors.text}
                 icon="schedule"
-                label="30 días de gracia para arrepentirte."
+                label={t('settings:deleteAccount.preservedGrace')}
               />
             </View>
 
             <View style={styles.row}>
               <AppButton
-                label="Cancelar"
+                label={t('common:actions.cancel')}
                 onPress={handleCancel}
                 variant="ghost"
               />
               <AppButton
-                label="Continuar"
+                label={t('common:actions.continue')}
                 onPress={handleStartConfirm}
                 variant="danger"
               />
@@ -586,16 +579,16 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Para destrabar el botón, escribe{' '}
+                {t('settings:deleteAccount.confirmHelperPrefix')}{' '}
                 <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
                   {CONFIRM_PHRASE}
                 </Text>{' '}
-                en mayúsculas, exactamente como aparece.
+                {t('settings:deleteAccount.confirmHelperSuffix')}
               </Text>
 
               <TextInput
                 ref={inputRef}
-                accessibilityLabel={`Escribe ${CONFIRM_PHRASE} para confirmar`}
+                accessibilityLabel={t('settings:deleteAccount.inputA11y', { phrase: CONFIRM_PHRASE })}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 onChangeText={setPhrase}
@@ -620,36 +613,34 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
 
               {phrase.length > 0 && !matchesPhrase ? (
                 <Text style={[styles.errorText, { color: theme.colors.danger }]}>
-                  Tiene que coincidir exactamente con {CONFIRM_PHRASE} (mayúsculas).
+                  {t('settings:deleteAccount.phraseMismatch', { phrase: CONFIRM_PHRASE })}
                 </Text>
               ) : null}
 
               {pinIsSet ? (
                 <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
-                  Al continuar, te vamos a pedir tu PIN para confirmar.
+                  {t('settings:deleteAccount.willAskPin')}
                 </Text>
               ) : biometricState?.isAvailable ? (
                 <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
-                  Al continuar, te vamos a pedir {biometricState.label} para
-                  confirmar.
+                  {t('settings:deleteAccount.willAskBiometric', { method: biometricState.label })}
                 </Text>
               ) : (
                 <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
-                  Al continuar, te vamos a pedir la contraseña de tu cuenta
-                  para confirmar.
+                  {t('settings:deleteAccount.willAskPassword')}
                 </Text>
               )}
             </View>
 
             <View style={styles.row}>
               <AppButton
-                label="Volver"
+                label={t('common:actions.back')}
                 onPress={handleBackToReview}
                 variant="ghost"
               />
               <AppButton
                 disabled={!matchesPhrase || requestDeletion.isPending}
-                label="Eliminar mi cuenta"
+                label={t('settings:deleteAccount.deleteCta')}
                 loading={requestDeletion.isPending}
                 onPress={handleConfirmTyped}
                 variant="danger"
@@ -672,12 +663,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Ingresa tu PIN
+                {t('settings:deleteAccount.pinTitle')}
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Pedimos tu PIN como última verificación antes de programar la baja.
+                {t('settings:deleteAccount.pinHelper')}
               </Text>
               <View style={styles.pinPadWrap}>
                 {pinLength === null ? (
@@ -713,7 +704,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
-                Cancelar baja
+                {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>
           </>
@@ -733,24 +724,22 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Confirma tu contraseña
+                {t('settings:deleteAccount.passwordTitle')}
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Como no tienes PIN ni biometría configurados, pedimos la
-                contraseña de tu cuenta como verificación final antes de
-                programar la baja.
+                {t('settings:deleteAccount.passwordHelper')}
               </Text>
               {accountEmail ? (
                 <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
-                  Cuenta: {accountEmail}
+                  {t('settings:deleteAccount.accountLabel', { email: accountEmail })}
                 </Text>
               ) : null}
 
               <TextInput
                 ref={passwordInputRef}
-                accessibilityLabel="Contraseña de tu cuenta"
+                accessibilityLabel={t('settings:deleteAccount.passwordA11y')}
                 autoCapitalize="none"
                 autoComplete="current-password"
                 autoCorrect={false}
@@ -760,7 +749,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                   if (passwordError) setPasswordError(null)
                 }}
                 onSubmitEditing={() => void handlePasswordSubmit()}
-                placeholder="Tu contraseña"
+                placeholder={t('settings:deleteAccount.passwordPlaceholder')}
                 placeholderTextColor={theme.colors.textSoft}
                 returnKeyType="done"
                 secureTextEntry
@@ -797,7 +786,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                   requestDeletion.isPending ||
                   passwordValue.length === 0
                 }
-                label="Eliminar mi cuenta"
+                label={t('settings:deleteAccount.deleteCta')}
                 loading={isReauthChecking || requestDeletion.isPending}
                 onPress={() => void handlePasswordSubmit()}
                 variant="danger"
@@ -813,7 +802,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
-                Cancelar baja
+                {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>
           </>
@@ -839,16 +828,18 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 style={{ alignSelf: 'center' }}
               />
               <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
-                Confirma con {biometricState?.label ?? 'biometría'}
+                {t('settings:deleteAccount.biometricTitle', {
+                  method: biometricState?.label ?? t('settings:deleteAccount.biometricFallback'),
+                })}
               </Text>
               <Text
                 style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
               >
-                Si no apareció el prompt, toca "Reintentar".
+                {t('settings:deleteAccount.biometricRetryHelper')}
               </Text>
               <AppButton
                 disabled={isReauthChecking || requestDeletion.isPending}
-                label="Reintentar"
+                label={t('common:actions.retry')}
                 loading={isReauthChecking || requestDeletion.isPending}
                 onPress={() => void runBiometricChallenge()}
                 variant="danger"
@@ -864,7 +855,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               ]}
             >
               <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
-                Cancelar baja
+                {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>
           </>

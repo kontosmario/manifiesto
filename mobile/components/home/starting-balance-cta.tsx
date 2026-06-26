@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
@@ -33,6 +34,7 @@ const PILL_TEXT = '#0F2E1F'
  */
 function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const glowBorderStyle = useBorderGlow()
 
   const handlePress = () => {
@@ -41,10 +43,10 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
   }
 
   return (
-    <TourTarget order={tourOrder} tour={TOUR_KEYS.home} text="Confirma cuánta plata tienes disponible hoy para arrancar el ciclo.">
+    <TourTarget order={tourOrder} tour={TOUR_KEYS.home} text={t('home:startingBalanceCta.tourText')}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Confirma tu saldo inicial del mes"
+        accessibilityLabel={t('home:startingBalanceCta.accessibility')}
         onPress={handlePress}
         style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
       >
@@ -70,11 +72,11 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
               style={[styles.title, { color: theme.colors.heroText }]}
               numberOfLines={1}
             >
-              Confirma tu saldo inicial
+              {t('home:startingBalanceCta.title')}
             </Text>
             <View style={[styles.ctaPill, { backgroundColor: theme.colors.heroAccent }]}>
               <Text style={[styles.ctaPillText, { color: PILL_TEXT }]}>
-                Confirmar
+                {t('home:startingBalanceCta.confirm')}
               </Text>
             </View>
           </View>

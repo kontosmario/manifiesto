@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { SkeletonBlock } from '@/components/ui/skeleton-block'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -7,12 +8,14 @@ interface LoadingBlockProps {
   label?: string
 }
 
-export function LoadingBlock({ label = 'Cargando' }: LoadingBlockProps) {
+export function LoadingBlock({ label }: LoadingBlockProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('states:loading.generic')
 
   return (
     <View
-      accessibilityLabel={label}
+      accessibilityLabel={resolvedLabel}
       accessibilityLiveRegion="polite"
       style={[
         styles.container,
@@ -36,7 +39,7 @@ export function LoadingBlock({ label = 'Cargando' }: LoadingBlockProps) {
           },
         ]}
       >
-        {label}
+        {resolvedLabel}
       </Text>
     </View>
   )

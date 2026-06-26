@@ -8,7 +8,8 @@
     "payday": "Payday",
     "fixedExpense": "Fixed expense",
     "fixedExpensePlural": "Fixed expenses",
-    "history": "History"
+    "history": "History",
+    "income": "Income"
   },
   "actions": {
     "save": "Save",
@@ -25,6 +26,10 @@
     "skip": "Skip",
     "add": "Add",
     "remove": "Remove",
-    "understood": "Got it"
+    "understood": "Got it",
+    "allow": "Allow",
+    "activate": "Turn on",
+    "later": "Later",
+    "tryAgain": "Try again"
   }
 }

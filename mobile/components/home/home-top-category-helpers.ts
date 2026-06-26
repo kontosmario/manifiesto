@@ -8,6 +8,7 @@
 // is unit-testable without dragging React into the test runner.
 
 import type { Expense } from '@/features/expenses/use-expenses'
+import i18n from '@/lib/i18n'
 
 export interface TopCategoryResult {
   /** Category UUID — used for the deep-link filter. */
@@ -90,8 +91,8 @@ export function computeTopCategory(args: ComputeArgs): TopCategoryResult | null 
     categoryId: topId === '__uncat__' ? '' : topId,
     name:
       topId === '__uncat__'
-        ? 'Sin categoría'
-        : args.categoryNameById.get(topId) ?? 'Sin categoría',
+        ? i18n.t('home:topCategory.uncategorized')
+        : args.categoryNameById.get(topId) ?? i18n.t('home:topCategory.uncategorized'),
     total: Math.round(topAmount),
     share: total > 0 ? topAmount / total : 0,
   }
@@ -158,8 +159,8 @@ export function computeTopCategoryFallback(
   if (args.variableCount <= 0) {
     return {
       kind: 'empty',
-      primary: 'Carga tu primer gasto',
-      secondary: 'Arranca el ciclo registrando algo',
+      primary: i18n.t('home:topCategory.emptyPrimary'),
+      secondary: i18n.t('home:topCategory.emptySecondary'),
     }
   }
 
@@ -169,8 +170,8 @@ export function computeTopCategoryFallback(
   if (args.variableCount < minTransactions) {
     return {
       kind: 'sparse',
-      primary: 'Sin categoría líder aún',
-      secondary: 'Carga más gastos para verla',
+      primary: i18n.t('home:topCategory.sparsePrimary'),
+      secondary: i18n.t('home:topCategory.sparseSecondaryFewExpenses'),
     }
   }
 
@@ -179,7 +180,7 @@ export function computeTopCategoryFallback(
   // a generic placeholder instead of a blank.
   return {
     kind: 'sparse',
-    primary: 'Sin categoría líder aún',
-    secondary: 'Aún no hay datos suficientes',
+    primary: i18n.t('home:topCategory.sparsePrimary'),
+    secondary: i18n.t('home:topCategory.sparseSecondaryNotEnoughData'),
   }
 }

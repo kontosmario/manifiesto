@@ -6,6 +6,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
@@ -64,6 +65,7 @@ const GRID_GAP = 10
  */
 export function AchievementsGalleryScreen() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
@@ -89,16 +91,16 @@ export function AchievementsGalleryScreen() {
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Logros"
-      subtitle="Tu colección de hitos — se desbloquean solos a medida que usas Manifiesto."
+      title={t('achievements:gallery.title')}
+      subtitle={t('achievements:gallery.subtitle')}
       canGoBack
       bodyStyle={styles.body}
       backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
     >
       {error && !data ? (
         <ErrorState
-          title="No pudimos cargar tus logros"
-          description="Prueba de nuevo en un momento."
+          title={t('achievements:gallery.errorTitle')}
+          description={t('achievements:gallery.errorDescription')}
           onAction={handleRetry}
         />
       ) : !data ? (
@@ -131,18 +133,19 @@ function ProgressRingHero({
   totalCount: number
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const progress = totalCount > 0 ? earnedCount / totalCount : 0
   const pct = Math.round(progress * 100)
   const RING = 128
 
   const subtitle =
     earnedCount === 0
-      ? 'Empieza a usar Manifiesto y se van desbloqueando solos.'
+      ? t('achievements:gallery.hero.subEmpty')
       : pct >= 100
-        ? '¡Los tienes todos! Eres leyenda.'
+        ? t('achievements:gallery.hero.subComplete')
         : pct >= 50
-          ? 'Vas por más de la mitad. Imparable.'
-          : 'Buen comienzo. Sigue sumando.'
+          ? t('achievements:gallery.hero.subHalf')
+          : t('achievements:gallery.hero.subStart')
 
   return (
     <LinearGradient
@@ -168,13 +171,13 @@ function ProgressRingHero({
               style={[styles.ringCount, { color: theme.colors.heroText }]}
             />
             <Text style={[styles.ringTotal, { color: theme.colors.heroMuted }]}>
-              de {totalCount}
+              {t('achievements:gallery.hero.of', { count: totalCount })}
             </Text>
           </View>
         </View>
         <View style={styles.heroText}>
           <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
-            TU COLECCIÓN
+            {t('achievements:gallery.hero.eyebrow')}
           </Text>
           <Text style={[styles.heroPct, { color: theme.colors.heroText }]}>
             {pct}%
@@ -197,6 +200,7 @@ function BadgeGrid({
   onPress: (badge: AchievementViewItem) => void
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { width } = useWindowDimensions()
   // 3 columnas. 40 = padding horizontal del Screen (2×20).
   const tileSize = (width - 40 - GRID_GAP * 2) / 3
@@ -206,7 +210,7 @@ function BadgeGrid({
   if (items.length === 0) {
     return (
       <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-        Pronto vas a poder desbloquear logros.
+        {t('achievements:gallery.empty')}
       </Text>
     )
   }

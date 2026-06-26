@@ -7,14 +7,16 @@ import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expe
 // en el backend. El resto mappea 1:1 con la columna `frequency`.
 export type FreqChoice = FixedExpenseFrequency | 'cuotas'
 
-export const FREQ_OPTIONS: Array<{ id: FreqChoice; label: string; icon: string }> = [
-  { id: 'monthly',    label: 'Mensual',    icon: '🗓' },
-  { id: 'biweekly',   label: 'Quincenal',  icon: '🔁' },
-  { id: 'weekly',     label: 'Semanal',    icon: '⏰' },
-  { id: 'quarterly',  label: 'Trimestral', icon: '🌱' },
-  { id: 'semiannual', label: 'Semestral',  icon: '🌗' },
-  { id: 'annual',     label: 'Anual',      icon: '🎉' },
-  { id: 'cuotas',     label: 'Cuotas',     icon: '💳' },
+// `labelKey` se resuelve con `t()` en el consumidor (los ids son
+// identificadores estables; las labels viven en el namespace `fijos`).
+export const FREQ_OPTIONS: Array<{ id: FreqChoice; labelKey: string; icon: string }> = [
+  { id: 'monthly',    labelKey: 'fijos:frequency.monthly',    icon: '🗓' },
+  { id: 'biweekly',   labelKey: 'fijos:frequency.biweekly',   icon: '🔁' },
+  { id: 'weekly',     labelKey: 'fijos:frequency.weekly',     icon: '⏰' },
+  { id: 'quarterly',  labelKey: 'fijos:frequency.quarterly',  icon: '🌱' },
+  { id: 'semiannual', labelKey: 'fijos:frequency.semiannual', icon: '🌗' },
+  { id: 'annual',     labelKey: 'fijos:frequency.annual',     icon: '🎉' },
+  { id: 'cuotas',     labelKey: 'fijos:kind.installment',     icon: '💳' },
 ]
 
 export const CUOTA_OPTIONS = [3, 6, 12, 18, 24, 36] as const

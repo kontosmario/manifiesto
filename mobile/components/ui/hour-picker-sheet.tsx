@@ -9,6 +9,7 @@
 // new value when a different slot opens.
 
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
 import { HourCarousel } from '@/components/ui/hour-carousel'
 import { triggerHaptic } from '@/lib/haptics'
@@ -40,12 +41,13 @@ export function HourPickerSheet({
   accessibilityLabel,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <ModalCard
       visible={visible}
       title={title}
-      subtitle={subtitle ?? 'Desliza hasta la hora que quieras.'}
+      subtitle={subtitle ?? t('states:hourPicker.sheetSubtitle')}
       onClose={onClose}
     >
       <View style={styles.wrap}>
@@ -65,12 +67,12 @@ export function HourPickerSheet({
             { backgroundColor: theme.colors.primary, opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Listo"
+          accessibilityLabel={t('common:actions.done')}
         >
           <Text
             style={[styles.doneLabel, { color: theme.isDark ? theme.colors.background : '#FFFFFF' }]}
           >
-            Listo
+            {t('common:actions.done')}
           </Text>
         </Pressable>
       </View>

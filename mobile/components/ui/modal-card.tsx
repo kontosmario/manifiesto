@@ -24,6 +24,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height'
 import { triggerHaptic } from '@/lib/haptics'
 import {
@@ -94,6 +95,7 @@ export function ModalCard({
   children,
 }: ModalCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
@@ -265,7 +267,7 @@ export function ModalCard({
     <GestureHandlerRootView style={styles.root}>
       <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
         <Pressable
-          accessibilityLabel="Cerrar"
+          accessibilityLabel={t('common:actions.close')}
           accessibilityRole="button"
           onPress={handleDismiss}
           style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}

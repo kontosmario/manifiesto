@@ -1,6 +1,7 @@
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
+import i18n from '@/lib/i18n'
 
 /**
  * Convierte un row de `monthly_summaries` (ya parseado al shape de
@@ -157,11 +158,12 @@ function pickTopCategory({
   }
   if (top.amount <= 0) return null
 
+  const uncategorized = i18n.t('control:wrapped.topCategory.uncategorized')
   const name =
     top.name ??
     (top.categoryId
-      ? categoryNameById.get(top.categoryId) ?? 'Sin categoría'
-      : 'Sin categoría')
+      ? categoryNameById.get(top.categoryId) ?? uncategorized
+      : uncategorized)
   const share = totalSpent > 0 ? top.amount / totalSpent : 0
   return {
     name,

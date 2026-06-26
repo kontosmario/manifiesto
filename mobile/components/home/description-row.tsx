@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { Chip } from '@/components/ui/chip'
 import { TextField } from '@/components/ui/text-field'
 
@@ -22,16 +23,17 @@ export function DescriptionRow({
   onFocus,
   warning = false,
 }: DescriptionRowProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.root}>
       <TextField
-        label="Descripción"
+        label={t('home:descriptionRow.label')}
         autoCapitalize="sentences"
         autoCorrect={false}
         maxLength={60}
         onChangeText={onChange}
         onFocus={onFocus}
-        placeholder="Ej: Supermercado"
+        placeholder={t('home:descriptionRow.placeholder')}
         returnKeyType="done"
         value={description}
         warning={warning}

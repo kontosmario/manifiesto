@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { triggerHaptic } from '@/lib/haptics'
@@ -41,12 +43,15 @@ import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 // with the "Off" / "Sin meta" sentinel pinned to the right edge so
 // the affordance reads as "slide off" rather than "first option". The
 // 60% floor (guardrail #2) anchors the leftmost step.
-const STEPS: ReadonlyArray<{ pct: number; label: string }> = [
+// label === null → the "off" sentinel; its visible text comes from i18n
+// (`control:dailyGoal.stepSinMeta`) at render time. The percent chips
+// (60–90%) are locale-agnostic numeric labels.
+const STEPS: ReadonlyArray<{ pct: number; label: string | null }> = [
   { pct: 60, label: '60%' },
   { pct: 70, label: '70%' },
   { pct: 80, label: '80%' },
   { pct: 90, label: '90%' },
-  { pct: 100, label: 'Sin meta' },
+  { pct: 100, label: null },
 ] as const
 
 interface DailyGoalSheetProps {
@@ -92,20 +97,20 @@ interface DailyGoalSheetProps {
  */
 function pickGoalSubtitle(stats: DailyGoalSheetProps['userStats']): string {
   if (stats.racha >= 5) {
-    return `Llevas ${stats.racha} días seguidos cerrando bajo cupo. Tu disciplina ya es real — ¿pruebas un techo un poco más ajustado y ves cómo se acelera tu meta del mes?`
+    return i18n.t('control:dailyGoal.subtitleRacha', { days: stats.racha })
   }
   if (stats.closedDays >= 5 && stats.diasGanadores / stats.closedDays >= 0.7) {
     const pct = Math.round((stats.diasGanadores / stats.closedDays) * 100)
-    return `${pct}% de los días del mes los cierras dentro del cupo. Tú ya tienes el control — ponerte una meta más exigente te da el empuje para que el progreso se sienta más rápido.`
+    return i18n.t('control:dailyGoal.subtitleWinRate', { pct })
   }
   if (stats.momentum <= 0.85 && stats.closedDays >= 7) {
     const pct = Math.round((1 - stats.momentum) * 100)
-    return `Tu gasto bajó ${pct}% vs la semana anterior. Buen momento para fijar un techo personal y consolidar el cambio antes de que se afloje.`
+    return i18n.t('control:dailyGoal.subtitleMomentum', { pct })
   }
   if (stats.noSpendCount >= 3) {
-    return `Llevas ${stats.noSpendCount} días sin gasto este mes. Una meta diaria un toque más ajustada te ayuda a sumar más días así, casi sin esfuerzo.`
+    return i18n.t('control:dailyGoal.subtitleNoSpend', { days: stats.noSpendCount })
   }
-  return 'Tu cupo real no cambia — esto es un techo personal que tú eliges para acelerar tu meta del mes.'
+  return i18n.t('control:dailyGoal.subtitleDefault')
 }
 
 function clampPercentToStep(percent: number): number {
@@ -129,6 +134,7 @@ export function DailyGoalSheet({
   inline,
 }: DailyGoalSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const subtitle = useMemo(() => pickGoalSubtitle(userStats), [userStats])
 
   // Resolve the initial selection from the existing buffer settings.
@@ -163,10 +169,10 @@ export function DailyGoalSheet({
   //   · Going from inactive → active (first time): "Activa mi meta"
   //   · Adjusting an existing active meta: "Guardar mi meta"
   const ctaLabel = (() => {
-    if (!dirty) return 'Guardar'
-    if (selectedPct >= 100 && wasActive) return 'Quitar mi meta'
-    if (!wasActive) return 'Activa mi meta'
-    return 'Guardar mi meta'
+    if (!dirty) return t('control:dailyGoal.ctaGuardar')
+    if (selectedPct >= 100 && wasActive) return t('control:dailyGoal.ctaQuitar')
+    if (!wasActive) return t('control:dailyGoal.ctaActivar')
+    return t('control:dailyGoal.ctaGuardarMeta')
   })()
 
   return (
@@ -174,7 +180,7 @@ export function DailyGoalSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title="Mi meta diaria"
+      title={t('control:dailyGoal.title')}
       subtitle={subtitle}
     >
       <View style={styles.body}>
@@ -209,7 +215,9 @@ export function DailyGoalSheet({
               },
             ]}
           >
-            {isGoalActive ? `MI META · ${selectedPct}% DEL CUPO` : 'CUPO REAL DIARIO'}
+            {isGoalActive
+              ? t('control:dailyGoal.heroEyebrowMeta', { pct: selectedPct })
+              : t('control:dailyGoal.heroEyebrowReal')}
           </Animated.Text>
           <Animated.Text
             key={`hero-amount-${goalAmount}`}
@@ -232,16 +240,18 @@ export function DailyGoalSheet({
             {isGoalActive ? (
               <>
                 <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
-                  Cupo real {currencyFormatter.format(safeCupo)}
+                  {t('control:dailyGoal.heroCupoReal', {
+                    amount: currencyFormatter.format(safeCupo),
+                  })}
                 </Text>
                 <View style={[styles.heroFootDot, { backgroundColor: theme.colors.textMuted }]} />
                 <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
-                  {remainingCycleDays} {remainingCycleDays === 1 ? 'día' : 'días'} al cobro
+                  {t('control:dailyGoal.heroDiasAlCobro', { count: remainingCycleDays })}
                 </Text>
               </>
             ) : (
               <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
-                Sin meta extra · juegas con todo tu cupo
+                {t('control:dailyGoal.heroSinMeta')}
               </Text>
             )}
           </View>
@@ -269,8 +279,8 @@ export function DailyGoalSheet({
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={
                   isOff
-                    ? 'Sin meta diaria'
-                    : `Meta diaria al ${step.pct}% del cupo real`
+                    ? t('control:dailyGoal.stepperA11ySinMeta')
+                    : t('control:dailyGoal.stepperA11yMeta', { pct: step.pct })
                 }
                 style={({ pressed }) => [
                   styles.stepperCell,
@@ -296,7 +306,7 @@ export function DailyGoalSheet({
                   ]}
                   numberOfLines={1}
                 >
-                  {step.label}
+                  {step.label ?? t('control:dailyGoal.stepSinMeta')}
                 </Text>
               </Pressable>
             )
@@ -343,13 +353,14 @@ export function DailyGoalSheet({
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: theme.colors.text }]}
               >
-                Si cierras cada día con tu meta, llegas al cobro con{' '}
+                {t('control:dailyGoal.impactActivePrefix')}
                 <Text style={[styles.impactStrong, { color: theme.colors.primary }]}>
                   {formatMoneyShort(projectedCycleSaving)}
-                </Text>{' '}
-                extra para tu ahorro ({currencyFormatter.format(dailySaving)}/día ×{' '}
-                {remainingCycleDays}{' '}
-                {remainingCycleDays === 1 ? 'día' : 'días'}).
+                </Text>
+                {t('control:dailyGoal.impactActiveSuffix', {
+                  count: remainingCycleDays,
+                  daily: currencyFormatter.format(dailySaving),
+                })}
               </Animated.Text>
             ) : (
               <Animated.Text
@@ -358,8 +369,7 @@ export function DailyGoalSheet({
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: theme.colors.textMuted }]}
               >
-                Activa una meta diaria un poco más exigente y vas a ver
-                cómo el ahorro del mes se acelera.
+                {t('control:dailyGoal.impactEmpty')}
               </Animated.Text>
             )}
           </View>
@@ -400,11 +410,11 @@ export function DailyGoalSheet({
               }}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Quitar mi meta diaria"
+              accessibilityLabel={t('control:dailyGoal.exitRampA11y')}
               style={styles.exitRamp}
             >
               <Text style={[styles.exitRampText, { color: theme.colors.textMuted }]}>
-                Sin meta diaria
+                {t('control:dailyGoal.exitRamp')}
               </Text>
             </Pressable>
           ) : null}

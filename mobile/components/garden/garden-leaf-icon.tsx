@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { FernMark } from '@/components/billing/fern-mark'
 import {
@@ -23,6 +24,7 @@ interface GardenLeafIconProps {
  */
 function GardenLeafIconImpl({ data, onPress }: GardenLeafIconProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.94 })
   const surface = circleButtonSurface(theme.isDark, theme.colors)
   const badgeText = String(data.currentStreak)
@@ -33,7 +35,7 @@ function GardenLeafIconImpl({ data, onPress }: GardenLeafIconProps) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Tu jardín: racha de ${data.currentStreak} días`}
+      accessibilityLabel={t('garden:leafIcon.a11y', { count: data.currentStreak })}
     >
       <Animated.View style={[styles.container, { backgroundColor: surface }, press.animatedStyle]}>
         <FernMark variant={theme.isDark ? 'mint' : 'forest'} size={24} />

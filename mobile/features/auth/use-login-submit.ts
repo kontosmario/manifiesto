@@ -9,6 +9,7 @@ import {
   type AuthMode,
 } from '@/features/auth/auth-flow'
 import { triggerHaptic } from '@/lib/haptics'
+import i18n from '@/lib/i18n'
 import { getErrorMessage } from '@/utils/error-message'
 import { isEmailNotConfirmedError } from '@/features/auth/email-confirmation-error'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
@@ -28,7 +29,6 @@ import { authFlowLog, resetAuthFlowTimer } from '@/lib/auth-flow-logger'
  * ser un link separado fuera del error-flow que el usuario clickea
  * proactivamente, lo que elimina el oráculo pasivo.
  */
-const GENERIC_SIGNIN_ERROR = 'Email o contraseña incorrectos.'
 
 /**
  * Trata como "wrong-credentials" cualquier signal de Supabase que pueda
@@ -129,7 +129,7 @@ export function useLoginSubmit({
     })
 
     if ('error' in validation) {
-      onErrorMessage(validation.error ?? 'No pudimos validar tus datos.')
+      onErrorMessage(validation.error ?? i18n.t('auth:errors.validationFailed'))
       await triggerHaptic('warning')
       return
     }
@@ -243,9 +243,9 @@ export function useLoginSubmit({
       // (network, captcha, rate-limit) keep their specific copy because
       // they're useful to the user and don't leak account existence.
       if (mode === 'sign-in' && isUserFacingCredentialError(error)) {
-        onErrorMessage(GENERIC_SIGNIN_ERROR)
+        onErrorMessage(i18n.t('auth:errors.genericSignIn'))
       } else {
-        onErrorMessage(getErrorMessage(error, 'No pudimos completar el acceso.'))
+        onErrorMessage(getErrorMessage(error, i18n.t('auth:errors.accessFailed')))
       }
     } finally {
       submissionLockRef.current = false

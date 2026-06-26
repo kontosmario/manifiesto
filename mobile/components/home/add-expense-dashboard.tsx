@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
@@ -13,6 +14,7 @@ import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import type { Category } from '@/features/categories/use-categories'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { formatMissingFields } from '@/lib/form-missing-fields'
+import i18n from '@/lib/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -80,6 +82,7 @@ export function AddExpenseDashboard({
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [numpadVisible, setNumpadVisible] = useState(false)
 
   // Flagged once the user nudges Guardar with required fields empty.
@@ -145,7 +148,7 @@ export function AddExpenseDashboard({
             ]}
           >
             <Text style={[styles.forDatePillLabel, { color: theme.colors.textMuted }]}>
-              REGISTRANDO PARA
+              {t('home:addExpenseDashboard.loggingFor')}
             </Text>
             <Text style={[styles.forDatePillValue, { color: theme.colors.text }]}>
               {formatForDateLabel(forDate)}
@@ -222,7 +225,7 @@ export function AddExpenseDashboard({
               the AppButton's own disabled affordance with the in-flight
               flag (`loading`) being the only hard-block. */}
           <AppButton
-            label="Guardar gasto"
+            label={t('home:addExpenseDashboard.saveExpense')}
             variant="primary"
             loading={isBusy}
             disabled={false}
@@ -273,8 +276,8 @@ function formatForDateLabel(date: Date): string {
   const diffDays = Math.round(
     (now.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
   )
-  if (diffDays === 0) return 'hoy'
-  if (diffDays === 1) return 'ayer'
+  if (diffDays === 0) return i18n.t('home:addExpenseDashboard.today')
+  if (diffDays === 1) return i18n.t('home:addExpenseDashboard.yesterday')
   const weekday = WEEKDAY_LABELS[date.getDay()]
   const month = MONTH_LABELS[date.getMonth()]
   return `${weekday} ${date.getDate()} ${month}`

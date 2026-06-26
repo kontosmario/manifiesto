@@ -1,1 +1,155 @@
-{}
+{
+  "chrome": {
+    "title": {
+      "name": "Tu nombre",
+      "avatar": "Tu avatar",
+      "household": "Tu hogar",
+      "income": "Tus ingresos",
+      "almostDone": "Casi listo",
+      "savings": "Tu ahorro"
+    },
+    "back": "Volver al paso anterior"
+  },
+  "exitDialog": {
+    "title": "¿Salir del setup?",
+    "message": "Tu progreso queda guardado. Puedes cerrar la sesión y volver al inicio cuando quieras.",
+    "stay": "Seguir aquí",
+    "logout": "Cerrar sesión"
+  },
+  "cta": {
+    "confirming": "Confirmando…",
+    "finishing": "Terminando…",
+    "confirmAndJoin": "Confirmar y unirme",
+    "finishAndStart": "Terminar y empezar",
+    "next": "Siguiente"
+  },
+  "errors": {
+    "logoutTitle": "No pudimos cerrar la sesión",
+    "missingFamilyTitle": "Falta la familia",
+    "missingFamilyMessage": "Crea o uníte a una familia antes de terminar.",
+    "finishTitle": "No pudimos terminar el setup",
+    "saveTitle": "No pudimos guardar",
+    "saveNameTitle": "No pudimos guardar tu nombre",
+    "saveAvatarTitle": "No pudimos guardar el avatar",
+    "noActiveSession": "No hay sesión activa para completar el onboarding."
+  },
+  "welcome": {
+    "greeting": "Hola 👋",
+    "greetingRejoin": "Hola de nuevo 👋",
+    "subcopy": "Cuéntanos cómo quieres que te llamemos.",
+    "closedByOwnerBanner": "El dueño de tu hogar anterior decidió cerrarlo. Tus gastos compartidos quedan allí — aquí empiezas un hogar nuevo (propio o sumándote con un código).",
+    "rejoinBanner": "Esperamos que te haya sido agradable la experiencia en tu hogar anterior. A veces los grupos cambian — armemos uno nuevo contigo.",
+    "nameLabel": "Tu nombre",
+    "namePlaceholder": "Ej: Mario",
+    "nameHelper": "Los emojis y caracteres especiales se filtran automáticamente."
+  },
+  "avatar": {
+    "title": "Elige tu avatar",
+    "subcopy": "Lo vas a ver en tu perfil y en la actividad de la familia.",
+    "gridEyebrow": "TODOS LOS AVATARES",
+    "gridCount": "{{count}} opciones"
+  },
+  "family": {
+    "titleStart": "Empecemos",
+    "titleFamily": "Familia",
+    "subcopyMode": "¿Cómo vas a usar Manifiesto?",
+    "subcopyClosedByOwner": "Tu hogar anterior fue cerrado. Armemos uno propio o súmate a otro con su código.",
+    "subcopyRejoin": "Puedes empezar un hogar nuevo o sumarte a otro con su código.",
+    "subcopyDefault": "Empieza una familia o súmate a una existente.",
+    "hintClosedByOwner": "Como el dueño cerró el hogar, sus datos compartidos ya no están disponibles — arrancamos limpios.",
+    "hintRejoin": "Tus gastos y metas viejos quedan con tu hogar anterior — este arranque es desde cero.",
+    "confirmTitleSolo": "¡Listo! Tu cuenta está creada.",
+    "confirmTitleCreated": "¡Tu familia ya está creada!",
+    "confirmTitleJoined": "¡Listo, te sumaste!",
+    "confirmHintCreated": "Cuando quieras invitar a alguien, genera un código desde Ajustes.",
+    "optionSoloTitle": "Yo solo",
+    "optionSoloMeta": "Gestiono mi plata solo.",
+    "optionSoloA11y": "Usar la app yo solo",
+    "optionSharedTitle": "Con mi familia o pareja",
+    "optionSharedMeta": "Compartimos los gastos.",
+    "optionSharedA11y": "Usar la app con mi familia o pareja",
+    "optionCreateTitle": "Crear nueva",
+    "optionCreateMeta": "Empezamos con un código nuevo.",
+    "optionCreateA11y": "Crear nueva familia",
+    "optionJoinTitle": "Unirme con código",
+    "optionJoinMeta": "Pega el código que te pasaron.",
+    "optionJoinA11y": "Unirme con código",
+    "back": "Volver",
+    "codeLabel": "Código",
+    "codePlaceholder": "ABCD12",
+    "codeA11y": "Código de familia",
+    "join": "Unirme",
+    "joining": "Uniendo…",
+    "errorCreateFamily": "No pudimos crear la familia",
+    "errorCreateAccount": "No pudimos crear tu cuenta",
+    "errorInvalidCodeTitle": "Código inválido",
+    "errorInvalidCodeMessage": "Ingresa el código que te compartieron.",
+    "errorValidateCode": "No pudimos validar el código"
+  },
+  "familySummary": {
+    "title": "La familia",
+    "subcopy": "Esto es lo que vas a encontrar al unirte. Confirma si todo se ve bien.",
+    "householdIncomeEyebrow": "INGRESO MENSUAL DEL HOGAR",
+    "contributionDelta": "+ {{contribution}} tu aporte = {{total}}",
+    "noContribution": "No vas a aportar al ingreso del hogar.",
+    "membersEyebrow": "MIEMBROS · {{count}}",
+    "noName": "Sin nombre",
+    "ownerSuffix": "  · dueño",
+    "youName": "Tú",
+    "youSuffix": " · tú",
+    "willContribute": "Vas a aportar {{amount}} /mes",
+    "wontContribute": "No vas a aportar",
+    "activeGoalEyebrow": "META ACTIVA",
+    "goalProgress": "Verás el avance al unirte."
+  },
+  "income": {
+    "title": "Tu sueldo base",
+    "subcopy": "Lo usamos para calcular tu presupuesto del día.",
+    "amountLabel": "Sueldo mensual",
+    "cycleEyebrow": "TU CICLO DE COBRO",
+    "cycleHint": "Siempre puedes editarlo desde Ajustes."
+  },
+  "incomeContribution": {
+    "title": "¿Aportas al ingreso del hogar?",
+    "subcopy": "Si tienes un sueldo o ingreso, lo sumamos al total de la familia. Si no (un hijo, pareja sin trabajo, etc), también está bien.",
+    "yes": "Sí, aporto",
+    "no": "No aporto",
+    "incomeEyebrow": "TU INGRESO MENSUAL",
+    "amountLabel": "Tu sueldo mensual",
+    "hintContributes": "Se suma al ingreso total de la familia. Puedes editarlo desde Ajustes cuando quieras.",
+    "infoNoContribute": "Listo — no se suma nada al ingreso del hogar. Si en algún momento empiezas a aportar, puedes activarlo desde Ajustes."
+  },
+  "savings": {
+    "title": "¿Quieres arrancar con una meta?",
+    "subcopy": "Puedes agregarla después si prefieres.",
+    "percentEyebrow": "% DEL SUELDO A AHORRAR",
+    "savePrefix": "Ahorrás ",
+    "savePerMonth": " por mes",
+    "noAutoSavings": "Sin ahorro automático — lo puedes activar luego.",
+    "enterIncomeFirst": "Ingresa tu sueldo en el paso anterior para ver el equivalente.",
+    "createGoalTitle": "Crear mi primera meta ahora",
+    "createGoalMeta": "Ej: viaje, mudanza, colchón.",
+    "createGoalA11y": "Crear mi primera meta ahora",
+    "goalTitleLabel": "Título",
+    "goalTitlePlaceholder": "Ej: Vacaciones",
+    "goalTitleA11y": "Título de la meta",
+    "iconEyebrow": "ELIGE UN ÍCONO",
+    "iconScrollA11y": "Seleccionar ícono — desliza para ver más",
+    "iconItemA11y": "Ícono {{glyph}}",
+    "amountLabel": "Monto objetivo",
+    "monthsEyebrow": "EN CUÁNTOS MESES",
+    "percentA11y": "{{percent}} por ciento",
+    "monthsChip_one": "{{count}} mes",
+    "monthsChip_other": "{{count}} meses",
+    "monthsA11y_one": "{{count}} mes",
+    "monthsA11y_other": "{{count}} meses"
+  },
+  "success": {
+    "eyebrow": "Ya estás en Manifiesto",
+    "title": "¡Listo!",
+    "titleNamed": "¡Listo, {{name}}!",
+    "subtitleSolo": "Tu espacio personal ya está armado. Vamos a Home.",
+    "subtitleShared": "Tu familia ya está armada. Vamos a Home.",
+    "cta": "Empezar"
+  }
+}

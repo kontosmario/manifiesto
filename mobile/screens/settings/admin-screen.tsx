@@ -6,6 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { Screen } from '@/components/ui/screen'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
@@ -17,14 +18,15 @@ import {
   type AdminAccess,
 } from '@/features/admin/use-super-admin'
 
-/** Estado de acceso → chip claro (distingue quién paga de quién está cubierto). */
-const ACCESS_CHIP: Record<AdminAccess, { label: string; state: SemanticState }> = {
-  mvp: { label: 'MVP · de por vida', state: 'positive' },
-  purchaser: { label: 'Titular · paga el plan', state: 'positive' },
-  covered: { label: 'Cubierto por el hogar', state: 'caution' },
-  comped: { label: 'Cortesía', state: 'neutral' },
-  trial: { label: 'En prueba', state: 'neutral' },
-  none: { label: 'Sin plan', state: 'neutral' },
+/** Estado de acceso → chip claro (distingue quién paga de quién está cubierto).
+ *  El label se resuelve por i18n vía `settings:adminChip.<access>`. */
+const ACCESS_CHIP_STATE: Record<AdminAccess, SemanticState> = {
+  mvp: 'positive',
+  purchaser: 'positive',
+  covered: 'caution',
+  comped: 'neutral',
+  trial: 'neutral',
+  none: 'neutral',
 }
 
 /**
@@ -34,6 +36,7 @@ const ACCESS_CHIP: Record<AdminAccess, { label: string; state: SemanticState }> 
  */
 export function AdminScreen() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isSuperAdmin = useIsSuperAdmin()
   const [query, setQuery] = useState('')
   const search = useAdminSearchUsers(query)
@@ -44,10 +47,10 @@ export function AdminScreen() {
 
   if (!isSuperAdmin) {
     return (
-      <Screen title="Super admin" canGoBack>
+      <Screen title={t('settings:admin.title')} canGoBack>
         <View style={styles.empty}>
           <Text style={[theme.typography.body, { color: theme.colors.textMuted }]}>
-            No tienes acceso a esta sección.
+            {t('settings:admin.noAccess')}
           </Text>
         </View>
       </Screen>
@@ -57,8 +60,8 @@ export function AdminScreen() {
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Super admin"
-      subtitle="Busca un usuario por email y activa su acceso MVP (completo, de por vida)."
+      title={t('settings:admin.title')}
+      subtitle={t('settings:admin.subtitle')}
       canGoBack
       scrollable
     >
@@ -66,12 +69,12 @@ export function AdminScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Buscar por email…"
+          placeholder={t('settings:admin.searchPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          accessibilityLabel="Buscar usuario por email"
+          accessibilityLabel={t('settings:admin.searchA11y')}
           style={[
             styles.input,
             theme.typography.body,
@@ -87,21 +90,21 @@ export function AdminScreen() {
 
         {setMvp.isError ? (
           <Text style={[theme.typography.caption, { color: theme.colors.danger }]}>
-            No se pudo actualizar. Reintenta.
+            {t('settings:admin.updateError')}
           </Text>
         ) : null}
 
         {trimmed.length < 2 ? (
           <Text style={[theme.typography.caption, styles.hint, { color: theme.colors.textMuted }]}>
-            Escribe al menos 2 caracteres.
+            {t('settings:admin.minChars')}
           </Text>
         ) : search.isFetching ? (
           <Text style={[theme.typography.caption, styles.hint, { color: theme.colors.textMuted }]}>
-            Buscando…
+            {t('settings:admin.searching')}
           </Text>
         ) : results.length === 0 ? (
           <Text style={[theme.typography.caption, styles.hint, { color: theme.colors.textMuted }]}>
-            Sin resultados para "{trimmed}".
+            {t('settings:admin.noResults', { query: trimmed })}
           </Text>
         ) : null}
 
@@ -128,18 +131,19 @@ export function AdminScreen() {
               {(() => {
                 // Defensivo: cualquier `access` desconocido (p.ej. datos viejos
                 // en cache) cae a 'none' en vez de crashear.
-                const chip = ACCESS_CHIP[u.access] ?? ACCESS_CHIP.none
-                const t = getStateTokens(chip.state, theme)
+                const chipState = ACCESS_CHIP_STATE[u.access] ?? ACCESS_CHIP_STATE.none
+                const chipLabel = t(`settings:adminChip.${ACCESS_CHIP_STATE[u.access] ? u.access : 'none'}`)
+                const tokens = getStateTokens(chipState, theme)
                 return (
                   <View style={styles.statusRow}>
                     <View
                       style={[
                         styles.chip,
-                        { backgroundColor: t.bg, borderColor: t.border },
+                        { backgroundColor: tokens.bg, borderColor: tokens.border },
                       ]}
                     >
-                      <Text style={[styles.chipText, { color: t.fg }]}>
-                        {chip.label}
+                      <Text style={[styles.chipText, { color: tokens.fg }]}>
+                        {chipLabel}
                       </Text>
                     </View>
                   </View>
@@ -150,7 +154,7 @@ export function AdminScreen() {
                   style={[styles.sub, { color: theme.colors.textMuted }]}
                   numberOfLines={1}
                 >
-                  Paga {u.purchaserEmail}
+                  {t('settings:admin.paidBy', { email: u.purchaserEmail })}
                 </Text>
               ) : u.displayName ? (
                 <Text

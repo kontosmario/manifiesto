@@ -10,6 +10,7 @@ import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses
 import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/expenses/category-ranking'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
+import i18n from '@/lib/i18n'
 import { getErrorMessage } from '@/utils/error-message'
 import { parsePrice, serializePrice } from '@/utils/money'
 
@@ -130,7 +131,7 @@ export function useAddExpenseController({
 
   const showError = (error: unknown, fallback: string) => {
     void triggerHaptic('error')
-    Alert.alert('Algo salió mal', getErrorMessage(error, fallback))
+    Alert.alert(i18n.t('gastos:errors.somethingWrong'), getErrorMessage(error, fallback))
   }
 
   // Human-readable list of required fields the user still has to
@@ -139,9 +140,9 @@ export function useAddExpenseController({
   // a disabled-looking Guardar button via formatMissingFields.
   const missingFields = useMemo<string[]>(() => {
     const missing: string[] = []
-    if (!hasValidAmount) missing.push('monto')
-    if (description.trim().length === 0) missing.push('descripción')
-    if (!selectedCategoryId) missing.push('categoría')
+    if (!hasValidAmount) missing.push(i18n.t('gastos:import.field.amount'))
+    if (description.trim().length === 0) missing.push(i18n.t('gastos:import.field.description'))
+    if (!selectedCategoryId) missing.push(i18n.t('gastos:import.field.category'))
     return missing
   }, [hasValidAmount, description, selectedCategoryId])
 
@@ -172,7 +173,7 @@ export function useAddExpenseController({
       },
       {
         onError: (error: unknown) => {
-          showError(error, 'No se pudo crear el gasto.')
+          showError(error, i18n.t('gastos:errors.createFailed'))
         },
         onSuccess: () => {
           void triggerHaptic('success')

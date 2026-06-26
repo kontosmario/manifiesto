@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -19,12 +20,12 @@ interface ControlV2IngresosCardProps {
 
 const KIND_META: Record<
   IncomeEventKind,
-  { label: string; icon: 'swap-horiz' | 'workspace-premium' | 'card-giftcard' | 'attach-money' }
+  { labelKey: string; icon: 'swap-horiz' | 'workspace-premium' | 'card-giftcard' | 'attach-money' }
 > = {
-  transfer: { label: 'Transferencia', icon: 'swap-horiz' },
-  bonus: { label: 'Bono', icon: 'workspace-premium' },
-  gift: { label: 'Regalo', icon: 'card-giftcard' },
-  other: { label: 'Ingreso', icon: 'attach-money' },
+  transfer: { labelKey: 'control:ingresos.kindTransfer', icon: 'swap-horiz' },
+  bonus: { labelKey: 'control:ingresos.kindBonus', icon: 'workspace-premium' },
+  gift: { labelKey: 'control:ingresos.kindGift', icon: 'card-giftcard' },
+  other: { labelKey: 'control:ingresos.kindOther', icon: 'attach-money' },
 }
 
 const MAX_VISIBLE = 3
@@ -60,6 +61,7 @@ function ControlV2IngresosCardImpl({
   diasMes,
 }: ControlV2IngresosCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { total, movimientos } = ingresos
   if (total <= 0 || movimientos.length === 0) return null
 
@@ -84,7 +86,7 @@ function ControlV2IngresosCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={tokens.fg} glow={tokens.fg} />
           <Text style={[styles.eyebrow, { color: tokens.fg }]} numberOfLines={1}>
-            ENTRÓ ESTE CICLO
+            {t('control:ingresos.eyebrow')}
           </Text>
           <View
             style={[
@@ -104,15 +106,10 @@ function ControlV2IngresosCardImpl({
         </View>
 
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          Además de tu sueldo entraron{' '}
-          <Text style={[styles.headlineStrong, { color: tokens.fg }]}>
-            {formatMoney(total)}
-          </Text>{' '}
-          este ciclo — suman{' '}
-          <Text style={styles.headlineStrong}>
-            +{formatMoneyShort(cupoExtraDiario)}/día
-          </Text>{' '}
-          a tu cupo.
+          {t('control:ingresos.headline', {
+            total: formatMoney(total),
+            perDia: formatMoneyShort(cupoExtraDiario),
+          })}
         </Text>
 
         <View
@@ -145,14 +142,14 @@ function ControlV2IngresosCardImpl({
                     style={[styles.rowTitle, { color: theme.colors.text }]}
                     numberOfLines={1}
                   >
-                    {mov.descripcion?.trim() || meta.label}
+                    {mov.descripcion?.trim() || t(meta.labelKey)}
                   </Text>
                   <Text
                     style={[styles.rowSub, { color: theme.colors.textMuted }]}
                     numberOfLines={1}
                   >
                     {formatFechaCorta(mov.fecha)}
-                    {mov.descripcion?.trim() ? ` · ${meta.label}` : ''}
+                    {mov.descripcion?.trim() ? ` · ${t(meta.labelKey)}` : ''}
                   </Text>
                 </View>
                 <Text
@@ -175,7 +172,7 @@ function ControlV2IngresosCardImpl({
               ]}
             >
               <Text style={[styles.moreText, { color: theme.colors.textMuted }]}>
-                +{ocultos} {ocultos === 1 ? 'movimiento más' : 'movimientos más'}
+                {t('control:ingresos.more', { count: ocultos })}
               </Text>
             </View>
           ) : null}

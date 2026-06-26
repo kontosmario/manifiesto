@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import type { UserPersona } from '@/features/insights/persona'
 
 export interface AdvisorPreferences {
@@ -106,7 +107,7 @@ export function useUpdateAdvisorPreferences() {
     mutationFn: async (patch) => {
       const { data: auth } = await supabase.auth.getUser()
       const userId = auth.user?.id
-      if (!userId) throw new Error('Sesión no disponible.')
+      if (!userId) throw new Error(i18n.t('insights:preferences.noSession'))
 
       const { data, error } = await supabase
         .from('user_advisor_prefs')

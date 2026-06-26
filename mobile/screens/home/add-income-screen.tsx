@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmountCard } from '@/components/home/amount-card'
@@ -31,7 +32,7 @@ interface AddIncomeScreenProps {
 
 interface KindMeta {
   key: IncomeEventKind
-  label: string
+  labelKey: string
   icon: keyof typeof MaterialIcons.glyphMap
 }
 
@@ -39,21 +40,21 @@ interface KindMeta {
 // while covering the realistic mental model. Open-text `description`
 // captures the rest.
 const KINDS: KindMeta[] = [
-  { key: 'transfer', label: 'Transferencia',  icon: 'swap-horiz' },
-  { key: 'bonus',    label: 'Bono',           icon: 'workspace-premium' },
-  { key: 'gift',     label: 'Regalo',         icon: 'card-giftcard' },
-  { key: 'other',    label: 'Otro',           icon: 'attach-money' },
+  { key: 'transfer', labelKey: 'gastos:import.incomeKind.transfer',  icon: 'swap-horiz' },
+  { key: 'bonus',    labelKey: 'gastos:import.incomeKind.bonus',     icon: 'workspace-premium' },
+  { key: 'gift',     labelKey: 'gastos:import.incomeKind.gift',      icon: 'card-giftcard' },
+  { key: 'other',    labelKey: 'gastos:import.incomeKind.other',     icon: 'attach-money' },
 ]
 
 const SUGGESTED_DELTAS = [5000, 15000, 30000, 50000, 100000]
 
-const QUICK_DESCRIPTIONS = [
-  'Transferencia',
-  'Aguinaldo',
-  'Bono trabajo',
-  'Regalo cumple',
-  'Freelance',
-  'Reintegro',
+const QUICK_DESCRIPTION_KEYS = [
+  'gastos:addIncome.quickDescriptions.transfer',
+  'gastos:addIncome.quickDescriptions.bonus13th',
+  'gastos:addIncome.quickDescriptions.workBonus',
+  'gastos:addIncome.quickDescriptions.birthdayGift',
+  'gastos:addIncome.quickDescriptions.freelance',
+  'gastos:addIncome.quickDescriptions.refund',
 ]
 
 /**
@@ -67,8 +68,13 @@ const QUICK_DESCRIPTIONS = [
  */
 export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const headerPalette = buildScreenHeaderPalette(theme)
+  const quickDescriptions = useMemo(
+    () => QUICK_DESCRIPTION_KEYS.map((key) => t(key)),
+    [t],
+  )
 
   const [rawAmount, setRawAmount] = useState('')
   // No pre-selected kind. The user must explicitly pick transfer /
@@ -97,15 +103,15 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
 
   const missingFields = useMemo<string[]>(() => {
     const missing: string[] = []
-    if (!hasValidAmount) missing.push('monto')
-    if (description.trim().length === 0) missing.push('descripción')
-    if (!kind) missing.push('tipo de ingreso')
+    if (!hasValidAmount) missing.push(t('gastos:import.field.amount'))
+    if (description.trim().length === 0) missing.push(t('gastos:import.field.description'))
+    if (!kind) missing.push(t('gastos:addIncome.field.incomeType'))
     return missing
-  }, [hasValidAmount, description, kind])
+  }, [hasValidAmount, description, kind, t])
   const canSubmit = missingFields.length === 0
-  const flagAmount = isFlagged && missingFields.includes('monto')
-  const flagDescription = isFlagged && missingFields.includes('descripción')
-  const flagKind = isFlagged && missingFields.includes('tipo de ingreso')
+  const flagAmount = isFlagged && missingFields.includes(t('gastos:import.field.amount'))
+  const flagDescription = isFlagged && missingFields.includes(t('gastos:import.field.description'))
+  const flagKind = isFlagged && missingFields.includes(t('gastos:addIncome.field.incomeType'))
 
   const eventDate = useMemo(() => {
     const d = new Date()
@@ -147,7 +153,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const handlePrimaryPress = () => {
     if (!canSubmit) {
       void triggerHaptic('warning')
-      setHighlightToken((t) => t + 1)
+      setHighlightToken((prev) => prev + 1)
       return
     }
     handleSubmit()
@@ -173,9 +179,9 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         },
         onError: (err: unknown) => {
           void triggerHaptic('error')
-          const msg = getErrorMessage(err, 'Reintenta en un momento.')
+          const msg = getErrorMessage(err, t('gastos:addIncome.retryLater'))
           setSubmitErrorMessage(msg)
-          Alert.alert('No pudimos guardar', msg)
+          Alert.alert(t('gastos:addIncome.saveErrorTitle'), msg)
         },
       },
     )
@@ -186,7 +192,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
       canGoBack
       showGrabHandle
       contentContainerStyle={styles.screenContent}
-      title="Agregar ingreso"
+      title={t('gastos:addIncome.title')}
       titleColor={headerPalette.titleColor}
     >
       {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
@@ -206,10 +212,10 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
               ]}
             >
               <Text style={[styles.forDatePillLabel, { color: theme.colors.textMuted }]}>
-                REGISTRANDO PARA
+                {t('gastos:addIncome.registeringFor')}
               </Text>
               <Text style={[styles.forDatePillValue, { color: theme.colors.text }]}>
-                {dayOffset === 1 ? 'ayer' : 'anteayer'}
+                {dayOffset === 1 ? t('gastos:addIncome.yesterdayLower') : t('gastos:addIncome.dayBeforeLower')}
               </Text>
             </View>
           </RiseView>
@@ -220,7 +226,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
             amount={displayAmount}
             isActive={numpadVisible}
             onPress={handleOpenNumpad}
-            label="Monto del ingreso"
+            label={t('gastos:import.row.incomeAmount')}
             warning={flagAmount}
           />
         </RiseView>
@@ -249,7 +255,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                 },
               ]}
             >
-              {flagKind ? 'Elige de dónde viene' : '¿De dónde?'}
+              {flagKind ? t('gastos:addIncome.fromWhereFlagged') : t('gastos:addIncome.fromWhere')}
             </Text>
             <View style={styles.kindGrid}>
               {KINDS.map((k) => {
@@ -278,7 +284,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                     ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
-                    accessibilityLabel={k.label}
+                    accessibilityLabel={t(k.labelKey)}
                   >
                     <View
                       style={[
@@ -311,7 +317,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                         },
                       ]}
                     >
-                      {k.label}
+                      {t(k.labelKey)}
                     </Text>
                   </Pressable>
                 )
@@ -324,7 +330,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
           <DescriptionRow
             description={description}
             onChange={setDescription}
-            quickSuggestions={QUICK_DESCRIPTIONS}
+            quickSuggestions={quickDescriptions}
             onSelectSuggestion={handleSelectDescriptionSuggestion}
             warning={flagDescription}
           />
@@ -340,7 +346,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                 { color: theme.colors.textMuted },
               ]}
             >
-              ¿Cuándo?
+              {t('gastos:addIncome.when')}
             </Text>
             <ScrollView
               horizontal
@@ -349,13 +355,13 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
               contentContainerStyle={styles.dayRow}
             >
               {([
-                { offset: 0, label: 'Hoy' },
-                { offset: 1, label: 'Ayer' },
-                { offset: 2, label: 'Anteayer' },
-              ] as const).map(({ offset, label }) => (
+                { offset: 0, labelKey: 'gastos:addIncome.dayChips.today' },
+                { offset: 1, labelKey: 'gastos:addIncome.dayChips.yesterday' },
+                { offset: 2, labelKey: 'gastos:addIncome.dayChips.dayBefore' },
+              ] as const).map(({ offset, labelKey }) => (
                 <Chip
                   key={offset}
-                  label={label}
+                  label={t(labelKey)}
                   isActive={dayOffset === offset}
                   onPress={() => handleSelectDayOffset(offset)}
                 />
@@ -373,7 +379,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         <RiseView delay={dayOffset !== 0 ? 360 : 300}>
           <View style={[styles.footer, { borderTopColor: theme.colors.line }]}>
             <AppButton
-              label="Guardar ingreso"
+              label={t('gastos:addIncome.save')}
               variant="primary"
               loading={createMutation.isPending}
               disabled={false}

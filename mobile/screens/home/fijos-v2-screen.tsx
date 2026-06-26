@@ -1,4 +1,5 @@
 import { Alert, RefreshControl, StyleSheet, View, type ScrollView } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
@@ -55,6 +56,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
   useScreenLifecycleLog('Fijos')
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Auto-start the Fijos guided tour on first visit. No-op once seen.
   useScreenTour(FIJOS_TOUR)
   // ScrollView ref so the tour can auto-scroll to each step's target.
@@ -123,17 +125,17 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         onError: (error: unknown) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos revertir el pago',
+            t('fijos:alerts.revertFailedTitle'),
             getErrorMessage(error, errorMessages.server),
           )
         },
         onSuccess: () => {
           void triggerHaptic('success')
-          toast.info('Pago revertido.')
+          toast.info(t('fijos:toast.paymentReverted'))
         },
       })
     },
-    [revertPaymentMutation],
+    [revertPaymentMutation, t],
   )
 
   /**
@@ -178,20 +180,20 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
    */
   const showPaySuccessToast = useCallback(
     (fixedExpenseId: string, fijoName: string) => {
-      toast.success(`Pago de ${fijoName} registrado`, {
-        actionLabel: 'Deshacer',
+      toast.success(t('fijos:toast.paymentRecorded', { name: fijoName }), {
+        actionLabel: t('fijos:toast.undo'),
         durationMs: 5000,
         onAction: () => {
           const paymentId = findLatestRealPaymentId(fixedExpenseId)
           if (!paymentId) {
-            toast.error('No pudimos deshacer todavía — prueba de nuevo en 1s.')
+            toast.error(t('fijos:toast.undoNotReadyYet'))
             return
           }
           handleRevertPaid(paymentId)
         },
       })
     },
-    [findLatestRealPaymentId, handleRevertPaid],
+    [findLatestRealPaymentId, handleRevertPaid, t],
   )
 
   // Sheet de confirmación de precio (2do+ pago). Vivo en estado local
@@ -248,7 +250,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
             onError: (error: unknown) => {
               void triggerHaptic('error')
               Alert.alert(
-                'No pudimos registrar el pago',
+                t('fijos:alerts.recordFailedTitle'),
                 getErrorMessage(error, errorMessages.server),
               )
             },
@@ -263,7 +265,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       // 2do+ pago: abrir sheet de confirmación de precio.
       setPaymentSheet({ visible: true, fixedExpenseId })
     },
-    [isFirstPayment, recordPaymentMutation, controller.allItems, showPaySuccessToast],
+    [isFirstPayment, recordPaymentMutation, controller.allItems, showPaySuccessToast, t],
   )
 
   // Cerrar el sheet sin disparar mutation.
@@ -287,7 +289,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
           onError: (error: unknown) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos registrar el pago',
+              t('fijos:alerts.recordFailedTitle'),
               getErrorMessage(error, errorMessages.server),
             )
           },
@@ -305,6 +307,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       recordPaymentMutation,
       controller.allItems,
       showPaySuccessToast,
+      t,
     ],
   )
 
@@ -334,16 +337,19 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
   const handleDelete = useCallback(
     (fixedExpenseId: string) => {
       void triggerHaptic('warning')
-      Alert.alert('Eliminar fijo', '¿Seguro que quieres eliminar este fijo?', [
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert(t('fijos:alerts.deleteTitle'), t('fijos:alerts.deleteMessage'), [
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common:actions.delete'),
           style: 'destructive',
           onPress: () => {
             deleteMutation.mutate(fixedExpenseId, {
               onError: (error: unknown) => {
                 void triggerHaptic('error')
-                Alert.alert('No pudimos eliminar', getErrorMessage(error, errorMessages.server))
+                Alert.alert(
+                  t('fijos:alerts.deleteFailedTitle'),
+                  getErrorMessage(error, errorMessages.server),
+                )
               },
               onSuccess: () => void triggerHaptic('success'),
             })
@@ -351,7 +357,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         },
       ])
     },
-    [deleteMutation],
+    [deleteMutation, t],
   )
 
   // Gate del LinearTransition para evitar el "warp" en cold-start del tab.
@@ -377,7 +383,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       >
         <ErrorState
           description={getErrorMessage(controller.error, errorMessages.server)}
-          title="No pudimos cargar tus fijos"
+          title={t('fijos:screen.loadError')}
         />
       </Screen>
     )

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { supabase } from '@/lib/supabase'
 import { getErrorMessage } from '@/utils/error-message'
+import i18n from '@/lib/i18n'
 
 export type FamilyMemberRole = 'owner' | 'member' | 'blocked'
 
@@ -116,16 +117,16 @@ function useFamilyAdminMutation(rpcName: string, fallbackMessage: string) {
 }
 
 export function useBlockMember() {
-  return useFamilyAdminMutation('family_block_member', 'No pudimos bloquear al miembro.')
+  return useFamilyAdminMutation('family_block_member', i18n.t('settings:memberAdmin.blockError'))
 }
 
 export function useUnblockMember() {
   return useFamilyAdminMutation(
     'family_unblock_member',
-    'No pudimos desbloquear al miembro.',
+    i18n.t('settings:memberAdmin.unblockError'),
   )
 }
 
 export function useRemoveMember() {
-  return useFamilyAdminMutation('family_remove_member', 'No pudimos eliminar al miembro.')
+  return useFamilyAdminMutation('family_remove_member', i18n.t('settings:memberAdmin.removeError'))
 }

@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { useThemeTokens } from '@/theme/theme-provider'
 
 type FijoStatus = 'paid' | 'overdue' | 'pending' | 'future'
@@ -106,6 +107,10 @@ export function computeAccent(status: FijoStatus, isDark: boolean): AccentPalett
 export interface DetailLabel {
   label: string
   icon: 'check-circle' | 'warning' | 'event' | 'schedule'
+  /** True when the pending fijo is due today — drives the bolder weight
+   *  in the row badge (kept as a flag so the UI doesn't string-compare
+   *  the localized label). */
+  isToday?: boolean
 }
 
 /**
@@ -126,27 +131,30 @@ export function computeDetail(
   daysToNextDue: number | null,
 ): DetailLabel {
   if (status === 'paid') {
-    return { label: 'Pagada', icon: 'check-circle' }
+    return { label: i18n.t('fijos:row.detail.paid'), icon: 'check-circle' }
   }
   if (status === 'overdue') {
     const d = daysToNextDue != null ? Math.max(1, Math.abs(daysToNextDue)) : null
     return {
-      label: d != null ? `Vencida ${d}d` : 'En mora',
+      label:
+        d != null
+          ? i18n.t('fijos:row.detail.overdueDays', { days: d })
+          : i18n.t('fijos:row.detail.inArrears'),
       icon: 'warning',
     }
   }
   if (status === 'future') {
-    return { label: 'Próxima', icon: 'event' }
+    return { label: i18n.t('fijos:row.detail.next'), icon: 'event' }
   }
   // pending
   if (daysToNextDue == null) {
-    return { label: 'Pendiente', icon: 'schedule' }
+    return { label: i18n.t('fijos:row.detail.pending'), icon: 'schedule' }
   }
   if (daysToNextDue === 0) {
-    return { label: 'Hoy', icon: 'schedule' }
+    return { label: i18n.t('fijos:row.detail.today'), icon: 'schedule', isToday: true }
   }
   return {
-    label: `En ${Math.abs(daysToNextDue)}d`,
+    label: i18n.t('fijos:row.detail.inDays', { days: Math.abs(daysToNextDue) }),
     icon: 'schedule',
   }
 }
@@ -157,12 +165,12 @@ export function computeDetail(
 export function statusAccessibilityLabel(status: FijoStatus): string {
   switch (status) {
     case 'paid':
-      return 'Estado: pagado'
+      return i18n.t('fijos:row.status.paid')
     case 'overdue':
-      return 'Estado: en mora'
+      return i18n.t('fijos:row.status.overdue')
     case 'future':
-      return 'Estado: al día, próximo pago futuro'
+      return i18n.t('fijos:row.status.future')
     default:
-      return 'Estado: pendiente'
+      return i18n.t('fijos:row.status.pending')
   }
 }

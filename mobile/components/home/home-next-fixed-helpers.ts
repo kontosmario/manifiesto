@@ -7,6 +7,7 @@
 
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
+import i18n from '@/lib/i18n'
 
 export interface NextFixedResult {
   /** UUID — used by the deep-link to focus the row in the Fijos screen. */
@@ -120,7 +121,7 @@ export function computeNextFixed(args: ComputeArgs): NextFixedResult | null {
  * instead of "vence en 0 días".
  */
 export function formatDaysUntilDue(daysUntil: number): string {
-  if (daysUntil <= 0) return 'Vence hoy'
-  if (daysUntil === 1) return 'Mañana'
-  return `En ${daysUntil} días`
+  if (daysUntil <= 0) return i18n.t('home:nextFixed.dueToday')
+  if (daysUntil === 1) return i18n.t('home:nextFixed.tomorrow')
+  return i18n.t('home:nextFixed.inDays', { count: daysUntil })
 }

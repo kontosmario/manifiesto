@@ -1,5 +1,6 @@
 import { type ComponentProps, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RequireGuest } from '@/components/guards'
 import { AppButton } from '@/components/ui/button'
 import { AppSymbol } from '@/components/ui/app-symbol'
@@ -18,6 +19,7 @@ import { radii } from '@/theme/palette'
 type FamilyOnboardingMode = 'create' | 'join'
 
 export function JoinScreen() {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const controller = useJoinController()
   const [mode, setMode] = useState<FamilyOnboardingMode>('create')
@@ -30,48 +32,48 @@ export function JoinScreen() {
     <RequireGuest allowFamilylessSession>
       <Screen
         contentContainerStyle={styles.screenContent}
-        subtitle="Después del acceso, elige si abres un grupo nuevo o si te sumas a uno existente."
-        title="Tu grupo familiar"
+        subtitle={t('auth:join.screenSubtitle')}
+        title={t('auth:join.screenTitle')}
       >
         <View style={styles.sectionStack}>
           {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
 
           <BrandedPanel elevated style={styles.heroCard} variant="hero">
             <Text style={[styles.heroLabel, { color: theme.colors.primaryStrong }]}>
-              Onboarding del hogar
+              {t('auth:join.heroLabel')}
             </Text>
             <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
-              Primero definimos a qué grupo vas a pertenecer.
+              {t('auth:join.heroTitle')}
             </Text>
             <Text style={[styles.heroSubtitle, { color: theme.colors.textMuted }]}>
-              Si todavía no existe, creas uno y sigues al wizard inicial. Si ya existe, ingresas el código y entrás directo.
+              {t('auth:join.heroSubtitle')}
             </Text>
 
             <SegmentedControl
               onChange={changeMode}
               options={[
-                { label: 'Crear grupo', value: 'create' },
-                { label: 'Unirme', value: 'join' },
+                { label: t('auth:join.segmentCreate'), value: 'create' },
+                { label: t('auth:join.segmentJoin'), value: 'join' },
               ]}
               value={mode}
             />
 
             <View style={styles.optionGrid}>
               <ChoiceCard
-                description="Crea el hogar, genera el código y te lleva a la configuración inicial."
+                description={t('auth:join.createCardDescription')}
                 fallback="add-home"
                 isActive={mode === 'create'}
                 name="house.badge.plus.fill"
                 onPress={() => changeMode('create')}
-                title="Crear grupo familiar"
+                title={t('auth:join.createCardTitle')}
               />
               <ChoiceCard
-                description="Usa el código que te compartieron y entra al grupo ya existente."
+                description={t('auth:join.joinCardDescription')}
                 fallback="vpn-key"
                 isActive={mode === 'join'}
                 name="key.fill"
                 onPress={() => changeMode('join')}
-                title="Unirse a un grupo"
+                title={t('auth:join.joinCardTitle')}
               />
             </View>
           </BrandedPanel>
@@ -79,7 +81,7 @@ export function JoinScreen() {
           {mode === 'create' ? (
             <BrandedPanel style={styles.formCard}>
               <Text style={[styles.formCopy, { color: theme.colors.textMuted }]}>
-                Crear grupo familiar genera el espacio compartido y, a continuación, abre el wizard para configurar ingreso, distribución porcentual, resguardo diario y recordatorios.
+                {t('auth:join.createFormCopy')}
               </Text>
 
               {controller.errorMessage ? (
@@ -89,31 +91,31 @@ export function JoinScreen() {
               ) : null}
 
               <AppButton
-                label="Crear grupo familiar"
+                label={t('auth:join.createButton')}
                 loading={controller.bootstrapMutation.isPending}
                 onPress={controller.actions.createFamily}
               />
 
               {controller.isLoading ? (
                 <Text style={[styles.help, { color: theme.colors.textSoft }]}>
-                  Estamos preparando tu nuevo hogar...
+                  {t('auth:join.creatingHome')}
                 </Text>
               ) : null}
             </BrandedPanel>
           ) : (
             <BrandedPanel style={styles.formCard}>
               <Text style={[styles.formCopy, { color: theme.colors.textMuted }]}>
-                Ingresa el código del grupo familiar al que quieres sumarte. Al validar el código, vas a entrar directamente a la app con ese hogar activo.
+                {t('auth:join.joinFormCopy')}
               </Text>
 
               <TextField
                 autoCapitalize="characters"
                 autoCorrect={false}
-                helper="Suele tener entre 6 y 8 caracteres."
-                label="Código familiar"
+                helper={t('auth:join.codeHelper')}
+                label={t('auth:join.codeLabel')}
                 maxLength={8}
                 onChangeText={controller.actions.setCode}
-                placeholder="Ej: A9KD3L"
+                placeholder={t('auth:join.codePlaceholder')}
                 textContentType="oneTimeCode"
                 value={controller.code}
               />
@@ -126,14 +128,14 @@ export function JoinScreen() {
 
               <AppButton
                 disabled={!controller.canJoinWithCode}
-                label="Unirme con código"
+                label={t('auth:join.joinButton')}
                 loading={controller.joinMutation.isPending}
                 onPress={controller.actions.joinWithCode}
               />
 
               {controller.isLoading ? (
                 <Text style={[styles.help, { color: theme.colors.textSoft }]}>
-                  Estamos validando tu acceso al grupo...
+                  {t('auth:join.validatingAccess')}
                 </Text>
               ) : null}
             </BrandedPanel>

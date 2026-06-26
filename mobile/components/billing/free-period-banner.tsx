@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { freeAccessBadgeLabel } from '@/features/billing/free-access-nudge'
@@ -19,6 +20,7 @@ export const FreePeriodBanner = memo(function FreePeriodBanner({
   daysLeft,
 }: FreePeriodBannerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View
       style={[
@@ -34,7 +36,7 @@ export const FreePeriodBanner = memo(function FreePeriodBanner({
       </View>
       <View style={styles.text}>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          Acceso completo
+          {t('billing:freePeriodBanner.title')}
         </Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           {freeAccessBadgeLabel(daysLeft)}

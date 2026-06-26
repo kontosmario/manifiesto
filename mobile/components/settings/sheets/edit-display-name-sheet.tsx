@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
@@ -21,6 +22,7 @@ export function EditDisplayNameSheet({
   onSave,
 }: EditDisplayNameSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(currentName)
 
   useEffect(() => {
@@ -37,29 +39,29 @@ export function EditDisplayNameSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Cómo apareces en gastos, actividad y resúmenes compartidos."
-      title="Nombre visible"
+      subtitle={t('settings:editName.subtitle')}
+      title={t('settings:editName.title')}
       visible={visible}
     >
       <View style={styles.stack}>
         <TextField
           autoFocus
           autoCapitalize="words"
-          label="Nombre visible"
+          label={t('settings:editName.title')}
           maxLength={40}
           onChangeText={setDraft}
-          placeholder="Tu nombre visible"
+          placeholder={t('settings:editName.placeholder')}
           returnKeyType="done"
           value={draft}
         />
         {isInvalid ? (
           <Text style={[styles.error, { color: theme.colors.danger }]}>
-            Ingresa al menos un caracter válido.
+            {t('settings:editName.invalid')}
           </Text>
         ) : null}
         <AppButton
           disabled={!canSave}
-          label="Guardar nombre"
+          label={t('settings:editName.save')}
           loading={isSaving}
           onPress={() => {
             if (!canSave) return

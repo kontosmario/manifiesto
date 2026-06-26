@@ -1,1 +1,40 @@
-{}
+{
+  "gallery": {
+    "title": "Achievements",
+    "subtitle": "Your collection of milestones — they unlock on their own as you use Manifiesto.",
+    "errorTitle": "We couldn't load your achievements",
+    "errorDescription": "Try again in a moment.",
+    "empty": "You'll be able to unlock achievements soon.",
+    "hero": {
+      "eyebrow": "YOUR COLLECTION",
+      "of": "of {{count}}",
+      "subEmpty": "Start using Manifiesto and they'll unlock on their own.",
+      "subComplete": "You've got them all! You're a legend.",
+      "subHalf": "You're past the halfway mark. Unstoppable.",
+      "subStart": "Great start. Keep them coming."
+    }
+  },
+  "tierShort": {
+    "bronze": "BRONZE",
+    "silver": "SILVER",
+    "gold": "GOLD",
+    "legendary": "LEGEND"
+  },
+  "badgeDetail": {
+    "locked": "TO UNLOCK",
+    "unlockedOn": "Unlocked · {{date}}",
+    "lockedHint": "It unlocks on its own once you earn it."
+  },
+  "floracion": {
+    "closeLabel": "Close celebration",
+    "eyebrow": "MILESTONE REACHED",
+    "continue": "Keep growing",
+    "hint": "No noise: we'll tell you about the milestone just once.",
+    "tier": {
+      "bronze": "FIRST SPROUT",
+      "silver": "GROWING",
+      "gold": "FULL BLOOM",
+      "legendary": "LEGENDARY SPECIES"
+    }
+  }
+}

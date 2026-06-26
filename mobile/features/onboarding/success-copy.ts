@@ -1,5 +1,6 @@
 // Pure copy resolver for the success screen shown after the 5-step
 // onboarding wizard finishes. Variants on (kind, firstName).
+import i18n from '@/lib/i18n'
 
 export interface OnboardingSuccessInput {
   kind: 'solo' | 'shared'
@@ -17,15 +18,17 @@ export function onboardingSuccessCopy(
   input: OnboardingSuccessInput,
 ): OnboardingSuccessCopy {
   const trimmedName = input.firstName.trim()
-  const title = trimmedName ? `¡Listo, ${trimmedName}!` : '¡Listo!'
+  const title = trimmedName
+    ? i18n.t('onboarding:success.titleNamed', { name: trimmedName })
+    : i18n.t('onboarding:success.title')
   const subtitle =
     input.kind === 'solo'
-      ? 'Tu espacio personal ya está armado. Vamos a Home.'
-      : 'Tu familia ya está armada. Vamos a Home.'
+      ? i18n.t('onboarding:success.subtitleSolo')
+      : i18n.t('onboarding:success.subtitleShared')
   return {
-    eyebrow: 'Ya estás en Manifiesto',
+    eyebrow: i18n.t('onboarding:success.eyebrow'),
     title,
     subtitle,
-    ctaLabel: 'Empezar',
+    ctaLabel: i18n.t('onboarding:success.cta'),
   }
 }

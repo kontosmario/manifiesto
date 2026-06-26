@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Expense } from '@/features/expenses/expense-repository.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
@@ -665,7 +666,7 @@ export function groupFijosByCategory(input: {
     const cat = categories.find((c) => c.id === id)
     groups.push({
       categoryId: id,
-      label: cat?.name ?? 'Sin categoría',
+      label: cat?.name ?? i18n.t('fijos:groups.noCategory'),
       color: cat?.color ?? '#8A8A8A',
       total: arr.reduce((s, i) => s + Number(i.amount ?? 0), 0),
       // Cronológico: el próximo a vencer primero (next_due_on real, no

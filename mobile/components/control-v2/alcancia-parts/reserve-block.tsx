@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
@@ -40,6 +41,7 @@ export function ReserveBlock({
   goal,
 }: ReserveBlockProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const text = theme.colors.text
   const reserveColor = isDark ? '#A5B4FC' : '#4F46E5'
@@ -90,8 +92,8 @@ export function ReserveBlock({
       // desde el CTA principal de la alcancía (mismo card scroll-up).
       void triggerHaptic('selection')
       Alert.alert(
-        'Meta pausada',
-        `Tu meta "${goal.title}" está inactiva. Actívala con el botón "Activar meta" de arriba y vuelve a aportar.`,
+        t('control:reserve.metaPausadaTitle'),
+        t('control:reserve.metaPausadaBody', { title: goal.title }),
       )
       return
     }
@@ -113,8 +115,8 @@ export function ReserveBlock({
           onError: (err) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos aplicar la reserva',
-              err instanceof Error ? err.message : 'Reintenta en un momento.',
+              t('control:reserve.errorAplicarTitle'),
+              err instanceof Error ? err.message : t('control:reserve.errorRetry'),
             )
           },
         },
@@ -139,8 +141,8 @@ export function ReserveBlock({
         onError: (err) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos usar la reserva',
-            err instanceof Error ? err.message : 'Reintenta en un momento.',
+            t('control:reserve.errorUsarTitle'),
+            err instanceof Error ? err.message : t('control:reserve.errorRetry'),
           )
         },
       },
@@ -163,7 +165,7 @@ export function ReserveBlock({
             style={[styles.reserveLabel, { color: reserveColor }]}
             numberOfLines={1}
           >
-            RESERVA ACUMULADA
+            {t('control:reserve.label')}
           </Text>
           <Text style={[styles.reserveAmount, { color: text }]} numberOfLines={1}>
             {formatMoney(monthlyReserveAmount)}
@@ -173,7 +175,7 @@ export function ReserveBlock({
           <Pressable
             onPress={openSumar}
             accessibilityRole="button"
-            accessibilityLabel="Sumar reserva al mes actual"
+            accessibilityLabel={t('control:reserve.sumarA11y')}
             disabled={reserveMutation.isPending}
             style={({ pressed }) => [
               styles.reserveAction,
@@ -189,13 +191,13 @@ export function ReserveBlock({
               style={[styles.reserveActionText, { color: reserveColor }]}
               numberOfLines={1}
             >
-              Sumar al mes
+              {t('control:reserve.sumarAlMes')}
             </Text>
           </Pressable>
           <Pressable
             onPress={openMeta}
             accessibilityRole="button"
-            accessibilityLabel="Aportar reserva a tu meta de ahorro"
+            accessibilityLabel={t('control:reserve.aUnaMetaA11y')}
             disabled={reserveMutation.isPending}
             style={({ pressed }) => [
               styles.reserveAction,
@@ -211,7 +213,7 @@ export function ReserveBlock({
               style={[styles.reserveActionText, { color: reserveColor }]}
               numberOfLines={1}
             >
-              A una meta
+              {t('control:reserve.aUnaMeta')}
             </Text>
           </Pressable>
         </View>
@@ -221,19 +223,21 @@ export function ReserveBlock({
         visible={sheetMode !== null}
         title={
           sheetMode === 'cycle'
-            ? 'Sumar reserva al mes'
-            : 'Aportar reserva a tu meta'
+            ? t('control:reserve.sheetSumarTitle')
+            : t('control:reserve.sheetAportarTitle')
         }
-        subtitle={`Reserva disponible: ${formatMoney(monthlyReserveAmount)}`}
+        subtitle={t('control:reserve.sheetSubtitle', {
+          amount: formatMoney(monthlyReserveAmount),
+        })}
         rawValue={draft}
         onChangeRawValue={setDraft}
         formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-        displayEyebrow="MONTO A USAR"
-        displayPlaceholder="$ 0"
+        displayEyebrow={t('control:reserve.sheetEyebrow')}
+        displayPlaceholder={t('control:reserve.sheetSavePlaceholder')}
         maxIntegerDigits={11}
         maxDecimalDigits={2}
         numpadCollapsedByDefault
-        saveLabel={sheetMode === 'cycle' ? 'Sumar al mes' : 'Aportar a meta'}
+        saveLabel={sheetMode === 'cycle' ? t('control:reserve.sheetSaveSumar') : t('control:reserve.sheetSaveAportar')}
         saveDisabled={!isValid}
         isSaving={reserveMutation.isPending}
         onSave={handleSubmit}

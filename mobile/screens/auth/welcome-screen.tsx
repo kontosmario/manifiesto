@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -51,6 +52,7 @@ interface WelcomeScreenProps {
  * All loops are disabled under `useReducedMotion`.
  */
 export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScreenProps) {
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const reduced = useReducedMotion()
@@ -98,7 +100,7 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
           </RiseView>
 
           <RiseView delay={1300} duration={900} translateY={12}>
-            <Text style={styles.tagline}>Finanzas para tu familia</Text>
+            <Text style={styles.tagline}>{t('auth:welcome.tagline')}</Text>
           </RiseView>
         </View>
 
@@ -114,28 +116,28 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
                 CTA above the regular welcome controls so the rightful
                 owner can sign back in and cancel. */}
             <WelcomeCancelDeletionBanner />
-            <PrimaryCta busy={isBusy} label="Empezar" onPress={isBusy ? () => {} : onCreate} />
-            <SecondaryCta label="Ya tengo cuenta" onPress={isBusy ? () => {} : onLogin} />
+            <PrimaryCta busy={isBusy} label={t('auth:welcome.start')} onPress={isBusy ? () => {} : onCreate} />
+            <SecondaryCta label={t('auth:welcome.alreadyHaveAccount')} onPress={isBusy ? () => {} : onLogin} />
 
             <Text style={styles.dataDisclosure}>
-              Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.
+              {t('auth:welcome.dataDisclosure')}
             </Text>
             <Text style={styles.fineprint}>
-              Al continuar aceptas los{' '}
+              {t('auth:welcome.fineprintPrefix')}{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
                 style={styles.fineprintLink}
               >
-                Términos
+                {t('auth:welcome.fineprintTerms')}
               </Text>{' '}
-              y la{' '}
+              {t('auth:welcome.fineprintAnd')}{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
                 style={styles.fineprintLink}
               >
-                Privacidad
+                {t('auth:welcome.fineprintPrivacy')}
               </Text>
             </Text>
           </View>

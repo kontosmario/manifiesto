@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
+import i18n from '@/lib/i18n'
 import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
 
 export { incomeEventQueryKeys }
@@ -132,11 +133,11 @@ export function useCreateIncomeEvent(userId?: string) {
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
       const uid = userData.user?.id
-      if (!uid) throw new Error('No hay sesión activa.')
+      if (!uid) throw new Error(i18n.t('gastos:income.errors.noSession'))
 
       const safeAmount = Math.abs(Number(input.amount))
       if (!Number.isFinite(safeAmount) || safeAmount <= 0) {
-        throw new Error('El monto debe ser mayor a cero.')
+        throw new Error(i18n.t('gastos:income.errors.amountPositive'))
       }
 
       const payload: Record<string, unknown> = {
@@ -215,8 +216,8 @@ export function useCreateIncomeEvent(userId?: string) {
           ctx.previous,
         )
       }
-      toast.error('No se pudo guardar el ingreso.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('gastos:income.errors.saveFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -282,8 +283,8 @@ export function useDeleteIncomeEvent(userId?: string) {
           ctx.previous,
         )
       }
-      toast.error('No se pudo borrar el ingreso.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('gastos:income.errors.deleteFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },

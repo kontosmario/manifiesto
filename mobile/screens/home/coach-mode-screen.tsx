@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -50,9 +51,9 @@ interface CoachModeScreenProps {
 
 const SHELL_GRADIENT = ['#0F2A1E', '#143B2A', '#0A1410'] as const
 
-const TOPIC_TITLES: Record<string, string> = {
-  crisis: 'Plan integral',
-  leaks: 'Auditoría de drenaje',
+const TOPIC_TITLE_KEYS: Record<string, string> = {
+  crisis: 'control:coach.topicCrisis',
+  leaks: 'control:coach.topicLeaks',
 }
 
 export function CoachModeScreen({
@@ -63,6 +64,7 @@ export function CoachModeScreen({
 }: CoachModeScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const { signals } = useControlV2Data(familyId, userId)
   const dispatch = useControlActionDispatcher({ familyId, userId })
 
@@ -102,7 +104,10 @@ export function CoachModeScreen({
     })
   }, [task, dispatch])
 
-  const headerTitle = topic && TOPIC_TITLES[topic] ? TOPIC_TITLES[topic] : 'Modo guiado'
+  const headerTitle =
+    topic && TOPIC_TITLE_KEYS[topic]
+      ? t(TOPIC_TITLE_KEYS[topic])
+      : t('control:coach.headerDefault')
   const tone = task ? TYPE_TONES[bubbleType(task)] : TYPE_TONES.insight
 
   return (
@@ -117,7 +122,7 @@ export function CoachModeScreen({
         <Pressable
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Cerrar modo guiado"
+          accessibilityLabel={t('control:coach.closeA11y')}
           hitSlop={10}
           style={styles.closeButton}
         >
@@ -137,16 +142,16 @@ export function CoachModeScreen({
         {!task ? (
           <Animated.View entering={FadeIn.duration(220)} style={styles.emptyCard}>
             <MaterialIcons name="info-outline" size={28} color="#9FBFA9" />
-            <Text style={styles.emptyTitle}>Esta señal ya no está activa</Text>
+            <Text style={styles.emptyTitle}>{t('control:coach.emptyTitle')}</Text>
             <Text style={styles.emptyBody}>
-              Pudo haber expirado o haber sido marcada como vista. Vuelve al asistente para ver lo que hay ahora.
+              {t('control:coach.emptyBody')}
             </Text>
             <Pressable
               onPress={onClose}
               style={styles.emptyCta}
               accessibilityRole="button"
             >
-              <Text style={styles.emptyCtaLabel}>Volver</Text>
+              <Text style={styles.emptyCtaLabel}>{t('control:coach.emptyCta')}</Text>
             </Pressable>
           </Animated.View>
         ) : (
@@ -186,7 +191,7 @@ export function CoachModeScreen({
                 entering={FadeIn.duration(320).delay(80)}
                 style={styles.constituentsBlock}
               >
-                <Text style={styles.sectionEyebrow}>Compuesta por</Text>
+                <Text style={styles.sectionEyebrow}>{t('control:coach.compuestaPor')}</Text>
                 {constituents.map((c) => {
                   const cTone = TYPE_TONES[bubbleType(c)]
                   return (
@@ -216,10 +221,9 @@ export function CoachModeScreen({
                 entering={FadeIn.duration(320).delay(80)}
                 style={styles.explanationBlock}
               >
-                <Text style={styles.sectionEyebrow}>Por qué importa</Text>
+                <Text style={styles.sectionEyebrow}>{t('control:coach.porQueImporta')}</Text>
                 <Text style={styles.explanationBody}>
-                  {task.dummyExplanation ??
-                    'Esta sugerencia se basa en patrones detectados en tus gastos del mes. La acción del CTA es la palanca más directa para mover el número.'}
+                  {task.dummyExplanation ?? t('control:coach.explanationFallback')}
                 </Text>
               </Animated.View>
             )}

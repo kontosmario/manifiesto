@@ -1,1 +1,40 @@
-{}
+{
+  "gallery": {
+    "title": "Logros",
+    "subtitle": "Tu colección de hitos — se desbloquean solos a medida que usas Manifiesto.",
+    "errorTitle": "No pudimos cargar tus logros",
+    "errorDescription": "Prueba de nuevo en un momento.",
+    "empty": "Pronto vas a poder desbloquear logros.",
+    "hero": {
+      "eyebrow": "TU COLECCIÓN",
+      "of": "de {{count}}",
+      "subEmpty": "Empieza a usar Manifiesto y se van desbloqueando solos.",
+      "subComplete": "¡Los tienes todos! Eres leyenda.",
+      "subHalf": "Vas por más de la mitad. Imparable.",
+      "subStart": "Buen comienzo. Sigue sumando."
+    }
+  },
+  "tierShort": {
+    "bronze": "BRONCE",
+    "silver": "PLATA",
+    "gold": "ORO",
+    "legendary": "LEYENDA"
+  },
+  "badgeDetail": {
+    "locked": "POR DESBLOQUEAR",
+    "unlockedOn": "Desbloqueado · {{date}}",
+    "lockedHint": "Se desbloquea solo cuando lo logres."
+  },
+  "floracion": {
+    "closeLabel": "Cerrar celebración",
+    "eyebrow": "HITO ALCANZADO",
+    "continue": "Seguir cultivando",
+    "hint": "Sin ruido: te avisamos del hito una sola vez.",
+    "tier": {
+      "bronze": "PRIMER BROTE",
+      "silver": "EN CRECIMIENTO",
+      "gold": "GRAN FLORACIÓN",
+      "legendary": "ESPECIE LEGENDARIA"
+    }
+  }
+}

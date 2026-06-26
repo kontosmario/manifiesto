@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Alert,
   Dimensions,
@@ -88,6 +89,7 @@ export function StreakSheet({
   onPressAddExpense,
 }: StreakSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const derived = deriveStreak(data)
   const tone = getStatusTone(derived.status, derived.atRiskIntensity, theme.isDark)
@@ -158,12 +160,12 @@ export function StreakSheet({
   const handleMarkNoExpense = () => {
     if (markNoExpenseMutation.isPending) return
     Alert.alert(
-      'Marcar día sin gastos',
-      'Confirmas que hoy no tuviste gastos? La racha avanza igual y sumas un día a tu progreso. Puedes revertirlo si después aparece algún gasto.',
+      t('gastos:streakSheet.markAlert.title'),
+      t('gastos:streakSheet.markAlert.message'),
       [
-        { style: 'cancel', text: 'Cancelar' },
+        { style: 'cancel', text: t('common:actions.cancel') },
         {
-          text: 'Sí, hoy no gasté',
+          text: t('gastos:streakSheet.markAlert.confirm'),
           onPress: () => {
             markNoExpenseMutation.mutate(undefined, {
               onSuccess: () => {
@@ -172,8 +174,8 @@ export function StreakSheet({
               onError: (error: unknown) => {
                 void triggerHaptic('error')
                 Alert.alert(
-                  'No se pudo marcar el día',
-                  error instanceof Error ? error.message : 'Reintenta en un momento.',
+                  t('gastos:streakSheet.markAlert.errorTitle'),
+                  error instanceof Error ? error.message : t('gastos:streakSheet.retryLater'),
                 )
               },
             })
@@ -186,13 +188,13 @@ export function StreakSheet({
   const handleUnmarkNoExpense = () => {
     if (unmarkNoExpenseMutation.isPending) return
     Alert.alert(
-      'Revertir día sin gastos',
-      '¿Apareció un gasto y quieres volver atrás la marca de hoy? La racha vuelve a depender de que registres antes de medianoche.',
+      t('gastos:streakSheet.unmarkAlert.title'),
+      t('gastos:streakSheet.unmarkAlert.message'),
       [
-        { style: 'cancel', text: 'Cancelar' },
+        { style: 'cancel', text: t('common:actions.cancel') },
         {
           style: 'destructive',
-          text: 'Revertir marca',
+          text: t('gastos:streakSheet.unmarkAlert.confirm'),
           onPress: () => {
             unmarkNoExpenseMutation.mutate(undefined, {
               onSuccess: () => {
@@ -201,8 +203,8 @@ export function StreakSheet({
               onError: (error: unknown) => {
                 void triggerHaptic('error')
                 Alert.alert(
-                  'No se pudo revertir',
-                  error instanceof Error ? error.message : 'Reintenta en un momento.',
+                  t('gastos:streakSheet.unmarkAlert.errorTitle'),
+                  error instanceof Error ? error.message : t('gastos:streakSheet.retryLater'),
                 )
               },
             })
@@ -267,7 +269,7 @@ export function StreakSheet({
       <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
           <Pressable
-            accessibilityLabel="Cerrar"
+            accessibilityLabel={t('common:actions.close')}
             accessibilityRole="button"
             onPress={onClose}
             style={[
@@ -352,9 +354,9 @@ export function StreakSheet({
                     tone={tone}
                     busy={markNoExpenseMutation.isPending}
                     iconName="event-available"
-                    label="Hoy no tuve gastos"
-                    busyLabel="Guardando…"
-                    accessibilityLabel="Marcar el día como sin gastos"
+                    label={t('gastos:streakSheet.noExpenseToday')}
+                    busyLabel={t('gastos:streakSheet.saving')}
+                    accessibilityLabel={t('gastos:streakSheet.markNoSpendA11y')}
                     onPress={handleMarkNoExpense}
                   />
                 ) : null}
@@ -366,9 +368,9 @@ export function StreakSheet({
                 tone={tone}
                 busy={unmarkNoExpenseMutation.isPending}
                 iconName="undo"
-                label='Revertir "hoy sin gastos"'
-                busyLabel="Revirtiendo…"
-                accessibilityLabel="Revertir marca de día sin gastos"
+                label={t('gastos:streakSheet.unmarkLabel')}
+                busyLabel={t('gastos:streakSheet.reverting')}
+                accessibilityLabel={t('gastos:streakSheet.unmarkNoSpendA11y')}
                 onPress={handleUnmarkNoExpense}
               />
             ) : null}

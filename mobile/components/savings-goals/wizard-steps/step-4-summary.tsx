@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -23,6 +24,7 @@ export function StepSummary({
   suggestedApply,
 }: StepSummaryProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cardBg = theme.isDark
     ? theme.colors.surfaceMuted
     : theme.colors.creamCard
@@ -43,7 +45,7 @@ export function StepSummary({
           ]}
           numberOfLines={2}
         >
-          {title || 'Mi meta de ahorro'}
+          {title || t('settings:savingsWizard.defaultTitle')}
         </Text>
         <Text
           style={[
@@ -59,8 +61,10 @@ export function StepSummary({
         <Text
           style={[styles.summarySub, { color: theme.colors.textMuted }]}
         >
-          Aportes mensuales de ~{formatMoney(monthlyEstimate)} · {months}{' '}
-          {months === 1 ? 'mes' : 'meses'}
+          {t('settings:savingsWizard.summarySub', {
+            amount: formatMoney(monthlyEstimate),
+            months: t('settings:savingsWizard.monthsValue', { count: months }),
+          })}
         </Text>
       </View>
 
@@ -89,7 +93,7 @@ export function StepSummary({
               { color: theme.colors.success },
             ]}
           >
-            Aportaremos {formatMoney(suggestedApply)} apenas se cree.
+            {t('settings:savingsWizard.applyNote', { amount: formatMoney(suggestedApply) })}
           </Text>
         </View>
       ) : null}

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -41,15 +42,16 @@ export function MarqueeTicket({
   category?: { id: string; name: string; color: string }
   theme: ReturnType<typeof useAppTheme>['theme']
 }) {
+  const { t } = useTranslation()
   const diffDays = Math.max(0, item.daysUntilDue)
   const urgent = diffDays <= 2
 
   const timingText =
     diffDays === 0
-      ? 'HOY'
+      ? t('fijos:marquee.today')
       : diffDays === 1
-        ? 'MAÑANA'
-        : `EN ${diffDays}D`
+        ? t('fijos:marquee.tomorrow')
+        : t('fijos:marquee.inDays', { days: diffDays })
 
   const urgentSolid = theme.isDark ? '#F2A78C' : '#B84014'
   const urgentBgRgba = theme.isDark

@@ -9,6 +9,7 @@
 // default informational copy).
 
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -18,10 +19,11 @@ interface ProtectionDismissRowProps {
 
 export function SettingsProtectionDismissRow({ onPress }: ProtectionDismissRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Posponer el recordatorio de protección por 24 horas"
+      accessibilityLabel={t('settings:protectionDismiss.a11y')}
       hitSlop={8}
       onPress={() => {
         void triggerHaptic('selection')
@@ -30,7 +32,7 @@ export function SettingsProtectionDismissRow({ onPress }: ProtectionDismissRowPr
       style={styles.row}
     >
       <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-        Recordame mañana
+        {t('settings:protectionDismiss.label')}
       </Text>
     </Pressable>
   )

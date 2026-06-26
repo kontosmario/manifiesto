@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   FadeIn,
@@ -47,6 +48,7 @@ interface FijosScheduledBannerProps {
  */
 export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const bannerLayout = useGatedLayout(LinearTransition.duration(260))
   const reduced = useReducedMotion()
   const [expanded, setExpanded] = useState(false)
@@ -81,8 +83,7 @@ export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
     ? 'rgba(157,196,222,0.30)'
     : 'rgba(63,124,163,0.22)'
 
-  const countLabel =
-    items.length === 1 ? '1 fijo programado' : `${items.length} fijos programados`
+  const countLabel = t('fijos:scheduledBanner.count', { count: items.length })
 
   return (
     <Animated.View
@@ -96,7 +97,12 @@ export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
         onPress={handleToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityLabel={`${countLabel}. Tap para ${expanded ? 'ocultar' : 'ver'} detalles.`}
+        accessibilityLabel={t('fijos:scheduledBanner.toggleHint', {
+          label: countLabel,
+          action: expanded
+            ? t('fijos:scheduledBanner.toggleHide')
+            : t('fijos:scheduledBanner.toggleShow'),
+        })}
         style={styles.headerRow}
       >
         <View style={styles.headerLeft}>
@@ -113,7 +119,7 @@ export function FijosScheduledBanner({ items }: FijosScheduledBannerProps) {
               {countLabel}
             </Text>
             <Text style={[styles.headerSub, { color: theme.colors.textMuted }]}>
-              Sin pagar todavía
+              {t('fijos:scheduledBanner.unpaidYet')}
             </Text>
           </View>
         </View>
@@ -154,13 +160,9 @@ function ScheduledRow({
   accentSolid: string
 }) {
   const { theme } = useAppTheme()
-  // Mes en español del próximo vencimiento.
-  const MONTH_NAMES = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-  ]
+  const { t } = useTranslation()
   const dueLabel = (() => {
-    if (!item.next_due_on) return 'Sin fecha'
+    if (!item.next_due_on) return t('fijos:scheduledBanner.noDate')
     const parts = item.next_due_on.split('-')
     if (parts.length < 3) return item.next_due_on
     const year = parseInt(parts[0]!, 10)
@@ -169,7 +171,7 @@ function ScheduledRow({
     if (Number.isNaN(year) || Number.isNaN(monthIdx) || Number.isNaN(day)) {
       return item.next_due_on
     }
-    const monthName = MONTH_NAMES[monthIdx] ?? ''
+    const monthName = t(`fijos:months.${monthIdx}`)
     const currentYear = new Date().getFullYear()
     const yearSuffix = year === currentYear ? '' : ` ${year}`
     return `${day} ${monthName}${yearSuffix}`
@@ -185,7 +187,7 @@ function ScheduledRow({
         {item.name}
       </Text>
       <Text style={[styles.rowDue, { color: theme.colors.textMuted }]}>
-        Vence {dueLabel}
+        {t('fijos:scheduledBanner.due', { date: dueLabel })}
       </Text>
     </View>
   )

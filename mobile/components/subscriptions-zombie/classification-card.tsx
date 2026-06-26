@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
 import type {
@@ -26,6 +27,7 @@ export function ClassificationCard({
   onIgnore,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   if (classification === 'uso_desigual') {
@@ -33,12 +35,12 @@ export function ClassificationCard({
       <View style={[styles.card, { backgroundColor: cardBg }]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
         <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-          La usa solo una persona del grupo. ¿Es lo que esperaban?
+          {t('insights:subscriptions.classification.unevenBody')}
         </Text>
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Sí, está bien"
+            accessibilityLabel={t('insights:subscriptions.classification.unevenOk')}
             style={({ pressed }) => [
               styles.btnSecondary,
               {
@@ -50,7 +52,7 @@ export function ClassificationCard({
             onPress={onIgnore}
           >
             <Text style={[styles.btnSecondaryText, { color: theme.colors.text }]}>
-              Sí, está bien
+              {t('insights:subscriptions.classification.unevenOk')}
             </Text>
           </Pressable>
         </View>
@@ -66,14 +68,17 @@ export function ClassificationCard({
     <View style={[styles.card, { backgroundColor: cardBg }]}>
       <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-        La familia casi no la usa.{'\n'}En {monthsObserved} mes
-        {monthsObserved === 1 ? '' : 'es'} fueron $
-        {total.toLocaleString('es-AR')}.
+        {t('insights:subscriptions.classification.consensusBody', {
+          count: monthsObserved,
+          total: `$${total.toLocaleString('es-AR')}`,
+        })}
       </Text>
-      <Text style={[styles.q, { color: theme.colors.text }]}>¿Qué hacen?</Text>
+      <Text style={[styles.q, { color: theme.colors.text }]}>
+        {t('insights:subscriptions.classification.consensusQuestion')}
+      </Text>
       <View style={styles.actionsCol}>
         <ActionButton
-          label="Voy a cancelarla"
+          label={t('insights:subscriptions.classification.cancel')}
           variant="primary"
           theme={theme}
           onPress={() => {
@@ -84,17 +89,17 @@ export function ClassificationCard({
           }}
         />
         <ActionButton
-          label="Voy a pausarla"
+          label={t('insights:subscriptions.classification.pause')}
           theme={theme}
           onPress={() => onDeclareIntent('pause')}
         />
         <ActionButton
-          label="Voy a bajar el plan"
+          label={t('insights:subscriptions.classification.downgrade')}
           theme={theme}
           onPress={() => onDeclareIntent('downgrade')}
         />
         <ActionButton
-          label="Sigo bancándola"
+          label={t('insights:subscriptions.classification.keep')}
           variant="ghost"
           theme={theme}
           onPress={onIgnore}

@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js'
+import i18n from '@/lib/i18n'
 
 export interface FinanceStoragePayload {
   daily_budget_buffer_mode: 'none' | 'fixed' | 'percent'
@@ -394,9 +395,7 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     input.salaryPaymentDay > 31 ||
     typeof input.dailyBudgetNudgesEnabled !== 'boolean'
   ) {
-    throw new Error(
-      'Revisa ingreso, ahorro, colchon, nudges, dolar y dia de cobro antes de guardar.',
-    )
+    throw new Error(i18n.t('settings:financeValidation.reviewFields'))
   }
 
   if (
@@ -404,7 +403,7 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     (typeof input.lastSalaryConfirmedAt !== 'string' ||
       Number.isNaN(new Date(input.lastSalaryConfirmedAt).getTime()))
   ) {
-    throw new Error('La fecha de confirmacion de cobro es invalida.')
+    throw new Error(i18n.t('settings:financeValidation.invalidConfirmDate'))
   }
 
   if (
@@ -412,7 +411,7 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     (!Number.isFinite(input.currentCycleStartingBalance) ||
       input.currentCycleStartingBalance < 0)
   ) {
-    throw new Error('El disponible de este ciclo es invalido.')
+    throw new Error(i18n.t('settings:financeValidation.invalidAvailable'))
   }
 
   if (
@@ -420,24 +419,24 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     (typeof input.currentCycleAnchor !== 'string' ||
       !/^\d{4}-\d{2}-\d{2}$/.test(input.currentCycleAnchor))
   ) {
-    throw new Error('La fecha de inicio de ciclo es invalida.')
+    throw new Error(i18n.t('settings:financeValidation.invalidCycleStart'))
   }
 
   if (
     !['monthly', 'biweekly', 'weekly', 'custom'].includes(input.cycleType)
   ) {
-    throw new Error('Tipo de ciclo invalido.')
+    throw new Error(i18n.t('settings:financeValidation.invalidCycleType'))
   }
   if (input.cycleType === 'monthly') {
     if (input.cycleAnchorDate !== null || input.cycleLengthDays !== null) {
-      throw new Error('Configuración mensual no debe tener anchor ni length.')
+      throw new Error(i18n.t('settings:financeValidation.monthlyNoAnchor'))
     }
   } else {
     if (
       typeof input.cycleAnchorDate !== 'string' ||
       !/^\d{4}-\d{2}-\d{2}$/.test(input.cycleAnchorDate)
     ) {
-      throw new Error('Falta la fecha de inicio del ciclo.')
+      throw new Error(i18n.t('settings:financeValidation.missingCycleStart'))
     }
     if (
       typeof input.cycleLengthDays !== 'number' ||
@@ -445,13 +444,13 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
       input.cycleLengthDays < 1 ||
       input.cycleLengthDays > 365
     ) {
-      throw new Error('Largo del ciclo invalido.')
+      throw new Error(i18n.t('settings:financeValidation.invalidCycleLength'))
     }
     if (input.cycleType === 'biweekly' && input.cycleLengthDays !== 14) {
-      throw new Error('Quincenal debe ser cada 14 días.')
+      throw new Error(i18n.t('settings:financeValidation.biweekly14'))
     }
     if (input.cycleType === 'weekly' && input.cycleLengthDays !== 7) {
-      throw new Error('Semanal debe ser cada 7 días.')
+      throw new Error(i18n.t('settings:financeValidation.weekly7'))
     }
   }
 
@@ -459,7 +458,7 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     input.localCurrency !== undefined &&
     !(SUPPORTED_CURRENCIES as readonly string[]).includes(input.localCurrency)
   ) {
-    throw new Error('Moneda no soportada.')
+    throw new Error(i18n.t('settings:financeValidation.unsupportedCurrency'))
   }
 
   return financeInputToStoragePayload(input)

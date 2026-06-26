@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import {
   REINFORCEMENT_TASK_IDS,
@@ -73,14 +74,14 @@ export function confidenceTier(c: number): ConfidenceTier {
   return 'early'
 }
 
-const CONFIDENCE_LABEL: Record<ConfidenceTier, string> = {
-  solid: 'Datos en vivo',
-  building: 'Evidencia parcial',
-  early: 'Señal temprana',
+const CONFIDENCE_LABEL_KEY: Record<ConfidenceTier, string> = {
+  solid: 'control:advisorBubble.confidenceSolid',
+  building: 'control:advisorBubble.confidenceBuilding',
+  early: 'control:advisorBubble.confidenceEarly',
 }
 
 export function confidenceLabel(c: number): string {
-  return CONFIDENCE_LABEL[confidenceTier(c)]
+  return i18n.t(CONFIDENCE_LABEL_KEY[confidenceTier(c)])
 }
 
 // ─── Headline + intro (chat-style copy) ───────────────────────────────────
@@ -91,32 +92,32 @@ export function confidenceLabel(c: number): string {
  */
 export function bubbleHeadline(task: ControlAdvisorTask): string {
   const id = task.id
-  if (id === 'streak-ok') return 'Racha sostenida'
-  if (id === 'cat-win') return 'Categoría a favor'
-  if (id === 'savings-over') return 'Adelantado al plan'
-  if (id === 'savings-feasibility') return 'Plan de meta'
-  if (id === 'positive-forecast') return 'Excedente proyectado'
-  if (id === 'velocity') return 'Ritmo crítico'
-  if (id === 'recovery-hard') return 'Recuperación urgente'
-  if (id === 'recovery-soft') return 'Recuperación moderada'
-  if (id === 'cat-accel') return 'Aceleración categoría'
-  if (id === 'small-leaks') return 'Filtraciones chicas'
-  if (id === 'night-impulse') return 'Impulsos nocturnos'
-  if (id === 'weekly-pattern') return 'Patrón semanal'
-  if (id === 'fijos-ratio') return 'Fijos altos'
-  if (id === 'stress-week') return 'Semana cargada'
-  if (id === 'payday-proximity') return 'Hasta cobro'
-  if (id === 'start-splurge') return 'Arranque del mes'
-  if (id === 'end-acceleration') return 'Cierre acelerando'
-  if (id.startsWith('cap-')) return 'Tope de categoría'
-  if (id.startsWith('cat-dominance-')) return 'Categoría dominante'
-  if (id.startsWith('zombie-')) return 'Suscripción zombie'
-  if (id.startsWith('hike-')) return 'Suba de precio'
-  if (id.startsWith('undetected-sub-')) return 'Posible suscripción'
-  if (id.startsWith('member-imbalance-')) return 'Balance familiar'
-  if (id.startsWith('income-volatility')) return 'Variación de ingresos'
-  if (id.startsWith('sub-usage-')) return 'Suscripción · uso'
-  return task.cat || 'Insight'
+  if (id === 'streak-ok') return i18n.t('control:advisorBubble.headlineStreakOk')
+  if (id === 'cat-win') return i18n.t('control:advisorBubble.headlineCatWin')
+  if (id === 'savings-over') return i18n.t('control:advisorBubble.headlineSavingsOver')
+  if (id === 'savings-feasibility') return i18n.t('control:advisorBubble.headlineSavingsFeasibility')
+  if (id === 'positive-forecast') return i18n.t('control:advisorBubble.headlinePositiveForecast')
+  if (id === 'velocity') return i18n.t('control:advisorBubble.headlineVelocity')
+  if (id === 'recovery-hard') return i18n.t('control:advisorBubble.headlineRecoveryHard')
+  if (id === 'recovery-soft') return i18n.t('control:advisorBubble.headlineRecoverySoft')
+  if (id === 'cat-accel') return i18n.t('control:advisorBubble.headlineCatAccel')
+  if (id === 'small-leaks') return i18n.t('control:advisorBubble.headlineSmallLeaks')
+  if (id === 'night-impulse') return i18n.t('control:advisorBubble.headlineNightImpulse')
+  if (id === 'weekly-pattern') return i18n.t('control:advisorBubble.headlineWeeklyPattern')
+  if (id === 'fijos-ratio') return i18n.t('control:advisorBubble.headlineFijosRatio')
+  if (id === 'stress-week') return i18n.t('control:advisorBubble.headlineStressWeek')
+  if (id === 'payday-proximity') return i18n.t('control:advisorBubble.headlinePaydayProximity')
+  if (id === 'start-splurge') return i18n.t('control:advisorBubble.headlineStartSplurge')
+  if (id === 'end-acceleration') return i18n.t('control:advisorBubble.headlineEndAcceleration')
+  if (id.startsWith('cap-')) return i18n.t('control:advisorBubble.headlineCap')
+  if (id.startsWith('cat-dominance-')) return i18n.t('control:advisorBubble.headlineCatDominance')
+  if (id.startsWith('zombie-')) return i18n.t('control:advisorBubble.headlineZombie')
+  if (id.startsWith('hike-')) return i18n.t('control:advisorBubble.headlineHike')
+  if (id.startsWith('undetected-sub-')) return i18n.t('control:advisorBubble.headlineUndetectedSub')
+  if (id.startsWith('member-imbalance-')) return i18n.t('control:advisorBubble.headlineMemberImbalance')
+  if (id.startsWith('income-volatility')) return i18n.t('control:advisorBubble.headlineIncomeVolatility')
+  if (id.startsWith('sub-usage-')) return i18n.t('control:advisorBubble.headlineSubUsage')
+  return task.cat || i18n.t('control:advisorBubble.headlineFallback')
 }
 
 /**
@@ -125,16 +126,16 @@ export function bubbleHeadline(task: ControlAdvisorTask): string {
  */
 export function bubbleIntro(task: ControlAdvisorTask): string {
   const type = bubbleType(task)
-  if (type === 'critical') return '⚠️ Una urgente'
+  if (type === 'critical') return i18n.t('control:advisorBubble.introCritical')
   if (type === 'positive') {
-    if (task.id === 'streak-ok') return '¡Ey!'
-    return '✨ Buenas noticias'
+    if (task.id === 'streak-ok') return i18n.t('control:advisorBubble.introStreakOk')
+    return i18n.t('control:advisorBubble.introPositive')
   }
   if (task.id.startsWith('zombie-') || task.id.startsWith('undetected-sub-')) {
-    return 'Algo raro encontré'
+    return i18n.t('control:advisorBubble.introSubscription')
   }
-  if (type === 'warning') return 'Mira esto'
-  return 'Patrón observado'
+  if (type === 'warning') return i18n.t('control:advisorBubble.introWarning')
+  return i18n.t('control:advisorBubble.introNeutral')
 }
 
 // ─── Impact chip copy ─────────────────────────────────────────────────────
@@ -146,29 +147,29 @@ export function bubbleIntro(task: ControlAdvisorTask): string {
  */
 export function impactChipLabel(task: ControlAdvisorTask): string {
   const id = task.id
-  if (id === 'recovery-hard' || id === 'recovery-soft') return 'Recorte requerido'
-  if (id === 'velocity') return 'Sobregiro proyectado'
-  if (id === 'positive-forecast') return 'Movimiento sugerido'
-  if (id === 'savings-over') return 'Adelanto del plan'
-  if (id === 'savings-feasibility') return 'Falta este mes'
-  if (id === 'streak-ok') return 'Refuerzo'
-  if (id === 'cat-win') return 'Ahorro vs histórico'
-  if (id === 'cat-accel') return 'Si vuelves al promedio'
-  if (id === 'small-leaks') return 'Total filtraciones'
-  if (id === 'night-impulse') return 'Si bajas 20%'
-  if (id === 'weekly-pattern') return 'Premium semanal'
-  if (id === 'fijos-ratio') return 'Exceso vs umbral'
-  if (id === 'stress-week') return 'A reservar'
-  if (id === 'payday-proximity') return 'Hasta cobro'
-  if (id === 'start-splurge') return 'Sobre-gasto inicial'
-  if (id === 'end-acceleration') return 'Aceleración cierre'
-  if (id.startsWith('zombie-')) return 'Ahorro anual'
-  if (id.startsWith('hike-')) return 'Suba mensual'
-  if (id.startsWith('cap-')) return 'Excedente'
-  if (id.startsWith('cat-dominance-')) return 'Si bajas 10%'
-  if (id.startsWith('undetected-sub-')) return 'Suscripción anual'
-  if (id.startsWith('member-imbalance-')) return 'Carga del miembro'
-  if (id.startsWith('income-volatility')) return 'Delta ingreso'
-  if (id.startsWith('sub-usage-')) return 'Costo mensual'
-  return 'Impacto mensual'
+  if (id === 'recovery-hard' || id === 'recovery-soft') return i18n.t('control:advisorBubble.impactRecorteRequerido')
+  if (id === 'velocity') return i18n.t('control:advisorBubble.impactSobregiroProyectado')
+  if (id === 'positive-forecast') return i18n.t('control:advisorBubble.impactMovimientoSugerido')
+  if (id === 'savings-over') return i18n.t('control:advisorBubble.impactAdelantoPlan')
+  if (id === 'savings-feasibility') return i18n.t('control:advisorBubble.impactFaltaEsteMes')
+  if (id === 'streak-ok') return i18n.t('control:advisorBubble.impactRefuerzo')
+  if (id === 'cat-win') return i18n.t('control:advisorBubble.impactAhorroHistorico')
+  if (id === 'cat-accel') return i18n.t('control:advisorBubble.impactSiVuelvesPromedio')
+  if (id === 'small-leaks') return i18n.t('control:advisorBubble.impactTotalFiltraciones')
+  if (id === 'night-impulse') return i18n.t('control:advisorBubble.impactSiBajas20')
+  if (id === 'weekly-pattern') return i18n.t('control:advisorBubble.impactPremiumSemanal')
+  if (id === 'fijos-ratio') return i18n.t('control:advisorBubble.impactExcesoUmbral')
+  if (id === 'stress-week') return i18n.t('control:advisorBubble.impactAReservar')
+  if (id === 'payday-proximity') return i18n.t('control:advisorBubble.impactHastaCobro')
+  if (id === 'start-splurge') return i18n.t('control:advisorBubble.impactSobreGastoInicial')
+  if (id === 'end-acceleration') return i18n.t('control:advisorBubble.impactAceleracionCierre')
+  if (id.startsWith('zombie-')) return i18n.t('control:advisorBubble.impactAhorroAnual')
+  if (id.startsWith('hike-')) return i18n.t('control:advisorBubble.impactSubaMensual')
+  if (id.startsWith('cap-')) return i18n.t('control:advisorBubble.impactExcedente')
+  if (id.startsWith('cat-dominance-')) return i18n.t('control:advisorBubble.impactSiBajas10')
+  if (id.startsWith('undetected-sub-')) return i18n.t('control:advisorBubble.impactSuscripcionAnual')
+  if (id.startsWith('member-imbalance-')) return i18n.t('control:advisorBubble.impactCargaMiembro')
+  if (id.startsWith('income-volatility')) return i18n.t('control:advisorBubble.impactDeltaIngreso')
+  if (id.startsWith('sub-usage-')) return i18n.t('control:advisorBubble.impactCostoMensual')
+  return i18n.t('control:advisorBubble.impactFallback')
 }

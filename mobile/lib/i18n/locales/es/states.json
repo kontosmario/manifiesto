@@ -46,12 +46,183 @@
     "categories": "Cargando categorías",
     "notifications": "Cargando novedades",
     "settings": "Cargando tus preferencias",
-    "import": "Cargando importación"
+    "import": "Cargando importación",
+    "generic": "Cargando"
   },
   "error": {
     "network": "No pudimos conectarnos. Revisa tu conexión.",
     "server": "Algo falló del lado del servidor. Prueba de nuevo.",
     "data": "Los datos llegaron incompletos. Actualiza para reintentar.",
     "auth": "Tu sesión venció. Vuelve a iniciar sesión."
+  },
+  "errorState": {
+    "title": "Algo salió mal",
+    "description": "No pudimos cargar esta información. Revisa tu conexión e intenta otra vez.",
+    "action": "Intentar de nuevo"
+  },
+  "errorBoundary": {
+    "title": "Algo se rompió",
+    "body": "Toca reintentar para volver a cargar. Si vuelve a pasar, cierra y abre la app.",
+    "retry": "Reintentar"
+  },
+  "swipeRow": {
+    "processing": "Procesando…"
+  },
+  "cobro": {
+    "today": "Cobra hoy",
+    "overdue_one": "+{{count}} día sin cobrar",
+    "overdue_other": "+{{count}} días sin cobrar",
+    "confirmHint": "{{label}}. Toca para confirmar tu cobro"
+  },
+  "numericEditor": {
+    "closeLabel": "Cerrar editor",
+    "editAmount": "Editar monto. Valor actual {{value}}",
+    "editAmountTap": "Toca para editar el monto. Valor actual {{value}}",
+    "editChip": "Editar"
+  },
+  "numpad": {
+    "closeLabel": "Cerrar numpad",
+    "backspaceLabel": "Borrar último dígito",
+    "backspaceHint": "Mantén presionado para limpiar todo",
+    "commaLabel": "Coma"
+  },
+  "passwordField": {
+    "show": "Mostrar contraseña",
+    "hide": "Ocultar contraseña"
+  },
+  "hourPicker": {
+    "label": "Hora",
+    "hint": "Desliza para cambiar la hora. El número del centro es el elegido.",
+    "suffix": "hs",
+    "sheetSubtitle": "Desliza hasta la hora que quieras."
+  },
+  "monthDayPicker": {
+    "dayLabel": "Día {{day}}",
+    "footerPrefix": "Cobras el ",
+    "footerDay": "día {{day}}",
+    "footerSuffix": " de cada mes"
+  },
+  "calendar": {
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "dayLabel": "Día {{day}}",
+    "weekdays": ["L", "M", "M", "J", "V", "S", "D"],
+    "months": [
+      "enero", "febrero", "marzo", "abril", "mayo", "junio",
+      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ]
+  },
+  "accountDeletion": {
+    "title": "Baja de cuenta agendada",
+    "bodyDated": "Tu cuenta se eliminará el {{date}}. Cancela si no fuiste tú.",
+    "bodyUndated": "Tu cuenta tiene una baja agendada. Cancela si no fuiste tú.",
+    "a11yDated": "Tu cuenta se eliminará el {{date}}. Toca para cancelar.",
+    "a11yUndated": "Tu cuenta tiene una baja agendada. Toca para cancelar.",
+    "cancel": "Cancelar eliminación",
+    "cancelling": "Cancelando…",
+    "rateLimitTitle": "Prueba de nuevo en unos segundos",
+    "rateLimitBody": "Prueba nuevamente en unos segundos. Tu solicitud de baja sigue agendada — está todo bien y vas a poder cancelarla cuando quieras.",
+    "failTitle": "No pudimos cancelar la baja",
+    "failBody": "Prueba nuevamente en un momento. Si el problema persiste, escríbenos a soporte@manifiestoapp.com."
+  },
+  "welcomeAccountDeletion": {
+    "title": "Posible baja de cuenta agendada",
+    "bodyDated": "Tenías una baja agendada para el {{date}}.",
+    "bodyUndated": "Tenías una baja agendada para tu cuenta.",
+    "hint": "Si ya cancelaste la baja en otro dispositivo, inicia sesión para actualizar el estado.",
+    "a11yDated": "Tenías una baja agendada para el {{date}}. Inicia sesión para verificar el estado.",
+    "a11yUndated": "Tenías una baja de cuenta agendada. Inicia sesión para verificar el estado.",
+    "cta": "Iniciar sesión para verificar",
+    "ctaA11y": "Iniciar sesión para verificar el estado de la baja"
+  },
+  "quickActions": {
+    "closeLabel": "Cerrar acciones",
+    "eyebrow": "¿Qué cargas?",
+    "import": "Importar captura",
+    "noSpendMarked": "Marcado ✓",
+    "noSpend": "Día sin gasto"
+  },
+  "addFab": {
+    "label": "Agregar gasto",
+    "hint": "Mantén presionado para más acciones",
+    "registered": "Día sin gastos registrado",
+    "markFailed": "No se pudo marcar. Reintenta en un momento.",
+    "needSession": "Necesitas estar en sesión para importar.",
+    "needPhotos": "Necesito acceso a tus fotos para importar capturas.",
+    "readFailed": "No pude leer esa captura: {{message}}",
+    "preparingAccount": "Estamos preparando tu cuenta, intenta de nuevo en un instante.",
+    "unmarked": "Marca de día sin gastos removida.",
+    "unmarkFailed": "No se pudo revertir. Reintenta en un momento."
+  },
+  "permissions": {
+    "notifications": {
+      "title": "Te avisamos cuando importa",
+      "subtitle": "Solo notificaciones que valen la pena leer.",
+      "reason1": "Tu cobro confirmado del mes",
+      "reason2": "Alertas de gastos atípicos",
+      "reason3": "Logros de la familia",
+      "primary": "Permitir",
+      "secondary": "Más tarde"
+    },
+    "biometric": {
+      "title": "Desbloquea más rápido",
+      "subtitle": "Usa {{method}} para entrar sin escribir tu contraseña.",
+      "reason1": "Ingresa con {{method}}",
+      "reason2": "Tus datos siempre cifrados",
+      "reason3": "Puedes desactivarlo cuando quieras",
+      "primary": "Activar",
+      "secondary": "Más tarde"
+    }
+  },
+  "captchaBanner": {
+    "message": "Captcha desactivado en este build. No mergear a producción."
+  },
+  "tabs": {
+    "home": "Inicio",
+    "expenses": "Gastos",
+    "add": "Agregar",
+    "fixed": "Fijos",
+    "control": "Control"
+  },
+  "tour": {
+    "labels": {
+      "next": "Siguiente",
+      "previous": "Anterior",
+      "finish": "Finalizar",
+      "skip": "Saltar"
+    },
+    "home": {
+      "headerActions": "En la parte superior derecha tienes tres accesos rápidos: el asistente financiero, tu buzón de notificaciones y la configuración general. Toca cualquiera para abrirlo.",
+      "familyStrip": "Tu grupo familiar y los días que faltan para tu próximo cobro. Cuando recibas tu sueldo, toca la cápsula para confirmarlo y arrancar un ciclo nuevo.",
+      "hero": "Tu meta de ahorro de un vistazo: cuánto llevas, cuánto falta y el ritmo al que avanzas. Si aún no has configurado tu ingreso mensual, aquí encontrarás el atajo para hacerlo.",
+      "variables": "Tus gastos variables del mes: cuánto llevas gastado y cuál es la categoría que lidera. Toca la tarjeta para abrir el detalle en Gastos.",
+      "fixed": "Tus compromisos fijos del mes: cuántos pagaste y cuál es el próximo a vencer. Toca la tarjeta para abrir el detalle en Fijos.",
+      "meta": "Tu meta de ahorro como una alcancía digital: ves cuánto llevas guardado, agregas un aporte rápido y ajustas el objetivo desde aquí.",
+      "activity": "Tus movimientos recientes del mes, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca \"Ver todos\" para abrir la pantalla completa.",
+      "fab": "El botón de acciones rápidas. Un toque registra un gasto al instante. Manténlo presionado para abrir un menú con tres opciones: gasto, gasto fijo o ingreso. Es la forma más rápida de sumar movimientos."
+    },
+    "gastos": {
+      "hero": "El resumen del mes: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.",
+      "streak": "Tu racha de días registrando gastos. Cada día que cargas al menos un gasto (o marcas que no gastaste) suma un día a la llama. La racha desbloquea escudos y recompensas.",
+      "calendar": "El calendario del mes con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.",
+      "filters": "Filtros rápidos por categoría. Toca un chip y la lista de abajo se ajusta al instante — útil para ver, por ejemplo, cuánto llevas en supermercado o en transporte.",
+      "list": "Tu lista de movimientos del mes, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba."
+    },
+    "fijos": {
+      "hero": "Tus gastos fijos del mes: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.",
+      "calendar": "Lo que vence pronto, en orden cronológico. Cada burbuja muestra el día y la categoría — los números en rojo marcan los que ya pasaron de fecha.",
+      "list": "La lista de abajo agrupa tus fijos por categoría. Toca uno para marcarlo como pagado, o deslízalo hacia la izquierda para editarlo, pausarlo o eliminarlo.",
+      "addButton": "Aquí agregas un fijo nuevo. Suma una renta, una suscripción o cualquier compromiso recurrente — defines cada cuánto vence y la app lo añade automáticamente al ciclo."
+    },
+    "control": {
+      "hoy": "Tu pulso del día: cuánto te queda libre hoy y cómo vas contra tu cupo diario. En verde estás dentro del ritmo; si pasas a rojo, ya cruzaste el techo.",
+      "asesor": "El asesor financiero. Lee tus patrones y te avisa lo que importa: gastos que se descontrolaron, fijos que no usas, oportunidades de ahorro. Toca una tarjeta para resolver cada caso.",
+      "alcanza": "¿Llegas a fin de mes? Proyectamos el cierre con tu ritmo actual. Si la proyección no llega, te muestra el día estimado en que se acaba el cupo y cuánto necesitas ajustar.",
+      "alcancia": "Tu alcancía del mes: lo que NO gastaste cada día se acumula aquí. Es el ahorro automático que generas al quedarte por debajo del cupo diario. Toca la tarjeta para ver el detalle.",
+      "semana": "Resumen de la semana actual frente a la anterior. Si una categoría se disparó esta semana, lo vas a notar aquí antes de que el ciclo se rompa.",
+      "vsMes": "Comparación contra meses anteriores. Te indica si tu mes actual va por encima, por debajo o igual al promedio histórico — útil para detectar si el mes está siendo atípico.",
+      "patron": "Tu patrón de gasto por día de la semana. Si los miércoles siempre gastas de más o los lunes te cuidas solo, aquí lo ves como una huella propia.",
+      "cobertura": "La cobertura de tu ingreso: cuánto cubre tu sueldo a este ritmo y cuántos días aguantarías si dejaras de cobrar hoy. Es el indicador de salud financiera más fundamental."
+    }
   }
 }

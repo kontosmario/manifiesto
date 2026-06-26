@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -38,6 +39,7 @@ export function HomeAssistantButton({
   pendingCount = 0,
 }: HomeAssistantButtonProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Dark mode: match the Home cards' muted surface (surfaceMuted)
   // instead of creamCard, so the assistant button joins the same calm
   // green family on the near-black canvas. Light mode keeps creamCard.
@@ -52,8 +54,8 @@ export function HomeAssistantButton({
       accessibilityRole="button"
       accessibilityLabel={
         pendingCount > 0
-          ? `Abrir asistente — ${pendingCount} ${pendingCount === 1 ? 'sugerencia' : 'sugerencias'}`
-          : 'Abrir asistente'
+          ? t('home:assistantButton.openWithCount', { count: pendingCount })
+          : t('home:assistantButton.open')
       }
       style={({ pressed }) => [
         styles.button,

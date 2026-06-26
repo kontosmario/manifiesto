@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native'
+import i18n from '@/lib/i18n'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
 import { detailStyles } from './detail-styles'
@@ -21,7 +22,7 @@ export function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
       return (
         <View style={detailStyles.stage}>
           <Text style={[detailStyles.eyebrow, { color: 'rgba(15,46,31,0.72)' }]}>
-            DONDE MÁS SE FUE
+            {i18n.t('control:wrapped.topCategory.eyebrow')}
           </Text>
           <Text
             style={[detailStyles.titleDisplay, { color: '#0F2E1F' }]}
@@ -35,7 +36,9 @@ export function buildTopCategoryScene(payload: CycleWrappedPayload): Scene {
               {formatMoney(Math.round(top.amount))}
             </Text>
             <Text style={[detailStyles.share, { color: 'rgba(15,46,31,0.72)' }]}>
-              el {Math.round(top.share * 100)}% de tus gastos
+              {i18n.t('control:wrapped.topCategory.share', {
+                pct: Math.round(top.share * 100),
+              })}
             </Text>
           </View>
 

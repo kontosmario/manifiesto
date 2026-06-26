@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
 const CATEGORY_FALLBACK_COLORS = [
@@ -143,12 +144,12 @@ export function useCreateCategory(familyId?: string, userId?: string) {
   return useMutation({
     mutationFn: async (rawName: string) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para crear una categoría.')
+        throw new Error(i18n.t('gastos:categories.errors.noFamilyCreate'))
       }
 
       const name = rawName.trim()
       if (!name) {
-        throw new Error('El nombre de la categoría no puede estar vacío.')
+        throw new Error(i18n.t('gastos:categories.errors.nameEmpty'))
       }
 
       const { error } = await supabase.from('categories').insert({
@@ -186,12 +187,12 @@ export function useRenameCategory(familyId?: string, userId?: string) {
   return useMutation({
     mutationFn: async ({ categoryId, name }: RenameCategoryInput) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para renombrar una categoría.')
+        throw new Error(i18n.t('gastos:categories.errors.noFamilyRename'))
       }
 
       const normalizedName = name.trim()
       if (!normalizedName) {
-        throw new Error('El nombre de la categoría no puede estar vacío.')
+        throw new Error(i18n.t('gastos:categories.errors.nameEmpty'))
       }
 
       const { error } = await supabase
@@ -222,7 +223,7 @@ export function useDeleteCategory(familyId?: string, userId?: string) {
   return useMutation({
     mutationFn: async (categoryId: string) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para borrar una categoría.')
+        throw new Error(i18n.t('gastos:categories.errors.noFamilyDelete'))
       }
 
       const countResponse = await supabase
@@ -236,7 +237,7 @@ export function useDeleteCategory(familyId?: string, userId?: string) {
       }
 
       if ((countResponse.count ?? 0) > 0) {
-        throw new Error('No puedes borrar una categoría que ya tiene gastos cargados.')
+        throw new Error(i18n.t('gastos:categories.errors.hasExpenses'))
       }
 
       const { error } = await supabase

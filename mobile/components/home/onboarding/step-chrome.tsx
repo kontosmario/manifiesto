@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { ONBOARDING_TOTAL_STEPS } from '@/features/onboarding/use-onboarding-state'
@@ -25,13 +26,14 @@ export function OnboardingStepHeader({
   onBack,
 }: OnboardingStepHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.headerRow}>
       {canGoBack ? (
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
-          accessibilityLabel="Volver al paso anterior"
+          accessibilityLabel={t('onboarding:chrome.back')}
           hitSlop={10}
           style={[
             styles.backPill,

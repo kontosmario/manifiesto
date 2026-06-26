@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
@@ -91,6 +92,7 @@ export function AddQuickActionsOverlay({
   actions,
 }: AddQuickActionsOverlayProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
   const [mounted, setMounted] = useState(false)
@@ -170,7 +172,7 @@ export function AddQuickActionsOverlay({
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onDismiss}
-        accessibilityLabel="Cerrar acciones"
+        accessibilityLabel={t('states:quickActions.closeLabel')}
         accessibilityRole="button"
       >
         <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
@@ -212,7 +214,7 @@ export function AddQuickActionsOverlay({
           ]}
         >
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            ¿Qué cargas?
+            {t('states:quickActions.eyebrow')}
           </Text>
 
           {primary ? (

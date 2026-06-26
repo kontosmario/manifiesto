@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -94,20 +95,20 @@ interface InternalCopyConfig {
  * already have on hand at the moment of setup.
  */
 export function OnboardingAvailableSheet(props: SharedProps) {
+  const { t } = useTranslation()
   return (
     <CycleBalancePromptSheetBase
       {...props}
       copy={{
-        title: '¿Cuál es tu saldo hoy?',
-        contextPrefixLabel: 'Sueldo configurado',
-        helperEmpty:
-          'Anota el monto en mano. Lo usamos para arrancar este mes con la realidad.',
-        saveLabel: 'Guardar saldo',
-        eyebrow: 'O AJUSTA EL SALDO',
-        chipTitle: 'Tengo el sueldo completo',
-        chipSubtitle: 'Igual al monto configurado',
+        title: t('home:cycleBalance.onboarding.title'),
+        contextPrefixLabel: t('home:cycleBalance.onboarding.contextPrefix'),
+        helperEmpty: t('home:cycleBalance.onboarding.helperEmpty'),
+        saveLabel: t('home:cycleBalance.onboarding.saveLabel'),
+        eyebrow: t('home:cycleBalance.onboarding.eyebrow'),
+        chipTitle: t('home:cycleBalance.onboarding.chipTitle'),
+        chipSubtitle: t('home:cycleBalance.onboarding.chipSubtitle'),
         chipA11y: (formatted) =>
-          `Tengo el sueldo completo de ${formatted}, igual al monto configurado`,
+          t('home:cycleBalance.onboarding.chipA11y', { amount: formatted }),
         chipTone: 'brand',
       }}
     />
@@ -123,20 +124,20 @@ export function OnboardingAvailableSheet(props: SharedProps) {
  * an event that already happened.
  */
 export function SalaryConfirmationSheet(props: SharedProps) {
+  const { t } = useTranslation()
   return (
     <CycleBalancePromptSheetBase
       {...props}
       copy={{
-        title: '¿Cobraste? Confirma el monto',
-        contextPrefixLabel: 'Sueldo recurrente',
-        helperEmpty:
-          'Anota el monto que recibiste este mes. Solo aplica a este mes.',
-        saveLabel: 'Guardar cobro',
-        eyebrow: 'O AJUSTA EL MONTO COBRADO',
-        chipTitle: 'Cobré el sueldo completo',
-        chipSubtitle: 'Igual al sueldo recurrente',
+        title: t('home:cycleBalance.salary.title'),
+        contextPrefixLabel: t('home:cycleBalance.salary.contextPrefix'),
+        helperEmpty: t('home:cycleBalance.salary.helperEmpty'),
+        saveLabel: t('home:cycleBalance.salary.saveLabel'),
+        eyebrow: t('home:cycleBalance.salary.eyebrow'),
+        chipTitle: t('home:cycleBalance.salary.chipTitle'),
+        chipSubtitle: t('home:cycleBalance.salary.chipSubtitle'),
         chipA11y: (formatted) =>
-          `Cobré ${formatted}, igual al sueldo recurrente`,
+          t('home:cycleBalance.salary.chipA11y', { amount: formatted }),
         // 'brand' = primary forest green (calmo, on-brand, menos
         // agresivo que el peach saturado). Feedback owner:
         // "demasiado PEACH".
@@ -164,6 +165,7 @@ function CycleBalancePromptSheetBase({
   copy,
 }: BaseProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(() => serializePrice(monthlyIncome))
 
   useEffect(() => {
@@ -230,7 +232,7 @@ function CycleBalancePromptSheetBase({
       // sheet ya tiene la decisión clara con el CTA primario; no hace
       // falta agregar metric load.
       errorText={
-        showError ? 'Tiene que ser mayor a cero.' : errorMessage ?? undefined
+        showError ? t('home:cycleBalance.mustBePositive') : errorMessage ?? undefined
       }
       saveLabel={copy.saveLabel}
       saveDisabled={!isValid || matchesSalary}

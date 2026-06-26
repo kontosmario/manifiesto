@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { TextField } from '@/components/ui/text-field'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -54,6 +55,7 @@ export function StepFamily({
   closedByOwner = false,
 }: StepFamilyProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const bootstrap = useBootstrapFamily(userId)
   // Single-use invite code lookup. Replaces the legacy
   // peek_family_by_code which used the persistent `families.code`.
@@ -77,7 +79,7 @@ export function StepFamily({
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert('No pudimos crear la familia', getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorCreateFamily'), getErrorMessage(error, errorMessages.server))
     }
   }
 
@@ -92,14 +94,14 @@ export function StepFamily({
       setPanel('create')
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert('No pudimos crear tu cuenta', getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorCreateAccount'), getErrorMessage(error, errorMessages.server))
     }
   }
 
   const handleJoin = async () => {
     const trimmed = codeInput.trim().toUpperCase()
     if (trimmed.length < 4) {
-      Alert.alert('Código inválido', 'Ingresa el código que te compartieron.')
+      Alert.alert(t('onboarding:family.errorInvalidCodeTitle'), t('onboarding:family.errorInvalidCodeMessage'))
       return
     }
     void triggerHaptic('selection')
@@ -111,7 +113,7 @@ export function StepFamily({
       onJoinPeek(result)
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert('No pudimos validar el código', getErrorMessage(error, errorMessages.server))
+      Alert.alert(t('onboarding:family.errorValidateCode'), getErrorMessage(error, errorMessages.server))
     }
   }
 
@@ -119,25 +121,24 @@ export function StepFamily({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          {panel === 'mode' ? 'Empecemos' : 'Familia'}
+          {panel === 'mode' ? t('onboarding:family.titleStart') : t('onboarding:family.titleFamily')}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
           {panel === 'mode'
-            ? '¿Cómo vas a usar Manifiesto?'
+            ? t('onboarding:family.subcopyMode')
             : closedByOwner
-              ? 'Tu hogar anterior fue cerrado. Armemos uno propio o súmate a otro con su código.'
+              ? t('onboarding:family.subcopyClosedByOwner')
               : isRejoin
-                ? 'Puedes empezar un hogar nuevo o sumarte a otro con su código.'
-                : 'Empieza una familia o súmate a una existente.'}
+                ? t('onboarding:family.subcopyRejoin')
+                : t('onboarding:family.subcopyDefault')}
         </Text>
         {closedByOwner ? (
           <Text style={[styles.rejoinHint, { color: theme.colors.textMuted }]}>
-            Como el dueño cerró el hogar, sus datos compartidos ya no están disponibles —
-            arrancamos limpios.
+            {t('onboarding:family.hintClosedByOwner')}
           </Text>
         ) : isRejoin ? (
           <Text style={[styles.rejoinHint, { color: theme.colors.textMuted }]}>
-            Tus gastos y metas viejos quedan con tu hogar anterior — este arranque es desde cero.
+            {t('onboarding:family.hintRejoin')}
           </Text>
         ) : null}
       </RiseView>
@@ -163,14 +164,14 @@ export function StepFamily({
           <View style={{ flex: 1 }}>
             <Text style={[styles.confirmTitle, { color: theme.colors.text }]}>
               {accountKind === 'solo'
-                ? '¡Listo! Tu cuenta está creada.'
+                ? t('onboarding:family.confirmTitleSolo')
                 : familyMode === 'created'
-                  ? '¡Tu familia ya está creada!'
-                  : '¡Listo, te sumaste!'}
+                  ? t('onboarding:family.confirmTitleCreated')
+                  : t('onboarding:family.confirmTitleJoined')}
             </Text>
             {familyMode === 'created' && accountKind !== 'solo' ? (
               <Text style={[styles.confirmHint, { color: theme.colors.textMuted }]}>
-                Cuando quieras invitar a alguien, genera un código desde Ajustes.
+                {t('onboarding:family.confirmHintCreated')}
               </Text>
             ) : null}
           </View>
@@ -185,21 +186,21 @@ export function StepFamily({
         >
           <OptionCard
             emoji="👤"
-            title="Yo solo"
-            meta="Gestiono mi plata solo."
+            title={t('onboarding:family.optionSoloTitle')}
+            meta={t('onboarding:family.optionSoloMeta')}
             onPress={() => void handleSolo()}
             disabled={busy}
-            accessibilityLabel="Usar la app yo solo"
+            accessibilityLabel={t('onboarding:family.optionSoloA11y')}
             theme={theme}
           />
 
           <OptionCard
             emoji="👨‍👩‍👧"
-            title="Con mi familia o pareja"
-            meta="Compartimos los gastos."
+            title={t('onboarding:family.optionSharedTitle')}
+            meta={t('onboarding:family.optionSharedMeta')}
             onPress={() => setPanel('root')}
             disabled={busy}
-            accessibilityLabel="Usar la app con mi familia o pareja"
+            accessibilityLabel={t('onboarding:family.optionSharedA11y')}
             theme={theme}
           />
         </Animated.View>
@@ -213,23 +214,23 @@ export function StepFamily({
         >
           <OptionCard
             emoji="🏠"
-            title="Crear nueva"
-            meta="Empezamos con un código nuevo."
+            title={t('onboarding:family.optionCreateTitle')}
+            meta={t('onboarding:family.optionCreateMeta')}
             onPress={() => {
               void triggerHaptic('selection')
               void handleCreate()
             }}
             disabled={busy}
-            accessibilityLabel="Crear nueva familia"
+            accessibilityLabel={t('onboarding:family.optionCreateA11y')}
             theme={theme}
           />
 
           <OptionCard
             emoji="🔗"
-            title="Unirme con código"
-            meta="Pega el código que te pasaron."
+            title={t('onboarding:family.optionJoinTitle')}
+            meta={t('onboarding:family.optionJoinMeta')}
             onPress={() => setPanel('join')}
-            accessibilityLabel="Unirme con código"
+            accessibilityLabel={t('onboarding:family.optionJoinA11y')}
             theme={theme}
           />
 
@@ -237,9 +238,9 @@ export function StepFamily({
             onPress={() => setPanel('mode')}
             style={[styles.ghostButton, { borderColor: theme.colors.line }]}
             accessibilityRole="button"
-            accessibilityLabel="Volver"
+            accessibilityLabel={t('onboarding:family.back')}
           >
-            <Text style={[styles.ghostButtonText, { color: theme.colors.text }]}>Volver</Text>
+            <Text style={[styles.ghostButtonText, { color: theme.colors.text }]}>{t('onboarding:family.back')}</Text>
           </Pressable>
         </Animated.View>
       ) : panel === 'join' ? (
@@ -251,14 +252,14 @@ export function StepFamily({
           style={styles.optionStack}
         >
           <TextField
-            label="Código"
+            label={t('onboarding:family.codeLabel')}
             value={codeInput}
-            onChangeText={(t) => setCodeInput(t.toUpperCase())}
-            placeholder="ABCD12"
+            onChangeText={(value) => setCodeInput(value.toUpperCase())}
+            placeholder={t('onboarding:family.codePlaceholder')}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={8}
-            accessibilityLabel="Código de familia"
+            accessibilityLabel={t('onboarding:family.codeA11y')}
             style={styles.codeInputOverride}
           />
           <View style={styles.joinRow}>
@@ -269,9 +270,9 @@ export function StepFamily({
                 { borderColor: theme.colors.line },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Volver"
+              accessibilityLabel={t('onboarding:family.back')}
             >
-              <Text style={[styles.ghostButtonText, { color: theme.colors.text }]}>Volver</Text>
+              <Text style={[styles.ghostButtonText, { color: theme.colors.text }]}>{t('onboarding:family.back')}</Text>
             </Pressable>
             <Pressable
               onPress={() => void handleJoin()}
@@ -284,10 +285,10 @@ export function StepFamily({
                 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Unirme"
+              accessibilityLabel={t('onboarding:family.join')}
             >
               <Text style={[styles.primaryButtonText, { color: theme.colors.creamCard }]}>
-                {busy ? 'Uniendo…' : 'Unirme'}
+                {busy ? t('onboarding:family.joining') : t('onboarding:family.join')}
               </Text>
             </Pressable>
           </View>

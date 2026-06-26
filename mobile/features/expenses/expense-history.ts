@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Category } from '@/features/categories/use-categories'
 import { buildExpenseBreakdown } from '@/features/expenses/expense-history-breakdown'
 import { groupExpensesByDay } from '@/features/expenses/expense-history-grouping'
@@ -14,10 +15,10 @@ import {
 export const ALL_CATEGORIES_KEY = 'all'
 
 export const PERIOD_OPTIONS = [
-  { key: 'cycle', label: 'Ciclo' },
-  { key: 'week', label: '7 dias' },
-  { key: 'today', label: 'Hoy' },
-  { key: 'all', label: 'Todo' },
+  { key: 'cycle', labelKey: 'gastos:filtersScreen.periodOptions.cycle' },
+  { key: 'week', labelKey: 'gastos:filtersScreen.periodOptions.week' },
+  { key: 'today', labelKey: 'gastos:filtersScreen.periodOptions.today' },
+  { key: 'all', labelKey: 'gastos:filtersScreen.periodOptions.all' },
 ] as const
 
 export type PeriodFilter = (typeof PERIOD_OPTIONS)[number]['key']
@@ -137,14 +138,16 @@ export function buildExpenseHistorySnapshot({
     warningColor,
   })
   const groups = groupExpensesByDay(filteredExpenses, safeToday)
-  const activePeriodLabel =
-    PERIOD_OPTIONS.find((option) => option.key === periodFilter)?.label ?? 'Ciclo'
-  const activeScopeLabel = categoryById.get(selectedCategoryId)?.name ?? 'Todas'
-  const heroSubtitle = `${filteredExpenses.length} ${
-    filteredExpenses.length === 1 ? 'movimiento visible' : 'movimientos visibles'
-  } · ${activePeriodLabel} · ${activeScopeLabel}${
+  const activePeriodLabelKey =
+    PERIOD_OPTIONS.find((option) => option.key === periodFilter)?.labelKey
+  const activePeriodLabel = activePeriodLabelKey
+    ? i18n.t(activePeriodLabelKey)
+    : i18n.t('gastos:filtersScreen.cycleFallback')
+  const activeScopeLabel = categoryById.get(selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all')
+  const visibleCount = i18n.t('gastos:history.visibleMovements', { count: filteredExpenses.length })
+  const searchSuffix =
     normalizedSearch.length > 0 ? ` · "${searchQuery.trim()}"` : ''
-  }`
+  const heroSubtitle = `${visibleCount} · ${activePeriodLabel} · ${activeScopeLabel}${searchSuffix}`
 
   return {
     breakdown,

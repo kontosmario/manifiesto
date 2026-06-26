@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import {
@@ -36,6 +37,7 @@ interface ShareInviteSheetProps {
  */
 export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const createInvite = useCreateFamilyInvite()
   const [invite, setInvite] = useState<FamilyInviteCreated | null>(null)
 
@@ -66,12 +68,12 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     } catch (error) {
       void triggerHaptic('error')
       Alert.alert(
-        'No pudimos generar el código',
-        getErrorMessage(error, 'Reintenta en un momento.'),
+        t('settings:invite.generateErrorTitle'),
+        getErrorMessage(error, t('settings:invite.retry')),
       )
       onClose()
     }
-  }, [createInvite, onClose])
+  }, [createInvite, onClose, t])
 
   /* eslint-disable react-hooks/set-state-in-effect -- intentional sync: generate fresh code on open, reset on dismiss */
   useEffect(() => {
@@ -89,7 +91,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     if (!invite) return
     await copyInviteCodeLocally(invite.code)
     await triggerHaptic('selection')
-    Alert.alert('Copiado', `El código "${invite.code}" está en tu portapapeles.`)
+    Alert.alert(t('settings:invite.copiedTitle'), t('settings:invite.copiedMessage', { code: invite.code }))
   }
 
   const handleShare = async () => {
@@ -98,8 +100,8 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     try {
       await Share.share({
         message:
-          `Te invito al hogar en Manifiesto. Ingresa este código en la app: ${invite.code}\n\n` +
-          'El código sirve para una sola persona y vence en 7 días.',
+          `${t('settings:invite.shareMessage', { code: invite.code })}\n\n` +
+          t('settings:invite.shareDisclaimer'),
       })
     } catch {
       // Native share rejection (e.g. user dismissed) is silent.
@@ -115,8 +117,8 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Compartilo con la persona que quieres que se sume."
-      title="Invitar a alguien"
+      subtitle={t('settings:invite.subtitle')}
+      title={t('settings:invite.title')}
       visible={visible}
     >
       <View style={styles.stack}>
@@ -133,30 +135,30 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
             <Pressable onPress={handleCopy} accessibilityRole="button">
               <Text
                 style={[styles.codeText, { color: theme.colors.text }]}
-                accessibilityLabel={`Código de invitación ${invite.code}`}
+                accessibilityLabel={t('settings:invite.codeA11y', { code: invite.code })}
                 selectable
               >
                 {formatCode(invite.code)}
               </Text>
               <Text style={[styles.codeHint, { color: theme.colors.textMuted }]}>
-                Toca para copiar
+                {t('settings:invite.tapToCopy')}
               </Text>
             </Pressable>
           ) : (
             <Text style={[styles.codeText, { color: theme.colors.textMuted }]}>
-              {createInvite.isPending ? 'Generando…' : '— — — — — — — —'}
+              {createInvite.isPending ? t('settings:invite.generating') : '— — — — — — — —'}
             </Text>
           )}
         </View>
 
         <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
-          Se usa una sola vez · vence en 7 días.
+          {t('settings:invite.meta')}
         </Text>
 
         <View style={styles.actions}>
           <AppButton
             disabled={!invite}
-            label="Compartir"
+            label={t('settings:invite.share')}
             onPress={handleShare}
           />
           <Pressable
@@ -179,7 +181,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
             <Text
               style={[styles.secondaryActionText, { color: theme.colors.textMuted }]}
             >
-              Generar otro
+              {t('settings:invite.regenerate')}
             </Text>
           </Pressable>
         </View>

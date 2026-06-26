@@ -4,6 +4,7 @@ import type {
   ExpenseAnalyticsSuggestion,
 } from '@/features/expenses/expense-analytics.types'
 import type { Expense } from '@/features/expenses/use-expenses'
+import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
 
 export function buildExpenseAnalyticsSuggestions({
@@ -30,62 +31,64 @@ export function buildExpenseAnalyticsSuggestions({
   if (projectedAvailableAtCycleEnd < 0) {
     const overspend = Math.abs(projectedAvailableAtCycleEnd)
     suggestions.push({
-      detail: `Si el ritmo actual sigue, te faltarían ${currencyFormatter.format(
-        overspend,
-      )}. Baja unos ${currencyFormatter.format(
-        overspend / Math.max(daysRemaining, 1),
-      )} por día para llegar con aire.`,
-      title: 'Riesgo de pasarte antes del próximo cobro',
+      detail: i18n.t('gastos:analytics.overspendRisk.detail', {
+        missing: currencyFormatter.format(overspend),
+        perDay: currencyFormatter.format(overspend / Math.max(daysRemaining, 1)),
+      }),
+      title: i18n.t('gastos:analytics.overspendRisk.title'),
       tone: 'warning',
     })
   }
 
   if (adjustmentNeededPerDay > 0) {
     suggestions.push({
-      detail: `Para llegar al próximo cobro sin quedarte corto, intenta bajar alrededor de ${currencyFormatter.format(
-        adjustmentNeededPerDay,
-      )} por día desde mañana.`,
-      title: 'Necesitas ajustar el ritmo diario',
+      detail: i18n.t('gastos:analytics.adjustPace.detail', {
+        amount: currencyFormatter.format(adjustmentNeededPerDay),
+      }),
+      title: i18n.t('gastos:analytics.adjustPace.title'),
       tone: 'warning',
     })
   }
 
   if (topCategory && topCategory.share >= 0.35) {
     suggestions.push({
-      detail: `${topCategory.label} concentra ${Math.round(
-        topCategory.share * 100,
-      )}% del mes. Es la mejor categoría para buscar recortes sin tocar todo el presupuesto.`,
-      title: 'La concentración del gasto está muy cargada',
+      detail: i18n.t('gastos:analytics.concentration.detail', {
+        category: topCategory.label,
+        percent: Math.round(topCategory.share * 100),
+      }),
+      title: i18n.t('gastos:analytics.concentration.title'),
       tone: 'primary',
     })
   }
 
   if (recurringFocus && recurringFocus.total > Math.max(averageTicketFloor(expenses), 3000)) {
     suggestions.push({
-      detail: `"${recurringFocus.label}" apareció ${recurringFocus.count} veces en 60 días y suma ${currencyFormatter.format(
-        recurringFocus.total,
-      )}. Vale la pena revisar si es suscripción, fee o hábito recurrente.`,
-      title: 'Hay un gasto repetido para auditar',
+      detail: i18n.t('gastos:analytics.recurring.detail', {
+        label: recurringFocus.label,
+        count: recurringFocus.count,
+        total: currencyFormatter.format(recurringFocus.total),
+      }),
+      title: i18n.t('gastos:analytics.recurring.title'),
       tone: 'warning',
     })
   }
 
   if (weekendPremiumRatio !== null && weekendPremiumRatio >= 1.25) {
     suggestions.push({
-      detail: `El gasto diario del fin de semana viene ${Math.round(
-        (weekendPremiumRatio - 1) * 100,
-      )}% arriba del promedio de lunes a viernes.`,
-      title: 'Los fines de semana están empujando el total',
+      detail: i18n.t('gastos:analytics.weekend.detail', {
+        percent: Math.round((weekendPremiumRatio - 1) * 100),
+      }),
+      title: i18n.t('gastos:analytics.weekend.title'),
       tone: 'primary',
     })
   }
 
   if (weeklyDeltaRatio !== null && weeklyDeltaRatio >= 0.15) {
     suggestions.push({
-      detail: `Los últimos 7 días subieron ${Math.round(
-        weeklyDeltaRatio * 100,
-      )}% frente a la semana anterior. Revisa qué se aceleró antes de que se consolide.`,
-      title: 'El gasto se aceleró esta semana',
+      detail: i18n.t('gastos:analytics.weeklyAccel.detail', {
+        percent: Math.round(weeklyDeltaRatio * 100),
+      }),
+      title: i18n.t('gastos:analytics.weeklyAccel.title'),
       tone: 'warning',
     })
   }
@@ -94,11 +97,13 @@ export function buildExpenseAnalyticsSuggestions({
     suggestions.push({
       detail:
         projectedAvailableAtCycleEnd >= 0
-          ? `Con el patrón actual cerrarías el ciclo con ${currencyFormatter.format(
-              projectedAvailableAtCycleEnd,
-            )} disponibles.`
-          : 'No hay alertas fuertes todavía, pero conviene seguir de cerca el cierre del mes.',
-      title: projectedAvailableAtCycleEnd >= 0 ? 'El ritmo viene sano' : 'No hay alertas fuertes todavía',
+          ? i18n.t('gastos:analytics.healthy.detail', {
+              amount: currencyFormatter.format(projectedAvailableAtCycleEnd),
+            })
+          : i18n.t('gastos:analytics.noAlerts.detail'),
+      title: projectedAvailableAtCycleEnd >= 0
+        ? i18n.t('gastos:analytics.healthy.title')
+        : i18n.t('gastos:analytics.noAlerts.title'),
       tone: projectedAvailableAtCycleEnd >= 0 ? 'success' : 'primary',
     })
   }

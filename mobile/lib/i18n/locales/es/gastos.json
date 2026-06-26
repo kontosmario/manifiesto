@@ -1,1 +1,562 @@
-{}
+{
+  "header": {
+    "title": "Gastos",
+    "subtitle": "Historial, filtros y edición rápida de movimientos.",
+    "cycleSubtitle": "Ciclo {{cycle}}"
+  },
+  "hero": {
+    "totalVisible": "TOTAL VISIBLE",
+    "totalDay": "TOTAL DEL DÍA",
+    "dailyAverage": "PROMEDIO DÍA",
+    "lastDays": "· últimos {{days}}d",
+    "topCategories": "MÁS PESO POR CATEGORÍA"
+  },
+  "list": {
+    "movementsTitle": "Movimientos",
+    "swipeHint": "Desliza para acciones",
+    "loadingMoreA11y": "Cargando más movimientos",
+    "loadingMoreDays": "Cargando más días…",
+    "endOfMonthA11y": "Fin del mes",
+    "endOfMonth": "FIN DEL MES"
+  },
+  "emptyState": {
+    "introTitle": "Todavía no registras gastos",
+    "introBody": "Aquí ves cada movimiento del hogar: cuánto llevas gastado en el ciclo, tu cupo diario y el detalle por día. Agrega el primero para empezar.",
+    "addFirstCta": "Cargar mi primer gasto",
+    "previewEyebrow": "ASÍ SE VA A VER",
+    "preview": {
+      "heroTitle": "Resumen del mes",
+      "heroDescription": "Cuánto llevas gastado y tu cupo diario disponible.",
+      "calendarTitle": "Mapa del mes",
+      "calendarDescription": "Un calendario con tus días de gasto del mes.",
+      "listTitle": "Tus movimientos",
+      "listDescription": "El detalle por día, con categoría y autor."
+    }
+  },
+  "smartFilter": {
+    "eyebrow": "FILTRAR POR CATEGORÍA",
+    "all": "Todas"
+  },
+  "filterPill": {
+    "a11yWithCount_one": "{{label}}, {{count}} movimiento",
+    "a11yWithCount_other": "{{label}}, {{count}} movimientos",
+    "a11yWithCount_active_one": "{{label}}, {{count}} movimiento, filtro activo",
+    "a11yWithCount_active_other": "{{label}}, {{count}} movimientos, filtro activo",
+    "a11yNoCount": "{{label}}",
+    "a11yNoCount_active": "{{label}}, filtro activo",
+    "hintApply": "Doble tap para filtrar por esta categoría",
+    "hintRemove": "Doble tap para quitar el filtro"
+  },
+  "clearFilters": {
+    "label": "Limpiar filtros",
+    "a11yLabel": "Limpiar todos los filtros activos"
+  },
+  "advisorChip": {
+    "calmTitle": "Sin alertas por ahora",
+    "calmBody": "Tus categorías están en orden",
+    "a11yLabel": "Asistente: {{title}}"
+  },
+  "movementRow": {
+    "someone": "Alguien",
+    "noCategory": "Sin categoría",
+    "incomeA11yLabel": "{{title}}, ingreso",
+    "swipeToDeleteHint": "Desliza a la izquierda para eliminar",
+    "a11yLabel": "{{title}}, {{amount}} pesos en {{categoryName}}, cargado por {{whoName}} a las {{time}}."
+  },
+  "incomeRow": {
+    "kind": {
+      "transfer": "Transferencia",
+      "bonus": "Bono",
+      "gift": "Regalo",
+      "other": "Ingreso"
+    }
+  },
+  "sectionMeta": {
+    "expenses_one": "{{count}} gasto",
+    "expenses_other": "{{count}} gastos",
+    "incomes_one": "{{count}} ingreso",
+    "incomes_other": "{{count}} ingresos",
+    "none": "sin movimientos"
+  },
+  "calendar": {
+    "eyebrow": "TU MES EN UN VISTAZO",
+    "legend": {
+      "good": "bien",
+      "warning": "alerta",
+      "over": "exceso"
+    },
+    "hintInert": "Cada día se va a colorear según tu gasto",
+    "hintTap": "Toca un día para filtrar sus gastos",
+    "filterDayA11y": "Filtrar día {{day}}",
+    "focusEyebrow": "DÍA SELECCIONADO",
+    "mood": {
+      "calm": "Día tranquilo",
+      "warning": "Día de alerta",
+      "over": "Día de exceso",
+      "none": "Sin movimientos"
+    },
+    "backToCycleA11y": "Volver al ciclo completo",
+    "todaySuffix": " · hoy",
+    "statSpent": "GASTADO",
+    "statMovements": "MOVIMIENTOS",
+    "registerForgotten": "Registrar gasto olvidado",
+    "registerForgottenA11y": "Registrar gasto olvidado en este día",
+    "markNoSpend": "Marcar día sin gastos",
+    "markNoSpendA11y": "Marcar este día como sin gastos",
+    "unmarkNoSpend": "Revertir marca de sin gastos",
+    "unmarkNoSpendA11y": "Revertir marca de día sin gastos",
+    "fullCycle": "Ciclo completo",
+    "prevDayA11y": "Día anterior",
+    "nextDayA11y": "Día siguiente"
+  },
+  "noSpendConfirm": {
+    "title": "Hoy ya tienes gastos cargados",
+    "subtitle": "Te mostramos qué cargaste hoy para que verifiques antes de marcar el día como sin gasto.",
+    "marking": "Marcando…",
+    "markAnyway": "Marcar igual",
+    "totalToday": "TOTAL DE HOY",
+    "expensesLogged_one": "1 gasto cargado",
+    "expensesLogged_other": "{{count}} gastos cargados",
+    "tip": "Si te confundes, puedes revertir la marca tocando \"Marcado ✓\" en el mismo botón del FAB."
+  },
+  "levelProgress": {
+    "daysIntoLevel": "{{into}} / {{total}} días → {{nextLevel}}",
+    "daysToNext_one": "{{count}} día más para subir a {{nextLevel}}",
+    "daysToNext_other": "{{count}} días más para subir a {{nextLevel}}"
+  },
+  "streakSheet": {
+    "daysLabel": "días",
+    "levelEyebrow": "NIVEL",
+    "last7Days": "Últimos 7 días",
+    "retryLater": "Reintenta en un momento.",
+    "saving": "Guardando…",
+    "reverting": "Revirtiendo…",
+    "noExpenseToday": "Hoy no tuve gastos",
+    "markNoSpendA11y": "Marcar el día como sin gastos",
+    "unmarkLabel": "Revertir \"hoy sin gastos\"",
+    "unmarkNoSpendA11y": "Revertir marca de día sin gastos",
+    "startStreakToday": "Empezar la racha hoy",
+    "registerExpenseNow": "Registrar un gasto ahora",
+    "markAlert": {
+      "title": "Marcar día sin gastos",
+      "message": "Confirmas que hoy no tuviste gastos? La racha avanza igual y sumas un día a tu progreso. Puedes revertirlo si después aparece algún gasto.",
+      "confirm": "Sí, hoy no gasté",
+      "errorTitle": "No se pudo marcar el día"
+    },
+    "unmarkAlert": {
+      "title": "Revertir día sin gastos",
+      "message": "¿Apareció un gasto y quieres volver atrás la marca de hoy? La racha vuelve a depender de que registres antes de medianoche.",
+      "confirm": "Revertir marca",
+      "errorTitle": "No se pudo revertir"
+    },
+    "shieldNotice": {
+      "title_one": "Tienes {{count}} escudo disponible",
+      "title_other": "Tienes {{count}} escudos disponibles",
+      "body": "Si no registras hoy, el escudo protege tu racha automáticamente a las 23:59."
+    },
+    "consequence": {
+      "title": "Si no registras hoy",
+      "regress": "Vuelves al día {{day}} (inicio de {{level}})",
+      "lose_one": "Pierdes {{count}} día de progreso ganados",
+      "lose_other": "Pierdes {{count}} días de progreso ganados",
+      "needMore": "Necesitarías {{days}} días más para llegar a {{nextLevel}}"
+    },
+    "recovery": {
+      "title": "Puedes volver"
+    },
+    "motivational": {
+      "nearRecord": "A {{away}} días de tu récord personal de {{record}} días.",
+      "atRecord": "🏆 Estás en tu récord personal. ¡Sigue!"
+    },
+    "stats": {
+      "personalRecord": "Récord personal",
+      "totalLogged": "Total registrado",
+      "days_one": "{{count}} día",
+      "days_other": "{{count}} días"
+    },
+    "freezeInfo": {
+      "line1": "Ganas un escudo cada 7 días seguidos de racha.",
+      "line2": "Tienes {{tokens}} · Puedes acumular hasta 2."
+    },
+    "shieldChip": {
+      "a11y": "Escudos disponibles: {{tokens}} de 2",
+      "label_none": "Sin escudos disponibles",
+      "label_one": "1 escudo disponible",
+      "label_two": "2 escudos disponibles",
+      "hint_none": "Ganas uno cada 7 días seguidos de racha.",
+      "hint_one": "Te queda 1. Cubrirá un día sin registrar.",
+      "hint_full": "Stock al máximo. Cubren un día perdido cada uno."
+    }
+  },
+  "summaryChip": {
+    "day": "día {{day}}",
+    "text": "{{count}} mov · {{period}} · {{cat}}"
+  },
+  "dayGroup": {
+    "today": "Hoy",
+    "yesterday": "Ayer"
+  },
+  "misc": {
+    "noName": "Sin nombre"
+  },
+  "emptyVariants": {
+    "pendingConfirm": {
+      "primary": "Tus gastos esperan al mes nuevo",
+      "secondary": "Ya registraste movimientos del próximo ciclo. Confirma tu cobro para que aparezcan aquí.",
+      "action": "Confirmar cobro"
+    },
+    "global": {
+      "primary": "Carga tu primer gasto",
+      "secondary": "Empieza el ciclo registrando uno"
+    },
+    "filtered": {
+      "primary": "No hay movimientos para este filtro",
+      "secondary": "Prueba quitando algún filtro para ver más"
+    },
+    "cycle": {
+      "primary": "Aún sin gastos en este mes",
+      "secondary": "Cuando cargues uno, lo vas a ver aquí"
+    }
+  },
+  "noSpend": {
+    "markedSuccess": "Día sin gastos registrado",
+    "unknownError": "Error desconocido",
+    "expensesExist": "Ese día tiene gastos registrados — no se puede marcar como sin gasto.",
+    "futureDate": "No puedes marcar un día que aún no ocurrió.",
+    "markFailed": "No se pudo marcar. Reintenta en un momento.",
+    "unmarkedSuccess": "Marca de día sin gastos removida.",
+    "unmarkFailed": "No se pudo revertir. Reintenta en un momento."
+  },
+  "history": {
+    "loadingMovements": "Cargando movimientos.",
+    "deleteTitle": "Borrar gasto",
+    "deleteMessage": "Esta accion no se puede deshacer.",
+    "deleteConfirm": "Borrar",
+    "visibleMovements_one": "{{count}} movimiento visible",
+    "visibleMovements_other": "{{count}} movimientos visibles"
+  },
+  "errors": {
+    "noSessionCreate": "No hay sesión o familia activa para crear gastos.",
+    "noFamilyEdit": "No hay familia activa para editar gastos.",
+    "noFamilyDelete": "No hay familia activa para borrar gastos.",
+    "saveFailed": "No se pudo guardar el gasto.",
+    "updateFailed": "No se pudo actualizar el gasto.",
+    "deleteFailed": "No se pudo borrar el gasto.",
+    "createFailed": "No se pudo crear el gasto.",
+    "descriptionRequired": "La descripción es obligatoria.",
+    "descriptionTooLong": "La descripción no puede superar los {{max}} caracteres.",
+    "noteTooLong": "La nota no puede superar los {{max}} caracteres.",
+    "priceInvalid": "El precio debe ser un número mayor o igual a 0.",
+    "priceTooHigh": "El precio supera el máximo permitido.",
+    "snapshotEmpty": "El snapshot de gastos vino vacío.",
+    "somethingWrong": "Algo salió mal",
+    "somethingWrongNoAccent": "Algo salio mal",
+    "deleteTitle": "No pudimos eliminar",
+    "loadTitle": "No pudimos cargar tus gastos"
+  },
+  "income": {
+    "errors": {
+      "noSession": "No hay sesión activa.",
+      "amountPositive": "El monto debe ser mayor a cero.",
+      "saveFailed": "No se pudo guardar el ingreso.",
+      "deleteFailed": "No se pudo borrar el ingreso."
+    }
+  },
+  "categories": {
+    "errors": {
+      "noFamilyCreate": "No hay familia activa para crear una categoría.",
+      "noFamilyRename": "No hay familia activa para renombrar una categoría.",
+      "noFamilyDelete": "No hay familia activa para borrar una categoría.",
+      "nameEmpty": "El nombre de la categoría no puede estar vacío.",
+      "hasExpenses": "No puedes borrar una categoría que ya tiene gastos cargados."
+    }
+  },
+  "dailyBudget": {
+    "status": {
+      "exceeded": "Excedido",
+      "critical": "Crítico",
+      "inRange": "En rango"
+    },
+    "ateTomorrow": {
+      "title": "Hoy ya te comiste parte de mañana",
+      "detail": "Si frenas ahora, mañana abrirías con {{amount}}."
+    },
+    "zeroDay": {
+      "title": "Día cero activo",
+      "titleStreak": "{{count}} días cero en fila",
+      "detail": "Si cierras el día así, mañana arrancas con {{amount}}."
+    },
+    "operatingMargin": {
+      "title": "Todavía hay margen operativo",
+      "detail": "Todavía te quedan {{amount}} para lo que resta del día."
+    },
+    "carryover": {
+      "titlePositive": "Vienes administrando bien el ciclo",
+      "titleNegative": "El arrastre te está apretando hoy",
+      "detailPositive": "Traes {{amount}} de aire acumulado por debajo del ritmo.",
+      "detailNegative": "Arrastrás {{amount}} de exceso desde días anteriores."
+    },
+    "buffer": {
+      "titleIntact": "Tu colchón sigue defendiendo el cierre",
+      "titleConsumed": "El colchón ya no está cubriendo desvíos",
+      "detailIntact": "{{amount}} del colchón siguen intactos para absorber desvíos.",
+      "detailConsumed": "El colchón ya se consumió. Desde aquí empiezas a tocar el plan principal."
+    }
+  },
+  "analytics": {
+    "overspendRisk": {
+      "title": "Riesgo de pasarte antes del próximo cobro",
+      "detail": "Si el ritmo actual sigue, te faltarían {{missing}}. Baja unos {{perDay}} por día para llegar con aire."
+    },
+    "adjustPace": {
+      "title": "Necesitas ajustar el ritmo diario",
+      "detail": "Para llegar al próximo cobro sin quedarte corto, intenta bajar alrededor de {{amount}} por día desde mañana."
+    },
+    "concentration": {
+      "title": "La concentración del gasto está muy cargada",
+      "detail": "{{category}} concentra {{percent}}% del mes. Es la mejor categoría para buscar recortes sin tocar todo el presupuesto."
+    },
+    "recurring": {
+      "title": "Hay un gasto repetido para auditar",
+      "detail": "\"{{label}}\" apareció {{count}} veces en 60 días y suma {{total}}. Vale la pena revisar si es suscripción, fee o hábito recurrente."
+    },
+    "weekend": {
+      "title": "Los fines de semana están empujando el total",
+      "detail": "El gasto diario del fin de semana viene {{percent}}% arriba del promedio de lunes a viernes."
+    },
+    "weeklyAccel": {
+      "title": "El gasto se aceleró esta semana",
+      "detail": "Los últimos 7 días subieron {{percent}}% frente a la semana anterior. Revisa qué se aceleró antes de que se consolide."
+    },
+    "healthy": {
+      "title": "El ritmo viene sano",
+      "detail": "Con el patrón actual cerrarías el ciclo con {{amount}} disponibles."
+    },
+    "noAlerts": {
+      "title": "No hay alertas fuertes todavía",
+      "detail": "No hay alertas fuertes todavía, pero conviene seguir de cerca el cierre del mes."
+    }
+  },
+  "intelligence": {
+    "headline": {
+      "healthy": "Si sigues así, todavía debería quedar aire al final del mes.",
+      "short": "Si sigues así, el mes termina corto y conviene corregir ahora."
+    },
+    "dailyCap": {
+      "label": "Tope diario",
+      "helper": "{{count}} días restantes en el mes."
+    },
+    "cutPerDay": {
+      "label": "Baja por día",
+      "helper": "Recorte sugerido para llegar al próximo cobro."
+    },
+    "weeklyPace": {
+      "label": "Ritmo semanal",
+      "helperNoBase": "Todavía no hay suficiente base para comparar semanas.",
+      "helperHeavier": "Esta semana viene más cargada.",
+      "helperLighter": "Esta semana viene más liviana o estable."
+    },
+    "last7": {
+      "label": "Últimos 7 días",
+      "helper": "Gasto variable acumulado en los últimos 7 días."
+    },
+    "topCategory": {
+      "label": "Categoría líder",
+      "helper": "{{label}} suma {{total}} en este mes."
+    },
+    "recurring": {
+      "label": "Gasto repetido",
+      "helper": "{{label}} apareció {{count}} veces."
+    },
+    "weekend": {
+      "label": "Fin de semana",
+      "helper": "Compara sábados y domingos contra el promedio de lunes a viernes."
+    }
+  },
+  "import": {
+    "incomeKind": {
+      "transfer": "Transferencia",
+      "bonus": "Bono",
+      "gift": "Regalo",
+      "other": "Otro",
+      "incomeLabel": "Ingreso"
+    },
+    "field": {
+      "description": "descripción",
+      "amount": "monto",
+      "category": "categoría"
+    },
+    "warning": {
+      "foreignCurrency": "Moneda no soportada. Edita el monto en ARS.",
+      "swapAmbiguous": "Cambio de moneda. Verifica antes de cargar.",
+      "noMerchant": "Sin descripción. Completa antes de confirmar.",
+      "noDate": "Sin fecha clara. Asumimos hoy.",
+      "valueZero": "Monto 0. Edita antes de confirmar.",
+      "futureDate": "La fecha era futura. La ajustamos a hoy — revisala."
+    },
+    "relativeDate": {
+      "today": "hoy",
+      "yesterday": "ayer",
+      "tomorrow": "mañana"
+    },
+    "error": {
+      "missingCategory": "Falta categoría para el gasto."
+    },
+    "noDescription": "(sin descripción)",
+    "header": {
+      "summaryTitle": "Resumen final",
+      "reviewMovement": "Revisa el movimiento",
+      "movementOf": "Movimiento {{current}} de {{total}}",
+      "thumbnailA11y": "Miniatura de la captura importada"
+    },
+    "footer": {
+      "confirmWith": "Confirmar {{parts}}",
+      "reviewAndConfirm": "Revisar y confirmar",
+      "backToEdit": "Volver a editar",
+      "previous": "Anterior",
+      "restore": "Restaurar",
+      "skipThis": "Saltear este"
+    },
+    "summary": {
+      "expensesCount_one": "{{count}} gasto",
+      "expensesCount_other": "{{count}} gastos",
+      "incomesCount_one": "{{count}} ingreso",
+      "incomesCount_other": "{{count}} ingresos",
+      "and": " y ",
+      "nothingToLoad": "Sin nada para cargar",
+      "willLoad": "Vas a cargar {{summary}}.",
+      "skippedLine_one": "1 movimiento que salteaste no se va a cargar.",
+      "skippedLine_other": "{{count}} movimientos que salteaste no se van a cargar.",
+      "itemA11y": "{{kind}}, {{description}}, {{plus}}${{amount}}, {{meta}}",
+      "plusPrefix": "más ",
+      "editHint": "Toca para editar este movimiento"
+    },
+    "row": {
+      "skipped": "Saltado",
+      "restoreMovement": "Restaurar este movimiento",
+      "amount": "Monto",
+      "incomeAmount": "Monto del ingreso",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Ej: Supermercado",
+      "date": "Fecha",
+      "category": "Categoría",
+      "incomeType": "Tipo de ingreso"
+    },
+    "dateSlider": {
+      "a11yLabel": "Fecha del movimiento",
+      "dayA11y": "día {{day}}",
+      "dayA11yFuture": "día {{day}}, fecha futura no disponible"
+    },
+    "toast": {
+      "incomplete": "Hay un movimiento sin completar — revisalo antes de confirmar.",
+      "previewLoaded": "Vista previa: {{parts}} (no se cargó nada).",
+      "loaded": "Cargué {{parts}}.",
+      "reasonSuffix": " Motivo: {{reason}}",
+      "partialFailure": "{{baseMsg}} {{count}} no se pudieron cargar.{{reasonSuffix}}",
+      "allFailed_one": "No se pudo cargar ningún movimiento ({{count}} error).{{reasonSuffix}}",
+      "allFailed_other": "No se pudo cargar ningún movimiento ({{count}} errores).{{reasonSuffix}}"
+    },
+    "unmatched_one": "{{count}} línea de la captura no parecían movimientos; las omitimos.",
+    "unmatched_other": "{{count}} líneas de la captura no parecían movimientos; las omitimos.",
+    "empty": {
+      "title": "No vi gastos en esa captura.",
+      "body": "Prueba con otra imagen."
+    }
+  },
+  "shareImport": {
+    "reading": "Leyendo tu captura…",
+    "readError": "No pude leer esa captura: {{message}}",
+    "onlyScreenshots": "Solo puedo importar capturas de pantalla.",
+    "firstOnly": "Procesamos la primera captura — de a una por ahora.",
+    "receiveError": "No pude recibir esa captura. Prueba de nuevo."
+  },
+  "filtersScreen": {
+    "title": "Filtros",
+    "subtitle": "Ajusta período, categoría y búsqueda con el mismo patrón modal de Agregar gasto.",
+    "defineTitle": "Define qué quieres mirar",
+    "period": "Periodo",
+    "category": "Categoria",
+    "cycleFallback": "Ciclo",
+    "loadingCategories": "Cargando categorias...",
+    "noCategoriesTitle": "Sin categorias",
+    "noCategoriesSubtitle": "Todavia no hay categorias. Igual puedes aplicar período y búsqueda libre.",
+    "searchLabel": "Buscar",
+    "searchHelper": "Descripción, categoría o persona.",
+    "searchPlaceholder": "Ej: supermercado, nafta, Agus",
+    "apply": "Aplicar filtros",
+    "periodOptions": {
+      "cycle": "Ciclo",
+      "week": "7 dias",
+      "today": "Hoy",
+      "all": "Todo"
+    }
+  },
+  "categoriesScreen": {
+    "title": "Categorias",
+    "subtitle": "Administra el catálogo con la misma experiencia modal de Agregar gasto.",
+    "loadErrorTitle": "No pudimos abrir categorías",
+    "loadErrorDescription": "No pudimos cargar las categorias del hogar.",
+    "catalogEyebrow": "Catalogo",
+    "catalogTitle": "Ordena cómo se clasifica el gasto",
+    "selectedLabel": "Categoría seleccionada",
+    "pickToManage": "Elige una categoría para administrarla",
+    "associatedExpenses_one": "{{count}} gasto asociado",
+    "associatedExpenses_other": "{{count}} gastos asociados",
+    "usedInFilterSuffix": " · usada en el filtro actual",
+    "tapRowHint": "Toca una fila para renombrar o borrar la categoría correcta.",
+    "cannotDeleteWarning": "Esta categoría no se puede borrar porque ya tiene movimientos.",
+    "manageCategoryA11y": "Gestionar categoría {{name}}",
+    "categoryMeta_one": "{{count}} gasto · creada {{date}}",
+    "categoryMeta_other": "{{count}} gastos · creada {{date}}",
+    "filterBadge": "Filtro",
+    "newCategory": "Nueva categoria",
+    "renameSelected": "Renombrar seleccionada",
+    "deleteSelected": "Borrar seleccionada",
+    "deleteAlertTitle": "Borrar categoria",
+    "deleteAlertMessage": "Se va a borrar \"{{name}}\" si no tiene gastos cargados.",
+    "deleteFailed": "No se pudo borrar la categoria.",
+    "createFailed": "No se pudo crear la categoria.",
+    "renameFailed": "No se pudo renombrar la categoria.",
+    "create": "Crear",
+    "renameTitle": "Renombrar categoria"
+  },
+  "historyScreen": {
+    "loadErrorTitle": "No pudimos cargar el historial",
+    "loadErrorDescription": "No pudimos cargar el historial y sus filtros.",
+    "update": "Actualizar",
+    "editExpense": "Editar gasto"
+  },
+  "addExpense": {
+    "title": "Agregar gasto",
+    "formErrorTitle": "No pudimos abrir el formulario",
+    "createCategory": "Crear categoría"
+  },
+  "addIncome": {
+    "title": "Agregar ingreso",
+    "registeringFor": "REGISTRANDO PARA",
+    "yesterdayLower": "ayer",
+    "dayBeforeLower": "anteayer",
+    "fromWhere": "¿De dónde?",
+    "fromWhereFlagged": "Elige de dónde viene",
+    "when": "¿Cuándo?",
+    "save": "Guardar ingreso",
+    "retryLater": "Reintenta en un momento.",
+    "saveErrorTitle": "No pudimos guardar",
+    "field": {
+      "incomeType": "tipo de ingreso"
+    },
+    "dayChips": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "dayBefore": "Anteayer"
+    },
+    "quickDescriptions": {
+      "transfer": "Transferencia",
+      "bonus13th": "Aguinaldo",
+      "workBonus": "Bono trabajo",
+      "birthdayGift": "Regalo cumple",
+      "freelance": "Freelance",
+      "refund": "Reintegro"
+    }
+  }
+}

@@ -9,6 +9,7 @@ import {
   type NativeSyntheticEvent,
   type ScrollView,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
@@ -53,6 +54,7 @@ interface HomeScreenProps {
 export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   useScreenLifecycleLog('Inicio')
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -300,7 +302,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       onError: (error: unknown) => {
         void triggerHaptic('error')
         Alert.alert(
-          'No pudimos eliminar',
+          t('home:homeScreen.deleteError'),
           getErrorMessage(error, errorMessages.server),
         )
       },
@@ -320,7 +322,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           onError: (error: unknown) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos eliminar',
+              t('home:homeScreen.deleteError'),
               getErrorMessage(error, errorMessages.server),
             )
           },
@@ -382,7 +384,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             dashboard.dashboardError,
             errorMessages.server,
           )}
-          title="No pudimos abrir tu panorama"
+          title={t('home:homeScreen.dashboardError')}
           onAction={() => {
             void dashboard.refetchAll()
           }}

@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
 import { sendFamilyPush } from '@/lib/send-family-push'
@@ -106,7 +107,7 @@ async function insertOne(
   createIncome: ReturnType<typeof useCreateIncomeEvent>['mutateAsync'],
 ): Promise<void> {
   if (row.kind === 'expense') {
-    if (!row.categoryId) throw new Error('Falta categoría para el gasto.')
+    if (!row.categoryId) throw new Error(i18n.t('gastos:import.error.missingCategory'))
     await createExpense(ctx.familyId, ctx.userId, {
       categoryId: row.categoryId,
       description: row.description,

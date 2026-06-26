@@ -12,6 +12,7 @@
 
 import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
@@ -59,6 +60,7 @@ export function GastosAdvisorChip({
   onPress,
 }: GastosAdvisorChipProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.97 })
   const chipLayout = useGatedLayout(LinearTransition.duration(220))
   // Gateado: si el chip aparece en el primer attach (sus signals llegan
@@ -120,13 +122,13 @@ export function GastosAdvisorChip({
               style={[styles.title, { color: theme.colors.textMuted }]}
               numberOfLines={1}
             >
-              Sin alertas por ahora
+              {t('gastos:advisorChip.calmTitle')}
             </Text>
             <Text
               style={[styles.impact, { color: theme.colors.textSoft }]}
               numberOfLines={1}
             >
-              Tus categorías están en orden
+              {t('gastos:advisorChip.calmBody')}
             </Text>
           </View>
         </View>
@@ -158,7 +160,7 @@ export function GastosAdvisorChip({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Asistente: ${target.title}`}
+        accessibilityLabel={t('gastos:advisorChip.a11yLabel', { title: target.title })}
         onPress={() => {
           void triggerHaptic('selection')
           onPress?.(target)

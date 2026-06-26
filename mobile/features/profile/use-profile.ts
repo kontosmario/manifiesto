@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { setCachedProfileDisplayName } from '@/lib/profile-display-name-cache'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
@@ -116,7 +117,7 @@ export function useUpdateAvatarAnimal(userId?: string, familyId?: string) {
   return useMutation({
     mutationFn: async (slug: string) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para actualizar el avatar.')
+        throw new Error(i18n.t('settings:profileErrors.noSessionAvatar'))
       }
 
       const { error } = await supabase
@@ -151,12 +152,12 @@ export function useUpdateDisplayName(userId?: string, familyId?: string) {
   return useMutation({
     mutationFn: async (rawDisplayName: string) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para actualizar el nombre.')
+        throw new Error(i18n.t('settings:profileErrors.noSessionName'))
       }
 
       const displayName = rawDisplayName.trim()
       if (!displayName) {
-        throw new Error('El display name no puede estar vacío.')
+        throw new Error(i18n.t('settings:profileErrors.emptyName'))
       }
 
       const profileResponse = await supabase

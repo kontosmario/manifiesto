@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   InteractionManager,
@@ -33,6 +34,7 @@ const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 export function ShareImportHost() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const { familyId, userId, makeMapContext } = useImportWizardContext()
   const [phase, setPhase] = useState<'idle' | 'parsing'>('idle')
@@ -62,11 +64,11 @@ export function ShareImportHost() {
           return
         }
         if (result.kind === 'error') {
-          toast.error(`No pude leer esa captura: ${result.message}`)
+          toast.error(t('gastos:shareImport.readError', { message: result.message }))
         }
       })()
     },
-    [makeMapContext],
+    [makeMapContext, t],
   )
 
   useShareImportGate({ familyId, userId, busy, onShare: handleShare })
@@ -96,7 +98,7 @@ export function ShareImportHost() {
           >
             <ActivityIndicator color={theme.colors.primary} />
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Leyendo tu captura…
+              {t('gastos:shareImport.reading')}
             </Text>
           </Animated.View>
         </Animated.View>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
 import { CobroPendingHeaderChip } from '@/components/ui/cobro-pending-chip'
 
@@ -13,15 +14,16 @@ interface GastosHeaderProps {
 }
 
 export function GastosHeader({
-  title = 'Gastos',
-  subtitle = 'Historial, filtros y edición rápida de movimientos.',
+  title,
+  subtitle,
   familyId,
   rightSlot,
 }: GastosHeaderProps) {
+  const { t } = useTranslation()
   return (
     <TabSectionHeader
-      title={title}
-      subtitle={subtitle}
+      title={title ?? t('gastos:header.title')}
+      subtitle={subtitle ?? t('gastos:header.subtitle')}
       right={rightSlot}
       // Clearance so the StreakFlameIcon's overflow badge
       // (`top: -5, right: -5`) doesn't get clipped by the SectionList

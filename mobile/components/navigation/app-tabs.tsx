@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { Tabs } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import {
   AddExpenseTabButton,
@@ -95,6 +96,7 @@ const renderAddIcon = () => null
 
 export function AppTabs() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const tabHaptics = useTabHaptics()
   // DEV-only: agrega logging de focus/blur/tabPress + sampler de frames por
   // transición. En release devuelve `tabHaptics` sin tocar (no-op).
@@ -187,23 +189,23 @@ export function AppTabs() {
     <Tabs screenListeners={screenListeners} screenOptions={screenOptions}>
       <Tabs.Screen
         name="home"
-        options={{ title: 'Inicio', tabBarIcon: renderHomeIcon, tabBarButton: renderTabBarButton }}
+        options={{ title: t('states:tabs.home'), tabBarIcon: renderHomeIcon, tabBarButton: renderTabBarButton }}
       />
       <Tabs.Screen
         name="expenses"
-        options={{ title: 'Gastos', tabBarIcon: renderExpensesIcon, tabBarButton: renderTabBarButton }}
+        options={{ title: t('states:tabs.expenses'), tabBarIcon: renderExpensesIcon, tabBarButton: renderTabBarButton }}
       />
       <Tabs.Screen
         name="add"
-        options={{ title: 'Agregar', tabBarButton: renderAddExpenseButton, tabBarIcon: renderAddIcon }}
+        options={{ title: t('states:tabs.add'), tabBarButton: renderAddExpenseButton, tabBarIcon: renderAddIcon }}
       />
       <Tabs.Screen
         name="fixed-expenses"
-        options={{ title: 'Fijos', tabBarIcon: renderFijosIcon, tabBarButton: renderTabBarButton }}
+        options={{ title: t('states:tabs.fixed'), tabBarIcon: renderFijosIcon, tabBarButton: renderTabBarButton }}
       />
       <Tabs.Screen
         name="insights"
-        options={{ title: 'Control', tabBarIcon: renderInsightsIcon, tabBarButton: renderTabBarButton }}
+        options={{ title: t('states:tabs.control'), tabBarIcon: renderInsightsIcon, tabBarButton: renderTabBarButton }}
       />
     </Tabs>
   )

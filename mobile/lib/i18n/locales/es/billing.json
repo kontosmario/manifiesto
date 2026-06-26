@@ -1,1 +1,200 @@
-{}
+{
+  "screen": {
+    "title": "Plan del hogar",
+    "welcomeCta_one": "Empezar con {{count}} día de acceso completo",
+    "welcomeCta_other": "Empezar con {{count}} días de acceso completo",
+    "welcomeCtaFallback": "Empezar con acceso completo"
+  },
+  "logout": {
+    "confirmTitle": "¿Cerrar sesión?",
+    "confirmMessage": "Vas a volver a la pantalla de inicio. Tu cuenta y tus datos quedan guardados.",
+    "cancel": "Cancelar",
+    "confirm": "Cerrar sesión",
+    "errorTitle": "No pudimos cerrar sesión",
+    "errorFallback": "Prueba de nuevo en un momento."
+  },
+  "editions": {
+    "title": "Ediciones",
+    "subtitle": "Cada ciclo cerrado es una edición de Manifiesto. Toca una para revivirla.",
+    "errorTitle": "No pudimos cargar tus ediciones",
+    "errorDescription": "Prueba de nuevo en un momento.",
+    "emptyTitle": "Tu primera edición está en camino",
+    "emptySubtitle": "Cuando confirmes tu próximo cobro, este archivo se va a empezar a llenar. Una edición por ciclo cerrado.",
+    "mastheadEyebrow": "TU SALDO ACUMULADO",
+    "mastheadCaption_one": "en {{count}} edición cerrada",
+    "mastheadCaption_other": "en {{count}} ediciones cerradas",
+    "movements_one": "mov.",
+    "movements_other": "movs.",
+    "reviveLabel": "Revivir edición {{label}}, {{tone}}",
+    "toneMargin": "margen",
+    "toneExceeded": "excedido",
+    "toneEven": "empatado"
+  },
+  "paywall": {
+    "lockChip": "ACCESO PAUSADO",
+    "headlineLocked": "Tu acceso\nestá pausado.",
+    "headlineDefault": "Todo tu hogar,\nen una cuenta.",
+    "subscribeWithPrice": "Suscribirme por {{price}}{{period}}",
+    "subscribe": "Suscribirme",
+    "perYear": "/año",
+    "perMonth": "/mes",
+    "start": "Empezar",
+    "disclosure": "El pago se cargará a tu cuenta de Apple ID al confirmar la compra. La suscripción se renueva automáticamente al mismo precio salvo que la canceles al menos 24 horas antes de que termine el período actual; el cargo de renovación se hace dentro de esas 24 horas. Puedes gestionarla o cancelarla cuando quieras desde los Ajustes de tu cuenta en la App Store.",
+    "restorePurchases": "Restaurar compras",
+    "terms": "Términos",
+    "termsA11y": "Términos de uso",
+    "privacy": "Privacidad",
+    "privacyA11y": "Política de privacidad",
+    "logout": "Cerrar sesión",
+    "deleteAccount": "Eliminar cuenta"
+  },
+  "freePeriodBanner": {
+    "title": "Acceso completo"
+  },
+  "freeAccessBadge_one": "Acceso completo: {{count}} día restante",
+  "freeAccessBadge_other": "Acceso completo: {{count}} días restantes",
+  "nudge": {
+    "titleUrgent": "Último día de acceso completo",
+    "title_one": "Te queda {{count}} día",
+    "title_other": "Te quedan {{count}} días",
+    "subtitleUrgent": "Sigue sin cortes · desde $3.33/mes",
+    "subtitle": "de acceso completo",
+    "ctaSubscribe": "Suscribirme",
+    "ctaSeePlans": "Ver planes",
+    "close": "Cerrar"
+  },
+  "planTiles": {
+    "monthly": "MENSUAL",
+    "annual": "ANUAL",
+    "recommended": "RECOMENDADO",
+    "perMonthSuffix": " /mes",
+    "perYearSuffix": " /año",
+    "people": "{{count}} personas",
+    "effectivePerMonth": "${{amount}}/mes · ",
+    "monthlyA11yLoading": "{{plan}}, cargando precio",
+    "monthlyA11y": "{{plan}}, {{price}} por mes",
+    "annualA11yLoading": "{{plan}}, recomendado, cargando precio",
+    "annualA11y": "{{plan}}, recomendado, {{price}} por año"
+  },
+  "savingsRibbon": {
+    "text": "Ahorrás ${{amount}} al año · −{{percent}}%"
+  },
+  "changePlan": {
+    "title": "Cambiar de plan",
+    "subtitle": "Subir de plan es inmediato; bajar se aplica en tu próxima renovación.",
+    "confirm": "Confirmar cambio",
+    "noChangeHint": "Es tu plan al renovar. Elige otro para cambiar."
+  },
+  "purchaseResult": {
+    "successTitle": "¡Bienvenido al hogar!",
+    "successBody": "Tu {{plan}} ya está activo. Acceso completo para ti y tu hogar.",
+    "successBodyFallbackPlan": "plan",
+    "planChangedTitle": "Plan actualizado",
+    "planChangedBody": "Listo. Verás el cambio reflejado en \"Mi suscripción\" — al instante si fue una mejora, o en tu próxima renovación si fue un cambio a un plan menor.",
+    "restoredTitle": "Recuperamos tu suscripción",
+    "restoredBody": "Ya tienes acceso a tu plan en este dispositivo.",
+    "errorTitle": "No pudimos confirmar tu compra",
+    "errorBody": "Reintenta en un momento. No se te cobró nada.",
+    "restoreErrorTitle": "No pudimos restaurar",
+    "restoreErrorBody": "Reintenta en un momento.",
+    "ctaStart": "Empezar",
+    "ctaUnderstood": "Entendido",
+    "ctaDone": "Listo",
+    "retry": "Reintentar",
+    "close": "Cerrar"
+  },
+  "membershipHero": {
+    "eyebrow": "Tu membresía"
+  },
+  "membership": {
+    "statusMvp": "MVP",
+    "heroLineMvp": "Acceso total de por vida",
+    "noteMvp": "Tu cuenta tiene acceso completo, sin vencimiento.",
+    "statusComped": "CORTESÍA",
+    "heroLineComped": "Acceso de cortesía",
+    "statusFamilyMember": "MIEMBRO DEL HOGAR",
+    "heroLineFamilyMember": "Tu hogar cubre tu acceso",
+    "noteFamilyMember": "El plan lo administra quien lo contrató en tu hogar.",
+    "statusGrace": "PROBLEMA DE PAGO",
+    "heroLineGrace": "Reintentando hasta {{date}}",
+    "statusNoRenew": "NO SE RENOVARÁ",
+    "heroLineNoRenew": "Habilitado hasta {{date}}",
+    "statusActive": "ACTIVA",
+    "heroLineActive": "Se renueva el {{date}}"
+  },
+  "manage": {
+    "pendingChangeNextRenewal": "Cambia a {{plan}} en tu próxima renovación",
+    "pendingChangeOnDate": "Cambia a {{plan}} el {{date}}",
+    "termsA11y": "Términos de uso",
+    "terms": "Términos de uso",
+    "privacyA11y": "Política de privacidad",
+    "privacy": "Privacidad"
+  },
+  "detailRows": {
+    "nextRenewal": "Próxima renovación",
+    "householdMembers": "Miembros del hogar",
+    "membersValue": "{{current}} de {{cap}} personas",
+    "autoRenew": "Renovación automática",
+    "autoRenewOn": "Activada",
+    "autoRenewOff": "Desactivada",
+    "price": "Precio"
+  },
+  "members": {
+    "heading": "Integrantes del hogar",
+    "joinedOn": "Se unió el {{date}}",
+    "inHousehold": "En el hogar",
+    "fallbackName": "Integrante",
+    "owner": "Dueño"
+  },
+  "actions": {
+    "reactivate": "Reactivar",
+    "fixPayment": "Actualizar método de pago en App Store",
+    "changePlan": "Cambiar de plan",
+    "manageOrCancel": "Administrar o cancelar en App Store",
+    "restorePurchases": "Restaurar compras"
+  },
+  "brand": {
+    "tag": "Hogar"
+  },
+  "plans": {
+    "hogar-mensual": {
+      "name": "Plan Mensual",
+      "tagline": "Para empezar sin compromisos."
+    },
+    "hogar-anual": {
+      "name": "Plan Anual",
+      "tagline": "El plan más elegido.",
+      "effectiveCopy": "Te sale como USD 3.33 al mes"
+    }
+  },
+  "features": {
+    "base": [
+      "Una sola fuente de números, contigo y con quien sumes",
+      "Te avisamos cuánto puedes gastar cada día",
+      "Gastos fijos y cuotas ordenados en un solo lugar",
+      "Metas de ahorro con seguimiento automático",
+      "Avisos y recordatorios cuando algo importa",
+      "Ves los gastos en pesos y en dólares",
+      "Modo claro y modo oscuro, tus datos protegidos"
+    ],
+    "monthlyMembers": "Hasta 2 personas en tu plan",
+    "monthlyCancel": "Cancelas cuando quieras",
+    "annualMembers": "Hasta 4 personas, ideal para tu grupo familiar",
+    "annualPriority": "Atención prioritaria por correo",
+    "annualEarlyAccess": "Estrenas las nuevas funciones antes que nadie"
+  },
+  "priceLabel": "${{amount}} / {{period}}",
+  "period": {
+    "year": "año",
+    "month": "mes"
+  },
+  "errors": {
+    "purchaseFallback": "No pudimos confirmar tu compra. Reintenta en un momento.",
+    "boundToOtherFamily": "Tu suscripción está asociada a otro hogar. Contactanos.",
+    "noFamily": "No pudimos identificar tu hogar. Reintenta en un momento.",
+    "purchaseInProgress": "Ya hay una compra en curso.",
+    "noPurchasesToRestore": "No encontramos compras para restaurar con esta cuenta.",
+    "restoreFailed": "No pudimos restaurar tu suscripción. Reintenta en un momento.",
+    "restoreFailedGeneric": "No pudimos restaurar tus compras. Reintenta en un momento."
+  }
+}

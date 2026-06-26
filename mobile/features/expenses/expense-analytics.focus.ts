@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Category } from '@/features/categories/use-categories'
 import type {
   ExpenseAnalyticsCategoryFocus,
@@ -46,7 +47,7 @@ export function buildTopCategoryFocus({
       ? topCategoryTotal / spentInCurrentCycle
       : 0
   const topCategoryLabel =
-    typeof topCategoryId === 'string' ? categoryNameById.get(topCategoryId) ?? 'Sin categoría' : null
+    typeof topCategoryId === 'string' ? categoryNameById.get(topCategoryId) ?? i18n.t('gastos:movementRow.noCategory') : null
 
   if (!topCategoryLabel || typeof topCategoryTotal !== 'number') {
     return null

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { RequireAuth } from '@/components/guards'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { isAvatarSlug } from '@/assets/avatars'
@@ -46,6 +47,7 @@ export function OnboardingSuccessScreen() {
 
 function OnboardingSuccessBody({ userId }: { userId: string }) {
   const router = useRouter()
+  const { t } = useTranslation()
   const isSolo = useIsSolo(userId)
   const profileQuery = useMyProfile(userId)
   const profile = profileQuery.data
@@ -61,7 +63,9 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
         kind: isSolo ? 'solo' : 'shared',
         firstName,
       }),
-    [isSolo, firstName],
+    // `t` is included so the resolved copy re-computes on a language switch
+    // (onboardingSuccessCopy reads strings via the shared i18n instance).
+    [isSolo, firstName, t],
   )
 
   const avatarSlug = profile?.avatar_animal && isAvatarSlug(profile.avatar_animal)

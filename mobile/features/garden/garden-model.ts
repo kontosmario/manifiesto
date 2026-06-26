@@ -3,6 +3,8 @@
 // salteados NO rompen el jardín (decisión "sin culpa"): se muestran como
 // brote tenue. Refleja la lógica del prototipo de diseño (renderVals()).
 
+import i18n from '@/lib/i18n'
+
 export type BroteStage =
   | 'pre'
   | 'pending'
@@ -197,40 +199,40 @@ export function weekCloseCopy(score: number): {
     return {
       stage: 'fern',
       bloom: true,
-      label: 'Semana perfecta',
-      title: 'Tu jardín floreció.',
-      sub: 'Registraste los 7 días. Cada brote llegó a su máximo.',
+      label: i18n.t('garden:weekClose.perfect.label'),
+      title: i18n.t('garden:weekClose.perfect.title'),
+      sub: i18n.t('garden:weekClose.perfect.sub'),
     }
   if (score >= 5)
     return {
       stage: 'fern',
       bloom: false,
-      label: 'Gran semana',
-      title: 'Casi pleno.',
-      sub: 'La mayoría de tus brotes maduraron. Te faltó poco para el jardín completo.',
+      label: i18n.t('garden:weekClose.great.label'),
+      title: i18n.t('garden:weekClose.great.title'),
+      sub: i18n.t('garden:weekClose.great.sub'),
     }
   if (score >= 3)
     return {
       stage: 'germ',
       bloom: false,
-      label: 'Semana en marcha',
-      title: 'Vas tomando ritmo.',
-      sub: 'Tus brotes están creciendo. Una semana más así y maduran del todo.',
+      label: i18n.t('garden:weekClose.going.label'),
+      title: i18n.t('garden:weekClose.going.title'),
+      sub: i18n.t('garden:weekClose.going.sub'),
     }
   if (score >= 1)
     return {
       stage: 'seed',
       bloom: false,
-      label: 'Semana tranquila',
-      title: 'Unos pocos brotes.',
-      sub: 'Asomaron algunas semillas. Sin culpa — la próxima arrancas con todo.',
+      label: i18n.t('garden:weekClose.calm.label'),
+      title: i18n.t('garden:weekClose.calm.title'),
+      sub: i18n.t('garden:weekClose.calm.sub'),
     }
   return {
     stage: 'none',
     bloom: false,
-    label: 'Una pausa',
-    title: 'Esta semana, descanso.',
-    sub: 'No registraste días, y está bien. Tu jardín te espera intacto.',
+    label: i18n.t('garden:weekClose.pause.label'),
+    title: i18n.t('garden:weekClose.pause.title'),
+    sub: i18n.t('garden:weekClose.pause.sub'),
   }
 }
 
