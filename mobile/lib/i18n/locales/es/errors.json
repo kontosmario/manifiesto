@@ -1,0 +1,19 @@
+{
+  "generic": "Algo salió mal. Prueba de nuevo.",
+  "notAuthenticated": "Tu sesión venció. Vuelve a iniciar sesión.",
+  "noSession": "No encontramos una sesión activa.",
+  "network": "No pudimos conectarnos. Revisa tu conexión.",
+  "rateLimited": "Demasiados intentos. Espera un momento y prueba de nuevo.",
+  "family": {
+    "ownerOnlyBlock": "Solo el dueño del hogar puede bloquear integrantes.",
+    "cannotBlockSelf": "No puedes bloquearte a ti mismo.",
+    "notInFamily": "Ese usuario no está en tu hogar.",
+    "cannotBlockOwner": "No puedes bloquear a otro dueño.",
+    "codeNotFound": "No encontramos ese código de hogar.",
+    "inviteNotFound": "No encontramos esa invitación.",
+    "inviteAlreadyUsed": "Esa invitación ya se usó.",
+    "inviteExpired": "Esa invitación venció.",
+    "notInAFamily": "No estás en un hogar todavía.",
+    "inviteWhileDeleting": "No puedes generar invitaciones mientras tu cuenta tenga una baja agendada. Cancela la baja primero."
+  }
+}

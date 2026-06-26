@@ -1,0 +1,57 @@
+{
+  "empty": {
+    "expensesThisCycle": {
+      "title": "No expenses this month yet",
+      "description": "Once you log your first expense, you'll see how your budget is going here.",
+      "action": "Log first expense"
+    },
+    "debt": {
+      "title": "Track debts",
+      "description": "To see what you owe and when it's due, add a debt here.",
+      "action": "Add debt"
+    },
+    "fixedRecurring": {
+      "title": "No recurring expenses",
+      "description": "Add rent, utilities or periodic payments to see your household's stable baseline.",
+      "action": "Add fixed expense"
+    },
+    "fixedInstallments": {
+      "title": "No installments",
+      "description": "Log financed purchases to track how much is left to pay.",
+      "action": "Add installment"
+    },
+    "cycleInOrder": {
+      "title": "Month in order",
+      "description": "No urgent or pending fixed expenses for this month."
+    },
+    "categories": {
+      "title": "No categories yet",
+      "description": "Create your first category to better organize your history and new entries.",
+      "action": "Create category"
+    },
+    "notifications": {
+      "title": "All quiet",
+      "description": "When there's news from your household, you'll see it here."
+    },
+    "noData": {
+      "title": "No data",
+      "description": "There's no information available for this period yet."
+    }
+  },
+  "loading": {
+    "expenses": "Loading your expenses",
+    "fixedExpenses": "Loading fixed expenses",
+    "control": "Reading your cycle",
+    "home": "Reading your household",
+    "categories": "Loading categories",
+    "notifications": "Loading news",
+    "settings": "Loading your preferences",
+    "import": "Loading import"
+  },
+  "error": {
+    "network": "We couldn't connect. Check your connection.",
+    "server": "Something failed on the server side. Try again.",
+    "data": "The data came in incomplete. Refresh to retry.",
+    "auth": "Your session expired. Sign in again."
+  }
+}

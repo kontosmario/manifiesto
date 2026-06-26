@@ -20,6 +20,13 @@ export interface Profile {
    */
   timezone?: string
   /**
+   * Idioma preferido del usuario ('es' | 'en'), sincronizado por
+   * `useLanguageSync`. Lo usa el servidor para localizar las push
+   * notifications (se generan por cron con el usuario fuera de la app).
+   * Opcional: el `home_snapshot` RPC seedea un set chico de columnas.
+   */
+  preferred_language?: 'es' | 'en' | null
+  /**
    * `true` once the user has completed onboarding at least once.
    * Set automatically by a SQL trigger when
    * `onboarding_completed_at` transitions from null → timestamp.

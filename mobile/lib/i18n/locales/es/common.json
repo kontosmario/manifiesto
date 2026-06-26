@@ -1,0 +1,30 @@
+{
+  "terms": {
+    "expense": "Gasto",
+    "expensePlural": "Gastos",
+    "currentCycle": "Este ciclo",
+    "available": "Disponible",
+    "margin": "Margen",
+    "payday": "Día de cobro",
+    "fixedExpense": "Gasto fijo",
+    "fixedExpensePlural": "Gastos fijos",
+    "history": "Historial"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "continue": "Continuar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "done": "Listo",
+    "next": "Siguiente",
+    "skip": "Omitir",
+    "add": "Agregar",
+    "remove": "Quitar",
+    "understood": "Entendido"
+  }
+}

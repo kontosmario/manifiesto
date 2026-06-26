@@ -100,6 +100,8 @@ import { triggerHaptic } from '@/lib/haptics'
 import { isAnimLogEnabled, setAnimLogEnabled } from '@/lib/dev/anim-log'
 import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
+import { useTranslation } from 'react-i18next'
+import { useLanguage } from '@/features/preferences/language-provider'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
@@ -120,6 +122,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const isSuperAdmin = useIsSuperAdmin()
   const isNavSettled = useIsNavigationSettled()
   const { preference, setPreference, theme } = useAppTheme()
+  const { t } = useTranslation()
+  const {
+    preference: langPreference,
+    setPreference: setLangPreference,
+    language,
+  } = useLanguage()
   const { data: session } = useAuthSession()
   const profileQuery = useMyProfile(userId)
   const displayName = profileQuery.data?.display_name ?? ''
@@ -1292,6 +1300,30 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       { label: 'Oscuro', value: 'dark' },
                     ]}
                     value={preference}
+                  />
+                </View>
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 9b. IDIOMA — ES/EN con default al sistema. 'Español'/'English'
+                son endónimos (no se traducen); 'Sistema' sí. Es la primera
+                superficie dogfoodeando i18n. */}
+            <RiseView delay={420}>
+              <SettingsGroup
+                footer={t('settings:language.footer', {
+                  lang: language === 'en' ? 'English' : 'Español',
+                })}
+                title={t('settings:language.title')}
+              >
+                <View style={styles.appearanceInner}>
+                  <SegmentedControl
+                    onChange={setLangPreference}
+                    options={[
+                      { label: t('settings:language.system'), value: 'system' },
+                      { label: 'Español', value: 'es' },
+                      { label: 'English', value: 'en' },
+                    ]}
+                    value={langPreference}
                   />
                 </View>
               </SettingsGroup>

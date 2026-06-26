@@ -1,0 +1,7 @@
+{
+  "language": {
+    "title": "Idioma",
+    "system": "Sistema",
+    "footer": "Idioma actual: {{lang}}."
+  }
+}

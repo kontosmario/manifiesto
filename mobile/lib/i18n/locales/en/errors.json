@@ -1,0 +1,19 @@
+{
+  "generic": "Something went wrong. Try again.",
+  "notAuthenticated": "Your session expired. Sign in again.",
+  "noSession": "We couldn't find an active session.",
+  "network": "We couldn't connect. Check your connection.",
+  "rateLimited": "Too many attempts. Wait a moment and try again.",
+  "family": {
+    "ownerOnlyBlock": "Only the household owner can block members.",
+    "cannotBlockSelf": "You can't block yourself.",
+    "notInFamily": "That user isn't in your household.",
+    "cannotBlockOwner": "You can't block another owner.",
+    "codeNotFound": "We couldn't find that household code.",
+    "inviteNotFound": "We couldn't find that invite.",
+    "inviteAlreadyUsed": "That invite was already used.",
+    "inviteExpired": "That invite expired.",
+    "notInAFamily": "You're not in a household yet.",
+    "inviteWhileDeleting": "You can't create invites while your account has a scheduled deletion. Cancel the deletion first."
+  }
+}

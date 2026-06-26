@@ -1,0 +1,30 @@
+{
+  "terms": {
+    "expense": "Expense",
+    "expensePlural": "Expenses",
+    "currentCycle": "This cycle",
+    "available": "Available",
+    "margin": "Margin",
+    "payday": "Payday",
+    "fixedExpense": "Fixed expense",
+    "fixedExpensePlural": "Fixed expenses",
+    "history": "History"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "retry": "Try again",
+    "continue": "Continue",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "done": "Done",
+    "next": "Next",
+    "skip": "Skip",
+    "add": "Add",
+    "remove": "Remove",
+    "understood": "Got it"
+  }
+}
