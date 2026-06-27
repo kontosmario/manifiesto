@@ -108,7 +108,9 @@ function GardenGridImpl({
             style={[
               styles.weekday,
               {
-                color: i === todayCol ? theme.colors.text : theme.colors.textMuted,
+                // HOY en coral → conecta la letra del header con el anillo de
+                // la celda de hoy ("estás acá").
+                color: i === todayCol ? CORAL : theme.colors.textMuted,
                 fontWeight: i === todayCol ? '800' : '700',
               },
             ]}
@@ -150,10 +152,22 @@ function GardenGridImpl({
                   key={cell.iso}
                   style={[
                     styles.cell,
+                    // HOY: anillo coral + halo para ubicarte en el calendario.
+                    cell.isToday && styles.cellToday,
                     {
-                      backgroundColor: tileBg(cell.stage, theme),
-                      // "Montículo" de tierra: sombra interna solo en las plantadas.
-                      boxShadow: planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.20)' : undefined,
+                      backgroundColor: cell.isToday
+                        ? theme.isDark
+                          ? 'rgba(226,147,94,0.16)'
+                          : 'rgba(226,147,94,0.12)'
+                        : tileBg(cell.stage, theme),
+                      // "Montículo" de tierra (plantadas) + halo coral (hoy).
+                      boxShadow:
+                        [
+                          planted ? 'inset 0 -7px 11px -6px rgba(60,125,52,0.20)' : '',
+                          cell.isToday ? '0 0 0 3px rgba(226,147,94,0.22)' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || undefined,
                     },
                   ]}
                 >
@@ -222,6 +236,11 @@ const styles = StyleSheet.create({
     // Centrado en el casillero (antes flex-end + paddingBottom → anclado abajo).
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  // HOY: anillo coral (2px) para ubicarte de un vistazo en el calendario.
+  cellToday: {
+    borderWidth: 2,
+    borderColor: CORAL,
   },
   plantable: {
     justifyContent: 'center',
